@@ -156,15 +156,15 @@ export function ViewTitleHeader(props) {
           onCollapseFilters={collapseFilters}
           onQueryChange={onQueryChange}
         />
-        {FilterHeader.shouldRender(props) && (
-          <FilterHeader
-            {...props}
-            expanded={areFiltersExpanded}
-            question={question}
-            onQueryChange={onQueryChange}
-          />
-        )}
       </ViewHeaderContainer>
+      {FilterHeader.shouldRender(props) && (
+        <FilterHeader
+          {...props}
+          expanded={areFiltersExpanded}
+          question={question}
+          onQueryChange={onQueryChange}
+        />
+      )}
     </>
   );
 }

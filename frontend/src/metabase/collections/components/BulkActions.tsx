@@ -45,11 +45,6 @@ type BulkActionsProps = {
   selectedAction: string | null;
   setSelectedAction: (action: string | null) => void;
   clearSelected: () => void;
-  onArchive?: OnArchive;
-  onMoveStart: () => void;
-  onCloseModal: () => void;
-  onMove: OnMoveWithOneItem;
-  onCopy: OnCopyWithoutArguments;
   isNavbarOpen: boolean;
 };
 

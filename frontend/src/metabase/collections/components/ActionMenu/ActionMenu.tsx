@@ -14,7 +14,6 @@ import {
   canMoveItem,
   canPinItem,
   canPreviewItem,
-  isItemArchived,
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
@@ -72,6 +71,15 @@ function mapStateToProps(state: State): StateProps {
   };
 }
 
+function HACK_getParentCollectionFromEntityUpdateAction(
+  item: CollectionItem,
+  result,
+) {
+  return item.model === "collection"
+    ? result?.payload?.collection?.effective_ancestors?.pop()
+    : result?.payload?.object?.collection;
+}
+
 function ActionMenu({
   className,
   item,
@@ -90,7 +98,7 @@ function ActionMenu({
   const database = databases?.find(({ id }) => id === item.database_id);
 
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const isArchived = isItemArchived(item);
+  const isArchived = item.archived;
 
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
@@ -127,20 +135,15 @@ function ActionMenu({
 
   const handleUnarchive = useCallback(async () => {
     const result = await item.update?.({ archived: false });
-    const parent =
-      item.model === "collection"
-        ? result?.payload?.collection?.effective_ancestors?.pop()
-        : result?.payload?.object?.collection;
-    const parentCollectionPath = parent
-      ? Urls.collection(parent)
-      : `/collection/root`;
+    const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
+    const redirect = parent ? Urls.collection(parent) : `/collection/root`;
 
     dispatch(
       addUndo({
         icon: "check",
         message: t`${item.name} has been restored.`,
         actionLabel: t`View in collection`,
-        action: () => dispatch(push(parentCollectionPath)),
+        action: () => dispatch(push(redirect)),
         undo: false,
       }),
     );

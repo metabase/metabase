@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
+import { ArchivedEntityBanner } from "metabase/components/ArchivedEntityBanner";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
@@ -447,8 +447,8 @@ class View extends Component {
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
-  onDeletePermanently: id => {
-    dispatch(Questions.actions.delete({ id }));
+  onDeletePermanently: async id => {
+    await dispatch(Questions.actions.delete({ id }));
     dispatch(push(Urls.collection(TRASH_COLLECTION)));
     dispatch(addUndo({ message: t`Deletion successful` }));
   },

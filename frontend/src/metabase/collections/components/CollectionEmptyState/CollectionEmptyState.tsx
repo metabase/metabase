@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import {
-  isRootTrashCollection,
-  isTrashedCollection,
-} from "metabase/collections/utils";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
@@ -25,10 +22,10 @@ const CollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps): JSX.Element => {
   const isTrashCollection = !!collection && isRootTrashCollection(collection);
-  const isArchived = !!collection && isTrashedCollection(collection);
+  const isArchived = !!collection?.archived;
 
   if (isTrashCollection) {
-    return <TrashEmptState />;
+    return <TrashEmptyState />;
   } else if (isArchived) {
     return <ArchivedCollectionEmptyState />;
   } else {
@@ -36,7 +33,7 @@ const CollectionEmptyState = ({
   }
 };
 
-const TrashEmptState = () => {
+const TrashEmptyState = () => {
   return (
     <EmptyStateRoot data-testid="collection-empty-state">
       <Icon name="trash" size={80} color={color("brand-light")} />

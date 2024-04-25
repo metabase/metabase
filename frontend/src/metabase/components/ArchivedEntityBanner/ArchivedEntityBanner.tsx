@@ -8,7 +8,7 @@ type ArchivedEntityBannerProps = {
   onDeletePermanently: () => void;
 };
 
-export const ArchivedEntityBanners = ({
+export const ArchivedEntityBanner = ({
   entity,
   onUnarchive,
   onDeletePermanently,

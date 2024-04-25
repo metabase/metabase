@@ -13,7 +13,6 @@ export interface MenuItemProps {
   disabled?: boolean;
 }
 
-// goal, somehow make so that you can color these... "danger" is color we want in this case...
 export const MenuItemContent = styled.div<MenuItemProps>`
   display: flex;
   align-items: center;

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   isEditableCollection,
   isRootTrashCollection,
-  isTrashedCollection,
   isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
@@ -95,7 +94,7 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
   }
 
   if (
-    isTrashedCollection(collection) &&
+    collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
     return <Icon name="folder" size={24} color="text-light" />;

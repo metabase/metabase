@@ -86,6 +86,7 @@ export interface CollectionItem {
   model: CollectionItemModel;
   name: string;
   description: string | null;
+  archived: boolean;
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;

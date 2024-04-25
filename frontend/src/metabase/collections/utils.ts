@@ -151,27 +151,12 @@ export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
 
-// TODO: fixed this "archived" key not being on the collection item...
-export function isItemArchived(
-  item: Pick<CollectionItem, "id" | "location"> & { archived?: boolean },
-) {
-  // TODO: rework this once john fixes migration / bugs
-  return (
-    (item.id === TRASH_COLLECTION.id ||
-      item.archived ||
-      item.location?.startsWith(`/${TRASH_COLLECTION.id}/`)) ??
-    false
-  );
-}
-
 export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return (
-    collection?.can_write && item.setPinned != null && !isItemArchived(item)
-  );
+  return collection?.can_write && item.setPinned != null && !item.archived;
 }
 
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
@@ -179,7 +164,7 @@ export function canPreviewItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     isItemPinned(item) &&
     isItemQuestion(item) &&
-    !isItemArchived(item)
+    !item.archived
   );
 }
 
@@ -189,7 +174,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isItemArchived(item)
+    !item.archived
   );
 }
 
@@ -198,7 +183,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isItemArchived(item)
+    !item.archived
   );
 }
 

@@ -153,7 +153,6 @@ export const BaseItemsTable = ({
     });
 
   const canSelect = !!collection?.can_write;
-  const isArchived = isItemArchived(collection);
 
   return (
     <Table canSelect={canSelect} {...props}>
@@ -204,14 +203,14 @@ export const BaseItemsTable = ({
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isArchived ? t`Deleted by` : t`Last edited by`}
+              {collection?.archived ? t`Deleted by` : t`Last edited by`}
             </SortableColumnHeader>
             <SortableColumnHeader
               name="last_edited_at"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isArchived ? t`Deleted at` : t`Last edited at`}
+              {collection?.archived ? t`Deleted at` : t`Last edited at`}
             </SortableColumnHeader>
             <th></th>
           </tr>

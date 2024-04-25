@@ -7,7 +7,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
+import { ArchivedEntityBanner } from "metabase/components/ArchivedEntityBanner";
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
@@ -548,8 +548,8 @@ function DashboardInner(props: DashboardProps) {
             <ArchivedEntityBanner
               entity="dashboard"
               onUnarchive={() => dispatch(setArchivedDashboard(false))}
-              onDeletePermanently={() => {
-                dispatch(Dashboards.actions.delete({ id: dashboard.id }));
+              onDeletePermanently={async () => {
+                await dispatch(Dashboards.actions.delete({ id: dashboard.id }));
                 dispatch(push(Urls.collection(TRASH_COLLECTION)));
                 dispatch(addUndo({ message: t`Deletion successful` }));
               }}
