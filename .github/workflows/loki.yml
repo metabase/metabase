@@ -64,18 +64,3 @@ jobs:
           name: loki-report
           path: .loki/
           if-no-files-found: ignore
-
-      - name: Post Comment with Report Link
-        if: failure()
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            const artifactUrl = "${{ steps.artifact-upload-step.outputs.artifact-url }}"
-            const comment = `🚨 Visual Regression Tests failed. Get the [report artifact](${artifactUrl})`
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            })
