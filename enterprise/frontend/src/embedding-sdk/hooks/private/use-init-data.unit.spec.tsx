@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  setupApiKeyEndpoints,
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -28,15 +27,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({
-  authType,
-  ...opts
-}: {
-  authType: SDKConfigType["authType"] | "invalid";
-  opts?: Partial<SDKConfigType>;
-}) => {
-  const config = createMockConfig({ authType } as Partial<SDKConfigType>);
-
+const TestComponent = ({ config }: { config: SDKConfigType }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
@@ -44,7 +35,6 @@ const TestComponent = ({
     config: {
       ...config,
       metabaseInstanceUrl: "http://localhost",
-      ...opts,
     } as SDKConfigType,
   });
 
@@ -63,13 +53,13 @@ const TestComponent = ({
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
 const setup = ({
-  authType,
-  isValidAuthentication = true,
+  isValidConfig = true,
+  isValidUser = true,
   ...configOpts
-}: Partial<Omit<SDKConfigType, "authType">> & {
-  authType: SDKConfigType["authType"] | "invalid";
-  isValidAuthentication?: boolean;
-}) => {
+}: {
+  isValidConfig?: boolean;
+  isValidUser?: boolean;
+} & Partial<SDKConfigType>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -78,7 +68,7 @@ const setup = ({
 
   setupCurrentUserEndpoint(
     TEST_USER,
-    isValidAuthentication
+    isValidUser
       ? undefined
       : {
           response: 500,
@@ -104,11 +94,14 @@ const setup = ({
   });
 
   setupEnterprisePlugins();
-  setupApiKeyEndpoints([]);
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  renderWithProviders(<TestComponent authType={authType} {...configOpts} />, {
+  const config = createMockConfig({
+    jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : undefined,
+  });
+
+  renderWithProviders(<TestComponent config={config} {...configOpts} />, {
     storeInitialState: state,
     customReducers: sdkReducers,
   });
@@ -116,34 +109,8 @@ const setup = ({
 
 describe("useInitData hook", () => {
   describe("before authentication", () => {
-    it("should have an error if the authType is incorrect", async () => {
-      setup({ authType: "invalid" });
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "error",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-error-message",
-        "Invalid auth type",
-      );
-    });
-
-    it("should have an error if an API key is not provided", async () => {
-      setup({ authType: "apiKey", apiKey: undefined });
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "error",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-error-message",
-        "Could not authenticate: invalid API key",
-      );
-    });
-
     it("should have an error if JWT URI is not provided", async () => {
-      setup({ authType: "jwt", jwtProviderUri: undefined });
+      setup({ isValidConfig: false });
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",
         "error",
@@ -151,64 +118,14 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+        "Invalid JWT URI provided.",
       );
-    });
-  });
-
-  describe("API Key authentication", () => {
-    it("start loading data if API key and auth type are valid", async () => {
-      setup({ authType: "apiKey" });
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "loading",
-      );
-    });
-
-    it("should set isLoggedIn to true if login is successful", async () => {
-      setup({ authType: "apiKey" });
-      expect(await screen.findByText("Test Component")).toBeInTheDocument();
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-is-logged-in",
-        "true",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "success",
-      );
-    });
-
-    it("should provide an error if login is unsuccessful", async () => {
-      setup({ authType: "apiKey", isValidAuthentication: false });
-
-      expect(await screen.findByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "error",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-error-message",
-        "Could not authenticate: invalid API key",
-      );
-    });
-
-    it("should send API requests with an API key if initialization and login are successful", async () => {
-      setup({ authType: "apiKey" });
-      expect(await screen.findByText("Test Component")).toBeInTheDocument();
-
-      const lastCallRequest = fetchMock.lastCall(
-        "path:/api/user/current",
-      )?.request;
-
-      expect(lastCallRequest?.headers.get("X-Api-Key")).toEqual("TEST_API_KEY");
     });
   });
 
   describe("JWT authentication", () => {
     it("start loading data if JWT URI and auth type are valid", async () => {
-      setup({ authType: "jwt" });
+      setup({ isValidConfig: true });
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",
         "loading",
@@ -216,7 +133,7 @@ describe("useInitData hook", () => {
     });
 
     it("should set isLoggedIn to true if login is successful", async () => {
-      setup({ authType: "jwt" });
+      setup({ isValidConfig: true });
 
       expect(await screen.findByText("Test Component")).toBeInTheDocument();
 
@@ -232,7 +149,7 @@ describe("useInitData hook", () => {
     });
 
     it("should provide an error if login is unsuccessful", async () => {
-      setup({ authType: "jwt", isValidAuthentication: false });
+      setup({ isValidConfig: true, isValidUser: false });
 
       expect(await screen.findByTestId("test-component")).toHaveAttribute(
         "data-login-status",
@@ -246,7 +163,7 @@ describe("useInitData hook", () => {
     });
 
     it("should send API requests with JWT token if initialization and login are successful", async () => {
-      setup({ authType: "jwt" });
+      setup({ isValidConfig: true });
       expect(await screen.findByText("Test Component")).toBeInTheDocument();
 
       const lastCallRequest = fetchMock.lastCall(
