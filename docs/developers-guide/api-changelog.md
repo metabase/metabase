@@ -13,6 +13,8 @@ title: API changelog
 - `GET /api/permissions/graph` and `PUT /api/permissions/graph`
 
    The `data` key has been removed from the permissions graph. It has been replaced with `view-data` and `create-queries`.
+   Valid permission values for `view-data` are `unrestricted`, `blocked`, `sandboxed` or `restricted`. Valid permission values
+   for `create-queries` are `query-builder-and-native`, `query-builder`, and `no`.
 
 ## Metabase 0.49.0
 - `POST /api/card` and `PUT /api/card/:id`
