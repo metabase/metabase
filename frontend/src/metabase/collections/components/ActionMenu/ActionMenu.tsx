@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import type {
   CreateBookmark,
@@ -19,7 +21,9 @@ import {
 import EventSandbox from "metabase/components/EventSandbox";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { addUndo } from "metabase/redux/undo";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -121,9 +125,26 @@ function ActionMenu({
     item?.setCollectionPreview?.(!isPreviewEnabled(item));
   }, [item]);
 
-  const handleUnarchive = useCallback(() => {
-    item.setArchived?.(false);
-  }, [item]);
+  const handleUnarchive = useCallback(async () => {
+    const result = await item.update?.({ archived: false });
+    const parent =
+      item.model === "collection"
+        ? result?.payload?.collection?.effective_ancestors?.pop()
+        : result?.payload?.object?.collection;
+    const parentCollectionPath = parent
+      ? Urls.collection(parent)
+      : `/collection/root`;
+
+    dispatch(
+      addUndo({
+        icon: "check",
+        message: t`${item.name} has been restored.`,
+        actionLabel: t`View in collection`,
+        action: () => dispatch(push(parentCollectionPath)),
+        undo: false,
+      }),
+    );
+  }, [item, dispatch]);
 
   const handleDeletePermanently = useCallback(() => {
     dispatch(Search.actions.delete(item));

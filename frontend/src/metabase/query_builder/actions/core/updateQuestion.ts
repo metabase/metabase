@@ -242,7 +242,7 @@ export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
   function (question, archived = true) {
     return async function (dispatch) {
-      Questions.actions.setArchived(question.card(), archived);
+      await dispatch(Questions.actions.update(question.card(), { archived }));
 
       dispatch(
         updateQuestion(question.setArchived(archived), {
@@ -251,9 +251,9 @@ export const setArchivedQuestion = createThunkAction(
         }),
       );
 
+      // TODO: handle translations
       dispatch(
         addUndo({
-          // TODO: how can i get this translated?
           subject: question.card().type,
           verb: archived ? t`trashed` : t`restored`,
           action: () => dispatch(setArchivedQuestion(question, !archived)),

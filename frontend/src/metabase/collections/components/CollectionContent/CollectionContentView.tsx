@@ -182,35 +182,6 @@ export const CollectionContentView = ({
     accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
   });
 
-  const handleBulkArchive = useCallback(async () => {
-    try {
-      await Promise.all(selected.map(item => item.setArchived?.(true)));
-    } finally {
-      clear();
-    }
-  }, [selected, clear]);
-
-  const handleBulkMoveStart = () => {
-    setSelectedItems(selected);
-    setSelectedAction("move");
-  };
-
-  const handleBulkMove = useCallback(
-    async (collection: Pick<Collection, "id"> & Partial<Collection>) => {
-      try {
-        if (selectedItems) {
-          await Promise.all(
-            selectedItems.map(item => item.setCollection?.(collection)),
-          );
-        }
-        handleCloseModal();
-      } finally {
-        clear();
-      }
-    },
-    [selectedItems, clear],
-  );
-
   const handleUnpinnedItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions) => {
       setUnpinnedItemsSorting(sortingOpts);
@@ -218,11 +189,6 @@ export const CollectionContentView = ({
     },
     [setPage],
   );
-
-  const handleCloseModal = () => {
-    setSelectedItems(null);
-    setSelectedAction(null);
-  };
 
   const handleMove = (selectedItems: CollectionItem[]) => {
     setSelectedItems(selectedItems);
@@ -426,15 +392,13 @@ export const CollectionContentView = ({
                           )}
                         </div>
                         <BulkActions
-                          selected={selected}
                           collection={collection}
-                          onArchive={handleBulkArchive}
-                          onMoveStart={handleBulkMoveStart}
-                          onMove={handleBulkMove}
-                          onCloseModal={handleCloseModal}
-                          onCopy={clear}
+                          selected={selected}
+                          clearSelected={clear}
                           selectedItems={selectedItems}
+                          setSelectedItems={setSelectedItems}
                           selectedAction={selectedAction}
+                          setSelectedAction={setSelectedAction}
                           isNavbarOpen={isNavbarOpen}
                         />
                       </CollectionTable>
