@@ -50,7 +50,7 @@
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [_id name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
+          (let [{:keys [name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
