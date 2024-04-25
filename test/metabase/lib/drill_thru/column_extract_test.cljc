@@ -15,14 +15,14 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private time-extraction-units
-  [{:key :hour-of-day, :display-name "Hour of day"}])
+  [{:tag :hour-of-day, :display-name "Hour of day"}])
 
 (def ^:private date-extraction-units
-  [{:key :day-of-month,    :display-name "Day of month"}
-   {:key :day-of-week,     :display-name "Day of week"}
-   {:key :month-of-year,   :display-name "Month of year"}
-   {:key :quarter-of-year, :display-name "Quarter of year"}
-   {:key :year,            :display-name "Year"}])
+  [{:tag :day-of-month,    :display-name "Day of month"}
+   {:tag :day-of-week,     :display-name "Day of week"}
+   {:tag :month-of-year,   :display-name "Month of year"}
+   {:tag :quarter-of-year, :display-name "Quarter of year"}
+   {:tag :year,            :display-name "Year"}])
 
 (def ^:private datetime-extraction-units
   (concat time-extraction-units date-extraction-units))
@@ -285,9 +285,9 @@
         query    (lib/query mp (lib.metadata/table mp (meta/id :people)))
         expected {:type         :drill-thru/column-extract
                   :display-name "Extract domain, subdomain…"
-                  :extractions  [{:key :domain,    :display-name "Domain"}
-                                 {:key :subdomain, :display-name "Subdomain"}
-                                 {:key :host,      :display-name "Host"}]}]
+                  :extractions  [{:tag :domain,    :display-name "Domain"}
+                                 {:tag :subdomain, :display-name "Subdomain"}
+                                 {:tag :host,      :display-name "Host"}]}]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
         {:drill-type     :drill-thru/column-extract
@@ -335,9 +335,9 @@
          :custom-query   query-regex
          :expected       {:type         :drill-thru/column-extract
                           :display-name "Extract domain, subdomain…"
-                          :extractions  [{:key :domain,    :display-name "Domain"}
-                                         {:key :subdomain, :display-name "Subdomain"}
-                                         {:key :host,      :display-name "Host"}]}
+                          :extractions  [{:tag :domain,    :display-name "Domain"}
+                                         {:tag :subdomain, :display-name "Subdomain"}
+                                         {:tag :host,      :display-name "Host"}]}
          :drill-args     ["subdomain"]
          :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
                                                    [:field {} 9999001]]]}]}}))
@@ -361,9 +361,9 @@
          :column-name    "EMAIL"
          :custom-query   query-regex
          :expected       {:type         :drill-thru/column-extract
-                          :display-name "Extract domain"
-                          :extractions  [{:key :domain, :display-name "Domain"}
-                                         {:key :host,   :display-name "Host"}]}
+                          :display-name "Extract domain, host…"
+                          :extractions  [{:tag :domain, :display-name "Domain"}
+                                         {:tag :host,   :display-name "Host"}]}
          :drill-args     ["domain"]
          :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
                                                    [:field {} (meta/id :people :email)]]]}]}}))
