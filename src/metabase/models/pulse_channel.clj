@@ -158,14 +158,22 @@
   in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
   true)
 
+(declare update-trigger-if-needed!)
+(declare pulse-channels-same-slot)
+
 (t2/define-before-delete :model/PulseChannel
-  [{pulse-id :pulse_id, pulse-channel-id :id}]
+  [{pulse-id :pulse_id, pulse-channel-id :id :as pulse-channel}]
   ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
   ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (t2/update! :model/Pulse pulse-id {:archived true})))))
+        (t2/update! :model/Pulse pulse-id {:archived true}))))
+  ;; better be done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
+  ;; this should delete this PC's trigger
+  (let [pulse-id (:pulse_id pulse-channel)]
+    (update-trigger-if-needed! pulse-id pulse-channel
+                               (disj (pulse-channels-same-slot pulse-id pulse-channel) (:id pulse-channel)))))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -236,33 +244,22 @@
       (update-trigger-if-needed! (:pulse_id pulse-channel)
                                  pulse-channel))))
 
+
 (t2/define-before-update :model/PulseChannel
-  [pulse-channel]
-  ;#p [:before-update pulse-channel]
+  [{:keys [pulse_id] :as pulse-channel}]
   ;; IT's really best if this is done in after-update
-  (let [pulse-id (:pulse_id pulse-channel)
-        changes (t2/changes pulse-channel)]
+  (let [changes (t2/changes pulse-channel)]
     ;; if there are changes in schedule
-    ;; better be done in after-update, but t2/changes doesn't available in after-update yet See toucan2#129
+    ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
     (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame :enabled} %) (keys changes))
-      (update-trigger-if-needed! pulse-id (t2/original pulse-channel)
-                                 (disj (pulse-channels-same-slot pulse-id (t2/original pulse-channel)) (:id pulse-channel)))))
-  ;; TODO: IT SEEMS LIKE YOU CAN"T call cahgnes twicw"
+      ;; delete this PC from its existintg trigger, a new trigger will be created in an after update
+      (update-trigger-if-needed! pulse_id (t2/original pulse-channel)
+                                 (disj (pulse-channels-same-slot pulse_id (t2/original pulse-channel)) (:id pulse-channel)))))
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
 
 (t2/define-after-update :model/PulseChannel
-  [pulse-channel]
-  (let [pulse-id (:pulse_id pulse-channel)]
-    (update-trigger-if-needed! pulse-id pulse-channel)))
-
-(t2/define-before-delete :model/PulseChannel
-  [pulse-channel]
-  ;; better be done in after-delete, but toucan2 doesn't support that yet See toucan2#70
-  ;; this should delete this PC's trigger
-  (def del-pulse-channel pulse-channel)
-  (let [pulse-id (:pulse_id pulse-channel)]
-    (update-trigger-if-needed! pulse-id pulse-channel
-                               (dissoc (pulse-channels-same-slot pulse-id pulse-channel) (:id pulse-channel)))))
+  [{:keys [pulse_id] :as pulse-channel}]
+  (update-trigger-if-needed! pulse_id pulse-channel))
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]

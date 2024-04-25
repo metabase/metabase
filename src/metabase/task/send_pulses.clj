@@ -50,28 +50,28 @@
 (defn- send-pulse-trigger-key
   [pulse-id schedule-map]
   (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
-                        pulse-id #p (-> schedule-map
-                                        u.cron/schedule-map->cron-string
-                                        (str/replace " " "_")))))
+                        pulse-id (-> schedule-map
+                                     u.cron/schedule-map->cron-string
+                                     (str/replace " " "_")))))
 
 (defn ^:private send-pulse-trigger
   "Build a Quartz trigger to send a pulse."
   ^CronTrigger
   [pulse-id schedule-map pc-ids]
   (when (seq pc-ids)
-   (triggers/build
-      (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
-      (triggers/for-job send-pulse-job-key)
-      (triggers/using-job-data {"pulse-id"    pulse-id
-                                "channel-ids" pc-ids})
-      (triggers/with-schedule
-        (cron/schedule
-         (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
-         ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-         ;; Just wait until the next sync cycle.
-         ;;
-         ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-         (cron/with-misfire-handling-instruction-ignore-misfires))))))
+    (triggers/build
+     (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+     (triggers/for-job send-pulse-job-key)
+     (triggers/using-job-data {"pulse-id"    pulse-id
+                               "channel-ids" (set pc-ids)})
+     (triggers/with-schedule
+       (cron/schedule
+        (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+        ;; Just wait until the next sync cycle.
+        ;;
+        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+        (cron/with-misfire-handling-instruction-ignore-misfires))))))
 
 (defn update-trigger-if-needed!
   "Replace or remove the existing trigger if the schedule changes.
@@ -144,29 +144,25 @@
   (reprioritize-send-pulses))
 
 (defmethod task/init! ::SendPulses [_]
-  (let [send-pulse-job      (jobs/build
-                             (jobs/with-description  "Send Pulse")
-                             (jobs/of-type SendPulse)
-                             (jobs/with-identity send-pulse-job-key)
-                             (jobs/store-durably))
-        re-proritize-job    (jobs/build
-                             (jobs/with-description  "Update send Pulses Priority")
-                             (jobs/of-type RePrioritizeSendPulses)
-                             (jobs/with-identity reprioritize-send-pulse-job-key)
-                             (jobs/store-durably))
-        reproritize-trigger (triggers/build
-                             (triggers/with-identity (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
-                             (triggers/start-now)
-                             (triggers/with-schedule
-                               (cron/schedule
-                                (cron/cron-schedule "0 0 1 ? * 7 *") ; at 1am on Saturday every week
-                                (cron/with-misfire-handling-instruction-ignore-misfires))))]
+  (let [send-pulse-job       (jobs/build
+                              (jobs/with-description  "Send Pulse")
+                              (jobs/of-type SendPulse)
+                              (jobs/with-identity send-pulse-job-key)
+                              (jobs/store-durably))
+        re-proritize-job     (jobs/build
+                              (jobs/with-description  "Update send Pulses Priority")
+                              (jobs/of-type RePrioritizeSendPulses)
+                              (jobs/with-identity reprioritize-send-pulse-job-key)
+                              (jobs/store-durably))
+        re-proritize-trigger (triggers/build
+                              (triggers/with-identity (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
+                              (triggers/for-job reprioritize-send-pulse-job-key)
+                              (triggers/start-now)
+                              (triggers/with-schedule
+                                (cron/schedule
+                                 (cron/cron-schedule "0 0 1 ? * 7 *") ; at 1am on Saturday every week
+                                 (cron/with-misfire-handling-instruction-ignore-misfires))))]
     (task/add-job! send-pulse-job)
     (task/add-job! re-proritize-job)
-    (task/add-trigger! reproritize-trigger)))
-
-#_(let [trigger-names (map :key (:triggers (task/job-info send-pulse-job-key)))]
-    (doseq [trigger trigger-names]
-      (task/delete-trigger! (triggers/key trigger))))
-(t2/delete! :model/Pulse)
-#_(task/job-info send-pulse-job-key)
+    (task/schedule-task! re-proritize-job re-proritize-trigger)
+    (task/add-trigger! re-proritize-trigger)))
