@@ -194,7 +194,7 @@
     :DATETIME                   :type/DateTime
     :TIME                       :type/Time
     :TIMESTAMP                  :type/DateTime
-    :TIMESTAMPLTZ               :type/DateTime
+    :TIMESTAMPLTZ               :type/DateTimeWithLocalTZ
     :TIMESTAMPNTZ               :type/DateTime
     :TIMESTAMPTZ                :type/DateTimeWithTZ
     :VARIANT                    :type/*
@@ -615,26 +615,31 @@
         (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
         t))))
 
-;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
+;; TODO ­ would it make more sense to just set raw timestamp literals in the SQL? Probably.
 
 ;; Snowflake seems to ignore the calendar parameter of `.setTime` and `.setTimestamp` and instead uses the session
 ;; timezone; normalize temporal values to UTC so we end up with the right values
-(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetTime]
-  [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/sql-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
-(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetDateTime]
-  [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
+;; This is probably actually unreachable since Snowflake doesn't have a `timetz` type at all -- we should never be
+;; trying to set an `OffsetTime` as a parameter.
+(defmethod sql-jdbc.execute/set-parameter [:snowflake OffsetTime]
+  [driver stmt i t]
+  (log/warn "Snowflake does not have a timetz type, setting equivalent LocalTime.")
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (sql-jdbc.execute/set-parameter driver stmt i local-time)))
 
-(defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
-  [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+(defmethod sql-jdbc.execute/set-parameter [:snowflake OffsetDateTime]
+  [driver stmt i t]
+  (sql-jdbc.execute/set-parameter driver stmt i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [:snowflake ZonedDateTime]
+  [driver stmt i t]
+  (sql-jdbc.execute/set-parameter driver stmt i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
 ;;; --------------------------------------------------- Query remarks ---------------------------------------------------
 
-;  Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
-;  remark instead.
+;; Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
+;; remark instead.
 (defmethod sql-jdbc.execute/inject-remark :snowflake
   [_ sql remark]
   (str sql "\n\n-- " remark))
