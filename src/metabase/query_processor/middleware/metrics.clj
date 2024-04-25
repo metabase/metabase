@@ -5,7 +5,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- replace-metric-aggregation-refs [x lookup]
   (lib.util.match/replace
@@ -103,6 +104,10 @@
                       result)
                     stage-or-join)))
         new-stages (adjust-metric-stages query (:stages query) metric-ref-lookup)]
-    (replace-metric-aggregation-refs
-      (assoc query :stages new-stages)
-      @metric-ref-lookup)))
+    (u/prog1
+      (replace-metric-aggregation-refs
+        (assoc query :stages new-stages)
+        @metric-ref-lookup)
+      (when-let [match (lib.util.match/match-one <>
+                         [:metric {} _] &match)]
+        (log/warn "Failed to replace metric" (pr-str match) (pr-str @metric-ref-lookup))))))

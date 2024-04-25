@@ -122,9 +122,12 @@
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=?
           {:stages [{:source-table (meta/id :products)
-                     :filters [[:> {} [:field {} (meta/id :products :price)] 1]
-                               [:< {} [:field {} (meta/id :products :price)] 100]
-                               [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
+                     :filters [[:> {} [:field {} (meta/id :products :price)] 1]]
+                     :aggregation complement}
+                    {:filters [[:< {} [:field {} (meta/id :products :price)] 100]]
+                     :aggregation complement}
+                    {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                     :aggregation some?}]}
           (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
