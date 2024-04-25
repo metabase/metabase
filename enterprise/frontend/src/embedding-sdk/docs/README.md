@@ -112,7 +112,7 @@ After you have configured Metabase embedding SDK for React, you need to make sur
 
 **Metabase Embedding SDK for React only supports JWT authentication**
 
-Here is the example how you could implement an endpoint that will return JWT token that Metabase embedding SDK for react could use to authenticate your users.
+Here's how you can implement an endpoint that will return a JWT token. The SDK will use this token to authenticate your users.
 
 ```ts
 import express from "express"
