@@ -1,8 +1,26 @@
+> **NOTE**: This SDK is actively being developed. We don't recommend using it in production!
+
+
 # Metabase Embedding SDK for React
 
-Metabase Embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
+The Metabase Embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
 
-The Metabase Embedding SDK is only available to Pro users and you need to authenticate your users to Metabase using JWT authentication.
+Current features:
+* embedding questions - static
+* embedding questions - w/drill-down 
+* plugins for custom actions
+
+# Prerequisites
+
+* Your application is using React
+* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase.
+
+# Getting started
+
+## Configure Metabase
+
+TODO: enable embedding, CORS? Start with this part?
+Open question: Should we move the JWT endpoint content here?
 
 ## Installation
 
@@ -16,36 +34,6 @@ or using yarn:
 
 ```bash
 yarn add @metabase/embedding-sdk-react
-```
-
-### To use locally build Metabase Embedding SDK for React
-
-First you need to build the Metabase Embedding SDK for React locally:
-
-```bash
-yarn build-release:cljs
-```
-
-And then run:
-
-```bash
-yarn build-embedding-sdk:watch
-```
-
-After that you need to add this built SDK package location to your package.json. In this example we assume that your application is located in the same directory as Metabase directory:
-
-```json
-"dependencies": {
-  "@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
-}
-```
-
-And then you can install the package using npm or yarn:
-
-```bash
-npm install
-# or
-yarn
 ```
 
 ## Usage
@@ -211,11 +199,52 @@ app.listen(PORT, () => {
 })
 ```
 
-## Known limitations
-- Metabase Embedding SDK only supports React
-- It doesn't support SSR
-- It doesn't support Vite
+# Known limitations
 
+Currently, the SDK has following limitations:
+- no support for server-side-rendering (SSR)
+- no support for Vite
+
+# Feedback
+TODO: how to share feedback with us
 ______
 
-For a more detailed instructions on building the Metabase Embedding SDK locally, refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
+# Development
+
+## Building locally
+
+First you need to build the Metabase Embedding SDK for React locally:
+
+```bash
+yarn build-release:cljs
+```
+
+And then run:
+
+```bash
+yarn build-embedding-sdk:watch
+```
+
+## Using the local build
+
+After that you need to add this built SDK package location to your package.json. In this example we assume that your application is located in the same directory as Metabase directory:
+
+```json
+"dependencies": {
+  "@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
+}
+```
+
+And then you can install the package using npm or yarn:
+
+```bash
+npm install
+# or
+yarn
+```
+
+## Releases
+
+Embedding SDK package build happens with Github actions if `embedding-sdk-build` label has been set on the PR.
+
+Published package will use a version from `package.template.json` + current date and commit short hash.
