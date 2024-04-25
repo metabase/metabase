@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
@@ -652,14 +651,7 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty
-                           ((fn [query]
-                              (walk/postwalk
-                               (fn [x]
-                                 (if (:lib/type x)
-                                   (update x :lib/type keyword)
-                                   x))
-                               query))))]
+  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
