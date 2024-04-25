@@ -624,7 +624,24 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking))
+  (dissoc row :collection_type :model_ranking :trashed_from_collection_id))
+
+(defn- model-name->toucan-model [model-name]
+  (case (keyword model-name)
+    :collection Collection
+    :card       Card
+    :dataset    Card
+    :dashboard  Dashboard
+    :pulse      Pulse
+    :snippet    NativeQuerySnippet
+    :timeline   Timeline))
+
+(defn- can-read-in-trash? [collection row]
+  (mi/can-write?
+   (t2/instance
+    (model-name->toucan-model (:model row))
+    (assoc (select-keys row [:id :trashed_from_collection_id :archived])
+           :collection_id (:id collection)))))
 
 (defn- maybe-check-permissions
   "Generally, if you have permission to read a collection, you have permission to read everything in it.
@@ -636,9 +653,7 @@
   [collection rows]
   (cond->> rows
     (collection/is-trash? collection)
-    (filter #(mi/current-user-has-full-permissions?
-              (perms/perms-objects-set-for-parent-collection
-               (assoc % :archived true :collection_id (u/the-id collection)) :write)))))
+    (filter #(can-read-in-trash? collection %))))
 
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -656,15 +671,6 @@
                    (map coalesce-edit-info)))
        (sort-by (comp ::index meta))))
 
-(defn- model-name->toucan-model [model-name]
-  (case (keyword model-name)
-    :collection Collection
-    :card       Card
-    :dataset    Card
-    :dashboard  Dashboard
-    :pulse      Pulse
-    :snippet    NativeQuerySnippet
-    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
