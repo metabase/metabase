@@ -648,5 +648,5 @@ function testPairedTooltipValues(val1, val2) {
 }
 
 function showTooltipForFirstCircleInSeries(seriesColor) {
-  cartesianChartCircleWithColor(seriesColor).realHover();
+  cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");
 }
