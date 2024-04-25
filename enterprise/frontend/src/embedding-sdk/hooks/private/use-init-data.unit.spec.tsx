@@ -17,7 +17,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -27,7 +27,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({ config }: { config: SDKConfigType }) => {
+const TestComponent = ({ config }: { config: SDKConfig }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
@@ -35,7 +35,7 @@ const TestComponent = ({ config }: { config: SDKConfigType }) => {
     config: {
       ...config,
       metabaseInstanceUrl: "http://localhost",
-    } as SDKConfigType,
+    } as SDKConfig,
   });
 
   return (
@@ -59,7 +59,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigType>) => {
+} & Partial<SDKConfig>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -98,7 +98,7 @@ const setup = ({
   setupPropertiesEndpoints(settingValuesWithToken);
 
   const config = createMockConfig({
-    jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : undefined,
+    jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
   });
 
   renderWithProviders(<TestComponent config={config} {...configOpts} />, {

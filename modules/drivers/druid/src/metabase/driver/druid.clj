@@ -13,8 +13,9 @@
 
 (driver/register! :druid)
 
-(doseq [[feature supported?] {:set-timezone            true
-                              :expression-aggregations true}]
+(doseq [[feature supported?] {:expression-aggregations true
+                              :schemas                 false
+                              :set-timezone            true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid

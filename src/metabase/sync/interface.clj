@@ -96,13 +96,6 @@
   "Schema for an individual entry in `FKMetadata`."
   [:ref ::TableFKMetadataEntry])
 
-(mr/def ::TableFKMetadata
-  [:maybe [:set TableFKMetadataEntry]])
-
-(def TableFKMetadata
-  "Schema for the expected output of `describe-table-fks`."
-  [:ref ::TableFKMetadata])
-
 (mr/def ::FKMetadataEntry
   [:map
    [:fk-table-name    ::lib.schema.common/non-blank-string]

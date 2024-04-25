@@ -12,7 +12,7 @@ import type {
   EmbeddingSessionTokenState,
   SdkDispatch,
 } from "embedding-sdk/store/types";
-import type { SDKConfigType, SdkConfigWithJWT } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -21,13 +21,12 @@ import registerVisualizations from "metabase/visualizations/register";
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
-const isValidJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
-  !!config.jwtProviderUri;
+const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
 
-const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
+const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
   api.onBeforeRequest = async () => {
     const tokenState = await dispatch(
       getOrRefreshSession(config.jwtProviderUri),

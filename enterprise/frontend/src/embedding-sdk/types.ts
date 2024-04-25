@@ -1,17 +1,5 @@
-import type { JSX } from "react";
-
-type JWTAuthType = {
-  jwtProviderUri: string;
-};
-
-type BaseSDKConfigType = {
+export type SDKConfig = {
   metabaseInstanceUrl: string;
   font?: string;
-  jwtProviderUri?: string;
-  loaderComponent?: () => JSX.Element;
-  errorComponent?: () => JSX.Element;
+  jwtProviderUri: string;
 };
-
-export type SdkConfigWithJWT = BaseSDKConfigType & JWTAuthType;
-
-export type SDKConfigType = BaseSDKConfigType | SdkConfigWithJWT;
