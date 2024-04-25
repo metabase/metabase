@@ -278,11 +278,13 @@
     (subs s 0 (- (count s)
                  (count suffix)))))
 
-(defn- allowed-parents [{ns-sym :value ns-s :string-value}]
+(defn- allowed-parents
+  "The modules whose internals the given namespace is allowed to depend on."
+  [{ns-sym :value ns-s :string-value}]
   (into #{} (remove nil?)
         [;; Modules can depend on their own internals.
          (modules ns-sym)
-         ;; We can to depend on our siblings.
+         ;; We can depend on our siblings.
          (parent-module ns-sym)
          ;; Support the module.core convention used by metabase.lib
          (some-> (remove-suffix ns-s ".core") symbol modules)
