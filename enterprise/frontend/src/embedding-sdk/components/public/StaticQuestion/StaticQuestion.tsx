@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk/components/private/SdkError";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

@@ -1,4 +1,4 @@
-import type { ComponentType, JSX } from "react";
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/SdkError";
@@ -34,21 +34,3 @@ export const PublicComponentWrapper = ({
 
 PublicComponentWrapper.Loader = SdkLoader;
 PublicComponentWrapper.Error = SdkError;
-
-export function withPublicComponentWrapper<P>(
-  WrappedComponent: ComponentType<P>,
-): React.FC<P> {
-  const WithPublicComponentWrapper: React.FC<P> = props => {
-    return (
-      <PublicComponentWrapper>
-        <WrappedComponent {...props} />
-      </PublicComponentWrapper>
-    );
-  };
-
-  WithPublicComponentWrapper.displayName = `withPublicComponentWrapper(${
-    WrappedComponent.displayName || WrappedComponent.name || "Component"
-  })`;
-
-  return WithPublicComponentWrapper;
-}
