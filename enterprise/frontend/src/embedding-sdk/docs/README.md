@@ -31,7 +31,7 @@ const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   authType: "jwt", // Required
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: Your endpoint that returns JWT token used to authenticate Metabase. We'll explain more below how to implement this endpoint.
-  font: "Lato", // Optional: you could provide any fonts support by Metabase
+  font: "Lato", // Optional: you could provide any fonts supported by Metabase
 }
 
 export default function App() {
