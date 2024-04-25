@@ -598,6 +598,19 @@ NoGoodAxisSplit.args = {
   renderingContext,
 };
 
+export const HistogramTicks45Degrees = Template.bind({});
+HistogramTicks45Degrees.args = {
+  rawSeries: data.histogramTicks45Degrees as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+export const HistogramTicks90Degrees = Template.bind({});
+HistogramTicks90Degrees.args = {
+  rawSeries: data.histogramTicks90Degrees as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

@@ -1,0 +1,296 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The total billed amount.",
+          "semantic_type": "type/Currency",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "binning_info": {
+            "num_bins": 10,
+            "min_value": 0,
+            "max_value": 160,
+            "bin_width": 20,
+            "binning_strategy": "num-bins"
+          },
+          "name": "TOTAL",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            42,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 10,
+                "min-value": 0,
+                "max-value": 160,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 42,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "base_type": "type/Integer",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Orders, Count, Grouped by Total: 100 bins",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-04-25T16:44:28.364387Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              42,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 10
+                }
+              }
+            ]
+          ]
+        }
+      },
+      "id": 189,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "ceSa1rJ1eA2t7HXqvcz2A",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.x_axis.axis_enabled": "rotate-45",
+        "graph.dimensions": ["TOTAL"],
+        "graph.metrics": ["count"]
+      },
+      "collection": null,
+      "metabase_version": "v0.48.1-SNAPSHOT (df01716)",
+      "parameters": [],
+      "created_at": "2024-04-25T16:44:02.977601Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        [-60, 1],
+        [0, 51],
+        [20, 2190],
+        [40, 4107],
+        [60, 4007],
+        [80, 2649],
+        [100, 2429],
+        [120, 2456],
+        [140, 870]
+      ],
+      "cols": [
+        {
+          "description": "The total billed amount.",
+          "semantic_type": "type/Currency",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "binning_info": {
+            "num_bins": 10,
+            "min_value": 0,
+            "max_value": 160,
+            "bin_width": 20,
+            "binning_strategy": "num-bins"
+          },
+          "name": "TOTAL",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            42,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 10,
+                "min-value": 0,
+                "max-value": 160,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 42,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 AS \"TOTAL\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 ORDER BY FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The total billed amount.",
+            "semantic_type": "type/Currency",
+            "coercion_strategy": null,
+            "name": "TOTAL",
+            "settings": {
+              "currency": "BTC"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              42,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 10,
+                  "min-value": 0,
+                  "max-value": 160,
+                  "bin-width": 20
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 42,
+            "visibility_type": "normal",
+            "display_name": "Total",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4426,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8.93914247937167,
+                  "q1": 51.34535490743823,
+                  "q3": 110.29428389265787,
+                  "max": 159.34900526552292,
+                  "sd": 34.26469575709948,
+                  "avg": 80.35871658771228
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 665.25,
+                  "q3": 2988.5,
+                  "max": 4107,
+                  "sd": 1513.4439295123484,
+                  "avg": 2084.4444444444443
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

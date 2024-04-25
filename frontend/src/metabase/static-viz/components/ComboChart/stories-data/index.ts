@@ -41,6 +41,8 @@ import goalLineDisabled from "./goal-line-disabled.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
 import goalLineUnderSeries38824 from "./goal-line-under-series-38824.json";
 import goalVerySmall from "./goal-very-small.json";
+import histogramTicks45Degrees from "./histogram-ticks-45-degrees.json";
+import histogramTicks90Degrees from "./histogram-ticks-90-degrees.json";
 import imageCutOff37275 from "./image-cut-off-37275.json";
 import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
@@ -164,4 +166,6 @@ export const data = {
   timeSeriesYyyymmddNumbersFormat,
   breakoutNullAndEmptyString,
   noGoodAxisSplit,
+  histogramTicks45Degrees,
+  histogramTicks90Degrees,
 };
