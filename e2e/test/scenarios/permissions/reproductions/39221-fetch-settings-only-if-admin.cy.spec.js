@@ -16,14 +16,18 @@ describe("issue 39221", () => {
   });
 
   ["admin", "normal"].forEach(user => {
-    it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
-      user === "normal" ? cy.signInAsNormalUser() : null;
+    it(
+      `${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`,
+      { tags: "@flaky" },
+      () => {
+        user === "normal" ? cy.signInAsNormalUser() : null;
 
-      startNewNativeQuestion();
-      popover().findByText("Sample Database").click();
-      cy.wait("@sessionProperties");
+        startNewNativeQuestion();
+        popover().findByText("Sample Database").click();
+        cy.wait("@sessionProperties");
 
-      cy.get("@siteSettings").should("be.null");
-    });
+        cy.get("@siteSettings").should("be.null");
+      },
+    );
   });
 });
