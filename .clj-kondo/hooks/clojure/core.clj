@@ -213,7 +213,7 @@
    'metabase.db.liquibase))
 
 (def ^:private modules
-  "A sorted list, from outside in of all modules and submodules, both global and internal."
+  "A sorted list, from outside in, of all modules and submodules, both global and internal."
   (into global-modules internal-modules))
 
 (defn- module->child-detector
