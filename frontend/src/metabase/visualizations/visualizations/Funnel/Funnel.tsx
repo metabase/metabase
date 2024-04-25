@@ -29,7 +29,6 @@ import { funnelToBarTransform } from "metabase/visualizations/visualizations/Fun
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
 
 import FunnelNormal from "../../components/FunnelNormal";
-import LegendHeader from "../../components/LegendHeader";
 
 Object.assign(Funnel, {
   uiName: t`Funnel`,
@@ -229,14 +228,6 @@ export function Funnel(props: VisualizationProps) {
           onChangeCardAndRun={onChangeCardAndRun}
         />
       )}
-      {!hasTitle &&
-        actionButtons && ( // always show action buttons if we have them
-          <LegendHeader
-            series={rawSeries}
-            actionButtons={actionButtons}
-            onChangeCardAndRun={onChangeCardAndRun}
-          />
-        )}
       <FunnelNormal {...props} className={CS.flexFull} />
     </div>
   );
