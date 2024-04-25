@@ -46,7 +46,6 @@ const ChartCaption = ({
       title={title}
       description={description}
       icon={icon}
-      // @ts-expect-error will be fixed when LegendCaption gets converted to TypeScript
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
