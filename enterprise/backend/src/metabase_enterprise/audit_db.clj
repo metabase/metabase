@@ -19,8 +19,6 @@
    (java.util.jar JarEntry JarFile)
    (java.nio.file Path)))
 
-#_(def ^:private audit-installed? (atom false))
-
 (set! *warn-on-reflection* true)
 
 (defsetting last-analytics-checksum
