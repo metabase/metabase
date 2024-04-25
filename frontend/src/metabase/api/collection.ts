@@ -1,11 +1,11 @@
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
+  UpdateCollectionRequest,
   Collection,
-  CollectionRequest,
-  ListCollectionsRequest,
-  ListCollectionsResponse,
   CreateCollectionRequest,
+  ListCollectionsRequest,
+  ListCollectionsTreeRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -20,6 +20,24 @@ import {
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
+    listCollections: builder.query<Collection[], ListCollectionsRequest>({
+      query: ({ ...body }) => ({
+        method: "GET",
+        url: `/api/collection`,
+        body,
+      }),
+      providesTags: collections =>
+        collections ? provideCollectionListTags(collections) : [],
+    }),
+    listCollectionsTree: builder.query<
+      Collection[],
+      ListCollectionsTreeRequest
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/collection/tree",
+      }),
+    }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
       ListCollectionItemsRequest
@@ -33,7 +51,7 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
-    getCollection: builder.query<Collection, CollectionRequest>({
+    getCollection: builder.query<Collection, { id: number | "root" }>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/collection/${id}`,
@@ -41,18 +59,6 @@ export const collectionApi = Api.injectEndpoints({
       }),
       providesTags: collection =>
         collection ? provideCollectionTags(collection) : [],
-    }),
-    listCollections: builder.query<
-      ListCollectionsResponse,
-      ListCollectionsRequest
-    >({
-      query: ({ ...body }) => ({
-        method: "GET",
-        url: `/api/collection`,
-        body,
-      }),
-      providesTags: collections =>
-        collections ? provideCollectionListTags(collections) : [],
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: body => ({
@@ -70,12 +76,21 @@ export const collectionApi = Api.injectEndpoints({
             ]
           : [],
     }),
+    updateCollection: builder.mutation<Collection, UpdateCollectionRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/collection/${id}`,
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
-  useListCollectionItemsQuery,
   useListCollectionsQuery,
+  useListCollectionsTreeQuery,
+  useListCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
+  useUpdateCollectionMutation,
 } = collectionApi;

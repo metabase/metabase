@@ -136,20 +136,33 @@ export type ListCollectionItemsResponse = {
   models: CollectionItemModel[] | null;
 } & PaginationResponse;
 
-export type CollectionRequest = {
-  id: CollectionId;
-};
+export interface UpdateCollectionRequest {
+  id: RegularCollectionId;
+  name?: string;
+  description?: string;
+  archived?: boolean;
+  parent_id?: RegularCollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+}
 
-export type ListCollectionsRequest = {
-  "personal-only"?: boolean;
-};
-
-export type ListCollectionsResponse = Collection[];
-
-export type CreateCollectionRequest = {
+export interface CreateCollectionRequest {
   name: string;
   description?: string;
-  color?: string; // deprecated
-  parent_id?: CollectionId | null;
+  parent_id?: RegularCollectionId | null;
+  namespace?: string;
   authority_level?: CollectionAuthorityLevel;
-};
+}
+
+export interface ListCollectionsRequest {
+  archived?: boolean;
+  namespace?: string;
+  "personal-only"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+}
+export interface ListCollectionsTreeRequest {
+  "exclude-archived"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+  namespace?: string;
+  shallow?: boolean;
+  "collection-id"?: RegularCollectionId | null;
+}
