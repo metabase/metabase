@@ -2,11 +2,12 @@
 import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
@@ -26,7 +27,6 @@ import {
   isRootTrashCollection,
   isPersonalCollectionChild,
 } from "metabase/collections/utils";
-import { ArchivedEntityBanner } from "metabase/components/ArchivedEntityBanner";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -37,7 +37,6 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -247,6 +246,7 @@ export const CollectionContentView = ({
         const pinnedItems =
           list && !isRootTrashCollection(collection) ? list : [];
         const hasPinnedItems = pinnedItems.length > 0;
+        const actionId = { id: collectionId };
 
         return (
           <CollectionRoot {...dropzoneProps}>
@@ -269,21 +269,14 @@ export const CollectionContentView = ({
               <ArchivedEntityBanner
                 entity="collection"
                 canWrite={collection.can_write}
-                onUnarchive={() => {
+                onUnarchive={() =>
+                  dispatch(Collections.actions.setArchived(actionId, false))
+                }
+                onDeletePermanently={() =>
                   dispatch(
-                    Collections.actions.setArchived(
-                      { id: collectionId },
-                      false,
-                    ),
-                  );
-                }}
-                onDeletePermanently={async () => {
-                  await dispatch(
-                    Collections.actions.delete({ id: collectionId }),
-                  );
-                  dispatch(push(Urls.collection(TRASH_COLLECTION)));
-                  dispatch(addUndo({ message: t`Deletion successful` }));
-                }}
+                    deletePermanently(Collections.actions.delete(actionId)),
+                  )
+                }
               />
             )}
 

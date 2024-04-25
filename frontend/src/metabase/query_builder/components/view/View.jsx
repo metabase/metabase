@@ -1,26 +1,23 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchivedEntityBanner } from "metabase/components/ArchivedEntityBanner";
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import Questions from "metabase/entities/questions";
-import * as Urls from "metabase/lib/urls";
 import {
   rememberLastUsedDatabase,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
-import { addUndo } from "metabase/redux/undo";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -448,10 +445,9 @@ class View extends Component {
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
-  onDeletePermanently: async id => {
-    await dispatch(Questions.actions.delete({ id }));
-    dispatch(push(Urls.collection(TRASH_COLLECTION)));
-    dispatch(addUndo({ message: t`Deletion successful` }));
+  onDeletePermanently: id => {
+    const deleteAction = Questions.actions.delete({ id });
+    dispatch(deletePermanently(deleteAction));
   },
 });
 

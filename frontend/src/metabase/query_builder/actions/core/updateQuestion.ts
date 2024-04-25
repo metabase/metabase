@@ -237,7 +237,9 @@ export const updateQuestion = (
   };
 };
 
-export const SET_ARCHIVED_QUESTION = "metabase/dashbaord/SET_ARCHIVED_QUESTION";
+// just using the entity action doesn't cause the question/model to live update
+// also calling updateQuestion ensures the view matches the server state
+export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
 export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
   function (question, archived = true) {
@@ -251,10 +253,9 @@ export const setArchivedQuestion = createThunkAction(
         }),
       );
 
-      // TODO: handle translations
       dispatch(
         addUndo({
-          subject: question.card().type,
+          subject: question.card().type === "question" ? t`question` : t`model`,
           verb: archived ? t`trashed` : t`restored`,
           action: () => dispatch(setArchivedQuestion(question, !archived)),
         }),

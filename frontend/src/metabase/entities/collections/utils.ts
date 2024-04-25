@@ -76,7 +76,6 @@ export function buildCollectionTree(
 ): CollectionTreeItem[] {
   return collections.flatMap(collection => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
-    const isTrash = isRootTrashCollection(collection);
 
     const isMatchedByFilter =
       !modelFilter ||
@@ -87,12 +86,12 @@ export function buildCollectionTree(
       return [];
     }
 
-    const children = isTrash
-      ? []
-      : buildCollectionTree(
+    const children = !isRootTrashCollection(collection)
+      ? buildCollectionTree(
           collection.children?.filter(child => !child.archived) || [],
           modelFilter,
-        );
+        )
+      : [];
 
     if (isPersonalRoot && children.length === 0) {
       return [];

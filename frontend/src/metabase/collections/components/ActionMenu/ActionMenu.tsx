@@ -9,6 +9,7 @@ import type {
   OnCopy,
   OnMove,
 } from "metabase/collections/types";
+import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import {
   canArchiveItem,
   canModifyArchivedItem,
@@ -71,15 +72,6 @@ function mapStateToProps(state: State): StateProps {
     isXrayEnabled: getSetting(state, "enable-xrays"),
     isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
   };
-}
-
-function HACK_getParentCollectionFromEntityUpdateAction(
-  item: CollectionItem,
-  result: any,
-) {
-  return item.model === "collection"
-    ? result?.payload?.collection?.effective_ancestors?.pop()
-    : result?.payload?.object?.collection;
 }
 
 function ActionMenu({

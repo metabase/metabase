@@ -31,7 +31,7 @@ const SnippetCollections = createEntity({
       SnippetCollections.actions.update(
         { id },
         { archived },
-        undo(opts, "folder", archived ? "trashed" : "restored"),
+        undo(opts, "folder", archived ? "archived" : "unarchived"),
       ),
 
     setCollection: ({ id }, collection, opts) =>

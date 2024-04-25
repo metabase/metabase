@@ -2,12 +2,11 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchivedEntityBanner } from "metabase/components/ArchivedEntityBanner";
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
@@ -19,16 +18,13 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import Dashboards from "metabase/entities/dashboards";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { addUndo } from "metabase/redux/undo";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -549,10 +545,11 @@ function DashboardInner(props: DashboardProps) {
               entity="dashboard"
               canWrite={dashboard.can_write}
               onUnarchive={() => dispatch(setArchivedDashboard(false))}
-              onDeletePermanently={async () => {
-                await dispatch(Dashboards.actions.delete({ id: dashboard.id }));
-                dispatch(push(Urls.collection(TRASH_COLLECTION)));
-                dispatch(addUndo({ message: t`Deletion successful` }));
+              onDeletePermanently={() => {
+                const deleteAction = Dashboards.actions.delete({
+                  id: dashboard.id,
+                });
+                dispatch(deletePermanently(deleteAction));
               }}
             />
           )}

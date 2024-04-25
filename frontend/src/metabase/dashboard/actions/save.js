@@ -20,7 +20,7 @@ export const UPDATE_DASHBOARD_AND_CARDS =
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 export const SET_ARCHIVED_DASHBOARD =
-  "metabase/dashbaord/SET_ARCHIVED_DASHBOARD";
+  "metabase/dashboard/SET_ARCHIVED_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
@@ -190,6 +190,8 @@ export const updateDashboard = createThunkAction(
   },
 );
 
+// just using the entity action doesn't cause the dashboard to live update
+// calling fetchDashboard ensures that the view updates with the last values
 export const setArchivedDashboard = createThunkAction(
   SET_ARCHIVED_DASHBOARD,
   function (archived = true) {
