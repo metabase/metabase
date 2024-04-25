@@ -146,8 +146,7 @@ async function metabaseAuthHandler(req: Request, res: Response) {
 
   try {
     const response = await fetch(ssoUrl, { method: 'GET' })
-    const text = await response.text()
-    const token = JSON.parse(text)
+    const token = await response.json()
 
     return res.status(200).json(token)
   } catch (error) {
