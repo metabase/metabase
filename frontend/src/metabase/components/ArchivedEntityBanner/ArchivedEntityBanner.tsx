@@ -4,12 +4,14 @@ import { Button, Flex, Icon, Paper, Text } from "metabase/ui";
 
 type ArchivedEntityBannerProps = {
   entity: "collection" | "question" | "dashboard" | "model";
+  canWrite: boolean;
   onUnarchive: () => void;
   onDeletePermanently: () => void;
 };
 
 export const ArchivedEntityBanner = ({
   entity,
+  canWrite,
   onUnarchive,
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
@@ -26,33 +28,40 @@ export const ArchivedEntityBanner = ({
             {t`This ${entity} is in the trash. `}
           </Text>
         </Flex>
-        <Flex gap="md">
-          <Button compact variant="outline" color="white" onClick={onUnarchive}>
-            <Flex align="center">
-              <Icon
-                size={12}
-                name="revert"
-                style={{ marginInlineEnd: ".25rem" }}
-              />{" "}
-              {t`Restore`}
-            </Flex>
-          </Button>
-          <Button
-            compact
-            variant="outline"
-            color="white"
-            onClick={onDeletePermanently}
-          >
-            <Flex align="center">
-              <Icon
-                size={12}
-                name="trash"
-                style={{ marginInlineEnd: ".25rem" }}
-              />{" "}
-              {t`Delete permanently`}
-            </Flex>
-          </Button>
-        </Flex>
+        {canWrite && (
+          <Flex gap="md">
+            <Button
+              compact
+              variant="outline"
+              color="white"
+              onClick={onUnarchive}
+            >
+              <Flex align="center">
+                <Icon
+                  size={12}
+                  name="revert"
+                  style={{ marginInlineEnd: ".25rem" }}
+                />{" "}
+                {t`Restore`}
+              </Flex>
+            </Button>
+            <Button
+              compact
+              variant="outline"
+              color="white"
+              onClick={onDeletePermanently}
+            >
+              <Flex align="center">
+                <Icon
+                  size={12}
+                  name="trash"
+                  style={{ marginInlineEnd: ".25rem" }}
+                />{" "}
+                {t`Delete permanently`}
+              </Flex>
+            </Button>
+          </Flex>
+        )}
       </Flex>
     </Paper>
   );

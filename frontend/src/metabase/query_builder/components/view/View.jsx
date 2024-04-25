@@ -225,6 +225,7 @@ class View extends Component {
         {question.card().archived && (
           <ArchivedEntityBanner
             entity={question.type()}
+            canWrite={question.card().can_write}
             onUnarchive={() => onUnarchive(question)}
             onDeletePermanently={() => onDeletePermanently(question.card().id)}
           />

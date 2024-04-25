@@ -547,6 +547,7 @@ function DashboardInner(props: DashboardProps) {
           {dashboard.archived && (
             <ArchivedEntityBanner
               entity="dashboard"
+              canWrite={dashboard.can_write}
               onUnarchive={() => dispatch(setArchivedDashboard(false))}
               onDeletePermanently={async () => {
                 await dispatch(Dashboards.actions.delete({ id: dashboard.id }));

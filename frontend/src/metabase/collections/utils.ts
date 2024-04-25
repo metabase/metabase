@@ -187,6 +187,17 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   );
 }
 
+export function canModifyArchivedItem(
+  item: CollectionItem,
+  collection?: Collection,
+) {
+  return item.archived && (item.can_write ?? collection?.can_write ?? true);
+}
+
+export function canCopyItem(item: CollectionItem) {
+  return item.copy && !item.archived;
+}
+
 export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParameterized(item);
 }

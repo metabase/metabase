@@ -68,8 +68,8 @@ function ModelActionListItem({
 
   const handleArchive = useCallback(() => {
     askConfirmation({
-      title: t`Archive ${action.name}?`,
-      confirmButtonText: t`Archive`,
+      title: t`Trash ${action.name}?`,
+      confirmButtonText: t`Move to trash`,
       onConfirm: () => onArchive(action),
     });
   }, [action, askConfirmation, onArchive]);
@@ -82,8 +82,8 @@ function ModelActionListItem({
         link: actionUrl,
       },
       canArchive && {
-        title: t`Archive`,
-        icon: "archive",
+        title: t`Move to trash`,
+        icon: "trash",
         action: handleArchive,
       },
     ],

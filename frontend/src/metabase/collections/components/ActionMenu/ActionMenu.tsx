@@ -11,6 +11,8 @@ import type {
 } from "metabase/collections/types";
 import {
   canArchiveItem,
+  canModifyArchivedItem,
+  canCopyItem,
   canMoveItem,
   canPinItem,
   canPreviewItem,
@@ -73,7 +75,7 @@ function mapStateToProps(state: State): StateProps {
 
 function HACK_getParentCollectionFromEntityUpdateAction(
   item: CollectionItem,
-  result,
+  result: any,
 ) {
   return item.model === "collection"
     ? result?.payload?.collection?.effective_ancestors?.pop()
@@ -98,13 +100,13 @@ function ActionMenu({
   const database = databases?.find(({ id }) => id === item.database_id);
 
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const isArchived = item.archived;
 
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const canCopy = item.copy && !isArchived;
+  const canModArchived = canModifyArchivedItem(item, collection);
+  const canCopy = canCopyItem(item);
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
@@ -161,16 +163,18 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isXrayEnabled={!isArchived && isXrayEnabled}
+        isXrayEnabled={!item.archived && isXrayEnabled}
         canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : undefined}
         onMove={canMove ? handleMove : undefined}
-        onCopy={item.copy ? handleCopy : undefined}
+        onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={!isArchived ? handleToggleBookmark : undefined}
+        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
-        onUnarchive={isArchived ? handleUnarchive : undefined}
-        onDeletePermanently={isArchived ? handleDeletePermanently : undefined}
+        onUnarchive={canModArchived ? handleUnarchive : undefined}
+        onDeletePermanently={
+          canModArchived ? handleDeletePermanently : undefined
+        }
       />
     </EventSandbox>
   );

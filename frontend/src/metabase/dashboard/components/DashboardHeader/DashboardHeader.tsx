@@ -19,10 +19,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import {
-  type NewDashCardOpts,
-  setArchivedDashboard,
-} from "metabase/dashboard/actions";
+import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
@@ -169,11 +166,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const [showCancelWarning, setShowCancelWarning] = useState(false);
 
+  const dispatch = useDispatch();
+
   useMount(() => {
     dispatch(fetchPulseFormInput());
   });
-
-  const dispatch = useDispatch();
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
@@ -561,7 +558,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push({
           title: t`Move to trash`,
           icon: "trash",
-          action: () => dispatch(setArchivedDashboard(true)),
+          link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
       }

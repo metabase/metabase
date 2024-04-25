@@ -16,14 +16,14 @@ const getLabels = question => {
   if (type === "question") {
     return {
       title: t`Trash this question?`,
-      message: t`This question will be removed from any dashboards or pulses using it.`,
+      message: t`This question will be removed from any dashboards or alerts using it.`,
     };
   }
 
   if (type === "model") {
     return {
       title: t`Trash this model?`,
-      message: t`This model will be removed from any dashboards or pulses using it.`,
+      message: t`This model will be removed from any dashboards or alerts using it.`,
     };
   }
 

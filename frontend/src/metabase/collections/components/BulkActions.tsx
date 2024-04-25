@@ -6,6 +6,7 @@ import CollectionCopyEntityModal from "metabase/collections/components/Collectio
 import {
   isTrashedCollection,
   canArchiveItem,
+  canModifyArchivedItem,
   canMoveItem,
 } from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
@@ -16,12 +17,6 @@ import type { Collection, CollectionItem } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-
-import type {
-  OnArchive,
-  OnCopyWithoutArguments,
-  OnMoveWithOneItem,
-} from "../types";
 
 import {
   BulkActionsToast,
@@ -100,11 +95,15 @@ const BulkActions = ({
   };
 
   // archive / restore
+  const disableBulkModifyArchivedItems = useMemo(() => {
+    return selected.some(item => !canModifyArchivedItem(item, collection));
+  }, [selected, collection]);
+
   const canArchive = useMemo(() => {
     return selected.every(item => canArchiveItem(item, collection));
   }, [selected, collection]);
 
-  const handleBulkArchive = async (archived: boolean) => {
+  const handleBulkSetArchive = async (archived: boolean) => {
     await tryOrClear(
       Promise.all(selected.map(item => item.setArchived(archived))),
     );
@@ -151,13 +150,24 @@ const BulkActions = ({
               </CardSide>
               <CardSide>
                 {isTrashedCollection(collection) ? (
-                  <CardButton
-                    medium
-                    purple
-                    onClick={handleBulkDeletePermanentlyStart}
-                  >
-                    <Box c={color("danger")}>{t`Delete permanently`}</Box>
-                  </CardButton>
+                  <>
+                    <CardButton
+                      medium
+                      purple
+                      onClick={() => handleBulkSetArchive(false)}
+                      disabled={disableBulkModifyArchivedItems}
+                    >
+                      {t`Restore`}
+                    </CardButton>
+                    <CardButton
+                      medium
+                      purple
+                      onClick={handleBulkDeletePermanentlyStart}
+                      disabled={disableBulkModifyArchivedItems}
+                    >
+                      <Box c={color("danger")}>{t`Delete permanently`}</Box>
+                    </CardButton>
+                  </>
                 ) : (
                   <>
                     <CardButton
@@ -170,8 +180,8 @@ const BulkActions = ({
                       medium
                       purple
                       disabled={!canArchive}
-                      onClick={() => handleBulkArchive(true)}
-                    >{t`Archive`}</CardButton>
+                      onClick={() => handleBulkSetArchive(true)}
+                    >{t`Move to trash`}</CardButton>
                   </>
                 )}
               </CardSide>
