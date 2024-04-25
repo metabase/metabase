@@ -4,6 +4,8 @@
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
   (:require
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -464,3 +466,118 @@
              all-queries       (generate-queries query pivot-options)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))
+
+;; post process utils for pivot exports
+
+(defn all-values-for
+  "Get all possible values for pivot-col/row 'k'."
+  [rows k include-nil?]
+  (let [all-vals (distinct (mapv #(get % k) rows))]
+    (concat (vec (remove nil? all-vals)) (when include-nil? [nil]))))
+
+(defn- pivot-row-titles
+  [{:keys [column-titles pivot-rows]}]
+  (mapv #(get column-titles %) pivot-rows))
+
+(defn- header-builder
+  [rows {:keys [pivot-cols] :as pivot-spec}]
+  (let [row-titles       (pivot-row-titles pivot-spec)
+        col-value-groups (apply math.combo/cartesian-product (map (fn [col-k]
+                                                                    (all-values-for rows col-k false))
+                                                                  pivot-cols))]
+    (mapv
+     (fn [col-idx]
+       (vec (concat
+             row-titles
+             (map #(nth % col-idx) col-value-groups)
+             ["Row totals"])))
+     (range (count pivot-cols)))))
+
+(defn- col-grouper
+  "Map of pivot-measures keyed by [pivot-cols]. Use it per row-group."
+  [rows {:keys [pivot-cols]}]
+  (let [cols-groups (group-by (apply juxt (map (fn [k] #(get % k)) pivot-cols)) rows)]
+    cols-groups))
+
+(defn- row-grouper
+  [rows {:keys [pivot-rows pivot-cols pivot-measures] :as pivot-spec}]
+  (let [rows-groups (group-by (apply juxt (map (fn [k] #(get % k)) pivot-rows)) rows)
+        sub-rows-fn (fn [sub-rows]
+                      (let [cols-groups     (col-grouper sub-rows pivot-spec)
+                            padded-sub-rows (vec
+                                             (mapcat
+                                              #(get cols-groups (vec %) [nil])
+                                              (concat
+                                               (apply math.combo/cartesian-product (map #(all-values-for rows % false) pivot-cols))
+                                               [(vec (repeat (count pivot-cols) nil))])))]
+                        (vec (mapcat (fn [row]
+                                       (mapv #(get row %) pivot-measures))
+                                     padded-sub-rows))))]
+    (-> rows-groups
+        (update-vals sub-rows-fn))))
+
+(defn- totals-row-fn
+  [row {:keys [pivot-rows]}]
+  (let [n-row-cols  (count pivot-rows)
+        row-indices (range n-row-cols)
+        row-vals    (take n-row-cols row)
+        f           (fn [idx v]
+                      (if (and ((set row-indices) idx)
+                               (some? v))
+                        (format "Totals for %s" v)
+                        v))]
+    (cond
+      (every? nil? row-vals)
+      (assoc row 0 "Grand Totals")
+
+      (some nil? row-vals)
+      (vec (map-indexed f row))
+
+      :else
+      row)))
+
+(defn- pivot-grouping-key
+  [column-titles]
+  ;; a vector is kinda-sorta a map of indices->values, so
+  ;; we can use map-invert to create the map
+  (get (set/map-invert (vec column-titles)) "pivot-grouping"))
+
+(defn- pivot-measures
+  [{:keys [pivot-rows pivot-cols column-titles]}]
+  (-> (set/difference
+       ;; every possible idx is just the range over the count of cols
+       (set (range (count column-titles)))
+       ;; we exclude indices already used in pivot rows and cols, and the pivot-grouping key
+       (set (concat pivot-rows pivot-cols [(pivot-grouping-key column-titles)])))
+      sort
+      vec))
+
+(defn- add-pivot-measures
+  [pivot-spec]
+  (assoc pivot-spec :pivot-measures (pivot-measures pivot-spec)))
+
+(defn- row-builder
+  [rows {:keys [pivot-rows] :as pivot-spec}]
+  (let [row-groups (row-grouper rows pivot-spec)
+        ks         (mapv vec (concat
+                              (apply math.combo/cartesian-product (map #(all-values-for rows % true) pivot-rows))
+                              #_[(vec (repeat (count pivot-rows) nil))]))]
+    (->> (map (fn [k] (vec (concat k (get row-groups k)))) ks)
+         (filter #(< (count pivot-rows) (count %)))
+         (map #(totals-row-fn % pivot-spec)))))
+
+(defn- clean-row
+  [row]
+  (mapv #(if (= "" %)
+           nil
+           %)
+        row))
+
+(defn pivot-builder
+  "Create the rows for a pivot export."
+  [rows pivot-spec]
+  (let [rows       (mapv clean-row rows)
+        pivot-spec (add-pivot-measures pivot-spec)]
+    (vec (concat
+          (header-builder rows pivot-spec)
+          (row-builder rows pivot-spec)))))

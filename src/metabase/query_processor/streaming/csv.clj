@@ -3,7 +3,6 @@
    [clojure.data.csv :as csv]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
-   [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -30,12 +29,14 @@
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)
-        rows!              (volatile! [])
+        rows!              (atom [])
         pivot-options      (atom nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? query]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [opts      (when query (qp.pivot/pivot-options query viz-settings))
+        (let [opts      (when pivot-export-options
+                          (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
+              ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
@@ -44,6 +45,7 @@
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
                      (vec (repeat (count ordered-cols) identity))))
+          ;; write the column names for non-pivot tables
           (when col-names
             (csv/write-csv writer [col-names])
             (.flush writer))))
@@ -59,7 +61,7 @@
           (if @pivot-options
             ;; if we're processing a pivot result, we don't write it out yet, just store it
             ;; so that we can post process the full set of results in finish!
-            (vswap! rows! conj xf-row)
+            (swap! rows! conj xf-row)
             (do
               (csv/write-csv writer [xf-row])
               (.flush writer)))))
@@ -67,7 +69,7 @@
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when @pivot-options
-          (let [pivot-table-rows (pivot-export/pivot-builder @rows! @pivot-options)]
+          (let [pivot-table-rows (qp.pivot/pivot-builder @rows! @pivot-options)]
             (doseq [xf-row pivot-table-rows]
               (csv/write-csv writer [xf-row]))))
         (.flush writer)
