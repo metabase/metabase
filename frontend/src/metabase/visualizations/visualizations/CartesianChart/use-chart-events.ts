@@ -49,6 +49,7 @@ export const useChartEvents = (
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
     hovered,
+    metadata,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -160,7 +161,12 @@ export const useChartEvents = (
       {
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
-          const eventData = getBrushData(rawSeries, chartModel, event);
+          const eventData = getBrushData(
+            rawSeries,
+            metadata,
+            chartModel,
+            event,
+          );
 
           if (eventData) {
             onChangeCardAndRun(eventData);
@@ -172,6 +178,7 @@ export const useChartEvents = (
       chartModel,
       onOpenQuestion,
       rawSeries,
+      metadata,
       hovered,
       selectedTimelineEventIds,
       settings,

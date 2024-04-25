@@ -5,41 +5,44 @@ import type { EChartsRendererProps } from "metabase/visualizations/components/EC
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 
-interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
+export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
   onResize: (width: number, height: number) => void;
   width: number;
   height: number;
+  // We don't use the `style` prop, but it's needed to prevent a type error due
+  // to how types work within `ExplicitSize`
+  style: never;
 }
 
-export const ResponsiveEChartsRenderer = ExplicitSize({
-  wrapped: true,
-  refreshMode: "debounceLeading",
-  selector: false,
-})(
-  ({
-    onResize,
-    width,
-    height,
-    ...echartsRenderedProps
-  }: ResponsiveEChartsRendererProps) => {
-    useEffect(() => {
-      if (width != null && height != null) {
-        onResize(width, height);
-      }
-    }, [width, height, onResize]);
+export const ResponsiveEChartsRenderer =
+  ExplicitSize<ResponsiveEChartsRendererProps>({
+    wrapped: true,
+    refreshMode: "debounceLeading",
+  })(_ResponsiveEChartsRenderer);
 
-    if (!width || !height) {
-      return null;
+function _ResponsiveEChartsRenderer({
+  onResize,
+  width,
+  height,
+  ...echartsRenderedProps
+}: ResponsiveEChartsRendererProps) {
+  useEffect(() => {
+    if (width != null && height != null) {
+      onResize(width, height);
     }
+  }, [width, height, onResize]);
 
-    return (
-      <ResponsiveEChartsRendererStyled>
-        <EChartsRenderer
-          {...echartsRenderedProps}
-          width={width}
-          height={height}
-        />
-      </ResponsiveEChartsRendererStyled>
-    );
-  },
-);
+  if (!width || !height) {
+    return null;
+  }
+
+  return (
+    <ResponsiveEChartsRendererStyled>
+      <EChartsRenderer
+        {...echartsRenderedProps}
+        width={width}
+        height={height}
+      />
+    </ResponsiveEChartsRendererStyled>
+  );
+}

@@ -2,11 +2,12 @@ import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getObjectKeys } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isBreakoutSeries } from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -36,6 +37,7 @@ import type {
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import type {
   CardId,
@@ -134,10 +136,7 @@ export const getEventColumnsData = (
   dataIndex: number,
 ): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
-
   const seriesModel = chartModel.seriesModels[seriesIndex];
-  const isBreakoutSeries =
-    seriesModel != null && "breakoutColumn" in seriesModel;
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
   return getSameCardDataKeys(datum, seriesModel)
@@ -151,7 +150,8 @@ export const getEventColumnsData = (
       const { breakoutValue } = parseDataKey(dataKey);
 
       const isDifferentBreakoutSeries =
-        isBreakoutSeries && String(seriesModel.breakoutValue) !== breakoutValue;
+        isBreakoutSeries(seriesModel) &&
+        String(seriesModel.breakoutValue) !== breakoutValue;
 
       if (isDifferentBreakoutSeries) {
         return null;
@@ -163,7 +163,7 @@ export const getEventColumnsData = (
           ? getFriendlyName(col)
           : columnSeriesModel.tooltipName;
       const displayValue =
-        isBreakoutSeries && seriesModel.breakoutColumn === col
+        isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
           : value ?? NULL_DISPLAY_VALUE;
 
@@ -424,6 +424,7 @@ export const getSeriesClickData = (
 
 export const getBrushData = (
   rawSeries: RawSeries,
+  metadata: Metadata,
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
@@ -433,47 +434,52 @@ export const getBrushData = (
     chartModel.dimensionModel.columnIndex,
   );
 
-  if (range) {
-    const column = chartModel.dimensionModel.column;
-    const card = rawSeries[0].card;
-    const question = new Question(card, {}); // FIXME: pass metadata
-    const query = question.query();
-    const stageIndex = -1;
-
-    const [start, end] = range;
-
-    if (isTimeSeries) {
-      const nextQuery = Lib.updateTemporalFilter(
-        query,
-        stageIndex,
-        column,
-        new Date(start).toISOString(),
-        new Date(end).toISOString(),
-      );
-      const updatedQuestion = question.setQuery(nextQuery);
-      const nextCard = updatedQuestion.card();
-
-      return {
-        nextCard,
-        previousCard: card,
-      };
-    } else {
-      const nextQuery = Lib.updateNumericFilter(
-        query,
-        stageIndex,
-        column,
-        start,
-        end,
-      );
-      const updatedQuestion = question.setQuery(nextQuery);
-      const nextCard = updatedQuestion.card();
-
-      return {
-        nextCard,
-        previousCard: card,
-      };
-    }
+  if (!range) {
+    return null;
   }
 
-  return null;
+  const column = chartModel.dimensionModel.column;
+  const card = rawSeries[0].card;
+  const question = new Question(card, metadata);
+  const query = question.query();
+  const stageIndex = -1;
+
+  // https://echarts.apache.org/en/api.html#action.brush
+  // `coordRange` will be a nested array only if `brushType` is `rect` or
+  // `polygon`, but since we only use `lineX` we can assert the values to be
+  // numbers
+  const start = checkNumber(range[0]);
+  const end = checkNumber(range[1]);
+
+  if (isTimeSeries) {
+    const nextQuery = Lib.updateTemporalFilter(
+      query,
+      stageIndex,
+      column,
+      new Date(start).toISOString(),
+      new Date(end).toISOString(),
+    );
+    const updatedQuestion = question.setQuery(nextQuery);
+    const nextCard = updatedQuestion.card();
+
+    return {
+      nextCard,
+      previousCard: card,
+    };
+  }
+
+  const nextQuery = Lib.updateNumericFilter(
+    query,
+    stageIndex,
+    column,
+    start,
+    end,
+  );
+  const updatedQuestion = question.setQuery(nextQuery);
+  const nextCard = updatedQuestion.card();
+
+  return {
+    nextCard,
+    previousCard: card,
+  };
 };
