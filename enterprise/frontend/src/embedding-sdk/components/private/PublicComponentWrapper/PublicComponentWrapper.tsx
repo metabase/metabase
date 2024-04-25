@@ -1,10 +1,10 @@
-import type { ComponentType } from "react";
+import type { ComponentType, JSX } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/SdkError";
+import { SdkLoader } from "embedding-sdk/components/private/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import { Loader } from "metabase/ui";
 
 export const PublicComponentWrapper = ({
   children,
@@ -22,15 +22,28 @@ export const PublicComponentWrapper = ({
   }
 
   if (loginStatus.status === "loading") {
-    return <Loader data-testid="loading-spinner" />;
+    return <PublicComponentWrapper.Loader />;
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError message={loginStatus.error.message} />;
+    return <PublicComponentWrapper.Error message={loginStatus.error.message} />;
   }
 
-  return children;
+  // return children;
+
+  return <div>
+    <div  style={{border: "5px solid red"}}>
+    <PublicComponentWrapper.Loader />
+    </div>
+    <div style={{border: "5px solid red"}}>
+      <PublicComponentWrapper.Error message={"TESTING 123"} />
+    </div>
+    {children}
+  </div>
 };
+
+PublicComponentWrapper.Loader = SdkLoader;
+PublicComponentWrapper.Error = SdkError;
 
 export function withPublicComponentWrapper<P>(
   WrappedComponent: ComponentType<P>,
