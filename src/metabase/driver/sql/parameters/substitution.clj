@@ -8,6 +8,7 @@
      :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
@@ -58,7 +59,8 @@
 (defn- honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (sql.qp/format-honeysql driver x)]
+  (let [honeysql         (sql.qp/->honeysql driver x)
+        [snippet & args] (sql.qp/format-honeysql driver honeysql)]
     (make-stmt-subs snippet args)))
 
 (mu/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -81,14 +83,13 @@
   [driver kwd]
   (honeysql->prepared-stmt-subs driver kwd))
 
-;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (mu/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
   [_driver date]
   (make-stmt-subs "?" [date]))
 
 (mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
-  [_driver t]
-  (make-stmt-subs "?" [t]))
+  [driver t]
+  (honeysql->prepared-stmt-subs driver t))
 
 (defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.

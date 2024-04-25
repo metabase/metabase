@@ -6,15 +6,19 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
@@ -357,13 +361,17 @@
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
 
+(deftest ^:parallel replacement-snippet-date-param-test
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "'2014-08-02'::date"
+              :prepared-statement-args nil}
+             (sql.params.substitution/->replacement-snippet-info :snowflake (params/->Date "2014-08-02")))))))
+
 (deftest report-timezone-test
   (mt/test-driver :snowflake
     (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036, #39769)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}")
                                 :template-tags {:filter_date {:name         "filter_date"
@@ -371,22 +379,22 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline"
-          (is (= [["2014-08-02T00:00:00Z"]]
-                 (run-query))))
-        (testing "with report-timezone"
-          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-            (is (= [["2014-08-02T00:00:00-07:00"]]
-                   (run-query)))))))))
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline"
+              (is (= [["2014-08-02T00:00:00Z"]]
+                     (run-query))))
+            (testing "with report-timezone"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00"]]
+                       (run-query)))))))))))
 
 (deftest report-timezone-test-2
   (mt/test-driver :snowflake
     (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036, #39769)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
                                                     (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
@@ -398,30 +406,45 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline (no report-timezone set)"
-          (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
-                  ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
-                 (run-query))))
-        (testing "with report timezone set"
-          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-            (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
-                    ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
-                   (run-query)))))))))
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline (no report-timezone set)"
+              (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
+                      ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
+                     (run-query))))
+            (testing "with report timezone set"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                        ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
+                       (run-query)))))))))))
 
 (defn- test-temporal-instance
   "Test that `java.time` instance `t` is set correctly (as a parameter) and returned correctly."
   [t expected]
   (mt/test-driver :snowflake
     (testing "(#11036, #39769)"
-      (let [query {:database (mt/id)
+      (let [[sql & params] (sql.qp/format-honeysql :snowflake {:select [[(sql.qp/->honeysql :snowflake t) :t]]})
+            query {:database (mt/id)
                    :type     :native
-                   :native   {:query  (str "SELECT ?")
-                              :params [t]}}]
+                   :native   {:query  sql
+                              :params (vec params)}}]
         (mt/with-native-query-testing-context query
           (testing (format "\nt = ^%s %s" (.getName (class t)) (pr-str t))
             (is (= [expected]
                    (mt/first-row (qp/process-query query))))))))))
+
+(deftest ^:parallel local-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00"
+   "2024-04-25T14:44:00Z"))
+
+(deftest local-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00"
+     "2024-04-25T14:44:00-07:00")))
 
 (deftest ^:parallel offset-date-time-parameter-test
   (test-temporal-instance

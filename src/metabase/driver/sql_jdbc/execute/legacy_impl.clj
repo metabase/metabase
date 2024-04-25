@@ -60,15 +60,23 @@
     (.setTimestamp ps i t cal)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIME]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
       (let [t (u.date/parse s)]
         (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
         t))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIME_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIME_WITH_TIMEZONE] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/DATE]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
       (let [t (u.date/parse s)]
@@ -76,11 +84,19 @@
         t))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
       (let [t (u.date/parse s)]
         (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIMESTAMP_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIMESTAMP_WITH_TIMEZONE] -> %s -> %s" (pr-str s) (pr-str t))
         t))))
 
 (doseq [dispatch-val (keys (methods sql-jdbc.execute/read-column-thunk))

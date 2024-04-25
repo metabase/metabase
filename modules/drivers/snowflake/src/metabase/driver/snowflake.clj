@@ -41,8 +41,8 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime OffsetTime ZonedDateTime)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (net.snowflake.client.jdbc SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
@@ -413,6 +413,31 @@
   [driver [_ amount unit]]
   (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
+(defmethod sql.qp/->honeysql [:snowflake LocalDate]
+  [_driver t]
+  [:raw (format "'%s'::date" (t/local-date t))])
+
+(defmethod sql.qp/->honeysql [:snowflake LocalTime]
+  [_driver t]
+  [:raw (format "'%s'::time" (t/local-time t))])
+
+;;; Snowflake doesn't have `timetz`, so just convert to an equivalent local time.
+(defmethod sql.qp/->honeysql [:snowflake OffsetTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql.qp/->honeysql [:snowflake LocalDateTime]
+  [_driver t]
+  [:raw (format "'%s %s'::timestamp_ntz" (t/local-date t) (t/local-time t))])
+
+(defmethod sql.qp/->honeysql [:snowflake OffsetDateTime]
+  [_driver t]
+  [:raw (format "'%s %s %s'::timestamp_ltz" (t/local-date t) (t/local-time t) (t/zone-offset t))])
+
+(defmethod sql.qp/->honeysql [:snowflake ZonedDateTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time t)))
+
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
@@ -576,65 +601,6 @@
       (m/dissoc-in [:details :regionid]))
     database))
 
-(defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
-  [_ t]
-  (format "'%s %s %s'::timestamp_tz" (t/local-date t) (t/local-time t) (t/zone-offset t)))
-
-(defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
-  [driver t]
-  (unprepare/unprepare-value driver (t/offset-date-time t)))
-
-(defmethod unprepare/unprepare-value [:snowflake OffsetTime]
-  [driver t]
-  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
-;; return a String that we can parse
-
-(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ ^ResultSet rs _ ^Integer i]
-  (fn []
-    (when-let [s (.getString rs i)]
-      (let [t (u.date/parse s)]
-        (log/tracef "(.getString rs %d) [TIMESTAMP_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
-        t))))
-
-(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME]
-  [_ ^ResultSet rs _ ^Integer i]
-  (fn []
-    (when-let [s (.getString rs i)]
-      (let [t (u.date/parse s)]
-        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i (pr-str s) (pr-str t))
-        t))))
-
-(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME_WITH_TIMEZONE]
-  [_ ^ResultSet rs _ ^Integer i]
-  (fn []
-    (when-let [s (.getString rs i)]
-      (let [t (u.date/parse s)]
-        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
-        t))))
-
-;; TODO ­ would it make more sense to just set raw timestamp literals in the SQL? Probably.
-
-;; Snowflake seems to ignore the calendar parameter of `.setTime` and `.setTimestamp` and instead uses the session
-;; timezone; normalize temporal values to UTC so we end up with the right values
-
-;; This is probably actually unreachable since Snowflake doesn't have a `timetz` type at all -- we should never be
-;; trying to set an `OffsetTime` as a parameter.
-(defmethod sql-jdbc.execute/set-parameter [:snowflake OffsetTime]
-  [driver stmt i t]
-  (log/warn "Snowflake does not have a timetz type, setting equivalent LocalTime.")
-  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
-    (sql-jdbc.execute/set-parameter driver stmt i local-time)))
-
-(defmethod sql-jdbc.execute/set-parameter [:snowflake OffsetDateTime]
-  [driver stmt i t]
-  (sql-jdbc.execute/set-parameter driver stmt i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-(defmethod sql-jdbc.execute/set-parameter [:snowflake ZonedDateTime]
-  [driver stmt i t]
-  (sql-jdbc.execute/set-parameter driver stmt i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
 ;;; --------------------------------------------------- Query remarks ---------------------------------------------------
 
