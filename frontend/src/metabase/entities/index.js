@@ -26,5 +26,4 @@ export { default as groups } from "./groups";
 
 export { default as search } from "./search";
 export { default as persistedModels } from "./persisted-models";
-export { default as popularItems } from "./popular-items";
 export { default as snippets } from "./snippets";
