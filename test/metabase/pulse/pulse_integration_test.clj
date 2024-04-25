@@ -292,7 +292,7 @@
   [date-str n]
   (format
     "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
-          SAMPLE AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
+          \"SAMPLE\" AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
                             T.example_timestamp AT TIME ZONE 'US/Pacific'         AS full_datetime_pacific,
                             CAST(T.example_timestamp AS TIMESTAMP)                AS example_timestamp,
                             CAST(T.example_timestamp AS TIMESTAMP WITH TIME ZONE) AS example_timestamp_with_time_zone,
@@ -308,7 +308,7 @@
                             EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
                      FROM T)
      SELECT *
-     FROM SAMPLE
+     FROM \"SAMPLE\"
               CROSS JOIN
           generate_series(1, %s);"
     date-str n))
