@@ -187,7 +187,8 @@ const getAutoAxisEnabledSetting = (
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
-    settings["graph.x_axis.scale"] === "ordinal";
+    (settings["graph.x_axis.scale"] === "ordinal" ||
+      settings["graph.x_axis.scale"] === "histogram");
 
   if (!shouldAutoSelectSetting) {
     return settings["graph.x_axis.axis_enabled"];
