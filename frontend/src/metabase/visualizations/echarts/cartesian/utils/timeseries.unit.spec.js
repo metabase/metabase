@@ -139,10 +139,12 @@ describe("visualization.lib.timeseries", () => {
         },
       },
     ];
+
     it("should extract results_timezone", () => {
       const timezone = getTimezone(series);
       expect(timezone).toBe("US/Eastern");
     });
+
     it("should extract results_timezone after series is transformed", () => {
       const { series: transformed } = getVisualizationTransformed(series);
       const timezone = getTimezone(transformed);
