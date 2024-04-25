@@ -18,6 +18,36 @@ or using yarn:
 yarn add @metabase/embedding-sdk-react
 ```
 
+### To use locally build Metabase embedding SDK for React
+
+First you need to build the Metabase embedding SDK for React locally:
+
+```bash
+yarn build-release:cljs
+```
+
+And then run:
+
+```bash
+yarn build-embedding-sdk:watch
+```
+
+After that you need to add this built SDK package location to your package.json. In this example we assume that your application is located in the same directory as Metabase directory:
+
+```json
+"dependencies": {
+  "@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
+}
+```
+
+And then you can install the package using npm or yarn:
+
+```bash
+npm install
+# or
+yarn
+```
+
 ## Usage
 
 Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
