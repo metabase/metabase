@@ -128,14 +128,20 @@ const getHistogramTicksOptions = (
   const options = { showMinLabel: false, showMaxLabel: true };
 
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
-    const offset = histogramDimensionWidth * Math.SQRT1_2;
-    return { ...options, padding: [0, offset, 0, 0], margin: -offset / 2 };
+    const topOffset =
+      (histogramDimensionWidth + CHART_STYLE.axisTicks.size / 2) * Math.SQRT1_2;
+    return {
+      ...options,
+      padding: [0, topOffset, 0, 0],
+      margin: -histogramDimensionWidth / 2 + CHART_STYLE.axisTicksMarginX,
+    };
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
-    const offset = histogramDimensionWidth / 2 - CHART_STYLE.axisTicks.size / 2;
+    const rightOffset =
+      histogramDimensionWidth / 2 - CHART_STYLE.axisTicks.size / 2;
     return {
       ...options,
       verticalAlign: "bottom",
-      padding: [0, 0, offset, 0],
+      padding: [0, 0, rightOffset, 0],
     };
   } else {
     return { ...options, padding: [0, histogramDimensionWidth, 0, 0] };
