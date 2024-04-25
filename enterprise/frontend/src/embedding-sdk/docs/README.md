@@ -192,5 +192,5 @@ app.listen(PORT, () => {
 TBD
 ______
 
-For a more detailed guide on how to build the Metabase embedding SDK locally, please refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
+For a more detailed instructions on building the Metabase Embedding SDK locally, refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
 
