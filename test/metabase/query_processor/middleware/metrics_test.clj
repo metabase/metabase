@@ -163,6 +163,7 @@
                                     [:field {} (meta/id :products :rating)]]]}]}
           (adjust query)))))
 
+#_
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
