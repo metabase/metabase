@@ -29,6 +29,7 @@ export const createMockSdkState = ({
   return {
     loginStatus: createMockLoginStatusState(),
     token: createMockTokenState(),
+    plugins: {},
     ...opts,
   };
 };
