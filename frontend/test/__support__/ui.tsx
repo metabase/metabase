@@ -14,7 +14,7 @@ import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { sdkReducers } from "embedding-sdk/store";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import mainReducers from "metabase/reducers-main";
@@ -42,7 +42,7 @@ export interface RenderWithProvidersOptions {
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
-  sdkConfig?: SDKConfigType | null;
+  sdkConfig?: SDKConfig | null;
 }
 
 /**
@@ -175,7 +175,7 @@ function SdkWrapper({
   children,
   store,
 }: {
-  config: SDKConfigType;
+  config: SDKConfig;
   children: React.ReactElement;
   store: any;
   history?: History;
