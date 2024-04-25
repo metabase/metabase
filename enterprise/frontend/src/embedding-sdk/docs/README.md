@@ -185,8 +185,6 @@ app.listen(PORT, () => {
 - It doesn't support SSR
 - It doesn't support Vite
 
-## Metabase version compatibility table
-TBD
 ______
 
 For a more detailed instructions on building the Metabase Embedding SDK locally, refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
