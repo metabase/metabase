@@ -127,23 +127,6 @@
   [_filter-option model-id]
   (cards-for-segment-or-metric :segment model-id))
 
-(defmethod cards-for-filter-option* :stale
-  [_]
-  (let [card-id->query-fields (group-by :card_id
-                                        (t2/select :model/QueryField
-                                                   {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
-                                                    :from   [[(t2/table-name :model/QueryField) :qf]]
-                                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                                                             [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:and
-                                                             [:= :f.active false]
-                                                             [:= :qf.direct_reference true]]}))
-        card-ids              (keys card-id->query-fields)
-        add-query-fields      (fn [{:keys [id] :as card}]
-                                (assoc card :query_fields (card-id->query-fields id)))]
-    (when (seq card-ids)
-      (map add-query-fields (t2/select Card :id [:in card-ids] order-by-name)))))
-
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (t2/hydrate :creator :collection)))
@@ -163,7 +146,7 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
-  `using_segment`, `archived`, and `stale`. See corresponding implementation functions above for the specific behavior
+  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
