@@ -3,13 +3,13 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
   OnMove,
 } from "metabase/collections/types";
-import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import {
   canArchiveItem,
   canModifyArchivedItem,

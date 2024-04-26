@@ -602,11 +602,11 @@ describe("ModelDetailPage", () => {
 
         const listItem = screen.getByRole("listitem", { name: action.name });
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        await userEvent.click(await screen.findByText("Move to trash"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         const modal = screen.getByRole("dialog");
         await userEvent.click(
-          within(modal).getByRole("button", { name: "Move to trash" }),
+          within(modal).getByRole("button", { name: "Archive" }),
         );
 
         await waitFor(() =>

@@ -6,6 +6,7 @@ import _ from "underscore";
 import {
   nonPersonalOrArchivedCollection,
   isInstanceAnalyticsCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import Collections, {
   getCollectionIcon,
@@ -96,16 +97,22 @@ export function buildCollectionTree(
   if (collections == null) {
     return [];
   }
-  return collections.map((collection: Collection) => {
-    return {
-      id: collection.id,
-      name: collection.name,
-      icon: getCollectionIcon(collection),
-      children: collection?.children
-        ? buildCollectionTree(collection.children)
-        : [],
-    };
-  });
+  return collections.reduce<CollectionTreeItem[]>(
+    (acc, collection: Collection) => {
+      if (!isRootTrashCollection(collection)) {
+        acc.push({
+          id: collection.id,
+          name: collection.name,
+          icon: getCollectionIcon(collection),
+          children: collection?.children
+            ? buildCollectionTree(collection.children)
+            : [],
+        });
+      }
+      return acc;
+    },
+    [],
+  );
 }
 
 export type CollectionSidebarType = {

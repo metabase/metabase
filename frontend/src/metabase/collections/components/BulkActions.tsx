@@ -12,11 +12,11 @@ import {
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
-import { Box, Transition } from "metabase/ui";
-import type { Collection, CollectionItem } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import { Box, Transition } from "metabase/ui";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import {
   BulkActionsToast,
