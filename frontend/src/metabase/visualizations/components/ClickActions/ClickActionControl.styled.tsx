@@ -24,7 +24,7 @@ export const Subtitle = styled.div`
   color: ${color("text-light")};
   font-weight: normal;
   text-align: start;
-  margin-top: 0.25rem;
+  margin-top: ${rem(4)};
 `;
 
 export const HorizontalClickActionButton = styled(Button)`
