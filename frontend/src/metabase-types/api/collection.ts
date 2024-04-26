@@ -148,7 +148,7 @@ export interface UpdateCollectionRequest {
 export interface CreateCollectionRequest {
   name: string;
   description?: string;
-  parent_id?: RegularCollectionId | null;
+  parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
 }

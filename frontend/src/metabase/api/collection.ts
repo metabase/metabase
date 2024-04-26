@@ -6,6 +6,7 @@ import type {
   CreateCollectionRequest,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
+  CollectionId,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -53,7 +54,7 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
-    getCollection: builder.query<Collection, number | "root">({
+    getCollection: builder.query<Collection, CollectionId>({
       query: id => ({
         method: "GET",
         url: `/api/collection/${id}`,
