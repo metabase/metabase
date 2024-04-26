@@ -6590,7 +6590,7 @@ databaseChangeLog:
                   name: view_count
                   type: integer
                   defaultValueNumeric: 0
-                  remarks: Count of views the card has had
+                  remarks: Keeps a running count of card views
                   constraints:
                     nullable: false
             tableName: report_card
@@ -6633,7 +6633,7 @@ databaseChangeLog:
                   name: view_count
                   type: integer
                   defaultValueNumeric: 0
-                  remarks: Count of views the card has had
+                  remarks: Keeps a running count of dashboard views
                   constraints:
                     nullable: false
             tableName: report_dashboard

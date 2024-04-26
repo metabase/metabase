@@ -83,7 +83,8 @@
    :average_query_time     nil
    :last_query_start       nil
    :result_metadata        nil
-   :cache_invalidated_at   nil})
+   :cache_invalidated_at   nil
+   :view_count             0})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
