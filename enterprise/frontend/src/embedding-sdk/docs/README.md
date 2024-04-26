@@ -23,11 +23,6 @@ Features planned:
 
 # Getting started
 
-## Configure Metabase
-
-TODO: enable embedding, CORS? Start with this part?
-Open question: Should we move the JWT endpoint content here?
-
 ## Installation
 
 You can install Metabase Embedding SDK for react via npm:
