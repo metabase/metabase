@@ -10,10 +10,10 @@ import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMapping
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { FormSection } from "metabase/containers/FormikForm";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import {
+  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,

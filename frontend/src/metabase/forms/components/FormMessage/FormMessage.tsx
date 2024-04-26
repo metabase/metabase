@@ -53,10 +53,7 @@ export const getSuccessMessage = (formSuccess?: Response) => {
   return formSuccess?.data?.message;
 };
 
-/**
- * @deprecated
- */
-function FormMessage({
+export function FormMessage({
   className,
   message,
   formSuccess,
@@ -75,6 +72,3 @@ function FormMessage({
     </FormMessageStyled>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormMessage;

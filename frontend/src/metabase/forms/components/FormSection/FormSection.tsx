@@ -4,7 +4,7 @@ import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import { CollapsibleSectionContent } from "./CustomFormSection.styled";
+import { CollapsibleSectionContent } from "./FormSection.styled";
 
 interface SectionProps {
   title?: string;
@@ -37,13 +37,7 @@ interface CustomFormSectionProps extends SectionProps {
   collapsible?: boolean;
 }
 
-/**
- * @deprecated
- */
-function CustomFormSection({ collapsible, ...props }: CustomFormSectionProps) {
+export function FormSection({ collapsible, ...props }: CustomFormSectionProps) {
   const Section = collapsible ? CollapsibleSection : StandardSection;
   return <Section {...props} />;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomFormSection;
