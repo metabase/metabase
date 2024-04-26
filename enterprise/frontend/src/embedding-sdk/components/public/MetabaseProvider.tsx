@@ -6,6 +6,7 @@ import { AppInitializeController } from "embedding-sdk/components/private/AppIni
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
 import { setPlugins } from "embedding-sdk/store/reducer";
+import { ChartThemeOverride } from "embedding-sdk/theme/ChartThemeOverride";
 import type { MetabaseTheme } from "embedding-sdk/theme/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -35,9 +36,11 @@ const MetabaseProviderInternal = ({
     <Provider store={store}>
       <EmotionCacheProvider>
         <ThemeProvider theme={theme}>
-          <AppInitializeController config={config}>
-            {children}
-          </AppInitializeController>
+          <ChartThemeOverride>
+            <AppInitializeController config={config}>
+              {children}
+            </AppInitializeController>
+          </ChartThemeOverride>
         </ThemeProvider>
       </EmotionCacheProvider>
     </Provider>
