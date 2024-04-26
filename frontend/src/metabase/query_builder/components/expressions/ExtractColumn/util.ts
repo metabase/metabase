@@ -1,7 +1,7 @@
 import type * as Lib from "metabase-lib";
 
 export function getExample(info: Lib.ColumnExtractionInfo) {
-  // TODO: this should eventually be moved into Lib.displayInfo
+  // @todo this should eventually be moved into Lib.displayInfo
   // to avoid the keys going out of sync with the MLv2-defined extractions.
   switch (info.tag) {
     case "hour-of-day":
