@@ -42,7 +42,7 @@
 (defn- magic-group [group-name]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one PermissionsGroup :name group-name)
+     (u/prog1 (t2/select-one [PermissionsGroup :id :name] :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
