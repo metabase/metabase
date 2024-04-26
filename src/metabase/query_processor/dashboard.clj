@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -17,7 +18,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -119,9 +119,9 @@
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
-  [dashboard-id   :- ms/PositiveInt
-   card-id        :- ms/PositiveInt
-   dashcard-id    :- ms/PositiveInt
+  [dashboard-id   :- ::lib.schema.id/dashboard
+   card-id        :- ::lib.schema.id/card
+   dashcard-id    :- ::lib.schema.id/dashcard
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
@@ -148,10 +148,10 @@
       (doseq [{:keys [id value]} request-params]
         (user-parameter-value/upsert! user-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
-                (u/pprint-to-str (->> dashboard-param-id->param
-                                      (m/map-vals (fn [param]
-                                                    (update param :mappings (fn [mappings]
-                                                                              (into #{} (map #(dissoc % :dashcard)) mappings)))))))
+                (u/pprint-to-str (update-vals dashboard-param-id->param
+                                              (fn [param]
+                                                (update param :mappings (fn [mappings]
+                                                                          (into #{} (map #(dissoc % :dashcard)) mappings))))))
                 (u/pprint-to-str request-param-id->param)
                 (u/pprint-to-str merged-parameters))
     (u/prog1

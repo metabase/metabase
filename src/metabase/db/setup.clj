@@ -10,7 +10,7 @@
    [honey.sql :as sql]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.custom-migrations]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
    [metabase.plugins.classloader :as classloader]
@@ -31,7 +31,7 @@
 
 (comment
   ;; load our custom migrations
-  metabase.db.custom-migrations/keep-me
+  custom-migrations/keep-me
   ;; needed so the `:h2` dialect gets registered with Honey SQL
   metabase.util.honey-sql-2/keep-me)
 
@@ -144,27 +144,41 @@
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate? :- [:maybe :boolean]]
+   auto-migrate? :- :boolean]
   (log/info "Running Database Migrations...")
   (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
-;;
-;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type       :- :keyword
-   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate? :- [:maybe :boolean]]
+  [db-type                :- :keyword
+   data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate?          :- :boolean
+   create-sample-content? :- :boolean]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*  true]
+      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*            true
+                custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
          (run-schema-migrations! data-source auto-migrate?))))
+  :done)
+
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [data-source timeout-seconds]
+  (let [sleep-ms   100
+        timeout-ms (* 1000 timeout-seconds)]
+    (case (liquibase/wait-for-all-locks sleep-ms timeout-ms)
+      :none nil
+      :done (log/info "Migration lock(s) have been released")
+      :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
+                     ;; There's an infinitesimal chance that we released the lock and another server took it between
+                     ;; the timeout, and the mutations we now make to these lock tables - but we can't detect that.
+                     (liquibase/release-concurrent-locks! data-source))))
   :done)
 
 ;;;; Toucan Setup.

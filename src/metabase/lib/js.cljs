@@ -234,6 +234,31 @@
   [a-query]
   (lib.core/drop-empty-stages a-query))
 
+(defn ^:export as-returned
+  "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
+  (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and
+  breakouts).
+
+  Given `a-query` and `stage-number`, this returns a **JS object** with `query` and `stageIndex` keys, for working with
+  \"what it returns\". If there is already a later stage, that stage is reused. Appends a new stage if we were already
+  looking at the last stage.
+
+  > **Code health:** Healthy"
+  [a-query stage-number]
+  (if (empty? (lib.core/aggregations a-query stage-number))
+    ;; No extra stage needed with no aggregations.
+    #js {:query      a-query
+         :stageIndex stage-number}
+    ;; An extra stage is needed, so see if one already exists.
+    (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
+                             (lib.util/next-stage-number a-query))]
+      ;; Already an extra stage, so use it.
+      #js {:query      a-query
+           :stageIndex next-stage}
+      ;; No new stage, so append one.
+      #js {:query      (lib.core/append-stage a-query)
+           :stageIndex -1})))
+
 (defn ^:export orderable-columns
   "Returns a JS Array of *column metadata* values for all columns which can be used to add an `ORDER BY` to `a-query` at
   `stage-number`.
@@ -1338,6 +1363,26 @@
     (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
     (fn [_]
       (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
+
+(defn ^:export column-extractions
+  "Column extractions are a set of transformations possible on a given `column`, based on its type.
+
+  For example, we might extract the day of the week from a temporal column, or the domain name from an email or URL.
+
+  Returns a (possibly empty) JS array of possible column extractions for the given column.
+
+  > **Code health:** Healthy"
+  [a-query column]
+  (to-array (lib.core/column-extractions a-query column)))
+
+(defn ^:export extract
+  "Given `a-query` and an `extraction` from [[column-extractions]], apply that extraction to the query.
+
+  Generally this means adding a new expression. Returns an updated query.
+
+  > **Code health:** Healthy"
+  [a-query stage-number extraction]
+  (lib.core/extract a-query stage-number extraction))
 
 (defn ^:export suggested-join-conditions
   "Returns a JS array of possible default join conditions when joining against `joinable`, e.g. a Table, Saved

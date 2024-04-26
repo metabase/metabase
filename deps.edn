@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.26"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.28"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -125,8 +125,8 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.17"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.78"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.78"}
   org.clj-commons/hickory                   {:mvn/version "0.7.4"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
@@ -678,7 +678,7 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
-  {:exec-args {:only ["test/metadata/driver"
+  {:exec-args {:only ["test/metabase/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
@@ -690,7 +690,8 @@
   :test/mbql
   {:exec-args {:only ["test/mbql"
                       "test/metabase/lib"
-                      "test/metadata/driver"
+                      "test/metabase/legacy_mbql"
+                      "test/metabase/driver"
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test

@@ -157,7 +157,7 @@
     honeysql.helpers                                              hh
     honeysql.types                                                htypes
     java-time                                                     t
-    macaw.core                                                    mac
+    macaw.core                                                    macaw
     malli.core                                                    mc
     malli.error                                                   me
     malli.experimental                                            mx
@@ -279,6 +279,7 @@
     metabase.legacy-mbql.schema                                   mbql.s
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
+    metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
     metabase.models.bookmark                                      bookmark
@@ -600,6 +601,7 @@
    metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -706,19 +708,23 @@
      metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
-    {toucan.db        {:message "Don't use application database inside MLv2 code"}
-     toucan.models    {:message "Don't use application database inside MLv2 code"}
-     toucan.util.test {:message "Don't use application database inside MLv2 code"}
-     toucan2.core     {:message "Don't use application database inside MLv2 code"}}}}
+    {metabase.util.malli.schema {:message "Prefer metabase.lib.schema schemas in MLv2 code"}
+     toucan.db                  {:message "Don't use application database inside MLv2 code"}
+     toucan.models              {:message "Don't use application database inside MLv2 code"}
+     toucan.util.test           {:message "Don't use application database inside MLv2 code"}
+     toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
 
   qp-and-driver-source-namespaces
   {:linters
    {:discouraged-namespace
-    {toucan.db        {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.models    {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.util.test {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan2.core     {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
+    {metabase.util.malli.schema {:message "Prefer metabase.lib.schema or metabase.legacy-mbql.schema schemas in QP/driver code"}
+     toucan.db                  {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan.models              {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan.util.test           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     toucan2.core               {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
-    {metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+    {medley.core/map-keys              {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals              {:message "Use clojure.core/update-vals"}
+     metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
      metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}}}

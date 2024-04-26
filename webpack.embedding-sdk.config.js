@@ -7,12 +7,14 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
+const { resolve } = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -38,7 +40,7 @@ const CSS_CONFIG = {
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 module.exports = env => {
-  return {
+  const config = {
     ...mainConfig,
 
     context: SDK_SRC_PATH,
@@ -62,7 +64,7 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(svg|png|eot|woff2?|ttf)$/,
+          test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
@@ -138,7 +140,7 @@ module.exports = env => {
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
         typescript: {
-          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
           mode: "write-dts",
           memoryLimit: 4096,
         },
@@ -151,4 +153,20 @@ module.exports = env => {
         }),
     ].filter(Boolean),
   };
+
+  config.resolve.alias = {
+    ...mainConfig.resolve.alias,
+    "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
+    "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+  };
+
+  if (config.cache) {
+    config.cache.cacheDirectory = resolve(
+      __dirname,
+      "node_modules/.cache/",
+      "webpack-ee",
+    );
+  }
+
+  return config;
 };

@@ -106,6 +106,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             <h3
               className={CS.mb0}
             >{t`Configure your identity provider (IdP)`}</h3>
+
             <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Your identity provider will need the following info about Metabase.`}
@@ -164,7 +165,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
                 {...fields["saml-identity-provider-certificate"]}
                 label={t`SAML Identity Provider Certificate`}
                 required
-                monospaceText
               />
               <FormTextInput
                 {...fields["saml-application-name"]}

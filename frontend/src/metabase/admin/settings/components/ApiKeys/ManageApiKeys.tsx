@@ -7,7 +7,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/index.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -64,7 +64,7 @@ function ApiKeysTable({
         </thead>
         <tbody>
           {apiKeys?.map(apiKey => (
-            <tr key={apiKey.id} className="border-bottom">
+            <tr key={apiKey.id} className={CS.borderBottom}>
               <td className={CS.textBold} style={{ maxWidth: 400 }}>
                 <Ellipsified>{apiKey.name}</Ellipsified>
               </td>

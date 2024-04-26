@@ -4,9 +4,8 @@ import { t } from "ttag";
 import Subhead from "metabase/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import type { updateQuestion } from "metabase/query_builder/actions";
+import { QuestionDataSelector } from "metabase/query_builder/components/view/QuestionDataSelector";
 import type Question from "metabase-lib/v1/Question";
-
-import QuestionDataSelector from "../../QuestionDataSelector";
 
 type Props = {
   question: Question;

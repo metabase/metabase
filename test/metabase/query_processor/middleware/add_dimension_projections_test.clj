@@ -179,7 +179,8 @@
     (transduce identity rf rows)))
 
 (defn- venues-column-metadata []
-  (qp.store/bulk-metadata
+  (lib.metadata/bulk-metadata-or-throw
+   (qp.store/metadata-provider)
    :metadata/column
    [(meta/id :venues :id)
     (meta/id :venues :name)

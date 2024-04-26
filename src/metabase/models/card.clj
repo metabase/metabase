@@ -29,10 +29,10 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
+   [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -43,6 +43,7 @@
    [metabase.shared.util.i18n :refer [trs]]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -190,7 +191,7 @@
 
 (def ^:private excluded-columns-for-card-revision
   [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
-   :initially_published_at :cache_invalidated_at])
+   :initially_published_at :cache_invalidated_at :view_count])
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
@@ -526,7 +527,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analyzer/update-query-fields-for-card! card)))
+    (query-field/update-query-fields-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -548,11 +549,13 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
-      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
-      ;; It's at the end for now so that all the before-update validations have a chance to run
-      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
-      (doto query-analyzer/update-query-fields-for-card!)
       (dissoc :id)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (when (contains? (t2/changes card) :dataset_query)
+      (query-field/update-query-fields-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -567,6 +570,10 @@
 (defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
+
+(defmethod mi/exclude-internal-content-hsql :model/Card
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 

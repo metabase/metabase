@@ -61,10 +61,35 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
-  it("does not allow non-alphanumeric values", async () => {
+  it("allows scientific notation", async () => {
+    const { input, onChange } = setup();
+
+    await type({ input, value: "1.5e3" });
+    expect(input).toHaveDisplayValue("1.5e3");
+    expect(onChange).toHaveBeenCalledWith(1.5e3);
+  });
+
+  it("does not allow non-numeric values", async () => {
     const { input, onChange } = setup();
 
     await type({ input, value: "asdf" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    // Inputs with `e` that are not valid scientific notation
+    type({ input, value: "e123" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "e123e" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "1e23e" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "e1e23e" });
     expect(input).toHaveDisplayValue("");
     expect(onChange).toHaveBeenCalledWith(undefined);
   });

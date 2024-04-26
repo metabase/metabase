@@ -195,12 +195,14 @@
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
-    (let [stats (sync-util/with-error-handling
-                  (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                  (fingerprint-table! table fields))]
-      (if (instance? Exception stats)
-        (empty-stats-map 0)
-        stats))
+    (do
+      (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+      (let [stats (sync-util/with-error-handling
+                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                    (fingerprint-table! table fields))]
+        (if (instance? Exception stats)
+          (empty-stats-map 0)
+          stats)))
     (empty-stats-map 0)))
 
 (def ^:private LogProgressFn

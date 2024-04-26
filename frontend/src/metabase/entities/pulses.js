@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { subscriptionApi } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  undo,
+  entityCompatibleQuery,
+} from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 
@@ -22,6 +25,36 @@ const Pulses = createEntity({
     UNSUBSCRIBE,
   },
 
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.listSubscriptions,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        subscriptionApi.endpoints.getSubscription,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.createSubscription,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.updateSubscription,
+      ),
+    delete: () => {
+      throw new TypeError("Pulses.api.delete is not supported");
+    },
+  },
+
   objectActions: {
     setArchived: ({ id }, archived, opts) => {
       return Pulses.actions.update(
@@ -31,37 +64,14 @@ const Pulses = createEntity({
       );
     },
 
-    setChannels: ({ id }, channels, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { channels },
-        undo(opts, t`subscription`, t`updated`),
-      );
-    },
-
-    setCollection: ({ id }, collection, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, t`subscription`, t`moved`),
-      );
-    },
-
-    setPinned: ({ id }, pinned, opts) => {
-      return Pulses.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
-      );
-    },
-
     unsubscribe:
       ({ id }) =>
       async dispatch => {
-        await PulseApi.unsubscribe({ id });
+        await entityCompatibleQuery(
+          id,
+          dispatch,
+          subscriptionApi.endpoints.unsubscribe,
+        );
         dispatch(addUndo({ message: t`Successfully unsubscribed` }));
         dispatch({ type: UNSUBSCRIBE, payload: { id } });
         dispatch({ type: Pulses.actionTypes.INVALIDATE_LISTS_ACTION });

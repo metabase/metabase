@@ -4,6 +4,7 @@
    [metabase.shared.util.internal.time-common :as common]
    [metabase.util.date-2 :as u.date])
   (:import
+   java.time.format.DateTimeFormatter
    java.util.Locale))
 
 (set! *warn-on-reflection* true)
@@ -271,46 +272,52 @@
     (re-find #"(?:Z|[+-]\d\d(?::?\d\d)?)$" input) (t/offset-date-time)
     :always (localize)))
 
+(def ^:private unit-formats
+  {:day-of-week     "EEEE"
+   :month-of-year   "MMM"
+   :minute-of-hour  "m"
+   :hour-of-day     "h a"
+   :day-of-month    "d"
+   :day-of-year     "D"
+   :week-of-year    "w"
+   :quarter-of-year "'Q'Q"})
+
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit]
-  (case unit
-    :day-of-week     (t/format "EEEE" t)
-    :month-of-year   (t/format "MMM" t)
-    :minute-of-hour  (t/format "m" t)
-    :hour-of-day     (t/format "h a" t)
-    :day-of-month    (t/format "d" t)
-    :day-of-year     (t/format "D" t)
-    :week-of-year    (t/format "w" t)
-    :quarter-of-year (t/format "'Q'Q" t)
-    nil))
+  [t unit ^Locale locale]
+  (when-let [^DateTimeFormatter formatter (some-> unit
+                                                  unit-formats
+                                                  t/formatter
+                                                  (cond-> #_formatter locale (.withLocale locale)))]
+    (.format formatter t)))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
-  [input unit]
-  (if (string? input)
-    (let [time? (common/matches-time? input)
-          date? (common/matches-date? input)
-          date-time? (common/matches-date-time? input)
-          t (cond
-              time? (t/local-time input)
-              date? (t/local-date input)
-              date-time? (coerce-local-date-time input))]
-      (if t
-        (or
-          (format-extraction-unit t unit)
-          (cond
-            time? (t/format "h:mm a" t)
-            date? (t/format "MMM d, yyyy" t)
-            :else (t/format "MMM d, yyyy, h:mm a" t)))
-        input))
-    (if (= unit :hour-of-day)
-      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-      (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
-        (str input)))))
+  ([input unit] (format-unit input unit nil))
+  ([input unit locale]
+   (if (string? input)
+     (let [time? (common/matches-time? input)
+           date? (common/matches-date? input)
+           date-time? (common/matches-date-time? input)
+           t (cond
+               time? (t/local-time input)
+               date? (t/local-date input)
+               date-time? (coerce-local-date-time input))]
+       (if t
+         (or
+           (format-extraction-unit t unit locale)
+           (cond
+             time? (t/format "h:mm a" t)
+             date? (t/format "MMM d, yyyy" t)
+             :else (t/format "MMM d, yyyy, h:mm a" t)))
+         input))
+     (if (= unit :hour-of-day)
+       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+       (or
+         (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
+         (str input))))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

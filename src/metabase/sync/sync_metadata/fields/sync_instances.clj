@@ -129,13 +129,13 @@
      (sync-util/sum-for [db-field-chunk (partition-all 1000 db-metadata)]
        (sync-util/with-error-handling (format "Error checking if Fields %s need to be created or reactivated"
                                               (pr-str (map :name db-field-chunk)))
-        (let [known-field?        (comp known-fields common/canonical-name)
-              new-fields          (remove known-field? db-field-chunk)
-              new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
-          ;; save any updates to `our-metadata`
-          (swap! our-metadata into (fields.our-metadata/fields->our-metadata new-field-instances parent-id))
-          ;; now return count of rows updated
-          (count new-fields))))
+         (let [known-field?        (comp known-fields common/canonical-name)
+               new-fields          (remove known-field? db-field-chunk)
+               new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
+           ;; save any updates to `our-metadata`
+           (swap! our-metadata into (fields.our-metadata/fields->our-metadata new-field-instances parent-id))
+           ;; now return count of rows updated
+           (count new-fields))))
 
      :our-metadata
      @our-metadata}))

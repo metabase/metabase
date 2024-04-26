@@ -1,29 +1,33 @@
-import type { AnyAction, Store } from "@reduxjs/toolkit";
-import type * as React from "react";
+import { type ReactNode, type JSX, useEffect } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
-import reducers from "metabase/reducers-main";
-import { getStore } from "metabase/store";
+import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import { store } from "embedding-sdk/store";
+import { setPlugins } from "embedding-sdk/store/reducer";
+import type { SDKConfig } from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
-import type { State } from "metabase-types/store";
-
-import type { SDKConfigType } from "../../types";
-import { AppInitializeController } from "../private/AppInitializeController";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
-const store = getStore(reducers) as unknown as Store<State, AnyAction>;
+interface MetabaseProviderProps {
+  children: ReactNode;
+  config: SDKConfig;
+  pluginsConfig?: SdkPluginsConfig;
+}
 
 const MetabaseProviderInternal = ({
   children,
   config,
-}: {
-  children: React.ReactNode;
-  config: SDKConfigType;
-}): React.JSX.Element => {
+  pluginsConfig,
+}: MetabaseProviderProps): JSX.Element => {
+  useEffect(() => {
+    store.dispatch(setPlugins(pluginsConfig || null));
+  }, [pluginsConfig]);
+
   return (
     <Provider store={store}>
       <EmotionCacheProvider>

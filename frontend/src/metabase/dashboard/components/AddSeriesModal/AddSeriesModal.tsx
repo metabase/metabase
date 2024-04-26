@@ -202,7 +202,7 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
         </div>
         <div
-          className={cx("border-left", CS.flex, CS.flexColumn)}
+          className={cx(CS.borderLeft, CS.flex, CS.flexColumn)}
           style={{
             width: 370,
             backgroundColor: color("bg-light"),

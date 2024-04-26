@@ -15,14 +15,12 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public-test :as public-test]
    [metabase.config :as config]
-   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -160,7 +158,7 @@
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
-(defn- card-url [card & [additional-token-params]] (str "embed/card/" (card-token card additional-token-params)))
+(defn card-url [card & [additional-token-params]] (str "embed/card/" (card-token card additional-token-params)))
 
 (deftest it-should-be-possible-to-use-this-endpoint-successfully-if-all-the-conditions-are-met
   (with-embedding-enabled-and-new-secret-key
@@ -527,7 +525,7 @@
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
-(defn- dashboard-url [dashboard & [additional-token-params]]
+(defn dashboard-url [dashboard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
@@ -536,18 +534,6 @@
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
-
-(deftest embedding-logs-view-test
-  (when (premium-features/log-enabled?)
-    (with-embedding-enabled-and-new-secret-key
-      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-        (testing "Viewing an embedding logs the correct view log event."
-          (client/client :get 200 (dashboard-url dash))
-          (is (partial=
-               {:model      "dashboard"
-                :model_id   (:id dash)
-                :has_access true}
-               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
@@ -644,6 +630,52 @@
                  (-> embedding-dashboard
                      :param_fields
                      (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
+                     count))))))))
+
+(deftest locked-params-removes-values-fields-when-not-used-in-enabled-params
+  (testing "check that locked params are not removed in parameter mappings, param_values, and param_fields when an enabled param uses them (#37914)"
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard     dashboard     {:enable_embedding true
+                                                            :embedding_params {:venue_name   "locked"
+                                                                               :venue_name_2 "enabled"}
+                                                            :name             "Test Dashboard"
+                                                            :parameters       [{:name      "venue_name"
+                                                                                :slug      "venue_name"
+                                                                                :id        "foo"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}
+                                                                               {:name      "venue_name_2"
+                                                                                :slug      "venue_name_2"
+                                                                                :id        "bar"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}]}
+                               Card          {card-id :id} {:name "Dashboard Test Card"}
+                               DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                            :card_id            card-id
+                                                            :parameter_mappings [{:card_id      card-id
+                                                                                  :slug         "venue_name"
+                                                                                  :parameter_id "foo"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}
+                                                                                 {:card_id      card-id
+                                                                                  :slug         "venue_name_2"
+                                                                                  :parameter_id "bar"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}]}]
+        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (some?
+               (-> embedding-dashboard
+                   :param_values
+                   (get (mt/id :venues :name)))))
+          (is (some?
+               (-> embedding-dashboard
+                   :param_fields
+                   (get (mt/id :venues :name)))))
           (is (= 1
                  (-> embedding-dashboard
                      :dashcards

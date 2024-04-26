@@ -17,7 +17,7 @@ const DEFAULT_OPTIONS = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: o => o,
+  transformResponse: ({ body }) => body,
   raw: {},
   headers: {},
   retry: false,
@@ -32,7 +32,9 @@ const DEFAULT_OPTIONS = {
 export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
-  sessionToken = "";
+  sessionToken;
+
+  onBeforeRequest;
 
   GET;
   POST;
@@ -60,6 +62,10 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
+        if (this.onBeforeRequest) {
+          await this.onBeforeRequest();
+        }
+
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
@@ -212,7 +218,7 @@ export class Api extends EventEmitter {
           }
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
+              body = options.transformResponse({ body, data });
             }
             resolve(body);
           } else {
@@ -260,6 +266,7 @@ export class Api extends EventEmitter {
 
     return fetch(request)
       .then(response => {
+        const unreadResponse = response.clone();
         return response.text().then(body => {
           if (options.json) {
             try {
@@ -283,7 +290,11 @@ export class Api extends EventEmitter {
 
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
+              body = options.transformResponse({
+                body,
+                data,
+                response: unreadResponse,
+              });
             }
             return body;
           } else {

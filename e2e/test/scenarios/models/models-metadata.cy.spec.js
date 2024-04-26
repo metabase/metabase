@@ -448,10 +448,10 @@ describe("scenarios > models metadata", () => {
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
 }

@@ -1,6 +1,5 @@
-export type SDKConfigType = {
+export type SDKConfig = {
   metabaseInstanceUrl: string;
   font?: string;
-  authType: "apiKey";
-  apiKey: string;
+  jwtProviderUri: string;
 };

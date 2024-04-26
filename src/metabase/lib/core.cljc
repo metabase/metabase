@@ -16,6 +16,7 @@
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -172,6 +173,9 @@
   rtrim
   upper
   lower]
+ [lib.extraction
+  column-extractions
+  extract]
  [lib.fe-util
   dependent-metadata
   expression-clause
@@ -191,6 +195,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
   find-filter-for-legacy-filter
   find-filterable-column-for-legacy-ref
   and
@@ -302,6 +307,7 @@
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
  [lib.util
