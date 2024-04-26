@@ -10,7 +10,6 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -232,9 +231,10 @@
     ;; if there are changes in schedule
     ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
     (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame} %) (keys changes))
-      ;; delete this PC from its existing trigger, a new trigger will be created in an after update
+      ;; need to remove this PC from the existing trigger
       (update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
                                             :remove-pc-ids #{(:id pulse-channel)})
+      ;; create a new PC with the updated schedule
       (update-send-pulse-trigger-if-needed! pulse_id pulse-channel
                                             :add-pc-ids #{id}))
     (when (contains? changes :enabled)
@@ -250,49 +250,6 @@
   [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
 ;; ## Persistence Functions
-
-(mu/defn retrieve-scheduled-channels
-  "Fetch all `PulseChannels` that are scheduled to run at a given time described by `hour`, `weekday`, `monthday`, and
-  `monthweek`.
-
-  Examples:
-
-    (retrieve-scheduled-channels 14 \"mon\" :first :first)  -  2pm on the first Monday of the month
-    (retrieve-scheduled-channels 8 \"wed\" :other :last)    -  8am on Wednesday of the last week of the month
-
-  Based on the given input the appropriate `PulseChannels` are returned:
-
-  *  `hourly` scheduled channels are always included.
-  *  `daily` scheduled channels are included if the `hour` matches.
-  *  `weekly` scheduled channels are included if the `weekday` & `hour` match.
-  *  `monthly` scheduled channels are included if the `monthday`, `monthweek`, `weekday`, & `hour` all match."
-  [hour      :- [:maybe :int]
-   weekday   :- [:maybe [:fn {:error/message "valid day of week"} day-of-week?]]
-   monthday  :- [:enum :first :last :mid :other]
-   monthweek :- [:enum :first :last :other]]
-  (let [schedule-frame              (cond
-                                      (= :mid monthday)    "mid"
-                                      (= :first monthweek) "first"
-                                      (= :last monthweek)  "last"
-                                      :else                "invalid")
-        monthly-schedule-day-or-nil (when (= :other monthday)
-                                      weekday)]
-    (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
-      {:where [:and [:= :enabled true]
-               [:or
-                [:= :schedule_type "hourly"]
-                [:and [:= :schedule_type "daily"]
-                 [:= :schedule_hour hour]]
-                [:and [:= :schedule_type "weekly"]
-                 [:= :schedule_hour hour]
-                 [:= :schedule_day weekday]]
-                [:and [:= :schedule_type "monthly"]
-                 [:= :schedule_hour hour]
-                 [:= :schedule_frame schedule-frame]
-                 [:or [:= :schedule_day weekday]
-                  ;; this is here specifically to allow for cases where day doesn't have to match
-                  [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
-
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for `pulse-CHANNEL`.
@@ -315,7 +272,6 @@
       (t2/delete! (t2/table-name :model/PulseChannelRecipient)
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
-
 
 (defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as
@@ -344,7 +300,6 @@
                                    schedule_frame)})
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
-
 
 (defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as
