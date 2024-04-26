@@ -6,6 +6,6 @@ export type SDKConfig = {
   metabaseInstanceUrl: string;
   font?: string;
   jwtProviderUri: string;
-  loaderComponent: () => JSX.Element;
-  errorComponent: ({ message }: SdkErrorProps) => JSX.Element;
+  loaderComponent?: () => JSX.Element;
+  errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;
 };

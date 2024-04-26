@@ -32,8 +32,8 @@ const MetabaseProviderInternal = ({
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
 
-  store.dispatch(setLoaderComponent(config.loaderComponent));
-  store.dispatch(setErrorComponent(config.errorComponent));
+  store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
+  store.dispatch(setErrorComponent(config.errorComponent ?? null));
 
   return (
     <Provider store={store}>
