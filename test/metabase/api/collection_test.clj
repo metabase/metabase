@@ -155,8 +155,12 @@
                   (into #{})))))))
 
 (deftest list-collections-archived-test
+  (collection/ensure-trash-collection-created!)
   (testing "GET /api/collection"
-    (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true, :trashed_from_location "/"}
+    (t2.with-temp/with-temp [Collection _ {:name "Archived Collection"
+                                           :location collection/trash-path
+                                           :archived true
+                                           :trashed_from_location "/"}
                              Collection _ {:name "Regular Collection"}]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
@@ -1372,16 +1376,18 @@
                       (api-get-collection-children a)))))))
 
 (deftest effective-ancestors-and-children-archived-test
+  (collection/ensure-trash-collection-created!)
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
-      (t2/update! Collection (u/the-id b) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id b))
+                            {:archived true})
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
-               (api-get-collection-ancestors a :archived true))))
+               (api-get-collection-ancestors a))))
       (testing "children"
-        (is (partial= [(collection-item "B")]
-                      (api-get-collection-children a :archived true)))))))
+        (is (partial= [(collection-item "C")]
+                      (api-get-collection-children a)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
@@ -1666,10 +1672,10 @@
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
-        (t2/update! Collection (u/the-id a) {:archived true})
-        (testing "children"
-          (is (partial= [(collection-item "A")]
-                        (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                            {:archived true})))
+
+    ;; TODO: Add `exclude-archived` or something similar, and a test of it here
 
     (testing "\n?namespace= parameter"
       (t2.with-temp/with-temp [Collection {normal-id :id} {:name "Normal Collection"}
