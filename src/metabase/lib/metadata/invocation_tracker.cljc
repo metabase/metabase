@@ -2,44 +2,70 @@
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
-(defn- update-tracker-and-return-nil!
-  [tracker metadata-type id]
+(defn- update-tracker-and-call-next-provider!
+  [tracker metadata-provider metadata-type id]
   ;; we only have usage for metadata/card for now, so we only track it to save some overhead
   (when (#{:metadata/card} metadata-type)
     (swap! tracker update metadata-type (fn [item-ids]
                                           (if (seq item-ids)
                                             (conj item-ids id)
                                             [id]))))
-  nil)
+  ((case metadata-type
+     :metadata/database
+     lib.metadata.protocols/database
+     :metadata/field
+     lib.metadata.protocols/field
+     :metadata/card
+     lib.metadata.protocols/card
+     :metadata/table
+     lib.metadata.protocols/table
+     :metadata/legacy-metric
+     lib.metadata.protocols/legacy-metric
+     :metadata/legacy-metrics
+     lib.metadata.protocols/legacy-metrics
+     :metadata/segment
+     lib.metadata.protocols/segment
+     :metadata/fields
+     lib.metadata.protocols/fields
+     :metadata/setting
+     lib.metadata.protocols/setting)
+   metadata-provider
+   id))
 
-(deftype InvocationTracker [tracker]
+(deftype InvocationTracker [tracker metadata-provider]
   lib.metadata.protocols/MetadataProvider
-  (database       [_this]              nil)
-  (table          [_this table-id]     (update-tracker-and-return-nil! tracker :metadata/table table-id))
-  (field          [_this field-id]     (update-tracker-and-return-nil! tracker :metadata/field field-id))
-  (card           [_this card-id]      (update-tracker-and-return-nil! tracker :metadata/card card-id))
+  (database       [_this]              (lib.metadata.protocols/database metadata-provider))
+  (table          [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/table table-id))
+  (field          [_this field-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/field field-id))
+  (card           [_this card-id]      (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/card card-id))
 
-  (legacy-metric  [_this metric-id]    (update-tracker-and-return-nil! tracker :metadata/legacy-metric metric-id))
-  (segment        [_this segment-id]   (update-tracker-and-return-nil! tracker :metadata/segment segment-id))
-  (tables         [_this]              nil)
-  (fields         [_this table-id]     (update-tracker-and-return-nil! tracker :metadata/fields table-id))
-  (legacy-metrics [_this table-id]     (update-tracker-and-return-nil! tracker :metadata/legacy-metrics table-id))
-  (setting        [_this setting-name] (update-tracker-and-return-nil! tracker :metadata/setting setting-name))
+  (legacy-metric  [_this metric-id]    (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/legacy-metric metric-id))
+  (segment        [_this segment-id]   (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/segment segment-id))
+  (tables         [_this]              (lib.metadata.protocols/tables metadata-provider))
+  (fields         [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/fields table-id))
+  (legacy-metrics [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/legacy-metrics table-id))
+  (setting        [_this setting-name] (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/setting setting-name))
+
+  lib.metadata.protocols/CachedMetadataProvider
+  (cached-database [_this]                           (lib.metadata.protocols/cached-database metadata-provider))
+  (cached-metadata [_this metadata-type id]          (lib.metadata.protocols/cached-metadata metadata-provider metadata-type id))
+  (store-database! [_this database-metadata]         (lib.metadata.protocols/store-database! metadata-provider database-metadata))
+  (store-metadata! [_this metadata-type id metadata] (lib.metadata.protocols/store-metadata! metadata-provider metadata-type id metadata))
 
   lib.metadata.protocols/InvocationTracker
   (invoked-ids [_this metadata-type]
     (get @tracker metadata-type))
 
+ lib.metadata.protocols/BulkMetadataProvider
+  (bulk-metadata [_this metadata-type ids] (lib.metadata.protocols/bulk-metadata metadata-provider metadata-type ids))
+
   #?(:clj Object :cljs IEquiv)
-  (#?(:clj equals :cljs -equiv) [_this another]
+  (#?(:clj equals :cljs -equiv) [this another]
     (and (instance? InvocationTracker another)
-         (= @tracker
-            @(.-tracker ^InvocationTracker another)))))
+         (= (lib.metadata.protocols/database this)
+            (lib.metadata.protocols/database another)))))
 
 (defn invocation-tracker-provider
-  "Returns a metadata provider that tracks the ids of metadata items that have been invoked.
-  All methods will return nil so it can be composed.
-
-  Currently only track invocation of metadata/card."
-  []
-  (->InvocationTracker (atom {})))
+  "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."
+  [metadata-provider]
+  (->InvocationTracker (atom {}) metadata-provider))
