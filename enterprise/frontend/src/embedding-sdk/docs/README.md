@@ -7,7 +7,7 @@ The Metabase Embedding SDK for React offers a way to integrate Metabase into you
 
 Current features:
 * embedding questions - static
-* embedding questions - w/drill-down 
+* embedding questions - w/drill-down
 * plugins for custom actions
 
 # Prerequisites
@@ -201,9 +201,7 @@ app.listen(PORT, () => {
 
 # Known limitations
 
-Currently, the SDK has following limitations:
-- no support for server-side-rendering (SSR)
-- no support for Vite
+The Metabase Embedding SDK only supports React on SPA Webpack applications, but applications build with Vite isn't currently supported. We aim to add support for other platforms in the near future.
 
 # Feedback
 TODO: how to share feedback with us
