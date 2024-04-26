@@ -424,9 +424,9 @@
 (deftest inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
     (mt/with-premium-features #{}
-      (mt/with-temp [:mode/Pulse                  {pulse-id :id} {}
-                     :mode/PulseChannel           {channel-id :id :as channel} {:pulse_id pulse-id
-                                                                                :details  {:emails ["cam@test.com"]}}
+      (mt/with-temp [:model/Pulse                  {pulse-id :id} {}
+                     :model/PulseChannel           {channel-id :id :as channel} {:pulse_id pulse-id
+                                                                                 :details  {:emails ["cam@test.com"]}}
                      :model/User                  {inactive-user-id :id} {:is_active false}
                      :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id inactive-user-id}
                      :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}

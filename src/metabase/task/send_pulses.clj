@@ -119,7 +119,7 @@
      ;; no op when new-pc-ids doesnt't change
      (= new-pc-ids existing-pc-ids) nil
 
-     ;; delete if no new pc-ids
+     ;; delete if no new pc-ids and there is an existing trigger
      (and (empty? new-pc-ids)
           (some? existing-pc-ids))
      (do
@@ -127,7 +127,8 @@
       (task/delete-trigger! trigger-key))
 
      ;; delete then create if pc ids changes
-     (not= new-pc-ids existing-pc-ids)
+     (and (seq new-pc-ids)
+          (not= new-pc-ids existing-pc-ids))
      (do
       (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
       (task/delete-trigger! trigger-key)

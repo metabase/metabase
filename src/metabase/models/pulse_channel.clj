@@ -234,15 +234,15 @@
     (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame} %) (keys changes))
       ;; delete this PC from its existing trigger, a new trigger will be created in an after update
       (update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
-                                 :remove-pc-ids #{(:id pulse-channel)})
+                                            :remove-pc-ids #{(:id pulse-channel)})
       (update-send-pulse-trigger-if-needed! pulse_id pulse-channel
-                                 :add-pc-ids #{id}))
+                                            :add-pc-ids #{id}))
     (when (contains? changes :enabled)
       (if (:enabled changes)
         (update-send-pulse-trigger-if-needed! pulse_id pulse-channel
-                                   :add-pc-ids #{(:id pulse-channel)})
+                                              :add-pc-ids #{(:id pulse-channel)})
         (update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
-                                   :remove-pc-ids #{(:id pulse-channel)}))))
+                                              :remove-pc-ids #{(:id pulse-channel)}))))
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
 
 (defmethod serdes/hash-fields PulseChannel
