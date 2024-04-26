@@ -13,6 +13,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -31,6 +32,10 @@
 (doto :model/PermissionsGroup
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+(defmethod serdes/hash-fields :model/PermissionsGroup
+  [_user]
+  [:name])
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -121,7 +126,9 @@
   [group]
   (let [changes (t2/changes group)]
     (u/prog1 group
-      (check-not-magic-group group)
+      (when (contains? changes :name)
+        ;; Allow backfilling the entity ID for magic groups, but not changing anything else
+        (check-not-magic-group group))
       (when-let [group-name (:name changes)]
         (check-name-not-already-taken group-name)))))
 
