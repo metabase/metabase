@@ -1,4 +1,4 @@
-import { useRegisterActions, useKBar } from "kbar";
+import { useRegisterActions, useKBar, Priority } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -121,28 +121,49 @@ export const useCommandPalette = () => {
         },
       ];
     } else if (debouncedSearchText) {
-      if (searchResults?.data?.length) {
-        return searchResults.data.map<PaletteAction>(result => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          return {
-            id: `search-result-${result.model}-${result.id}`,
-            name: result.name,
-            icon: wrappedResult.getIcon().name,
+      if (searchResults?.data.length) {
+        return [
+          {
+            id: `search-results-metadata`,
+            name: `View all ${searchResults?.total} results for "${debouncedSearchText}"`,
             section: "search",
             keywords: debouncedSearchText,
-            subtitle: result.description || "",
+            icon: "link",
             perform: () => {
-              // Need to keep this logic here for when user selects via keyboard
-              dispatch(push(wrappedResult.getUrl()));
+              dispatch(
+                push({
+                  pathname: "search",
+                  query: {
+                    q: debouncedSearchText,
+                  },
+                }),
+              );
             },
-            extra: {
-              parentCollection: wrappedResult.getCollection().name,
-              isVerified: result.moderated_status === "verified",
-              database: result.database_name,
-              href: wrappedResult.getUrl(),
-            },
-          };
-        });
+            priority: Priority.HIGH,
+          },
+        ].concat(
+          searchResults.data.map(result => {
+            const wrappedResult = Search.wrapEntity(result, dispatch);
+            return {
+              id: `search-result-${result.model}-${result.id}`,
+              name: result.name,
+              subtitle: result.description || "",
+              icon: wrappedResult.getIcon().name,
+              section: "search",
+              keywords: debouncedSearchText,
+              priority: Priority.NORMAL,
+              perform: () => {
+                dispatch(push(wrappedResult.getUrl()));
+              },
+              extra: {
+                parentCollection: wrappedResult.getCollection().name,
+                isVerified: result.moderated_status === "verified",
+                database: result.database_name,
+                href: wrappedResult.getUrl(),
+              },
+            };
+          }),
+        );
       } else {
         return [
           {
