@@ -8,11 +8,9 @@ import {
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
-import type { FormContainerProps } from "metabase/containers/FormikForm";
 import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 import { Flex, Loader } from "metabase/ui";
-import type { BaseFieldValues } from "metabase-types/forms";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -32,7 +30,7 @@ const EntityCopyModal = ({
   onClose,
   onSaved,
   ...props
-}: EntityCopyModalProps & Partial<FormContainerProps<BaseFieldValues>>) => {
+}: EntityCopyModalProps) => {
   const { data: collections = [] } = useCollectionListQuery();
 
   const resolvedObject =
