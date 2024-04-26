@@ -8,7 +8,6 @@ import {
 
 describe("scenarios > question > custom column > expression shortcuts", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsNormalUser();
   });
