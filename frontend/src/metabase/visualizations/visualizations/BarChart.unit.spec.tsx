@@ -33,15 +33,15 @@ const setup = ({ series, question }: SetupProps) => {
   );
 };
 
-describe("barchart", () => {
-  it("should not error when rendering for a question with new breakouts", () => {
+describe("BarChart", () => {
+  it("should not error when rendering for a question without breakouts", () => {
     const question = new Question(
       {
         dataset_query: {
           type: "query",
           query: {
             "source-table": ORDERS_ID,
-            aggregrations: [["count"]],
+            aggregation: [["count"]],
           },
           database: SAMPLE_DB_ID,
         },
@@ -69,6 +69,7 @@ describe("barchart", () => {
         }),
       },
     ];
+
     setup({ question, series });
 
     expect(screen.getByText("X-axis")).toBeInTheDocument();
