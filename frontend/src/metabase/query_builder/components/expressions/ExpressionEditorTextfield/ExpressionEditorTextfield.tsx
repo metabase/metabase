@@ -52,19 +52,33 @@ export type SuggestionFooter = {
   href: string;
 };
 
-type SuggestWithFooters = {
-  suggestions: (Suggestion | SuggestionFooter)[];
+export type SuggestionShortcut = {
+  shortcut: true;
+  name: string;
+  icon: IconName;
+  group: string;
+  action: () => void;
+};
+
+type SuggestWithExtras = {
+  suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   helpText?: HelpText;
 };
 
-export function suggestWithFooters(
-  args: SuggestArgs & { showMetabaseLinks: boolean },
-): SuggestWithFooters {
+export function suggestWithExtras(
+  args: SuggestArgs & {
+    showMetabaseLinks: boolean;
+    shortcuts?: SuggestionShortcut[];
+  },
+): SuggestWithExtras {
   const res = suggest(args);
 
-  const suggestions: (Suggestion | SuggestionFooter)[] = res.suggestions ?? [];
+  const suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[] =
+    res.suggestions ?? [];
 
   if (args.showMetabaseLinks && args.source === "") {
+    suggestions.unshift(...(args.shortcuts ?? []));
+
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
@@ -124,11 +138,12 @@ interface ExpressionEditorTextfieldProps {
   ) => void;
   helpTextTarget: RefObject<HTMLElement>;
   showMetabaseLinks: boolean;
+  shortcuts?: SuggestionShortcut[];
 }
 
 interface ExpressionEditorTextfieldState {
   source: string;
-  suggestions: (Suggestion | SuggestionFooter)[];
+  suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
   errorMessage: ErrorWithMessage | null;
@@ -150,6 +165,7 @@ function transformPropsToState(
     metadata,
     reportTimezone,
     showMetabaseLinks,
+    shortcuts,
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -161,7 +177,7 @@ function transformPropsToState(
     query,
   });
 
-  const { suggestions = [], helpText = null } = suggestWithFooters({
+  const { suggestions = [], helpText = null } = suggestWithExtras({
     reportTimezone,
     startRule,
     source,
@@ -172,6 +188,7 @@ function transformPropsToState(
     metadata,
     getColumnIcon,
     showMetabaseLinks,
+    shortcuts,
   });
 
   return {
@@ -319,6 +336,12 @@ class ExpressionEditorTextfield extends React.Component<
       return;
     }
 
+    if ("shortcut" in suggestion) {
+      // run the shortcut
+      suggestion.action();
+      return;
+    }
+
     if (this.input.current && suggestion) {
       const { editor } = this.input.current;
       const { tokens } = tokenize(source);
@@ -462,7 +485,9 @@ class ExpressionEditorTextfield extends React.Component<
   }
 
   updateSuggestions(
-    suggestions: (Suggestion | SuggestionFooter)[] | undefined = [],
+    suggestions:
+      | (Suggestion | SuggestionFooter | SuggestionShortcut)[]
+      | undefined = [],
   ) {
     this.setState({ suggestions });
 
@@ -591,9 +616,10 @@ class ExpressionEditorTextfield extends React.Component<
       expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
+      shortcuts,
     } = this.props;
     const { source } = this.state;
-    const { suggestions, helpText } = suggestWithFooters({
+    const { suggestions, helpText } = suggestWithExtras({
       reportTimezone,
       startRule,
       source,
@@ -604,6 +630,7 @@ class ExpressionEditorTextfield extends React.Component<
       metadata,
       getColumnIcon,
       showMetabaseLinks,
+      shortcuts,
     });
 
     this.setState({ helpText: helpText || null });
