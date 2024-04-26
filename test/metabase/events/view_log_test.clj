@@ -113,11 +113,9 @@
       (is (= 0 (:view_count card))
           "view_count should be 0 before the event is published")
       (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
-      (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card)))
-          "view_count should be incremented")
+      (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
       (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
-      (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))
-          "view_count should be incremented"))))
+      (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
 
 (deftest dashboard-read-view-count-test
   (mt/with-temp [:model/User user {}
@@ -126,11 +124,9 @@
       (is (= 0 (:view_count dashboard))
           "view_count should be 0 before the event is published")
       (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
-      (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard)))
-          "view_count should be incremented")
+      (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
       (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
-      (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard)))
-          "view_count should be incremented"))))
+      (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard)))))))
 
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
