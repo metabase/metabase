@@ -671,42 +671,86 @@
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
+(mu/defn archive-or-unarchive-collection!
+  "Archive or un-archive a collection, moving it to the trash if necessary. Note that namespaced collections are never
+  moved to the trash."
+  [collection :- CollectionWithLocationAndIDOrRoot
+   ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
+   ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
+   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
+                     :archived :boolean]]]
+  (let [namespaced?   (some? (:namespace collection))
+        archived? (:archived updates)
+        new-parent-id (cond
+                        ;; don't move namespaced collections.
+                        namespaced? (location-path->parent-id
+                                     (:location collection))
+
+                        ;; move archived things to the trash, no matter what.
+                        archived? trash-collection-id
+
+                        (contains? updates :parent_id)
+                        (:parent_id updates)
+
+                        (and (= (:location collection) trash-path)
+                             (:trashed_from_location collection))
+                        (location-path->parent-id
+                         (:trashed_from_location collection))
+
+                        :else (throw (ex-info (tru "You must specify a new `parent_id` to un-trash to.")
+                                              {:status-code 400})))
+        new-parent              (if new-parent-id
+                                  (t2/select-one :model/Collection :id new-parent-id)
+                                  root-collection)
+        new-location            (children-location new-parent)
+        orig-children-location  (children-location collection)
+        new-children-location   (children-location (assoc collection :location new-location))
+        affected-collection-ids (cons (u/the-id collection)
+                                      (collection->descendant-ids collection))]
+    (api/check-403
+     (perms/set-has-full-permissions-for-set?
+      @api/*current-user-permissions-set*
+      (perms-for-moving collection new-parent)))
+
+    (t2/with-transaction [_conn]
+      (t2/update! :model/Collection (u/the-id collection)
+                  {:location              new-location
+                   :trashed_from_location (when archived? (:location collection))
+                   :archived              archived?})
+      (t2/query-one
+       {:update :collection
+        :set    {:location              [:replace :location orig-children-location new-children-location]
+                 :trashed_from_location (when archived? (:location collection))
+                 :archived              archived?}
+        :where  [:like :location (str orig-children-location "%")]})
+      (doseq [model [:model/Card
+                     :model/Dashboard
+                     :model/NativeQuerySnippet
+                     :model/Pulse
+                     :model/Timeline]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]}
+                    {:archived archived?})))))
+
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
   [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
-        will-be-trashed? (str/starts-with? new-location trash-path)
-        was-trashed? (str/starts-with? (:location collection) trash-path)]
-    (when (and was-trashed? will-be-trashed?)
-      (throw (ex-info (tru "Collection is already trashed."){})))
+        will-be-trashed? (str/starts-with? new-location trash-path)]
+    (when will-be-trashed?
+      (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
+                      {})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
-    (let [affected-collection-ids (cons (u/the-id collection)
-                                        (collection->descendant-ids collection))]
-      (t2/with-transaction [_conn]
-        (t2/update! Collection (u/the-id collection)
-                    {:location new-location
-                     :trashed_from_location (when will-be-trashed? (:location collection))
-                     :archived will-be-trashed?})
-        ;; we need to update all the descendant collections as well...
-        (t2/query-one
-         {:update :collection
-          :set    {:location [:replace :location orig-children-location new-children-location]
-                   ;; set the `trashed_from_location` to its current location if we're trashing, otherwise `NULL`
-                   :trashed_from_location (when will-be-trashed?
-                                            :location)
-                   :archived will-be-trashed?}
-          :where  [:like :location (str orig-children-location "%")]})
-        (doseq [model [:model/Card
-                       :model/Dashboard
-                       :model/NativeQuerySnippet
-                       :model/Pulse
-                       :model/Timeline]]
-          (t2/update! model
-                      {:collection_id [:in affected-collection-ids]}
-                      {:archived will-be-trashed?}))))))
+    (t2/with-transaction [_conn]
+      (t2/update! Collection (u/the-id collection)
+                  {:location new-location})
+      ;; we need to update all the descendant collections as well...
+      (t2/query-one
+       {:update :collection
+        :set    {:location [:replace :location orig-children-location new-children-location]}
+        :where  [:like :location (str orig-children-location "%")]}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |

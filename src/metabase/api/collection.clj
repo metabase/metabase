@@ -1031,23 +1031,13 @@
   [collection-before-update collection-updates]
   ;; sanity check
   (when (contains? collection-updates :archived)
-    (let [new-parent-id (cond
-                          (:archived collection-updates) collection/trash-collection-id
-                          (contains? collection-updates :parent_id) (:parent_id collection-updates)
-                          (and (= (:location collection-before-update)
-                                  collection/trash-path)
-                               (:trashed_from_location collection-before-update))
-                          (collection/location-path->parent-id
-                           (:trashed_from_location collection-before-update))
-                          :else (throw
-                                 (ex-info (tru "You must specify a new `parent_id` to un-trash to.")
-                                          {:status-code 400})))]
-      (move-collection!
-       collection-before-update
-       (assoc collection-updates :parent_id new-parent-id))
-      (maybe-send-archived-notifications! {:collection-before-update collection-before-update
-                                           :collection-updates       collection-updates
-                                           :actor                    @api/*current-user*}))))
+    (collection/archive-or-unarchive-collection!
+     collection-before-update
+     (select-keys collection-updates [:parent_id :archived]))
+
+    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
+                                         :collection-updates       collection-updates
+                                         :actor                    @api/*current-user*})))
 
 (defn- move-or-archive-collection-if-needed!
   "If input to the `PUT /api/collection/:id` endpoint (`collection-updates`) specifies that we should either move or
