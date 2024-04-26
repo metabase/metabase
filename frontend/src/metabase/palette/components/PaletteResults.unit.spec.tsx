@@ -13,6 +13,7 @@ import {
   mockGetBoundingClientRect,
   within,
   waitFor,
+  mockOffsetHeightAndWidth,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
@@ -93,6 +94,7 @@ const recents_2 = createMockRecentItem({
 });
 
 mockGetBoundingClientRect();
+mockOffsetHeightAndWidth(10); // This is absurdley small, but it allows all the items to render in the "virtual list"
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
@@ -116,6 +118,10 @@ const setup = ({ query }: { query?: string } = {}) => {
 };
 
 describe("PaletteResults", () => {
+  afterAll(() => {
+    jest.resetAllMocks();
+  });
+
   it("should show default actions", async () => {
     setup();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();

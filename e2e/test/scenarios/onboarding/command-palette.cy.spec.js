@@ -70,6 +70,11 @@ describe("command palette", () => {
 
       commandPaletteSearch().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
+
+      //Check that we are not filtering search results by action name
+      commandPaletteSearch().clear().type("Company");
+      cy.findByRole("option", { name: "REVIEWS" }).should("exist");
+      cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
       commandPaletteSearch().clear();
     });
 
@@ -85,33 +90,33 @@ describe("command palette", () => {
 
     pressPageDown();
     commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
     commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
-      .should("have.attr", "aria-selected", "true");
-
-    pressPageUp();
-    commandPalette()
-      .findByRole("option", { name: "New dashboard" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageUp();
     commandPalette()
       .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageUp();
+    commandPalette()
+      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressEnd();
 
     commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     pressHome();
     commandPalette()
-      .findByRole("option", { name: "New question" })
+      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
   });
 

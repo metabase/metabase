@@ -118,6 +118,7 @@ export const useCommandPalette = ({
             name: result.name,
             icon: wrappedResult.getIcon().name,
             section: "search",
+            keywords: debouncedSearchText,
             perform: () => {
               dispatch(closeModal());
               dispatch(push(wrappedResult.getUrl()));
