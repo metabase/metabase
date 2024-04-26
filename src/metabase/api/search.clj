@@ -444,9 +444,9 @@
           results)))
 
 (defn add-dataset-collection-hierarchy
-  "Adds collection names to datasets."
+  "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
-  (let [;; this function takes a search result (with `collection_id` and `collection_location`) and returns the
+  (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
         ;; effective location of the result.
         result->loc (fn [{:keys [collection_id collection_location]}]
                       (:effective_location
