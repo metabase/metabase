@@ -182,39 +182,9 @@
 ;; ----------------- Modules -----------------
 
 ;; TODO -- this hard coding is not ideal, it would be better to support metadata on the namespaces themselves.
-(def ^:private global-modules
-  "Global module namespaces can be imported anywhere, but their (non-module) internal namespaces are private.
-  We can nest global modules, in which case each module hides its internal even from its parent module, but is itself
-  importable even outside its parent module(s)."
-  ;; We keep this map sorted so parents precede their children. For legibility please keep them listed that way too.
-  (sorted-set
-   'metabase.db
-   ;; We may aspire to encapsulating more of these - either through refactoring or ^:clj-kondo/ignore.
-   'metabase.db.connection
-   'metabase.db.data-source
-   ;; This case may justify a "friends" style relationship with the metabase.driver module.
-   'metabase.db.jdbc-protocols
-   'metabase.db.metadata-queries
-   'metabase.db.query
-   'metabase.db.setup
-   ;; The namespaces only have their modularity broken within our tests, perhaps we should special case them.
-   'metabase.db.liquibase
-   'metabase.db.schema-migrations-test.impl
-   'metabase.db.test-util
-
-   'metabase.upload
-   ;; We anticipate using this CLJC ns for type inference on the frontend, so it's exposed outside the CLJ module.
-   'metabase.upload.types))
-
-;; TODO -- this hard coding is not ideal, it would be better to support metadata on the namespaces themselves.
-(def ^:private internal-modules
-  "Internal modules are similar to nested modules, except their top-level namespace is not globally exposed."
-  (sorted-set
-   'metabase.db.liquibase))
-
 (def ^:private modules
-  "A sorted list, from outside in, of all modules and submodules, both global and internal."
-  (into global-modules internal-modules))
+  "Modules are namespaces whose child namespaces can import each other, but which cannot be accessed outside the module."
+  '#{metabase.upload})
 
 (defn- module->child-detector
   "Construct a function that return the given namespace when called with a namespace which is nested inside it."
@@ -225,26 +195,13 @@
         module-ns-sym))))
 
 (def ^:private module-detectors
-  "A pre-built list of detectors corresponding to our modules, going from most to least specific."
-  (->> (reverse modules)
-       (mapv module->child-detector)))
+  "A pre-built list of detectors corresponding to our modules."
+  (mapv module->child-detector modules))
 
 (defn- parent-module
   "Find the most tightly enclosing module for the given namespace, returning nil if it is not within any."
   [ns-sym]
   (some #(% ns-sym) module-detectors))
-
-(defn- base-module
-  "Traverse up through the module hierarchy to find the top-level module for the given namespace, if it is within one."
-  [ns-sym]
-  (when-let [parent (parent-module ns-sym)]
-    (loop [module parent]
-      (if-let [parent (parent-module module)]
-        (recur parent)
-        module))))
-
-(when-not (every? (comp global-modules base-module) internal-modules)
-  (throw (Exception. "Sanity check: every internal module is inside a global module")))
 
 (defn- dependency-info
   "Return the metadata corresponding to each namespace / class within a given section of an ns form."
@@ -295,8 +252,6 @@
   "Test whether a namespace violates the encapsulation of any modules. Does not lint dynamic references, yet."
   [{{[_ ns-token & dependencies] :children} :node :as input}]
   (let [illegal-dependencies (->> (mapcat dependencies->ns-symbols dependencies)
-                                  ;; modules can be referenced from anywhere (even if they are inside another module)
-                                  (remove (comp global-modules :ns-sym))
                                   (map #(assoc % :parent-module (parent-module (:ns-sym %))))
                                   ;; we don't care about namespaces which aren't in a module
                                   (remove (comp nil? :parent-module))
