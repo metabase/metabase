@@ -5,7 +5,7 @@
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
-Features currently supported: 
+Features currently supported:
 * embedding questions - static
 * embedding questions - w/drill-down
 * plugins for custom actions
@@ -18,7 +18,7 @@ Features planned:
 
 # Prerequisites
 
-* Your application is using React
+* Your application is using React V17+
 * You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase.
 
 # Getting started
@@ -150,6 +150,18 @@ return (
   </MetabaseProvider>
 );
 ```
+
+### Configuring Metabase
+
+1. Go to Admin settings > Authentication > JWT
+    1. Set JWT Identity Provider URI to your JWT endpoint
+    1. Generate JWT signing key and take note of this value. You will need it later.
+1. Go to Admin settings > Embedding
+    1. Enable embedding if not already enabled
+    1. Configure interactive embedding
+    1. Set Authorized Origins to your application URL
+
+Read Metabase's [JWT-based authentication documentation](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt) for more details.
 
 ### Implementing JWT endpoint
 
