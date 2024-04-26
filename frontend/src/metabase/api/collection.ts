@@ -21,10 +21,10 @@ import {
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
     listCollections: builder.query<Collection[], ListCollectionsRequest>({
-      query: ({ ...body }) => ({
+      query: params => ({
         method: "GET",
         url: `/api/collection`,
-        body,
+        params,
       }),
       providesTags: (collections = []) =>
         provideCollectionListTags(collections),
@@ -33,9 +33,10 @@ export const collectionApi = Api.injectEndpoints({
       Collection[],
       ListCollectionsTreeRequest
     >({
-      query: () => ({
+      query: params => ({
         method: "GET",
         url: "/api/collection/tree",
+        params,
       }),
       providesTags: (collections = []) =>
         provideCollectionListTags(collections),
@@ -44,11 +45,10 @@ export const collectionApi = Api.injectEndpoints({
       ListCollectionItemsResponse,
       ListCollectionItemsRequest
     >({
-      query: ({ id, limit, offset, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/collection/${id}/items`,
-        params: { limit, offset },
-        body,
+        params,
       }),
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
