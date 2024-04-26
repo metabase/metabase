@@ -19,6 +19,8 @@ interface EntityCopyModalProps {
   title?: string;
   onClose: () => void;
   onSaved: (newEntityObject: any) => void;
+  overwriteOnInitialValuesChange?: boolean;
+  onValuesChange?: (values: Record<string, unknown>) => void;
   form?: any;
 }
 
