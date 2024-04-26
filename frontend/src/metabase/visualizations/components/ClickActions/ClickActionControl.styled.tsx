@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
@@ -11,7 +11,7 @@ export const ClickActionButtonIcon = styled(Icon)`
 `;
 
 export const ClickActionButtonTextIcon = styled.span`
-  margin-right: 0.25rem;
+  margin-right: ${rem(4)};
   width: 0.875rem;
   text-align: center;
   font-weight: 700;
