@@ -16,7 +16,15 @@ export const ArchivedEntityBanner = ({
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
   return (
-    <Paper px="1.5rem" py=".75rem" bg="error" shadow="0" radius="0" w="100%">
+    <Paper
+      px="1.5rem"
+      py=".75rem"
+      bg="error"
+      shadow="0"
+      radius="0"
+      w="100%"
+      data-testid="archive-banner"
+    >
       <Flex justify="space-between">
         <Flex align="center">
           <Icon

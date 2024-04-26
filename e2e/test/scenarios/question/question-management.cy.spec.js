@@ -184,11 +184,12 @@ describe(
                 cy.findByText(
                   "It will also be removed from the filter that uses it to populate values.",
                 ).should("not.exist");
-                clickButton("Archive");
+                clickButton("Move to trash");
                 assertOnRequest("updateQuestion");
+
+                cy.visit("/collection/root");
                 cy.wait("@getItems"); // pinned items
                 cy.wait("@getItems"); // unpinned items
-                cy.location("pathname").should("eq", "/collection/root");
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders").should("not.exist");
 
@@ -201,7 +202,7 @@ describe(
                 // Check page for archived questions
                 cy.visit("/question/" + ORDERS_QUESTION_ID);
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("This question has been archived");
+                cy.findByText("This question is in the trash.");
               });
 
               describe("Add to Dashboard", () => {
