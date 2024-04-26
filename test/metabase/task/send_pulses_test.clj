@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.task.send-pulses-test
   (:require
    [clojure.test :refer :all]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.email :as email]
    [metabase.email-test :as et]
    [metabase.models.card :refer [Card]]
@@ -8,8 +9,10 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.test-util :refer [checkins-query-card]]
-   [metabase.task.send-pulses :as send-pulses]
+   [metabase.task :as task]
+   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -86,7 +89,7 @@
   (testing "Removes empty PulseChannel"
     (mt/with-temp [Pulse        {pulse-id :id} {}
                    PulseChannel _ {:pulse_id pulse-id}]
-      (#'send-pulses/clear-pulse-channels!)
+      (#'task.send-pulses/clear-pulse-channels!)
       (is (= 0
              (t2/count PulseChannel)))
       (is (:archived (t2/select-one Pulse :id pulse-id)))))
@@ -97,7 +100,7 @@
                                                       :channel_type :email}
                    PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
                                                       :pulse_channel_id pc-id}]
-      (#'send-pulses/clear-pulse-channels!)
+      (#'task.send-pulses/clear-pulse-channels!)
       (is (= 1
              (t2/count PulseChannel)))))
 
@@ -106,7 +109,7 @@
                    PulseChannel _ {:pulse_id     pulse-id
                                    :channel_type :email
                                    :details      {:emails ["test@metabase.com"]}}]
-      (#'send-pulses/clear-pulse-channels!)
+      (#'task.send-pulses/clear-pulse-channels!)
       (is (= 1
              (t2/count PulseChannel)))))
 
@@ -115,9 +118,46 @@
                    PulseChannel _ {:pulse_id     pulse-id
                                    :channel_type :slack
                                    :details      {:channel ["#test"]}}]
-      (#'send-pulses/clear-pulse-channels!)
+      (#'task.send-pulses/clear-pulse-channels!)
       (is (= 1
              (t2/count PulseChannel))))))
 
+(deftest reprioritize-send-pulses-test)
 
-;; TODO add a test to check that task-init for SendPulses will register the job and triggers
+
+
+(def ^:private daily-at-6pm
+  {:schedule_type  "daily"
+   :schedule_hour  18
+   :schedule_day   nil
+   :schedule_frame nil})
+
+(deftest init-will-schedule-triggers-test
+  ;; Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
+  ;; hour sequentially
+  ;; Since that's inefficient and we want to be able to send Pulses in parallel, we changed it so that each PulseChannel
+  ;; of the same schedule and Pulse will be have its own trigger.
+  ;; During this transition we need to delete the old SendPulses job and trigger and recreate a new SendPulse job for
+  ;; each PulseChannel.
+  ;; So we called `reprioritize-send-pulses` init task/init! to do this.
+  ;; Since function is idempotence it's ok to call it multiple times. After this we'll also want to make this function
+  ;; prioritize pulses based on its send times so that fast pulses are sent first.
+  (mt/with-temp-scheduler
+    ;; init so that adding PulseChannel doesn't throw error because the job does not exist
+    (task/init! ::task.send-pulses/SendPulses)
+    (mt/with-temp [:model/Pulse        pulse   {}
+                   :model/PulseChannel channel (merge {:pulse_id       (:id pulse)
+                                                       :channel_type   :slack
+                                                       :details        {:channel "#random"}}
+                                                      daily-at-6pm)]
+      (testing "sanity check that we don't have any send pulse job to start with"
+        ;; the triggers were created in after-insert hook of PulseChannel, so we need to manually delete them
+        (doseq [trigger (:triggers (task/job-info @#'task.send-pulses/send-pulse-job-key))]
+          (task/delete-trigger! (triggers/key (:key trigger))))
+        (is (empty? (:triggers (task/job-info @#'task.send-pulses/send-pulse-job-key)))))
+
+      ;; init again
+      (task/init! ::task.send-pulses/SendPulses)
+      (testing "we have a send pulse job for each PulseChannel"
+        (is (=? [(pulse-channel-test/pulse->trigger-info (:id pulse) daily-at-6pm [(:id channel)])]
+                (:triggers (task/job-info @#'task.send-pulses/send-pulse-job-key))))))))

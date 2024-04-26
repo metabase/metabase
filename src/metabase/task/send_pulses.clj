@@ -155,8 +155,3 @@
     (task/schedule-task! re-proritize-job re-proritize-trigger)
     ;; this function is idempotence, so we can call it multiple times
     (reprioritize-send-pulses)))
-
-#_(doseq [trigger (:triggers (task/job-info "metabase.task.send-pulses.send-pulse.job"))]
-    (task/delete-trigger! (triggers/key (:key trigger))))
-#_(task/job-info reprioritize-send-pulse-job-key)
-#_(task/job-info send-pulse-job-key)

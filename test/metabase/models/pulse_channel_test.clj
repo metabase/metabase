@@ -7,7 +7,6 @@
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :refer [User]]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -425,13 +424,13 @@
 (deftest inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
     (mt/with-premium-features #{}
-      (mt/with-temp [Pulse                 {pulse-id :id} {}
-                     PulseChannel          {channel-id :id :as channel} {:pulse_id pulse-id
-                                                                         :details  {:emails ["cam@test.com"]}}
-                     User                  {inactive-user-id :id} {:is_active false}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id inactive-user-id}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}
-                     PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :lucky)}]
+      (mt/with-temp [:mode/Pulse                  {pulse-id :id} {}
+                     :mode/PulseChannel           {channel-id :id :as channel} {:pulse_id pulse-id
+                                                                                :details  {:emails ["cam@test.com"]}}
+                     :model/User                  {inactive-user-id :id} {:is_active false}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id inactive-user-id}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :lucky)}]
         (is (= (cons
                 {:email "cam@test.com"}
                 (sort-by
@@ -485,16 +484,12 @@
                  (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
                  (serdes/identity-hash chan))))))))
 
-(deftest create-pulse-create-trigger-test
-  (mt/with-temp [:model/Pulse pulse {}]))
-
-(defn- pulse->trigger-info
+(defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
   {:key      (.getName (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
    :schedule (u.cron/schedule-map->cron-string schedule-map)
    :data     {"pulse-id"    pulse-id
               "channel-ids" (set pc-ids)}})
-
 
 (def ^:private daily-at-6pm
   {:schedule_type  "daily"
