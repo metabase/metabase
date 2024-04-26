@@ -115,7 +115,7 @@
                               :context    "dashboard"})
                            dashcards)
             dash-view (generate-view event)]
-        #_(apply increment-view-counts! :model/Card (map :card_id dashcards))
+        (apply increment-view-counts! :model/Card (map :card_id dashcards))
         (increment-view-counts! :model/Dashboard (:id object))
         (record-views! (cons dash-view views)))
       (catch Throwable e
