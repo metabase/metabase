@@ -162,9 +162,9 @@ export type VisualizationSettings = {
 };
 
 export interface ModerationReview {
-  moderator_id: number;
   status: ModerationReviewStatus;
-  created_at: string;
+  moderator_id?: number;
+  created_at?: string;
   most_recent?: boolean;
 }
 

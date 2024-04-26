@@ -85,13 +85,13 @@ export function getLatestModerationReview(reviews: ModerationReview[]) {
 export const getStatusIconForQuestion = (question: Question) => {
   const reviews = question.getModerationReviews();
   const review = getLatestModerationReview(reviews);
-  return review ? getIconForReview(review) : undefined;
+  return review ? getIconForReview(review) : noIcon;
 };
 
 export const getTextForReviewBanner = (
   moderationReview: ModerationReview,
   moderator: User | null,
-  currentUser: User,
+  currentUser: User | null,
 ) => {
   const { status } = moderationReview;
 
@@ -106,10 +106,10 @@ export const getTextForReviewBanner = (
 
 export const getModeratorDisplayName = (
   moderator: User | null,
-  currentUser: User,
+  currentUser?: User | null,
 ) => {
   const { id: moderatorId, common_name } = moderator || {};
-  const { id: currentUserId } = currentUser;
+  const { id: currentUserId } = currentUser || {};
 
   if (currentUserId != null && moderatorId === currentUserId) {
     return t`You`;
@@ -122,7 +122,7 @@ export const getModeratorDisplayName = (
 
 export const getModeratorDisplayText = (
   moderator: User | null,
-  currentUser: User,
+  currentUser: User | null,
 ) => {
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
   return c("{0} is the name of a user").t`${moderatorName} verified this`;
@@ -133,7 +133,9 @@ export const isRemovedReviewStatus = (status: string | null) => {
   return status === null;
 };
 
-export const isItemVerified = (review: ModerationReview | undefined | null) => {
+export const isItemVerified = (
+  review?: ModerationReview | undefined | null,
+) => {
   return review != null && review.status === "verified";
 };
 
@@ -157,10 +159,12 @@ const getModerationReviewEventText = (
 export function getModerationTimelineEvents(
   reviews: ModerationReview[],
   usersById: Record<number, User>,
-  currentUser: User,
+  currentUser?: User,
 ) {
   return reviews.map(review => {
-    const moderator = usersById[review.moderator_id];
+    const moderator = review.moderator_id
+      ? usersById[review.moderator_id]
+      : null;
     const moderatorDisplayName = getModeratorDisplayName(
       moderator,
       currentUser,
@@ -171,7 +175,9 @@ export function getModerationTimelineEvents(
       : getIconForReview(review);
 
     return {
-      timestamp: new Date(review.created_at).toISOString(),
+      timestamp: review.created_at
+        ? new Date(review.created_at).toISOString()
+        : null,
       icon,
       title: text,
     };
