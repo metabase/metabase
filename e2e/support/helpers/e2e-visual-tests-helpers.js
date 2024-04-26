@@ -8,7 +8,11 @@ import {
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
 export function echartsContainer() {
-  return cy.findByTestId("chart-container").should(root => {
+  return cy.findByTestId("chart-container");
+}
+
+export function ensureEchartsContainerHasSvg() {
+  return echartsContainer().should(root => {
     // Check if there's an SVG child within the element
     expect(root.find("svg").length, "SVG exists").to.be.equal(1);
   });
