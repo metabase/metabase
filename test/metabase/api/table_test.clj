@@ -56,6 +56,7 @@
    {:db          (db-details)
     :entity_type "entity/GenericTable"
     :field_order "database"
+    :view_count  0
     :metrics     []
     :segments    []}))
 

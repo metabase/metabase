@@ -1918,13 +1918,18 @@
 
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"
-    (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:34"] [migrate!]
+    (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:36"] [migrate!]
       (let [user-id 13371338 ; use internal user to avoid creating a real user
             db-id   (t2/insert-returning-pk! :metabase_database {:name       "db"
                                                                  :engine     "postgres"
                                                                  :created_at :%now
                                                                  :updated_at :%now
                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active     true
+                                                               :db_id      db-id
+                                                               :name       "a table"
+                                                               :created_at :%now
+                                                               :updated_at :%now})
             dash-id (t2/insert-returning-pk! :report_dashboard {:name       "A dashboard"
                                                                 :creator_id user-id
                                                                 :parameters "[]"
@@ -1939,6 +1944,10 @@
                                                            :created_at             :%now
                                                            :updated_at             :%now})
             _ (t2/insert-returning-pk! :view_log {:user_id   user-id
+                                                  :model     "table"
+                                                  :model_id  table-id
+                                                  :timestamp :%now})
+            _ (t2/insert-returning-pk! :view_log {:user_id   user-id
                                                   :model     "card"
                                                   :model_id  card-id
                                                   :timestamp :%now})
@@ -1948,5 +1957,6 @@
                                                     :model_id  dash-id
                                                     :timestamp :%now}))]
         (migrate!)
+        (is (= 1 (t2/select-one-fn :view_count :metabase_table table-id)))
         (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))

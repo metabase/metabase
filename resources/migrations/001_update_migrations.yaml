@@ -6665,6 +6665,49 @@ databaseChangeLog:
               );
       rollback: # nothing to do, since view_count didn't exist in v49
 
+  - changeSet:
+      id: v50.2024-04-25T16:29:35
+      author: calherries
+      comment: Add metabase_table.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: metabase_table
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:36
+      author: calherries
+      comment: Populate metabase_table.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              SET t.view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE t.model = 'table'
+                  AND v.model_id = t.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_table t
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
