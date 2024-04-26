@@ -175,11 +175,11 @@
                                                            [:pivot-rows {:optional true} [:maybe ::pivot-rows]]
                                                            [:pivot-cols {:optional true} [:maybe ::pivot-cols]]]]
   (try
-    (let [all-breakouts (lib/breakouts query)]
+    (let [all-breakouts  (lib/breakouts query)]
       (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
-                                (log/tracef "Using breakout combinations: %s" (pr-str <>)))
-            :let              [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
-        (-> query
+                               (log/tracef "Using breakout combinations: %s" (pr-str <>)))
+            :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
+        (-> (assoc-in query [:info :original-query] (str query))
             remove-non-aggregation-order-bys
             (keep-breakouts-at-indexes breakout-indexes)
             (add-pivot-group-breakout group-bitmask))))
@@ -463,6 +463,7 @@
              pivot-options     (or
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols]))
                                 (pivot-options query (get-in query [:info :visualization-settings])))
+             query             (assoc-in query [:middleware :pivot-options] pivot-options)
              all-queries       (generate-queries query pivot-options)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))
