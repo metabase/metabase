@@ -86,16 +86,17 @@
 (def ^:private reprioritize-send-pulse-trigger-key (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
 
 (defn update-send-pulse-trigger-if-needed!
-  "Send Pulse triggers are grouped by pulse id and schedule time.
+  "Update send pulse trigger of a pulse for a specific schedule map with new pulse channel ids.
 
-  Meaning PulseChannels that scheduled to run at the same time of a Pulse will be send together.
+  Send Pulse triggers are grouped by pulse id and schedule time, meaning PulseChannels of a Pulse that scheduled
+  to run at the same time of will be send together.
   This function will updates the corresponding trigger if PulseChannels changes.
 
   * To add 2 pulse channels to a trigger
-    (update-send-pulse-trigger-if-needed! pulse-id schedule-map :add-pc-ids #{1 2 3}))
+    (update-send-pulse-trigger-if-needed! pulse-id schedule-map :add-pc-ids #{1 2}))
 
   * To remove 2 pulse channels from a trigger
-    (update-send-pulse-trigger-if-needed! pulse-id schedule-map :remove-pc-ids #{1 2 3}))"
+    (update-send-pulse-trigger-if-needed! pulse-id schedule-map :remove-pc-ids #{1 2}))"
   [pulse-id schedule-map & {:keys [add-pc-ids remove-pc-ids]}]
   (let [schedule-map     (update-vals schedule-map
                                       #(if (keyword? %)
@@ -111,9 +112,9 @@
         existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
         new-pc-ids      (if (some? existing-pc-ids)
                           (cond
-                           (some? add-pc-ids)    (set/union existing-pc-ids add-pc-ids)
-                           (some? remove-pc-ids) (apply disj existing-pc-ids remove-pc-ids))
-                          add-pc-ids)]
+                           (some? add-pc-ids)    (set/union existing-pc-ids (set add-pc-ids))
+                           (some? remove-pc-ids) (apply disj existing-pc-ids (set remove-pc-ids)))
+                          (set add-pc-ids))]
     (cond
      ;; no op when new-pc-ids doesnt't change
      (= new-pc-ids existing-pc-ids) nil
@@ -128,7 +129,7 @@
      ;; delete then create if pc ids changes
      (not= new-pc-ids existing-pc-ids)
      (do
-      (log/infof "Send Pulse trigger %s for pulse %d was replaced with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
+      (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
       (task/delete-trigger! trigger-key)
       (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids))))))
 
@@ -146,21 +147,24 @@
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
 
-(defn- reprioritize-send-pulses
+(defn- reprioritize-send-pulses!
+  "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
+
+  Also remove PulseChannels that don't have any recipients."
   []
   (log/info "Reprioritizing send pulses")
   (clear-pulse-channels!)
-  (let [pulse-channel-slots (as-> (t2/select :model/PulseChannel :enabled true) results
-                              (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
-                              (update-vals results #(map :id %)))]
+  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
+                               (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
+                               (update-vals results #(map :id %)))]
     ;; TODO: use info from task-history to set priority of each pulses of the same time slot
-    (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] pulse-channel-slots]
+    (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
       (update-send-pulse-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))))
 
 (jobs/defjob ^{:doc "Reprioritizes SendPulse jobs based on the PulseChannels that are scheduled to run at the same time."}
   RePrioritizeSendPulses
   [_job-context]
-  (reprioritize-send-pulses))
+  (reprioritize-send-pulses!))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 
@@ -187,4 +191,4 @@
     (task/add-job! re-proritize-job)
     (task/schedule-task! re-proritize-job re-proritize-trigger)
     ;; this function is idempotence, so we can call it multiple times
-    (reprioritize-send-pulses)))
+    (reprioritize-send-pulses!)))

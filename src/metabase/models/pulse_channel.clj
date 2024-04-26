@@ -12,8 +12,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 ;; ## Static Definitions
 
@@ -151,10 +150,10 @@
                                  {:email email})
                                (get pcid->recipients (:id pc))))))))
 
-(defn- update-trigger-if-needed!
+(defn- update-send-pulse-trigger-if-needed!
   [& args]
   (classloader/require 'metabase.task.send-pulses)
-  (apply (resolve 'metabase.task.send-pulses/update-trigger-if-needed!) args))
+  (apply (resolve 'metabase.task.send-pulses/update-send-pulse-trigger-if-needed!) args))
 
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -169,9 +168,9 @@
     (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! :model/Pulse pulse-id {:archived true}))))
-  ;; better be done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
-  ;; this should delete this PC's trigger
-  (update-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
+  ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
+  ;; remove this pulse from its existing trigger
+  (update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -223,7 +222,8 @@
 (t2/define-after-insert :model/PulseChannel
   [{:keys [pulse_id id] :as pulse-channel}]
   (u/prog1 pulse-channel
-    (update-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id})))
+    (when (:enabled pulse-channel)
+      (update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))))
 
 (t2/define-before-update :model/PulseChannel
   [{:keys [pulse_id id] :as pulse-channel}]
@@ -233,15 +233,15 @@
     ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
     (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame} %) (keys changes))
       ;; delete this PC from its existing trigger, a new trigger will be created in an after update
-      (update-trigger-if-needed! pulse_id (t2/original pulse-channel)
+      (update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
                                  :remove-pc-ids #{(:id pulse-channel)})
-      (update-trigger-if-needed! pulse_id pulse-channel
+      (update-send-pulse-trigger-if-needed! pulse_id pulse-channel
                                  :add-pc-ids #{id}))
     (when (contains? changes :enabled)
       (if (:enabled changes)
-        (update-trigger-if-needed! pulse_id pulse-channel
+        (update-send-pulse-trigger-if-needed! pulse_id pulse-channel
                                    :add-pc-ids #{(:id pulse-channel)})
-        (update-trigger-if-needed! pulse_id (t2/original pulse-channel)
+        (update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
                                    :remove-pc-ids #{(:id pulse-channel)}))))
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
 
