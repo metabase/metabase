@@ -81,6 +81,10 @@ const getColumnExample = (column: Lib.ColumnMetadata): string => {
     return "12345";
   }
 
+  if (Lib.isBoolean(column)) {
+    return "true";
+  }
+
   if (Lib.isNumeric(column)) {
     return "123.45678901234567";
   }
