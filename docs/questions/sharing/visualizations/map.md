@@ -14,9 +14,11 @@ There are two region maps included with Metabase:
 
 To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter [country codes](https://www.metabase.com/glossary/country_code).
 
+![World region map](../../images/world-region-map.png)
+
 ### United States Map
 
-![Region map](../../images/map.png)
+![United states region map](../../images/map.png)
 
 Creating a map of the United States from your data requires your results to contain a column that contains names of states or two-letter state codes. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
 
