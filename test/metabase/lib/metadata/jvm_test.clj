@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]
@@ -202,14 +203,14 @@
   (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
 
-(deftest ^:parallel all-methods-call-go-through-invocation-tracker-first-test
-  (mt/with-temp [:model/Card {card-id :id} {}]
+(deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
+  (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
       (testing "sanity check"
-        (is (empty? (lib.metadata/invoked-ids mp :metadata/card))))
+        (is (empty? (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "getting card should invoke the tracker"
-        (lib.metadata/card mp card-id)
-        (is (= [card-id] (lib.metadata/invoked-ids mp :metadata/card))))
+        (is (some? (lib.metadata/field mp (mt/id :orders :id))))
+        (is (= [(mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
-        (lib.metadata/card mp card-id)
-        (is (= [card-id card-id] (lib.metadata/invoked-ids mp :metadata/card)))))))
+        (is (some? (lib.metadata/field mp (mt/id :orders :id))))
+        (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))
