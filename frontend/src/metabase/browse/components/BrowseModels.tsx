@@ -29,7 +29,7 @@ export const BrowseModels = ({
     getCollectionViewPreferences,
   );
 
-  if (isLoading || error) {
+  if (error || isLoading) {
     return (
       <LoadingAndErrorWrapper
         error={error}
