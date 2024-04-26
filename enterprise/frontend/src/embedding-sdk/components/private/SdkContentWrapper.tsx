@@ -16,11 +16,10 @@ export const SdkContentWrapper = styled.div<{ font: string; baseUrl?: string }>`
   ${aceEditorStyles}
   ${saveDomImageStyles}
   ${({ theme }) => getRootStyle(theme)}
-  ${baseStyle}
-
+  :where(${baseStyle})
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
-  
+
   svg {
     display: inline;
   }

@@ -20,7 +20,6 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
-  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
@@ -54,7 +53,6 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
-  const queryResults = useSelector(getQueryResults);
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
@@ -75,10 +73,9 @@ export const _InteractiveQuestion = ({
     setLoading(true);
 
     const { location, params } = getQuestionParameters(questionId);
-
     try {
       await dispatch(initializeQBRaw(location, params));
-    } catch (error) {
+    } finally {
       setLoading(false);
     }
   };
@@ -86,12 +83,6 @@ export const _InteractiveQuestion = ({
   useEffect(() => {
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setLoading(false);
-    }
-  }, [queryResults]);
 
   const handleQuestionReset = useCallback(() => {
     loadQuestion(dispatch, questionId);
@@ -101,7 +92,7 @@ export const _InteractiveQuestion = ({
     return <Loader data-testid="loading-spinner" />;
   }
 
-  if (!queryResults || !question) {
+  if (!question) {
     return <SdkError message={t`Question not found`} />;
   }
 
@@ -147,6 +138,7 @@ export const _InteractiveQuestion = ({
             navigateToNewCardInsideQB={(props: any) => {
               dispatch(navigateToNewCardInsideQB(props));
             }}
+            onNavigateBack={handleQuestionReset}
           />
         </Group>
       </Stack>
