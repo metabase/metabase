@@ -411,9 +411,9 @@ export const initializeQBRaw =
 
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>
-  async (dispatch: Dispatch) => {
+  async (dispatch: Dispatch, getState: GetState) => {
     try {
-      await dispatch(initializeQBRaw(location, params));
+      await handleQBInit(dispatch, getState, { location, params });
     } catch (error) {
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));
