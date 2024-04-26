@@ -495,3 +495,18 @@
        (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
              sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
          (= expected sum)))))
+
+(deftest ^:parallel row-test
+  (testing "Rows are compared correctly"
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-insert [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       :god_id
+                       [:id :god_id])))))

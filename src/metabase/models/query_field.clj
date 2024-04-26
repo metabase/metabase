@@ -2,6 +2,7 @@
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.native-query-analyzer :as query-analyzer]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -39,32 +40,25 @@
                                                             (log/error e "Error parsing SQL" query)))
                                                 :query  (field-ids-for-mbql query)
                                                 nil     nil)
-            id->record                        (fn [direct? field-id]
+            id->row                           (fn [direct? field-id]
                                                 {:card_id          card-id
                                                  :field_id         field-id
                                                  :direct_reference direct?})
-            query-field-records               (concat
-                                               (map (partial id->record true) direct)
-                                               (map (partial id->record false) indirect))]
+            query-field-rows                  (concat
+                                               (map (partial id->row true) direct)
+                                               (map (partial id->row false) indirect))]
         ;; when response is `nil`, it's a disabled parser, not unknown columns
         (when (some? res)
           (t2/with-transaction [_conn]
-            (let [known             (t2/select-fn->fn :field_id identity :model/QueryField :card_id card-id)
-                  {to-update :update
-                   to-insert :insert
-                   _to-skip  :skip} (group-by (fn [x]
-                                                (cond
-                                                  (not (contains? known (:field_id x))) :insert
-                                                  (= (:direct_reference (known (:field_id x)))
-                                                     (:direct_reference x))             :skip
-                                                  :else                                 :update))
-                                              query-field-records)
-                  to-delete         (remove (comp (set (map :field_id query-field-records)) :field_id) (vals known))]
+            (let [existing            (t2/select :model/QueryField :card_id card-id)
+                  {:keys [to-update
+                          to-insert
+                          to-delete]} (u/row-diff existing query-field-rows :field_id [:id :card_id :field_id])]
               (when (seq to-delete)
-                ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this algo drops
-                ;; it's frequency by a lot - which should help with transactions affecting each other a lot. Parallel
-                ;; tests in `metabase.models.query.permissions-test` were breaking when delete was executed
-                ;; unconditionally on every query change.
+                ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
+                ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
+                ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
+                ;; executed unconditionally on every query change.
                 (t2/delete! :model/QueryField :card_id card-id :field_id [:in (map :field_id to-delete)]))
               (when (seq to-insert)
                 (t2/insert! :model/QueryField to-insert))

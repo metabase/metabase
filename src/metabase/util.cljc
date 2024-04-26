@@ -917,3 +917,31 @@
               (map-all f (rest s1) (rest s2)))))))
   ([f c1 c2 & colls]
    (map-all* f (list* c1 c2 colls))))
+
+(defn row-diff
+  "Given two vectors of row maps - `existing` is what is in the database, `incoming` is what you want to see there,
+  returns a map of 4 lists: `{to-skip, to-delete, to-update, to-insert}`. Executing on those lists will bring database
+  to a desired state.
+
+  Additional arguments:
+  - `get-id`: function to retrieve identifier on both lists to match one to another
+  - `non-data-keys`: vector of keys which shouldn't be considered when comparing records"
+  [existing incoming get-id non-data-keys]
+  (let [cleanup           #(apply dissoc % non-data-keys)
+        known-map         (m/index-by get-id existing)
+        {to-update :update
+         to-insert :insert
+         to-skip   :skip} (group-by (fn [x]
+                                      (let [y (get known-map (get-id x))]
+                                        (cond
+                                          (nil? y)        :insert
+                                          (= (cleanup y)
+                                             (cleanup x)) :skip
+                                          :else           :update)))
+                                    incoming)
+        new-ids           (set (map get-id incoming))
+        to-delete         (remove #(contains? new-ids (get-id %)) existing)]
+    {:to-skip   to-skip
+     :to-delete to-delete
+     :to-update to-update
+     :to-insert to-insert}))
