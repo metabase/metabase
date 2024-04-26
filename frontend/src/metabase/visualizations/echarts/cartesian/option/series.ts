@@ -347,6 +347,8 @@ const buildEChartsLineAreaSeries = (
   const stackName =
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
 
+  const showSeriesValues = seriesSettings?.["show_series_values"];
+
   const isSymbolVisible = getShowSymbol(
     seriesModel,
     seriesSettings,
@@ -396,7 +398,7 @@ const buildEChartsLineAreaSeries = (
       yAxisScaleTransforms,
       settings,
       renderingContext,
-      settings["graph.show_values"] && stackName == null,
+      (settings["graph.show_values"] || showSeriesValues) && stackName == null,
       "top",
     ),
     labelLayout: {
