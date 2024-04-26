@@ -215,6 +215,18 @@ export const waitForLoaderToBeRemoved = async () => {
 };
 
 /**
+ * jsdom doesn't have offsetHeight and offsetWidth, so we need to mock it
+ */
+export const mockOffsetHeightAndWidth = (value = 50) => {
+  jest
+    .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+    .mockReturnValue(value);
+  jest
+    .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+    .mockReturnValue(value);
+};
+
+/**
  * jsdom doesn't have getBoundingClientRect, so we need to mock it
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
