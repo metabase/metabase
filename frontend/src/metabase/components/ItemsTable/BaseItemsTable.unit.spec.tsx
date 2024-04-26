@@ -47,6 +47,7 @@ function getCollectionItem({
       name: icon,
     }),
     getUrl: () => url,
+    archived: false,
   };
 }
 

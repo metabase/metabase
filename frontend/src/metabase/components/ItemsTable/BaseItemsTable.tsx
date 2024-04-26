@@ -152,6 +152,7 @@ export const BaseItemsTable = ({
     });
 
   const canSelect = !!collection?.can_write;
+  const isTrashed = collection && isTrashedCollection(collection);
 
   return (
     <Table canSelect={canSelect} {...props}>
@@ -202,18 +203,14 @@ export const BaseItemsTable = ({
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isTrashedCollection(collection)
-                ? t`Deleted by`
-                : t`Last edited by`}
+              {isTrashed ? t`Deleted by` : t`Last edited by`}
             </SortableColumnHeader>
             <SortableColumnHeader
               name="last_edited_at"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isTrashedCollection(collection)
-                ? t`Deleted at`
-                : t`Last edited at`}
+              {isTrashed ? t`Deleted at` : t`Last edited at`}
             </SortableColumnHeader>
             <th></th>
           </tr>
