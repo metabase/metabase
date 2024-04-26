@@ -426,14 +426,27 @@
     (is (= {:m true}
            (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
-(deftest ^:parallel classify-changes-test
+(deftest ^:parallel row-diff-test
   (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+    (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (u/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
+            :to-create [{:id -1 :name "-c1"}]
+            :to-skip   [{:id 4 :name "c4"}]}
+           (u/row-diff
+            [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-create [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       {:id-fn   :god_id
+                        :cleanup #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
   (are [xs expected] (= expected

@@ -148,6 +148,21 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["string"],
     requiresFeature: "regex",
   },
+  "month-name": {
+    displayName: `monthName`,
+    type: "string",
+    args: ["number"],
+  },
+  "quarter-name": {
+    displayName: `quarterName`,
+    type: "string",
+    args: ["number"],
+  },
+  "day-name": {
+    displayName: `dayName`,
+    type: "string",
+    args: ["number"],
+  },
   // numeric functions
   abs: {
     displayName: `abs`,
@@ -481,6 +496,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "domain",
   "subdomain",
   "host",
+  "month-name",
+  "quarter-name",
+  "day-name",
   // number
   "abs",
   "floor",

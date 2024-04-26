@@ -8,11 +8,10 @@ import { SdkError } from "embedding-sdk/components/private/SdkError";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  initializeQB,
+  initializeQBRaw,
   navigateToNewCardInsideQB,
   updateQuestion,
 } from "metabase/query_builder/actions";
@@ -21,10 +20,11 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
+  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Flex, Group, Stack } from "metabase/ui";
+import { Flex, Group, Stack, Box, Loader } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
@@ -54,6 +54,8 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
+  const queryResults = useSelector(getQueryResults);
+
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
 
@@ -75,8 +77,8 @@ export const _InteractiveQuestion = ({
     const { location, params } = getQuestionParameters(questionId);
 
     try {
-      await dispatch(initializeQB(location, params));
-    } finally {
+      await dispatch(initializeQBRaw(location, params));
+    } catch (error) {
       setLoading(false);
     }
   };
@@ -85,68 +87,70 @@ export const _InteractiveQuestion = ({
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
+  useEffect(() => {
+    if (queryResults) {
+      setLoading(false);
+    }
+  }, [queryResults]);
+
   const handleQuestionReset = useCallback(() => {
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
+  if (loading) {
+    return <Loader data-testid="loading-spinner" />;
+  }
+
+  if (!queryResults || !question) {
+    return <SdkError message={t`Question not found`} />;
+  }
+
   return (
-    <LoadingAndErrorWrapper
-      className={cx(CS.flexFull, CS.fullWidth)}
-      loading={loading}
-      error={typeof result === "string" ? result : null}
-      noWrapper
-    >
-      {() =>
-        !question ? (
-          <SdkError message={t`Question not found`} />
-        ) : (
-          <Stack h="100%">
-            <Flex direction="row" gap="md" px="md" align="center">
-              {withTitle &&
-                (customTitle || (
-                  <h2 className={cx(CS.h2, CS.textWrap)}>
-                    {question.displayName()}
-                  </h2>
-                ))}
+    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}>
+      <Stack h="100%">
+        <Flex direction="row" gap="md" px="md" align="center">
+          {withTitle &&
+            (customTitle || (
+              <h2 className={cx(CS.h2, CS.textWrap)}>
+                {question.displayName()}
+              </h2>
+            ))}
 
-              {hasQuestionChanges && withResetButton && (
-                <ResetButton onClick={handleQuestionReset} />
-              )}
-            </Flex>
+          {hasQuestionChanges && withResetButton && (
+            <ResetButton onClick={handleQuestionReset} />
+          )}
+        </Flex>
 
-            {FilterHeader.shouldRender({
-              question,
-              queryBuilderMode: uiControls.queryBuilderMode,
-              isObjectDetail: false,
-            }) && (
-              <FilterHeader
-                expanded
-                question={question}
-                updateQuestion={(...args) => dispatch(updateQuestion(...args))}
-              />
-            )}
-            <Group h="100%" pos="relative" align="flex-start">
-              <QueryVisualization
-                className={cx(CS.flexFull, CS.fullWidth)}
-                question={question}
-                rawSeries={[{ card, data: result && result.data }]}
-                isRunning={isRunning}
-                isObjectDetail={false}
-                isResultDirty={false}
-                isNativeEditorOpen={false}
-                result={result}
-                noHeader
-                mode={mode}
-                navigateToNewCardInsideQB={(props: any) => {
-                  dispatch(navigateToNewCardInsideQB(props));
-                }}
-                onNavigateBack={handleQuestionReset}
-              />
-            </Group>
-          </Stack>
-        )
-      }
-    </LoadingAndErrorWrapper>
+        {FilterHeader.shouldRender({
+          question,
+          queryBuilderMode: uiControls.queryBuilderMode,
+          isObjectDetail: false,
+        }) && (
+          <FilterHeader
+            expanded
+            question={question}
+            updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+          />
+        )}
+        <Group h="100%" pos="relative" align="flex-start">
+          <QueryVisualization
+            className={cx(CS.flexFull, CS.fullWidth)}
+            question={question}
+            rawSeries={[{ card, data: result && result.data }]}
+            isRunning={isRunning}
+            isObjectDetail={false}
+            isResultDirty={false}
+            isNativeEditorOpen={false}
+            result={result}
+            noHeader
+            mode={mode}
+            navigateToNewCardInsideQB={(props: any) => {
+              dispatch(navigateToNewCardInsideQB(props));
+            }}
+          />
+        </Group>
+      </Stack>
+    </Box>
   );
 };
 

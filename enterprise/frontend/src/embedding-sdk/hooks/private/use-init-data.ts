@@ -12,11 +12,7 @@ import type {
   EmbeddingSessionTokenState,
   SdkDispatch,
 } from "embedding-sdk/store/types";
-import type {
-  SDKConfigType,
-  SdkConfigWithApiKey,
-  SdkConfigWithJWT,
-} from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -25,28 +21,12 @@ import registerVisualizations from "metabase/visualizations/register";
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
-const getErrorMessage = (authType: SDKConfigType["authType"]) => {
-  if (authType === "jwt") {
-    return t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`;
-  }
+const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
 
-  if (authType === "apiKey") {
-    return t`Could not authenticate: invalid API key`;
-  }
-
-  return t`Invalid auth type`;
-};
-
-const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
-  config.authType === "jwt" && !!config.jwtProviderUri;
-
-const isApiKeyAuth = (config: SDKConfigType): config is SdkConfigWithApiKey =>
-  config.authType === "apiKey" && !!config.apiKey;
-
-const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
+const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
   api.onBeforeRequest = async () => {
     const tokenState = await dispatch(
       getOrRefreshSession(config.jwtProviderUri),
@@ -56,10 +36,6 @@ const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
       tokenState.payload as EmbeddingSessionTokenState["token"]
     )?.id;
   };
-};
-
-const setupApiKeyAuth = (config: SdkConfigWithApiKey) => {
-  api.apiKey = config.apiKey;
 };
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
@@ -75,17 +51,14 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
 
-      if (isJwtAuth(config)) {
+      if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);
-        dispatch(setLoginStatus({ status: "validated" }));
-      } else if (isApiKeyAuth(config)) {
-        setupApiKeyAuth(config);
         dispatch(setLoginStatus({ status: "validated" }));
       } else {
         dispatch(
           setLoginStatus({
             status: "error",
-            error: new Error(getErrorMessage(config.authType)),
+            error: new Error(t`Invalid JWT URI provided.`),
           }),
         );
       }
@@ -110,7 +83,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             dispatch(
               setLoginStatus({
                 status: "error",
-                error: new Error(getErrorMessage(config.authType)),
+                error: new Error(
+                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+                ),
               }),
             );
             return;
@@ -121,7 +96,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(getErrorMessage(config.authType)),
+              error: new Error(
+                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+              ),
             }),
           );
         }
@@ -129,5 +106,5 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
       fetchData();
     }
-  }, [config.authType, dispatch, loginStatus.status]);
+  }, [dispatch, loginStatus.status]);
 };

@@ -69,7 +69,9 @@ const setup = ({
 
   renderWithProviders(<InteractiveQuestion questionId={TEST_CARD.id} />, {
     mode: "sdk",
-    sdkConfig: createMockConfig(),
+    sdkConfig: createMockConfig({
+      jwtProviderUri: "http://TEST_URI/sso/metabase",
+    }),
     storeInitialState: state,
   });
 };

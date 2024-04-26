@@ -19,26 +19,32 @@ const DATE_CASES = [
   {
     option: "Hour of day",
     value: "21",
+    example: "0, 1",
   },
   {
     option: "Day of month",
     value: "11",
+    example: "1, 2",
   },
   {
     option: "Day of week",
     value: "Tuesday",
+    example: "Monday, Tuesday",
   },
   {
     option: "Month of year",
     value: "Feb",
+    example: "Jan, Feb",
   },
   {
     option: "Quarter of year",
     value: "Q1",
+    example: "Q1, Q2",
   },
   {
     option: "Year",
     value: "2,025",
+    example: "2023, 2024",
   },
 ];
 
@@ -67,13 +73,14 @@ describe("extract action", () => {
 
   describe("date columns", () => {
     describe("should add a date expression for each option", () => {
-      DATE_CASES.forEach(({ option, value }) => {
+      DATE_CASES.forEach(({ option, value, example }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
             column: "Created At",
             option,
             value,
+            example,
           });
         });
       });
@@ -230,11 +237,23 @@ describe("extract action", () => {
   });
 });
 
-function extractColumnAndCheck({ column, option, newColumn = option, value }) {
+function extractColumnAndCheck({
+  column,
+  option,
+  newColumn = option,
+  value,
+  example,
+}) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByRole("columnheader", { name: column }).click();
   popover().findByText("Extract day, month…").click();
+  cy.wait(1);
+
+  if (example) {
+    popover().findByText(option).should("contain", example);
+  }
+
   popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 

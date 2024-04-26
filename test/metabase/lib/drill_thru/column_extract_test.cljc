@@ -2,27 +2,25 @@
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    [clojure.test :refer [deftest testing]]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:clj  ([metabase.test :as mt])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private time-extraction-units
-  [{:key :hour-of-day, :display-name "Hour of day"}])
+  [{:tag :hour-of-day, :display-name "Hour of day"}])
 
 (def ^:private date-extraction-units
-  [{:key :day-of-month,    :display-name "Day of month"}
-   {:key :day-of-week,     :display-name "Day of week"}
-   {:key :month-of-year,   :display-name "Month of year"}
-   {:key :quarter-of-year, :display-name "Quarter of year"}
-   {:key :year,            :display-name "Year"}])
+  [{:tag :day-of-month,    :display-name "Day of month"}
+   {:tag :day-of-week,     :display-name "Day of week"}
+   {:tag :month-of-year,   :display-name "Month of year"}
+   {:tag :quarter-of-year, :display-name "Quarter of year"}
+   {:tag :year,            :display-name "Year"}])
 
 (def ^:private datetime-extraction-units
   (concat time-extraction-units date-extraction-units))
@@ -45,16 +43,6 @@
     :expected    {:type        :drill-thru/column-extract
                   :extractions datetime-extraction-units}}))
 
-(defn- case-extraction
-  "Returns `=?` friendly value for a `:case`-based extraction, eg. `:day-of-week`.
-
-  `(case-extraction :get-month \"Month of year\" (meta/id :orders :created-at) [\"Jan\" \"Feb\" ... \"Dec\"])`"
-  [extraction expression-name field-id labels]
-  [:case {:lib/expression-name expression-name}
-   (vec (for [[index label] (m/indexed labels)]
-          [[:= {} [extraction {} [:field {} field-id]] (inc index)] label]))
-   ""])
-
 (deftest ^:parallel apply-column-extract-test-1a-month-of-year
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
     (lib.drill-thru.tu/test-drill-application
@@ -69,9 +57,8 @@
                        :stage-number -1}
       :drill-args     ["month-of-year"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-month "Month of year" (meta/id :orders :created-at)
-                                                   ["Jan" "Feb" "Mar" "Apr" "May" "Jun"
-                                                    "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"])]}]}})))
+                                 [[:month-name {:lib/expression-name "Month of year"}
+                                   [:get-month {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1b-day-of-week
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -87,9 +74,8 @@
                        :stage-number -1}
       :drill-args     ["day-of-week"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                                   ["Sunday" "Monday" "Tuesday" "Wednesday" "Thursday"
-                                                    "Friday" "Saturday"])]}]}})))
+                                 [[:day-name {:lib/expression-name "Day of week"}
+                                   [:get-day-of-week {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1c-quarter
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -105,8 +91,8 @@
                        :stage-number -1}
       :drill-args     ["quarter-of-year"]
       :expected-query {:stages [{:expressions
-                                 [(case-extraction :get-quarter "Quarter of year" (meta/id :orders :created-at)
-                                                   ["Q1" "Q2" "Q3" "Q4"])]}]}})))
+                                 [[:quarter-name {:lib/expression-name "Quarter of year"}
+                                   [:get-quarter {} [:field {} (meta/id :orders :created-at)]]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1d-year
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -199,28 +185,6 @@
                                    {:expressions [[:get-day {:lib/expression-name "Day of month"}
                                                    [:field {} "max"]]]}]}}))))
 
-#?(:clj
-   ;; TODO: This should be possible to run in CLJS if we have a library for setting the locale in JS.
-   ;; Metabase FE has this in frontend/src/metabase/lib/i18n.js but that's loaded after the CLJS.
-   (deftest ^:synchronized apply-column-extract-test-4-i18n-labels
-     (testing "column-extract with custom labels get i18n'd"
-       (mt/with-locale "es"
-         (lib.drill-thru.tu/test-drill-application
-           {:click-type     :header
-            :query-type     :unaggregated
-            :column-name    "CREATED_AT"
-            :drill-type     :drill-thru/column-extract
-            :expected       {:type         :drill-thru/column-extract
-                             :extractions  datetime-extraction-units
-                             ;; Query unchanged
-                             :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
-                             :stage-number -1}
-            :drill-args     ["day-of-week"]
-            :expected-query {:stages [{:expressions
-                                       [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                                         ["domingo" "lunes" "martes" "miércoles" "jueves"
-                                                          "viernes" "sábado"])]}]}})))))
-
 (deftest ^:parallel column-extract-relevant-units-test-1-time
   (let [ship-time (assoc (meta/field-metadata :orders :created-at)
                          :id             9999001
@@ -285,9 +249,9 @@
         query    (lib/query mp (lib.metadata/table mp (meta/id :people)))
         expected {:type         :drill-thru/column-extract
                   :display-name "Extract domain, subdomain…"
-                  :extractions  [{:key :domain,    :display-name "Domain"}
-                                 {:key :subdomain, :display-name "Subdomain"}
-                                 {:key :host,      :display-name "Host"}]}]
+                  :extractions  [{:tag :domain,    :display-name "Domain"}
+                                 {:tag :subdomain, :display-name "Subdomain"}
+                                 {:tag :host,      :display-name "Host"}]}]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
         {:drill-type     :drill-thru/column-extract
@@ -335,9 +299,9 @@
          :custom-query   query-regex
          :expected       {:type         :drill-thru/column-extract
                           :display-name "Extract domain, subdomain…"
-                          :extractions  [{:key :domain,    :display-name "Domain"}
-                                         {:key :subdomain, :display-name "Subdomain"}
-                                         {:key :host,      :display-name "Host"}]}
+                          :extractions  [{:tag :domain,    :display-name "Domain"}
+                                         {:tag :subdomain, :display-name "Subdomain"}
+                                         {:tag :host,      :display-name "Host"}]}
          :drill-args     ["subdomain"]
          :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
                                                    [:field {} 9999001]]]}]}}))
@@ -361,9 +325,9 @@
          :column-name    "EMAIL"
          :custom-query   query-regex
          :expected       {:type         :drill-thru/column-extract
-                          :display-name "Extract domain"
-                          :extractions  [{:key :domain, :display-name "Domain"}
-                                         {:key :host,   :display-name "Host"}]}
+                          :display-name "Extract domain, host…"
+                          :extractions  [{:tag :domain, :display-name "Domain"}
+                                         {:tag :host,   :display-name "Host"}]}
          :drill-args     ["domain"]
          :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
                                                    [:field {} (meta/id :people :email)]]]}]}}))

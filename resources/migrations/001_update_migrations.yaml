@@ -6543,14 +6543,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
-      id: v50.2024-04-09T15:55:23
-      author: piranha
-      comment: Backfill query_field for native queries
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -6570,6 +6562,14 @@ databaseChangeLog:
       rollback: # no rollback necessary, we're not removing the columns yet
 
   - changeSet:
+      id: v50.2024-04-18T14:33:19
+      author: piranha
+      comment: Backfill query_field
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
+  - changeSet:
       id: v50.2024-04-19T17:04:04
       author: noahmoss
       comment: Clean up deprecated view-data and native-query-editing permissions (again)
@@ -6578,6 +6578,92 @@ databaseChangeLog:
         - sql:
             sql: >
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:31
+      author: calherries
+      comment: Add report_card.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:32
+      author: calherries
+      comment: Populate report_card.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_card c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_card c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:33
+      author: calherries
+      comment: Add report_dashboard.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of dashboard views
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:34
+      author: calherries
+      comment: Populate report_dashboard.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_dashboard c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_dashboard c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
