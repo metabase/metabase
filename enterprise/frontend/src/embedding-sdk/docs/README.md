@@ -38,11 +38,13 @@ yarn add @metabase/embedding-sdk-react
 
 ## Usage
 
+### Initializing the SDK
+
 Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
 
 ```jsx
 import React from "react";
-import { MetabaseProvider, useQuestionSearch, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
 // Configuration
 const config = {
@@ -52,24 +54,38 @@ const config = {
 }
 
 export default function App() {
-  const { data: questions, isLoading } = useQuestionSearch();
-
-  if (loading) {
-    return "Loading…"
-  }
-
-  // We just assume the logged in user have access to at least 1 question.
-  const firstQuestion = questions[0]
-
   return (
     <MetabaseProvider config={config}>
-      <InteractiveQuestion questionId={firstQuestion.id} />
+      Hello World!
     </MetabaseProvider>
   );
 }
 ```
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions.
+### Embedding a question
+
+After the SDK is configured, you can use embed your question using `StaticQuestion` component.
+
+```jsx
+import React from "react";
+import { MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const questionId = 1; // This is the question ID you want to embed
+
+  return (
+    <MetabaseProvider config={config}>
+      <StaticQuestion questionId={1} showVisualizationSelector={false} />
+    </MetabaseProvider>
+  );
+}
+```
+
+### Customizing custom actions
+
+`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
 
 We'll support more plugins in next releases.
 
@@ -120,12 +136,16 @@ const plugins = {
   }
 }
 
+const questionId = 1; // This is the question ID you want to embed
+
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={firstQuestion.id}  />
+    <InteractiveQuestion questionId={questionId}  />
   </MetabaseProvider>
 );
 ```
+
+### Implementing JWT endpoint
 
 After you have configured the SDK, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
 
