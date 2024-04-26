@@ -3,14 +3,6 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import testAcrossTimezones from "__support__/timezones";
 import { computeTimeseriesDataInverval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 
-// jsdom doesn't support layout methods like getBBox, so we need to mock it.
-window.SVGElement.prototype.getBBox = () => ({
-  x: 0,
-  y: 0,
-  width: 1000,
-  height: 1000,
-});
-
 testAcrossTimezones(reportTz => {
   describe("computeTimeseriesDataInvervalIndex", () => {
     [
@@ -25,9 +17,9 @@ testAcrossTimezones(reportTz => {
         // parse timestamps in reporting timezone and serialize
         const xValues = data.map(d => moment.tz(d, reportTz).format());
 
-        const { interval, count } = computeTimeseriesDataInverval(xValues);
+        const { unit, count } = computeTimeseriesDataInverval(xValues);
 
-        expect(interval).toBe(expectedInterval);
+        expect(unit).toBe(expectedInterval);
         expect(count).toBe(expectedCount);
       });
     });

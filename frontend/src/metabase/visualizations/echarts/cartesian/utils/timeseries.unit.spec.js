@@ -91,10 +91,10 @@ describe("visualization.lib.timeseries", () => {
 
     TEST_CASES.map(([expectedInterval, expectedCount, data]) => {
       it("should return " + expectedCount + " " + expectedInterval, () => {
-        const { interval, count } = computeTimeseriesDataInverval(
+        const { unit, count } = computeTimeseriesDataInverval(
           data.map(d => new Date(d)),
         );
-        expect(interval).toBe(expectedInterval);
+        expect(unit).toBe(expectedInterval);
         expect(count).toBe(expectedCount);
       });
     });
@@ -103,27 +103,27 @@ describe("visualization.lib.timeseries", () => {
 
     units.forEach(testUnit => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
-        const { interval, count } = computeTimeseriesDataInverval(
+        const { unit, count } = computeTimeseriesDataInverval(
           [
             new Date("2019-01-01").toISOString(),
             new Date("2020-01-01").toISOString(),
           ],
           testUnit,
         );
-        expect(interval).toBe(testUnit);
+        expect(unit).toBe(testUnit);
         expect(count).toBe(1);
       });
     });
 
     it("should return 3 months for quarter interval", () => {
-      const { interval, count } = computeTimeseriesDataInverval(
+      const { unit, count } = computeTimeseriesDataInverval(
         [
           new Date("2019-01-01").toISOString(),
           new Date("2020-01-01").toISOString(),
         ],
         "quarter",
       );
-      expect(interval).toBe("month");
+      expect(unit).toBe("month");
       expect(count).toBe(3);
     });
   });
@@ -214,13 +214,13 @@ describe("visualization.lib.timeseries", () => {
         { expectedInterval, expectedCount },
       ]) => {
         it("should return " + expectedCount + " " + expectedInterval, () => {
-          const { interval, count } = computeTimeseriesTicksInterval(
+          const { unit, count } = computeTimeseriesTicksInterval(
             xDomain,
             xInterval,
             chartWidth,
             tickFormat,
           );
-          expect(interval).toBe(expectedInterval);
+          expect(unit).toBe(expectedInterval);
           expect(count).toBe(expectedCount);
         });
       },
