@@ -54,8 +54,8 @@
                   {:keys [to-update
                           to-create
                           to-delete]} (u/row-diff existing query-field-rows
-                                                  {:id-fn   :field_id
-                                                   :cleanup #(dissoc % :id :card_id :field_id)})]
+                                                  {:id-fn      :field_id
+                                                   :to-compare #(dissoc % :id :card_id :field_id)})]
               (when (seq to-delete)
                 ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
                 ;; algo drops its frequency by a lot - which should help with transactions affecting each other a

@@ -853,11 +853,11 @@
 
   Optional arguments:
   - `id-fn` - function to get row-matching identifiers
-  - `cleanup` - function to get rows into a comparable state
+  - `to-compare` - function to get rows into a comparable state
   "
-  [current-rows new-rows & {:keys [id-fn cleanup]
+  [current-rows new-rows & {:keys [id-fn to-compare]
                             :or   {id-fn   :id
-                                   cleanup identity}}]
+                                   to-compare identity}}]
   (let [[delete-ids
          create-ids
          update-ids]     (diff (set (map id-fn current-rows))
@@ -867,7 +867,7 @@
          to-skip   true} (when (seq update-ids)
                            (group-by (fn [x]
                                        (let [y (get known-map (id-fn x))]
-                                         (= (cleanup x) (cleanup y))))
+                                         (= (to-compare x) (to-compare y))))
                                      (filter #(update-ids (id-fn %)) new-rows)))]
     {:to-create (when (seq create-ids) (filter #(create-ids (id-fn %)) new-rows))
      :to-delete (when (seq delete-ids) (filter #(delete-ids (id-fn %)) current-rows))
