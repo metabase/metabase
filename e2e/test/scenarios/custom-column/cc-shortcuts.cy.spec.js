@@ -27,7 +27,7 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
       cy.findByText("Product → Rating").should("exist");
 
       cy.findByTestId("combine-example").should(
-        "contain",
+        "have.text",
         "123.45678901234567 123.45678901234567",
       );
 
@@ -35,14 +35,14 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
       cy.findByLabelText("Separator").type("__");
 
       cy.findByTestId("combine-example").should(
-        "contain",
+        "have.text",
         "123.45678901234567__123.45678901234567",
       );
 
       cy.findByText("Done").click();
 
       cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+        "have.text",
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
