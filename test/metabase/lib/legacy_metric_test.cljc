@@ -46,10 +46,14 @@
   (is (lib/uses-metric? query-with-metric metric-id))
   (is (not (lib/uses-metric? lib.tu/venues-query metric-id))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Sum of Cans"
          (lib/suggested-name query-with-metric))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel display-name-test
   (doseq [metric [metric-clause
                   metric-metadata]
@@ -74,6 +78,8 @@
                  (lib/display-name query-with-metric -1 metric style)
                  (lib/display-name query-with-metric metric))))))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel display-info-test
   (are [metric] (=? {:name              "sum_of_cans"
                      :display-name      "Sum of Cans"
@@ -96,6 +102,8 @@
            :long-display-name "[Unknown Metric]"}
           (lib/display-info query-with-metric [:metric {} 1]))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel type-of-test
   (are [metric] (= :type/Integer
                    (lib/type-of query-with-metric metric))
@@ -175,6 +183,8 @@
                     (map (partial lib/display-info query')
                          (lib/aggregations query'))))))))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel metric-type-of-test
   (let [query    (-> (lib/query metadata-provider (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
