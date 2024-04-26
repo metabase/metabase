@@ -37,9 +37,8 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
   }
 
   function handleSubmit(extraction: Lib.ColumnExtraction) {
-    const info = Lib.displayInfo(query, -1, extraction);
-    const clause = Lib.expressionClause(info.key, [column]);
-    console.log("HERE", clause);
+    const _clause = Lib.extract(query, stageIndex, extraction);
+    // TODO
   }
 
   return (
