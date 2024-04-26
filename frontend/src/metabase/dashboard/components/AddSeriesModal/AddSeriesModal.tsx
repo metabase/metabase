@@ -163,7 +163,7 @@ export class AddSeriesModal extends Component<Props, State> {
               rawSeries={series}
               showTitle
               isDashboard
-              isMultiseries
+              showAllLegendItems
               onRemoveSeries={this.handleRemoveSeries}
             />
             {this.state.isLoading && (

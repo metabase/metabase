@@ -22,6 +22,7 @@ function _CartesianChart(props: VisualizationProps) {
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
   const {
+    showAllLegendItems,
     rawSeries,
     settings: originalSettings,
     card,
@@ -59,8 +60,8 @@ function _CartesianChart(props: VisualizationProps) {
   const description = settings["card.description"];
 
   const legendItems = useMemo(
-    () => getLegendItems(chartModel.seriesModels),
-    [chartModel],
+    () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
+    [chartModel, showAllLegendItems],
   );
   const hasLegend = legendItems.length > 0;
 
