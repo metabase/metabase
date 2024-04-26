@@ -1,7 +1,10 @@
 import { ModerationReviewApi } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview, User } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockModerationReview,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import {
   verifyItem,
@@ -96,16 +99,20 @@ describe("moderation/service", () => {
 
   describe("getIconForReview", () => {
     it("should return icon name/color for given review", () => {
-      expect(getIconForReview({ status: "verified" })).toEqual(
-        getStatusIcon("verified"),
-      );
+      expect(
+        getIconForReview(createMockModerationReview({ status: "verified" })),
+      ).toEqual(getStatusIcon("verified"));
     });
   });
 
   describe("getTextForReviewBanner", () => {
     it("should return text for a verified review", () => {
       expect(
-        getTextForReviewBanner({ status: "verified" }, null, null),
+        getTextForReviewBanner(
+          createMockModerationReview({ status: "verified" }),
+          null,
+          null,
+        ),
       ).toEqual({
         bannerText: "A moderator verified this",
         tooltipText: "Remove verification",
@@ -115,7 +122,7 @@ describe("moderation/service", () => {
     it("should include the moderator name", () => {
       expect(
         getTextForReviewBanner(
-          { status: "verified" },
+          createMockModerationReview({ status: "verified" }),
           createMockUser({
             common_name: "Foo",
             id: 1,
@@ -131,7 +138,7 @@ describe("moderation/service", () => {
     it("should handle the moderator being the current user", () => {
       expect(
         getTextForReviewBanner(
-          { status: "verified" },
+          createMockModerationReview({ status: "verified" }),
           createMockUser({
             common_name: "Foo",
             id: 1,
@@ -147,11 +154,15 @@ describe("moderation/service", () => {
 
   describe("isItemVerified", () => {
     it("should return true for a verified review", () => {
-      expect(isItemVerified({ status: "verified" })).toBe(true);
+      expect(
+        isItemVerified(createMockModerationReview({ status: "verified" })),
+      ).toBe(true);
     });
 
     it("should return false for a null review", () => {
-      expect(isItemVerified({ status: null })).toBe(false);
+      expect(isItemVerified(createMockModerationReview({ status: null }))).toBe(
+        false,
+      );
     });
 
     it("should return false for no review", () => {
