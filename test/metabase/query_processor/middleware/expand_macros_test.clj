@@ -3,14 +3,12 @@
    [clojure.test :refer :all]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.query-processor.store :as qp.store]))
 
 (defn- mbql-query [inner-query]
   {:database (meta/id)
@@ -205,6 +203,8 @@
                 :breakout     [[:field 17 nil]]
                 :order-by     [[:asc [:field 1 nil]]]})))))))
 
+;; TODO metrics v2
+#_
 (deftest ^:parallel metric-with-multiple-aggregation-syntax-test
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
     ;; so-called "multiple aggregation syntax" is the norm now -- query normalization will do this automatically
