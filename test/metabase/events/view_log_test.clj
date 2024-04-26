@@ -47,7 +47,7 @@
 (deftest collection-read-ee-test
   (when (premium-features/log-enabled?)
     (mt/with-temp [:model/Collection coll {}]
-      (testing "A basic card read event is recorded in EE"
+      (testing "A basic collection read event is recorded in EE"
         (events/publish-event! :event/collection-read {:object coll :user-id (mt/user->id :crowberto)})
         (is (partial=
              {:user_id    (mt/user->id :crowberto)
