@@ -11,7 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  initializeQB,
+  initializeQBRaw,
   navigateToNewCardInsideQB,
   updateQuestion,
 } from "metabase/query_builder/actions";
@@ -56,11 +56,21 @@ export const _InteractiveQuestion = ({
   useEffect(() => {
     const fetchQBData = async () => {
       const { location, params } = getQuestionParameters(questionId);
-      dispatch(initializeQB(location, params));
+      try {
+        await dispatch(initializeQBRaw(location, params));
+      } catch (error) {
+        setLoading(false);
+      }
     };
 
-    fetchQBData().then(() => setLoading(false));
+    fetchQBData();
   }, [dispatch, questionId]);
+
+  useEffect(() => {
+    if (queryResults) {
+      setLoading(false);
+    }
+  }, [queryResults]);
 
   if (!loading && !queryResults) {
     return <SdkError message={t`Question not found`} />;

@@ -403,11 +403,17 @@ async function handleQBInit(
   }
 }
 
-export const initializeQB =
+export const initializeQBRaw =
   (location: LocationDescriptorObject, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    await handleQBInit(dispatch, getState, { location, params });
+  };
+
+export const initializeQB =
+  (location: LocationDescriptorObject, params: QueryParams) =>
+  async (dispatch: Dispatch) => {
     try {
-      await handleQBInit(dispatch, getState, { location, params });
+      await dispatch(initializeQBRaw(location, params));
     } catch (error) {
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));
