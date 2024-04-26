@@ -15,6 +15,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+;; Replaced by metrics v2
+#_
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
     (lib.metadata/legacy-metric query metric-id)))
@@ -47,6 +49,8 @@
      (lib.metadata.calculation/type-of query stage-number aggregation))
    :type/*))
 
+;; Replaced by metrics v2
+#_
 (defmethod lib.metadata.calculation/type-of-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
@@ -61,6 +65,8 @@
   (or ((some-fn :display-name :name) metric-metadata)
       (fallback-display-name)))
 
+;; Replaced by metrics v2
+#_
 (defmethod lib.metadata.calculation/display-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name] style]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
@@ -73,6 +79,8 @@
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
    (select-keys metric-metadata [:description :aggregation-position])))
 
+;; Replaced by metrics v2
+#_
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
   (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
@@ -81,6 +89,8 @@
      :display-name      (fallback-display-name)
      :long-display-name (fallback-display-name)}))
 
+;; Replaced by metrics v2
+#_
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
