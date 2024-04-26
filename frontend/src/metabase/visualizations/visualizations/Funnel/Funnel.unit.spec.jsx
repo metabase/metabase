@@ -9,7 +9,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import Funnel from "./Funnel";
+import { Funnel } from "./Funnel";
 
 registerVisualizations();
 
@@ -19,13 +19,14 @@ const setup = (funnelProps, visualizationSettings = {}) => {
   const card = createMockCard({
     display: "funnel",
   });
+
   const series = createMockSingleSeries(
     card,
     createMockDataset({
       data: createMockDatasetData({
         cols: [
-          createMockColumn({ display_name: "foo" }),
-          createMockColumn({ display_name: "bar" }),
+          createMockColumn({ id: 1, name: "foo", display_name: "foo" }),
+          createMockColumn({ id: 2, name: "bar", display_name: "bar" }),
         ],
         rows: [
           [10, 20],
@@ -37,6 +38,8 @@ const setup = (funnelProps, visualizationSettings = {}) => {
 
   const settings = createMockVisualizationSettings({
     "card.title": cardTitle,
+    "funnel.metric": "bar",
+    "funnel.dimension": "foo",
     column: jest.fn(),
     ...visualizationSettings,
   });
@@ -44,6 +47,7 @@ const setup = (funnelProps, visualizationSettings = {}) => {
   render(
     <Funnel
       series={[series]}
+      rawSeries={[series]}
       settings={settings}
       visualizationIsClickable={jest.fn()}
       card={card}

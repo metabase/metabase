@@ -35,6 +35,8 @@ function _CartesianChart(props: VisualizationProps) {
     hovered,
     onChangeCardAndRun,
     onHoverChange,
+    canRemoveSeries,
+    onRemoveSeries,
   } = props;
 
   const settings = useMemo(
@@ -106,6 +108,8 @@ function _CartesianChart(props: VisualizationProps) {
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
+        canRemoveSeries={canRemoveSeries}
+        onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
       >
         <CartesianChartRenderer

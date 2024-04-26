@@ -89,12 +89,12 @@ describe("visualization.lib.timeseries", () => {
       ["day", 1, [["2019-01-01T00:00:00.000Z"]]],
     ];
 
-    TEST_CASES.map(([expectedInterval, expectedCount, data]) => {
-      it("should return " + expectedCount + " " + expectedInterval, () => {
+    TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
+      it(`should return ${expectedCount} ${expectedUnit}`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
           data.map(d => new Date(d)),
         );
-        expect(unit).toBe(expectedInterval);
+        expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
       });
     });
@@ -139,10 +139,12 @@ describe("visualization.lib.timeseries", () => {
         },
       },
     ];
+
     it("should extract results_timezone", () => {
       const timezone = getTimezone(series);
       expect(timezone).toBe("US/Eastern");
     });
+
     it("should extract results_timezone after series is transformed", () => {
       const { series: transformed } = getVisualizationTransformed(series);
       const timezone = getTimezone(transformed);
@@ -162,7 +164,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 1920,
           tickFormat: fakeTickFormat,
         },
-        { expectedInterval: "month", expectedCount: 1 },
+        { expectedUnit: "month", expectedCount: 1 },
       ],
       // it should be bump to quarters on a narrower chart
       [
@@ -172,7 +174,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 800,
           tickFormat: fakeTickFormat,
         },
-        { expectedInterval: "month", expectedCount: 3 },
+        { expectedUnit: "month", expectedCount: 3 },
       ],
       // even narrower and we should show yearly ticks
       [
@@ -182,7 +184,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 300,
           tickFormat: fakeTickFormat,
         },
-        { expectedInterval: "year", expectedCount: 1 },
+        { expectedUnit: "year", expectedCount: 1 },
       ],
       // shouldn't move to a more granular interval than what was passed
       [
@@ -192,7 +194,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 1920,
           tickFormat: fakeTickFormat,
         },
-        { expectedInterval: "month", expectedCount: 3 },
+        { expectedUnit: "month", expectedCount: 3 },
       ],
       // Long date formats should update the interval to have fewer ticks
       [
@@ -204,23 +206,23 @@ describe("visualization.lib.timeseries", () => {
             // thankfully no date format is actually this long
             "The eigth day of July in the year of our Lord two thousand and ninteen",
         },
-        { expectedInterval: "year", expectedCount: 1 },
+        { expectedUnit: "year", expectedCount: 1 },
       ],
     ];
 
     TEST_CASES.map(
       ([
         { xDomain, xInterval, chartWidth, tickFormat },
-        { expectedInterval, expectedCount },
+        { expectedUnit, expectedCount },
       ]) => {
-        it("should return " + expectedCount + " " + expectedInterval, () => {
+        it(`should return ${expectedCount} ${expectedUnit}`, () => {
           const { unit, count } = computeTimeseriesTicksInterval(
             xDomain,
             xInterval,
             chartWidth,
             tickFormat,
           );
-          expect(unit).toBe(expectedInterval);
+          expect(unit).toBe(expectedUnit);
           expect(count).toBe(expectedCount);
         });
       },

@@ -98,6 +98,7 @@ function transformSingleSeries(s, series, seriesIndex) {
       data: {
         rows: breakoutRowsByValue.get(breakoutValue),
         cols: rowColumnIndexes.map(i => cols[i]),
+        results_timezone: data.results_timezone,
         _rawCols: cols,
         _transformed: true,
       },
@@ -148,6 +149,7 @@ function transformSingleSeries(s, series, seriesIndex) {
             return newRow;
           }),
           cols: rowColumnIndexes.map(i => cols[i]),
+          results_timezone: data.results_timezone,
           _transformed: true,
           _rawCols: cols,
         },
