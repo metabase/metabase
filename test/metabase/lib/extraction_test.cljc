@@ -6,18 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:clj  ([metabase.test :as mt])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
-
-(defn- case-extraction
-  "Returns `=?` friendly value for a `:case`-based extraction, eg. `:day-of-week`.
-
-  `(case-extraction :get-month \"Month of year\" (meta/id :orders :created-at) [\"Jan\" \"Feb\" ... \"Dec\"])`"
-  [extraction expression-name field-id labels]
-  [:case {:lib/expression-name expression-name}
-   (vec (for [[index label] (m/indexed labels)]
-          [[:= {} [extraction {} [:field {} field-id]] (inc index)] label]))
-   ""])
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel column-extraction-test-1-datetime-column
   (testing "extract on a regular datetime column without aggregations adds the column in this stage"
@@ -35,20 +24,18 @@
               extractions))
       (testing "extracting :month-of-year"
         (is (=? {:stages [{:expressions
-                           [(case-extraction :get-month "Month of year" (meta/id :orders :created-at)
-                                             ["Jan" "Feb" "Mar" "Apr" "May" "Jun"
-                                              "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"])]}]}
+                           [[:month-name {:lib/expression-name "Month of year"}
+                             [:get-month {} [:field {} (meta/id :orders :created-at)]]]]}]}
                 (lib/extract query -1 (:month-of-year by-tag)))))
       (testing "extracting :day-of-week"
         (is (=? {:stages [{:expressions
-                           [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                             ["Sunday" "Monday" "Tuesday" "Wednesday" "Thursday"
-                                              "Friday" "Saturday"])]}]}
+                           [[:day-name {:lib/expression-name "Day of week"}
+                             [:get-day-of-week {} [:field {} (meta/id :orders :created-at)]]]]}]}
                 (lib/extract query -1 (:day-of-week by-tag)))))
       (testing "extracting :quarter-of-year"
         (is (=? {:stages [{:expressions
-                           [(case-extraction :get-quarter "Quarter of year" (meta/id :orders :created-at)
-                                             ["Q1" "Q2" "Q3" "Q4"])]}]}
+                           [[:quarter-name {:lib/expression-name "Quarter of year"}
+                             [:get-quarter {} [:field {} (meta/id :orders :created-at)]]]]}]}
                 (lib/extract query -1 (:quarter-of-year by-tag)))))
       (doseq [[tag expr label] [[:year         :get-year "Year"]
                                 [:day-of-month :get-day  "Day of month"]
@@ -75,25 +62,6 @@
                    (lib/column-extractions query)
                    (m/find-first (comp #{:day-of-month} :tag))
                    (lib/extract query -1)))))))
-
-#?(:clj
-   ;; TODO: This should be possible to run in CLJS if we have a library for setting the locale in JS.
-   ;; Metabase FE has this in frontend/src/metabase/lib/i18n.js but that's loaded after the CLJS.
-   (deftest ^:synchronized i18n-output-test
-     (testing "column-extract with custom labels get i18n'd"
-       (mt/with-locale "es"
-         (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-           (is (=? {:stages [{:expressions
-                              ;; TODO: The display name should also be getting translated!
-                              ;; It seems like extraction isn't working for [[describe-temporal-unit]].
-                              [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
-                                                ["domingo" "lunes" "martes" "miércoles" "jueves"
-                                                 "viernes" "sábado"])]}]}
-                   (->> (lib/returned-columns query)
-                        (m/find-first #(= (:name %) "CREATED_AT"))
-                        (lib/column-extractions query)
-                        (m/find-first (comp #{:day-of-week} :tag))
-                        (lib/extract query -1)))))))))
 
 (deftest ^:parallel extract-relevant-units-test-1-time
   (let [ship-time (assoc (meta/field-metadata :orders :created-at)

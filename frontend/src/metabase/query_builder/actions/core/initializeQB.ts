@@ -403,6 +403,15 @@ async function handleQBInit(
   }
 }
 
+// Does the same thing as initializeQB, but doesn't catch errors.
+// This function is used for the SDK, and we want to use the errors
+// to determine loading states and show error messages
+export const initializeQBRaw =
+  (location: LocationDescriptorObject, params: QueryParams) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    await handleQBInit(dispatch, getState, { location, params });
+  };
+
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
