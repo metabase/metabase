@@ -446,7 +446,7 @@
                         {:god_id 30 :name "Osiris" :job "God of Afterlife"}
                         {:god_id 40 :name "Perun" :job "God of Thunder"}]
                        {:id-fn   :god_id
-                        :cleanup #(dissoc % :id :god_id)})))))
+                        :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
   (are [xs expected] (= expected
