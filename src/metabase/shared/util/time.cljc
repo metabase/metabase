@@ -75,9 +75,14 @@
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
-   If unit is nil, formats the full date/time"
-  [temporal-value unit]
-  (internal/format-unit temporal-value unit))
+  If unit is nil, formats the full date/time.
+
+  If `locale` is provided, that locale will be used for localizing the formatter. In CLJ this should be a `Locale`. Not
+  supported in CLJS since we have to rely on the browser's locale."
+  ([temporal-value unit]
+   (internal/format-unit temporal-value unit))
+  ([temporal-value unit locale]
+   (internal/format-unit temporal-value unit locale)))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

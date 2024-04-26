@@ -288,6 +288,9 @@
 (lib.common/defop host [s])
 (lib.common/defop domain [s])
 (lib.common/defop subdomain [s])
+(lib.common/defop month-name [n])
+(lib.common/defop quarter-name [n])
+(lib.common/defop day-name [n])
 
 (mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
   [query                 :- ::lib.schema/query
