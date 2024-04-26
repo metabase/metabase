@@ -149,7 +149,9 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id (mt/id :venues)) :pk_field)
+            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                       :id (mt/id :venues))
+                        :pk_field)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -165,7 +167,9 @@
                                                  :schema       nil}]
         (is (= (merge
                  (dissoc (table-defaults) :segments :field_values :metrics :db)
-                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id table-id) :pk_field)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                            :id table-id)
+                             :pk_field)
                  {:schema       ""
                   :name         "schemaless_table"
                   :display_name "Schemaless"
@@ -475,7 +479,9 @@
                                             :database_indexed  true
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table
+                                                                            :id :created_at :updated_at
+                                                                            :initial_sync_status :view_count]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -493,14 +499,15 @@
                                             :database_indexed true
                                             :table            (merge
                                                                (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                               (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                               (t2/select-one [Table
+                                                                               :id :created_at :updated_at
+                                                                               :initial_sync_status :view_count]
                                                                  :id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
                                                                 :display_name "Users"
                                                                 :entity_type  "entity/UserTable"})))}]
                (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
-
     (testing "should just return nothing for 'virtual' tables"
       (is (= []
              (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
