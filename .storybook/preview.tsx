@@ -18,7 +18,9 @@ export const parameters = {
 export const decorators = [
   renderStory => (
     <EmotionCacheProvider>
-      <ThemeProvider>{renderStory()}</ThemeProvider>
+      <ThemeProvider>
+        {renderStory()}
+      </ThemeProvider>
     </EmotionCacheProvider>
   ),
 ];

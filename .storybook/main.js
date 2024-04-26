@@ -15,26 +15,34 @@ module.exports = {
     "@storybook/addon-a11y",
   ],
   babel: () => {},
-  webpackFinal: storybookConfig => ({
-    ...storybookConfig,
-    plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],
-    module: {
-      ...storybookConfig.module,
-      rules: [
-        ...storybookConfig.module.rules.filter(
-          rule => !isCSSRule(rule) && !isSvgRule(rule),
-        ),
-        ...appConfig.module.rules.filter(
-          rule => isCSSRule(rule) || isSvgRule(rule),
-        ),
-      ],
-    },
-    resolve: {
-      ...storybookConfig.resolve,
-      alias: appConfig.resolve.alias,
-      extensions: appConfig.resolve.extensions,
-    },
-  }),
+  webpackFinal: storybookConfig => {
+    console.log(storybookConfig)
+    return {
+      ...storybookConfig,
+      plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],
+      module: {
+        ...storybookConfig.module,
+        rules: [
+          ...storybookConfig.module.rules.filter(
+            rule => !isCSSRule(rule) && !isSvgRule(rule),
+          ),
+          ...appConfig.module.rules.filter(
+            rule => isCSSRule(rule) || isSvgRule(rule),
+          ),
+          {
+            test: /\.(eot|woff2?|ttf|svg|png)$/,
+            type: "asset/resource",
+            resourceQuery: { not: [/component|source/] },
+          },
+        ],
+      },
+      resolve: {
+        ...storybookConfig.resolve,
+        alias: appConfig.resolve.alias,
+        extensions: appConfig.resolve.extensions,
+      },
+    };
+  },
 };
 
 const isCSSRule = rule => rule.test.toString() === "/\\.css$/";

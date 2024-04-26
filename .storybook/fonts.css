@@ -1,0 +1,469 @@
+@font-face {
+    font-family: Lato;
+    font-style: normal;
+    font-weight: 400;
+    src: url("./Lato/lato-v16-latin-regular.eot"); /* IE9 Compat Modes */
+    src: local("Lato Regular"), local("Lato-Regular"),
+    url("./Lato/lato-v16-latin-regular.eot?#iefix") format("embedded-opentype"),
+        /* IE6-IE8 */ url("./Lato/lato-v16-latin-regular.woff2") format("woff2"),
+        /* Super Modern Browsers */ url("./Lato/lato-v16-latin-regular.woff") format("woff"),
+        /* Modern Browsers */ url("./Lato/lato-v16-latin-regular.ttf") format("truetype"),
+        /* Safari, Android, iOS */ url("./Lato/lato-v16-latin-regular.svg#Lato") format("svg"); /* Legacy iOS */
+}
+
+/* lato-700 - latin */
+@font-face {
+    font-family: Lato;
+    font-style: normal;
+    font-weight: 700;
+    src: url("./Lato/lato-v16-latin-700.eot"); /* IE9 Compat Modes */
+    src: local("Lato Bold"), local("Lato-Bold"),
+    url("./Lato/lato-v16-latin-700.eot?#iefix") format("embedded-opentype"),
+        /* IE6-IE8 */ url("./Lato/lato-v16-latin-700.woff2") format("woff2"),
+        /* Super Modern Browsers */ url("./Lato/lato-v16-latin-700.woff") format("woff"),
+        /* Modern Browsers */ url("./Lato/lato-v16-latin-700.ttf") format("truetype"),
+        /* Safari, Android, iOS */ url("./Lato/lato-v16-latin-700.svg#Lato") format("svg"); /* Legacy iOS */
+}
+
+/* lato-900 - latin */
+@font-face {
+    font-family: Lato;
+    font-style: normal;
+    font-weight: 900;
+    src: url("./Lato/lato-v16-latin-900.eot"); /* IE9 Compat Modes */
+    src: local("Lato Black"), local("Lato-Black"),
+    url("./Lato/lato-v16-latin-900.eot?#iefix") format("embedded-opentype"),
+        /* IE6-IE8 */ url("./Lato/lato-v16-latin-900.woff2") format("woff2"),
+        /* Super Modern Browsers */ url("./Lato/lato-v16-latin-900.woff") format("woff"),
+        /* Modern Browsers */ url("./Lato/lato-v16-latin-900.ttf") format("truetype"),
+        /* Safari, Android, iOS */ url("./Lato/lato-v16-latin-900.svg#Lato") format("svg"); /* Legacy iOS */
+}
+
+/* PT Serif 400 */
+@font-face {
+    font-family: "PT Serif";
+    src: local("PT Serif"), local("PTSerif-Regular"),
+    url("./PT_Serif/PTSerif-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* PT Serif 700 */
+@font-face {
+    font-family: "PT Serif";
+    src: local("PT Serif Bold"), local("PTSerif-Bold"),
+    url("./PT_Serif/PTSerif-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Merriweather-400 */
+@font-face {
+    font-family: Merriweather;
+    src: local("Merriweather Regular"), local("Merriweather-Regular"),
+    url("./Merriweather/Merriweather-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Merriweather-700 */
+@font-face {
+    font-family: Merriweather;
+    src: local("Merriweather Bold"), local("Merriweather-Bold"),
+    url("./Merriweather/Merriweather-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Merriweather-400 */
+@font-face {
+    font-family: Merriweather;
+    src: local("Merriweather Black"), local("Merriweather-Black"),
+    url("./Merriweather/Merriweather-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Montserrat;
+    src: local("Montserrat Regular"), local("Montserrat-Regular"),
+    url("./Montserrat/Montserrat-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Montserrat;
+    src: local("Montserrat Bold"), local("Montserrat-Bold"),
+    url("./Montserrat/Montserrat-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Montserrat;
+    src: local("Montserrat Black"), local("Montserrat-Black"),
+    url("./Montserrat/Montserrat-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Open Sans";
+    src: local("Open Sans Regular"), local("OpenSans-Regular"),
+    url("./Open_Sans/OpenSans-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Open Sans";
+    src: local("Open Sans Bold"), local("OpenSans-Bold"),
+    url("./Open_Sans/OpenSans-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Oswald;
+    src: local("Oswald Bold"), local("Oswald-Bold"),
+    url("./Oswald/Oswald-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Oswald;
+    src: local("Oswald Regular"), local("Oswald-Regular"),
+    url("./Oswald/Oswald-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Raleway;
+    src: local("Raleway Bold"), local("Raleway-Bold"),
+    url("./Raleway/Raleway-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Raleway;
+    src: local("Raleway Regular"), local("Raleway-Regular"),
+    url("./Raleway/Raleway-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Raleway;
+    src: local("Raleway Black"), local("Raleway-Black"),
+    url("./Raleway/Raleway-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Roboto;
+    src: local("Roboto Black"), local("Roboto-Black"),
+    url("./Roboto/Roboto-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Roboto;
+    src: local("Roboto Bold"), local("Roboto-Bold"),
+    url("./Roboto/Roboto-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Roboto;
+    src: local("Roboto"), local("Roboto-Regular"),
+    url("./Roboto/Roboto-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Condensed";
+    src: local("Roboto Condensed Bold"), local("RobotoCondensed-Bold"),
+    url("./Roboto_Condensed/RobotoCondensed-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Condensed";
+    src: local("Roboto Condensed"), local("RobotoCondensed-Regular"),
+    url("./Roboto_Condensed/RobotoCondensed-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Slabo 27px";
+    src: local("Slabo 27px"), local("Slabo27px-Regular"),
+    url("./Slabo_27px/Slabo27px-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Source Sans Pro";
+    src: local("Source Sans Pro Black"), local("SourceSansPro-Black"),
+    url("./Source_Sans_Pro/SourceSansPro-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Source Sans Pro";
+    src: local("Source Sans Pro"), local("SourceSansPro-Regular"),
+    url("./Source_Sans_Pro/SourceSansPro-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Source Sans Pro";
+    src: local("Source Sans Pro Bold"), local("SourceSansPro-Bold"),
+    url("./Source_Sans_Pro/SourceSansPro-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Lora;
+    src: local("Lora Bold"), local("Lora-Bold"),
+    url("./Lora/Lora-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Lora;
+    src: local("Lora Regular"), local("Lora-Regular"),
+    url("./Lora/Lora-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    src: local("Noto Sans Black"), local("NotoSans-Black"),
+    url("./Noto_Sans/NotoSans-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    src: local("Noto Sans Regular"), local("NotoSans-Regular"),
+    url("./Noto_Sans/NotoSans-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    src: local("Noto Sans Bold"), local("NotoSans-Bold"),
+    url("./Noto_Sans/NotoSans-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Playfair Display";
+    src: local("Playfair Display Regular"), local("PlayfairDisplay-Regular"),
+    url("./Playfair_Display/PlayfairDisplay-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Playfair Display";
+    src: local("Playfair Display Bold"), local("PlayfairDisplay-Bold"),
+    url("./Playfair_Display/PlayfairDisplay-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Playfair Display";
+    src: local("Playfair Display Black"), local("PlayfairDisplay-Black"),
+    url("./Playfair_Display/PlayfairDisplay-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Poppins;
+    src: local("Poppins Bold"), local("Poppins-Bold"),
+    url("./Poppins/Poppins-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Poppins;
+    src: local("Poppins Regular"), local("Poppins-Regular"),
+    url("./Poppins/Poppins-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Poppins;
+    src: local("Poppins Black"), local("Poppins-Black"),
+    url("./Poppins/Poppins-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "PT Sans";
+    src: local("PT Sans"), local("PTSans-Regular"),
+    url("./PT_Sans/PTSans-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "PT Sans";
+    src: local("PT Sans Bold"), local("PTSans-Bold"),
+    url("./PT_Sans/PTSans-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Mono";
+    src: local("Roboto Mono Bold"), local("RobotoMono-Bold"),
+    url("./Roboto_Mono/RobotoMono-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Mono";
+    src: local("Roboto Mono Regular"), local("RobotoMono-Regular"),
+    url("./Roboto_Mono/RobotoMono-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Slab";
+    src: local("Roboto Slab Black"), local("RobotoSlab-Black"),
+    url("./Roboto_Slab/RobotoSlab-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Slab";
+    src: local("Roboto Slab Regular"), local("RobotoSlab-Regular"),
+    url("./Roboto_Slab/RobotoSlab-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto Slab";
+    src: local("Roboto Slab Bold"), local("RobotoSlab-Bold"),
+    url("./Roboto_Slab/RobotoSlab-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Ubuntu;
+    src: local("Ubuntu Bold"), local("Ubuntu-Bold"),
+    url("./Ubuntu/Ubuntu-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Ubuntu;
+    src: local("Ubuntu Regular"), local("Ubuntu-Regular"),
+    url("./Ubuntu/Ubuntu-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Inter;
+    src: local("Inter Regular"), local("Inter-Regular"),
+    url("./Inter/Inter-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Inter;
+    src: local("Inter Bold"), local("Inter-Bold"),
+    url("./Inter/Inter-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Inter;
+    src: local("Inter Black"), local("Inter-Black"),
+    url("./Inter/Inter-Black.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+}
