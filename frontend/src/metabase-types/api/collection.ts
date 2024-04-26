@@ -59,7 +59,7 @@ export interface Collection {
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
-  effective_ancestors?: Collection[];
+  effective_ancestors?: Pick<Collection, "id" | "name">[];
 
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
@@ -110,6 +110,7 @@ export interface CollectionItem {
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+  collection_ancestors?: Pick<Collection, "id" | "name">[];
 }
 
 export interface CollectionListQuery {
