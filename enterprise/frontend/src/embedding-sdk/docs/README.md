@@ -1,14 +1,20 @@
-> **NOTE**: This SDK is actively being developed. We don't recommend using it in production!
+> **NOTE**: This SDK is actively being developed. We don't recommend using it in production yet!
 
 
 # Metabase Embedding SDK for React
 
-The Metabase Embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
+The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
-Current features:
+Features currently supported: 
 * embedding questions - static
 * embedding questions - w/drill-down
 * plugins for custom actions
+
+Features planned:
+* embedding dashboards - static
+* embedding dashboards - w/ drill-down
+* styling/theming via CSS
+* subscribing to events
 
 # Prerequisites
 
