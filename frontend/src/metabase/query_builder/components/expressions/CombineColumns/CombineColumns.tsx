@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { t, jt } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Title, Stack, Flex, Button, Box, Icon } from "metabase/ui";
+import { Stack, Flex, Button, Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
@@ -147,8 +147,7 @@ export function CombineColumns({
   return (
     <form onSubmit={handleSubmit}>
       <Box maw="100vw" p="lg" pt={0}>
-        <Title my="md" order={4}>{t`Combine columns`}</Title>
-        <Stack spacing="lg">
+        <Stack spacing="lg" mt="lg">
           <Stack spacing="md">
             <Box>
               <Stack spacing="md">
