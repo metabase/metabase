@@ -29,7 +29,7 @@ const DATE_CASES = [
   {
     option: "Day of week",
     value: "Tuesday",
-    example: "Mon, Tue",
+    example: "Monday, Tuesday",
   },
   {
     option: "Month of year",
