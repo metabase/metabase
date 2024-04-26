@@ -1384,6 +1384,15 @@
   [a-query stage-number extraction]
   (lib.core/extract a-query stage-number extraction))
 
+(defn ^:export extraction-expression
+  "Given `a-query` and an `extraction`, returns the expression it represents, as an opaque form similarly to
+  [[expression-clause]]. It can be passed to [[expression]] to add it to the query. (Though if that's all you need, use
+  [[extract]] instead.)
+
+  > **Code health:** Healthy"
+  [_a-query _stage-number extraction]
+  (lib.core/extraction-expression extraction))
+
 (defn ^:export suggested-join-conditions
   "Returns a JS array of possible default join conditions when joining against `joinable`, e.g. a Table, Saved
   Question, or another query. Suggested conditions will be returned if the existing query has a foreign key to the
