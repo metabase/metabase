@@ -43,7 +43,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+                                    (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil

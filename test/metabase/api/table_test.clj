@@ -206,7 +206,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -278,7 +278,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
