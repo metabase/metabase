@@ -118,3 +118,6 @@
       (#'send-pulses/clear-pulse-channels!)
       (is (= 1
              (t2/count PulseChannel))))))
+
+
+;; TODO add a test to check that task-init for SendPulses will register the job and triggers

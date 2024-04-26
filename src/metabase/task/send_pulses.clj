@@ -34,6 +34,7 @@
                               (when (and (empty? (get-in channel [:details :emails]))
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
+    (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
@@ -117,12 +118,13 @@
 
 (defn- reprioritize-send-pulses
   []
+  (log/info "Reprioritizing send pulses")
+  (clear-pulse-channels!)
   (let [pulse-channel-slots (as-> (t2/select :model/PulseChannel :enabled true) results
                               (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                               (update-vals results #(map :id %)))]
-    (for [[{:keys [pulse_id] :as schedule-map} pc-ids] pulse-channel-slots]
-      (update-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))
-    (clear-pulse-channels!)))
+    (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] pulse-channel-slots]
+      (update-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))))
 
 (jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"}
   RePrioritizeSendPulses
@@ -151,8 +153,10 @@
     (task/add-job! send-pulse-job)
     (task/add-job! re-proritize-job)
     (task/schedule-task! re-proritize-job re-proritize-trigger)
-    (task/add-trigger! re-proritize-trigger)))
+    ;; this function is idempotence, so we can call it multiple times
+    (reprioritize-send-pulses)))
 
 #_(doseq [trigger (:triggers (task/job-info "metabase.task.send-pulses.send-pulse.job"))]
     (task/delete-trigger! (triggers/key (:key trigger))))
-#_(task/job-info "metabase.task.send-pulses.send-pulse.job")
+#_(task/job-info reprioritize-send-pulse-job-key)
+#_(task/job-info send-pulse-job-key)
