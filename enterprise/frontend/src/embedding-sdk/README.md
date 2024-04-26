@@ -1,6 +1,5 @@
 > **NOTE**: This SDK is actively being developed. We don't recommend using it in production yet!
 
-
 # Metabase Embedding SDK for React
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
@@ -18,7 +17,7 @@ Features planned:
 
 # Prerequisites
 
-* Your application is using React V17+
+* Your application is using React 17 or higher
 * You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase.
 
 # Getting started
@@ -49,9 +48,9 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
 // Configuration
 const config = {
-  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  jwtProviderUri: "https://app.example.com/sso/metabase", // Required: Your endpoint that returns JWT token used to authenticate Metabase. We'll explain more below how to implement this endpoint.
-  font: "Lato", // Optional: you could provide any fonts supported by Metabase
+  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL.
+  jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token. We'll explain more below how to implement this endpoint.
+  font: "Lato", // Optional: Specify a font to use fromt the set of fonts supported by Metabase.
 }
 
 export default function App() {
@@ -63,9 +62,9 @@ export default function App() {
 }
 ```
 
-### Embedding a question
+### Embedding a static question
 
-After the SDK is configured, you can use embed your question using `StaticQuestion` component.
+After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
 ```jsx
 import React from "react";
@@ -84,7 +83,11 @@ export default function App() {
 }
 ```
 
-### Customizing custom actions
+### Embedding an interactive question (drill-down)
+
+TODO
+
+### Implementing custom actions
 
 `MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
 
