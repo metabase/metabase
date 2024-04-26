@@ -10,7 +10,8 @@ describe("issue 39221", () => {
 
   ["admin", "normal"].forEach(user => {
     it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
-      cy.signIn(user);
+      cy.signOut();
+      cy.signIn(user as "admin" | "normal");
       openReviewsTable({ mode: "notebook" });
       // Opening a SQL preview sidebar will trigger a user-local setting update
       cy.findByLabelText("View the SQL").click();
