@@ -324,6 +324,8 @@
    filename   :- ms/NonBlankString
    channel-id :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
+  ;; see the python
+  ;; https://github.com/slackapi/python-slack-sdk/pull/1272/files#diff-43db19ac0a29454cd1da520664806b266d75a54632e9661cc131406b3270b040R3066
   (let [request  {:multipart [{:name "file",     :content file}
                               {:name "filename", :content filename}
                               {:name "channels", :content channel-id}]}
