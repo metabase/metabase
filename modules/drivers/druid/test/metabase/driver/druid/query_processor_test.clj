@@ -9,13 +9,14 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [Field #_LegacyMetric Table]]
+   [metabase.models :refer [Card Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -541,22 +542,24 @@
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
-;; TODO TB legacy macro test, delete or port
-#_(deftest metrics-inside-aggregation-clauses-test
+(deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [LegacyMetric metric {:definition (mt/$ids checkins
-                                                              {:aggregation [:sum $venue_price]
-                                                               :filter      [:> $venue_price 1]})
-                                                :table_id (mt/id :checkins)}]
+        (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query
+                                                       (mt/mbql-query checkins
+                                                         {:aggregation [:sum $venue_price]
+                                                          :filter      [:> $venue_price 1]
+                                                          :source-table (mt/id :checkins)})
+                                                       :type :metric}]
           (is (= [["2" 1231.0]
                   ["3"  346.0]
                   ["4" 197.0]]
                  (mt/rows
                   (mt/run-mbql-query checkins
-                    {:aggregation [:+ [:metric (u/the-id metric)] 1]
-                     :breakout    [$venue_price]})))))))))
+                    {:aggregation [:+ [:metric metric-id] 1]
+                     :breakout    [$venue_price]
+                     :source-table (str "card__" metric-id)})))))))))
 
 (deftest order-by-aggregation-test
   (mt/test-driver :druid

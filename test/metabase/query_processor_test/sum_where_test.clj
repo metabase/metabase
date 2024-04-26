@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
-   #_[metabase.models.legacy-metric :refer [LegacyMetric]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.segment :refer [Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -93,16 +93,16 @@
                   ffirst
                   double))))))
 
-;; TODO TB legacy macro test, delete or port
-#_(deftest metric-test
+(deftest metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:source-table (mt/id :venues)
-                                                                  :aggregation  [:sum-where
-                                                                                 [:field (mt/id :venues :price) nil]
-                                                                                 [:< [:field (mt/id :venues :price) nil] 4]]}}]
+    (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query
+                                                   (mt/mbql-query venues
+                                                     {:aggregation  [:sum-where $price [:< $price 4]]
+                                                      :source-table $$venues})
+                                                   :type :metric}]
       (is (= 179.0
-             (->> {:aggregation [[:metric metric-id]]}
+             (->> {:aggregation [[:metric metric-id]]
+                   :source-table (str "card__" metric-id)}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst
