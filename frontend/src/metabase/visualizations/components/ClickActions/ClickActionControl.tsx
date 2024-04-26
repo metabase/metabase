@@ -19,6 +19,7 @@ import {
   SortControl,
   TokenActionButton,
   TokenFilterActionButton,
+  Subtitle,
 } from "./ClickActionControl.styled";
 
 interface Props {
@@ -115,6 +116,7 @@ export const ClickActionControl = ({
           onClick={handleClick}
         >
           {action.title}
+          {action.subTitle && <Subtitle>{action.subTitle}</Subtitle>}
         </HorizontalClickActionButton>
       );
 
