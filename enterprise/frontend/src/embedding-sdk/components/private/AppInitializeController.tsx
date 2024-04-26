@@ -8,13 +8,13 @@ import {
 import { useInitData } from "embedding-sdk/hooks";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized } from "embedding-sdk/store/selectors";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
   children: ReactNode;
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
 export const AppInitializeController = ({

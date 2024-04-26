@@ -93,11 +93,11 @@
   (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
         oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
         query        (mt/mbql-query venues
-                                    {:expressions {priceplusone [:+ $price 1]
-                                                   oneplusone   [:+ 1 1]}
-                                     :fields      [$price [:expression oneplusone]]
-                                     :order-by    [[:asc $id]]
-                                     :limit       3})]
+                       {:expressions {priceplusone [:+ $price 1]
+                                      oneplusone   [:+ 1 1]}
+                        :fields      [$price [:expression oneplusone]]
+                        :order-by    [[:asc $id]]
+                        :limit       3})]
     {:priceplusone priceplusone
      :oneplusone   oneplusone
      :query        query}))
@@ -240,14 +240,14 @@
              (calculate-bird-scarcity [:/ 100.0 $count] [:or [:= $count nil] [:!= $count 0]]))))))
 
 (deftest ^:parallel nulls-and-zeroes-test-4
-   (mt/test-drivers
-     (nulls-and-zeroes-test-drivers)
-     (testing
-         "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
-         (is
-          (=
-           [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-           (calculate-bird-scarcity [:/ 100.0 $count]))))))
+  (mt/test-drivers
+    (nulls-and-zeroes-test-drivers)
+    (testing
+     "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
+      (is
+       (=
+        [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+        (calculate-bird-scarcity [:/ 100.0 $count]))))))
 (deftest ^:parallel nulls-and-zeroes-test-5
   (mt/test-drivers (nulls-and-zeroes-test-drivers)
     (testing "can we handle dividing by literal 0?"
@@ -291,7 +291,6 @@
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
@@ -340,6 +339,78 @@
                         :order-by    [[:asc $name]]})
                      mt/rows))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                WEEKDAYS                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; Background on weekdays in Metabase:
+;;; - Day 1 inside Metabase is defined by [[metabase.public-settings/start-of-week]]; default `:sunday`.
+;;; - Databases store this differently - 1 to 7, 0 to 6, hard-coded first day, based on the locale, ...
+;;; - Drivers handle that variation, and always expect 1 to 7 where 1 is the `start-of-week` day.
+;;; - Locales differ in what they consider the first day of the week; generally Sunday in the Americas, Monday in
+;;;   Europe, and Saturday in the Arabic-speaking world.
+;;;
+;;; Goals:
+;;; - `[:get-day-of-week "2024-04-19"]` returns numbers 1-7, consistent with the `start-of-week` setting.
+;;; - `[:day-name 4]` understands `4` based on `start-of-week`, and the correct *user* locale name is returned
+;;;   - Even if the user locale and the Metabase setting disagree about which is day 1!
+;;; - Site locale is irrelevant here.
+
+;;; In these tests, we have a series of specific dates from the checkins table that happen to run Monday to Sunday.
+;;; So in the query results:
+;;; - The **order** of the days is fixed, since we're sorting by date ascending.
+;;; - The **day numbers** are based on the `start-of-week` setting.
+;;; - The **day names** are based on the user locale.
+
+(def ^:private weekdays-english
+  ["Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"])
+
+(def ^:private weekdays-spanish
+  ["lunes" "martes" "miércoles" "jueves" "viernes" "sábado" "domingo"])
+
+(deftest ^:synchronized weekday-numbers-and-names-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (doseq [first-day                [:sunday :monday :saturday]
+            ;; Adjusting the site locale to get different languages and first day of the week. It should be ignored!
+            site-locale              ["en_US" "es_ES"]
+            ;; For each of two languages and two regions, we check that:
+            ;; 1. the locale's first day of the week is ignored, and
+            ;; 2. the names are correctly translated for the *user* locale.
+            [user-locale exp-names] [;; US uses Sunday=1 in both English and Spanish.
+                                     ["en_US" weekdays-english]
+                                     ["es_US" weekdays-spanish]
+                                                    ;; Europe uses Monday=1 in both English and Spanish.
+                                     ["en_UK" weekdays-english]
+                                     ["es_ES" weekdays-spanish]]]
+      ;; Metabase queries should return weekday numbers based on the *setting*, not the locales.
+      ;; This fixed set of dates from checkins runs Monday to Sunday when sorted ascending by date.
+      (let [known-week  ["2013-02-18"  ; Monday
+                         "2013-02-19"  ; Tuesday
+                         "2013-02-20"  ; Wednesday
+                         "2013-02-21"  ; Thursday
+                         "2013-02-22"  ; Friday
+                         "2013-03-16"  ; Saturday
+                         "2013-03-16"  ; Saturday
+                         "2013-04-28"] ; Sunday
+            ;; The absolute weekdays are fixed above, but the numbering depends on the `start-of-week` setting.
+            exp-numbers (case first-day
+                          :saturday [3 4 5 6 7 1 2]
+                          :sunday   [2 3 4 5 6 7 1]
+                          :monday   [1 2 3 4 5 6 7])]
+        (mt/with-temporary-setting-values [start-of-week first-day
+                                           site-locale   site-locale]
+          (mt/with-user-locale user-locale
+            ;; Fetching [number name date].
+            (let [results (mt/formatted-rows [int str]
+                            (mt/run-mbql-query checkins
+                              {:fields      [[:expression "weekday"] [:expression "name"]]
+                               :expressions {:weekday [:get-day-of-week $date]
+                                             :name    [:day-name [:expression "weekday"]]}
+                               :filter      (into [:= $date] known-week)
+                               :order-by    [[:asc $date]]}))]
+              (testing "weekday numbers disregard site and user locales, and respect `start-of-week` setting"
+                (is (=? exp-numbers (map first results))))
+              (testing "weekday names are correctly translated by *user* locale, though weekday differs across locales"
+                (is (=? exp-names   (map second results)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     JOINS                                                      |
@@ -363,7 +434,6 @@
                                                   [:field (mt/id :users :id) {:join-alias "users__via__user_id"}]]}]})
                  mt/rows
                  ffirst))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MISC BUG FIXES                                                 |
@@ -421,10 +491,10 @@
 
 (deftest ^:parallel expression-with-slashes
   (mt/test-drivers (disj
-                     (mt/normal-drivers-with-feature :expressions)
+                    (mt/normal-drivers-with-feature :expressions)
                      ;; Slashes documented as not allowed in BQ
                      ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
-                     :bigquery-cloud-sdk)
+                    :bigquery-cloud-sdk)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
@@ -439,7 +509,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
-              [ "25°" 2 2 0]
+              ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
              (mt/formatted-rows [str int int int]
                (mt/run-mbql-query venues
@@ -507,9 +577,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
       (let [query (mt/mbql-query venues
-                   {:expressions {"Refund Amount (?)" [:* $price -1]}
-                    :limit       1
-                    :order-by    [[:asc $id]]})]
+                    {:expressions {"Refund Amount (?)" [:* $price -1]}
+                     :limit       1
+                     :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int]

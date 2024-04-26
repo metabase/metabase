@@ -51,3 +51,24 @@
                                       [:cum-count {}]]]
                        :limit       3}]}
             (nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation query)))))
+
+(deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
+  (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
+    (let [orders            (meta/table-metadata :orders)
+          orders-quantity   (meta/field-metadata :orders :quantity)
+          orders-created-at (meta/field-metadata :orders :created-at)
+          orders-id         (meta/field-metadata :orders :id)
+          query             (-> (lib/query meta/metadata-provider orders)
+                                (lib/filter (lib/> orders-id 0))
+                                (lib/aggregate (lib/cum-count))
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                (lib/breakout orders-quantity)
+                                (lib/limit 5))]
+      (is (=? {:stages [{:filters [[:> {} [:field {} (meta/id :orders :id)] 0]]
+                         :fields [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                  [:field {} (meta/id :orders :quantity)]]}
+                        {:breakout    [[:field {:temporal-unit :default} "CREATED_AT"]
+                                       [:field {} "QUANTITY"]]
+                         :aggregation [[:cum-count {}]]
+                         :limit 5}]}
+              (nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation query))))))

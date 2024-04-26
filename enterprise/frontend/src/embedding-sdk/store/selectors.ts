@@ -9,3 +9,5 @@ export const getIsLoggedIn = (state: SdkStoreState) =>
   getLoginStatus(state).status === "success";
 
 export const getSessionTokenState = (state: SdkStoreState) => state.sdk.token;
+
+export const getPlugins = (state: SdkStoreState) => state.sdk.plugins;

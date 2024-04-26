@@ -390,7 +390,8 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (u/prog1 (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+      (events/publish-event! :event/card-read {:object <>, :user-id api/*current-user-id*}))))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
