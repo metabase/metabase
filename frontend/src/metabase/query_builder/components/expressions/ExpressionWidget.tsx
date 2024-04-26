@@ -123,7 +123,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
-      trackColumnCombineViaShortcut();
+      trackColumnCombineViaShortcut(query);
 
       setIsCombiningColumns(false);
       setClause(clause);
