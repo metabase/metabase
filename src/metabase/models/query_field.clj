@@ -52,16 +52,18 @@
           (t2/with-transaction [_conn]
             (let [existing            (t2/select :model/QueryField :card_id card-id)
                   {:keys [to-update
-                          to-insert
-                          to-delete]} (u/row-diff existing query-field-rows :field_id [:id :card_id :field_id])]
+                          to-create
+                          to-delete]} (u/row-diff existing query-field-rows
+                                                  {:id-fn   :field_id
+                                                   :cleanup #(dissoc % :id :card_id :field_id)})]
               (when (seq to-delete)
                 ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
                 ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
                 ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
                 ;; executed unconditionally on every query change.
                 (t2/delete! :model/QueryField :card_id card-id :field_id [:in (map :field_id to-delete)]))
-              (when (seq to-insert)
-                (t2/insert! :model/QueryField to-insert))
+              (when (seq to-create)
+                (t2/insert! :model/QueryField to-create))
               (doseq [item to-update]
                 (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
                             (select-keys item [:direct_reference])))))))

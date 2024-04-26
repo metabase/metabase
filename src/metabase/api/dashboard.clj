@@ -541,7 +541,7 @@
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
-  (let [{:keys [to-create to-update to-delete]} (u/classify-changes current-cards new-cards)]
+  (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)
