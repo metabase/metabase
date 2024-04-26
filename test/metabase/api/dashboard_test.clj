@@ -220,7 +220,8 @@
    :public_uuid             nil
    :auto_apply_filters      true
    :show_in_getting_started false
-   :updated_at              true})
+   :updated_at              true
+   :view_count              0})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
