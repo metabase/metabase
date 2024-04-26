@@ -39,7 +39,7 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
         "123.45678901234567__123.45678901234567",
       );
 
-      cy.findByText("Done").click();
+      cy.button("Done").click();
 
       cy.findByTestId("expression-editor-textfield").should(
         "have.text",
