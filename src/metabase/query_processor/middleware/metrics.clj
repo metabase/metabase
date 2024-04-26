@@ -55,7 +55,7 @@
             last-metric-stage (last pre-transition-stages)
             metric-aggregation (-> last-metric-stage :aggregation first)
             new-metric-stage (cond-> last-metric-stage
-                                 :always (dissoc :aggregation :fields)
+                                 :always (dissoc :aggregation :fields :lib/stage-metadata)
                                  (seq following-stages) (dissoc :breakout :order-by :limit))
             ;; Store lookup for metric references created in this set of stages.
             ;; These will be adjusted later if these stages are in a join
