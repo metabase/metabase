@@ -25,5 +25,16 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
         padding: "0.6rem 0.75rem",
       },
     }),
+    variants: {
+      multiline: _theme => {
+        return {
+          tooltip: {
+            whiteSpace: "normal",
+            maxWidth: "20rem",
+            overflowWrap: "break-word",
+          },
+        };
+      },
+    },
   },
 });
