@@ -3,7 +3,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { createQuery } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { suggestWithFooters } from "./ExpressionEditorTextfield";
+import { suggestWithExtras } from "./ExpressionEditorTextfield";
 
 const METADATA = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -16,7 +16,7 @@ type SetupOpts = {
 function setup({ startRule }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
-  const { suggestions } = suggestWithFooters({
+  const { suggestions } = suggestWithExtras({
     source: "",
     query,
     stageIndex,

@@ -23,7 +23,10 @@ import type {
 import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
-import type { SuggestionFooter } from "../ExpressionEditorTextfield";
+import type {
+  SuggestionFooter,
+  SuggestionShortcut,
+} from "../ExpressionEditorTextfield";
 
 import {
   ExpressionListItem,
@@ -52,7 +55,7 @@ export function ExpressionEditorSuggestions({
 }: {
   query: Lib.Query;
   stageIndex: number;
-  suggestions?: (Suggestion | SuggestionFooter)[];
+  suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   onSuggestionMouseDown: (index: number) => void;
   open: boolean;
   highlightedIndex: number;
@@ -102,6 +105,14 @@ export function ExpressionEditorSuggestions({
           >
             <ExpressionEditorSuggestionsListGroup
               suggestions={groups._none}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="shortcuts"
+              suggestions={groups.shortcuts}
               query={query}
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
@@ -294,6 +305,7 @@ function colorForIcon(icon: string | undefined | null) {
     case "insight":
       return { normal: color("accent1"), highlighted: color("brand-white") };
     case "function":
+    case "combine":
       return { normal: color("brand"), highlighted: color("brand-white") };
     default:
       return {
@@ -316,6 +328,7 @@ function group(suggestions: Suggestion[]): Groups {
     _none: [],
     popularAggregations: [],
     popularExpressions: [],
+    shortcuts: [],
   };
 
   suggestions.forEach(function (suggestion) {

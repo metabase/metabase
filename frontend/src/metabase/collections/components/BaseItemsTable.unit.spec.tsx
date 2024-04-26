@@ -37,6 +37,7 @@ function getCollectionItem({
       email: "john.doe@example.com",
       timestamp,
     },
+    collection_id: null,
     ...rest,
     id,
     model,

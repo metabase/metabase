@@ -2,6 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.models :refer [Card]]
+   [metabase.models.query-field :as query-field]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -129,3 +131,24 @@
           ;; subset since it also includes the PKs/FKs
           (is (set/subset? #{total-qf tax-qf}
                            (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
+
+(deftest parse-mbql-test
+  (testing "Parsing MBQL query returns correct used fields"
+    (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
+                                             {:aggregation [[:distinct $name]
+                                                            [:distinct $price]]
+                                              :limit       5})}
+                   Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
+                                            :database (:id (mt/db))
+                                            :type     :query}}
+                   Card c3 {:dataset_query (mt/mbql-query checkins
+                                             {:joins [{:source-table (str "card__" (:id c2))
+                                                       :alias "Venues"
+                                                       :condition [:= $checkins.venue_id $venues.id]}]})}]
+      (mt/$ids
+        (is (= {:direct #{%venues.name %venues.price}}
+               (#'query-field/field-ids-for-mbql (:dataset_query c1))))
+        (is (= {:direct nil}
+               (#'query-field/field-ids-for-mbql (:dataset_query c2))))
+        (is (= {:direct #{%venues.id %checkins.venue_id}}
+               (#'query-field/field-ids-for-mbql (:dataset_query c3))))))))

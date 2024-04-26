@@ -41,6 +41,8 @@ export interface QueryColumnPickerProps {
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
   "data-testid"?: string;
+  width?: number | string;
+  hasInitialFocus?: boolean;
 }
 
 type Sections = {
@@ -63,6 +65,8 @@ export function QueryColumnPicker({
   onSelect,
   onClose,
   "data-testid": dataTestId,
+  width,
+  hasInitialFocus = true,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -204,6 +208,8 @@ export function QueryColumnPicker({
         itemTestId="dimension-list-item"
         globalSearch
         withBorders
+        hasInitialFocus={hasInitialFocus}
+        width={width}
       />
     </DelayGroup>
   );
