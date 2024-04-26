@@ -17,10 +17,106 @@ Features planned:
 
 # Prerequisites
 
-* Your application is using React 17 or higher
-* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase.
+* You have an application using React 17 or higher
+* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase 
+* You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
 
 # Getting started
+
+## Start a local build of Metabase from master
+
+1. Check out the code from the metabase repo
+```git clone git@github.com:metabase/metabase.git```
+1. Move into the repo and start it
+```cd metabase && yarn dev-ee```
+1. Metabase will be running at http://localhost:3000/
+1. Go through the setup process
+1. Make sure to activate your license. You can do this during the setup process or after, from the admin settings
+
+## Configure Metabase
+
+1. Go to Admin settings > Authentication > JWT
+    1. Set JWT Identity Provider URI to your JWT endpoint
+    1. Generate JWT signing key and take note of this value. You will need it later.
+1. Go to Admin settings > Embedding
+    1. Enable embedding if not already enabled
+    1. Inside interactive embedding, set Authorized Origins to your application URL
+
+## Authenticate users from your back-end
+
+> **Note:** Metabase Embedding SDK for React only supports JWT authentication.**
+
+The SDK requires an endpoint in the backend that signs a user into Metabase and returns a token that the SDK will use to make authenticated calls to Metabase.
+
+The SDK will call this endpoint if it doesn't have a token or to refresh the token when it's about to expire.
+
+Example:
+
+```ts
+import express from "express"
+import type { Request, Response } from "express"
+
+import jwt from "jsonwebtoken"
+import fetch from "node-fetch"
+
+async function metabaseAuthHandler(req: Request, res: Response) {
+  const { user } = req.session
+
+  if (!user) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'not authenticated',
+    })
+  }
+
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
+    },
+    // This is the JWT signing secret in your Metabase JWT authentication setting
+    METABASE_JWT_SHARED_SECRET
+  )
+  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
+
+  try {
+    const response = await fetch(ssoUrl, { method: 'GET' })
+    const token = await response.json()
+
+    return res.status(200).json(token)
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(401).json({
+        status: 'error',
+        message: 'authentication failed',
+        error: error.message,
+      })
+    }
+  }
+}
+
+const app = express()
+
+// middleware
+app.use(
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },
+  }),
+)
+app.use(express.json())
+
+// routes
+app.get("/sso/metabase", metabaseAuthHandler)
+app.listen(PORT, () => {
+  console.log(`API running at http://localhost:${PORT}`)
+})
+```
 
 ## Installation
 
@@ -36,7 +132,7 @@ or using yarn:
 yarn add @metabase/embedding-sdk-react
 ```
 
-## Usage
+## Using the SDK
 
 ### Initializing the SDK
 
@@ -149,95 +245,9 @@ return (
 );
 ```
 
-### Configuring Metabase
-
-1. Go to Admin settings > Authentication > JWT
-    1. Set JWT Identity Provider URI to your JWT endpoint
-    1. Generate JWT signing key and take note of this value. You will need it later.
-1. Go to Admin settings > Embedding
-    1. Enable embedding if not already enabled
-    1. Configure interactive embedding
-    1. Set Authorized Origins to your application URL
-
-Read Metabase's [JWT-based authentication documentation](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt) for more details.
-
-### Implementing JWT endpoint
-
-After you have configured the SDK, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
-
-**Metabase Embedding SDK for React only supports JWT authentication.**
-
-Here is the example how you could implement an endpoint that will return JWT token that Metabase Embedding SDK for react could use to authenticate your users.
-
-```ts
-import express from "express"
-import type { Request, Response } from "express"
-
-import jwt from "jsonwebtoken"
-import fetch from "node-fetch"
-
-async function metabaseAuthHandler(req: Request, res: Response) {
-  const { user } = req.session
-
-  if (!user) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'not authenticated',
-    })
-  }
-
-  const token = jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: [user.group],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-    },
-    // This is the JWT signing secret in your Metabase JWT authentication setting
-    METABASE_JWT_SHARED_SECRET
-  )
-  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
-
-  try {
-    const response = await fetch(ssoUrl, { method: 'GET' })
-    const token = await response.json()
-
-    return res.status(200).json(token)
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-        status: 'error',
-        message: 'authentication failed',
-        error: error.message,
-      })
-    }
-  }
-}
-
-const app = express()
-
-// middleware
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false },
-  }),
-)
-app.use(express.json())
-
-// routes
-app.get("/sso/metabase", metabaseAuthHandler)
-app.listen(PORT, () => {
-  console.log(`API running at http://localhost:${PORT}`)
-})
-```
-
 # Known limitations
 
-The Metabase Embedding SDK only supports React on SPA Webpack applications, but applications build with Vite isn't currently supported. We aim to add support for other platforms in the near future.
+The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
 
 # Feedback
 TODO: how to share feedback with us
