@@ -410,6 +410,6 @@
   and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
   operations to pre-warm the cache if you need to."
   [database-id :- ::lib.schema.id/database]
- (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
-     lib.metadata.cached-provider/cached-metadata-provider
-     lib.metadata.invocation-tracker/invocation-tracker-provider))
+  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
+      lib.metadata.cached-provider/cached-metadata-provider
+      lib.metadata.invocation-tracker/invocation-tracker-provider))
