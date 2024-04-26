@@ -5,9 +5,8 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -152,14 +151,15 @@
                                  {:email email})
                                (get pcid->recipients (:id pc))))))))
 
+(defn- update-trigger-if-needed!
+  [& args]
+  (classloader/require 'metabase.task.send-pulses)
+  (apply (resolve 'metabase.task.send-pulses/update-trigger-if-needed!) args))
 
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
   in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
   true)
-
-(declare update-trigger-if-needed!)
-(declare pulse-channels-same-slot)
 
 (t2/define-before-delete :model/PulseChannel
   [{pulse-id :pulse_id, pulse-channel-id :id :as pulse-channel}]
@@ -204,7 +204,7 @@
       ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
       ;; addresses
       (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
-        (let [user-id->email (t2/select-pk->fn :email User, :id [:in user-ids])]
+        (let [user-id->email (t2/select-pk->fn :email :model/User, :id [:in user-ids])]
           (doseq [{:keys [id email]} user-recipients
                   :let               [correct-email (get user-id->email id)]]
             (when-not correct-email
@@ -216,32 +216,14 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(defn pulse-channels-same-slot
-  "Get all the `PulseChannels` that are scheduled to run at the same time."
-  [pulse-id schedule-map]
-  ;; should make-schedule map a closed map
-  (assert (every? #(contains? schedule-map %) [:schedule_type :schedule_hour :schedule_day :schedule_frame])
-          (format "Schedule map should have all the right keys, got: %s" (keys schedule-map)))
-  (apply t2/select-pks-set :model/PulseChannel
-         :pulse_id pulse-id
-         :enabled true (->> (select-keys schedule-map [:schedule_type :schedule_hour :schedule_day :schedule_frame])
-                            (into [])
-                            flatten)))
-
-(defn- update-trigger-if-needed!
-  [& args]
-  (classloader/require 'metabase.task.send-pulses)
-  (apply (resolve 'metabase.task.send-pulses/update-trigger-if-needed!) args))
-
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
   (validate-email-domains pulse-channel))
 
 (t2/define-after-insert :model/PulseChannel
-  [pulse-channel]
-  (let [pulse-channel (t2.realize/realize pulse-channel)]
-    (u/prog1 pulse-channel
-      (update-trigger-if-needed! (:pulse_id pulse-channel) pulse-channel :add-pc-ids #{(:id pulse-channel)}))))
+  [{:keys [pulse_id id] :as pulse-channel}]
+  (u/prog1 pulse-channel
+    (update-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id})))
 
 (t2/define-before-update :model/PulseChannel
   [{:keys [pulse_id id] :as pulse-channel}]
@@ -322,15 +304,15 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (t2/insert! PulseChannelRecipient vs)))
+        (t2/insert! :model/PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (t2/delete! (t2/table-name PulseChannelRecipient)
+      (t2/delete! (t2/table-name :model/PulseChannelRecipient)
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
 
@@ -426,10 +408,10 @@
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
-                                  :let [id (t2/select-one-pk 'User :email email)]]
+                                  :let [id (t2/select-one-pk :model/User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :pulse_channel_id channel-id))
+        current-users  (set (t2/select-fn-set :user_id :model/PulseChannelRecipient :pulse_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
       (update-recipients! channel-id combined))))

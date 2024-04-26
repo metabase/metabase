@@ -139,7 +139,7 @@
   ;; of the same schedule and Pulse will be have its own trigger.
   ;; During this transition we need to delete the old SendPulses job and trigger and recreate a new SendPulse job for
   ;; each PulseChannel.
-  ;; So we called `reprioritize-send-pulses` init task/init! to do this.
+  ;; So we called `reprioritize-send-pulses!` init task/init! to do this.
   ;; Since function is idempotence it's ok to call it multiple times. After this we'll also want to make this function
   ;; prioritize pulses based on its send times so that fast pulses are sent first.
   (mt/with-temp-scheduler

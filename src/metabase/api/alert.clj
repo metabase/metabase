@@ -219,20 +219,19 @@
                  [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
 
     ;; now update the Alert
-    (let [update-info (merge
-                                      (assoc (only-alert-keys alert-updates)
-                                             :id id)
-                                      (when card
-                                        {:card (pulse/card->ref card)})
-                                      (when (contains? alert-updates :channels)
-                                        {:channels channels})
-                                      ;; automatically archive alert if it now has no recipients
-                                      (when (and (contains? alert-updates :channels)
-                                                 (not (seq (:recipients (email-channel alert-updates))))
-                                                 (not (slack-channel alert-updates)))
-                                        {:archived true}))
-          updated-alert (pulse/update-alert!
-                         update-info)]
+    (let [updated-alert (pulse/update-alert!
+                         (merge
+                          (assoc (only-alert-keys alert-updates)
+                                 :id id)
+                          (when card
+                            {:card (pulse/card->ref card)})
+                          (when (contains? alert-updates :channels)
+                            {:channels channels})
+                          ;; automatically archive alert if it now has no recipients
+                          (when (and (contains? alert-updates :channels)
+                                     (not (seq (:recipients (email-channel alert-updates))))
+                                     (not (slack-channel alert-updates)))
+                            {:archived true})))]
       ;; Only admins or users has subscription or monitoring perms
       ;; can update recipients or explicitly archive an alert
       (when (and (or api/*is-superuser?*
