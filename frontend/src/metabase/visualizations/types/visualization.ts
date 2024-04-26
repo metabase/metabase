@@ -100,7 +100,8 @@ export interface VisualizationProps {
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
 
-  onRemoveSeries?: any;
+  canRemoveSeries?: (seriesIndex: number) => boolean;
+  onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
 
