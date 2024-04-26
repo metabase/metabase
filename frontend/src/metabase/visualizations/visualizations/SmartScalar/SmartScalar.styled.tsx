@@ -43,15 +43,6 @@ export const PreviousValueWrapper = styled.div`
   max-width: 100%;
 `;
 
-export const VariationContainer = styled.div`
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin: ${space(0)} ${space(1)};
-  line-height: 1.2rem;
-`;
-
 export const Separator = styled.span`
   display: inline-block;
   transform: scale(0.7);

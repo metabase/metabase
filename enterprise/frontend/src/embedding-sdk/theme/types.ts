@@ -8,8 +8,14 @@ export type MetabaseTheme = MantineThemeOverride & {
 
     smartScalar?: {
       value?: CSSObject;
-      title?: CSSObject;
-      description?: CSSObject;
+
+      variationPercent?: CSSObject;
+
+      // TODO! how granular should we be?
+      previousValue?: {
+        text?: CSSObject;
+        number?: CSSObject;
+      };
     };
   };
 };

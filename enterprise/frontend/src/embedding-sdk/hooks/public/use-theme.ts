@@ -7,14 +7,3 @@ import type { MetabaseTheme } from "../../theme/types";
 export function useMetabaseTheme(): MetabaseTheme {
   return useMantineTheme();
 }
-
-// ignore this - testing types
-const _sample: MetabaseTheme = {
-  labels: {
-    fontSize: 24,
-    color: "royalblue",
-  },
-  smartScalar: {
-    value: { fontSize: 18 },
-  },
-};

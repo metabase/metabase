@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
+import { useMetabaseTheme } from "embedding-sdk";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -12,6 +13,8 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { space } from "metabase/styled-components/theme";
+import { Flex } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -30,7 +33,6 @@ import { ScalarContainer } from "../Scalar/Scalar.styled";
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import {
   PreviousValueDetails,
-  VariationContainer,
   PreviousValueWrapper,
   PreviousValueNumber,
   Separator,
@@ -181,6 +183,9 @@ function PreviousValueComparison({
 }) {
   const fontSize = "0.875rem";
 
+  const theme = useMetabaseTheme();
+  const scalarTheme = theme.other?.smartScalar ?? {};
+
   const {
     changeType,
     percentChange,
@@ -230,12 +235,22 @@ function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <PreviousValueNumber key={valueStr}>{valueStr}</PreviousValueNumber>
+        <PreviousValueNumber
+          key={valueStr}
+          style={scalarTheme?.previousValue?.number}
+        >
+          {valueStr}
+        </PreviousValueNumber>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <PreviousValueNumber key="value-str">{valueStr}</PreviousValueNumber>
+      <PreviousValueNumber
+        key="value-str"
+        style={scalarTheme?.previousValue?.number}
+      >
+        {valueStr}
+      </PreviousValueNumber>
     )}`;
   });
   const fullDetailDisplay = detailCandidates[0];
@@ -249,7 +264,10 @@ function PreviousValueComparison({
   );
 
   const VariationPercent = ({ iconSize, children }) => (
-    <Variation color={changeColor}>
+    <Variation
+      style={scalarTheme?.variationPercent}
+      color={scalarTheme?.variationPercent?.color ?? changeColor}
+    >
       {changeArrowIconName && (
         <VariationIcon name={changeArrowIconName} size={iconSize} />
       )}
@@ -258,7 +276,7 @@ function PreviousValueComparison({
   );
   const VariationDetails = ({ children }) =>
     children ? (
-      <PreviousValueDetails>
+      <PreviousValueDetails style={scalarTheme?.previousValue?.text}>
         {separator}
         {children}
       </PreviousValueDetails>
@@ -273,11 +291,17 @@ function PreviousValueComparison({
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
             {display.percentChange}
           </VariationPercent>
+
           <VariationDetails>{fullDetailDisplay}</VariationDetails>
         </VariationContainerTooltip>
       }
     >
-      <VariationContainer
+      <Flex
+        wrap="wrap"
+        align="center"
+        justify="center"
+        lh={1.2}
+        m={`${space(0)} ${space(1)}`}
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -287,8 +311,9 @@ function PreviousValueComparison({
         <VariationPercent iconSize={ICON_SIZE}>
           {fittedChangeDisplay}
         </VariationPercent>
+
         <VariationDetails>{fittedDetailDisplay}</VariationDetails>
-      </VariationContainer>
+      </Flex>
     </Tooltip>
   );
 }
