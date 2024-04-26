@@ -13,11 +13,16 @@ import { getExample } from "./util";
 type Props = {
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: () => void;
+  onSubmit: (clause: Lib.ExpressionClause) => void;
   onCancel: () => void;
 };
 
-export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
+export function ExtractColumn({
+  query,
+  stageIndex,
+  onCancel,
+  onSubmit,
+}: Props) {
   const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
 
   function handleSelect(column: Lib.ColumnMetadata) {
@@ -37,8 +42,10 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
   }
 
   function handleSubmit(extraction: Lib.ColumnExtraction) {
-    const _clause = Lib.extract(query, stageIndex, extraction);
-    // TODO
+    // @todo this is a hack until Lib supports building an expression from an extraction
+    const newQuery = Lib.extract(query, stageIndex, extraction);
+    const expressions = Lib.expressions(newQuery, stageIndex);
+    onSubmit(expressions[0]);
   }
 
   return (

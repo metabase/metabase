@@ -155,12 +155,18 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   }
 
   if (isExtractingColumn) {
+    const handleSubmit = (clause: Lib.ExpressionClause) => {
+      setClause(clause);
+      setIsExtractingColumn(false);
+    };
+
     return (
       <Container data-testid="expression-editor">
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
           onCancel={() => setIsExtractingColumn(false)}
+          onSubmit={handleSubmit}
         />
       </Container>
     );
