@@ -13,7 +13,7 @@ import { getExample } from "./util";
 type Props = {
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: (clause: Lib.ExpressionClause) => void;
+  onSubmit: (clause: Lib.ExpressionClause, name: string) => void;
   onCancel: () => void;
 };
 
@@ -41,11 +41,14 @@ export function ExtractColumn({
     );
   }
 
-  function handleSubmit(extraction: Lib.ColumnExtraction) {
+  function handleSubmit(
+    info: Lib.ColumnExtractionInfo,
+    extraction: Lib.ColumnExtraction,
+  ) {
     // @todo this is a hack until Lib supports building an expression from an extraction
     const newQuery = Lib.extract(query, stageIndex, extraction);
     const expressions = Lib.expressions(newQuery, stageIndex);
-    onSubmit(expressions[0]);
+    onSubmit(expressions[0], info.displayName);
   }
 
   return (
@@ -113,7 +116,10 @@ function ExtractionPicker({
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  onSelect: (extraction: Lib.ColumnExtraction) => void;
+  onSelect: (
+    info: Lib.ColumnExtractionInfo,
+    extraction: Lib.ColumnExtraction,
+  ) => void;
   onCancel: () => void;
 }) {
   const info = Lib.displayInfo(query, stageIndex, column);
@@ -140,7 +146,7 @@ function ExtractionPicker({
               key={extraction.info.tag}
               title={extraction.info.displayName}
               example={getExample(extraction.info) ?? ""}
-              onClick={() => onSelect(extraction.extraction)}
+              onClick={() => onSelect(extraction.info, extraction.extraction)}
             />
           ))}
         </Stack>
