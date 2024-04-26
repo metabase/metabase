@@ -4,6 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
@@ -13,6 +14,10 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -525,11 +530,13 @@
                 (is (not= (:id table-1)
                           (:id table-2)))))))))))
 
-(defn- query-table
-  [table]
-  (qp/process-query {:database (:db_id table)
+(defn- query [db-id source-table]
+  (qp/process-query {:database db-id
                      :type     :query
-                     :query    {:source-table (:id table)}}))
+                     :query    {:source-table source-table}}))
+
+(defn- query-table [table]
+  (query (:db_id table) (:id table)))
 
 (defn- column-names-for-table
   [table]
@@ -540,6 +547,10 @@
 (defn- rows-for-table
   [table]
   (mt/rows (query-table table)))
+
+(defn- rows-for-model
+  [db-id model-id]
+  (mt/rows (query db-id (str "card__" model-id))))
 
 (defn load-from-csv-and-sync!
   "Creates a table from the csv file using `load-from-csv!` in the session schema, if there is one. Returns a Table instance."
@@ -1376,6 +1387,71 @@
                           [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
                          (rows-for-table table))))
                 (io/delete-file file)))))))))
+
+            (defn- cached-model-ids []
+              (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
+
+(defn- mbql [mp table]
+  (let [table-metadata (lib.metadata/table mp (:id table))]
+    (lib.convert/->legacy-MBQL (lib/query mp table-metadata))))
+
+(defn- join-mbql [mp base-table join-table]
+  (let [base-table-metadata (lib.metadata/table mp (:id base-table))
+        join-table-metadata (lib.metadata/table mp (:id join-table))
+        ;; We use the primary keys as the join fields as we know they will exist and have compatible types.
+        pk-metadata         (fn [pk-table]
+                              (let [field-id (t2/select-one-pk :model/Field
+                                                               :table_id (:id pk-table)
+                                                               :semantic_type :type/PK)]
+                                (lib.metadata/field mp field-id)))
+        base-id-metadata    (pk-metadata base-table)
+        join-id-metadata    (pk-metadata join-table)]
+
+    (-> (lib/query mp base-table-metadata)
+        (lib/join (lib/join-clause join-table-metadata
+                                   [(lib/= base-id-metadata
+                                           join-id-metadata)]))
+        (lib.convert/->legacy-MBQL))))
+
+(deftest append-invalidate-model-cache-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
+    (with-upload-table! [table (create-upload-table!)]
+      (let [table-id    (:id table)
+            csv-rows    ["name" "Luke Skywalker"]
+            file        (csv-file-with csv-rows)
+            other-id    (mt/id :venues)
+            other-table (t2/select-one :model/Table other-id)
+            mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+
+        (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
+                       :model/Card {model-id           :id} {:table_id table-id, :type "model", :dataset_query (mbql mp table)}
+                       :model/Card {complex-model-id   :id} {:table_id table-id, :type "model", :dataset_query (join-mbql mp table other-table)}
+                       :model/Card {archived-model-id  :id} {:table_id table-id, :type "model", :archived true, :dataset_query (mbql mp table)}
+                       :model/Card {unrelated-model-id :id} {:table_id other-id, :type "model", :dataset_query (mbql mp other-table)}
+                       :model/Card {joined-model-id    :id} {:table_id other-id, :type "model", :dataset_query (join-mbql mp other-table table)}]
+
+          (is (= #{question-id model-id complex-model-id}
+                 (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
+
+          (mt/with-persistence-enabled [persist-models!]
+            (persist-models!)
+
+            (let [cached-before (cached-model-ids)
+                  _             (append-csv! {:file file, :table-id (:id table)})
+                  cached-after  (cached-model-ids)]
+
+              (testing "The models are cached"
+                (let [active-model-ids #{model-id complex-model-id unrelated-model-id joined-model-id}]
+                  (is (= active-model-ids (set/intersection cached-before (conj active-model-ids archived-model-id))))))
+              (testing "The cache is invalidated by the update"
+                (is (not (contains? cached-after model-id))))
+              (testing "No unwanted caches were invalidated"
+                (is (= #{model-id} (set/difference cached-before cached-after))))
+              (testing "We can see the new row when querying the model"
+                (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
+                          (rows-for-model (:db_id table) model-id)))))))
+
+        (io/delete-file file)))))
 
 (deftest append-no-rows-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
