@@ -22,9 +22,9 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.secret :as secret]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -41,7 +41,7 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (net.snowflake.client.jdbc SnowflakeSQLException)))
 
@@ -194,36 +194,49 @@
     :DATETIME                   :type/DateTime
     :TIME                       :type/Time
     :TIMESTAMP                  :type/DateTime
-    :TIMESTAMPLTZ               :type/DateTimeWithLocalTZ
+    ;; This is a weird one. A timestamp with local time zone, stored without time zone but treated as being in the
+    ;; Session time zone for filtering purposes etc.
+    :TIMESTAMPLTZ               :type/DateTime
+    ;; timestamp with no time zone
     :TIMESTAMPNTZ               :type/DateTime
-    :TIMESTAMPTZ                :type/DateTimeWithTZ
+    ;; timestamp with time zone normalized to UTC, similar to Postgres
+    :TIMESTAMPTZ                :type/DateTimeWithLocalTZ
     :VARIANT                    :type/*
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp expr])
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp expr 3])
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp expr 6])
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
-  [_ hsql-form amount unit]
-  [:dateadd
-   [:raw (name unit)]
-   [:raw (int amount)]
-   (h2x/->timestamp hsql-form)])
+  [_driver hsql-form amount unit]
+  ;; return type is always the same as expr type, unless expr is a DATE and you're adding something not in a DATE e.g.
+  ;; `:seconds`, in which case it returns `timestamp_ntz`. See
+  ;; https://docs.snowflake.com/en/sql-reference/functions/dateadd
+  (let [db-type     (h2x/database-type hsql-form)
+        return-type (if (and (= db-type "date")
+                             (not (contains? lib.schema.temporal-bucketing/date-bucketing-units unit)))
+                      "timestamp_ntz"
+                      db-type)]
+    (-> [:dateadd
+         [:raw (name unit)]
+         [:inline (int amount)]
+         hsql-form]
+        (h2x/with-database-type-info return-type))))
 
 (defn- extract
   [unit expr]
-  (-> [:date_part unit (h2x/->timestamp expr)]
+  (-> [:date_part unit expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-trunc
   [unit expr]
   (let [acceptable-types (case unit
-                           (:millisecond :second :minute :hour) #{"time" "timestamp"}
-                           (:day :week :month :quarter :year)   #{"date" "timestamp"})
-        expr             (h2x/cast-unless-type-in "timestamp" acceptable-types expr)]
+                           (:millisecond :second :minute :hour) #{"time" "timestampltz" "timestampntz" "timestamptz"}
+                           (:day :week :month :quarter :year)   #{"date" "timestampltz" "timestampntz" "timestamptz"})
+        expr             (h2x/cast-unless-type-in "timestampntz" acceptable-types expr)]
     (-> [:date_trunc unit expr]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
@@ -232,7 +245,7 @@
 (defmethod sql.qp/date [:snowflake :minute-of-hour]  [_ _ expr] (extract :minute expr))
 (defmethod sql.qp/date [:snowflake :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:snowflake :hour-of-day]     [_ _ expr] (extract :hour expr))
-(defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (date-trunc :day expr))
+(defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:snowflake :day-of-month]    [_ _ expr] (extract :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-year]     [_ _ expr] (extract :dayofyear expr))
 (defmethod sql.qp/date [:snowflake :month]           [_ _ expr] (date-trunc :month expr))
@@ -256,7 +269,7 @@
   ;; we don't support it at the moment because the implementation in (defmethod date [:sql :week-of-year-us])
   ;; relies on the ability to dynamicall change `start-of-week` setting, but with snowflake we set the
   ;; start-of-week in connection session instead of manipulate in MBQL
-  (throw (ex-info (tru "sqlite doesn't support extract us week")
+  (throw (ex-info (tru "Snowflake doesn''t support extract us week")
           {:driver driver
            :form   expr
            :type   qp.error-type/invalid-query})))
@@ -415,11 +428,11 @@
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDate]
   [_driver t]
-  [:raw (format "'%s'::date" (t/local-date t))])
+  [:raw (format "'%s'::date" (u.date/format t))])
 
 (defmethod sql.qp/->honeysql [:snowflake LocalTime]
   [_driver t]
-  [:raw (format "'%s'::time" (t/local-time t))])
+  [:raw (format "'%s'::time" (u.date/format "HH:mm:ss.SSS" t))])
 
 ;;; Snowflake doesn't have `timetz`, so just convert to an equivalent local time.
 (defmethod sql.qp/->honeysql [:snowflake OffsetTime]
@@ -428,11 +441,11 @@
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDateTime]
   [_driver t]
-  [:raw (format "'%s %s'::timestamp_ntz" (t/local-date t) (t/local-time t))])
+  [:raw (format "'%s'::timestamp_ntz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))])
 
 (defmethod sql.qp/->honeysql [:snowflake OffsetDateTime]
   [_driver t]
-  [:raw (format "'%s %s %s'::timestamp_ltz" (t/local-date t) (t/local-time t) (t/zone-offset t))])
+  [:raw (format "'%s'::timestamp_tz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xx" t))])
 
 (defmethod sql.qp/->honeysql [:snowflake ZonedDateTime]
   [driver t]
@@ -601,6 +614,18 @@
       (m/dissoc-in [:details :regionid]))
     database))
 
+;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
+;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
+;;; stored as internally anyway, and let the format-rows middleware adjust the timezone as needed
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
+  ;; if we don't explicitly specify the Calendar then it looks like it defaults to the system timezone, we don't really
+  ;; want that now do we.
+  (let [utc-calendar (java.util.Calendar/getInstance (java.util.TimeZone/getTimeZone "UTC"))]
+    (fn []
+      (some-> (.getTimestamp rs i utc-calendar)
+              t/instant
+              (t/offset-date-time (t/zone-offset 0))))))
 
 ;;; --------------------------------------------------- Query remarks ---------------------------------------------------
 

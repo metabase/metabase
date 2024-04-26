@@ -28,7 +28,11 @@
                         e))))))
 
 (defn create-db-ddl-statements
-  "DDL statements to create the DB itself (does not include statements to drop the DB if it already exists)."
+  "DDL statements to create the DB itself (does not include statements to drop the DB if it already exists).
+
+  You can try this in the REPL with something like
+
+    (create-db-ddl-statements :h2 (tx/get-dataset-definition metabase.test.data.dataset-definitions/attempted-murders))"
   [driver dbdef]
   [(sql.tx/create-db-sql driver dbdef)])
 

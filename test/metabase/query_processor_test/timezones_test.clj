@@ -23,7 +23,6 @@
     :bigquery-cloud-sdk
     :oracle
     :redshift
-    :snowflake
     :sparksql
     :vertica})
 

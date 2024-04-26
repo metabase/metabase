@@ -383,7 +383,7 @@
   also have this issue."
   [driver]
   ;; TIMEZONE FIXME — remove this and fix the drivers
-  (contains? #{:snowflake :oracle :redshift} driver))
+  (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
   "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."

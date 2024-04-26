@@ -73,7 +73,7 @@
 
 (mu/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
+  (honeysql->prepared-stmt-subs driver num))
 
 (mu/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]

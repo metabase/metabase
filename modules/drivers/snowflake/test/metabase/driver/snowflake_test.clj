@@ -64,7 +64,7 @@
     (is (= [100]
            (mt/first-row
             (mt/run-mbql-query venues
-                               {:aggregation [[:count]]}))))))
+              {:aggregation [[:count]]}))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
