@@ -137,7 +137,6 @@ describe("CollectionPicker > utils", () => {
     it("should get the root collection for null values", () => {
       expect(getParentCollectionId(null)).toEqual("root");
       expect(getParentCollectionId("")).toEqual("root");
-      // @ts-expect-error testing invalid input
       expect(getParentCollectionId(undefined)).toEqual("root");
     });
 

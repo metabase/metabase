@@ -29,6 +29,7 @@ export const isLocation: TypeFn = TYPES.location_QMARK_;
 export const isLatitude: TypeFn = TYPES.latitude_QMARK_;
 export const isLongitude: TypeFn = TYPES.longitude_QMARK_;
 export const isMetric: TypeFn = TYPES.metric_QMARK_;
+export const isInteger: TypeFn = TYPES.integer_QMARK_;
 export const isNumber: TypeFn = TYPES.number_QMARK_;
 export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 export const isPrimaryKey: TypeFn = TYPES.primary_key_QMARK_;

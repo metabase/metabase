@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]))
+   [metabase.types]
+   #?@(:clj ([metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
@@ -946,3 +947,76 @@
   (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/subdomain-regex)]
            (mbql.u/desugar-expression [:subdomain [:field 1 nil]]))
         "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test
+  (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
+                   [[:= [:field 1 nil] 2]  "Feb"]
+                   [[:= [:field 1 nil] 3]  "Mar"]
+                   [[:= [:field 1 nil] 4]  "Apr"]
+                   [[:= [:field 1 nil] 5]  "May"]
+                   [[:= [:field 1 nil] 6]  "Jun"]
+                   [[:= [:field 1 nil] 7]  "Jul"]
+                   [[:= [:field 1 nil] 8]  "Aug"]
+                   [[:= [:field 1 nil] 9]  "Sep"]
+                   [[:= [:field 1 nil] 10] "Oct"]
+                   [[:= [:field 1 nil] 11] "Nov"]
+                   [[:= [:field 1 nil] 12] "Dec"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+        "`month-name` should desugar to a `:case` clause with values for each month")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                   [[:= [:field 1 nil] 2] "Q2"]
+                   [[:= [:field 1 nil] 3] "Q3"]
+                   [[:= [:field 1 nil] 4] "Q4"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+        "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Sunday"]
+                   [[:= [:field 1 nil] 2] "Monday"]
+                   [[:= [:field 1 nil] 3] "Tuesday"]
+                   [[:= [:field 1 nil] 4] "Wednesday"]
+                   [[:= [:field 1 nil] 5] "Thursday"]
+                   [[:= [:field 1 nil] 6] "Friday"]
+                   [[:= [:field 1 nil] 7] "Saturday"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+        "`day-name` should desugar to a `:case` clause with values for each weekday"))
+
+#?(:clj
+   (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
+     (mt/with-user-locale "es"
+       ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
+       ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
+       ;; before I made them flexible about the dot.
+       (t/is (=? [:case [[[:= [:field 1 nil] 1]  #(#{"ene"  "ene."}  %)]
+                         [[:= [:field 1 nil] 2]  #(#{"feb"  "feb."}  %)]
+                         [[:= [:field 1 nil] 3]  #(#{"mar"  "mar."}  %)]
+                         [[:= [:field 1 nil] 4]  #(#{"abr"  "abr."}  %)]
+                         [[:= [:field 1 nil] 5]  #(#{"may"  "may."}  %)]
+                         [[:= [:field 1 nil] 6]  #(#{"jun"  "jun."}  %)]
+                         [[:= [:field 1 nil] 7]  #(#{"jul"  "jul."}  %)]
+                         [[:= [:field 1 nil] 8]  #(#{"ago"  "ago."}  %)]
+                         [[:= [:field 1 nil] 9]  #(#{"sept" "sept."} %)]
+                         [[:= [:field 1 nil] 10] #(#{"oct"  "oct."}  %)]
+                         [[:= [:field 1 nil] 11] #(#{"nov"  "nov."}  %)]
+                         [[:= [:field 1 nil] 12] #(#{"dic"  "dic."}  %)]]
+                  {:default ""}]
+                 (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+             "`month-name` should desugar to a `:case` clause with values for each month")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                        [[:= [:field 1 nil] 2] "Q2"]
+                        [[:= [:field 1 nil] 3] "Q3"]
+                        [[:= [:field 1 nil] 4] "Q4"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+             "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "domingo"]
+                        [[:= [:field 1 nil] 2] "lunes"]
+                        [[:= [:field 1 nil] 3] "martes"]
+                        [[:= [:field 1 nil] 4] "miércoles"]
+                        [[:= [:field 1 nil] 5] "jueves"]
+                        [[:= [:field 1 nil] 6] "viernes"]
+                        [[:= [:field 1 nil] 7] "sábado"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+             "`day-name` should desugar to a `:case` clause with values for each weekday"))))

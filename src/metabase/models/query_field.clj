@@ -2,6 +2,7 @@
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.native-query-analyzer :as query-analyzer]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -33,23 +34,38 @@
   (when query
     (try
       (let [{:keys [direct indirect] :as res} (case (:type query)
-                                                :native (query-analyzer/field-ids-for-sql query)
+                                                :native (try
+                                                          (query-analyzer/field-ids-for-sql query)
+                                                          (catch Exception e
+                                                            (log/error e "Error parsing SQL" query)))
                                                 :query  (field-ids-for-mbql query)
                                                 nil     nil)
-            id->record                        (fn [direct? field-id]
+            id->row                           (fn [direct? field-id]
                                                 {:card_id          card-id
                                                  :field_id         field-id
                                                  :direct_reference direct?})
-            query-field-records               (concat
-                                               (map (partial id->record true) direct)
-                                               (map (partial id->record false) indirect))]
+            query-field-rows                  (concat
+                                               (map (partial id->row true) direct)
+                                               (map (partial id->row false) indirect))]
         ;; when response is `nil`, it's a disabled parser, not unknown columns
         (when (some? res)
-          ;; This feels inefficient at first glance, but the number of records should be quite small and doing some
-          ;; sort of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just
-          ;; "killing and filling" the records.
           (t2/with-transaction [_conn]
-            (t2/delete! :model/QueryField :card_id card-id)
-            (t2/insert! :model/QueryField query-field-records))))
+            (let [existing            (t2/select :model/QueryField :card_id card-id)
+                  {:keys [to-update
+                          to-create
+                          to-delete]} (u/row-diff existing query-field-rows
+                                                  {:id-fn   :field_id
+                                                   :cleanup #(dissoc % :id :card_id :field_id)})]
+              (when (seq to-delete)
+                ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
+                ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
+                ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
+                ;; executed unconditionally on every query change.
+                (t2/delete! :model/QueryField :card_id card-id :field_id [:in (map :field_id to-delete)]))
+              (when (seq to-create)
+                (t2/insert! :model/QueryField to-create))
+              (doseq [item to-update]
+                (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
+                            (select-keys item [:direct_reference])))))))
       (catch Exception e
         (log/error e "Error parsing native query")))))

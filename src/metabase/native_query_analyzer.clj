@@ -3,7 +3,12 @@
   namespace is to:
 
   1. Translate Metabase-isms into generic SQL that Macaw can understand.
-  2. Contain Metabase-specific business logic."
+  2. Contain Metabase-specific business logic.
+
+  The primary way of interacting with parsed queries is through their associated QueryFields (see model
+  file). QueryFields are maintained through the `update-query-fields-for-card!` function.
+
+  Query rewriting happens with the `replace-names` function."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -96,7 +101,8 @@
   Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
   both direct and indirect, it will *only* show up in the `:direct` set."
   [query]
-  (when (active?)
+  (when (and (active?)
+             (:native query))
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
           parsed-query (macaw/query->components (macaw/parsed-query sql-string))
@@ -106,3 +112,15 @@
                         direct-ids)]
       {:direct   direct-ids
        :indirect indirect-ids})))
+
+;; TODO: does not support template tags
+(defn replace-names
+  "Returns a modified query with the given table and column renames applied. `renames` is expected to be a map with
+  `:tables` and `:columns` keys, and values of the shape `old-name -> new-name`:
+
+  (replace-names \"SELECT o.id, o.total FROM orders o\" {:columns {\"id\" \"pk\"
+                                                                   \"total\" \"amount\"}
+                                                         :tables {\"orders\" \"purchases\"}})
+ ;; => \"SELECT o.pk, o.amount FROM purchases o\""
+  [sql-query renames]
+  (macaw/replace-names sql-query renames))
