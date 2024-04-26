@@ -50,6 +50,7 @@ export type BaseTableItemProps = {
   onMove?: OnMove;
   onDrop?: OnDrop;
   onToggleSelected?: OnToggleSelectedWithItem;
+  shouldShowActionMenu?: boolean;
 };
 
 export const BaseTableItem = ({
@@ -68,6 +69,7 @@ export const BaseTableItem = ({
   onMove,
   onDrop,
   onToggleSelected,
+  shouldShowActionMenu,
 }: BaseTableItemProps) => {
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected?.(item);
@@ -85,10 +87,6 @@ export const BaseTableItem = ({
 
     const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
-    const trStyles = {
-      height: 48,
-    };
-
     const icon = item.getIcon();
     if (item.model === "card") {
       icon.color = color("text-light");
@@ -98,7 +96,7 @@ export const BaseTableItem = ({
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
     return (
-      <tr key={item.id} data-testid={testId} style={trStyles}>
+      <tr key={item.id} data-testid={testId} style={{ height: 48 }}>
         {canSelect && (
           <ItemCell data-testid={`${testId}-check`}>
             <EntityIconCheckBox
@@ -145,21 +143,24 @@ export const BaseTableItem = ({
             </Tooltip>
           )}
         </ItemCell>
-        <ItemCell>
-          <RowActionsContainer>
-            <ActionMenu
-              item={item}
-              collection={collection}
-              databases={databases}
-              bookmarks={bookmarks}
-              onCopy={onCopy}
-              onMove={onMove}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-            />
-            {item.model === "dataset" && <ModelDetailLink model={item} />}
-          </RowActionsContainer>
-        </ItemCell>
+        {shouldShowActionMenu && (
+          <ItemCell>
+            <RowActionsContainer>
+              <ActionMenu
+                item={item}
+                collection={collection}
+                databases={databases}
+                bookmarks={bookmarks}
+                onCopy={onCopy}
+                onMove={onMove}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
+              />
+              {item.model === "dataset" && <ModelDetailLink model={item} />}
+            </RowActionsContainer>
+          </ItemCell>
+        )}
+        <ItemCell />
       </tr>
     );
   }, [
@@ -176,6 +177,7 @@ export const BaseTableItem = ({
     collection,
     onCopy,
     onMove,
+    shouldShowActionMenu,
   ]);
 
   if (!draggable) {
