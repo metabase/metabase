@@ -1,22 +1,8 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 
 import { HeaderContainer, Header, ToggleIcon } from "./CollapseSection.styled";
 
-const propTypes = {
-  children: PropTypes.node,
-  className: PropTypes.string,
-  header: PropTypes.node,
-  headerClass: PropTypes.string,
-  bodyClass: PropTypes.string,
-  initialState: PropTypes.oneOf(["expanded", "collapsed"]),
-  iconVariant: PropTypes.oneOf(["right-down", "up-down"]),
-  iconPosition: PropTypes.oneOf(["left", "right"]),
-  iconSize: PropTypes.number,
-  onToggle: PropTypes.func,
-};
-
-function CollapseSection({
+const CollapseSection = ({
   initialState = "collapsed",
   iconVariant = "right-down",
   iconPosition = "left",
@@ -27,7 +13,18 @@ function CollapseSection({
   bodyClass,
   children,
   onToggle,
-}) {
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  header?: React.ReactNode;
+  headerClass?: string;
+  bodyClass?: string;
+  initialState?: "expanded" | "collapsed";
+  iconVariant?: "right-down" | "up-down";
+  iconPosition?: "left" | "right";
+  iconSize?: number;
+  onToggle?: (nextState: boolean) => void;
+}) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
 
   const toggle = useCallback(() => {
@@ -37,7 +34,7 @@ function CollapseSection({
   }, [isExpanded, onToggle]);
 
   const onKeyDown = useCallback(
-    e => {
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Enter") {
         toggle();
       }
@@ -70,8 +67,7 @@ function CollapseSection({
       </div>
     </div>
   );
-}
+};
 
-CollapseSection.propTypes = propTypes;
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollapseSection;

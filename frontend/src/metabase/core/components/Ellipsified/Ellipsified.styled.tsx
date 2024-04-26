@@ -22,4 +22,8 @@ interface EllipsifiedRootProps {
 
 export const EllipsifiedRoot = styled.div<EllipsifiedRootProps>`
   ${props => ((props.lines ?? 1) > 1 ? clampCss(props) : ellipsifyCss)};
+  // To ellipsify markdown
+  p {
+    ${ellipsifyCss}
+  }
 `;

@@ -5,20 +5,13 @@ import _ from "underscore";
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Search from "metabase/entities/search";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { getLocale } from "metabase/setup/selectors";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
 
-import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
-import {
-  filterModels,
-  getCollectionViewPreferences,
-  groupModels,
-  type ActualModelFilters,
-} from "../utils";
+import { filterModels, type ActualModelFilters } from "../utils";
 
 import {
   BrowseContainer,
@@ -27,9 +20,8 @@ import {
   BrowseSection,
   CenteredEmptyState,
 } from "./BrowseApp.styled";
-import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
-import { ModelGroup } from "./ModelGroup";
+import { ModelsTable } from "./ModelsTable";
 
 const { availableModelFilters } = PLUGIN_CONTENT_VERIFICATION;
 
@@ -107,16 +99,13 @@ export const BrowseModelsBody = ({
 }: {
   actualModelFilters: ActualModelFilters;
 }) => {
+  const dispatch = useDispatch();
   const { data, error, isLoading } = useSearchQuery({
     models: ["dataset"],
+    model_ancestors: true,
     filter_items_in_personal_collection: "exclude",
   });
   const unfilteredModels = data?.data;
-  const locale = useSelector(getLocale);
-  const localeCode: string | undefined = locale?.code;
-  const [collectionViewPreferences, setCollectionViewPreferences] = useState(
-    getCollectionViewPreferences,
-  );
 
   const models = useMemo(
     () =>
@@ -128,37 +117,7 @@ export const BrowseModelsBody = ({
     [unfilteredModels, actualModelFilters],
   );
 
-  const handleToggleCollectionExpand = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: !(
-          collectionViewPreferences?.[collectionId]?.expanded ?? true
-        ),
-        showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
-
-  const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
-        showAll: !collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
+  const wrappedModels = models.map(model => Search.wrapEntity(model, dispatch));
 
   if (error || isLoading) {
     return (
@@ -170,34 +129,11 @@ export const BrowseModelsBody = ({
     );
   }
 
-  const groupsOfModels = groupModels(models, localeCode);
-
   if (models.length) {
     return (
       <Stack spacing="md" mb="lg">
         <ModelExplanationBanner />
-        <ModelGrid role="grid">
-          {groupsOfModels.map(groupOfModels => {
-            const collectionId = groupOfModels[0].collection.id;
-            return (
-              <ModelGroup
-                expanded={
-                  collectionViewPreferences?.[collectionId]?.expanded ?? true
-                }
-                showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
-                toggleExpanded={() =>
-                  handleToggleCollectionExpand(collectionId)
-                }
-                toggleShowAll={() =>
-                  handleToggleCollectionShowAll(collectionId)
-                }
-                models={groupOfModels}
-                key={`modelgroup-${collectionId}`}
-                localeCode={localeCode}
-              />
-            );
-          })}
-        </ModelGrid>
+        <ModelsTable items={wrappedModels} />
       </Stack>
     );
   }
