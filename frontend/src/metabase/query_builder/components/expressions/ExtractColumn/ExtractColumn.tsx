@@ -131,9 +131,9 @@ function ExtractionPicker({
         <Stack spacing={0}>
           {extractions.map(extraction => (
             <Button
-              key={extraction.info.key}
+              key={extraction.info.tag}
               title={extraction.info.displayName}
-              example={getExample(extraction.info)}
+              example={getExample(extraction.info) ?? ""}
               onClick={() => onSelect(extraction.extraction)}
             />
           ))}
