@@ -112,7 +112,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   hasEditingSidebar?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<ResizableBoxProps>;
+  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
