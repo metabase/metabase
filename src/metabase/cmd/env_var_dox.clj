@@ -11,20 +11,32 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]))
 
-(defn get-settings
-  "Loads all of the metabase namespaces, which loads all of the defsettings,
-  which are registered in an atom in the settings namespace. Once settings are registered,
-  this function derefs that atom and puts the settings into a sorted map for processing."
-  []
-  (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-          :when (and
-                 (str/includes? (name ns-symb) "metabase")
-                 (not (str/includes? (name ns-symb) "test")))]
-    (require ns-symb))
-  (->> @setting/registered-settings
+(defn prep-settings
+  "Used to return a map from the registered settings atom."
+  [settings]
+  (->> settings
        (into (sorted-map))
        seq
        (map (fn [[_ v]] v))))
+
+(defn get-settings
+  "Loads all (or a set of) of the Metabase namespaces, which loads all of the defsettings,
+  which are registered in an atom in the settings namespace. Once settings are registered,
+  this function derefs that atom and puts the settings into a sorted map for processing."
+  ([]
+   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+           :when (and
+                  (str/includes? (name ns-symb) "metabase")
+                  (not (str/includes? (name ns-symb) "test")))]
+     (require ns-symb))
+   (prep-settings @setting/registered-settings))
+  ;; Or supply a set of namespaces to load
+  ;; Primarily used for testing
+  ([ns-set]
+   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+           :when (ns-set (name ns-symb))]
+     (require ns-symb))
+   (prep-settings @setting/registered-settings)))
 
 ;;;; Formatting functions
 
@@ -72,8 +84,7 @@
 
 (def paid-message
   "Used to mark an env var that requires a paid plan."
-  "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
-       and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
+  "> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
 
 (defn- format-paid
   "Does the variable require a paid license?"
@@ -96,7 +107,7 @@
     d))
 
 (defn- format-config-name
-  "Formats the configuration file name."
+  "Formats the configuration file name for an environment variable."
   [env-var]
   (if (= (:visibility env-var) :internal)
     ""
@@ -107,13 +118,13 @@
   [entry]
   (if (or (str/blank? entry)
           (nil? entry))
-          ""
-          (str "- " entry)))
+    ""
+    (str "- " entry)))
 
 (defn format-list
   "Used to format metadata as a list."
   [entries]
-  (str/join "\n" (map list-item entries)))
+  (str/join "\n" (remove str/blank? (map list-item entries))))
 
 (defn- format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
@@ -148,6 +159,7 @@
   "Used to filter out environment variables that cannot be set."
   [env-var]
   (not= :none (:setter env-var)))
+
 (defn- active?
   "Used to filter our deprecated enviroment variables."
   [env-var]
