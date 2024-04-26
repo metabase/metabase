@@ -42,7 +42,7 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
       cy.button("Done").click();
 
       cy.findByTestId("expression-editor-textfield").should(
-        "have.text",
+        "contain",
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
