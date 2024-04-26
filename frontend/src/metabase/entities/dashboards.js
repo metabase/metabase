@@ -21,8 +21,6 @@ import {
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
 
-import forms from "./dashboards/forms";
-
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
 /**
@@ -175,8 +173,6 @@ const Dashboards = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
-
-  forms,
 });
 
 export default Dashboards;

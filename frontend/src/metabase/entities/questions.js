@@ -24,8 +24,6 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import forms from "./questions/forms";
-
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -171,8 +169,6 @@ const Questions = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
-
-  forms,
 });
 
 function getLabel(card) {
