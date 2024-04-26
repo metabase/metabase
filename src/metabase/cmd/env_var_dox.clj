@@ -77,7 +77,7 @@
 (defn- format-description
   "Helper function to specify description format for enviromnent variable docs."
   [env-var]
-  (->> ((get env-var :description))
+  (->> ((:description env-var))
        u/add-period
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
