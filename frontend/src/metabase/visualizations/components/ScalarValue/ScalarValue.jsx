@@ -4,18 +4,18 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
 
+import { useMetabaseTheme } from "embedding-sdk";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { Title } from "metabase/ui";
 
 import {
   ScalarRoot,
-  ScalarValueWrapper,
   ScalarTitleContainer,
   ScalarDescriptionContainer,
   ScalarDescriptionIcon,
@@ -36,30 +36,35 @@ const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
 }) => {
-  const fontSize = useMemo(
-    () =>
-      findSize({
-        text: value,
-        targetHeight: height,
-        targetWidth: width,
-        fontFamily: fontFamily ?? "Lato",
-        fontWeight: 700,
-        unit: "rem",
-        step: 0.2,
-        min: 1,
-        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
-      }),
-    [fontFamily, gridSize, height, totalNumGridCols, value, width],
-  );
+  const theme = useMetabaseTheme();
+  const valueTheme = theme.other?.smartScalar?.value;
+
+  const fontSize = useMemo(() => {
+    return findSize({
+      text: value,
+      targetHeight: height,
+      targetWidth: width,
+      fontFamily: fontFamily ?? "Lato",
+      fontWeight: 700,
+      unit: "rem",
+      step: 0.2,
+      min: 1,
+      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+    });
+  }, [fontFamily, gridSize, height, totalNumGridCols, value, width]);
 
   return (
-    <ScalarValueWrapper
+    <Title
+      h={1}
+      display="inline"
+      fontSize={valueTheme?.fontSize ?? fontSize}
+      // TODO! is there a better way to do this?
+      style={{ cursor: "pointer", ...valueTheme }}
       className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
       data-testid="scalar-value"
     >
-      {value ?? t`null`}
-    </ScalarValueWrapper>
+      {value ?? theme`null`}
+    </Title>
   );
 };
 
