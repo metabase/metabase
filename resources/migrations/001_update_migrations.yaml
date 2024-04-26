@@ -6543,6 +6543,14 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
+      id: v50.2024-04-09T15:55:23
+      author: piranha
+      comment: Backfill query_field for native queries
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
+  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'

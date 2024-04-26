@@ -494,16 +494,25 @@
     (f str) => str
 
   That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
-  name truncated to 60 characters (actually 51 characters plus a hash)."
-  []
-  (comp truncate-alias
-        (mbql.u/unique-name-generator
-         ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-         ;;
-         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
-         ;; of case
-         :name-key-fn     u/lower-case-en
-         :unique-alias-fn unique-alias)))
+  name truncated to 60 characters (actually 51 characters plus a hash).
+
+  Optionally takes a list of names which are already defined, \"priming\" the generator with eg. all the column names
+  that currently exist on a stage of the query."
+  ([]
+   (comp truncate-alias
+         (mbql.u/unique-name-generator
+           ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+           ;;
+           ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
+           ;; of case
+           :name-key-fn     u/lower-case-en
+           :unique-alias-fn unique-alias)))
+
+  ([existing-names :- [:sequential :string]]
+   (let [f (unique-name-generator)]
+     (doseq [existing existing-names]
+       (f existing))
+     f)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -575,10 +584,7 @@
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 
-(mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
-  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
+(mu/defn referenced-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]
+  "Find all the integer field IDs in ``, Which can arbitrarily be anything that is part of MLv2 query schema."
   [coll]
-  (not-empty
-   (into #{}
-         (comp cat (filter some?))
-         (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
+  (lib.util.match/match coll [:field _ (id :guard int?)] id))

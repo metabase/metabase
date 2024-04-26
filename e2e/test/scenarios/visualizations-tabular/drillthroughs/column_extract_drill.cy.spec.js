@@ -235,6 +235,7 @@ function extractColumnAndCheck({ column, option, newColumn = option, value }) {
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByRole("columnheader", { name: column }).click();
   popover().findByText("Extract day, month…").click();
+  cy.wait(1);
   popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 

@@ -19,9 +19,16 @@
    (java.util.jar JarEntry JarFile)
    (java.nio.file Path)))
 
-(def ^:private audit-installed? (atom false))
-
 (set! *warn-on-reflection* true)
+
+(defsetting last-analytics-checksum
+  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
+  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
+  :type       :integer
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)
 
 (defn- running-from-jar?
   "Returns true iff we are running from a jar.
@@ -84,18 +91,18 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(def ^{:arglists '([audit-installed? model entity-id])
+(def ^{:arglists '([checksum model entity-id])
        :private  true} memoized-select-audit-entity*
   (mdb/memoize-for-application-db
-   (fn [audit-installed? model entity-id]
-     (when audit-installed?
+   (fn [checksum model entity-id]
+     (when checksum
        (t2/select-one model :entity_id entity-id)))))
 
 (defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  (memoized-select-audit-entity* @audit-installed? model entity-id))
+  (memoized-select-audit-entity* (last-analytics-checksum) model entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
@@ -209,16 +216,6 @@
   analytics data."
   -1)
 
-(defsetting last-analytics-checksum
-  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
-  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
-  :type       :integer
-  :default    0
-  :visibility :internal
-  :audit      :never
-  :doc        false
-  :export?    false)
-
 (defn- should-skip-checksum? [last-checksum]
   (= SKIP_CHECKSUM_FLAG last-checksum))
 
@@ -295,5 +292,4 @@
        ;; prevent sync while loading
      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
         (fn []
-          (maybe-load-analytics-content! audit-db)
-          (reset! audit-installed? true)))))))
+          (maybe-load-analytics-content! audit-db)))))))

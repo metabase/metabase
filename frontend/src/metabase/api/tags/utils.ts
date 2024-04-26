@@ -10,6 +10,7 @@ import type {
   CollectionItem,
   CollectionItemModel,
   Dashboard,
+  DashboardSubscription,
   Database,
   DatabaseCandidate,
   Field,
@@ -18,6 +19,7 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
+  ListCollectionsResponse,
   Metric,
   NativeQuerySnippet,
   ModelCacheRefreshStatus,
@@ -152,6 +154,15 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideCollectionListTags(
+  collections: ListCollectionsResponse,
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.map(collection => idTag("collection", collection.id)),
+  ];
 }
 
 export function provideDatabaseCandidateListTags(
@@ -373,6 +384,21 @@ export function provideSnippetTags(
   snippet: NativeQuerySnippet,
 ): TagDescription<TagType>[] {
   return [idTag("snippet", snippet.id)];
+}
+
+export function provideSubscriptionListTags(
+  subscriptions: DashboardSubscription[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("subscription"),
+    ...subscriptions.flatMap(provideSubscriptionTags),
+  ];
+}
+
+export function provideSubscriptionTags(
+  subscription: DashboardSubscription,
+): TagDescription<TagType>[] {
+  return [idTag("subscription", subscription.id)];
 }
 
 export function provideTableListTags(
