@@ -21,13 +21,17 @@
   "Upsert or delete parameter value set by the user."
   [user-id      :- ms/PositiveInt
    parameter-id :- ms/NonBlankString
-   value        #_#_:- [:maybe :Any]]
-  (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                   :parameter_id parameter-id}
-                        {:value value}))
-      (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                             :parameter_id parameter-id
-                                             :value        value})))
+   value]
+  (if value
+    (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                     :parameter_id parameter-id}
+                          {:value value}))
+        (t2/insert! :model/UserParameterValue {:user_id      user-id
+                                               :parameter_id parameter-id
+                                               :value        value}))
+    (t2/delete! :model/UserParameterValue
+                :user_id      user-id
+                :parameter_id parameter-id)))
 
 ;; hydration
 
