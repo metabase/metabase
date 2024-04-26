@@ -30,7 +30,16 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
+;;; ------------------------------------------------ Job: SendPulse ----------------------------------------------------
+
+(def ^:private send-pulse-job-key (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+
+(defn- send-pulse-trigger-key
+  [pulse-id schedule-map]
+  (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
+                        pulse-id (-> schedule-map
+                                     u.cron/schedule-map->cron-string
+                                     (str/replace " " "_")))))
 
 (defn- send-pulse!
   [pulse-id channel-ids]
@@ -43,18 +52,6 @@
       (log/debugf "Finished Pulse Execution: %d" pulse-id))
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
-
-;;; ------------------------------------------------ Job: SendPulse ----------------------------------------------------
-
-(def ^:private send-pulse-job-key              (jobs/key "metabase.task.send-pulses.send-pulse.job"))
-(def ^:private reprioritize-send-pulse-job-key (jobs/key "metabase.task.send-pulses.reprioritize.job"))
-
-(defn- send-pulse-trigger-key
-  [pulse-id schedule-map]
-  (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
-                        pulse-id (-> schedule-map
-                                     u.cron/schedule-map->cron-string
-                                     (str/replace " " "_")))))
 
 (mu/defn ^:private send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
@@ -83,6 +80,10 @@
   (send-pulse! pulse-id channel-ids))
 
 ;;; --------------------------------------------- Job: RePrioritizeSendPulses -------------------------------------------
+
+(def ^:private reprioritize-send-pulse-job-key (jobs/key "metabase.task.send-pulses.reprioritize.job"))
+
+(def ^:private reprioritize-send-pulse-trigger-key (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
 
 (defn update-send-pulse-trigger-if-needed!
   "Send Pulse triggers are grouped by pulse id and schedule time.
@@ -165,17 +166,17 @@
 
 (defmethod task/init! ::SendPulses [_]
   (let [send-pulse-job       (jobs/build
-                              (jobs/with-description  "Send Pulse")
-                              (jobs/of-type SendPulse)
                               (jobs/with-identity send-pulse-job-key)
+                              (jobs/with-description "Send Pulse")
+                              (jobs/of-type SendPulse)
                               (jobs/store-durably))
         re-proritize-job     (jobs/build
-                              (jobs/with-description  "Update send Pulses Priority")
-                              (jobs/of-type RePrioritizeSendPulses)
                               (jobs/with-identity reprioritize-send-pulse-job-key)
+                              (jobs/with-description  "Update SendPulses Pjiority")
+                              (jobs/of-type RePrioritizeSendPulses)
                               (jobs/store-durably))
         re-proritize-trigger (triggers/build
-                              (triggers/with-identity (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
+                              (triggers/with-identity reprioritize-send-pulse-trigger-key)
                               (triggers/for-job reprioritize-send-pulse-job-key)
                               (triggers/start-now)
                               (triggers/with-schedule
