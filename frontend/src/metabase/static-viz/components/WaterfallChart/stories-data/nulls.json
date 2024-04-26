@@ -1,0 +1,358 @@
+[
+  {
+    "card": {
+      "model": "card",
+      "fully_parametrized": true,
+      "moderated_status": null,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-01-09T22:30:26.836674Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "waterfall",
+        "name": "Waterfall",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 10,
+        "entity_id": "zADnLX3XIP9kOpSywfWVK",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-09T22:19:31.771516Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_values": true,
+        "graph.metrics": ["change"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "last_name": "Usmani",
+        "first_name": "Emmad",
+        "email": "emmad@metabase.com",
+        "timestamp": "2024-01-09T22:39:04.748821Z"
+      },
+      "collection_preview": true,
+      "entity_id": "UUoTYO-nP7MKrnpdVwQMX",
+      "display": "waterfall",
+      "parameter_mappings": [],
+      "id": 205,
+      "dataset_query": {
+        "type": "query",
+        "database": 2,
+        "query": {
+          "source-table": "card__203"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-01-09T22:39:04.546277Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 227.34285714285716,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-18T19:38:59.408335Z",
+      "name": "Waterfall Example Nulls",
+      "query_type": "query",
+      "collection_id": 10,
+      "enable_embedding": false,
+      "database_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-08T20:14:19.465128Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1568, null],
+          "effective_type": "type/BigInteger",
+          "id": 1568,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1569, null],
+          "effective_type": "type/BigInteger",
+          "id": 1569,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 3,
+                "q3": 8,
+                "max": 10,
+                "sd": 3.0276503540974917,
+                "avg": 5.5
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1570, null],
+          "effective_type": "type/BigInteger",
+          "id": 1570,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0.3
+            },
+            "type": {
+              "type/Number": {
+                "min": -9,
+                "q1": -7.75,
+                "q3": 4.5,
+                "max": 27,
+                "sd": 12.51475319848728,
+                "avg": 1.5714285714285714
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "table_id": 169,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["1", 1, 5],
+        ["2", 2, null],
+        ["3", 3, 0],
+        ["4", 4, 3],
+        ["5", 5, -7],
+        ["6", 6, null],
+        ["7", 7, -8],
+        ["8", 8, -9],
+        ["9", 9, 27],
+        ["10", 10, null]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 169,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1568, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1568,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "table_id": 169,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1569, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1569,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 3,
+                "q3": 8,
+                "max": 10,
+                "sd": 3.0276503540974917,
+                "avg": 5.5
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Category",
+          "table_id": 169,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1570, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1570,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0.3
+            },
+            "type": {
+              "type/Number": {
+                "min": -9,
+                "q1": -7.75,
+                "q3": 4.5,
+                "max": 27,
+                "sd": 12.51475319848728,
+                "avg": 1.5714285714285714
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"x\" AS \"x\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_example_nulls_20240109141416\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_example_nulls_20240109141416\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_waterfall_example_nulls_20240109141416\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_example_nulls_20240109141416\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1568, null],
+            "effective_type": "type/BigInteger",
+            "id": 1568,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "x",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1569, null],
+            "effective_type": "type/BigInteger",
+            "id": 1569,
+            "visibility_type": "normal",
+            "display_name": "X",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 3,
+                  "q3": 8,
+                  "max": 10,
+                  "sd": 3.0276503540974917,
+                  "avg": 5.5
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "change",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1570, null],
+            "effective_type": "type/BigInteger",
+            "id": 1570,
+            "visibility_type": "normal",
+            "display_name": "Change",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0.3
+              },
+              "type": {
+                "type/Number": {
+                  "min": -9,
+                  "q1": -7.75,
+                  "q3": 4.5,
+                  "max": 27,
+                  "sd": 12.51475319848728,
+                  "avg": 1.5714285714285714
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

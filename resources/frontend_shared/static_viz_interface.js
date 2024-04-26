@@ -28,18 +28,6 @@ function row_chart(settings, data, colors) {
 /**
  * @deprecated use javascript_visualization instead
  */
-function combo_chart(series, settings, instanceColors) {
-  // Thinking of combo as similar to multiple, although they're different in BE
-  return StaticViz.LegacyRenderChart("combo-chart", {
-    multipleSeries: JSON.parse(series),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
-  });
-}
-
-/**
- * @deprecated use javascript_visualization instead
- */
 function gauge(card, data) {
   return StaticViz.LegacyRenderChart("gauge", {
     card: JSON.parse(card),
@@ -47,22 +35,6 @@ function gauge(card, data) {
   });
 }
 
-/**
- * @deprecated use javascript_visualization instead
- */
-function waterfall(data, labels, settings, waterfallType, instanceColors) {
-  return StaticViz.LegacyRenderChart("waterfall", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    settings: JSON.parse(settings),
-    type: waterfallType,
-    colors: JSON.parse(instanceColors),
-  });
-}
-
-/**
- * @deprecated use javascript_visualization instead
- */
 function funnel(data, settings) {
   return StaticViz.LegacyRenderChart("funnel", {
     data: JSON.parse(data),

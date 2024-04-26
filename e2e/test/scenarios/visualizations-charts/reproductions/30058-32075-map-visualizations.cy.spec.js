@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addSummaryField,
   addSummaryGroupingField,
+  echartsContainer,
   openNotebook,
   popover,
   removeSummaryGroupingField,
@@ -87,7 +88,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.get("[data-element-id=pin-map]").should("not.exist");
-    cy.get("[data-element-id=line-area-bar-chart]").should("exist");
+    echartsContainer().should("exist");
   });
 });
 

@@ -5,6 +5,7 @@ import {
   visitQuestionAdhoc,
   popover,
   visualize,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -46,6 +47,7 @@ describe("issue 30743", () => {
     popover().contains("Category").click();
 
     visualize();
-    cy.get(".bar").should("have.length", 4);
+    // Check bars count
+    chartPathWithFillColor("#509EE3").should("have.length", 4);
   });
 });
