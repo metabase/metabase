@@ -1,9 +1,13 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper/PublicComponentWrapper";
+import { SdkError } from "embedding-sdk/components/private/SdkError";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import type { GenericErrorResponse } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import {
   onCloseChartType,
@@ -19,17 +23,16 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 
-interface QueryVisualizationProps {
+export type QueryVisualizationProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
-}
+};
 
 type State = {
   loading: boolean;
   card: Card | null;
-  cardError?: Card | string | null;
   result: Dataset | null;
-  resultError?: Dataset | string | null;
+  error: GenericErrorResponse | null;
 };
 
 const _StaticQuestion = ({
@@ -38,14 +41,12 @@ const _StaticQuestion = ({
 }: QueryVisualizationProps): JSX.Element | null => {
   const metadata = useSelector(getMetadata);
 
-  const [{ loading, card, result, cardError, resultError }, setState] =
-    useState<State>({
-      loading: false,
-      card: null,
-      cardError: null,
-      result: null,
-      resultError: null,
-    });
+  const [{ loading, card, result, error }, setState] = useState<State>({
+    loading: false,
+    card: null,
+    result: null,
+    error: null,
+  });
 
   const loadCardData = async ({ questionId }: { questionId: number }) => {
     setState(prevState => ({
@@ -65,18 +66,16 @@ const _StaticQuestion = ({
           card,
           result,
           loading: false,
-          cardError: null,
-          resultError: null,
+          error: null,
         }));
       })
-      .catch(([cardError, resultError]) => {
+      .catch(error => {
         setState(prevState => ({
           ...prevState,
           result: null,
           card: null,
           loading: false,
-          cardError,
-          resultError,
+          error,
         }));
       });
   };
@@ -90,16 +89,24 @@ const _StaticQuestion = ({
       card: newQuestion.card(),
       result: result,
       loading: false,
+      error: null,
     });
   };
 
-  const isLoading = loading || (!result && !resultError);
+  const isLoading = loading || (!result && !error);
+
+  if (error) {
+    return (
+      <SdkError
+        message={getResponseErrorMessage(error) ?? t`Invalid question ID`}
+      />
+    );
+  }
 
   return (
     <LoadingAndErrorWrapper
       className={cx(CS.flexFull, CS.fullWidth)}
       loading={isLoading}
-      error={cardError || resultError}
       noWrapper
     >
       {() => {

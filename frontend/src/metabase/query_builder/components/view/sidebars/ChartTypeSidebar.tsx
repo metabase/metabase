@@ -123,6 +123,7 @@ const ChartTypeSidebar = ({
     <SidebarContent
       className={cx(CS.fullHeight, CS.px1)}
       onDone={() => onCloseChartType()}
+      data-testid="chart-type-sidebar"
     >
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {

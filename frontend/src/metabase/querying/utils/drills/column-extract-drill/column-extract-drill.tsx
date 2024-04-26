@@ -12,19 +12,25 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   clicked,
   applyDrill,
 }) => {
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
+  const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
     const actions: RegularClickAction[] = drillInfo.extractions.map(
       extraction => ({
         name: `extract.${extraction.displayName}`,
         title: extraction.displayName,
         section: "extract-popover",
         buttonType: "horizontal",
-        question: () => applyDrill(drill, extraction.key),
+        question: () => applyDrill(drill, extraction.tag),
         extra: () => ({ settingsSyncOptions: { column: clicked.column } }),
       }),
     );
 
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [

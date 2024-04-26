@@ -8,6 +8,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -169,9 +170,7 @@
     [:type         [:= :drill-thru/column-extract]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]
-    [:extractions  [:sequential [:map
-                                 [:key          keyword?]
-                                 [:display-name string?]]]]]])
+    [:extractions  [:sequential [:ref ::lib.schema.extraction/extraction]]]]])
 
 (mr/def ::drill-thru.combine-columns
   [:merge

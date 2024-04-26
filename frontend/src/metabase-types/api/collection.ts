@@ -92,6 +92,7 @@ export interface CollectionItem {
   fully_parameterized?: boolean | null;
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
+  collection_id: CollectionId | null; // parent collection id
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
@@ -127,9 +128,28 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
   sort_direction?: "asc" | "desc";
+  namespace?: "snippets";
 } & PaginationRequest;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
 } & PaginationResponse;
+
+export type CollectionRequest = {
+  id: CollectionId;
+};
+
+export type ListCollectionsRequest = {
+  "personal-only"?: boolean;
+};
+
+export type ListCollectionsResponse = Collection[];
+
+export type CreateCollectionRequest = {
+  name: string;
+  description?: string;
+  color?: string; // deprecated
+  parent_id?: CollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+};
