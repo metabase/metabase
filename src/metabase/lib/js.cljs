@@ -1364,6 +1364,26 @@
     (fn [_]
       (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
 
+(defn ^:export column-extractions
+  "Column extractions are a set of transformations possible on a given `column`, based on its type.
+
+  For example, we might extract the day of the week from a temporal column, or the domain name from an email or URL.
+
+  Returns a (possibly empty) JS array of possible column extractions for the given column.
+
+  > **Code health:** Healthy"
+  [a-query column]
+  (to-array (lib.core/column-extractions a-query column)))
+
+(defn ^:export extract
+  "Given `a-query` and an `extraction` from [[column-extractions]], apply that extraction to the query.
+
+  Generally this means adding a new expression. Returns an updated query.
+
+  > **Code health:** Healthy"
+  [a-query stage-number extraction]
+  (lib.core/extract a-query stage-number extraction))
+
 (defn ^:export suggested-join-conditions
   "Returns a JS array of possible default join conditions when joining against `joinable`, e.g. a Table, Saved
   Question, or another query. Suggested conditions will be returned if the existing query has a foreign key to the

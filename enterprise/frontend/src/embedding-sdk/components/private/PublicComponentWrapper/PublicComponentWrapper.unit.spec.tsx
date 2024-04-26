@@ -34,9 +34,9 @@ describe("PublicComponentWrapper", () => {
     expect(message).toBeInTheDocument();
   });
 
-  it("renders API Key valid message when loginStatus is validated", () => {
+  it("renders 'JWT is valid' message when loginStatus is validated", () => {
     setup({ status: "validated" });
-    const message = screen.getByText("API Key / JWT is valid.");
+    const message = screen.getByText("JWT is valid.");
     expect(message).toBeInTheDocument();
   });
 
