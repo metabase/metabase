@@ -100,7 +100,7 @@
                    {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))
 
-(defn- oredered-filter [query]
+(defn- ordered-filter [query]
   ;; sort by id [:field id option]
   (update query :filter (fn [filter-clause]
                           (if (#{:and :or} (first filter-clause))
@@ -147,10 +147,10 @@
                      (assoc :filter [:and
                                      [:> [:field (:id buyer-id) {:base-type :type/Integer}] -9223372036854775808]
                                      [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808]])
-                     oredered-filter)
+                     ordered-filter)
                  (-> query
                      metadata-queries/add-required-filters-if-needed
-                     oredered-filter)))))
+                     ordered-filter)))))
 
       (testing "Should add an and clause for existing filter"
         (let [query (:query (mt/mbql-query order {:filter [:> $order.id 1]}))]
@@ -158,7 +158,7 @@
                      (assoc :filter [:and
                                      [:> [:field (:id order-id) nil] 1]
                                      [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808]])
-                     oredered-filter)
+                     ordered-filter)
                  (-> query
                      metadata-queries/add-required-filters-if-needed
-                     oredered-filter))))))))
+                     ordered-filter))))))))
