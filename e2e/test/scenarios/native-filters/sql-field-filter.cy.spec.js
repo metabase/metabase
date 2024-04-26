@@ -48,18 +48,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
     }
 
-    it("needs a default value to run or save the query", () => {
+    it("does not need a default value to run and save the query", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getRunQueryButton().should("be.disabled");
-      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-      SQLFilter.getSaveQueryButton().realHover();
-      cy.get("body").findByText(
-        'The "Filter" variable requires a default value but none was provided.',
-      );
-
-      setDefaultFieldValue(4);
-
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });

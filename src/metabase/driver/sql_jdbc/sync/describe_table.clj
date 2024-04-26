@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
+  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
+  `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
@@ -76,7 +77,7 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
-(defn fallback-fields-metadata-from-select-query
+(defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn db-name-or-nil schema table]
@@ -165,24 +166,37 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
+(defn describe-fields-xf
+  "Returns a transducer for computing metadata about the fields in `db`."
+  [driver db]
+  (map (fn [col]
+         (let [base-type      (database-type->base-type-or-warn driver (:database-type col))
+               semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
+               json?          (isa? base-type :type/JSON)]
+           (merge
+            (u/select-non-nil-keys col [:table-schema
+                                        :table-name
+                                        :pk?
+                                        :name
+                                        :database-type
+                                        :database-position
+                                        :field-comment
+                                        :database-required
+                                        :database-is-auto-increment])
+            {:base-type         base-type
+             ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
+             :json-unfolding    json?}
+            (when semantic-type
+              {:semantic-type semantic-type})
+            (when (and json? (driver/database-supports? driver :nested-field-columns db))
+              {:visibility-type :details-only}))))))
+
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in `table`."
-  [driver table]
-  (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [base-type      (database-type->base-type-or-warn driver database-type)
-                       semantic-type  (calculated-semantic-type driver column-name database-type)
-                       db             (table/database table)
-                       json?          (isa? base-type :type/JSON)]
-                   (merge
-                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
-                    {:base-type         base-type
-                     :database-position i
-                     ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
-                     :json-unfolding    json?}
-                    (when semantic-type
-                      {:semantic-type semantic-type})
-                    (when (and json? (driver/database-supports? driver :nested-field-columns db))
-                      {:visibility-type :details-only}))))))
+  "Returns a transducer for computing metadata about the fields in a table, given the database `db`."
+  [driver db]
+  (comp
+   (describe-fields-xf driver db)
+   (map-indexed (fn [i col] (assoc col :database-position i)))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -195,7 +209,7 @@
   [driver conn table db-name-or-nil]
   (into
    #{}
-   (describe-table-fields-xf driver table)
+   (describe-table-fields-xf driver (table/database table))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defmulti get-table-pks
@@ -203,7 +217,9 @@
   The PKs should be ordered by column names if there are multiple PKs.
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
-  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access.
+
+  This does not need to be implemented for drivers that support the [[driver/describe-fields]] multimethod."
   {:changelog-test/ignore true
    :added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}
@@ -239,15 +255,31 @@
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec-or-conn table]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table* driver db-or-id-or-spec-or-conn table)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [^Connection conn]
-       (describe-table* driver conn table)))))
+  [driver db table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^Connection conn]
+     (describe-table* driver conn table))))
+
+(defmulti describe-fields-sql
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
+ i.e. [[describe-fields]]."
+  {:added    "0.49.1"
+   :arglists '([driver & {:keys [schema-names table-names]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defn describe-fields
+  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db & {:keys [schema-names table-names] :as args}]
+  (if (or (and schema-names (empty? schema-names))
+          (and table-names (empty? table-names)))
+    []
+    (eduction
+     (describe-fields-xf driver db)
+     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver args)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -263,15 +295,28 @@
 
 (defn describe-table-fks
   "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [^Connection conn]
-       (describe-table-fks* driver conn table db-name-or-nil)))))
+  [driver db-or-id-or-spec table & [db-name-or-nil]]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-or-id-or-spec
+   nil
+   (fn [^Connection conn]
+     (describe-table-fks* driver conn table db-name-or-nil))))
+
+(defmulti describe-fks-sql
+ "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
+ i.e. [[describe-fks]]."
+ {:added "0.49.0" :arglists '([driver & {:keys [schema-names table-names]}])}
+ driver/dispatch-on-initialized-driver
+ :hierarchy #'driver/hierarchy)
+
+(defn describe-fks
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db & {:keys [schema-names table-names] :as args}]
+    (if (or (and schema-names (empty? schema-names))
+            (and table-names (empty? table-names)))
+      []
+      (sql-jdbc.execute/reducible-query db (describe-fks-sql driver args))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

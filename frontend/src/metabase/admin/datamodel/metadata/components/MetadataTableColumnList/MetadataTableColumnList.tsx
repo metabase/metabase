@@ -11,6 +11,7 @@ import _ from "underscore";
 import Grabber from "metabase/components/Grabber";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
@@ -64,7 +65,7 @@ const MetadataTableColumnList = ({
   const isHidden = visibility_type != null;
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const sortedFields = useMemo(
@@ -73,8 +74,8 @@ const MetadataTableColumnList = ({
   );
 
   const handleSortEnd = useCallback(
-    ({ itemIds: fieldOrder }) => {
-      onUpdateFieldOrder(table, fieldOrder);
+    ({ itemIds: fieldOrder }: DragEndEvent) => {
+      onUpdateFieldOrder(table, fieldOrder as number[]);
     },
     [table, onUpdateFieldOrder],
   );
@@ -201,7 +202,12 @@ const SortableColumn = ({
   });
 
   const dragHandle = (
-    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
+    <Grabber
+      style={{ width: 10 }}
+      {...attributes}
+      {...listeners}
+      data-testid="grabber"
+    />
   );
 
   return (

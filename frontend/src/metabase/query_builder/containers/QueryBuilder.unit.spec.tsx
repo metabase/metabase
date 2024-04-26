@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
@@ -126,8 +127,10 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1");
 
-      userEvent.click(screen.getByTestId("download-button"));
-      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: ".csv" }),
+      );
 
       expect(mockDownloadEndpoint.called()).toBe(true);
     });
@@ -143,30 +146,27 @@ describe("QueryBuilder", () => {
         screen.getByTestId("mock-native-query-editor"),
       ).getByRole("textbox");
 
-      userEvent.click(inputArea);
-      userEvent.type(inputArea, " union SELECT 2");
+      await userEvent.click(inputArea);
+      await userEvent.type(inputArea, " union SELECT 2");
 
-      userEvent.tab();
+      await userEvent.tab();
 
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      userEvent.click(screen.getByTestId("download-button"));
-      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: ".csv" }),
+      );
 
-      expect(
-        mockDownloadEndpoint.called((url, options) => {
-          const { body: urlSearchParams } = options;
-          const query =
-            urlSearchParams instanceof URLSearchParams
-              ? JSON.parse(urlSearchParams.get("query") ?? "{}")
-              : {};
-
-          return (
-            url.includes("/api/dataset/csv") &&
-            query?.native.query === "SELECT 1"
-          );
-        }),
-      ).toBe(true);
+      const [url, options] = mockDownloadEndpoint.lastCall() as MockCall;
+      const body = await Promise.resolve(options?.body);
+      const urlSearchParams = new URLSearchParams(body as string);
+      expect(url).toEqual(expect.stringContaining("/api/dataset/csv"));
+      const query =
+        urlSearchParams instanceof URLSearchParams
+          ? JSON.parse(urlSearchParams.get("query") ?? "{}")
+          : {};
+      expect(query?.native.query).toEqual("SELECT 1");
     });
   });
 });

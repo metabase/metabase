@@ -77,7 +77,7 @@ describe("CategoryFieldPicker", () => {
       const [value] = productCategories;
       const { onChange } = setup({ field: productCategoryField });
 
-      userEvent.click(await screen.findByText(value));
+      await userEvent.click(await screen.findByText(value));
 
       expect(onChange).toHaveBeenCalledWith(value);
     });
@@ -96,11 +96,11 @@ describe("CategoryFieldPicker", () => {
       expect(screen.getByRole("textbox")).toHaveValue(value);
     });
 
-    it("should trigger onChange when typing", () => {
+    it("should trigger onChange when typing", async () => {
       const value = "Ergonomic Chairs Inc.";
       const { onChange } = setup({ field: productVendorField });
 
-      userEvent.type(screen.getByRole("textbox"), value);
+      await userEvent.type(screen.getByRole("textbox"), value);
 
       expect(onChange).toHaveBeenCalledWith(value);
     });

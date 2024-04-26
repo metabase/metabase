@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within, fireEvent } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
@@ -73,10 +73,10 @@ describe("QueryColumnPicker", () => {
     expect(screen.getByRole("option", { name: "Tax" })).toBeInTheDocument();
   });
 
-  it("should display column from foreign tables", () => {
+  it("should display column from foreign tables", async () => {
     setup();
 
-    userEvent.click(screen.getByText("Product"));
+    await userEvent.click(screen.getByText("Product"));
 
     expect(screen.getByRole("option", { name: "ID" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Price" })).toBeInTheDocument();
@@ -85,10 +85,10 @@ describe("QueryColumnPicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("should allow picking a column", () => {
+  it("should allow picking a column", async () => {
     const { sampleColumn, sampleColumnInfo, onSelect, onClose } = setup();
 
-    userEvent.click(screen.getByText(sampleColumnInfo.displayName));
+    await userEvent.click(screen.getByText(sampleColumnInfo.displayName));
 
     expect(onSelect).toHaveBeenCalledWith(sampleColumn);
     expect(onClose).toHaveBeenCalled();
@@ -130,5 +130,18 @@ describe("QueryColumnPicker", () => {
         within(createdAt).queryByLabelText("Temporal bucket"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("should allow searching using displayName (#39622)", () => {
+    setup();
+
+    screen.getByText("User").click();
+    fireEvent.change(screen.getByTestId("list-search-field"), {
+      target: { value: "Birth Date" },
+    });
+
+    expect(
+      screen.getByRole("option", { name: "Birth Date" }),
+    ).toBeInTheDocument();
   });
 });

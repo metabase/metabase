@@ -68,8 +68,11 @@ const setup = async ({
 
 describe("HomeContent", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-    jest.setSystemTime(new Date(2020, 0, 10));
+    jest.useFakeTimers({
+      advanceTimers: true,
+      now: new Date(2020, 0, 10),
+      doNotFake: ["setTimeout"],
+    });
     localStorage.clear();
   });
 
@@ -90,7 +93,7 @@ describe("HomeContent", () => {
     });
 
     expect(
-      screen.getByText("Here are some popular tables"),
+      await screen.findByText("Here are some popular tables"),
     ).toBeInTheDocument();
   });
 
@@ -187,10 +190,11 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.getByText("Get started with Embedding Metabase in your app"),
+        screen.getByText("Embed Metabase in your app"),
       ).toBeInTheDocument();
     });
 
@@ -198,10 +202,11 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: false }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
 
@@ -209,12 +214,13 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       screen.getByRole("button", { name: "close icon" }).click();
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
 
       expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
@@ -224,20 +230,22 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: false }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
 
     it("should not show it if the localStorage flag is not set", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
   });

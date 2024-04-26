@@ -5,12 +5,12 @@ import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
-  createMockPublicCard,
   createMockEmbedDataset,
+  createMockPublicCard,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -82,16 +82,6 @@ describe("PublicQuestion", () => {
   it("should render data", async () => {
     await setup();
     expect(screen.getByText("John W.")).toBeInTheDocument();
-  });
-
-  it("should not database prompt banner", async () => {
-    await setup();
-
-    // Since database prompt banner render as a banner. If we only find one banner
-    // that is showing the question name, we know that the database prompt banner is not showing.
-    expect(
-      within(screen.getByRole("banner")).getByText(QUESTION_NAME),
-    ).toBeInTheDocument();
   });
 
   it("should update card settings when visualization component changes them (metabase#37429)", async () => {

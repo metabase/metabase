@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -80,8 +80,6 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
-
-  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -394,7 +392,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
-  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -427,7 +424,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -458,12 +454,10 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const isSaveDisabled = !question.canRun() || !isEditable;
-  const disabledSaveTooltip = getDisabledSaveTooltip(
-    question,
-    isEditable,
-    requiredTemplateTags,
-  );
+  const canSave = Lib.canSave(question.query());
+  const isSaveDisabled = !canSave || !isEditable;
+
+  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -553,39 +547,8 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(
-  question,
-  isEditable,
-  requiredTemplateTags = [],
-) {
+function getDisabledSaveTooltip(isEditable) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
-
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    tag => tag.required && !tag.default,
-  );
-
-  if (!question.canRun()) {
-    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
-  }
-
-  // Having an empty tooltip text is ok because it won't be shown.
-  return "";
-}
-
-function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
-  if (!requiredTemplateTags.length) {
-    return "";
-  }
-
-  const names = requiredTemplateTags
-    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
-    .join(", ");
-
-  return ngettext(
-    msgid`The ${names} variable requires a default value but none was provided.`,
-    `The ${names} variables require default values but none were provided.`,
-    requiredTemplateTags.length,
-  );
 }

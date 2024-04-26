@@ -12,6 +12,7 @@
    [clojure.core.match :refer [match]]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -89,8 +90,16 @@
 
 ;; metabase.util/upper-case-en
 (defn- upper-case-en
-  [s]
-  (.toUpperCase (str s) (Locale/US)))
+  ^String [s]
+  (when s
+    (.toUpperCase (str s) Locale/US)))
+
+
+;; metabase.util/lower-case-en
+(defn- lower-case-en
+  ^String [s]
+  (when s
+   (.toLowerCase (str s) Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -903,80 +912,30 @@
 (defn- db-type->to-unified-columns
   "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
   [db-type]
-  (case db-type
-    :h2      [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_database :created_at false]
-              [:metabase_database :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :updated_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:report_dashboardcard :created_at false]
-              [:report_dashboardcard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-    :mysql   [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_field :updated_at false]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-   :postgres [[:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_user :updated_at true]
-              [:dimension :updated_at false]
-              [:dimension :created_at false]
-              [:permissions_revision :created_at false]
-              [:recent_views :timestamp false]]))
+  (let [query (case db-type
+                :postgres {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "timestamp without time zone"]
+                                    [:= :table_schema :%current_schema]
+                                    [:= :table_catalog :%current_database]]}
+
+                :mysql    {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "datetime"]
+                                    [:= :table_schema :%database]]}
+                :h2      {:select [:table_name :column_name :is_nullable]
+                          :from   [:information_schema.columns]
+                          :where  [:= :data_type "TIMESTAMP"]})]
+    (->> (t2/query query)
+         (map #(update-vals % (comp keyword lower-case-en)))
+         (remove (fn [{:keys [table_name]}]
+                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                       ;; excludes views
+                       (str/starts-with? (name table_name) "v_"))))
+         (map #(update % :is_nullable (fn [x] (= :yes x))))
+         (map (juxt :table_name :column_name :is_nullable)))))
 
 (defn- alter-table-column-type-sql
   [db-type table column ttype nullable?]
@@ -1037,14 +996,16 @@
 (define-reversible-migration CardRevisionAddType
   (case (mdb.connection/db-type)
     :postgres
+    ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
+    ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
     (t2/query ["UPDATE revision
-               SET object = jsonb_set(
-                  object::jsonb, '{type}',
+               SET object = replace(jsonb_set(
+                  (regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb, '{type}',
                   to_jsonb(CASE
-                              WHEN (object::jsonb->>'dataset')::boolean THEN 'model'
+                              WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
                               ELSE 'question'
-                           END)::jsonb, true)
-               WHERE model = 'Card' AND (object::jsonb->>'dataset') IS NOT NULL;"])
+                           END)::jsonb, true)::text, '286b707c-e895-4cd3-acfc-569147f54371', '\\u0000')
+               WHERE model = 'Card' AND ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset') IS NOT NULL;"])
 
     :mysql
     (t2/query ["UPDATE revision
@@ -1108,3 +1069,32 @@
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
+
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
+  ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
+  ;; this migraiton to remove triggers for any existing DB that have this option on.
+  ;; See #40715
+  (when-let [;; find all dbs which are configured not to scan field values
+             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+                                    (false? (:is_full_sync %)))
+                              (t2/select :model/Database)))]
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (doseq [db dbs]
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+      (qs/shutdown scheduler))))
+
+;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
+(define-migration DeleteTruncateAuditLogTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/shutdown scheduler)))

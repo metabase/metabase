@@ -377,8 +377,8 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query venues
@@ -1286,7 +1286,8 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native

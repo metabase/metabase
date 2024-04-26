@@ -10,6 +10,7 @@
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -74,7 +75,21 @@
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
+
+(deftest describe-fields-sync-with-composite-pks-test
+  (testing "Make sure syncing a table that has a composite pks works"
+    (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
+      (mt/dataset dataset-definition-test/composite-pk
+        (let [songs (t2/select-one :model/Table (mt/id :songs))
+              fk-metadata (driver/describe-fields :redshift (mt/db)
+                                                  :table-names [(:name songs)]
+                                                  :schema-names [(:schema songs)])]
+          (is (= #{{:name "song_id", :pk? true} {:name "artist_id", :pk? true}}
+                 (into #{}
+                       (map #(select-keys % [:name :pk?]))
+                       fk-metadata))))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -218,7 +233,7 @@
                  (spliced-count-of :checkins [:= $date "2014-03-05"])))))
       (when (mt/supports-time-type? driver/*driver*)
         (testing "splicing a time"
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (is (= 2
                    (mt/$ids users
                      (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

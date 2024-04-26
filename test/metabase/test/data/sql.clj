@@ -239,17 +239,23 @@
         inline-comment (inline-column-comment-sql driver field-comment)]
     (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
+(defn fielddefs->pk-field-names
+  "Find the pk field names in fieldefs"
+  [fieldefs]
+  (->> fieldefs (filter :pk?) (map :field-name)))
+
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [pk-field-name (format-and-quote-field-name driver (pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
+  (let [pk-field-names (->> (fielddefs->pk-field-names field-definitions)
+                            (map (partial format-and-quote-field-name driver))
+                            (str/join ", "))]
+    (format "CREATE TABLE %s (%s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
-            pk-field-name (pk-sql-type driver)
             (str/join
              ", "
              (for [field-def field-definitions]
                (field-definition-sql driver field-def)))
-            pk-field-name
+            pk-field-names
             (or (inline-table-comment-sql driver table-comment) ""))))
 
 (defmulti drop-table-if-exists-sql
@@ -271,10 +277,24 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defn- get-tabledef
+  [dbdef table-name]
+  (->> dbdef
+       :table-definitions
+       (filter #(= (:table-name %) table-name))
+       first))
+
 (defmethod add-fk-sql :sql/test-extensions
-  [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
+  [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
   (let [quot            #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
-        dest-table-name (name dest-table-name)]
+        dest-table-name (name dest-table-name)
+        pk-names        (->> (get-tabledef dbdef dest-table-name)
+                             :field-definitions
+                             fielddefs->pk-field-names)
+        _ (when (< 1 (count pk-names))
+            (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
+        pk-name             (first pk-names)]
+
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
@@ -285,7 +305,7 @@
               (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
-            (quot :field (pk-field-name driver)))))
+            (quot :field pk-name))))
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
   [driver table field _param-type]

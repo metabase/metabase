@@ -67,6 +67,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.driver.common.parameters.dates :as params.dates]
@@ -424,7 +425,8 @@
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))
+                   (add-filters source-table-id joined-table-ids constraints)
+                   metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
 

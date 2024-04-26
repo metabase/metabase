@@ -25,7 +25,6 @@ describe("URLs", () => {
   describe("browse databases", () => {
     it(`should slugify database name when opening it from /browse/databases"`, () => {
       cy.visit("/browse/databases");
-      cy.findByRole("tab", { name: "Databases" }).click();
       cy.findByTextEnsureVisible("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database");

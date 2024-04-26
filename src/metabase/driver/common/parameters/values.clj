@@ -18,6 +18,7 @@
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
@@ -121,9 +122,20 @@
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
-                           ;; remove `:target` which is no longer needed after this point, and add any tag options
-                           (let [params (map #(cond-> (dissoc % :target)
-                                                (seq tag-opts) (assoc :options tag-opts))
+                           ;; remove `:target` which is no longer needed after this point
+                           ;; and add any tag options that are compatible with the new type
+                           (let [params (map (fn [param]
+                                               (let [tag-opts (if (and (contains? tag-opts :case-sensitive)
+                                                                       (not (contains? #{:string/contains
+                                                                                         :string/does-not-contain
+                                                                                         :string/ends-with
+                                                                                         :string/starts-with}
+                                                                                       (:type param))))
+                                                                (dissoc tag-opts :case-sensitive)
+                                                                tag-opts)]
+                                                 (cond-> (dissoc param :target)
+                                                   (seq tag-opts)
+                                                   (assoc :options tag-opts))))
                                              params)]
                              (if (= (count params) 1)
                                (first params)
@@ -190,7 +202,7 @@
                       {:query (qp.persistence/persisted-info-native-query
                                (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                persisted-info)})
-                    (qp/compile query)))))
+                    (qp/compile (limit/disable-max-results query))))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"

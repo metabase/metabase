@@ -46,10 +46,10 @@ describe("GroupMappingsWidget", () => {
       expect(await screen.findByText("Admin")).toBeInTheDocument();
 
       // Click on button to delete mapping
-      userEvent.click(await screen.findByLabelText("close icon"));
+      await userEvent.click(await screen.findByLabelText("close icon"));
 
       // Confirm remove
-      userEvent.click(screen.getByText("Yes"));
+      await userEvent.click(screen.getByText("Yes"));
 
       await waitFor(() => {
         expect(updateSettingSpy).toHaveBeenCalledTimes(1);
@@ -75,10 +75,12 @@ describe("GroupMappingsWidget", () => {
       expect(await screen.findByText("2 other groups")).toBeInTheDocument();
 
       // Click on button to delete mapping
-      userEvent.click(await screen.findByLabelText("close icon"));
+      await userEvent.click(await screen.findByLabelText("close icon"));
 
-      userEvent.click(screen.getByLabelText(/Also remove all group members/i));
-      userEvent.click(
+      await userEvent.click(
+        screen.getByLabelText(/Also remove all group members/i),
+      );
+      await userEvent.click(
         await screen.findByRole("button", {
           name: "Remove mapping and members",
         }),
@@ -98,10 +100,10 @@ describe("GroupMappingsWidget", () => {
       expect(await screen.findByText("2 other groups")).toBeInTheDocument();
 
       // Click on button to delete mapping
-      userEvent.click(await screen.findByLabelText("close icon"));
+      await userEvent.click(await screen.findByLabelText("close icon"));
 
-      userEvent.click(screen.getByLabelText(/Also delete the groups/i));
-      userEvent.click(
+      await userEvent.click(screen.getByLabelText(/Also delete the groups/i));
+      await userEvent.click(
         await screen.findByRole("button", {
           name: "Remove mapping and delete groups",
         }),

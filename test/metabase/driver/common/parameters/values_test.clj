@@ -365,8 +365,7 @@
                                 "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                 "FROM \"PUBLIC\".\"VENUES\" "
-                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
-                                "LIMIT 1048575")]
+                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3")]
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                             meta/metadata-provider
                                             [mbql-query])

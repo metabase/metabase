@@ -369,3 +369,10 @@
   (mu/with-api-error-message
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
+
+(defn CollectionOf
+  "Helper for creating schemas to check whether something is an instance of a collection."
+  [item-schema]
+  [:fn
+   {:error/message (format "Collection of %s" item-schema)}
+   #(and (coll? %) (every? (partial mc/validate item-schema) %))])

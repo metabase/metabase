@@ -67,13 +67,16 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn- default-audit-collection?
+  [{:keys [id] :as _col}]
+  (= id (:id (perms/default-audit-collection))))
+
 (defmethod mi/can-write? Collection
   ([instance]
-   (mi/can-write? :model/Collection (:id instance)))
-  ([model pk]
-   (if (= pk (:id (perms/default-audit-collection)))
-     false
-     (mi/current-user-has-full-permissions? :write model pk))))
+   (and (not (default-audit-collection? instance))
+        (mi/current-user-has-full-permissions? :write instance)))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]
@@ -940,6 +943,14 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
+(def ^:private instance-analytics-collection-type
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
+  "instance-analytics")
+
+(defmethod mi/exclude-internal-content-hsql :model/Collection
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :type) [:inline instance-analytics-collection-type]])
+
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)
@@ -1269,7 +1280,11 @@
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
   [coll-type-ids collections]
-  (let [all-visible-ids (set (map :id collections))]
+  (let [;; instead of attempting to re-sort like the database does, keep things consistent by just keeping things in
+        ;; the same order they're already in.
+        original-position (into {} (map-indexed (fn [i {id :id}]
+                                                  [id i]) collections))
+        all-visible-ids (set (map :id collections))]
     (transduce
      identity
      (fn ->tree
@@ -1302,8 +1317,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+             (sort-by (fn [{coll-id :id}]
                         ;; coll-type is `nil` or "instance-analytics"
                         ;; nil sorts first, so we get instance-analytics at the end, which is what we want
-                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
+                        (original-position coll-id))))))
      (annotate-collections coll-type-ids collections))))

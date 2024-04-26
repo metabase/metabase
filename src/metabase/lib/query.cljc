@@ -12,6 +12,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
@@ -68,8 +69,14 @@
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
   [query :- ::lib.schema/query]
-  (and (mc/validate ::lib.schema/query query)
+  (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+         (mc/validate ::lib.schema/query query))
        (boolean (can-run-method query))))
+
+(mu/defn can-save :- :boolean
+  "Returns whether the query can be saved."
+  [query :- ::lib.schema/query]
+  (can-run query))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."

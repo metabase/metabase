@@ -34,12 +34,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           getHidden: () => true,
         },
         {
-          key: "ldap-user-provisioning-enabled?",
-          display_name: t`User Provisioning`,
-          description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
-          type: "boolean",
-        },
-        {
           key: "ldap-host",
           display_name: t`LDAP Host`,
           placeholder: "ldap.yourdomain.org",

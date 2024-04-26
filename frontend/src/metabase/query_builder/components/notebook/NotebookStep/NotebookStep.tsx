@@ -7,6 +7,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { Query } from "metabase-lib/types";
 
@@ -104,7 +105,7 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = Boolean(step.getPreviewQuery);
+  const canPreview = Lib.canRun(step.query) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 

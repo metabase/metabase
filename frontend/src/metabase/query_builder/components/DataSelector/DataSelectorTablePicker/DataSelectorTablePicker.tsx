@@ -2,26 +2,17 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { rem, Box, Icon, Flex } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
-
-import {
-  DataSelectorTablePickerContainer as Container,
-  DataSelectorTablePickerHeaderContainer as HeaderContainer,
-  DataSelectorTablePickerHeaderClickable as HeaderClickable,
-  DataSelectorTablePickerHeaderDatabaseName as HeaderDatabaseName,
-  DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
-  LinkToDocsContainer,
-  NoTablesFound,
-} from "./DataSelectorTablePicker.styled";
 
 type DataSelectorTablePickerProps = {
   hasFiltering?: boolean;
@@ -106,7 +97,7 @@ const DataSelectorTablePicker = ({
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 
     return (
-      <Container>
+      <Box w={rem(300)} style={{ overflowY: "auto" }}>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
@@ -127,20 +118,27 @@ const DataSelectorTablePicker = ({
         {isSavedQuestionList && (
           <LinkToDocsOnReferencingSavedQuestionsInQueries />
         )}
-      </Container>
+      </Box>
     );
   } else {
     return (
       <Section>
         <DataSelectorSectionHeader header={header} />
-        <NoTablesFound>{t`No tables found in this database.`}</NoTablesFound>
+        <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
       </Section>
     );
   }
 };
 
 const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
-  <LinkToDocsContainer>
+  <Box
+    p="md"
+    ta="center"
+    bg={color("bg-light")}
+    style={{
+      borderTop: `1px solid ${color("border")}`,
+    }}
+  >
     {t`Is a question missing?`}
     <ExternalLink
       // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
@@ -152,7 +150,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
     >
       {t`Learn more about nested queries`}
     </ExternalLink>
-  </LinkToDocsContainer>
+  </Box>
 );
 
 const Header = ({
@@ -161,16 +159,25 @@ const Header = ({
   selectedDatabase,
   selectedSchema,
 }: HeaderProps) => (
-  <HeaderContainer>
-    <HeaderClickable onClick={onBack}>
+  <Flex align="center" wrap="wrap">
+    <Flex align="center" style={{ cursor: "pointer" }} onClick={onBack}>
       {onBack && <Icon name="chevronleft" size={18} />}
-      <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
-    </HeaderClickable>
+      <Box component="span" ml="sm" data-testid="source-database">
+        {selectedDatabase.name}
+      </Box>
+    </Flex>
 
     {selectedSchema?.name && schemas.length > 1 && (
-      <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
+      <>
+        <Box component="span" mx="sm" c="text-medium">
+          /
+        </Box>
+        <Box component="span" data-testid="source-schema" c="text-medium">
+          {selectedSchema.displayName()}
+        </Box>
+      </>
     )}
-  </HeaderContainer>
+  </Flex>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

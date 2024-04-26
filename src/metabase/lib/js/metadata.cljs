@@ -292,6 +292,17 @@
                                           (walk/keywordize-keys v)
                                           (js->clj v :keywordize-keys true))
       :has-field-values                 (keyword v)
+
+      ;; Field refs are JS arrays, which we do not alter but do need to clone.
+      ;; Why? Come sit by the fire, it's story time:
+      ;; Sometimes in the FE the input `DatasetColumn` object is coming from the Redux store, where it has been deeply
+      ;; frozen (Object.freeze()) by the immer library.
+      ;; `:metadata/column` values (which contain such a :field-ref) are sometimes used as a map key, which calls
+      ;; [[cljs.core/hash]], which for a vanilla JS array uses goog.getUid() to mutate a uid number onto the array with
+      ;; a key like `closure_uid_123456789` (the number is randomized at load time).
+      ;; If the array has been frozen, that mutation will throw. So we clone the `:field-ref` array on its way into CLJS
+      ;; land, and avoid the issue.
+      :field-ref                        (to-array v)
       :lib/source                       (case v
                                           "aggregation" :source/aggregations
                                           "breakout"    :source/breakouts

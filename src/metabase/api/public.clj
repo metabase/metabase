@@ -185,9 +185,10 @@
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters]} :params}]
+  [uuid export-format :as {{:keys [parameters format_rows]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
+   format_rows   [:maybe :boolean]
    parameters    [:maybe ms/JSONString]}
   (run-query-for-card-with-public-uuid-async
    uuid
@@ -196,7 +197,7 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          false}))
+                :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
@@ -624,10 +625,14 @@
      :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
-  "Rate limit at 1 action per second on a per action basis.
+  "Rate limit at 10 actions per 1000 ms on a per action basis.
    The goal of rate limiting should be to prevent very obvious abuse, but it should
    be relatively lax so we don't annoy legitimate users."
-  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+  (throttle/make-throttler :action-uuid
+                           :attempts-threshold 10
+                           :initial-delay-ms 1000
+                           :attempt-ttl-ms 1000
+                           :delay-exponent 1))
 
 (api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.

@@ -82,12 +82,14 @@ describe("issue 23293", () => {
  * @param {("add"|"remove")} action
  */
 function modifyColumn(columnName, action) {
-  cy.findByRole("button", { name: "Add or remove columns" }).click();
-  if (action === "add") {
-    cy.findByLabelText(columnName).should("not.be.checked").click();
-  } else {
-    cy.findByLabelText(columnName).should("be.checked").click();
-  }
+  cy.findByTestId("sidebar-left").within(() => {
+    cy.findByRole("button", { name: "Add or remove columns" }).click();
+    if (action === "add") {
+      cy.findByLabelText(columnName).should("not.be.checked").click();
+    } else {
+      cy.findByLabelText(columnName).should("be.checked").click();
+    }
 
-  cy.findByRole("button", { name: "Done picking columns" }).click();
+    cy.findByRole("button", { name: "Done picking columns" }).click();
+  });
 }

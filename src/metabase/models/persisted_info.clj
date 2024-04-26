@@ -85,7 +85,7 @@
    refreshable with the feature flag disabled."
   metabase-enterprise.advanced-config.caching
   []
-  #{"creating" "persisted" "error" "off"})
+  #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."
@@ -115,6 +115,15 @@
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
    (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
+
+(defn invalidate!
+  "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
+  [conditions-map]
+  ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
+  (t2/update! PersistedInfo
+              (merge {:active true} conditions-map)
+              ;; TODO perhaps we should immediately kick off a recalculation of these caches
+              {:active false, :state "creating", :state_change_at :%now}))
 
 (defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."

@@ -33,7 +33,8 @@
 
 (defn- reset-throttlers! []
   (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil)))
+    (reset! (:attempts throttler) nil))
+  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
 
 (def ^:private SessionResponse
   [:map
@@ -317,7 +318,24 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))
+    (testing "Reset password endpoint is throttled on endpoint"
+      (reset-throttlers!)
+      (let [try!      (fn []
+                        (try
+                          (http/post (client/build-url "session/reset_password" {})
+                                     {:form-params {"token" (str (random-uuid))
+                                                    "password" (str (random-uuid))}
+                                      :content-type :json})
+                          ::succeeded
+                          (catch Exception e
+                            (or (some-> (ex-data e) :body (json/parse-string true))
+                                ::unknown-error))))
+            responses (into [] (repeatedly 30 try!))]
+        (is (nil? (some #{::succeeded ::unknown-error} responses)))
+        (is (every? (comp :password :errors) responses))
+        (is (some (comp #(re-find #"Invalid reset token" %) :password :errors) responses))
+        (is (some (comp #(re-find #"Too many attempts!" %) :password :errors) responses))))))
 
 (deftest reset-password-successful-event-test
   (reset-throttlers!)

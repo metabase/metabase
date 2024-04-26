@@ -659,9 +659,15 @@
 (defn- returned-columns*
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage (lib.util/query-stage a-query stage-number)]
+  (let [stage          (lib.util/query-stage a-query stage-number)
+        unique-name-fn (lib.util/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
-         (map #(assoc % :selected? true))
+         (map #(-> %
+                   (assoc :selected? true)
+                   ;; Unique names are required by the FE for compatibility.
+                   ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
+                   ;; that's already unique by construction.
+                   (update :name unique-name-fn)))
          to-array)))
 
 (defn ^:export returned-columns
@@ -1006,8 +1012,8 @@
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
-  [a-query]
-  (to-array (lib.core/available-metrics a-query)))
+  [a-query stage-number]
+  (to-array (lib.core/available-metrics a-query stage-number)))
 
 (defn ^:export joinable-columns
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
@@ -1275,3 +1281,11 @@
     :can-run a-query
     (fn [_]
       (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if the query can be saved."
+  [a-query]
+  (lib.cache/side-channel-cache
+   :can-save a-query
+   (fn [_]
+     (lib.core/can-save a-query))))

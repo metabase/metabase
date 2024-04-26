@@ -1133,8 +1133,7 @@ function checkOptionsForFilter(filter) {
     .and("not.contain", "Dashboard filters");
 
   // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text. This happens
-  // after we introduce the database prompt banner.
+  // Uses force: true because the popover is covering this text.
   cy.findByText("Pick one or more filters to update").click({ force: true });
 }
 

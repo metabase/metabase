@@ -118,7 +118,7 @@
 
 (defmethod load-data/load-data! :oracle
   [driver dbdef tabledef]
-  (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
+  (load-data/load-data-maybe-add-ids-chunked! driver dbdef tabledef))
 
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;

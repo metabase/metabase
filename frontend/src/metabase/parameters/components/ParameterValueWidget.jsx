@@ -11,6 +11,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { TextWidget } from "metabase/components/TextWidget";
+import { Sortable } from "metabase/core/components/Sortable";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -64,6 +65,8 @@ class ParameterValueWidget extends Component {
     // Should be used for dashboards and native questions in the parameter bar,
     // Don't use in settings sidebars.
     enableRequiredBehavior: PropTypes.bool,
+    mimicMantine: PropTypes.bool,
+    isSortable: PropTypes.bool,
   };
 
   state = { isFocused: false };
@@ -158,6 +161,21 @@ class ParameterValueWidget extends Component {
     }
   }
 
+  wrapSortable(children) {
+    const { isSortable = false, parameter } = this.props;
+
+    return (
+      <Sortable
+        id={parameter.id}
+        draggingStyle={{ opacity: 0.5 }}
+        disabled={!isSortable}
+        role="listitem"
+      >
+        {children}
+      </Sortable>
+    );
+  }
+
   render() {
     const { parameter, value, isEditing, placeholder, className } = this.props;
     const { isFocused } = this.state;
@@ -167,7 +185,7 @@ class ParameterValueWidget extends Component {
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
     if (noPopover) {
-      return (
+      return this.wrapSortable(
         <div
           ref={this.trigger}
           className={cx(S.parameter, S.noPopover, className, {
@@ -188,7 +206,7 @@ class ParameterValueWidget extends Component {
             onPopoverClose={this.onPopoverClose}
           />
           {this.getActionIcon()}
-        </div>
+        </div>,
       );
     }
 
@@ -202,7 +220,7 @@ class ParameterValueWidget extends Component {
       <PopoverWithTrigger
         ref={this.valuePopover}
         targetOffsetX={16}
-        triggerElement={
+        triggerElement={this.wrapSortable(
           <div
             ref={this.trigger}
             className={cx(S.parameter, className, {
@@ -226,8 +244,8 @@ class ParameterValueWidget extends Component {
               />
             </div>
             {this.getActionIcon()}
-          </div>
-        }
+          </div>,
+        )}
         target={this.getTargetRef}
         // make sure the full date picker will expand to fit the dual calendars
         autoWidth={parameter.type === "date/all-options"}

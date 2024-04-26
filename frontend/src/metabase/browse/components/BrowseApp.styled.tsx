@@ -6,39 +6,14 @@ import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { Grid, Icon, Tabs } from "metabase/ui";
+import { Grid, Icon } from "metabase/ui";
 
 export const BrowseAppRoot = styled.div`
   flex: 1;
   height: 100%;
 `;
 
-export const BrowseTabs = styled(Tabs)`
-  display: flex;
-  flex-flow: column nowrap;
-  flex: 1;
-`;
-
-export const BrowseTabsList = styled(Tabs.List)`
-  padding: 0 2.5rem;
-  background-color: ${color("white")};
-  border-bottom-width: 1px;
-`;
-
-export const BrowseTab = styled(Tabs.Tab)`
-  top: 1px;
-  margin-bottom: 1px;
-  border-bottom-width: 3px !important;
-  padding: 10px 0px;
-  margin-right: 10px;
-  &:hover {
-    color: ${color("brand")};
-    background-color: inherit;
-    border-color: transparent;
-  }
-`;
-
-export const BrowseTabsPanel = styled(Tabs.Panel)`
+export const BrowseMain = styled.div`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
@@ -58,7 +33,6 @@ export const BrowseDataHeader = styled.header`
   padding: 1rem 2.5rem;
   padding-bottom: 0.375rem;
   color: ${color("dark")};
-  background-color: ${color("white")};
 `;
 
 export const BrowseGrid = styled(Grid)`

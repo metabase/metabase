@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { render, screen, within } from "__support__/ui";
@@ -26,6 +26,17 @@ const EXPECTED_OPERATORS = [
   "Is empty",
   "Not empty",
 ];
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
+const typeTime = async (input: HTMLInputElement, text: string) => {
+  await userEvent.type(input, text, {
+    initialSelectionStart: 0,
+    initialSelectionEnd: input.value.length,
+  });
+};
 
 function setup({
   query = createQuery(),
@@ -69,8 +80,8 @@ function setup({
 }
 
 async function setOperator(operator: string) {
-  userEvent.click(screen.getByLabelText("Filter operator"));
-  userEvent.click(await screen.findByText(operator));
+  await userEvent.click(screen.getByLabelText("Filter operator"));
+  await userEvent.click(await screen.findByText(operator));
 }
 
 describe("TimeFilterPicker", () => {
@@ -92,7 +103,7 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup();
 
-      userEvent.click(screen.getByDisplayValue("Before"));
+      await userEvent.click(screen.getByDisplayValue("Before"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -102,10 +113,10 @@ describe("TimeFilterPicker", () => {
       );
     });
 
-    it("should apply a default filter", () => {
+    it("should apply a default filter", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -119,9 +130,11 @@ describe("TimeFilterPicker", () => {
     it("should add a filter with one value", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
+      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+
       await setOperator("After");
-      userEvent.type(screen.getByDisplayValue("00:00"), "11:15");
-      userEvent.click(screen.getByText("Add filter"));
+      await typeTime(input, "11:15");
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -136,8 +149,8 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("After");
-      const input = screen.getByDisplayValue("00:00");
-      userEvent.type(input, "11:15{enter}");
+      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+      await typeTime(input, "11:15{enter}");
 
       expect(getNextFilterParts()).toMatchObject({
         operator: ">",
@@ -152,10 +165,12 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      userEvent.type(leftInput, "11:15");
-      userEvent.type(rightInput, "12:30");
-      userEvent.click(screen.getByText("Add filter"));
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "11:15");
+      await typeTime(rightInput, "12:30");
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -173,9 +188,11 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Between");
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      userEvent.type(leftInput, "11:15");
-      userEvent.type(rightInput, "12:30{enter}");
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "11:15");
+      await typeTime(rightInput, "12:30{enter}");
 
       expect(getNextFilterParts()).toMatchObject({
         operator: "between",
@@ -193,10 +210,12 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      userEvent.type(leftInput, "12:30");
-      userEvent.type(rightInput, "11:15");
-      userEvent.click(screen.getByText("Add filter"));
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "12:30");
+      await typeTime(rightInput, "11:15");
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -214,7 +233,7 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Is empty");
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -225,11 +244,14 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
-    it("should handle invalid input", () => {
+    it("should handle invalid input", async () => {
       const { getNextFilterParts } = setup();
 
-      userEvent.type(screen.getByDisplayValue("00:00"), "32:71");
-      userEvent.click(screen.getByText("Add filter"));
+      await typeTime(
+        screen.getByDisplayValue("00:00") as HTMLInputElement,
+        "32:71",
+      );
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -239,9 +261,9 @@ describe("TimeFilterPicker", () => {
       });
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup();
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
@@ -263,13 +285,16 @@ describe("TimeFilterPicker", () => {
         expect(screen.getByText("Update filter")).toBeEnabled();
       });
 
-      it("should update a filter", () => {
+      it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
           createQueryWithTimeFilter({ operator: ">" }),
         );
 
-        userEvent.type(screen.getByDisplayValue("00:00"), "20:45");
-        userEvent.click(screen.getByText("Update filter"));
+        await typeTime(
+          screen.getByDisplayValue("00:00") as HTMLInputElement,
+          "20:45",
+        );
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -300,7 +325,7 @@ describe("TimeFilterPicker", () => {
         expect(screen.getByText("Update filter")).toBeEnabled();
       });
 
-      it("should update a filter", () => {
+      it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
           createQueryWithTimeFilter({
             operator: "between",
@@ -311,8 +336,11 @@ describe("TimeFilterPicker", () => {
           }),
         );
 
-        userEvent.type(screen.getByDisplayValue("11:15"), "8:00");
-        userEvent.click(screen.getByText("Update filter"));
+        await typeTime(
+          screen.getByDisplayValue("11:15") as HTMLInputElement,
+          "8:00",
+        );
+        await userEvent.click(screen.getByText("Update filter"));
 
         let filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -324,8 +352,11 @@ describe("TimeFilterPicker", () => {
           ],
         });
 
-        userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
-        userEvent.click(screen.getByText("Update filter"));
+        await typeTime(
+          screen.getByDisplayValue("13:00") as HTMLInputElement,
+          "17:31",
+        );
+        await userEvent.click(screen.getByText("Update filter"));
 
         filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -360,7 +391,7 @@ describe("TimeFilterPicker", () => {
         );
 
         await setOperator("Is empty");
-        userEvent.click(screen.getByText("Update filter"));
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -375,7 +406,7 @@ describe("TimeFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithTimeFilter({ operator: "<" }));
 
-      userEvent.click(screen.getByDisplayValue("Before"));
+      await userEvent.click(screen.getByDisplayValue("Before"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -394,7 +425,7 @@ describe("TimeFilterPicker", () => {
       );
 
       await setOperator("After");
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -442,7 +473,7 @@ describe("TimeFilterPicker", () => {
       expect(updateButton).toBeEnabled();
     });
 
-    it("should handle invalid filter value", () => {
+    it("should handle invalid filter value", async () => {
       const { getNextFilterParts } = setup(
         createQueryWithTimeFilter({
           values: [dayjs("32:66", "HH:mm").toDate()],
@@ -451,9 +482,9 @@ describe("TimeFilterPicker", () => {
 
       // There's no particular reason why 32:66 becomes 09:06
       // We trust the TimeInput to turn it into a valid time value
-      const input = screen.getByDisplayValue("09:06");
-      userEvent.type(input, "11:00");
-      userEvent.click(screen.getByText("Update filter"));
+      const input = screen.getByDisplayValue("09:06") as HTMLInputElement;
+      await typeTime(input, "11:00");
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -463,12 +494,12 @@ describe("TimeFilterPicker", () => {
       });
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup(
         createQueryWithTimeFilter({ operator: "<" }),
       );
 
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
 
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

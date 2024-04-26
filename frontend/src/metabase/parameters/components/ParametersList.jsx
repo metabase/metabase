@@ -3,7 +3,7 @@ import { useSensor, PointerSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import { SortableList, Sortable } from "metabase/core/components/Sortable";
+import { SortableList } from "metabase/core/components/Sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 
@@ -33,8 +33,9 @@ function ParametersList({
   enableParameterRequiredBehavior,
 }) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
+
   const visibleValuePopulatedParameters = useMemo(
     () => getVisibleParameters(parameters, hideParameters),
     [parameters, hideParameters],
@@ -50,40 +51,34 @@ function ParametersList({
   );
 
   const renderItem = ({ item: valuePopulatedParameter, id }) => (
-    <Sortable
-      id={id}
+    <ParameterWidget
       key={`sortable-${id}`}
-      disabled={!isEditing}
-      draggingStyle={{ opacity: 0.5 }}
-      role="listitem"
-    >
-      <ParameterWidget
-        className={cx({ mb2: vertical })}
-        isEditing={isEditing}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        parameter={valuePopulatedParameter}
-        parameters={parameters}
-        question={question}
-        dashboard={dashboard}
-        editingParameter={editingParameter}
-        setEditingParameter={setEditingParameter}
-        setValue={
-          setParameterValue &&
-          (value => setParameterValue(valuePopulatedParameter.id, value))
-        }
-        setParameterValueToDefault={setParameterValueToDefault}
-        enableParameterRequiredBehavior={enableParameterRequiredBehavior}
-        commitImmediately={commitImmediately}
-        dragHandle={
-          isEditing && setParameterIndex ? (
-            <div className="flex layout-centered cursor-grab text-inherit">
-              <Icon name="grabber" />
-            </div>
-          ) : null
-        }
-      />
-    </Sortable>
+      className={cx({ mb2: vertical })}
+      isEditing={isEditing}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      parameter={valuePopulatedParameter}
+      parameters={parameters}
+      question={question}
+      dashboard={dashboard}
+      editingParameter={editingParameter}
+      setEditingParameter={setEditingParameter}
+      setValue={
+        setParameterValue &&
+        (value => setParameterValue(valuePopulatedParameter.id, value))
+      }
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+      commitImmediately={commitImmediately}
+      dragHandle={
+        isEditing && setParameterIndex ? (
+          <div className="flex layout-centered cursor-grab text-inherit">
+            <Icon name="grabber" />
+          </div>
+        ) : null
+      }
+      isSortable
+    />
   );
 
   return visibleValuePopulatedParameters.length > 0 ? (

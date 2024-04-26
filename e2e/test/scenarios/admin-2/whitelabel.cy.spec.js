@@ -6,6 +6,7 @@ import {
   popover,
   restore,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
 
 function checkFavicon() {
@@ -292,8 +293,12 @@ describeEE("formatting > whitelabel", () => {
     });
 
     it("should allow users to provide internal urls", () => {
-      cy.findByTestId("landing-page").click().clear().type("/test-1").blur();
-      cy.wait(["@putLandingPage", "@getSettings"]);
+      cy.findByLabelText("Landing page custom destination")
+        .click()
+        .clear()
+        .type("/test-1")
+        .blur();
+      undoToast().findByText("Saved").should("be.visible");
 
       cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
@@ -301,8 +306,12 @@ describeEE("formatting > whitelabel", () => {
     });
 
     it("should not allow users to provide external urls", () => {
-      cy.findByTestId("landing-page").click().clear().type("/test-2").blur();
-      cy.wait(["@putLandingPage", "@getSettings"]);
+      cy.findByLabelText("Landing page custom destination")
+        .click()
+        .clear()
+        .type("/test-2")
+        .blur();
+      undoToast().findByText("Saved").should("be.visible");
 
       // set to valid value then test invalid value is not persisted
       cy.findByTestId("landing-page")

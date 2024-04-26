@@ -894,7 +894,7 @@
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition
-     (str "checkins_interval_" interval-seconds)
+     (str "interval_" interval-seconds)
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -1038,11 +1038,11 @@
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
             query (-> query
                       (lib/expression "Date" timestamp-col)
-                      (lib/filter (lib/time-interval timestamp-col :current :quarter))
+                      (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
                                                 (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :quarter))))]
-        (is (= 30
+                                                :current :week))))]
+        (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
@@ -1172,37 +1172,47 @@
 (deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT COUNT(*) AS \"count\" "
-                "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
-                "AND "
-                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
-                ")")
-           (:query
-            (qp/compile
-             (mt/mbql-query checkins
-               {:aggregation [[:count]]
-                :filter      [:= $date [:relative-datetime :current]]})))))))
+    (is (=? {:query ["SELECT"
+                     "  COUNT(*) AS \"count\""
+                     "FROM"
+                     "  \"PUBLIC\".\"CHECKINS\""
+                     "WHERE"
+                     "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = CAST(NOW() AS date)"]}
+            (-> (qp/compile
+                 (mt/mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:= $date [:relative-datetime :current]]}))
+                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-      (is (= (str "SELECT CHECKINS.DATE AS DATE "
-                  "FROM CHECKINS "
-                  "WHERE ("
-                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
-                  " AND "
-                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
-                  "GROUP BY CHECKINS.DATE "
-                  "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048575")
-             (sql.qp-test-util/pretty-sql
-              (:query
-               (qp/compile
-                (mt/mbql-query checkins
-                  {:filter   [:time-interval $date -4 :month]
-                   :breakout [!day.date]})))))))))
+      (is (= ["SELECT"
+              "  CHECKINS.DATE AS DATE"
+              "FROM"
+              "  CHECKINS"
+              "WHERE"
+              "  ("
+              "    CHECKINS.DATE >= DATE_TRUNC("
+              "      'month',"
+              "      DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))"
+              "    )"
+              "  )"
+              "  AND (CHECKINS.DATE < DATE_TRUNC('month', NOW()))"
+              "GROUP BY"
+              "  CHECKINS.DATE"
+              "ORDER BY"
+              "  CHECKINS.DATE ASC"
+              "LIMIT"
+              "  1048575"]
+             (->> (qp/compile
+                   (mt/mbql-query checkins
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [!day.date]}))
+                  :query
+                  sql.qp-test-util/pretty-sql
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
 
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"

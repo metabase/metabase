@@ -63,6 +63,7 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
+                              :uploads                  true
                               :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -73,11 +74,16 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
+
+(defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
+  (when entity-name
+    ;; these entities names are used as a pattern for LIKE queries in jdbc
+    ;; so we need to double escape it, first for java, then for sql
+    (str/replace entity-name "\\" "\\\\")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -216,7 +222,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
 (defn- format-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -341,7 +347,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+                         (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
@@ -569,7 +576,8 @@
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  {:bigint        :type/BigInteger
+  {:array         :type/*
+   :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
    :bit           :type/*
    :bool          :type/Boolean
@@ -580,6 +588,8 @@
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
+   :char          :type/Text
+   :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
@@ -589,6 +599,7 @@
    :int           :type/Integer
    :int2          :type/Integer
    :int4          :type/Integer
+   :integer       :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
    :json          :type/JSON
@@ -627,7 +638,7 @@
    (keyword "time without time zone")     :type/Time
    ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
-   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
@@ -853,17 +864,17 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"
           "   NULL as role,"
           "   t.schemaname as schema,"
           "   t.objectname as table,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
           "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
           " from ("
           "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
@@ -878,7 +889,7 @@
           ")"
           "select t.*"
           "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+       (filter #(or (:select %) (:update %) (:delete %) (:insert %)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

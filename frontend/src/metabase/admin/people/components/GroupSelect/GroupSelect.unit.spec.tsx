@@ -25,19 +25,19 @@ describe("GroupSelect", () => {
   });
 
   describe("when only the Administrators group is passed", () => {
-    it("should not show a Groups section (metabase#27728)", () => {
+    it("should not show a Groups section (metabase#27728)", async () => {
       setup();
 
-      userEvent.click(screen.getByText("Default"));
+      await userEvent.click(screen.getByText("Default"));
 
       expect(screen.queryByText("Groups")).not.toBeInTheDocument();
     });
 
-    it("should allow you to select the Administrators group", () => {
+    it("should allow you to select the Administrators group", async () => {
       const { onGroupChangeSpy } = setup();
 
-      userEvent.click(screen.getByText("Default"));
-      userEvent.click(screen.getByText("Administrators"));
+      await userEvent.click(screen.getByText("Default"));
+      await userEvent.click(screen.getByText("Administrators"));
 
       expect(onGroupChangeSpy).toHaveBeenCalledTimes(1);
       expect(onGroupChangeSpy).toHaveBeenCalledWith(adminGroup, true);

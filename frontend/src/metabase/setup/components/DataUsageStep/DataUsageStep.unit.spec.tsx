@@ -34,11 +34,11 @@ describe("DataUsageStep", () => {
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
-  it("should allow toggling tracking permissions", () => {
+  it("should allow toggling tracking permissions", async () => {
     setup({ step: "data_usage" });
 
     const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
 
     expect(toggle).toBeChecked();
   });
@@ -46,7 +46,7 @@ describe("DataUsageStep", () => {
   it("should show an error message on submit", async () => {
     setup({ step: "data_usage" });
 
-    userEvent.click(screen.getByText("Finish"));
+    await userEvent.click(screen.getByText("Finish"));
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
   });

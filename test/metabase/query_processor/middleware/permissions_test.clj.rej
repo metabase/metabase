@@ -1,0 +1,31 @@
+diff a/test/metabase/query_processor/middleware/permissions_test.clj b/test/metabase/query_processor/middleware/permissions_test.clj	(rejected hunks)
+@@ -207,28 +207,28 @@
+                                            {:id   tag-name, :name tag-name, :display-name tag-name,
+                                             :type "card",   :card card-id}}}}))))))))
+ 
+-(deftest ^:parallel template-tags-referenced-queries-test-4
++(deftest template-tags-referenced-queries-test-4
+   (testing "...but it should work if user has perms [template tag referenced query]"
+     (mt/with-temp [Database db   {}
+                    Card     card {:dataset_query
+                                   {:database (u/the-id db), :type :native,
+                                    :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
+       (let [card-id  (:id card)
+             tag-name (str "#" card-id)
+             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
+         ;; query should be returned by middleware unchanged
+         (is (= {:database (u/the-id db)
+                 :type     :native
+                 :native   {:query query-sql
+                            :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
+                                                      :card card-id}}}}
+                (check-perms-for-rasta
+                 {:database (u/the-id db)
+                  :type     :native
+                  :native   {:query         query-sql
+                             :template-tags {tag-name
+                                             {:id tag-name, :name tag-name, :display-name tag-name,
+                                              :type "card", :card card-id}}}})))))))
+ 
+ (deftest query-action-permissions-test
+   (testing "Query action permissions"

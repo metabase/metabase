@@ -43,6 +43,7 @@
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -584,6 +585,10 @@
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
+(defmethod mi/exclude-internal-content-hsql :model/Card
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (s/defn result-metadata-async :- ManyToManyChannel
@@ -887,8 +892,8 @@ saved later when it is ready."
 (defmethod serdes/extract-query "Card" [_ opts]
   (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [card metadata]
-  (when (and metadata (model? card))
+(defn- export-result-metadata [metadata]
+  (when metadata
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
@@ -927,7 +932,7 @@ saved later when it is ready."
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card)))
+        (update :result_metadata        export-result-metadata))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

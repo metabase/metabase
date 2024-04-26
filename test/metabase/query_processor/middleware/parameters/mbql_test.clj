@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -259,22 +260,25 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (deftest ^:parallel date-params-test
-  (is (= {:query  (str "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                       "WHERE ("
-                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?))"
-                       " OR ((\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                       ")")
-          :params [#t "2014-06-01T00:00Z[UTC]"
-                   #t "2014-07-01T00:00Z[UTC]"
-                   #t "2015-06-01T00:00Z[UTC]"
-                   #t "2015-07-01T00:00Z[UTC]"]}
-         (qp/compile
-           (mt/query checkins
-             {:query      {:aggregation [[:count]]}
-              :parameters [{:name   "date"
-                            :type   "date/month-year"
-                            :target $date
-                            :value  ["2014-06" "2015-06"]}]})))))
+  (is (= {:query  ["SELECT"
+                   "  COUNT(*) AS \"count\""
+                   "FROM"
+                   "  \"PUBLIC\".\"CHECKINS\""
+                   "WHERE"
+                   "  \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"
+                   "  OR \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"]
+          :params [#t "2014-06-01"
+                   #t "2014-06-30"
+                   #t "2015-06-01"
+                   #t "2015-06-30"]}
+         (-> (qp/compile
+              (mt/query checkins
+                {:query      {:aggregation [[:count]]}
+                 :parameters [{:name   "date"
+                               :type   "date/month-year"
+                               :target $date
+                               :value  ["2014-06" "2015-06"]}]}))
+             (update :query #(str/split-lines (driver/prettify-native-form :h2 %)))))))
 
 (defn- build-filter-clause [query param]
   (qp.store/with-metadata-provider (mt/id)

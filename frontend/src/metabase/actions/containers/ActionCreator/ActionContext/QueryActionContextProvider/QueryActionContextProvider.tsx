@@ -70,12 +70,14 @@ function convertActionToQuestionCard(
     can_write: true,
     public_uuid: null,
     collection_id: null,
+    collection_position: null,
     result_metadata: [],
     cache_ttl: null,
     last_query_start: null,
     average_query_time: null,
     archived: false,
     enable_embedding: false,
+    embedding_params: null,
     initially_published_at: null,
   };
 }

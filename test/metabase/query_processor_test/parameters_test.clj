@@ -208,6 +208,44 @@
                                :target [:dimension [:template-tag "country"]]
                                :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test
+  (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
+              :params nil}
+             (qp/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/=
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]})))))
+  (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
+              :params nil}
+             (qp/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/ends-with
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]}))))))
+
 (deftest ^:parallel native-with-spliced-params-test-2
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers"

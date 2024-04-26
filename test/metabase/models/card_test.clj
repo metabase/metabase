@@ -639,22 +639,21 @@
 (deftest extract-test
   (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
-    (testing "normal cards omit result_metadata"
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   query
-                                                          :result_metadata metadata}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-          (is (not (:dataset extracted)))
-          (is (nil? (:result_metadata extracted))))))
-    (testing "dataset cards (models) retain result_metadata"
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset         true
-                                                          :dataset_query   query
-                                                          :result_metadata metadata}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-          (is (:dataset extracted))
-          (is (string? (:display_name (first (:result_metadata extracted)))))
-          ;; this is a quick comparison, since the actual stored metadata is quite complex
-          (is (= (map :display_name metadata)
-                 (map :display_name (:result_metadata extracted)))))))))
+    (testing "every card retains result_metadata"
+      (t2.with-temp/with-temp [:model/Card {card1-id :id} {:dataset_query   query
+                                                           :result_metadata metadata}
+                               :model/Card {card2-id :id} {:type            "model"
+                                                           :dataset_query   query
+                                                           :result_metadata metadata}]
+        (doseq [card-id [card1-id card2-id]]
+          (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
+            ;; card2 is model, but card1 is not
+            (is (= (= card-id card2-id)
+                   (= "model" (:type extracted))))
+            (is (string? (:display_name (first (:result_metadata extracted)))))
+            ;; this is a quick comparison, since the actual stored metadata is quite complex
+            (is (= (map :display_name metadata)
+                   (map :display_name (:result_metadata extracted))))))))))
 
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
 

@@ -30,6 +30,8 @@ Execute a query and download the result data as a file in the specified format.
 
 -  **`visualization_settings`** value must be a valid JSON string.
 
+-  **`format_rows`** nullable boolean.
+
 ## `POST /api/dataset/duration`
 
 Get historical query execution duration.

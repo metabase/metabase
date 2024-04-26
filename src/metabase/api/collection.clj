@@ -98,9 +98,10 @@
                         :id
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                          [[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -521,6 +522,7 @@
                       :description
                       :entity_id
                       :personal_owner_id
+                      [:type :collection_type]
                       [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -538,12 +540,7 @@
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
     (for [row rows]
-      ;; Go through this rigamarole instead of hydration because we
-      ;; don't get models back from ulterior over-query
-      ;; Previous examination with logging to DB says that there's no N+1 query for this.
-      ;; However, this was only tested on H2 and Postgres
-      (-> row
-          (assoc :can_write (mi/can-write? Collection (:id row)))
+      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -561,15 +558,19 @@
                    :last_edit_first_name :first_name
                    :last_edit_email      :email
                    :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row :model_ranking (keys mapping))
+      (cond-> (apply dissoc row (keys mapping))
         ;; don't use contains as they all have the key, we care about a value present
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
+
+(defn- remove-unwanted-keys [row]
+  (dissoc row :collection_type :model_ranking))
 
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
   [rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (map remove-unwanted-keys)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
@@ -608,6 +609,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
+   :collection_type
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -646,45 +648,48 @@
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  (case sort-info
-    nil                     [[:%lower.name :asc]]
-    [:name :asc]            [[:%lower.name :asc]]
-    [:name :desc]           [[:%lower.name :desc]]
-    [:last-edited-at :asc]  [(if (= db-type :mysql)
-                               [:%isnull.last_edit_timestamp]
-                               [:last_edit_timestamp :nulls-last])
-                             [:last_edit_timestamp :asc]
-                             [:%lower.name :asc]]
-    [:last-edited-at :desc] (remove nil?
-                                    [(case db-type
-                                       :mysql    [:%isnull.last_edit_timestamp]
-                                       :postgres [:last_edit_timestamp :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_timestamp :desc]
-                                     [:%lower.name :asc]])
-    [:last-edited-by :asc]  [(if (= db-type :mysql)
-                               [:%isnull.last_edit_last_name]
-                               [:last_edit_last_name :nulls-last])
-                             [:last_edit_last_name :asc]
-                             (if (= db-type :mysql)
-                               [:%isnull.last_edit_first_name]
-                               [:last_edit_first_name :nulls-last])
-                             [:last_edit_first_name :asc]
-                             [:%lower.name :asc]]
-    [:last-edited-by :desc] (remove nil?
-                                    [(case db-type
-                                       :mysql    [:%isnull.last_edit_last_name]
-                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_last_name :desc]
-                                     (case db-type
-                                       :mysql    [:%isnull.last_edit_first_name]
-                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_first_name :desc]
-                                     [:%lower.name :asc]])
-    [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-    [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+  ;; always put "Metabase Analytics" last
+  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+        (case sort-info
+          nil                     [[:%lower.name :asc]]
+          [:name :asc]            [[:%lower.name :asc]]
+          [:name :desc]           [[:%lower.name :desc]]
+          [:last-edited-at :asc]  [(if (= db-type :mysql)
+                                     [:%isnull.last_edit_timestamp]
+                                     [:last_edit_timestamp :nulls-last])
+                                   [:last_edit_timestamp :asc]
+                                   [:%lower.name :asc]]
+          [:last-edited-at :desc] (remove nil?
+                                          [(case db-type
+                                             :mysql    [:%isnull.last_edit_timestamp]
+                                             :postgres [:last_edit_timestamp :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_timestamp :desc]
+                                           [:%lower.name :asc]])
+          [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                     [:%isnull.last_edit_last_name]
+                                     [:last_edit_last_name :nulls-last])
+                                   [:last_edit_last_name :asc]
+                                   (if (= db-type :mysql)
+                                     [:%isnull.last_edit_first_name]
+                                     [:last_edit_first_name :nulls-last])
+                                   [:last_edit_first_name :asc]
+                                   [:%lower.name :asc]]
+          [:last-edited-by :desc] (remove nil?
+                                          [(case db-type
+                                             :mysql    [:%isnull.last_edit_last_name]
+                                             :postgres [:last_edit_last_name :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_last_name :desc]
+                                           (case db-type
+                                             :mysql    [:%isnull.last_edit_first_name]
+                                             :postgres [:last_edit_last_name :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_first_name :desc]
+                                           [:%lower.name :asc]])
+          [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]

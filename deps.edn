@@ -127,8 +127,8 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.17"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.78"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.78"}
   org.clj-commons/hickory                   {:mvn/version "0.7.3"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
@@ -302,7 +302,8 @@
 
   ;; alias for CI-specific options.
   :ci
-  {:jvm-opts ["-Xmx2g"
+  {:jvm-opts ["-Xmx12g"
+              "-Xms12g"
               ;; normally CircleCI sets `CI` as an env var, so this is mostly to replicate that locally. Hawk will not
               ;; print the progress bar in output when this is set. Progress bars aren't very CI friendly
               "-Dci=TRUE"]}
@@ -525,9 +526,7 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"
-              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
-              "-Xmx4g"]}
+   :jvm-opts ["-Dmb.jetty.port=3002"]}
 
   ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
   :cljfmt

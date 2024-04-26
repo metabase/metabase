@@ -94,7 +94,7 @@ describe("Actions > ActionVizForm", () => {
       mappedParameters: [idParameter],
     });
 
-    userEvent.click(screen.getByText("Click me"));
+    await userEvent.click(screen.getByText("Click me"));
 
     await waitFor(async () => {
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
@@ -112,7 +112,7 @@ describe("Actions > ActionVizForm", () => {
       dashcardParamValues: {},
     });
 
-    userEvent.click(screen.getByText("Click me"));
+    await userEvent.click(screen.getByText("Click me"));
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
   });

@@ -9,6 +9,7 @@ import {
   isLatestVersion,
   getBuildRequirements,
   getNextVersions,
+  getMilestoneName,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -356,6 +357,7 @@ describe("version-helpers", () => {
       const testCases: [string, string[]][] = [
         ["v0.75.1", ["v0.75.2"]],
         ["v0.75.1.0", ["v0.75.2"]], // disregards extra .0
+        ["v0.75.10", ["v0.75.11"]], // handles multi-digit minor
         ["v0.79.99", ["v0.79.100"]],
         ["v0.79.99.0", ["v0.79.100"]],
       ];
@@ -392,5 +394,18 @@ describe("version-helpers", () => {
       expect(() => getNextVersions("v2.75")).toThrow();
       expect(() => getNextVersions("v0.75-RC2")).toThrow();
     });
+  });
+});
+
+describe("getMilestoneName", () => {
+  it.each([
+    ["v0.50.0", "0.50"],
+    ["v1.50.0", "0.50"],
+    ["v1.50.0-rc1", "0.50"],
+    ["v1.50.0-RC1", "0.50"],
+    ["v0.50.1", "0.50.1"],
+    ["v1.50.1", "0.50.1"],
+  ])("%s -> %s", (input, expected) => {
+    expect(getMilestoneName(input)).toBe(expected);
   });
 });

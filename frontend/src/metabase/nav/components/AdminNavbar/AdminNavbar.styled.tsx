@@ -77,6 +77,8 @@ export const AdminExitLink = styled(Link)`
 export const AdminLogoContainer = styled.div`
   display: flex;
   min-width: 32px;
+  max-width: 20rem;
+  overflow: hidden;
   height: 32px;
   align-items: center;
   justify-content: center;

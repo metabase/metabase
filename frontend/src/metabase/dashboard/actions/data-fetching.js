@@ -45,7 +45,6 @@ import {
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
-  getDatasetQueryParams,
   getCurrentTabDashboardCards,
 } from "../utils";
 
@@ -616,3 +615,22 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
   result: true,
 }));
+
+function getDatasetQueryParams(datasetQuery = {}) {
+  const { type, query, native, parameters = [] } = datasetQuery;
+  return {
+    type,
+    query,
+    native,
+    parameters: parameters
+      .map(parameter => ({
+        ...parameter,
+        value: parameter.value ?? null,
+      }))
+      .sort(sortById),
+  };
+}
+
+function sortById(a, b) {
+  return a.id.localeCompare(b.id);
+}

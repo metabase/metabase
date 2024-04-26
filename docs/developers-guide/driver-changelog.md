@@ -4,7 +4,27 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.1
+
+- Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The
+  multimethod `metabase.driver/describe-fields` must be implemented, as a replacement for
+  `metabase.driver/describe-table`.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fields-sql` has been added. The method needs
+  to be implemented if the driver supports `describe-fields` and you want to use the default JDBC implementation of
+  `metabase.driver/describe-fields`.
+
 ## Metabase 0.49.0
+
+- The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
+  `metabase.driver/describe-table-fks` will be removed in 0.52.0.
+
+- The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
+  supports the `:foreign-keys` and `:describe-fks` features. It replaces the `metabase.driver/describe-table-fks`
+  method, which is now deprecated.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
+  to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.
 
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
   JDBC-based drivers can implement this to improve the performance of the default SQL JDBC implementation of

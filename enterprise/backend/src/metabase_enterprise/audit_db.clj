@@ -19,7 +19,9 @@
    [toucan2.core :as t2])
   (:import
    (java.util.jar JarEntry JarFile)
-   (sun.nio.fs UnixPath)))
+   (java.nio.file Path)))
+
+(def ^:private audit-installed? (atom false))
 
 (set! *warn-on-reflection* true)
 
@@ -84,25 +86,30 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(defn entity-id->object
+(def ^{:arglists '([audit-installed? model entity-id])
+       :private  true} memoized-select-audit-entity*
+  (mdb.connection/memoize-for-application-db
+   (fn [audit-installed? model entity-id]
+     (when audit-installed?
+       (t2/select-one model :entity_id entity-id)))))
+
+(defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  ((mdb.connection/memoize-for-application-db
-    (fn [entity-id]
-      (t2/select-one model :entity_id entity-id))) entity-id))
+  (memoized-select-audit-entity* @audit-installed? model entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-custom-reports-entity-id))
+  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defenterprise default-audit-collection
   "Default audit collection (instance analytics) collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-audit-collection-entity-id))
+  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -220,7 +227,7 @@
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (->> ^UnixPath (instance-analytics-plugin-dir (plugins/plugins-dir))
+  (->> ^Path (instance-analytics-plugin-dir (plugins/plugins-dir))
        (.toFile)
        file-seq
        (remove fs/directory?)
@@ -250,7 +257,6 @@
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
       (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
-        (last-analytics-checksum! current-checksum)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -259,7 +265,9 @@
                                                             :token-check? false))]
           (if (not-empty (:errors report))
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))))
+            (do
+              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
+              (last-analytics-checksum! current-checksum))))))
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
@@ -289,4 +297,6 @@
    (let [audit-db (t2/select-one :model/Database :is_audit true)]
        ;; prevent sync while loading
      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-        (fn [] (maybe-load-analytics-content! audit-db)))))))
+        (fn []
+          (maybe-load-analytics-content! audit-db)
+          (reset! audit-installed? true)))))))

@@ -12,6 +12,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
+import { UndoListing } from "metabase/containers/UndoListing";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -31,6 +32,7 @@ export interface RenderWithProvidersOptions {
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
   withDND?: boolean;
+  withUndos?: boolean;
   customReducers?: ReducerObject;
 }
 
@@ -47,6 +49,7 @@ export function renderWithProviders(
     storeInitialState = {},
     withRouter = false,
     withDND = false,
+    withUndos = false,
     customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -90,6 +93,7 @@ export function renderWithProviders(
       history={history}
       withRouter={withRouter}
       withDND={withDND}
+      withUndos={withUndos}
     />
   );
 
@@ -111,12 +115,14 @@ function Wrapper({
   history,
   withRouter,
   withDND,
+  withUndos,
 }: {
   children: React.ReactElement;
   store: any;
   history?: History;
   withRouter: boolean;
   withDND: boolean;
+  withUndos?: boolean;
 }): JSX.Element {
   return (
     <Provider store={store}>
@@ -125,6 +131,7 @@ function Wrapper({
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
+          {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
     </Provider>
@@ -208,5 +215,44 @@ export const waitForLoaderToBeRemoved = async () => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 };
+
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollBy = () => {
+  window.Element.prototype.scrollBy = jest.fn();
+};
+
+/**
+ * jsdom doesn't have DataTransfer
+ */
+export function createMockClipboardData(
+  opts?: Partial<DataTransfer>,
+): DataTransfer {
+  const clipboardData = { ...opts };
+  return clipboardData as unknown as DataTransfer;
+}
 
 export * from "@testing-library/react";

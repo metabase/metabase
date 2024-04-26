@@ -783,7 +783,9 @@
                                                                  (:id target-column)))
                                                             @target-columns)]
                        (assoc col ::target target-column)))))
-           (lib.metadata.calculation/visible-columns query stage-number source)))))
+           (lib.metadata.calculation/visible-columns query stage-number source
+                                                     {:include-implicitly-joinable?                 false
+                                                      :include-implicitly-joinable-for-source-card? false})))))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]] ; i.e., a filter clause
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved

@@ -23,7 +23,28 @@
           :native          {:query "WOW", :parameters ["My Param"]}
           :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
-          {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
+          {:type :native, :native {:query "WOW"}, :parameters ["My Param"]})))
+  (testing "when top-level query is a model"
+    (testing "and there are parameters, wrap it up as a :source-query"
+      (is (= {:type            :query
+              :query           {:source-query {:source-table 5}
+                                :parameters   ["My Param"]}
+              :info            {:metadata/model-metadata []}
+              :user-parameters ["My Param"]}
+             (#'parameters/move-top-level-params-to-inner-query
+               {:type       :query
+                :query      {:source-table 5}
+                :parameters ["My Param"]
+                :info       {:metadata/model-metadata []}}))))
+    (testing "without parameters, leave the model at the top level"
+      (is (= {:type            :query
+              :query           {:source-table 5
+                                :parameters   ["My Param"]}
+              :user-parameters ["My Param"]}
+             (#'parameters/move-top-level-params-to-inner-query
+               {:type       :query
+                :query      {:source-table 5}
+                :parameters ["My Param"]}))))))
 
 (defn- substitute-params [query]
   (letfn [(thunk []
@@ -247,8 +268,7 @@
                                  "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                                 "FROM \"PUBLIC\".\"VENUES\" "
-                                 "LIMIT 1048575")]
+                                 "FROM \"PUBLIC\".\"VENUES\"")]
         (is (= (native-query
                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params

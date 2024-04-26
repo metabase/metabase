@@ -25,7 +25,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow brush date filter", { tags: "@flaky" }, () => {
+  it("should allow brush date filter", () => {
     cy.createQuestion(
       {
         name: "Brush Date Temporal Filter",

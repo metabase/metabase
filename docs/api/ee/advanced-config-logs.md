@@ -18,7 +18,7 @@ summary: |
   For example, the `query_execution` table will have entries removed after 30 days by default, and admins may wish to
   keep logs externally for longer than this retention period.
 
-## `GET /api/ee/advanced-config/logs/query_execution/:yyyy-mm`
+## `GET /api/ee/logs/query_execution/:yyyy-mm`
 
 Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser.

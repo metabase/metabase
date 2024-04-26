@@ -1,0 +1,17 @@
+diff a/src/metabase/lib/schema.cljc b/src/metabase/lib/schema.cljc	(rejected hunks)
+@@ -23,6 +23,7 @@
+    [metabase.lib.schema.ref :as ref]
+    [metabase.lib.schema.template-tag :as template-tag]
+    [metabase.lib.schema.util :as lib.schema.util]
++   [metabase.legacy-mbql.schema :as mbql.s]
+    [metabase.legacy-mbql.util :as mbql.u]
+    [metabase.legacy-mbql.util.match :as mbql.match]
+    [metabase.util.malli.registry :as mr]))
+@@ -264,5 +265,6 @@
+     [:database [:or
+                 ::id/database
+                 ::id/saved-questions-virtual-database]]
+-    [:stages   [:ref ::stages]]]
++    [:stages   [:ref ::stages]]
++    [:parameters {:optional true} mbql.s/ParameterList]]
+    lib.schema.util/UniqueUUIDs])

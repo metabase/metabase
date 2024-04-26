@@ -675,9 +675,9 @@
                                                    {:image-src   s
                                                     :render-type :inline})]
       (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
-                            :content)]
+                        :content)]
         (-> content
-              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
-              hiccup/html
-              hik/parse
-              hik/as-hickory)))))
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))

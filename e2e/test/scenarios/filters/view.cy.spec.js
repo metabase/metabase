@@ -68,9 +68,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show filters by search for Vendor", () => {
-      cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
-      });
+      visitQuestion("@questionId");
 
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
@@ -81,9 +79,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
-      });
+      visitQuestion("@questionId");
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching

@@ -12,7 +12,7 @@ import type Question from "metabase-lib/Question";
 import type { NativeQueryForm } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
 
 import { createDatasetQuery } from "./utils";
 
@@ -62,7 +62,7 @@ const ConvertQueryModal = ({
   }, [question, query, onUpdateQuestion, onSetUIControls, onClose]);
 
   return (
-    <NativeQueryModal
+    <NativeQueryPreview
       title={MODAL_TITLE[engineType]}
       query={query}
       error={error}
@@ -74,7 +74,7 @@ const ConvertQueryModal = ({
           {BUTTON_TITLE[engineType]}
         </Button>
       )}
-    </NativeQueryModal>
+    </NativeQueryPreview>
   );
 };
 

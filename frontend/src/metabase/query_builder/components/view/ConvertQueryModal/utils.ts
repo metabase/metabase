@@ -1,20 +1,21 @@
-import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
 export function createDatasetQuery(
-  query: string,
+  queryText: string,
   question: Question,
 ): DatasetQuery {
-  const tableId = question.tableId();
-  const collection =
-    tableId === null || typeof tableId === "undefined"
-      ? undefined
-      : question.metadata().tables[tableId]?.name;
+  const query = question.query();
+  const databaseId = Lib.databaseID(query);
+  const tableId = Lib.sourceTableOrCardId(query);
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const tableName = table ? Lib.displayInfo(query, -1, table).name : undefined;
+  const extras = tableName ? { collection: tableName } : {};
 
   return {
     type: "native",
-    native: { query, "template-tags": {}, collection },
-    database: checkNotNull(question.databaseId()),
+    native: { query: queryText, "template-tags": {}, ...extras },
+    database: databaseId,
   };
 }

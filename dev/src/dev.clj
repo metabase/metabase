@@ -212,7 +212,7 @@
   first arg:
 
     (dev/query-jdbc-db
-     [:sqlserver 'test-data-with-time]
+     [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
                [driver honeysql-form]  [[driver dataset] honeysql-form]

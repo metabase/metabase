@@ -38,7 +38,7 @@ export function sidebar() {
 }
 
 export function rightSidebar() {
-  return cy.findAllByTestId("sidebar-right");
+  return cy.findByTestId("sidebar-right");
 }
 
 export function leftSidebar() {
@@ -153,27 +153,32 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
-export const moveDnDKitColumnVertical = (column, distance) => {
-  column
+export const moveDnDKitElement = (
+  element,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200)
-    .trigger("pointermove", 5, 5, {
+    // This initial move needs to be greater than the activation constraint
+    // of the pointer sensor
+    .trigger("pointermove", 20, 20, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200)
-    .trigger("pointermove", 0, distance, {
+    .trigger("pointermove", horizontal, vertical, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200)
-    .trigger("pointerup", 0, distance, {
+    .trigger("pointerup", horizontal, vertical, {
       force: true,
       isPrimary: true,
       button: 0,
@@ -198,5 +203,5 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
 }

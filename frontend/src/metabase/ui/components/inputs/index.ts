@@ -5,6 +5,7 @@ export * from "./DateInput";
 export * from "./DatePicker";
 export * from "./FileInput";
 export * from "./Input";
+export * from "./MultiAutocomplete";
 export * from "./MultiSelect";
 export * from "./NumberInput";
 export * from "./Radio";

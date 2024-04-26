@@ -79,6 +79,16 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+(def ^:dynamic *suppress-expression-type-check?*
+  "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in MLv2 with
+  full metadata, but it breaks during legacy conversion in some cases.
+
+  In particular, if you override the metadata for a column to eg. treat a `:type/Integer` columns as a `:type/Instant`
+  with `:Coercion/UNIXSeconds->DateTime`, it will have `:base-type :type/Integer` and `:effective-type :type/Instant`.
+  But when converting from legacy, the `:field` refs in eg. a filter will only have `:base-type :type/Integer`, and then
+  the filter fails Malli validation. See #41122."
+  false)
+
 (defn- expression-schema
   "Schema that matches the following rules:
 
@@ -99,7 +109,8 @@
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn
     {:error/message description}
-    #(type-of? % base-type)]])
+    #(or *suppress-expression-type-check?*
+         (type-of? % base-type))]])
 
 (mr/def ::boolean
   (expression-schema :type/Boolean "expression returning a boolean"))
@@ -162,10 +173,11 @@
   ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
    #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
 
+(derive :type/Text        ::emptyable)
+(derive :type/MongoBSONID ::emptyable)
+
 (mr/def ::emptyable
-  [:or
-   [:ref ::string]
-   (expression-schema :type/MongoBSONID "expression returning a BSONID")])
+  (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
 
 (mr/def ::equality-comparable
   [:maybe

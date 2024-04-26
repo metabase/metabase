@@ -19,6 +19,7 @@ import {
   undoToast,
   visitDashboard,
   visitEmbeddedPage,
+  visitFullAppEmbeddingUrl,
   visitPublicDashboard,
 } from "e2e/support/helpers";
 
@@ -728,16 +729,4 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
   });
 
   getDashboardCard().should("be.visible");
-};
-
-const visitFullAppEmbeddingUrl = ({ url, qs }) => {
-  cy.visit({
-    url,
-    qs,
-    onBeforeLoad(window) {
-      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
-      // by removing the property the app would work in embedding mode
-      window.Cypress = undefined;
-    },
-  });
 };

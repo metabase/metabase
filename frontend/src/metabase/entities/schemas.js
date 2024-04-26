@@ -1,4 +1,4 @@
-import { updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 
 import Questions from "metabase/entities/questions";
 import { createEntity } from "metabase/lib/entities";
@@ -7,7 +7,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import {
   getCollectionVirtualSchemaId,
+  getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 import {
   generateSchemaId,
@@ -84,16 +86,16 @@ export default createEntity({
     }
 
     if (type === Questions.actionTypes.UPDATE && !error) {
-      const { question } = payload;
-      const schemaId = getCollectionVirtualSchemaId(question.collection, {
-        isDatasets: question.dataset,
+      const { question: card } = payload;
+      const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
+        isDatasets: card.type === "model",
       });
-
-      const virtualQuestionId = getQuestionVirtualTableId(question.id);
+      const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
+      const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const previousSchemaContainingTheQuestion =
         getPreviousSchemaContainingTheQuestion(
           state,
-          schemaId,
+          virtualSchemaId,
           virtualQuestionId,
         );
 
@@ -105,16 +107,20 @@ export default createEntity({
         );
       }
 
-      if (!state[schemaId]) {
-        return state;
+      if (!state[virtualSchemaId]) {
+        state = assocIn(state, [virtualSchemaId], {
+          id: virtualSchemaId,
+          name: virtualSchemaName,
+          database: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        });
       }
 
-      return updateIn(state, [schemaId, "tables"], tables => {
+      return updateIn(state, [virtualSchemaId, "tables"], tables => {
         if (!tables) {
           return tables;
         }
 
-        if (question.archived) {
+        if (card.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
         return addTableAvoidingDuplicates(tables, virtualQuestionId);

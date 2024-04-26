@@ -3,14 +3,14 @@ import { t, jt } from "ttag";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import { Flex, Stack, Text, Title } from "metabase/ui";
+import { rem, Flex, Stack, Text, Title } from "metabase/ui";
 
 export const CollectionPermissionsHelp = () => (
-  <Flex direction="column" py="1.375rem" px="1.5rem">
+  <Flex direction="column" py={rem(22)} px="lg">
     <Title order={4}>{t`Collection permissions`}</Title>
     <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
-    <Title order={6} my="0.5rem">{t`Collections Permission Levels`}</Title>
+    <Title order={6} my="sm">{t`Collections Permission Levels`}</Title>
 
     <Stack spacing={16} mt="1rem">
       <PermissionHelpDescription

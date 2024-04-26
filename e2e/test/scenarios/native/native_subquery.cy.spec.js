@@ -265,15 +265,14 @@ describe("scenarios > question > native subquery", () => {
     cy.signIn("nodata");
 
     // They should be able to access both questions
-    cy.get("@nestedQuestionId").then(nestedQuestionId => {
-      visitQuestion(nestedQuestionId);
-      cy.contains("Showing 41 rows");
-    });
+    visitQuestion("@nestedQuestionId");
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 41 rows",
+    );
 
-    cy.get("@toplevelQuestionId").then(toplevelQuestionId => {
-      visitQuestion(toplevelQuestionId);
-      cy.contains("41");
-    });
+    visitQuestion("@toplevelQuestionId");
+    cy.get("#main-data-grid .cellData").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {
