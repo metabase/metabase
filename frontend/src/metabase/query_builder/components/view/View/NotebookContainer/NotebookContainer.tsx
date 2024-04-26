@@ -4,7 +4,7 @@ import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
@@ -66,7 +66,7 @@ export const NotebookContainer = ({
 
   const Handle = forwardRef<HTMLDivElement, Partial<ResizableBoxProps>>(
     function Handle(props, ref) {
-      const handleWidth = 6;
+      const handleWidth = 10;
       const borderWidth = 1;
       const left = rem(-((handleWidth + borderWidth) / 2));
 
@@ -79,14 +79,11 @@ export const NotebookContainer = ({
           top={0}
           bottom={0}
           m="auto 0"
-          h={rem(100)}
           w={rem(handleWidth)}
           left={left}
-          bg={darken("border", 0.03)}
           style={{
             zIndex: 5,
             cursor: "ew-resize",
-            borderRadius: rem(8),
           }}
         ></Box>
       );
