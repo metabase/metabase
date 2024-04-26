@@ -183,8 +183,11 @@
 
 ;; TODO -- this hard coding is not ideal, it would be better to support metadata on the namespaces themselves.
 (def ^:private modules
-  "Modules are namespaces whose child namespaces can import each other, but which cannot be accessed outside the module."
-  '#{metabase.upload})
+  "Modules are namespaces whose internal namespaces cannot be referenced from outside the module.
+  The top-level namespace can reference these internal namespaces, and they can reference each other, but the rest of
+  the code-base may only refer to the top-level namespace.
+  Modules can be nested, in which case each submodule hides its internals from its parents."
+  (into (sorted-set) '[metabase.upload]))
 
 (defn- module->child-detector
   "Construct a function that return the given namespace when called with a namespace which is nested inside it."
@@ -195,8 +198,9 @@
         module-ns-sym))))
 
 (def ^:private module-detectors
-  "A pre-built list of detectors corresponding to our modules."
-  (mapv module->child-detector modules))
+  "A pre-built list of detectors corresponding to our modules, going from most to least specific."
+  (->> (reverse modules)
+       (mapv module->child-detector)))
 
 (defn- parent-module
   "Find the most tightly enclosing module for the given namespace, returning nil if it is not within any."
