@@ -196,14 +196,14 @@ export type VisualizationSettings = {
 };
 
 export interface ModerationReview {
+  status: ModerationReviewStatus;
   moderator_id: number;
-  status: ModerationReviewStatus | null;
   created_at: string;
-  most_recent: boolean;
+  most_recent?: boolean;
 }
 
 export type CardId = number;
-export type ModerationReviewStatus = "verified";
+export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"
