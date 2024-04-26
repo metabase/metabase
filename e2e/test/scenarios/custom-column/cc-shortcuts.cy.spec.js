@@ -57,7 +57,11 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
     addCustomColumn();
     selectCombineColumns();
 
+    selectColumn("Total");
+    selectColumn("Product", "Rating");
+
     expressionEditorWidget().within(() => {
+      // Click the back button, in the header
       cy.findByText("Select columns to combine").click();
     });
 
