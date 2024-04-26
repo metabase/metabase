@@ -66,7 +66,7 @@ export const NotebookContainer = ({
 
   const Handle = forwardRef<HTMLDivElement, Partial<ResizableBoxProps>>(
     function Handle(props, ref) {
-      const handleWidth = 6;
+      const handleWidth = 10;
       const borderWidth = 1;
       const left = rem(-((handleWidth + borderWidth) / 2));
 
