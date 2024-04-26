@@ -444,9 +444,8 @@ export const GRAPH_AXIS_SETTINGS = {
     getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: ([{ data }], vizSettings) => {
       const dimensionColumn = data.cols.find(
-        col => col.name === vizSettings["graph.dimensions"][0],
+        col => col != null && col.name === vizSettings["graph.dimensions"][0],
       );
-
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {
         options.push({ name: t`Timeseries`, value: "timeseries" });
