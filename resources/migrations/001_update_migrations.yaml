@@ -6699,7 +6699,7 @@ databaseChangeLog:
               - column:
                   name: value
                   type: ${text.type}
-                  remarks: Value of the parameter as a string
+                  remarks: Value of the parameter
                   constraints:
                     nullable: true
 

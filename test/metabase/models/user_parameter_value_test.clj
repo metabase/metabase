@@ -21,8 +21,3 @@
         (testing "Upsert deletes user parameter value entry if value is `nil`."
           (upv/upsert! (mt/user->id :rasta) "some-param" nil)
           (is (= upv-count (t2/count :model/UserParameterValue))))))))
-
-#_(deftest user-parameter-value-hydration-test
-  (testing "Dashboards are hydrated with a :user-parameter-values map."
-    (mt/with-temp [:model/Dashboard dash {:name "test"}]
-      )))
