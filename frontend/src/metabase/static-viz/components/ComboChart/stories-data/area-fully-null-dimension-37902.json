@@ -1,0 +1,346 @@
+[
+  {
+    "card": {
+      "original_card_id": 239,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-02-08T19:56:02.08581Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "area",
+        "name": "Area",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 21,
+        "entity_id": "CNcEZpu11G_B0BLdAYr7J",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-02-08T19:55:59.231295Z"
+      },
+      "visualization_settings": {
+        "table.pivot_column": "y",
+        "table.cell_column": "x",
+        "graph.dimensions": ["y"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["x"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-02-08T19:56:02.236837Z"
+      },
+      "collection_preview": true,
+      "entity_id": "08qniR3PLSuyW3Axlwpjj",
+      "display": "area",
+      "parameter_mappings": [],
+      "id": 239,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "source-table": "card__221"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-02-08T19:56:02.08581Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 226,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-02-08T19:56:20.523885Z",
+      "name": "Area Fully Null Dimension",
+      "query_type": "query",
+      "collection_id": 21,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-02-06T22:10:03.807542Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1584, null],
+          "effective_type": "type/BigInteger",
+          "id": 1584,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1586, null],
+          "effective_type": "type/BigInteger",
+          "id": 1586,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.25,
+                "q3": 2.75,
+                "max": 3,
+                "sd": 1,
+                "avg": 2
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1585, null],
+          "effective_type": "type/Text",
+          "id": 1585,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 1
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 0
+              }
+            }
+          },
+          "base_type": "type/Text"
+        }
+      ],
+      "table_id": 174,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["1", 1, null],
+        ["2", 2, null],
+        ["3", 3, null]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 174,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1584, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1584,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 174,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1586, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1586,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.25,
+                "q3": 2.75,
+                "max": 3,
+                "sd": 1,
+                "avg": 2
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 174,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1585, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1585,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 1
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 0
+              }
+            }
+          },
+          "base_type": "type/Text"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"x\" AS \"x\", \"source\".\"y\" AS \"y\" FROM (SELECT \"csv_upload_data\".\"csv_upload_bar_linear_x_all_null_20240118150842\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_bar_linear_x_all_null_20240118150842\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_bar_linear_x_all_null_20240118150842\".\"y\" AS \"y\" FROM \"csv_upload_data\".\"csv_upload_bar_linear_x_all_null_20240118150842\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1584, null],
+            "effective_type": "type/BigInteger",
+            "id": 1584,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "x",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1586, null],
+            "effective_type": "type/BigInteger",
+            "id": 1586,
+            "visibility_type": "normal",
+            "display_name": "X",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.25,
+                  "q3": 2.75,
+                  "max": 3,
+                  "sd": 1,
+                  "avg": 2
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "y",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1585, null],
+            "effective_type": "type/Text",
+            "id": 1585,
+            "visibility_type": "normal",
+            "display_name": "Y",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 1
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 0
+                }
+              }
+            },
+            "base_type": "type/Text"
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

@@ -1,4 +1,9 @@
-import type { AnyAction, Store, ThunkDispatch } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -8,12 +13,12 @@ import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
 
-const SDK_REDUCERS = {
+export const sdkReducers = {
   ...reducers,
   sdk,
-};
+} as unknown as Record<string, Reducer>;
 
-export const store = getStore(SDK_REDUCERS, null, {
+export const store = getStore(sdkReducers, null, {
   embed: {
     isEmbeddingSdk: true,
   },

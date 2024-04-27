@@ -52,6 +52,9 @@ export const GROUPS = {
   popularAggregations: {
     displayName: t`Most used aggregations`,
   },
+  shortcuts: {
+    displayName: t`Shortcuts`,
+  },
 } as const;
 
 export type GroupName = keyof typeof GROUPS;

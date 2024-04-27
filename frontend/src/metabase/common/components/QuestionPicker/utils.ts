@@ -3,8 +3,8 @@ import _ from "underscore";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  SearchRequest,
-  SearchModel,
+  ListCollectionItemsRequest,
+  CollectionItemModel,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
@@ -56,24 +56,25 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-  models?: SearchModel[];
-}): PickerState<QuestionPickerItem, SearchRequest> => {
-  const statePath: PickerState<QuestionPickerItem, SearchRequest> = [
-    {
-      selectedItem: {
-        name: "",
-        model: "collection",
-        id: idPath[0],
+  models?: CollectionItemModel[];
+}): PickerState<QuestionPickerItem, ListCollectionItemsRequest> => {
+  const statePath: PickerState<QuestionPickerItem, ListCollectionItemsRequest> =
+    [
+      {
+        selectedItem: {
+          name: "",
+          model: "collection",
+          id: idPath[0],
+        },
       },
-    },
-  ];
+    ];
 
   idPath.forEach((id, index) => {
     const nextLevelId = idPath[index + 1] ?? null;
 
     statePath.push({
       query: {
-        collection: id,
+        id,
         models: ["collection", ...models],
         namespace,
       },
@@ -90,7 +91,10 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: QuestionPickerItem, models: SearchModel[]) => {
+export const isFolder = (
+  item: QuestionPickerItem,
+  models: CollectionItemModel[],
+) => {
   return (
     item.id === "root" ||
     item.is_personal ||
@@ -100,5 +104,5 @@ export const isFolder = (item: QuestionPickerItem, models: SearchModel[]) => {
   );
 };
 
-export const generateKey = (query?: SearchRequest) =>
+export const generateKey = (query?: ListCollectionItemsRequest) =>
   JSON.stringify(query ?? "root");

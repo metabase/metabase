@@ -46,6 +46,8 @@ function createWaterfallQuestion({ showTotal } = {}) {
       "template-tags": {},
     },
     visualization_settings: {
+      "graph.dimensions": ["C1"],
+      "graph.metrics": ["C2"],
       "graph.show_values": true,
     },
     display: "waterfall",

@@ -1,5 +1,10 @@
-import type { SerializedError } from "@reduxjs/toolkit";
+import type {
+  SerializedError,
+  AnyAction,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -11,10 +16,36 @@ export type EmbeddingSessionTokenState = {
   error: SerializedError | null;
 };
 
+type LoginStatusUninitialized = {
+  status: "uninitialized";
+};
+type LoginStatusValidated = {
+  status: "validated";
+};
+type LoginStatusSuccess = {
+  status: "success";
+};
+type LoginStatusLoading = {
+  status: "loading";
+};
+export type LoginStatusError = {
+  status: "error";
+  error: Error;
+};
+
+export type LoginStatus =
+  | LoginStatusUninitialized
+  | LoginStatusValidated
+  | LoginStatusSuccess
+  | LoginStatusLoading
+  | LoginStatusError;
+
+export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
+
 export type SdkState = {
   token: EmbeddingSessionTokenState;
-  isLoggedIn: boolean;
-  isInitialized: boolean;
+  loginStatus: LoginStatus;
+  plugins: null | SdkPluginsConfig;
 };
 
 export interface SdkStoreState extends State {

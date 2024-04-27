@@ -43,5 +43,4 @@ export const Divider = styled.div`
   height: 1px;
   width: 100%;
   background-color: ${color("bg-medium")};
-  margin-bottom: 1.5em;
 `;

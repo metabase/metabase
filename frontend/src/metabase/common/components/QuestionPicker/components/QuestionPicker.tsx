@@ -1,13 +1,19 @@
 import { useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
-import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchRequest, SearchModel } from "metabase-types/api";
+import type {
+  ListCollectionItemsRequest,
+  CollectionItemModel,
+} from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
@@ -34,7 +40,7 @@ interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
-  models?: SearchModel[];
+  models?: CollectionItemModel[];
 }
 
 const useGetInitialCollection = (
@@ -55,10 +61,13 @@ const useGetInitialCollection = (
       : initialValue?.id;
 
   const { data: currentCollection, error: collectionError } =
-    useCollectionQuery({
-      id: (isValidCollectionId(collectionId) && collectionId) || "root",
-      enabled: !isQuestion || !!currentQuestion,
-    });
+    useGetCollectionQuery(
+      !isQuestion || !!currentQuestion
+        ? {
+            id: (isValidCollectionId(collectionId) && collectionId) || "root",
+          }
+        : skipToken,
+    );
 
   return {
     currentQuestion: currentQuestion,
@@ -75,7 +84,7 @@ export const QuestionPicker = ({
   models = ["dataset", "card"],
 }: QuestionPickerProps) => {
   const [path, setPath] = useState<
-    PickerState<QuestionPickerItem, SearchRequest>
+    PickerState<QuestionPickerItem, ListCollectionItemsRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],

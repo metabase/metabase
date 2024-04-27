@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
@@ -11,13 +11,20 @@ export const ClickActionButtonIcon = styled(Icon)`
 `;
 
 export const ClickActionButtonTextIcon = styled.span`
-  margin-right: 0.25rem;
+  margin-right: ${rem(4)};
   width: 0.875rem;
   text-align: center;
   font-weight: 700;
   font-size: 1.25rem;
   color: ${color("brand")};
   transition: all 200ms linear;
+`;
+
+export const Subtitle = styled.div`
+  color: ${color("text-light")};
+  font-weight: normal;
+  text-align: start;
+  margin-top: ${rem(4)};
 `;
 
 export const HorizontalClickActionButton = styled(Button)`
@@ -27,6 +34,7 @@ export const HorizontalClickActionButton = styled(Button)`
 
   border-radius: 8px;
   border: none;
+  text-align: start;
 
   padding: 0.5rem;
   margin: 0 -0.5rem;
@@ -44,6 +52,10 @@ export const HorizontalClickActionButton = styled(Button)`
     }
 
     ${ClickActionButtonTextIcon} {
+      color: ${color("white")};
+    }
+
+    ${Subtitle} {
       color: ${color("white")};
     }
   }
