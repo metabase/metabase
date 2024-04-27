@@ -1,6 +1,9 @@
 (ns metabase.lib.order-by-test
   (:require
+   [clojure.core :refer [Throwable->map]]
+   [clojure.lang.Exception :refer [Exception]]
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -95,6 +98,15 @@
           (-> lib.tu/venues-query
               (lib/order-by (meta/field-metadata :venues :id))
               lib/order-bys))))
+
+(deftest ^:parallel duplicate-test
+  (let [error-msg (try
+                    (-> lib.tu/venues-query
+                        (lib/order-by (meta/field-metadata :venues :id))
+                        (lib/order-by (meta/field-metadata :venues :id)))
+                    (catch Exception e
+                      (-> (get (first (-> (Throwable->map e) :data :error :errors)) :schema) mc/properties :error/message)))]
+    (is (= "distinct" error-msg))))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query the expected description was generated correctly.
