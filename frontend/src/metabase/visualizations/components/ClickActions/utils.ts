@@ -7,58 +7,26 @@ import type {
 } from "metabase/visualizations/types";
 
 type Section = {
-  icon: string;
   index?: number;
 };
 
 export const SECTIONS: Record<ClickActionSection, Section> = {
-  records: {
-    icon: "table2",
-  },
-  zoom: {
-    icon: "zoom_in",
-  },
-  sort: {
-    icon: "sort",
-  },
-  breakout: {
-    icon: "breakout",
-  },
-  "breakout-popover": {
-    icon: "breakout",
-  },
-  standalone_filter: {
-    icon: "filter",
-  },
-  // There is no such icon as "summarize." This is used to ID and select the actions that we,
-  // want to make larger, like Distribution, Sum over Time, etc.
-  summarize: {
-    icon: "summarize",
-  },
-  sum: {
-    icon: "sum",
-  },
-  extract: {
-    icon: "extract",
-  },
-  "extract-popover": {
-    icon: "extract",
-  },
-  auto: {
-    icon: "bolt",
-  },
-  "auto-popover": {
-    icon: "bolt",
-  },
-  info: {
-    icon: "info",
-  },
-  filter: {
-    icon: "funnel_outline",
-  },
-  details: {
-    icon: "document",
-  },
+  records: {},
+  zoom: {},
+  sort: {},
+  breakout: {},
+  "breakout-popover": {},
+  standalone_filter: {},
+  summarize: {},
+  sum: {},
+  extract: {},
+  "extract-popover": {},
+  auto: {},
+  "auto-popover": {},
+  info: {},
+  filter: {},
+  details: {},
+  custom: {},
 };
 Object.values(SECTIONS).map((section, index) => {
   section.index = index;

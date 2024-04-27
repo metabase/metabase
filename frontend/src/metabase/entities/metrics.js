@@ -65,10 +65,6 @@ const Metrics = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).metric(entityId),
   },
-
-  form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
-  },
 });
 
 export default Metrics;

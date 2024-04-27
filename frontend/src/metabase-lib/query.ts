@@ -106,3 +106,10 @@ export function canRun(query: Query): boolean {
 export function canSave(query: Query): boolean {
   return ML.can_save(query);
 }
+
+export function asReturned(
+  query: Query,
+  stageIndex: number,
+): { query: Query; stageIndex: number } {
+  return ML.as_returned(query, stageIndex);
+}

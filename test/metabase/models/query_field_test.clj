@@ -2,6 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.models :refer [Card]]
+   [metabase.models.query-field :as query-field]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -120,12 +122,31 @@
       (testing "mix of select table.* and named columns"
         (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
         (let [qfs (query-fields-for-card card-id)]
-          ;; TODO: o.id is a bug; the query only has p.id but we don't link tables and columns yet
-          ;; c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911
-          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id 1 #_o.id)
+          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
                  (count qfs)))
           ;; 13 total, but id is referenced directly
           (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))
           ;; subset since it also includes the PKs/FKs
           (is (set/subset? #{total-qf tax-qf}
                            (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
+
+(deftest parse-mbql-test
+  (testing "Parsing MBQL query returns correct used fields"
+    (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
+                                             {:aggregation [[:distinct $name]
+                                                            [:distinct $price]]
+                                              :limit       5})}
+                   Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
+                                            :database (:id (mt/db))
+                                            :type     :query}}
+                   Card c3 {:dataset_query (mt/mbql-query checkins
+                                             {:joins [{:source-table (str "card__" (:id c2))
+                                                       :alias "Venues"
+                                                       :condition [:= $checkins.venue_id $venues.id]}]})}]
+      (mt/$ids
+        (is (= {:direct #{%venues.name %venues.price}}
+               (#'query-field/field-ids-for-mbql (:dataset_query c1))))
+        (is (= {:direct nil}
+               (#'query-field/field-ids-for-mbql (:dataset_query c2))))
+        (is (= {:direct #{%venues.id %checkins.venue_id}}
+               (#'query-field/field-ids-for-mbql (:dataset_query c3))))))))
