@@ -1,7 +1,6 @@
 (ns metabase.lib.order-by-test
   (:require
    [clojure.core :refer [Throwable->map]]
-   [clojure.lang.Exception :refer [Exception]]
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [medley.core :as m]
@@ -16,7 +15,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])))
+   (:import
+   (clojure.lang ExceptionInfo)))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -104,7 +105,7 @@
                     (-> lib.tu/venues-query
                         (lib/order-by (meta/field-metadata :venues :id))
                         (lib/order-by (meta/field-metadata :venues :id)))
-                    (catch Exception e
+                    (catch ExceptionInfo e
                       (-> (get (first (-> (Throwable->map e) :data :error :errors)) :schema) mc/properties :error/message)))]
     (is (= "distinct" error-msg))))
 
