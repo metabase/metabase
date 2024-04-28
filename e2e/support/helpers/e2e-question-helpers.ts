@@ -184,7 +184,7 @@ const question = (
         cy.wrap(body.id).as(idAlias);
       }
 
-      if (type === "model" || enable_embedding) {
+      if (type === "model" || type === "metric" || enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
           type,
           enable_embedding,

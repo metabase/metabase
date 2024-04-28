@@ -440,7 +440,7 @@
 
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
-  (when (= card-type :metric)
+  (when (and dataset-query (= card-type :metric))
     (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)
           metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
       (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
