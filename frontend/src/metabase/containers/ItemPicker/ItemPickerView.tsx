@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -39,7 +40,9 @@ interface Props<TId> {
   style?: React.CSSProperties;
   onChange: (item: PickerItem<TId>) => void;
   onSearchStringChange: (searchString: string) => void;
-  onOpenCollectionChange: (collectionId: PickerItem<TId>["id"]) => void;
+  onOpenCollectionChange: (
+    collectionId: CollectionPickerItem<TId>["id"],
+  ) => void;
   checkCollectionMaybeHasChildren: (
     collection: CollectionPickerItem<TId>,
   ) => boolean;
@@ -74,9 +77,9 @@ function ItemPickerView<TId>({
   const canFetch = (isPickingNotCollection || searchString) && allowFetch;
 
   const handleSearchInputKeyPress = useCallback(
-    e => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
-        onSearchStringChange(e.target.value);
+        onSearchStringChange(e.currentTarget.value);
       }
     },
     [onSearchStringChange],
@@ -97,7 +100,7 @@ function ItemPickerView<TId>({
         <ItemPickerHeader data-testid="item-picker-header">
           <SearchInput
             type="search"
-            className="input"
+            className={CS.input}
             placeholder={t`Search`}
             autoFocus
             onKeyPress={handleSearchInputKeyPress}

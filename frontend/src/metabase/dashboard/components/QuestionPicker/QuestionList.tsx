@@ -11,7 +11,7 @@ import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type {
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchResult,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
@@ -61,7 +61,7 @@ export function QuestionList({
 
   const query = createQuery();
 
-  function createQuery(): SearchListQuery {
+  function createQuery(): SearchRequest {
     const baseQuery = isSearching
       ? {
           q: trimmedSearchText,

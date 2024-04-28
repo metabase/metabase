@@ -2,7 +2,7 @@ import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { CardType } from "metabase-types/api";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";

@@ -8,7 +8,7 @@
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Field PermissionsGroupMembership]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
@@ -76,7 +76,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
+                                         (lib.util.match/match-one v [:dimension [:field field-id _]] field-id))]
                     {k (get login-attributes k)})))])))
 
 (defenterprise field-id->field-values-for-current-user

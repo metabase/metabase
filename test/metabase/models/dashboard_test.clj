@@ -839,7 +839,7 @@
       ~@body)))
 
 (deftest perms-test
-  (with-dash-in-collection [db collection dash]
+  (with-dash-in-collection [_db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
@@ -849,9 +849,10 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
-      (is (= false
-             (mi/can-read? dash))))
+    (mt/with-full-data-perms-for-all-users!
+      (binding [api/*current-user-permissions-set* (atom #{})]
+        (is (= false
+               (mi/can-read? dash)))))
 
     (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
@@ -1022,3 +1023,52 @@
       (is (= (set (for [card [card1 card2 card3]]
                     ["Card" (:id card)]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
+
+(deftest hydrate-tabs-test
+  (mt/with-temp
+    [:model/Dashboard    dash1      {:name "A dashboard"}
+     :model/DashboardTab dash1-tab1 {:name "Tab 1", :dashboard_id (:id dash1)}
+     :model/DashboardTab dash1-tab2 {:name "Tab 2", :dashboard_id (:id dash1)}
+     :model/Dashboard    dash2      {:name "Another dashboard"}
+     :model/DashboardTab dash2-tab1 {:name "Dash 2 tab 1" :dashboard_id (:id dash2)}
+     :model/DashboardTab dash2-tab2 {:name "Dash 2 tab 2" :dashboard_id (:id dash2)}]
+    (is (=? [[dash1-tab1 dash1-tab2]
+             [dash2-tab1 dash2-tab2]]
+            (map :tabs (t2/hydrate [dash1 dash2] :tabs))))))
+
+(deftest hydrate-dashcards-test
+  (mt/with-temp
+    [:model/Dashboard     dash1       {:name "A dashboard"}
+     :model/DashboardCard dash1-card1 {:dashboard_id (:id dash1)}
+     :model/DashboardCard dash1-card2 {:dashboard_id (:id dash1)}
+     :model/Dashboard     dash2       {:name "Another dashboard"}
+     :model/DashboardCard dash2-card1 {:dashboard_id (:id dash2)}
+     :model/DashboardCard dash2-card2 {:dashboard_id (:id dash2)}]
+    (is (=? [[dash1-card1 dash1-card2]
+             [dash2-card1 dash2-card2]]
+            (map :dashcards (t2/hydrate [dash1 dash2] :dashcards))))))
+
+(deftest hydrate-resolved-params-test
+  (mt/with-temp
+    [:model/Dashboard     dash      {:parameters [{:name "Category Name"
+                                                   :slug "category_name"
+                                                   :id   "_CATEGORY_NAME_"
+                                                   :type "category"}]}
+     :model/Card          card      {:name "Card attached to dashcard"}
+     :model/DashboardCard dashcard {:dashboard_id       (:id dash)
+                                    :card_id            (:id card)
+                                    :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                          :target       [:dimension (mt/$ids $categories.name)]}]}]
+    (is (=? {"_CATEGORY_NAME_"
+             {:name     "Category Name"
+              :slug     "category_name"
+              :id       "_CATEGORY_NAME_"
+              :type     :category
+              :mappings (mt/malli=? [:set [:map
+                                           [:parameter_id [:= "_CATEGORY_NAME_"]]
+                                           [:target       [:= [:dimension (mt/$ids $categories.name)]]]
+                                           [:dashcard     [:map
+                                                           [:id   [:= (:id dashcard)]]
+                                                           [:card [:map
+                                                                   [:id [:= (:id card)]]]]]]]])}}
+            (-> dash (t2/hydrate :resolved-params) :resolved-params)))))

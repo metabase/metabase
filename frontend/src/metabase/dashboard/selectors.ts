@@ -13,7 +13,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
@@ -27,7 +27,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { isQuestionDashCard } from "./utils";
+import { isQuestionCard, isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -313,7 +313,10 @@ export const getQuestions = (state: State) => {
         const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
         for (const card of cards) {
-          acc[card.id] = getQuestionByCard(state, { card });
+          const question = getQuestionByCard(state, { card });
+          if (question) {
+            acc[card.id] = question;
+          }
         }
       }
 
@@ -366,7 +369,7 @@ export const getMissingRequiredParameters = createSelector(
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],
   (card, metadata) => {
-    return new Question(card, metadata);
+    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
   return props.card.id;
@@ -414,6 +417,13 @@ export const getTabs = createSelector([getDashboard], dashboard => {
   return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
 });
 
-export function getSelectedTabId(state: State) {
-  return state.dashboard.selectedTabId;
-}
+export const getSelectedTabId = createSelector(
+  [getDashboard, state => state.dashboard.selectedTabId],
+  (dashboard, selectedTabId) => {
+    if (dashboard && selectedTabId === null) {
+      return dashboard.tabs?.[0]?.id || null;
+    }
+
+    return selectedTabId;
+  },
+);

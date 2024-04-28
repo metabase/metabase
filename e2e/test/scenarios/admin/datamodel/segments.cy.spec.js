@@ -29,10 +29,10 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.button("New segment").click();
 
-      cy.get(".GuiBuilder").findByText("Select a table").click();
+      cy.findByTestId("gui-builder").findByText("Select a table").click();
       popover().findByText("Orders").click();
 
-      cy.get(".GuiBuilder")
+      cy.findByTestId("gui-builder")
         .findByText("Add filters to narrow your answer")
         .click();
 
@@ -118,7 +118,8 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask question
       cy.visit("/reference/segments/1/questions");
-      cy.get(".full .Button").click();
+
+      cy.button("Ask a question").click();
       cy.findAllByText("37.65");
 
       filter();

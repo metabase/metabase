@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
+import Database from "metabase-lib/v1/metadata/Database";
+import Table from "metabase-lib/v1/metadata/Table";
 import {
   createSampleDatabase,
   ORDERS_ID,

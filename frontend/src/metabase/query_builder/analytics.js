@@ -21,3 +21,13 @@ export const trackTurnIntoModelClicked = question => {
     question_id: question.id(),
   });
 };
+
+export const trackNotebookNativePreviewShown = (question, isShown) => {
+  trackSchemaEvent("question", "1-0-3", {
+    event: isShown
+      ? "notebook_native_preview_shown"
+      : "notebook_native_preview_hidden",
+    // question_id is not nullable in the schema, and we cannot change it
+    question_id: question.id() ?? 0,
+  });
+};

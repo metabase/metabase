@@ -5,11 +5,13 @@ import { push, replace } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type Schema from "metabase-lib/metadata/Schema";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
@@ -76,19 +78,19 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
-      <div className="AdminList-search">
-        <Icon name="search" size={16} />
+    <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
+      <div className={AdminS.AdminListSearch}>
+        <Icon className={AdminS.Icon} name="search" size={16} />
         <input
-          className="AdminInput pl4 border-bottom"
+          className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
           type="text"
           placeholder={t`Find a schema`}
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
       </div>
-      <ul className="AdminList-items">
-        <div className="AdminList-section">
+      <ul>
+        <div className={AdminS.AdminListSection}>
           {ngettext(
             msgid`${schemas.length} schema`,
             `${schemas.length} schemas`,
@@ -123,8 +125,12 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap",
-          { selected: isSelected },
+          CS.textWrap,
+          AdminS.AdminListItem,
+          { [AdminS.selected]: isSelected },
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
         )}
         onClick={handleSelect}
       >

@@ -3,7 +3,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { DashboardApi } from "metabase/services";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { getFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { FieldId, Parameter } from "metabase-types/api";
 
 export interface UseFilterFieldsState {

@@ -4,9 +4,9 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [MBQL]]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
@@ -32,7 +32,7 @@
 
 (defn- extract-dimensions
   [mbql]
-  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
+  (lib.util.match/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))

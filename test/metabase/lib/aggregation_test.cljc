@@ -223,9 +223,7 @@
                           {:lib/uuid (str (random-uuid))}
                           arg]]]
       (testing (str \newline (pr-str clause))
-        (is (= (condp = (first arg)
-                 :field :metabase.lib.schema.expression/type.unknown
-                 :type/Number)
+        (is (= :type/Number
                (lib.schema.expression/type-of clause)))
         (is (= (condp = (first arg)
                  :field :type/BigInteger

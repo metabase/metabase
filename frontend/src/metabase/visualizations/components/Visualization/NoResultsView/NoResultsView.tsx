@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
+import { NoDataError } from "metabase/components/errors/NoDataError";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { Root, ShortMessage } from "./NoResultsView.styled";
@@ -13,7 +13,7 @@ function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
     <Root>
       <Tooltip tooltip={t`No results!`} isEnabled={isSmall}>
-        <img data-testid="no-results-image" src={NoResults} />
+        <NoDataError data-testid="no-results-image" mb="1rem" />
       </Tooltip>
       {!isSmall && <ShortMessage>{t`No results!`}</ShortMessage>}
     </Root>

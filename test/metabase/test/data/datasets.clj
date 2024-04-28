@@ -11,7 +11,8 @@
   `DRIVERS` env var.
 
   TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
-  that?"
+  that?
+  Tech debt issue: #39348"
   (:require
    [clojure.test :as t]
    [colorize.core :as colorize]

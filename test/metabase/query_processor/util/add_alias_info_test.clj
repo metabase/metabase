@@ -5,11 +5,12 @@
    [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor.middleware.fix-bad-references
-    :as fix-bad-refs]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -772,3 +773,170 @@
                 ::add/source-alias  "CREATED_AT"
                 ::add/desired-alias "Products__CREATED_AT"}]
               (#'add/matching-field-in-join-at-this-level source-query field-clause))))))
+
+(defn- metadata-provider-with-two-models []
+  (let [result-metadata-for (fn [column-name]
+                              {:display_name   column-name
+                               :field_ref      [:field column-name {:base-type :type/Integer}]
+                               :name           column-name
+                               :base_type      :type/Integer
+                               :effective_type :type/Integer
+                               :semantic_type  nil
+                               :fingerprint
+                               {:global {:distinct-count 1, :nil% 0}
+                                :type   #:type{:Number {:min 1, :q1 1, :q3 1, :max 1, :sd nil, :avg 1}}}})]
+    (lib/composed-metadata-provider
+      meta/metadata-provider
+      (providers.mock/mock-metadata-provider
+        {:cards [{:name            "Model A"
+                  :id              1
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
+                  :result-metadata [(result-metadata-for "A1")
+                                    (result-metadata-for "A2")]}
+                 {:name            "Model B"
+                  :id              2
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
+                  :result-metadata [(result-metadata-for "B1")
+                                    (result-metadata-for "B2")]}
+                 {:name            "Joined"
+                  :id              3
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (meta/id)
+                                    :type     :query
+                                    :query    {:joins
+                                               [{:fields :all,
+                                                 :alias "Model B - A1",
+                                                 :strategy :inner-join,
+                                                 :condition
+                                                 [:=
+                                                  [:field "A1" {:base-type :type/Integer}]
+                                                  [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
+                                                 :source-table "card__2"}],
+                                               :source-table "card__1"}}}]}))))
+
+(deftest ^:parallel models-with-joins-and-renamed-columns-test
+  (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"
+    (qp.store/with-metadata-provider (metadata-provider-with-two-models)
+      (is (=? {:query {:fields [[:field "A1" {::add/source-table ::add/source
+                                              ::add/source-alias "A1"}]
+                                [:field "A2" {::add/source-table ::add/source
+                                              ::add/source-alias "A2"}]
+                                [:field "B1" {::add/source-table ::add/source
+                                              ::add/source-alias "Model B - A1__B1"}]
+                                [:field "B2" {::add/source-table ::add/source
+                                              ::add/source-alias "Model B - A1__B2"}]]}}
+              (add-alias-info {:type     :query
+                               :database (meta/id)
+                               :query    {:source-table "card__3"}}))))))
+
+(deftest ^:parallel handle-multiple-orders-bys-on-same-field-correctly-test
+  (testing "#40993"
+    (let [query (lib.tu.macros/mbql-query orders
+                  {:aggregation [[:count]]
+                   :breakout    [[:field %created-at {:temporal-unit :month}]
+                                 [:field %created-at {:temporal-unit :day}]]})]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (driver/with-driver :h2
+          (is (=? {:query {:source-table (meta/id :orders)
+                           :breakout     [[:field
+                                           (meta/id :orders :created-at)
+                                           {:temporal-unit      :month
+                                            ::add/source-alias  "CREATED_AT"
+                                            ::add/desired-alias "CREATED_AT"
+                                            ::add/position      0}]
+                                          [:field
+                                           (meta/id :orders :created-at)
+                                           {:temporal-unit      :day
+                                            ::add/source-alias  "CREATED_AT"
+                                            ::add/desired-alias "CREATED_AT_2"
+                                            ::add/position      1}]]
+                           :aggregation  [[:aggregation-options
+                                           [:count]
+                                           {::add/source-alias  "count"
+                                            ::add/position      2
+                                            ::add/desired-alias "count"}]]
+                           :order-by     [[:asc
+                                           [:field
+                                            (meta/id :orders :created-at)
+                                            {:temporal-unit      :month
+                                             ::add/source-alias  "CREATED_AT"
+                                             ::add/desired-alias "CREATED_AT"
+                                             ::add/position      0}]]
+                                          [:asc
+                                           [:field
+                                            (meta/id :orders :created-at)
+                                            {:temporal-unit      :day
+                                             ::add/source-alias  "CREATED_AT"
+                                             ::add/desired-alias "CREATED_AT_2"
+                                             ::add/position      1}]]]}}
+                  (add/add-alias-info (qp.preprocess/preprocess query)))))))))
+
+(deftest ^:parallel preserve-field-options-name-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (driver/with-driver :h2
+      (is (=? {:source-query {:source-table (meta/id :orders)
+                              :breakout     [[:field (meta/id :orders :id) {}]]
+                              :aggregation  [[:aggregation-options
+                                              [:cum-sum [:field (meta/id :orders :id) {}]]
+                                              {:name "sum"}]]}
+               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
+                              [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
+               :aggregation  [[:aggregation-options
+                               [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                               {::add/desired-alias "sum"}]]}
+              (add/add-alias-info
+               {:source-query {:source-table (meta/id :orders)
+                               :breakout     [[:field (meta/id :orders :id) nil]]
+                               :aggregation  [[:aggregation-options
+                                               [:cum-sum [:field (meta/id :orders :id) nil]]
+                                               {:name "sum"}]]}
+                :breakout     [[:field "id" {:base-type :type/Integer}]
+                               [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]],
+                :aggregation  [[:aggregation-options
+                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                                {:name "sum"}]]}))))))
+
+(deftest ^:parallel nested-query-field-literals-test
+  (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (is (=? {:source-query {:fields [[:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT"}]
+                                         [:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT_2"}]
+                                         [:field (meta/id :orders :total)
+                                          {::add/source-alias "TOTAL"
+                                           ::add/desired-alias "TOTAL"}]]}
+                 :aggregation [[:aggregation-options
+                                [:cum-sum
+                                 [:field "TOTAL" {::add/source-table ::add/source
+                                                  ::add/source-alias "TOTAL"}]]
+                                {:name "sum"
+                                 ::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                 ::add/desired-alias "sum"}]]
+                 :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
+                                                  ::add/desired-alias "CREATED_AT"}]
+                            [:field "CREATED_AT_2" {::add/source-alias "CREATED_AT_2"
+                                                    ::add/desired-alias "CREATED_AT_2"}]]}
+                (-> (lib.tu.macros/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :fields [!year.created-at
+                                               !month.created-at
+                                               $total]}
+                       :aggregation [[:cum-sum [:field "TOTAL" {:base-type :type/Integer}]]]
+                       :breakout    [[:field "CREATED_AT" {:base-type :type/Date, :temporal-unit :default}]
+                                     [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    :query)))))))

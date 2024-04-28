@@ -1,13 +1,13 @@
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
   hasFields,
   isFieldFilterUiParameter,
-} from "metabase-lib/parameters/utils/parameter-fields";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-import { parameterHasNoDisplayValue } from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;

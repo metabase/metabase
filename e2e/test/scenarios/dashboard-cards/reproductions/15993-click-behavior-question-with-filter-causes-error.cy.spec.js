@@ -39,7 +39,7 @@ describe("issue 15993", () => {
     });
 
     // Drill-through
-    cy.findAllByTestId("cell-data").get(".link").contains("0").realClick();
+    cy.findAllByTestId("cell-data").contains("0").realClick();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0

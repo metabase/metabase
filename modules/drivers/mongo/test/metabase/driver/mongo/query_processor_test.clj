@@ -106,8 +106,14 @@
                    (qp.compile/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
+(deftest ^:parallel no-initial-projection-test-2
+  (mt/test-driver :mongo
+    (testing "Don't need to create initial projections anymore (#4216)"
+      (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
+        (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
+          (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
@@ -147,8 +153,7 @@
                                       {"$project" {"_id"        false
                                                    "datetime"   "$_id.datetime"
                                                    "datetime_2" "$_id.datetime_2"
-                                                   "count"      true}}
-                                      {"$sort" {"datetime" 1}}]
+                                                   "count"      true}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -188,7 +193,7 @@
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
         (testing "Querying in UTC works"
-          (mt/with-system-timezone-id "UTC"
+          (mt/with-system-timezone-id! "UTC"
             (is (= [["2019-11-20T20:00:00Z" 1]
                     ["2019-11-19T00:00:00Z" 1]
                     ["2019-11-18T20:00:00Z" 1]
@@ -199,7 +204,7 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))
         (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id "Asia/Kathmandu"
+          (mt/with-system-timezone-id! "Asia/Kathmandu"
             (is (= [["2019-11-21T01:00:00+05:45" 1]
                     ["2019-11-19T06:00:00+05:45" 1]
                     ["2019-11-19T02:00:00+05:45" 1]

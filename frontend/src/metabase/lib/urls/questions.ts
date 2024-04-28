@@ -2,9 +2,9 @@ import slugg from "slugg";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
-import type { QuestionCreatorOpts } from "metabase-lib/Question";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
+import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId, Card as SavedCard } from "metabase-types/api";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";

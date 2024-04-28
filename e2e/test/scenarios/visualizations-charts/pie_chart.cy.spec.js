@@ -55,7 +55,7 @@ describe("scenarios > visualizations > pie chart", () => {
 });
 
 function ensurePieChartRendered(rows, totalValue) {
-  cy.get(".Visualization").within(() => {
+  cy.findByTestId("query-visualization-root").within(() => {
     // detail
     cy.findByText("Total").should("be.visible");
     cy.findByTestId("detail-value").should("have.text", totalValue);
@@ -65,7 +65,7 @@ function ensurePieChartRendered(rows, totalValue) {
 
     // legend
     rows.forEach((name, i) => {
-      cy.get(".LegendItem").contains(name).should("be.visible");
+      cy.findAllByTestId("legend-item").contains(name).should("be.visible");
     });
   });
 }

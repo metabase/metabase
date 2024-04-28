@@ -11,8 +11,8 @@
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
-  {"card" 'Card
-   :card  'Card})
+  {"card" :model/Card
+   :card  :model/Card})
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
@@ -52,10 +52,3 @@
                                (t2/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
-
-(mi/define-simple-hydration-method moderated-item
-  :moderated_item
-  "The moderated item for a given request or review"
-  [{:keys [moderated_item_id moderated_item_type]}]
-  (when (and moderated_item_type moderated_item_id)
-    (t2/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))

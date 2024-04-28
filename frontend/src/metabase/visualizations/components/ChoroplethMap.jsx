@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import Color from "color";
 import d3 from "d3";
 import { Component } from "react";
@@ -7,6 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -18,7 +20,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isMetric, isString } from "metabase-lib/types/utils/isa";
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
 import ChartWithLegend from "./ChartWithLegend";
 import LeafletChoropleth from "./LeafletChoropleth";
@@ -153,7 +155,7 @@ export default class ChoroplethMap extends Component {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
-            minimalBounds: computeMinimalBounds(geoJson.features),
+            minimalBounds: computeMinimalBounds(geoJson?.features ?? []),
           });
         });
       }
@@ -202,7 +204,7 @@ export default class ChoroplethMap extends Component {
 
     if (!geoJson) {
       return (
-        <div className={className + " flex layout-centered"}>
+        <div className={cx(className, CS.flex, CS.layoutCentered)}>
           <LoadingSpinner />
         </div>
       );

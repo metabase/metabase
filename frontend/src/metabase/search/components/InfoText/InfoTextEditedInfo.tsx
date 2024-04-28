@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
 
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { useUserListQuery } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/lib/types";

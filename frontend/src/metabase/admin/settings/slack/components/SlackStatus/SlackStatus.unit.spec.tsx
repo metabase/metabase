@@ -26,8 +26,8 @@ describe("SlackStatus", () => {
     const onDelete = jest.fn();
 
     render(<SlackStatus Form={FormMock} isValid={true} onDelete={onDelete} />);
-    userEvent.click(screen.getByText("Delete Slack App"));
-    userEvent.click(screen.getByText("Delete"));
+    await userEvent.click(screen.getByText("Delete Slack App"));
+    await userEvent.click(screen.getByText("Delete"));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
   });

@@ -5,7 +5,7 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
 

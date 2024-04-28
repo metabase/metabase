@@ -26,7 +26,7 @@ describe("issue 28193", () => {
     });
     cy.button("Done").click();
 
-    cy.get(".RunButton").click();
+    cy.findByTestId("run-button").click();
     cy.wait("@dataset");
 
     cy.button("Save changes").click();

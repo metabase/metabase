@@ -5,12 +5,12 @@ import { useMount, usePrevious } from "react-use";
 import { useDashboardQuery } from "metabase/common/hooks";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
-} from "metabase-lib/parameters/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dashboard,
   QuestionDashboardCard,
@@ -75,7 +75,7 @@ export function ClickBehaviorSidebar({
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
-    VizSettings | undefined | null
+    Partial<ClickBehavior> | undefined | null
   >(null);
 
   const previousDashcard = usePrevious(dashcard);
@@ -110,7 +110,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleChangeSettings = useCallback(
-    nextClickBehavior => {
+    (nextClickBehavior: Partial<ClickBehavior> | undefined | null) => {
       const { id } = dashcard;
 
       if (selectedColumn == null) {
@@ -142,7 +142,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleColumnSelected = useCallback(
-    column => {
+    (column: DatasetColumn) => {
       const originalColumnVizSettings = getClickBehaviorForColumn(
         dashcard,
         column,

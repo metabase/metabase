@@ -10,6 +10,7 @@ import {
   mockSlackConfigured,
   isOSS,
   visitDashboard,
+  editDashboard,
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
   addTextBox,
@@ -24,6 +25,7 @@ import {
   openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -781,13 +783,9 @@ function openRecipientsWithUserVisibilitySetting(setting) {
 }
 
 function addParametersToDashboard() {
-  // edit dashboard
-  cy.icon("pencil").click();
+  editDashboard();
 
-  // add Category > Dropdown "Name" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
 
   cy.findByText("Select…").click();
   popover().within(() => {
@@ -800,10 +798,8 @@ function addParametersToDashboard() {
   popover().findByText("Corbin Mertz").click();
   popover().contains("Add filter").click();
 
-  // add Category > Dropdown "Category" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
+
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("Category").click();

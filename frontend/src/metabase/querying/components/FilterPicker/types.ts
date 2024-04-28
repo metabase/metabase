@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
 
 export interface FilterPickerWidgetProps {
   query: Lib.Query;
@@ -20,6 +20,8 @@ export interface PickerOperatorOption<Operator> {
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
+  query: Lib.Query;
+  stageIndex: number;
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {

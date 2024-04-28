@@ -1,7 +1,7 @@
 import type { IconName } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
-import type Schema from "metabase-lib/metadata/Schema";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   CollectionId,
   DatabaseId,

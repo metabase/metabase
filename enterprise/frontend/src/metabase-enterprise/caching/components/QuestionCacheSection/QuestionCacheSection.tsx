@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { getRelativeTime } from "metabase/lib/time";
 import { Stack, Text } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import CacheSection from "../CacheSection";
 

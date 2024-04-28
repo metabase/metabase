@@ -4,7 +4,6 @@
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :refer [PrettyPrintable]])
@@ -61,15 +60,16 @@
     ;; some situations -- Oracle for example doesn't seem to behave properly when you do this. This mainly affects dev
     ;; which merges driver dependencies into the core project deps.
     (if loaded-by-system-classloader?
-      (log/debug (u/format-color 'cyan (trs "Not creating proxy JDBC driver for class {0} -- original driver was loaded by system ClassLoader"
-                                            class-name)))
+      (log/debug (u/format-color 'cyan
+                                 "Not creating proxy JDBC driver for class %s -- original driver was loaded by system ClassLoader"
+                                 class-name))
       (let [driver (proxy-driver (.newInstance klass))]
-        (log/debug (u/format-color 'blue (trs "Registering JDBC proxy driver for {0}..." class-name)))
+        (log/debug (u/format-color 'blue "Registering JDBC proxy driver for %s..." class-name))
         (DriverManager/registerDriver driver)
 
         ;; deregister the non-proxy version of the driver so it doesn't try to handle our URLs. Most JDBC drivers register
         ;; themseleves when the classes are loaded
         (doseq [driver (enumeration-seq (DriverManager/getDrivers))
                 :when  (instance? klass driver)]
-          (log/debug (u/format-color 'cyan (trs "Deregistering original JDBC driver {0}..." driver)))
+          (log/debug (u/format-color 'cyan "Deregistering original JDBC driver %s..." driver))
           (DriverManager/deregisterDriver driver))))))

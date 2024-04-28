@@ -5,7 +5,7 @@ import { getEmailDomain } from "metabase/lib/utils";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Channel,
   ChannelSpec,

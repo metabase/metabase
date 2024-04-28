@@ -52,6 +52,7 @@
       {:base_type :type/Decimal}))))
 
 ;; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
+;; Tech debt issue: #39343
 (defmethod execute/execute-sql! :mysql
   [& args]
   (apply execute/sequentially-execute-sql! args))

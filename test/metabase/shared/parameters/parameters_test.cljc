@@ -40,7 +40,7 @@
 
 (t/deftest ^:parallel substitute-tags-test
   (t/testing "Tags are correctly substituted into card text, and formatted appropriately based on their type"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :string/= :value "bar"}}
       "bar"
@@ -109,7 +109,7 @@
       "This Month"))
 
   (t/testing "Special characters (with semantic meaning in Markdown) are escaped in formatted values"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :string/= :value "*bar*"}}
       "\\*bar\\*"
@@ -124,7 +124,7 @@
       "_*\\*bar\\**_"))
 
     (t/testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
-      (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "en" false))
+      (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "en" false))
         "{{foo}}"
         {"foo" {:type :string/= :value "*bar*"}}
         "*bar*"
@@ -139,7 +139,7 @@
         "_**bar**_"))
 
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       ;; Nil input
       nil
       {}
@@ -172,7 +172,7 @@
 
 (t/deftest ^:parallel substitute-tags-date-filters
   (t/testing "Basic date values are formatted correctly"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "July 9\\, 2022"
@@ -198,7 +198,7 @@
       "July 6\\, 2022 \\- July 9\\, 2022"))
 
   (t/testing "Relative date values are formatted correctly"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :date/all-options :value "thisday"}}
       "Today"
@@ -232,7 +232,7 @@
       "Next 5 Years"))
 
   (t/testing "Date values are formatted using the locale passed in as an argument"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es" true))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "es" true))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "julio 9\\, 2022"
@@ -247,7 +247,7 @@
 
 (t/deftest ^:parallel substitute-tags-optional-blocks-test
   (t/testing "Optional blocks are removed when necessary"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "[[{{foo}}]]"
       {}
       ""

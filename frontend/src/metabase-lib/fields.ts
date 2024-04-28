@@ -5,7 +5,7 @@ import type {
   Clause,
   ColumnMetadata,
   FieldValuesSearchInfo,
-  MetricMetadata,
+  LegacyMetricMetadata,
   Query,
   SegmentMetadata,
 } from "./types";
@@ -55,7 +55,7 @@ export function fieldValuesSearchInfo(
 export function legacyRef(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+  column: ColumnMetadata | LegacyMetricMetadata | SegmentMetadata,
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }

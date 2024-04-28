@@ -21,7 +21,7 @@ describe("issue 15981", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".Visualization").contains("Rustic Paper Wallet");
+    cy.findByTestId("query-visualization-root").contains("Rustic Paper Wallet");
 
     cy.icon("contract").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -41,6 +41,6 @@ describe("issue 15981", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".Visualization").contains("23.54");
+    cy.findByTestId("query-visualization-root").contains("23.54");
   });
 });

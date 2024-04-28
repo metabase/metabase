@@ -1,19 +1,19 @@
 import _ from "underscore";
 
-import { tokenize } from "metabase-lib/expressions/tokenizer";
+import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
 
 import { generateExpression } from "./generator";
 
 const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 
-describe("metabase-lib/expressions/tokenizer", () => {
+describe("metabase-lib/v1/expressions/tokenizer", () => {
   // quick sanity check before the real fuzzing
   it("should tokenize custom expresssion", () => {
     expect(() => tokenize("CASE([Deal],[Price]*7e-1,[Price]")).not.toThrow();
   });
 });
 
-fuzz("FUZZING metabase-lib/expressions/tokenizer", () => {
+fuzz("FUZZING metabase-lib/v1/expressions/tokenizer", () => {
   const MAX_SEED = 2e4;
 
   for (let seed = 0; seed < MAX_SEED; ++seed) {

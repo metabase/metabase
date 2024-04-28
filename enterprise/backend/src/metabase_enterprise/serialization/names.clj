@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -11,13 +11,12 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -41,7 +40,7 @@
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([entity] (fully-qualified-name* entity))
      ([model id]
@@ -70,7 +69,7 @@
     (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
     (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
 
-(defmethod fully-qualified-name* Metric
+(defmethod fully-qualified-name* LegacyMetric
   [metric]
   (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (safe-name metric)))
 
@@ -183,7 +182,7 @@
 
 (defmethod path->context* "metrics"
   [context _ _ metric-name]
-  (assoc context :metric (t2/select-one-pk Metric
+  (assoc context :metric (t2/select-one-pk LegacyMetric
                            :table_id (:table context)
                            :name     metric-name)))
 
@@ -309,7 +308,7 @@
   [fully-qualified-name]
   (when fully-qualified-name
     (let [components (->> (str/split fully-qualified-name separator-pattern)
-                          rest ; we start with a /
+                          rest          ; we start with a /
                           partition-name-components
                           (map (fn [[model-name & entity-parts]]
                                  (cond-> {::model-name model-name ::entity-name (last entity-parts)}
@@ -318,7 +317,7 @@
                                                           first ; ns is first/only item after "collections"
                                                           rest  ; strip the starting :
                                                           (apply str)))))))
-          context (loop [acc-context                   {}
+          context (loop [acc-context {}
                          [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
@@ -329,9 +328,9 @@
            (not (mc/validate [:maybe Context] context))
            (not *suppress-log-name-lookup-exception*))
         (log/warn
-         (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                       (str/join ", " (map name (keys context)))
-                       fully-qualified-name)
+         (ex-info (format "Can't resolve %s in fully qualified name %s"
+                          (str/join ", " (map name (keys context)))
+                          fully-qualified-name)
                   {:fully-qualified-name fully-qualified-name
                    :resolve-name-failed? true
                    :context              context}))

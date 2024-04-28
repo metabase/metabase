@@ -1,9 +1,39 @@
 import { useMemo, useCallback } from "react";
 import * as React from "react";
+import _ from "underscore";
 
 type Options = {
   preventDefault?: boolean;
 };
+
+type SandboxedEvents =
+  | "onBlur"
+  | "onChange"
+  | "onClick"
+  | "onContextMenu"
+  | "onDoubleClick"
+  | "onDrag"
+  | "onDragEnd"
+  | "onDragEnter"
+  | "onDragExit"
+  | "onDragLeave"
+  | "onDragOver"
+  | "onDragStart"
+  | "onDrop"
+  | "onFocus"
+  | "onInput"
+  | "onInvalid"
+  | "onKeyDown"
+  | "onKeyPress"
+  | "onKeyUp"
+  | "onMouseDown"
+  | "onMouseEnter"
+  | "onMouseLeave"
+  | "onMouseMove"
+  | "onMouseOut"
+  | "onMouseOver"
+  | "onMouseUp"
+  | "onSubmit";
 
 function _stop<E extends React.SyntheticEvent>(
   event: E,
@@ -19,6 +49,7 @@ type EventSandboxProps = {
   children: React.ReactNode;
   enableMouseEvents?: boolean;
   disabled?: boolean;
+  unsandboxEvents?: SandboxedEvents[];
   preventDefault?: boolean;
   className?: string;
 };
@@ -31,6 +62,7 @@ function EventSandbox({
   disabled,
   enableMouseEvents = false,
   preventDefault = false,
+  unsandboxEvents = [],
   className,
 }: EventSandboxProps) {
   const stop = useCallback(
@@ -40,47 +72,55 @@ function EventSandbox({
     [preventDefault],
   );
 
+  const baseProps = useMemo(() => {
+    return _.omit(
+      {
+        onClick: stop,
+        onContextMenu: stop,
+        onDoubleClick: stop,
+        onDrag: stop,
+        onDragEnd: stop,
+        onDragEnter: stop,
+        onDragExit: stop,
+        onDragLeave: stop,
+        onDragOver: stop,
+        onDragStart: stop,
+        onDrop: stop,
+        onKeyDown: stop,
+        onKeyPress: stop,
+        onKeyUp: stop,
+        onFocus: stop,
+        onBlur: stop,
+        onChange: stop,
+        onInput: stop,
+        onInvalid: stop,
+        onSubmit: stop,
+      },
+      unsandboxEvents,
+    );
+  }, [stop, unsandboxEvents]);
+
   const extraProps = useMemo(() => {
-    const mouseEventBlockers = {
-      onMouseDown: stop,
-      onMouseEnter: stop,
-      onMouseLeave: stop,
-      onMouseMove: stop,
-      onMouseOver: stop,
-      onMouseOut: stop,
-      onMouseUp: stop,
-    };
+    const mouseEventBlockers = _.omit(
+      {
+        onMouseDown: stop,
+        onMouseEnter: stop,
+        onMouseLeave: stop,
+        onMouseMove: stop,
+        onMouseOver: stop,
+        onMouseOut: stop,
+        onMouseUp: stop,
+      },
+      unsandboxEvents,
+    );
 
     return enableMouseEvents ? {} : mouseEventBlockers;
-  }, [stop, enableMouseEvents]);
+  }, [stop, enableMouseEvents, unsandboxEvents]);
 
   return disabled === true ? (
     <React.Fragment>{children}</React.Fragment>
   ) : (
-    <div
-      className={className}
-      onClick={stop}
-      onContextMenu={stop}
-      onDoubleClick={stop}
-      onDrag={stop}
-      onDragEnd={stop}
-      onDragEnter={stop}
-      onDragExit={stop}
-      onDragLeave={stop}
-      onDragOver={stop}
-      onDragStart={stop}
-      onDrop={stop}
-      onKeyDown={stop}
-      onKeyPress={stop}
-      onKeyUp={stop}
-      onFocus={stop}
-      onBlur={stop}
-      onChange={stop}
-      onInput={stop}
-      onInvalid={stop}
-      onSubmit={stop}
-      {...extraProps}
-    >
+    <div className={className} {...baseProps} {...extraProps}>
       {children}
     </div>
   );

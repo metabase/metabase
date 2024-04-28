@@ -1,15 +1,17 @@
+import cx from "classnames";
 import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -58,12 +60,20 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-header flex align-center flex-no-shrink py4">
+    <div
+      className={cx(
+        "MetadataEditor-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.flexNoShrink,
+        CS.py4,
+      )}
+    >
       <Icon
-        className="flex align-center flex-no-shrink text-medium"
+        className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
         name="database"
       />
-      <div className="MetadataEditor-headerSection h2">
+      <div className={cx("MetadataEditor-headerSection", CS.h2)}>
         <DatabaseDataSelector
           databases={databases}
           selectedDatabaseId={selectedDatabaseId}
@@ -72,8 +82,16 @@ const MetadataHeader = ({
         />
       </div>
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
-        <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
-          <span className="ml4 mr3">
+        <div
+          className={cx(
+            "MetadataEditor-headerSection",
+            CS.flex,
+            CS.flexAlignRight,
+            CS.alignCenter,
+            CS.flexNoShrink,
+          )}
+        >
+          <span className={cx(CS.ml4, CS.mr3)}>
             <TableSettingsLink
               aria-label={t`Settings`}
               to={Urls.dataModelTableSettings(

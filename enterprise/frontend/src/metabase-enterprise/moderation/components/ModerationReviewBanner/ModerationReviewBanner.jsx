@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { color, alpha } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
 import { getUser } from "metabase/selectors/user";
@@ -26,7 +26,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 export default _.compose(
-  User.load({
+  Users.load({
     id: (state, props) => props.moderationReview.moderator_id,
     loadingAndErrorWrapper: false,
   }),

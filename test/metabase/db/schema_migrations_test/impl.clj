@@ -12,10 +12,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
-   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -196,7 +196,7 @@
        (.generateDeploymentId change-log-service)
        (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
 
-(defn- test-migrations-for-driver [driver [start-id end-id] f]
+(defn- test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
@@ -225,11 +225,11 @@
                  :down
                  (do
                   (assert (int? version), "Downgrade requires a version")
-                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
+                  (mdb/migrate! (mdb/data-source) :down version)))))]
      (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
-(defn do-test-migrations
+(defn do-test-migrations!
   [migration-range f]
   ;; make sure the normal Metabase application DB is set up before running the tests so things don't get confused and
   ;; try to initialize it while the mock DB is bound
@@ -239,8 +239,9 @@
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
       (datasets/test-drivers #{:h2 :mysql :postgres}
-        (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
+        (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).
 
@@ -275,7 +276,7 @@
   either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL."
   {:style/indent 2}
   [migration-range [migrate!-binding] & body]
-  `(do-test-migrations
+  `(do-test-migrations!
     ~migration-range
     (fn [~migrate!-binding]
       ~@body)))

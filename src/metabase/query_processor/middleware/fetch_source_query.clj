@@ -1,297 +1,158 @@
 (ns metabase.query-processor.middleware.fetch-source-query
-  "Middleware responsible for 'hydrating' the source query for queries that use another query as their source. This
-  middleware looks for MBQL queries like
-
-    {:source-table \"card__1\" ; Shorthand for using Card 1 as source query
-     ...}
-
-  and resolves the referenced source query, transforming the query to look like the following:
-
-    {:source-query    {...} ; Query for Card 1
-     :source-metadata [...] ; metadata about columns in Card 1
-     :source-card-id  1     ; Original Card ID
-     ...}
-
-  This middleware resolves Card ID `:source-table`s at all levels of the query, but the top-level query often uses the
-  so-called `virtual-id`, because the frontend client might not know the original Database; this middleware will
-  replace that ID with the appropriate ID, e.g.
-
-    {:database <virtual-id>, :type :query, :query {:source-table \"card__1\"}}
-    ->
-    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}, :source-card-id 1}}
-
-  TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require
-   [clojure.set :as set]
-   [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.util :as driver.u]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.walk :as lib.walk]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [weavejester.dependency :as dep]))
 
-(set! *warn-on-reflection* true)
+;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
+;;; make sense but it would involve teasing out some QP-specific stuff to make it work.
+(defn- fix-mongodb-first-stage
+  "MongoDB native queries consist of a collection and a pipelne (query).
 
-;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
-;; entire query
-(def ^:private SourceQueryAndMetadata
-  [:map
-   [:source-query    mbql.s/SourceQuery]
-   [:database        mbql.s/DatabaseID]
-   [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
-   [:source-query/model?   {:optional true} :boolean]
-   [:persisted-info/native {:optional true} :string]])
+  TODO -- it's not great that this code lives here. This should be part of the MongoDB driver. We should NOT be
+  hardcoding driver-specific behavior in generic QP middleware."
+  [[first-stage & more]]
+  (let [first-stage (cond-> first-stage
+                      (and (= driver/*driver* :mongo)
+                           (= (:lib/type first-stage) :mbql.stage/native))
+                      (update :native (fn [x]
+                                        (if (map? x)
+                                          x
+                                          {:collection  (:collection first-stage)
+                                           :projections (:projections first-stage)
+                                           :query       x}))))]
+    (cons first-stage more)))
 
-(def ^:private MapWithResolvedSourceQuery
-  [:and
-   [:map
-    [:database        mbql.s/DatabaseID]
-    [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
-    [:source-query    mbql.s/SourceQuery]
-    [:source-card-id  ms/PositiveInt]]
-   [:fn
-    {:error/message "`:source-table` should be removed"}
-    (complement :source-table)]])
+(mu/defn normalize-card-query :- ::lib.schema.metadata/card
+  "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
+   {card-id :id, :as card} :- ::lib.schema.metadata/card]
+  (let [persisted-info (:lib/persisted-info card)
+        persisted?     (qp.persisted/can-substitute? card persisted-info)]
+    (when persisted?
+      (log/infof "Found substitute cached query for card %s from %s.%s"
+                 card-id
+                 (ddl.i/schema-name {:id (:database-id card)} (public-settings/site-uuid))
+                 (:table-name persisted-info)))
+    (letfn [(update-stages [stages]
+              (let [stages        (fix-mongodb-first-stage stages)
+                    stages        (for [stage stages]
+                                    ;; this is for detecting circular refs below.
+                                    (assoc stage :qp/stage-is-from-source-card card-id))
+                    card-metadata (lib.card/card-metadata-columns metadata-providerable card)
+                    last-stage    (cond-> (last stages)
+                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    ;; This will be applied, if still appropriate, by
+                                    ;; the [[metabase.query-processor.middleware.persistence]] middleware
+                                    ;;
+                                    ;; TODO -- not 100% sure I did this right, there are almost no tests for this
+                                    persisted? (assoc :persisted-info/native
+                                                      (qp.persisted/persisted-info-native-query
+                                                       (:database-id card)
+                                                       persisted-info)))]
+                (conj (vec (butlast stages)) last-stage)))
+            (update-query [query]
+              (-> (lib.query/query metadata-providerable query)
+                  (update :stages update-stages)))]
+      (update card :dataset-query update-query))))
 
-(defn- query-has-unresolved-card-id-source-tables? [{inner-mbql-query :query}]
-  (when inner-mbql-query
-    (mbql.u/match-one inner-mbql-query
-      (&match :guard (every-pred map? (comp string? :source-table))))))
+(mu/defn ^:private card :- ::lib.schema.metadata/card
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-id               :- ::lib.schema.id/card]
+  (let [card (or (lib.metadata/card metadata-providerable card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." (pr-str card-id))
+                                 {:type qp.error-type/invalid-query, :card-id card-id})))]
+    ;; make sure the Card has a valid query
+    (when-not (:dataset-query card)
+      (throw (ex-info (tru "Missing source query in Card {0}" card-id)
+                      {:type qp.error-type/invalid-query, :card-id card-id})))
+    ;; make sure this Card is from the same Database as the one we're running queries against.
+    (let [source-database-id (u/the-id (lib.metadata/database metadata-providerable))]
+      (when-not (= (:database-id card) source-database-id)
+        (throw (ex-info (tru "Card {0} is from a different Database." (pr-str card-id))
+                        {:type               qp.error-type/invalid-query
+                         :source-database-id source-database-id
+                         :card-database-id   (:database-id card)}))))
+    (normalize-card-query metadata-providerable card)))
 
-(defn- query-has-resolved-database-id? [{:keys [database]}]
-  ((every-pred integer? pos?) database))
+(mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
+  [query     :- ::lib.schema/query
+   stage     :- ::lib.schema/stage
+   dep-graph :- (lib.schema.common/instance-of-class clojure.lang.Volatile)]
+  (when (and (= (:lib/type stage) :mbql.stage/mbql)
+             (:source-card stage))
+    ;; make sure nested queries are enabled before resolving them.
+    (when-not (public-settings/enable-nested-queries)
+      (throw (ex-info (trs "Nested queries are disabled")
+                      {:type qp.error-type/disabled-feature, :card-id (:source-card stage)})))
+    ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the
+    ;; dependency of the previously-resolved source card on the one we're about to resolve. We can check for circular
+    ;; dependencies this way.
+    (when (:qp/stage-is-from-source-card stage)
+      (u/prog1 (vswap! dep-graph
+                       dep/depend
+                       (tru "Card {0}" (:qp/stage-is-from-source-card stage))
+                       (tru "Card {0}" (:source-card stage)))
+        ;; This will throw if there's a cycle
+        (dep/topo-sort <>)))
+    (let [card         (card query (:source-card stage))
+          card-stages  (get-in card [:dataset-query :stages])
+          ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
+          stage'        (-> stage
+                            ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
+                            ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
+                            ;; the metadata associated with Fields themselves)
+                            (assoc :qp/stage-had-source-card (:id card)
+                                   :source-query/model?      (= (:type card) :model))
+                            (dissoc :source-card))]
+      (into (vec card-stages) [stage']))))
 
-(def ^:private FullyResolvedQuery
-  "Schema for a MBQL query where all `card__id` `:source-tables` have been removes and appropriate `:source-query`s have
-  been added instead, and where the top-level `:database` ID, if it was the 'source query placeholder`, is replaced by
-  the actual database ID of the source query.
+(def ^:private max-recursion-depth 50)
 
-  This schema represents the way the query should look after this middleware finishes preprocessing it."
-  [:and
-   mbql.s/Query
-   [:fn
-    {:error/message "Query where all card__id :source-tables are fully resolved"}
-    (complement query-has-unresolved-card-id-source-tables?)]
-   [:fn
-    {:error/message "Query where source-query virtual `:database` has been replaced with actual Database ID"}
-    query-has-resolved-database-id?]])
+(defn- resolve-source-cards* [original-query recursion-depth dep-graph]
+  ;; this is mostly to catch programmer bugs and avoid infinite loops, thus not i18n'ed. Dep graph should circular
+  ;; dependencies if they occur
+  (assert (<= recursion-depth max-recursion-depth)
+          (format "Source Cards not fully resolved after %d iterations." max-recursion-depth))
+  (let [updated-query                              (lib.walk/walk-stages
+                                                    original-query
+                                                    (fn [query _path stage]
+                                                      (resolve-source-cards-in-stage query stage dep-graph)))
+        card-id                                    (some :qp/stage-had-source-card
+                                                         (reverse (:stages updated-query)))
+        ;; `:qp/source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
+        ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware, and
+        ;; by [[metabase.query-processor.middleware.permissions/check-query-permissions*]]
+        updated-query                              (cond-> updated-query
+                                                     card-id  (-> (update :qp/source-card-id #(or % card-id))
+                                                                  (update-in [:info :card-id] #(or % card-id))))]
+    (if (= updated-query original-query)
+      original-query
+      ;; if any resolution happened, recursively resolve things in the updated query in case we need to do MORE.
+      (recur updated-query (inc recursion-depth) dep-graph))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Resolving card__id -> source query                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- source-query
-  "Get the query to be run from the card"
-  [{dataset-query :dataset-query, card-id :id, :as card}]
-  (let [dataset-query (cond-> dataset-query
-                        (:lib/type dataset-query) lib.convert/->legacy-MBQL)
-        {db-id                                           :database
-         mbql-query                                      :query
-         {template-tags :template-tags :as native-query} :native} dataset-query]
-    (or
-     mbql-query
-     ;; rename `:query` to `:native` because source queries have a slightly different shape
-     (when-some [native-query (set/rename-keys native-query {:query :native})]
-       (let [mongo? (= (driver.u/database->driver db-id) :mongo)]
-         (cond-> native-query
-           ;; MongoDB native  queries consist of a collection and a pipelne (query)
-           mongo? (update :native (fn [pipeline] {:collection (:collection native-query)
-                                                  :query      pipeline}))
-           (empty? template-tags) (dissoc :template-tags))))
-     (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                     {:card card, :dataset-query dataset-query})))))
-
-(mu/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
-  "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
-  logging. (The circularity check calls this and will print more than desired)"
-  ([card-id :- ::lib.schema.id/card]
-   (card-id->source-query-and-metadata card-id false))
-
-  ([card-id :- ::lib.schema.id/card log? :- :boolean]
-   (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-         card           (or (lib.metadata/card (qp.store/metadata-provider) card-id)
-                            (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                            {:card-id card-id})))
-         persisted-info (:lib/persisted-info card)
-         {{database-id :database} :dataset-query
-          result-metadata         :result-metadata
-          card-type               :type} card
-         persisted?     (qp.persisted/can-substitute? card persisted-info)
-         source-query   (source-query card)]
-     (when (and persisted? log?)
-       (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
-                      card-id
-                      (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                      (:table-name persisted-info))))
-     ;; log the query at this point, it's useful for some purposes
-     (log/debug (trs "Fetched source query from Card {0}:" card-id)
-                "\n"
-                (u/pprint-to-str 'yellow source-query))
-     (cond-> {:source-query    (cond-> source-query
-                                 ;; This will be applied, if still appropriate, by the peristence middleware
-                                 persisted?
-                                 (assoc :persisted-info/native
-                                        (qp.persisted/persisted-info-native-query
-                                         (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                                         persisted-info)))
-              :database        database-id
-              :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
-       (= card-type :model) (assoc :source-query/model? true)))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Logic for traversing the query                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private ^{:arglists '([x])} map-with-card-id-source-table?
-  "Is `x` a map with a \"card__id\" `:source-table`, i.e., something this middleware needs to resolve?"
-  (every-pred
-   map?
-   (comp string? :source-table)
-   (comp (partial re-matches mbql.s/source-table-card-id-regex) :source-table)))
-
-(mu/defn ^:private resolve-one :- MapWithResolvedSourceQuery
-  [{:keys [source-table], :as m} :- [:map [:source-table mbql.s/source-table-card-id-regex]]]
-  (let [card-id                   (-> source-table lib.util/legacy-string-table-id->card-id)
-        source-query-and-metadata (-> card-id (card-id->source-query-and-metadata true))]
-    (merge
-     (dissoc m :source-table)
-     ;; record the `card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
-     {:source-card-id card-id}
-     source-query-and-metadata)))
-
-(defn- resolve-all*
-  [m]
-  (mbql.u/replace m
-    map-with-card-id-source-table?
-    ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
-    ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
-    (let [resolved (if (public-settings/enable-nested-queries)
-                     (resolve-one &match)
-                     (throw (ex-info (trs "Nested queries are disabled")
-                                     {:clause &match})))]
-      ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
-      ;; resolution that were we in the process of
-      (try
-        (resolve-all* resolved)
-        (catch Throwable e
-          (throw (ex-info (tru "Error resolving source query")
-                          {:resolving &match, :resolved resolved}
-                          e)))))))
-
-(defn- check-for-circular-references
-  "Check that there are no circular dependencies among source cards. This is equivalent to
-   finding a topological sort of the dependency graph.
-   https://en.wikipedia.org/wiki/Topological_sorting"
-  ([m]
-   (check-for-circular-references (dep/graph) m)
-   m)
-  ([g m]
-   (transduce (comp (filter map-with-card-id-source-table?)
-                    (map (comp card-id->source-query-and-metadata
-                               lib.util/legacy-string-table-id->card-id
-                               :source-table)))
-              (fn
-                ([] g)
-                ([g source-query]
-                 (-> g
-                     (dep/depend m source-query)
-                     ;; Recursive call will circuit break the moment there's a cycle, so no
-                     ;; danger of unbounded recursion.
-                     (check-for-circular-references source-query)))
-                ([g]
-                 ;; This will throw if there's a cycle
-                 (dep/topo-sort g)
-                 g))
-              (tree-seq coll? identity m))))
-
-(defn- copy-source-query-database-ids
-  "If `m` has the saved questions virtual `:database` ID, (recursively) look for actual resolved Database IDs in the
-  next level down and copy it to our level."
-  [{:keys [database], :as m}]
-  (if (and database (not= database lib.schema.id/saved-questions-virtual-database-id))
-    m
-    (let [{:keys [query source-query], :as m}
-          (cond-> m
-            (:query m)        (update :query        copy-source-query-database-ids)
-            (:source-query m) (update :source-query copy-source-query-database-ids))
-
-          db-id
-          (some (fn [{:keys [database]}]
-                  (when (some-> database (not= lib.schema.id/saved-questions-virtual-database-id))
-                    database))
-                [source-query query])]
-      (cond-> m
-        db-id (assoc :database db-id)))))
-
-(defn- remove-unneeded-database-ids
-  "Remove `:database` from all levels besides the top level."
-  [m]
-  (mbql.u/replace-in m [:query]
-    (&match :guard (every-pred map? :database (comp integer? :database)))
-    (recur (dissoc &match :database))))
-
-(mu/defn ^:private extract-resolved-card-id :- [:map
-                                                [:card-id [:maybe ms/PositiveInt]]
-                                                [:query   :map]]
-  "If the ID of the Card we've resolved (`:source-card-id`) was added by a previous step, add it
-  to `:query` `:info` (so it can be included in the QueryExecution log), then return a map with the resolved
-  `:card-id` and updated `:query`."
-  [query :- :map]
-  (let [card-id (get-in query [:query :source-card-id])]
-    {:query   (cond-> query
-                card-id (update-in [:info :card-id] #(or % card-id)))
-     :card-id card-id}))
-
-(mu/defn ^:private resolve-all :- [:map
-                                   [:card-id [:maybe ms/PositiveInt]]
-                                   [:query   :map]]
-  "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
-  the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
-  [query :- :map]
-  ;; if a `:source-card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
-  ;; allowing someone to bypass permissions
-  (-> (m/dissoc-in query [:query :source-card-id])
-      check-for-circular-references
-      resolve-all*
-      copy-source-query-database-ids
-      remove-unneeded-database-ids
-      extract-resolved-card-id))
-
-(mu/defn resolve-card-id-source-tables* :- [:map
-                                            [:card-id [:maybe ms/PositiveInt]]
-                                            [:query   FullyResolvedQuery]]
-  "Resolve `card__n`-style `:source-tables` in `query`."
-  [{inner-query :query, :as outer-query} :- mbql.s/Query]
-  (if-not inner-query
-    ;; for non-MBQL queries there's nothing to do since they have nested queries
-    {:query outer-query, :card-id nil}
-    ;; Otherwise attempt to expand any source queries as needed. Pull the `:database` key up into the top-level if it
-    ;; exists
-    (resolve-all outer-query)))
-
-(defn resolve-card-id-source-tables
-  "Pre-processing middleware that assocs the `:source-query` for this query if it was specified using the shorthand
-  `:source-table` `card__n` format."
-  [query]
-  (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
-    (if card-id
-      (assoc query ::source-card-id card-id)
-      (dissoc query ::source-card-id))))
+(mu/defn resolve-source-cards :- ::lib.schema/query
+  "If a stage has a `:source-card`, fetch the Card and prepend its underlying stages to the pipeline."
+  [query :- ::lib.schema/query]
+  (let [query (dissoc query :source-card-id :qp/source-card-id)] ; `:source-card-id` was the old key
+    (resolve-source-cards* query 0 (volatile! (dep/graph)))))
 
 (defn add-dataset-info
   "Post-processing middleware that adds `:model` and `:dataset` (for historic reasons) `true` or `false` to queries with
@@ -299,7 +160,7 @@
 
   TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
   at `:model` instead."
-  [{::keys [source-card-id], :as _preprocessed-query} rff]
+  [{:qp/keys [source-card-id], :as _preprocessed-query} rff]
   (if-not source-card-id
     rff
     (let [model? (= (:type (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id)) :model)]

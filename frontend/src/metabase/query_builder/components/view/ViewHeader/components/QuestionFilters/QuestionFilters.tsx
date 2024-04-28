@@ -1,6 +1,6 @@
 import { FilterPanel, FilterPanelButton } from "metabase/querying";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 interface FilterHeaderToggleProps {

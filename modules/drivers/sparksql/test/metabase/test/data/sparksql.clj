@@ -100,15 +100,13 @@
            (throw e)))))))
 
 (defmethod load-data/load-data! :sparksql [& args]
-  (apply load-data/load-data-add-ids! args))
+  (apply load-data/load-data-maybe-add-ids! args))
 
 (defmethod sql.tx/create-table-sql :sparksql
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quote-name    #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
-        pk-field-name (quote-name (sql.tx/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s)"
+  (let [quote-name #(sql.u/quote-name driver :field (ddl.i/format-name driver %))]
+    (format "CREATE TABLE %s (%s)"
             (sql.tx/qualify-and-quote driver database-name table-name)
-            pk-field-name (sql.tx/pk-sql-type driver)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quote-name field-name) (if (map? base-type)

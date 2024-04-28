@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { isSyncInProgress } from "metabase/lib/syncing";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { User } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";

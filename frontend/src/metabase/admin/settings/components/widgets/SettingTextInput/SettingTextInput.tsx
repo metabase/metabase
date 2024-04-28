@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
 
+import AdminS from "metabase/css/admin.module.css";
 import { TextInput } from "metabase/ui";
 
 type Value = string | null;
@@ -47,8 +48,8 @@ export const SettingTextInput = ({
   return (
     <TextInput
       className={cx({
-        SettingsInput: type !== "password",
-        SettingsPassword: type === "password",
+        [AdminS.SettingsInput]: type !== "password",
+        [AdminS.SettingsPassword]: type === "password",
       })}
       error={!!errorMessage}
       id={id}

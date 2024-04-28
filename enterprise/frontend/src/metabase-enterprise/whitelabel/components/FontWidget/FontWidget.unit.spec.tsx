@@ -8,18 +8,18 @@ import type { FontSetting, FontSettingValues } from "./types";
 const FONT_FILES_KEY = "application-font-files";
 
 describe("FontWidget", () => {
-  it("should set a built-in font from a built-in font", () => {
+  it("should set a built-in font from a built-in font", async () => {
     const props = getProps();
 
     render(<FontWidget {...props} />);
-    clickSelect("Lato");
-    userEvent.click(screen.getByText("Lora"));
+    await clickSelect("Lato");
+    await userEvent.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, null);
   });
 
-  it("should set a custom font from a built-in font", () => {
+  it("should set a custom font from a built-in font", async () => {
     const props = getProps({
       setting: getSetting({
         value: "Lora",
@@ -27,14 +27,14 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    clickSelect("Lora");
-    userEvent.click(screen.getByText("Custom…"));
+    await clickSelect("Lora");
+    await userEvent.click(screen.getByText("Custom…"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lato");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, []);
   });
 
-  it("should set a built-in font from a custom font", () => {
+  it("should set a built-in font from a custom font", async () => {
     const props = getProps({
       settingValues: getSettingValues({
         "application-font-files": [],
@@ -42,8 +42,8 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    clickSelect("Custom…");
-    userEvent.click(screen.getByText("Lora"));
+    await clickSelect("Custom…");
+    await userEvent.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, null);
@@ -73,8 +73,8 @@ const getSettingValues = (
   ...opts,
 });
 
-function clickSelect(text: string) {
+async function clickSelect(text: string) {
   const input = screen.getByRole("searchbox");
   expect(input).toHaveValue(text);
-  userEvent.click(input);
+  await userEvent.click(input);
 }

@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -23,61 +24,80 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- sql-jdbc-drivers-with-default-describe-table-impl
-  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
-  all of them.)"
+(defn- uses-default-describe-table? [driver]
+  (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+       (not (driver/database-supports? driver :describe-fields nil))))
+
+(defn- uses-default-describe-fields? [driver]
+  (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+       (driver/database-supports? driver :describe-fields nil)))
+
+(defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
+  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
   []
   (set
    (filter
-    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+    (fn [driver]
+      (or (uses-default-describe-table? driver)
+          (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
+(deftest ^:parallel describe-fields-nested-field-columns-test
+  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
+                "It is possible to support both in the future but this has not been implemented yet.")
+    (is (empty? (filter #(driver/database-supports? % :describe-fields nil)
+                        (mt/normal-drivers-with-feature :nested-field-columns))))))
+
 (deftest ^:parallel describe-table-test
-  (is (= {:name "VENUES",
-          :fields
-          #{{:name                       "ID"
-             :database-type              "BIGINT"
-             :base-type                  :type/BigInteger
-             :database-position          0
-             :pk?                        true
-             :database-required          false
-             :database-is-auto-increment true :json-unfolding false}
-            {:name                       "NAME"
-             :database-type              "CHARACTER VARYING"
-             :base-type                  :type/Text
-             :database-position          1
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "CATEGORY_ID"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          2
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LATITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          3
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LONGITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          4
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "PRICE"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          5
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}}}
-         (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
+  (mt/test-driver :h2
+    (assert (uses-default-describe-table? :h2)
+            "Make sure H2 uses the default `describe-table` implementation")
+    (is (= {:name "VENUES",
+            :fields
+            #{{:name                       "ID"
+               :database-type              "BIGINT"
+               :base-type                  :type/BigInteger
+               :database-position          0
+               :pk?                        true
+               :database-required          false
+               :database-is-auto-increment true
+               :json-unfolding             false}
+              {:name                       "NAME"
+               :database-type              "CHARACTER VARYING"
+               :base-type                  :type/Text
+               :database-position          1
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "CATEGORY_ID"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          2
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LATITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          3
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LONGITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          4
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "PRICE"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          5
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}}}
+           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
@@ -117,17 +137,18 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"})))
-  (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
-           {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
+(defn- describe-fields-for-table [db table]
+  (let [driver (driver.u/database->driver db)]
+    (sort-by :database-position
+             (if (driver/database-supports? driver :describe-fields db)
+               (vec (driver/describe-fields driver
+                                            db
+                                            :schema-names [(:schema table)]
+                                            :table-names [(:name table)]))
+               (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -137,8 +158,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
-                    :fields
+               (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
                             :base-type (if (or (isa? base-type :type/Integer)
@@ -148,13 +168,12 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
-    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
-                  :fields
+             (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 

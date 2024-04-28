@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import DatasetEditor from "metabase/query_builder/components/DatasetEditor";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,

@@ -27,6 +27,7 @@ import {
   setEmbeddingParameter,
   assertEmbeddingParameter,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -127,7 +128,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
       filterWidget().contains("Id").should("not.exist");
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "2");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
 
       // verify that disabled filters don't show up
       cy.findByTestId("dashboard-parameters-widget-container").within(() => {
@@ -143,7 +144,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.button("Add filter").click();
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
       cy.log(
         "Sanity check: lets make sure we can disable all previously set parameters",
@@ -171,7 +172,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       filterWidget().should("not.exist");
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2,500");
     });
 
     it("should only display filters mapped to cards on the selected tab", () => {
@@ -255,7 +256,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // Its default value must be in the URL
       cy.location("search").should("contain", "name=Ferne%20Rosenbaum");
       // And the default should be applied giving us only 1 result
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
     });
 
     it("should (dis)allow setting parameters as required for a published embedding", () => {
@@ -349,8 +350,8 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.location().then(location =>
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(".ScalarValue", "2");
+
+      cy.findByTestId("scalar-value").contains("2");
     });
   });
 
@@ -406,21 +407,21 @@ describe("scenarios > embedding > dashboard parameters", () => {
       },
     };
 
-    const dashboardCategoryParameter = {
+    const dashboardCategoryParameter = createMockParameter({
       name: "Category",
       slug: "category",
       id: "9cd1ee78",
       type: "string/=",
       sectionId: "string",
       values_query_type: "none",
-    };
-    const dashboardCreatedAtParameter = {
+    });
+    const dashboardCreatedAtParameter = createMockParameter({
       name: "Created At",
       slug: "createdAt",
       id: "98831577",
       type: "date/month-year",
       sectionId: "date",
-    };
+    });
     const dashboardDetails = {
       name: "dashboard with parameters",
       parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
@@ -542,7 +543,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
-    cy.get(".ScalarValue").invoke("text").should("eq", "2");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
   });
 });
 
@@ -554,12 +555,13 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
-    const textFilter = {
+    const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
       slug: "filter-text",
       type: "string/contains",
-    };
+      sectionId: "string",
+    });
 
     const dashboardDetails = {
       name: "dashboard name",
@@ -612,12 +614,21 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.log("Assert dashboard theme");
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("not.have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("light");
+        });
+
       // We're getting an input element which is 0x0 in size
       cy.findByLabelText("Transparent").click({ force: true });
+      cy.wait(1000);
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("transparent");
+        });
+
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard title");

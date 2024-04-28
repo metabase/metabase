@@ -1,12 +1,17 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -14,10 +19,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
+import { scalarToBarTransform } from "./scalars-bar-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -54,36 +60,6 @@ export class Scalar extends Component {
     },
   ]) {
     // scalar can always be rendered, nothing needed here
-  }
-
-  static transformSeries(series) {
-    if (series.length > 1) {
-      return series.map((s, seriesIndex) => ({
-        card: {
-          ...s.card,
-          display: "funnel",
-          visualization_settings: {
-            ...s.card.visualization_settings,
-            "graph.x_axis.labels_enabled": false,
-          },
-          _seriesIndex: seriesIndex,
-        },
-        data: {
-          cols: [
-            {
-              base_type: TYPE.Text,
-              display_name: t`Name`,
-              name: "name",
-              source: "query-transform",
-            },
-            { ...s.data.cols[0] },
-          ],
-          rows: [[s.card.name, s.data.rows[0][0]]],
-        },
-      }));
-    } else {
-      return series;
-    }
   }
 
   static settings = {
@@ -173,7 +149,18 @@ export class Scalar extends Component {
       gridSize,
       totalNumGridCols,
       fontFamily,
+      rawSeries,
     } = this.props;
+
+    if (rawSeries.length > 1) {
+      return (
+        <TransformedVisualization
+          transformSeries={scalarToBarTransform}
+          originalProps={this.props}
+          VisualizationComponent={BarChart}
+        />
+      );
+    }
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
@@ -218,11 +205,26 @@ export class Scalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
+        <div
+          className={cx(
+            DashboardS.CardTitle,
+            CS.textDefault,
+            CS.textSmaller,
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.p1,
+            CS.px2,
+          )}
+        >
           {actionButtons}
         </div>
         <ScalarContainer
-          className="fullscreen-normal-text fullscreen-night-text"
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+            EmbedFrameS.fullscreenNightText,
+          )}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}

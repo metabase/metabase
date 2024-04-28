@@ -253,15 +253,6 @@ export function withRequestState(getRequestStatePath, getQueryKey) {
     };
 }
 
-export function withForceReload(shouldReload) {
-  return thunkCreator => (data, options) => (dispatch, getState) => {
-    return thunkCreator(data, {
-      ...options,
-      reload: options?.reload || shouldReload(getState(), data),
-    })(dispatch, getState);
-  };
-}
-
 /**
  * Decorator that returns cached data if appropriate, otherwise calls the composed thunk.
  * Also tracks request state using withRequestState

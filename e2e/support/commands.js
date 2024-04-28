@@ -33,4 +33,4 @@ import "./commands/overwrites/log";
 
 import "./commands/percy/createPercySnapshot";
 
-require("./commands/downloads/deleteDownloadsFolder").addCustomCommand();
+require("./commands/downloads/downloadUtils").addCustomCommands();

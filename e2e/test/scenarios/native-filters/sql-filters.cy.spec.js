@@ -30,7 +30,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
@@ -42,24 +42,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-        cy.get("body").findByText(
-          'The "TextFilter" variable requires a default value but none was provided.',
-        );
-
-        SQLFilter.setDefaultValue("Some text");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
@@ -109,7 +100,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
@@ -121,25 +112,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-
-        cy.get("body").findByText(
-          'The "NumberFilter" variable requires a default value but none was provided.',
-        );
-
-        SQLFilter.setDefaultValue("33");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
@@ -196,7 +177,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
@@ -204,8 +185,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     it("when set as the default value for a required filter", () => {
       SQLFilter.toggleRequired();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a default value…").click();
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Select a default value…")
+        .click();
       popover().within(() => {
         cy.findByText("15").click();
         cy.findByText("Add filter").click();
@@ -213,14 +195,14 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
 
     function setDefaultDate(year = "2024", month = "01", day = "22") {
       cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
+        .findByPlaceholderText("Select a default value…")
         .click();
       popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
@@ -229,19 +211,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     }
 
     describe("required tag", () => {
-      it("needs a default value for to run or save query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-
-        cy.get("body").findByText(
-          'The "DateFilter" variable requires a default value but none was provided.',
-        );
-
-        setDefaultDate();
-
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });

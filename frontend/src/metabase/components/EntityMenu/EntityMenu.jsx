@@ -4,6 +4,7 @@ import { createRef, Component } from "react";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
+import CS from "metabase/css/core/index.css";
 import { Popover } from "metabase/ui";
 
 /**
@@ -57,13 +58,15 @@ class EntityMenu extends Component {
       renderTrigger,
       triggerAriaLabel,
       tooltipPlacement,
+      transitionDuration = 150,
     } = this.props;
     const { open, menuItemContent } = this.state;
+
     return (
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{ transition: "fade" }}
+        transitionProps={{ duration: transitionDuration }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >
@@ -87,7 +90,7 @@ class EntityMenu extends Component {
         </Popover.Target>
         <Popover.Dropdown>
           {menuItemContent || (
-            <ol className="p1" style={{ minWidth: minWidth ?? 184 }}>
+            <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
               {items.map(item => {
                 if (!item) {
                   return null;

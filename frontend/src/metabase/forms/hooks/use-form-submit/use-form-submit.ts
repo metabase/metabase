@@ -1,4 +1,5 @@
 import type { FormikHelpers } from "formik";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -13,6 +14,7 @@ export interface UseFormSubmitProps<T> {
 
 export interface UseFormSubmitResult<T> {
   state: FormState;
+  setState: Dispatch<SetStateAction<FormState>>;
   handleSubmit: (values: T, helpers: FormikHelpers<T>) => void;
 }
 
@@ -38,6 +40,7 @@ export const useFormSubmit = <T>({
 
   return {
     state,
+    setState,
     handleSubmit,
   };
 };

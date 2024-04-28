@@ -24,6 +24,7 @@
   This uses [[import-fn]] to create pass-through local functions that reload nicely.
   `(import-fns [ns1 f1 f2 f3] [ns2 f4 f5])` creates `f1` that calls `ns1/f1`, `f2` that calls `ns1/f2`, etc.
   If you need to rename a function, instead of just the function name, pass `[original new-name]`."
+  {:style/indent [:form]}
   [& spaces]
   (macros/case
     :cljs `(do

@@ -8,7 +8,7 @@ import { useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

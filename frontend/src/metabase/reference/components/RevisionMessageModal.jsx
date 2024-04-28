@@ -1,10 +1,13 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 
 import S from "./RevisionMessageModal.module.css";
 
@@ -48,13 +51,13 @@ export default class RevisionMessageModal extends Component {
           <div className="Form-actions">
             <button
               type="button"
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={onAction}
               disabled={submitting || field.error}
             >{t`Save changes`}</button>
             <button
               type="button"
-              className="Button ml1"
+              className={cx(ButtonsS.Button, CS.ml1)}
               onClick={onClose}
             >{t`Cancel`}</button>
           </div>

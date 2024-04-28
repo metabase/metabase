@@ -7,6 +7,7 @@ import {
   setupSMTP,
   visitDashboard,
   sendEmailAndAssert,
+  modal,
 } from "e2e/support/helpers";
 
 const {
@@ -26,10 +27,10 @@ describe("issue 18344", { tags: "@external" }, () => {
     editDashboard();
 
     // Open visualization options
-    cy.get(".Card").realHover();
+    cy.findByTestId("dashcard").realHover();
     cy.icon("palette").click();
 
-    cy.get(".Modal").within(() => {
+    modal().within(() => {
       cy.findByDisplayValue("Orders").type("Foo");
 
       cy.button("Done").click();

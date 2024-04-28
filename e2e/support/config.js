@@ -5,11 +5,11 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const replay = require("@replayio/cypress");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
 
 const {
   removeDirectory,
-} = require("./commands/downloads/deleteDownloadsFolder");
+  verifyDownloadTasks,
+} = require("./commands/downloads/downloadUtils");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
@@ -70,6 +70,9 @@ const defaultConfig = {
     on(
       "file:preprocessor",
       createBundler({
+        loader: {
+          ".svg": "text",
+        },
         plugins: [NodeModulesPolyfillPlugin()],
         sourcemap: "inline",
       }),

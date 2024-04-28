@@ -91,7 +91,7 @@
           (when-not (interrupted-exception? e)
             (throw e))
           ;; ok, at this point we know it's an InterruptedException.
-          (log/tracef e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          (log/trace e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
           ;; just to be extra safe and sure that the canceled chan has gotten a message. It's a promise channel so
           ;; duplicate messages don't matter
           (some-> *canceled-chan* (a/>!! ::cancel))

@@ -2,8 +2,6 @@ import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
 
-import type Field from "./metadata/Field";
-import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -13,11 +11,13 @@ import type {
   BreakoutClauseDisplayInfo,
   Bucket,
   BucketDisplayInfo,
-  CardMetadata,
   CardDisplayInfo,
+  CardMetadata,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
+  ColumnExtraction,
+  ColumnExtractionInfo,
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
@@ -30,9 +30,9 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  LegacyMetricDisplayInfo,
+  LegacyMetricMetadata,
   MetadataProvider,
-  MetricMetadata,
-  MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
   Query,
@@ -42,6 +42,8 @@ import type {
   TableMetadata,
   QueryDisplayInfo,
 } from "./types";
+import type Field from "./v1/metadata/Field";
+import type Metadata from "./v1/metadata/Metadata";
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
@@ -115,8 +117,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  metric: MetricMetadata,
-): MetricDisplayInfo;
+  metric: LegacyMetricMetadata,
+): LegacyMetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -142,6 +144,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  extraction: ColumnExtraction,
+): ColumnExtractionInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

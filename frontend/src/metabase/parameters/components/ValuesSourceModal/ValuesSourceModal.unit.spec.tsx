@@ -1,12 +1,15 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupDatabaseEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
+  setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -17,8 +20,8 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
@@ -26,6 +29,7 @@ import {
   createMockDatabase,
   createMockField,
   createMockParameterValues,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import ValuesSourceModal from "./ValuesSourceModal";
@@ -127,7 +131,7 @@ describe("ValuesSourceModal", () => {
       });
       expect(screen.getByRole("textbox")).toHaveValue("C\nD");
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("C\nD");
     });
@@ -148,7 +152,7 @@ describe("ValuesSourceModal", () => {
         screen.getByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("A\nB");
     });
@@ -206,13 +210,15 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
+      await userEvent.click(
+        screen.getByRole("button", { name: /Pick a column/ }),
+      );
       expect(
         screen.queryByRole("heading", { name: "ID" }),
       ).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("heading", { name: "Category" }));
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByRole("heading", { name: "Category" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
         value_field: ["field", 2, null],
@@ -273,20 +279,37 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
+      fetchMock.get(
+        { url: "path:/api/collection", overwriteRoutes: false },
+        [],
+      );
+      fetchMock.get(
+        {
+          url: "path:/api/collection/tree",
+          query: { tree: true, "exclude-archived": true },
+          overwriteRoutes: false,
+        },
+        [],
+      );
+      setupDatabaseEndpoints(
+        createMockDatabase({
+          id: -1337,
+          tables: [createMockTable({ schema: "Everything%20else" })],
+        }),
+      );
+
       await setup({
         hasCollectionAccess: false,
       });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("radio", { name: "From another model or question" }),
       );
-      userEvent.click(
-        screen.getByRole("button", { name: /Pick a model or question…/ }),
+      await userEvent.click(
+        screen.getByRole("button", { name: /Pick a model or question/ }),
       );
 
-      expect(
-        screen.getByPlaceholderText("Search for a question or model"),
-      ).toBeInTheDocument();
+      expect(await screen.findByPlaceholderText(/Search…/)).toBeInTheDocument();
     });
 
     it("should display a message when there is an error in the underlying query", async () => {
@@ -349,7 +372,7 @@ describe("ValuesSourceModal", () => {
       });
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
@@ -359,9 +382,9 @@ describe("ValuesSourceModal", () => {
     it("should set static list values", async () => {
       const { onSubmit } = await setup();
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
-      userEvent.type(screen.getByRole("textbox"), "Gadget\nWidget");
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.type(screen.getByRole("textbox"), "Gadget\nWidget");
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onSubmit).toHaveBeenCalledWith("static-list", {
         values: ["Gadget", "Widget"],
@@ -379,10 +402,10 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("radio", { name: "From connected fields" }),
       );
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
     });
@@ -410,6 +433,7 @@ const setup = async ({
   const onClose = jest.fn();
 
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });

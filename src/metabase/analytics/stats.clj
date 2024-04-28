@@ -9,21 +9,20 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field Metric
+    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
             PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
             Table User]]
    [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -127,31 +126,34 @@
 (defn- instance-settings
   "Figure out global info about this instance"
   []
-  {:version                             (config/mb-version-info :tag)
-   :running_on                          (environment-type)
-   :startup_time_millis                 (public-settings/startup-time-millis)
-   :application_database                (config/config-str :mb-db-type)
-   :check_for_updates                   (public-settings/check-for-updates)
-   :report_timezone                     (driver/report-timezone)
+  {:version                              (config/mb-version-info :tag)
+   :running_on                           (environment-type)
+   :startup_time_millis                  (public-settings/startup-time-millis)
+   :application_database                 (config/config-str :mb-db-type)
+   :check_for_updates                    (public-settings/check-for-updates)
+   :report_timezone                      (driver/report-timezone)
    ; We deprecated advanced humanization but have this here anyways
-   :friendly_names                      (= (humanization/humanization-strategy) "advanced")
-   :email_configured                    (email/email-configured?)
-   :slack_configured                    (slack/slack-configured?)
-   :sso_configured                      (google/google-auth-enabled)
-   :instance_started                    (snowplow/instance-creation)
-   :has_sample_data                     (t2/exists? Database, :is_sample true)
-   :enable_embedding                    (embed.settings/enable-embedding)
-   :embedding_app_origin_set            (boolean (embed.settings/embedding-app-origin))
-   :appearance_site_name                (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link                (public-settings/help-link)
-   :appearance_logo                     (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
-   :appareance_favicon                  (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
-   :apperance_loading_message           (not= (public-settings/loading-message) :doing-science)
-   :appearance_metabot_greeting         (not (public-settings/show-metabot))
-   :apparerance_lighthouse_illustration (not (public-settings/show-lighthouse-illustration))
-   :appearance_ui_colors                (appearance-ui-colors-changed?)
-   :appearance_chart_colors             (appearance-chart-colors-changed?)
-   :appearance_show_mb_links            (not (public-settings/show-metabase-links))})
+   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :email_configured                     (email/email-configured?)
+   :slack_configured                     (slack/slack-configured?)
+   :sso_configured                       (google/google-auth-enabled)
+   :instance_started                     (snowplow/instance-creation)
+   :has_sample_data                      (t2/exists? Database, :is_sample true)
+   :enable_embedding                     (embed.settings/enable-embedding)
+   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
+   :appearance_help_link                 (public-settings/help-link)
+   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (public-settings/show-metabot))
+   :appearance_login_page_illustration   (public-settings/login-page-illustration)
+   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
+   :appearance_no_data_illustration      (public-settings/no-data-illustration)
+   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :appearance_ui_colors                 (appearance-ui-colors-changed?)
+   :appearance_chart_colors              (appearance-chart-colors-changed?)
+   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
@@ -178,7 +180,8 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
+  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query]
+                         {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)]
                                       {:total       1
@@ -202,8 +205,12 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (t2/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params])
-        dashcards  (t2/select [DashboardCard :card_id :dashboard_id])]
+  (let [dashboards (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
+                              {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+        dashcards  (t2/query {:select :dc.*
+                              :from [[(t2/table-name DashboardCard) :dc]]
+                              :join [[(t2/table-name Dashboard) :d] [:= :d.id :dc.dashboard_id]]
+                              :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -239,9 +246,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (mdb.u/qualify Database :engine)
-      {:left-join [Database [:= (mdb.u/qualify Database :id)
-                                (mdb.u/qualify Table :db_id)]]})
+    (db-frequencies Table (mdb.query/qualify Database :engine)
+      {:left-join [Database [:= (mdb.query/qualify Database :id)
+                                (mdb.query/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   {:style/indent 2}
   [model column & [additonal-honeysql]]
@@ -284,7 +291,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.u/qualify Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify Pulse :alert_condition) nil]}]
     {:alerts               (t2/count Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -297,8 +304,8 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select Collection)
-        cards       (t2/select [Card :collection_id])]
+  (let [collections (t2/select Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -308,7 +315,8 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (t2/select [Database :is_full_sync :engine :dbms_version])]
+  (let [databases (t2/select [:model/Database :is_full_sync :engine :dbms_version]
+                             {:where (mi/exclude-internal-content-hsql :model/Database)})]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -322,7 +330,10 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (t2/select [Table :db_id :schema])]
+  (let [tables (t2/query {:select [:t.db_id :t.schema]
+                          :from   [[(t2/table-name :model/Table) :t]]
+                          :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                          :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -330,7 +341,11 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (t2/select [Field :table_id])]
+  (let [fields (t2/query {:select [:f.table_id]
+                          :from [[(t2/table-name Field) :f]]
+                          :join [[(t2/table-name Table) :t] [:= :t.id :f.table_id]
+                                 [(t2/table-name Database) :d] [:= :d.id :t.db_id]]
+                          :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
@@ -342,7 +357,7 @@
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count Metric)})
+  {:metrics (t2/count LegacyMetric)})
 
 
 ;;; Execution Metrics
@@ -435,7 +450,7 @@
   (try
      (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
      (catch Throwable e
-       (log/error e (trs "Sending usage stats FAILED")))))
+       (log/error e "Sending usage stats FAILED"))))
 
 
 (defn phone-home-stats!

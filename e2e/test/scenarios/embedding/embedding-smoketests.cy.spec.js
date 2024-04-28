@@ -185,7 +185,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
-          cy.get(".cellData").contains("37.65");
+          cy.get("[data-testid=cell-data]").contains("37.65");
         });
 
         cy.findByRole("contentinfo").within(() => {

@@ -1,12 +1,14 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   blockSnowplow,
+  describeEE,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  popover,
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
@@ -24,7 +26,7 @@ describe("scenarios > setup", () => {
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
       () => {
-        // intial redirection and welcome page
+        // initial redirection and welcome page
         cy.visit("/", {
           // set the browser language as per:
           // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
@@ -97,20 +99,6 @@ describe("scenarios > setup", () => {
 
           // test database setup help card is NOT displayed before DB is selected
           cy.findByText("Need help connecting?").should("not.be.visible");
-
-          // test that you can return to user settings if you want
-          cy.findByText("Hi, Testy. Nice to meet you!").click();
-          cy.findByLabelText("Email").should(
-            "have.value",
-            "testy@metabase.test",
-          );
-
-          // test database setup help card is NOT displayed on other steps
-          cy.findByText("Need help connecting?").should("not.be.visible");
-
-          // now back to database setting
-          cy.button("Next").click();
-          cy.button("Next").click();
 
           // check database setup card is visible
           cy.findByText("MySQL").click();
@@ -207,9 +195,7 @@ describe("scenarios > setup", () => {
     });
     cy.location("pathname").should("eq", "/");
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
@@ -330,7 +316,17 @@ describe("scenarios > setup", () => {
       cy.button("Finish").click();
 
       // Finish & Subscribe
+      cy.intercept("GET", "/api/session/properties").as("properties");
       cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.log(
+      "Make sure the embedding secret key is set after embedding has been autoenabled",
+    );
+    cy.wait("@properties").then(request => {
+      expect(request.response?.body["embedding-secret-key"]?.length).to.equal(
+        64,
+      );
     });
 
     cy.location("pathname").should("eq", "/");
@@ -339,31 +335,62 @@ describe("scenarios > setup", () => {
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
+    // should persist page loads
     cy.reload();
 
     main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
-    main()
-      .findByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and(
-        "match",
-        /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
-      );
+    main().findByText("Hide these").realHover();
 
-    cy.icon("close").click();
+    popover().findByText("Embedding done, all good").click();
 
     main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("not.exist");
+  });
+});
 
-    cy.reload();
+describeEE("scenarios > setup (EE)", () => {
+  beforeEach(() => restore("blank"));
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+  it("should ask for a license token on self-hosted", () => {
+    cy.visit("/setup");
+
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+      });
+
+      cy.button("Next").click();
+
+      cy.findByText("I'll add my data later").click();
+
+      cy.findByText("Activate your commercial license").should("exist");
+
+      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+
+      cy.button("Activate").click();
+
+      cy.findByText("Finish").click();
+      cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.intercept("/api/premium-features/token/status").as("tokenStatus");
+
+    cy.visit("/admin/settings/license");
+
+    main().findByText("Looking for more?").should("exist");
+
+    cy.wait("@tokenStatus").then(request => {
+      expect(request.response?.body.valid).to.equal(true);
+    });
   });
 });
 
@@ -484,7 +511,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/setup");
     skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnoplow()
+    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
     expectGoodSnowplowEvents(1);
   });
 });
@@ -540,6 +567,16 @@ const fillUserAndContinue = ({
 
 const skipLicenseStepOnEE = () => {
   if (isEE) {
+    cy.findByText("Activate your commercial license").should("exist");
     cy.button("Skip").click();
   }
+};
+
+const typeToken = (token: string) => {
+  // hides the requests from the logs as the token is passed as a GET param
+  cy.intercept({ resourceType: "xhr" }, { log: false });
+  cy.findByLabelText("Token")
+    // hides the token from failure screenshots
+    .invoke("attr", "type", "password")
+    .type(token, { log: false });
 };

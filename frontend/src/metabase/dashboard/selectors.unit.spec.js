@@ -11,7 +11,7 @@ import {
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
-import Field from "metabase-lib/metadata/Field";
+import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockCard,
   createMockDashboardCard,

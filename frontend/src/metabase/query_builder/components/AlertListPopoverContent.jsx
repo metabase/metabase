@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
 import Modal from "metabase/components/Modal";
+import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
@@ -83,9 +84,15 @@ class AlertListPopoverContent extends Component {
           ))}
         </ul>
         {(!hasOwnAlerts || hasJustUnsubscribedFromOwnAlert) && (
-          <div className="border-top p2 bg-light-blue">
+          <div className={cx(CS.borderTop, CS.p2, CS.bgLightBlue)}>
             <a
-              className="link flex align-center text-bold text-small"
+              className={cx(
+                CS.link,
+                CS.flex,
+                CS.alignCenter,
+                CS.textBold,
+                CS.textSmall,
+              )}
               onClick={this.onAdd}
             >
               <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
@@ -162,28 +169,28 @@ class AlertListItemInner extends Component {
 
     return (
       <li
-        className={cx("flex p3 text-medium border-bottom", {
-          "bg-light-blue": highlight,
+        className={cx(CS.flex, CS.p3, CS.textMedium, CS.borderBottom, {
+          [CS.bgLightBlue]: highlight,
         })}
       >
         <Icon name="alert" size="20" />
-        <div className="full ml2">
-          <div className="flex align-top">
+        <div className={cx(CS.full, CS.ml2)}>
+          <div className={cx(CS.flex, "align-top")}>
             <div>
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className="ml-auto text-bold text-small"
+              className={cx(CS.mlAuto, CS.textBold, CS.textSmall)}
               style={{
                 transform: `translateY(4px)`,
               }}
             >
               {(isAdmin || isCurrentUser) && (
-                <a className="link" onClick={this.onEdit}>{jt`Edit`}</a>
+                <a className={CS.link} onClick={this.onEdit}>{jt`Edit`}</a>
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className="link ml2"
+                  className={cx(CS.link, CS.ml2)}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}
@@ -196,23 +203,23 @@ class AlertListItemInner extends Component {
           {
             // To-do: @kdoh wants to look into overall alignment
           }
-          <ul className="flex mt2 text-small">
-            <li className="flex align-center">
-              <Icon name="clock" size="12" className="mr1" />{" "}
+          <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
+            <li className={cx(CS.flex, CS.alignCenter)}>
+              <Icon name="clock" size="12" className={CS.mr1} />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
                 verbose={!isAdmin}
               />
             </li>
             {isAdmin && emailEnabled && (
-              <li className="ml3 flex align-center">
-                <Icon name="mail" className="mr1" />
+              <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+                <Icon name="mail" className={CS.mr1} />
                 {emailChannel.recipients.length}
               </li>
             )}
             {isAdmin && slackEnabled && (
-              <li className="ml3 flex align-center">
-                <Icon name="slack" size={16} className="mr1" />
+              <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+                <Icon name="slack" size={16} className={CS.mr1} />
                 {(slackChannel.details &&
                   slackChannel.details.channel.replace("#", "")) ||
                   t`No channel`}
@@ -241,12 +248,30 @@ export const AlertListItem = connect(state => ({ user: getUser(state) }), {
 })(AlertListItemInner);
 
 export const UnsubscribedListItem = () => (
-  <li className="border-bottom flex align-center py4 text-bold">
-    <div className="circle flex align-center justify-center p1 bg-light ml2">
-      <Icon name="check" className="text-success" />
+  <li
+    className={cx(
+      CS.borderBottom,
+      CS.flex,
+      CS.alignCenter,
+      CS.py4,
+      CS.textBold,
+    )}
+  >
+    <div
+      className={cx(
+        CS.circle,
+        CS.flex,
+        CS.alignCenter,
+        CS.justifyCenter,
+        CS.p1,
+        CS.bgLight,
+        CS.ml2,
+      )}
+    >
+      <Icon name="check" className={CS.textSuccess} />
     </div>
     <h3
-      className="text-dark"
+      className={CS.textDark}
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>
@@ -328,6 +353,6 @@ export class AlertCreatorTitle extends Component {
         ? t`You're receiving ${creator}'s alerts`
         : t`${creator} set up an alert`;
 
-    return <h3 className="text-dark">{text}</h3>;
+    return <h3 className={CS.textDark}>{text}</h3>;
   }
 }

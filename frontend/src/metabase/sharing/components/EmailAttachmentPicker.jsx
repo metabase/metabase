@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
@@ -8,12 +9,14 @@ import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import Label from "metabase/components/type/Label";
 import CheckBox from "metabase/core/components/CheckBox";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
 
   state = {
     isEnabled: false,
+    isFormattingEnabled: true,
     selectedAttachmentType: this.DEFAULT_ATTACHMENT_TYPE,
     selectedCardIds: new Set(),
   };
@@ -52,6 +55,7 @@ export default class EmailAttachmentPicker extends Component {
       selectedAttachmentType:
         this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
       selectedCardIds: new Set(selectedCards.map(card => card.id)),
+      isFormattingEnabled: getInitialFormattingState(selectedCards),
     };
   }
 
@@ -69,6 +73,8 @@ export default class EmailAttachmentPicker extends Component {
    */
   updatePulseCards(attachmentType, selectedCardIds) {
     const { pulse, setPulse } = this.props;
+    const { isFormattingEnabled } = this.state;
+
     const isXls = attachmentType === "xls",
       isCsv = attachmentType === "csv";
 
@@ -79,6 +85,7 @@ export default class EmailAttachmentPicker extends Component {
       cards: pulse.cards.map(card => {
         card.include_csv = selectedCardIds.has(card.id) && isCsv;
         card.include_xls = selectedCardIds.has(card.id) && isXls;
+        card.format_rows = isCsv && isFormattingEnabled; // Excel always uses formatting
         return card;
       }),
     });
@@ -163,6 +170,21 @@ export default class EmailAttachmentPicker extends Component {
     });
   };
 
+  onToggleFormatting = () => {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        isFormattingEnabled: !prevState.isFormattingEnabled,
+      }),
+      () => {
+        this.updatePulseCards(
+          this.state.selectedAttachmentType,
+          this.state.selectedCardIds,
+        );
+      },
+    );
+  };
+
   disableAllCards() {
     const selectedCardIds = new Set();
     this.updatePulseCards(this.state.selectedAttachmentType, selectedCardIds);
@@ -179,7 +201,12 @@ export default class EmailAttachmentPicker extends Component {
 
   render() {
     const { cards } = this.props;
-    const { isEnabled, selectedAttachmentType, selectedCardIds } = this.state;
+    const {
+      isEnabled,
+      isFormattingEnabled,
+      selectedAttachmentType,
+      selectedCardIds,
+    } = this.state;
 
     return (
       <div>
@@ -191,8 +218,8 @@ export default class EmailAttachmentPicker extends Component {
 
         {isEnabled && (
           <div>
-            <div className="my1 flex justify-between">
-              <Label className="pt1">{t`File format`}</Label>
+            <div className={cx(CS.my1, CS.flex, CS.justifyBetween)}>
+              <Label className={CS.pt1}>{t`File format`}</Label>
               <SegmentedControl
                 options={[
                   { name: ".csv", value: "csv" },
@@ -203,9 +230,36 @@ export default class EmailAttachmentPicker extends Component {
                 fullWidth
               />
             </div>
-            <div className="text-bold pt1 pb2 flex justify-between align-center">
-              <ul className="full">
-                <li className="mb2 pb1 flex align-center cursor-pointer border-bottom">
+            {selectedAttachmentType === "csv" && (
+              <div className={cx(CS.mt2, CS.mb3)}>
+                <CheckBox
+                  checked={!isFormattingEnabled}
+                  label={t`Use unformatted values in attachments`}
+                  onChange={this.onToggleFormatting}
+                />
+              </div>
+            )}
+            <div
+              className={cx(
+                CS.textBold,
+                CS.pt1,
+                CS.pb2,
+                CS.flex,
+                CS.justifyBetween,
+                CS.alignCenter,
+              )}
+            >
+              <ul className={CS.full}>
+                <li
+                  className={cx(
+                    CS.mb2,
+                    CS.pb1,
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.cursorPointer,
+                    CS.borderBottom,
+                  )}
+                >
                   <StackedCheckBox
                     label={t`Questions to attach`}
                     checked={this.areAllSelected(cards, selectedCardIds)}
@@ -219,7 +273,12 @@ export default class EmailAttachmentPicker extends Component {
                 {cards.map(card => (
                   <li
                     key={card.id}
-                    className="pb2 flex align-center cursor-pointer"
+                    className={cx(
+                      CS.pb2,
+                      CS.flex,
+                      CS.alignCenter,
+                      CS.cursorPointer,
+                    )}
                   >
                     <CheckBox
                       checked={selectedCardIds.has(card.id)}
@@ -227,7 +286,7 @@ export default class EmailAttachmentPicker extends Component {
                       onChange={() => {
                         this.onToggleCard(card);
                       }}
-                      className="mr1"
+                      className={CS.mr1}
                     />
                   </li>
                 ))}
@@ -238,4 +297,11 @@ export default class EmailAttachmentPicker extends Component {
       </div>
     );
   }
+}
+
+function getInitialFormattingState(cards) {
+  if (cards.length > 0) {
+    return cards.some(card => !!card.format_rows);
+  }
+  return true;
 }

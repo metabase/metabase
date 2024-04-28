@@ -4,6 +4,8 @@ import {
   popover,
   visualize,
   summarize,
+  expressionEditorWidget,
+  enterCustomColumnDetails,
 } from "e2e/support/helpers";
 
 describe("issue 17512", () => {
@@ -44,18 +46,22 @@ function addSummarizeCustomExpression(formula, name) {
   summarize({ mode: "notebook" });
   popover().contains("Custom Expression").click();
 
-  popover().within(() => {
-    cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  expressionEditorWidget().within(() => {
+    enterCustomColumnDetails({
+      formula,
+      name,
+    });
     cy.button("Done").click();
   });
 }
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  popover().within(() => {
-    cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  expressionEditorWidget().within(() => {
+    enterCustomColumnDetails({
+      formula,
+      name,
+    });
     cy.button("Done").click();
   });
 }

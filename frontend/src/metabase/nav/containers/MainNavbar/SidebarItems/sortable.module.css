@@ -1,8 +1,0 @@
-:global(.react-sortable-hoc-helper.sorting) {
-  border-bottom: 2px solid var(--color-brand);
-}
-
-:global(.react-sortable-hoc-helper.sorting .Icon-grabber) {
-  color: var(--color-brand);
-  opacity: 0.5;
-}

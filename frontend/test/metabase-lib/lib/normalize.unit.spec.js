@@ -1,4 +1,4 @@
-import { normalize } from "cljs/metabase.mbql.js";
+import { normalize } from "cljs/metabase.legacy_mbql.js";
 
 // This test is here mostly to make sure the shared CLJS lib works correctly.
 

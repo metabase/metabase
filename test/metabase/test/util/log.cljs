@@ -16,6 +16,7 @@
 
 ;; TODO This does not suppress the logs from actually reaching the console.
 ;; Perhaps https://github.com/lambdaisland/glogi/issues/24 to add a `clear-handlers!` or similar.
+;; Tech debt issue: #39335
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn do-with-glogi-logs
   "Used internally by the CLJS flavour of [[with-log-messages-for-level]]. Don't call this directly."

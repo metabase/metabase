@@ -94,6 +94,38 @@
       [:tag 2 3]         [:tag 4 3]
       [:tag {:a {:b 1}}] [:tag {:a {:b 2}}])))
 
+(deftest ^:parallel =-ignores-uuids-test
+  (testing "should be equal"
+    (are [x y] (lib.equality/= x y)
+      ;; should ignore different UUIDs
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+
+      ;; should recurse into subclauses correctly
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000005"} 2]]))
+  (testing "should not be equal"
+    (are [x y] (not (lib.equality/= x y))
+      ;; field IDs differ
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 2]
+
+      ;; should not be equal because :base-types differ
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004", :base-type :type/Text} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000005"} 2]])))
+
 ;;; The stuff below is for generative testing; the goal is to generate two big horrible maps and or other MBQL
 ;;; expressions where everything other than namespaced keywords are equal, and then compare them.
 
@@ -586,3 +618,14 @@
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
         (is (= ca-expr
                (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))
+
+(deftest ^:parallel disambiguate-matches-using-temporal-unit-if-needed-test
+  (let [created-at-month (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)
+        created-at-year  (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)]
+    (doseq [col [created-at-month
+                 created-at-year]]
+      (is (= col
+             (lib.equality/find-matching-column
+              (lib/ref col)
+              [created-at-month
+               created-at-year]))))))

@@ -40,7 +40,7 @@ If for any reason you want to use an H2 database file in a separate location fro
     export MB_DB_FILE=/the/path/to/my/h2.db
     java -jar metabase.jar
 
-Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in you path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
+Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
 ## [Postgres](https://www.postgresql.org/)
 

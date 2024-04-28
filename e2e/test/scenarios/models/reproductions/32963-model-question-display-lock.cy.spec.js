@@ -29,7 +29,7 @@ describe("issue 32963", () => {
     cy.findByTestId("qb-header").button("Summarize").click();
 
     rightSidebar().within(() => {
-      cy.findByText("Created At").click();
+      cy.findAllByText("Created At").eq(0).click();
       cy.button("Done").click();
     });
     cy.wait("@dataset");

@@ -1,14 +1,15 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
-   [clojure.string :as str]
+   #?@(:clj [[metabase.test :as mt]])
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])))
+   #_:clj-kondo/ignore
+   [malli.generator :as mg]
+   [metabase.util :as u]))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -425,14 +426,27 @@
     (is (= {:m true}
            (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
-(deftest ^:parallel classify-changes-test
+(deftest ^:parallel row-diff-test
   (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+    (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (u/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
+            :to-create [{:id -1 :name "-c1"}]
+            :to-skip   [{:id 4 :name "c4"}]}
+           (u/row-diff
+            [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-create [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       {:id-fn   :god_id
+                        :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
   (are [xs expected] (= expected
@@ -471,10 +485,26 @@
                                        {:b 2 :c 4 :d 5 :e 6})))))
 
 (deftest map-all-test
-  (let [join (fn [& crumbs] (str/join ":" crumbs))]
-    (testing "map-all with 1 collection is just map"
-      (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
-    (testing "map-all works with 3 collections"
-      (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
-    (testing "map-all works with higher arity"
-      (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5)))))))
+  (testing "map-all with 1 collection is just map"
+    (is (= [[0] [1] [2] [3] [4]] (u/map-all vector (range 5)))))
+  (testing "map-all works with 3 collections"
+    (is (=  [[0 0] [1 1] [2 2] [3 nil] [4 nil]] (u/map-all vector (range 5) (range 3)))))
+  (testing "map-all works with higher arity"
+    (is (= [[0 0 0] [1 1 1] [2 2 2] [3 nil 3] [nil nil 4]] (u/map-all vector (range 4) (range 3) (range 5))))))
+
+#?(:clj
+   (defspec map-all-returns-max-coll-input-size-test 1000
+     (prop/for-all [xs (mg/generator [:sequential :int])
+                    ys (mg/generator [:sequential :int])
+                    zs (mg/generator [:sequential :int])]
+       (let [total-result-count (count (u/map-all vector xs ys zs))]
+         (= total-result-count (max (count xs) (count ys) (count zs)))))))
+
+#?(:clj
+   (defspec map-all-consumes-all-lengths-of-inputs-test 1000
+     (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
+       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+         (= expected sum)))))

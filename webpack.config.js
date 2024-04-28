@@ -20,6 +20,7 @@ const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -74,6 +75,7 @@ const config = (module.exports = {
   // output to "dist"
   output: {
     path: BUILD_PATH + "/app/dist",
+    // for production, dev mode is overridden below
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
@@ -103,7 +105,7 @@ const config = (module.exports = {
           ]
         : []),
       {
-        test: /\.(eot|woff2?|ttf|svg|png)$/,
+        test: /\.(svg|png)$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
       },
@@ -183,6 +185,7 @@ const config = (module.exports = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
+      "embedding-sdk": SDK_SRC_PATH,
     },
   },
   cache: useFilesystemCache
@@ -270,7 +273,7 @@ const config = (module.exports = {
 if (WEBPACK_BUNDLE === "hot") {
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
-  config.output.filename = "[name].hot.bundle.js?[contenthash]";
+  config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
@@ -300,21 +303,8 @@ if (WEBPACK_BUNDLE === "hot") {
       "Access-Control-Allow-Origin": "*",
     },
     // tweak stats to make the output in the console more legible
-    // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
     devMiddleware: {
-      stats: {
-        assets: false,
-        cached: false,
-        cachedAssets: false,
-        chunks: false,
-        chunkModules: false,
-        chunkOrigins: false,
-        modules: false,
-        color: true,
-        hash: false,
-        warnings: true,
-        errorDetails: false,
-      },
+      stats: "errors-warnings",
       writeToDisk: true,
     },
     // if webpack doesn't reload UI after code change in development

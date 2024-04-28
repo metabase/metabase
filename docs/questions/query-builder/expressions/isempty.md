@@ -4,43 +4,55 @@ title: Isempty
 
 # Isempty
 
-`isempty` checks if a value in a **string column** is an empty string (`""`).
+`isempty` checks whether a value in a **string column** is an empty string (`""`) or null. Calling `isempty` on a non-string column would cause an error.
 
-**In Metabase, you must combine `isempty` with another expression that accepts boolean values.** The table below shows you examples of the boolean output that will be passed to your other expression(s).
+## Syntax
 
-| Syntax                                                             | Example with an empty string | Example with a true `null` |
-| ------------------------------------------------------------------ | ---------------------------- | -------------------------- |
-| `isempty(value)`                                                   | `isempty("")`                | `isempty(null)`            |
-| Returns `true` if the value is an empty string, `false` otherwise. | `true`                       | `false`                    |
+```
+isempty(text column)
+```
 
-## How Metabase handles empty strings
+You can use `isempty` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](./case.md).
 
-In Metabase, columns with string [data types][data-types] will display blank cells for empty strings _or_ `null` values (if the column is nullable in your database).
 
-For example, in the column below, the empty cells could contain either:
+## How Metabase handles empty strings and null values
 
-- `""`: feedback was submitted and left intentionally blank, so the person had "no feedback to give".
-- `null`: no feedback was submitted, so the person's thoughts are "unknown".
+In Metabase, columns with string [data types][data-types] will display blank cells for empty strings, strings of whitespace characters,  _or_ `null` values (if the column is nullable in your database).
+The table below shows you examples of the output of `isempty`.
 
-| Feedback           |
-| ------------------ |
-|                    |
-|                    |
-| I like your style. |
+| Metabase shows| Database value      | `isempty(value)`  |
+|---------------| --------------------| ------------------|
+|               | `null`              | `true`            |
+|               | `""` (empty string) | `true`            |
+|               | `"   "` (whitespace)| `false`           |
+|     kitten    |`"kitten"`           | `false`           |
+
+## Creating a boolean custom column
+
+To create a custom column using `isempty`, you must combine `isempty` with another function.
+For example, if you want to create a custom column that contains `true` when the `Feedback` column is empty or null, and `false` otherwise, you can use the [`case expression`](./case.md) :
+
+```
+case(isempty([Feedback]), true, false)
+```
+
 
 ## Replacing empty strings with another value
 
-| Feedback           | `case(isempty([Feedback]), "No feedback.", [Feedback])` |
-| ------------------ | ------------------------------------------------------- |
-|                    |                                                         |
-|                    | No feedback.                                            |
-| I like your style. | I like your style.                                      |
+You can combine `isempty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
 
-Combine `isempty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
+For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` is has a non-empty value. The custom expression to do it is:
+```
+case(isempty([Feedback]), "No feedback.", [Feedback])
+```
 
-Let's say that the second row's blank cell is actually an empty string, so `isempty` will return `true`. The `case` statement evaluates `true` to return the first output "No feedback".
 
-The first row's blank cell doesn't have an empty string, but because it's blank, we're not sure what's in it either---it could be a `null`, or even an emoji that blends into your table background. No matter what the edge case is, `isempty` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
+| Feedback              | `case(isempty([Feedback]), "No feedback.", [Feedback])`   |
+| ----------------------| ----------------------------------------------------------|
+| `""`                  | `"No feedback."`                                          |
+| `null`                | `"No feedback."`                                          |
+| `"I like your style."`| `"I like your style."`                                    |
+
 
 ## Accepted data types
 
@@ -54,9 +66,8 @@ The first row's blank cell doesn't have an empty string, but because it's blank,
 
 ## Limitations
 
-- In Metabase, you must combine `isempty` with another expression that accepts boolean arguments (i.e., `true` or `false`).
+- To create a custom column you must combine `isempty` with another expression that accepts boolean arguments (i.e., `true` or `false`).
 - `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](./case.md).
-- If `isempty` doesn't seem to do anything to your blank cells, you might have `null` values. Try the [`isnull` expression](./isnull.md) instead.
 
 ## Related functions
 
@@ -68,18 +79,18 @@ This section covers functions and formulas that can be used interchangeably with
 
 All examples below use the table from the [Replacing empty strings](#replacing-empty-strings-with-another-value) example:
 
-| Feedback           | `case(isempty([Feedback]), "No feedback.", [Feedback])` |
-| ------------------ | ------------------------------------------------------- |
-|                    |                                                         |
-|                    | No feedback.                                            |
-| I like your style. | I like your style.                                      |
+| Feedback              | `case(isempty([Feedback]), "No feedback.", [Feedback])`   |
+| ----------------------| ----------------------------------------------------------|
+| `""`                  | `"No feedback."`                                          |
+| `null`                | `"No feedback."`                                          |
+| `"I like your style."`| `"I like your style."`                                    |
 
 ### SQL
 
-In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
+In most cases (unless you're using a NoSQL database), questions created from the [query builder][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
 
 ```sql
-CASE WHEN Feedback = "" THEN "No feedback"
+CASE WHEN (Feedback = "" OR Feedback IS NULL) THEN "No feedback"
      ELSE Feedback END
 ```
 
@@ -107,8 +118,8 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 
 Assuming the sample [feedback column](#replacing-empty-strings-with-another-value) is in a dataframe column called `df["Feedback"]`:
 
-```
-df["Custom Column"] = np.where(df["Feedback"] == "", "No feedback.", df["Feedback"])
+```python
+df["Custom Column"] = np.where((df["Feedback"] == "") | (df["Feedback"].isnull()), "No feedback.", df["Feedback"])
 ```
 
 is equivalent to the Metabase `isempty` expression:
@@ -125,6 +136,6 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
 [data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
-[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
+[notebook-editor-def]: https://www.metabase.com/glossary/query_builder
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

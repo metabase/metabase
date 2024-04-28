@@ -87,6 +87,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import combine_component from "./combine.svg?component";
+import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -125,6 +127,8 @@ import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
 import expand_arrow_source from "./expand_arrow.svg?source";
+import extract_component from "./extract.svg?component";
+import extract_source from "./extract.svg?source";
 import eye_component from "./eye.svg?component";
 import eye_source from "./eye.svg?source";
 import eye_crossed_out_component from "./eye_crossed_out.svg?component";
@@ -539,6 +543,10 @@ export const Icons = {
     component: compare_component,
     source: compare_source,
   },
+  combine: {
+    component: combine_component,
+    source: combine_source,
+  },
   connections: {
     component: connections_component,
     source: connections_source,
@@ -610,6 +618,10 @@ export const Icons = {
   expand_arrow: {
     component: expand_arrow_component,
     source: expand_arrow_source,
+  },
+  extract: {
+    component: extract_component,
+    source: extract_source,
   },
   eye: {
     component: eye_component,

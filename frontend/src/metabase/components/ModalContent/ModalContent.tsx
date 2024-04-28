@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import type { ReactNode } from "react";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 import { ModalHeader } from "./ModalHeader";
 import type { CommonModalProps } from "./types";
 
@@ -64,11 +66,15 @@ export default class ModalContent extends Component<ModalContentProps> {
       <div
         id={this.props.id}
         className={cx(
-          "ModalContent flex-full flex flex-column relative",
+          "ModalContent",
+          CS.flexFull,
+          CS.flex,
+          CS.flexColumn,
+          CS.relative,
           className,
-          { "full-height": fullPageModal && !formModal },
+          { [CS.fullHeight]: fullPageModal && !formModal },
           // add bottom padding if this is a standard "form modal" with no footer
-          { pb4: formModal && !footer },
+          { [CS.pb4]: formModal && !footer },
         )}
         data-testid={dataTestId}
       >
@@ -110,12 +116,12 @@ export const ModalBody = ({
 }: ModalBodyProps) => (
   <div
     className={cx("ModalBody", {
-      px4: formModal,
-      "flex flex-full flex-basis-auto": !formModal,
+      [CS.px4]: formModal,
+      [cx(CS.flex, CS.flexFull, CS.flexBasisAuto)]: !formModal,
     })}
   >
     <div
-      className="flex-full ml-auto mr-auto flex flex-column"
+      className={cx(CS.flexFull, CS.mlAuto, CS.mrAuto, CS.flex, CS.flexColumn)}
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {children}
@@ -134,17 +140,20 @@ export const ModalFooter = ({
 }: ModalFooterProps) => (
   <div
     className={cx(
-      "ModalFooter flex flex-no-shrink px4",
-      fullPageModal ? "py4" : "py3",
+      "ModalFooter",
+      CS.flex,
+      CS.flexNoShrink,
+      CS.px4,
+      fullPageModal ? CS.py4 : CS.py3,
     )}
   >
     <div
-      className="ml-auto flex align-center"
+      className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {Array.isArray(children)
         ? children.map((child, index) => (
-            <span key={index} className="ml2">
+            <span key={index} className={CS.ml2}>
               {child}
             </span>
           ))

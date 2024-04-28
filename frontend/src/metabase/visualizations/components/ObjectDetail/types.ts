@@ -1,7 +1,7 @@
-import type Question from "metabase-lib/Question";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/v1/Question";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
   DatasetData,

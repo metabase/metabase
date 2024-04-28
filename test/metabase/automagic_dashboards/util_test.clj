@@ -10,7 +10,7 @@
 
 (deftest ->field-test
   (testing "Demonstrate the stated methods in which ->fields works"
-    (mt/with-test-user :rasta
+    (mt/with-test-user :crowberto
       (mt/dataset test-data
         (testing "->field checks for a table-based context"
           (let [table (t2/select-one :model/Table :id (mt/id :orders))

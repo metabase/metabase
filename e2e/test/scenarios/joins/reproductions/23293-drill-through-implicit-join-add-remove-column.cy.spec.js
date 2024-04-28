@@ -5,6 +5,8 @@ import {
   openOrdersTable,
   visitDashboard,
   queryBuilderHeader,
+  modal,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -31,7 +33,7 @@ describe("issue 23293", () => {
     });
 
     cy.wait("@saveQuestion").then(({ response }) => {
-      cy.get(".Modal").button("Not now").click();
+      modal().button("Not now").click();
 
       const id = response.body.id;
       const questionDetails = {
@@ -57,7 +59,8 @@ describe("issue 23293", () => {
         },
       );
 
-      cy.get(".bar").first().realClick();
+      // Click on the first bar
+      chartPathWithFillColor("#509EE3").first().realClick();
       popover()
         .findByText(/^See these/)
         .click();
@@ -84,12 +87,14 @@ describe("issue 23293", () => {
  * @param {("add"|"remove")} action
  */
 function modifyColumn(columnName, action) {
-  cy.findByRole("button", { name: "Add or remove columns" }).click();
-  if (action === "add") {
-    cy.findByLabelText(columnName).should("not.be.checked").click();
-  } else {
-    cy.findByLabelText(columnName).should("be.checked").click();
-  }
+  cy.findByTestId("sidebar-left").within(() => {
+    cy.findByRole("button", { name: "Add or remove columns" }).click();
+    if (action === "add") {
+      cy.findByLabelText(columnName).should("not.be.checked").click();
+    } else {
+      cy.findByLabelText(columnName).should("be.checked").click();
+    }
 
-  cy.findByRole("button", { name: "Done picking columns" }).click();
+    cy.findByRole("button", { name: "Done picking columns" }).click();
+  });
 }

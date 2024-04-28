@@ -39,12 +39,28 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defn- add-pks-if-needed
+  "Add a pk for table that doesn't have one."
+  [driver tabledefs]
+  (map (fn [{:keys [field-definitions] :as tabledef}]
+         (if-not (some :pk? field-definitions)
+           (update tabledef :field-definitions #(cons (tx/map->FieldDefinition
+                                                       {:field-name    (sql.tx/pk-field-name driver)
+                                                        :base-type     {:native (sql.tx/pk-sql-type driver)}
+                                                        :semantic-type :type/PK
+                                                        :pk?           true})
+                                                      %))
+           tabledef))
+       tabledefs))
+
 (defmethod create-db-tables-ddl-statements :sql/test-extensions
-  [driver {:keys [table-definitions], :as dbdef} & _]
+  [driver dbdef & _]
   ;; Build combined statement for creating tables + FKs + comments
-  (let [statements (atom [])
-        add!       (fn [& stmnts]
-                     (swap! statements concat (filter some? stmnts)))]
+  (let [{:keys [table-definitions]
+         :as   dbdef}              (update dbdef :table-definitions (partial add-pks-if-needed driver))
+        statements                (atom [])
+        add!                      (fn [& stmnts]
+                                    (swap! statements concat (filter some? stmnts)))]
     (doseq [tabledef table-definitions]
       ;; Add the SQL for creating each Table
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)

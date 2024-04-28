@@ -165,7 +165,7 @@ Sections include:
 
 ### Dashboard width
 
-You change the width of a dashboard.
+You can change the width of a dashboard.
 
 ![Change dashboard width](./images/toggle-width.png)
 
@@ -236,9 +236,9 @@ If your Metabase administrator has enabled [public sharing](../questions/sharing
 
 Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
 
-## Exporting dashboards as PDFs
+## Exporting results from a dashboard
 
-To export a dashboard as a PDF, wait until the dashboard is finished loading, then click on the three dot menu (**...**) in the upper right and select **Export as PDF**.
+See [Exporting results](../questions/sharing/exporting-results.md#exporting-results-of-a-dashboard).
 
 ## Configuring a dashboard through its URL
 

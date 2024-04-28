@@ -1,0 +1,323 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-04-09T02:31:58.786073Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (04238f7)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.show_trendline": true,
+        "graph.y_axis.auto_range": false,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum"]
+      },
+      "collection_preview": true,
+      "entity_id": "_dvAKhcvnWqqF3GQ2I34G",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 134,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "cum-sum",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-04-09T02:31:58.786073Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "trend-line-limit",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Cumulative sum of Total",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 49,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 52.75594257942132,
+                "q1": 88371.16441035396,
+                "q3": 967001.1486334413,
+                "max": 1510621.6830506313,
+                "sd": 495872.5480720779,
+                "avg": 543401.0225755866
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00-03:00", 52.75594257942132],
+        ["2022-05-01T00:00:00-03:00", 1318.472238985754],
+        ["2022-06-01T00:00:00-03:00", 3391.4131925210277],
+        ["2022-07-01T00:00:00-03:00", 7126.098897266654],
+        ["2022-08-01T00:00:00-03:00", 12086.738643507735],
+        ["2022-09-01T00:00:00-03:00", 17458.817913029372],
+        ["2022-10-01T00:00:00-03:00", 25161.67486334217],
+        ["2022-11-01T00:00:00-03:00", 33088.416895517614],
+        ["2022-12-01T00:00:00-03:00", 42156.8692464187],
+        ["2023-01-01T00:00:00-03:00", 53251.570985496925],
+        ["2023-02-01T00:00:00-03:00", 64495.14053800732],
+        ["2023-03-01T00:00:00-03:00", 78610.79848112274],
+        ["2023-04-01T00:00:00-03:00", 91624.61972009769],
+        ["2023-05-01T00:00:00-03:00", 107345.1362165411],
+        ["2023-06-01T00:00:00-03:00", 122862.84797665442],
+        ["2023-07-01T00:00:00-03:00", 141433.40694831987],
+        ["2023-08-01T00:00:00-03:00", 160410.36826100724],
+        ["2023-09-01T00:00:00-03:00", 179549.49442064564],
+        ["2023-10-01T00:00:00-03:00", 200104.88151184114],
+        ["2023-11-01T00:00:00-03:00", 222682.45758443797],
+        ["2023-12-01T00:00:00-03:00", 247412.89092613268],
+        ["2024-01-01T00:00:00-03:00", 285982.5885436963],
+        ["2024-02-01T00:00:00-03:00", 320350.1922028975],
+        ["2024-03-01T00:00:00-03:00", 358534.1487275502],
+        ["2024-04-01T00:00:00-03:00", 395615.05097377725],
+        ["2024-05-01T00:00:00-03:00", 441121.8711387285],
+        ["2024-06-01T00:00:00-03:00", 482423.75238076015],
+        ["2024-07-01T00:00:00-03:00", 526704.7291841115],
+        ["2024-08-01T00:00:00-03:00", 571066.4553941387],
+        ["2024-09-01T00:00:00-03:00", 615054.9962990964],
+        ["2024-10-01T00:00:00-03:00", 662783.733831869],
+        ["2024-11-01T00:00:00-03:00", 709215.6829296874],
+        ["2024-12-01T00:00:00-03:00", 757457.9251038793],
+        ["2025-01-01T00:00:00-03:00", 809092.0860828793],
+        ["2025-02-01T00:00:00-03:00", 856167.9346711597],
+        ["2025-03-01T00:00:00-03:00", 907515.0325999976],
+        ["2025-04-01T00:00:00-03:00", 955070.1534159825],
+        ["2025-05-01T00:00:00-03:00", 1002794.1342858177],
+        ["2025-06-01T00:00:00-03:00", 1049276.5705052363],
+        ["2025-07-01T00:00:00-03:00", 1097270.4342658762],
+        ["2025-08-01T00:00:00-03:00", 1147867.5919459756],
+        ["2025-09-01T00:00:00-03:00", 1192580.2428211803],
+        ["2025-10-01T00:00:00-03:00", 1238853.7420517905],
+        ["2025-11-01T00:00:00-03:00", 1286264.2176958402],
+        ["2025-12-01T00:00:00-03:00", 1334524.972993563],
+        ["2026-01-01T00:00:00-03:00", 1386774.5637490056],
+        ["2026-02-01T00:00:00-03:00", 1434178.5350784578],
+        ["2026-03-01T00:00:00-03:00", 1479862.2128766787],
+        ["2026-04-01T00:00:00-03:00", 1510621.6830506313]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "semantic_type": null,
+          "name": "sum",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Cumulative sum of Total",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", SUM(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Cumulative sum of Total",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 49,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 52.75594257942132,
+                  "q1": 88371.16441035396,
+                  "q3": 967001.1486334413,
+                  "max": 1510621.6830506313,
+                  "sd": 495872.5480720779,
+                  "avg": 543401.0225755866
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 1479862.2128766787,
+          "unit": "month",
+          "offset": -21374808.24182299,
+          "last-change": 0.020785360897998626,
+          "col": "sum",
+          "slope": 1106.1922663630594,
+          "last-value": 1510621.6830506313,
+          "best-fit": ["+", -21374808.24182299, ["*", 1106.1922663630594, "x"]]
+        }
+      ]
+    }
+  }
+]

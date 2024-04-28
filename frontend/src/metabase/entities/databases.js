@@ -2,9 +2,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import Schemas from "metabase/entities/schemas";
+import { databaseApi } from "metabase/api";
 import { color } from "metabase/lib/colors";
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
   fetchData,
   createThunkAction,
@@ -19,8 +19,7 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -31,6 +30,9 @@ export const FETCH_DATABASE_SCHEMAS =
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Databases = createEntity({
   name: "databases",
   path: "/api/database",
@@ -38,6 +40,35 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.listDatabases,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.getDatabase,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.createDatabase,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.updateDatabase,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, databaseApi.endpoints.deleteDatabase),
+  },
 
   // ACTION CREATORS
   objectActions: {
@@ -51,10 +82,11 @@ const Databases = createEntity({
             requestStatePath: ["metadata", "databases", id],
             existingStatePath: ["metadata", "databases", id],
             getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
+              const databaseMetadata = await entityCompatibleQuery(
+                { id, ...params },
+                dispatch,
+                databaseApi.endpoints.getDatabaseMetadata,
+              );
               return normalize(databaseMetadata, DatabaseSchema);
             },
             reload,
@@ -69,11 +101,13 @@ const Databases = createEntity({
       ),
       withNormalize(DatabaseSchema),
     )(({ id, ...params }) => async dispatch => {
-      const idFields = await MetabaseApi.db_idfields({ dbId: id, ...params });
+      const idFields = await entityCompatibleQuery(
+        { id, ...params },
+        dispatch,
+        databaseApi.endpoints.listDatabaseIdFields,
+      );
       return { id, idFields };
     }),
-
-    fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
   },
 
   objectSelectors: {

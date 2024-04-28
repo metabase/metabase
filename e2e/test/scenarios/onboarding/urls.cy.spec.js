@@ -12,7 +12,7 @@ import {
   popover,
   getFullName,
 } from "e2e/support/helpers";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
 

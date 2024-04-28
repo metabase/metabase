@@ -115,7 +115,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
 
-From the Click on the **Appearance**, and play around with the different appearance settings.
+When setting up a static embed, click on the **Appearance** tab, and play around with the different appearance settings.
 
 Settings include:
 
@@ -130,6 +130,21 @@ Settings include:
 When you make changes to the embed's appearance, Metabase will highlight the changes it made to the code.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+## Auto-refreshing the results of an embedded dashboard
+
+> Auto-refreshing is only available for dashboards, not questions.
+
+To refresh the results of a dashboard at a specific cadence, you can parameterize the embedded URL with `refresh`. For example, to set an embedded dashboard to refresh every 60 seconds, you would append `refresh=60` to the URL.
+
+For example, the following code for generating an iframe URL for a dashboard would display the dashboard's title and refresh its results every 60 seconds.
+
+```js
+var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token +
+  "#titled=true&refresh=60";
+```
+
+For the full list options you can parameterize, see [customizing the appearance of a static embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
 
 ## Removing the "Powered by Metabase" banner
 

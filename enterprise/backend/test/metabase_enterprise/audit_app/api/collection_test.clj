@@ -48,7 +48,11 @@
   []
   (if-not config/ee-available?
     #{}
-    (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection :archived false))
+    (let [colls (->> (t2/select Collection :archived false)
+                     (sort-by (fn [{coll-type :type coll-name :name coll-id :id}]
+                                [coll-type ((fnil u/lower-case-en "") coll-name) coll-id]))
+                     (mapv #(select-keys % [:id :name :location :type])))
+
           id->coll (m/index-by :id colls)
           collection-tree (collection/collections->tree {} colls)]
       (->> (loop [[tree & coll-tree] collection-tree

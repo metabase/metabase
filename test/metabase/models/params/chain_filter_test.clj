@@ -670,3 +670,47 @@
           (testing "`true` if the limit is less than the number of values the field has"
             (is (= true
                    (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))
+
+;; TODO: make this test parallel, but clj-kondo complains about t2/update! being destructive and no amount of
+;; :clj-kondo/ignore convinces it.
+(deftest chain-filter-inactive-test
+  (testing "Inactive fields are not used to generate joins"
+    ;; custom dataset so that destructive operations (especially marking PK inactive) won't have any effect on other
+    ;; tests
+    (mt/with-temp-test-data [["users"
+                              [{:field-name "name"
+                                :base-type :type/Text}]
+                              []]
+                             ["messages"
+                              [{:field-name "receiver_id"
+                                :base-type :type/Integer
+                                :fk :users}
+                               {:field-name "sender_id"
+                                :base-type :type/Integer
+                                :fk :users}]
+                              []]]
+      (mt/$ids nil
+        (mt/with-dynamic-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                 chain-filter/find-joins                (fn
+                                                                          ([a b c]
+                                                                           (#'chain-filter/find-joins* a b c false))
+                                                                          ([a b c d]
+                                                                           (#'chain-filter/find-joins* a b c d)))]
+          (testing "receiver_id is active and should be used for the join"
+            (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
+                     :rhs {:table $$users, :field %users.id}}]
+                   (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+
+          (try
+            (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
+            (testing "check that it switches to sender once receiver is inactive"
+              (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
+                       :rhs {:table $$users, :field %users.id}}]
+                     (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+            (finally
+              (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))
+
+          ;; mark field
+          (t2/update! :model/Field {:id %users.id} {:active false})
+          (testing "there are no connections when PK is inactive"
+            (is (nil? (#'chain-filter/find-joins (mt/id) $$messages $$users)))))))))

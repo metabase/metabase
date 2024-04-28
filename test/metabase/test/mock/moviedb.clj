@@ -5,6 +5,7 @@
 
 ;; TODO - this whole fake driver is used in exactly one test. Can definitely remove a lot of the stuff here since it's
 ;; not used.
+;; Tech debt issue: #39338
 
 (def ^:private moviedb-tables
   {"movies"
@@ -84,6 +85,7 @@
       (update :fields (partial map-indexed (fn [idx field]
                                              (assoc field :database-position idx))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))
       :fks

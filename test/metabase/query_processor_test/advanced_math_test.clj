@@ -61,7 +61,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 1.0 (test-math-expression [:log 10.0])))))
 
-
 (deftest ^:parallel test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 59 (->> {:aggregation [[:count]]

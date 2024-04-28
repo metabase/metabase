@@ -1,6 +1,8 @@
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import NumericInput from "metabase/components/NumericInput";
+import CS from "metabase/css/core/index.css";
 import { has24HourModeSetting } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 
@@ -25,7 +27,7 @@ const HoursMinutesInput = ({
   onClear,
   is24HourMode = has24HourModeSetting(),
 }: Props) => (
-  <div className="flex align-center">
+  <div className={cx(CS.flex, CS.alignCenter)}>
     <NumericInput
       style={{ height: 36 }}
       size={2}
@@ -44,7 +46,7 @@ const HoursMinutesInput = ({
           : (value: number) => onChangeHours((hours >= 12 ? 12 : 0) + value)
       }
     />
-    <span className="px1">:</span>
+    <span className={CS.px1}>:</span>
     <NumericInput
       style={{ height: 36 }}
       size={2}
@@ -54,7 +56,7 @@ const HoursMinutesInput = ({
       onChange={(value: number) => onChangeMinutes(value)}
     />
     {!is24HourMode && (
-      <div className="flex align-center pl1">
+      <div className={cx(CS.flex, CS.alignCenter, CS.pl1)}>
         {hours < 12 ? (
           <AmPmLabel
             isSelected={hours < 12}
@@ -74,7 +76,12 @@ const HoursMinutesInput = ({
     )}
     {onClear && (
       <Icon
-        className="text-light cursor-pointer text-medium-hover ml-auto"
+        className={cx(
+          CS.textLight,
+          CS.cursorPointer,
+          CS.textMediumHover,
+          CS.mlAuto,
+        )}
         name="close"
         onClick={onClear}
       />

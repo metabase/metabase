@@ -12,7 +12,7 @@ export const ModelFilterControls = ({
     <Switch
       label={
         <Text
-          align="right"
+          align="end"
           weight="bold"
           lh="1rem"
           px=".75rem"
@@ -24,11 +24,14 @@ export const ModelFilterControls = ({
       onChange={e => {
         handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
       }}
-      ml="auto"
       size="sm"
       labelPosition="left"
       styles={{
-        root: { display: "flex", alignItems: "center" },
+        root: {
+          marginInlineStart: "auto",
+          display: "flex",
+          alignItems: "center",
+        },
         body: {
           alignItems: "center",
           // Align with tab labels:

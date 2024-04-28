@@ -3,10 +3,10 @@
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models :refer [Action Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
-                            HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
+                            HTTPAction ImplicitAction LegacyMetric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
    [metabase.util.log :as log]
@@ -214,10 +214,6 @@
                                   :spec      ::http-action
                                   :insert!   {:model HTTPAction}
                                   :relations {:action_id   [:action :id]}}
-   :activity                     {:prefix    :ac
-                                  :spec      ::activity
-                                  :relations {:user_id [:core-user :id]}
-                                  :insert!   {:model Activity}}
    :database                     {:prefix  :db
                                   :spec    ::database
                                   :insert! {:model Database}}
@@ -270,7 +266,7 @@
                                   :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
-                                  :insert!   {:model Metric}
+                                  :insert!   {:model LegacyMetric}
                                   :relations {:creator_id [:core-user :id]
                                               :table_id   [:table :id]}}
    :table                        {:prefix    :t

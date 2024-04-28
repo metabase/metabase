@@ -1,4 +1,4 @@
-import type Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 export const getDatabase = (metadata: Metadata, databaseId: number) => {
   const database = metadata.database(databaseId);

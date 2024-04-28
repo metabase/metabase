@@ -3,11 +3,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const SettingRoot = styled.li`
-  margin: 1rem 1rem 2rem;
-
-  &:first-child {
-    margin-top: 0;
-  }
+  padding: 0.5rem 1rem 2rem;
+  border-radius: 0.5rem;
 `;
 
 export const SettingContent = styled.div`

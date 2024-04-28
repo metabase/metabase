@@ -1,17 +1,17 @@
 import { useMemo } from "react";
-import { t, c, msgid } from "ttag";
+import { c, msgid, t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text, Title } from "metabase/ui";
 import type {
   Card,
-  SearchResult,
   CollectionEssentials,
+  SearchResult,
 } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
-import { getCollectionName, sortModels, getIcon } from "../utils";
+import { getCollectionName, getIcon, sortModels } from "../utils";
 
 import {
   CollectionCollapse,
@@ -20,10 +20,10 @@ import {
   CollectionHeaderToggleContainer,
   CollectionSummary,
   FixedSizeIcon,
+  HoverUnderlineLink,
   ModelCard,
   ModelCardLink,
   MultilineEllipsified,
-  HoverUnderlineLink,
 } from "./BrowseModels.styled";
 
 const MAX_COLLAPSED_MODELS = 6;
@@ -126,7 +126,15 @@ const CollectionHeader = ({
       <Flex pt="1.5rem" pb="0.75rem" w="100%">
         <Flex>
           <FixedSizeIcon {...icon} />
-          <Title size="1rem" lh="1rem" ml=".25rem" mr="1rem" color="inherit">
+          <Title
+            size="1rem"
+            lh="1rem"
+            style={{
+              marginInlineStart: ".25rem",
+              marginInlineEnd: "1rem",
+            }}
+            color="inherit"
+          >
             {getCollectionName(collection)}
           </Title>
         </Flex>
@@ -169,8 +177,10 @@ const ShowMoreFooter = ({
       {!showAll && `${shownModelsCount} of ${allModelsCount}`}
       <Button variant="subtle" lh="inherit" p="0" onClick={onClick}>
         {showAll
-          ? c("For a button that collapses a list of models").t`Show less`
-          : c("For a button that expands a list of models").t`Show all`}
+          ? c("This text appears on a button that collapses a list of models")
+              .t`Show less`
+          : c("This text appears on a button that expands a list of models")
+              .t`Show all`}
       </Button>
     </CollectionExpandCollapseContainer>
   );
@@ -202,9 +212,13 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <MultilineEllipsified tooltipMaxWidth="20rem">
-          {model.description}
-        </MultilineEllipsified>
+        {model.description?.trim() ? (
+          <MultilineEllipsified tooltipMaxWidth="20rem">
+            {model.description}
+          </MultilineEllipsified>
+        ) : (
+          <Text color="text-light">{t`No description.`}</Text>
+        )}
       </ModelCard>
     </ModelCardLink>
   );

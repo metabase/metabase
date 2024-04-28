@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
@@ -64,5 +64,6 @@ export type LLMSuggestQuestionInfo = (
 ) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
+  isEnabled: () => boolean;
   LLMSuggestQuestionInfo: LLMSuggestQuestionInfo;
 };

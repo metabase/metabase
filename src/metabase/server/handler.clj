@@ -82,6 +82,6 @@
 (when config/is-dev?
   (doseq [varr  (cons #'routes/routes middleware)
           :when (instance? clojure.lang.IRef varr)]
-    (add-watch varr ::reload (fn [_ _ _ _]
+    (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                (log/infof "%s changed, rebuilding %s" varr #'app)
                                (alter-var-root #'app (constantly (apply-middleware routes/routes)))))))

@@ -2,6 +2,10 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "metabase/api";
+import {
   Form,
   FormErrorMessage,
   FormGroupWidget,
@@ -9,34 +13,32 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/services";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import type { ApiKey } from "metabase-types/api";
+import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
 const { fontFamilyMonospace } = getThemeOverrides();
+
 type EditModalName = "edit" | "regenerate" | "secretKey";
 
 const RegenerateKeyModal = ({
   apiKey,
   setModal,
   setSecretKey,
-  refreshList,
 }: {
   apiKey: ApiKey;
   setModal: (name: EditModalName) => void;
   setSecretKey: (key: string) => void;
-  refreshList: () => void;
 }) => {
+  const [regenerateApiKey] = useRegenerateApiKeyMutation();
   const handleRegenerate = useCallback(async () => {
-    const result = await ApiKeysApi.regenerate({ id: apiKey.id });
+    const result = await regenerateApiKey(apiKey.id).unwrap();
     setSecretKey(result.unmasked_key);
     setModal("secretKey");
-    refreshList();
-  }, [apiKey.id, refreshList, setModal, setSecretKey]);
+  }, [apiKey.id, setModal, setSecretKey, regenerateApiKey]);
 
   return (
     <Modal
@@ -88,27 +90,25 @@ const RegenerateKeyModal = ({
 
 export const EditApiKeyModal = ({
   onClose,
-  refreshList,
   apiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   apiKey: ApiKey;
 }) => {
   const [modal, setModal] = useState<EditModalName>("edit");
   const [secretKey, setSecretKey] = useState<string>("");
+  const [updateApiKey] = useUpdateApiKeyMutation();
 
   const handleSubmit = useCallback(
-    async vals => {
-      await ApiKeysApi.edit({
+    async (vals: UpdateApiKeyRequest) => {
+      await updateApiKey({
         id: vals.id,
         group_id: vals.group_id,
         name: vals.name,
-      });
-      refreshList();
+      }).unwrap();
       onClose();
     },
-    [onClose, refreshList],
+    [onClose, updateApiKey],
   );
 
   if (modal === "secretKey") {
@@ -121,7 +121,6 @@ export const EditApiKeyModal = ({
         apiKey={apiKey}
         setModal={setModal}
         setSecretKey={setSecretKey}
-        refreshList={refreshList}
       />
     );
   }

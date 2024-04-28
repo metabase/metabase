@@ -239,10 +239,10 @@ const dashcards = handleActions(
       [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true },
     }),
     [ADD_MANY_CARDS_TO_DASH]: (state, { payload: dashcards }) => {
-      const storeDashcards = dashcards.map(dc => ({
+      const storeDashcards = dashcards.map((dc, index) => ({
         ...dc,
         isAdded: true,
-        justAdded: true,
+        justAdded: index === 0,
       }));
       const storeDashCardsMap = _.indexBy(storeDashcards, "id");
       return {

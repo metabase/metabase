@@ -4,7 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
@@ -12,16 +12,15 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.models.permissions :as perms]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -31,6 +30,10 @@
 
 (set! *warn-on-reflection* true)
 
+(comment
+  ;; idk why condo complains on this not being used when it is, in a keyword down there
+  lib.schema.metadata/used)
+
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
 (def ^:private default-max-field-search-limit 1000)
@@ -38,20 +41,6 @@
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
-
-(defn- has-segmented-query-permissions?
-  "Does the Current User have segmented query permissions for `table`?"
-  [table]
-  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/table-sandboxed-query-path table)))
-
-(defn- throw-if-no-read-or-segmented-perms
-  "Validates that the user either has full read permissions for `field` or segmented permissions on the table
-  associated with `field`. Throws an exception that will return a 403 if not."
-  [field]
-  (when-not (or (mi/can-read? field)
-                (has-segmented-query-permissions? (field/table field)))
-    (api/throw-403)))
 
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
@@ -73,7 +62,7 @@
     ;; Check for permissions and throw 403 if we don't have them...
     (if include_editable_data_model
       (api/write-check Table (:table_id field))
-      (throw-if-no-read-or-segmented-perms field))
+      (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
 
@@ -312,7 +301,7 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pk             (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          updated-pk             (mdb.query/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
                                    (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
@@ -323,11 +312,11 @@
   [id]
   {id ms/PositiveInt}
   (let [field (api/write-check (t2/select-one Field :id id))]
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (field-values/create-or-update-full-field-values! field)))
+    (mw.session/as-admin
+     (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
@@ -361,26 +350,6 @@
     (t2/select-one Field :id fk-target-field-id)
     field))
 
-(defn- search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
-  differs slightly based on whether the two Fields are the same Field.
-
-  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
-  [field search-field value limit]
-  {:database (db-id field)
-   :type     :query
-   :query    {:source-table (table-id field)
-              :filter       (when (some? value)
-                              [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-              ;; identifiers/aliases
-              :breakout     (if (= (u/the-id field) (u/the-id search-field))
-                              [[:field (u/the-id field) nil]]
-                              [[:field (u/the-id field) nil]
-                               [:field (u/the-id search-field) nil]])
-              :limit        limit}})
-
 (mu/defn search-values :- [:maybe ms/FieldValuesList]
   "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return pairs like
 
@@ -408,12 +377,11 @@
    (try
     (let [field        (follow-fks field)
           search-field (follow-fks search-field)
-          limit        (or maybe-limit default-max-field-search-limit)
-          results      (qp/process-query (search-values-query field search-field value limit))]
-      (get-in results [:data :rows]))
+          limit        (or maybe-limit default-max-field-search-limit)]
+      (metadata-queries/search-values-query field search-field value limit))
     (catch Throwable e
-      (log/error e (trs "Error searching field values"))
-      nil))))
+      (log/error e "Error searching field values")
+      []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
@@ -424,8 +392,8 @@
    value     ms/NonBlankString}
   (let [field        (api/check-404 (t2/select-one Field :id id))
         search-field (api/check-404 (t2/select-one Field :id search-id))]
-    (throw-if-no-read-or-segmented-perms field)
-    (throw-if-no-read-or-segmented-perms search-field)
+    (api/check-403 (mi/can-read? field))
+    (api/check-403 (mi/can-read? search-field))
     (search-values field search-field value mw.offset-paging/*limit*)))
 
 (defn remapped-value
@@ -454,7 +422,7 @@
       (first (get-in results [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
-      (log/debug e (trs "Error searching for remapping"))
+      (log/debug e "Error searching for remapping")
       nil)))
 
 (defn parse-query-param-value-for-field

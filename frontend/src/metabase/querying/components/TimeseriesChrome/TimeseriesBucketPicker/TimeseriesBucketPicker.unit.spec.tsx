@@ -71,8 +71,8 @@ describe("TimeseriesBucketPicker", () => {
     const { query, column } = createQueryWithBreakout({ bucket: null });
     const { getNextBucketName } = setup({ query, column });
 
-    userEvent.click(screen.getByText("Unbinned"));
-    userEvent.click(await screen.findByText("Month"));
+    await userEvent.click(screen.getByText("Unbinned"));
+    await userEvent.click(await screen.findByText("Month"));
 
     expect(getNextBucketName()).toBe("Month");
   });
@@ -81,8 +81,8 @@ describe("TimeseriesBucketPicker", () => {
     const { query, column } = createQueryWithBreakout();
     const { getNextBucketName } = setup({ query, column });
 
-    userEvent.click(screen.getByText("Month"));
-    userEvent.click(await screen.findByText("Year"));
+    await userEvent.click(screen.getByText("Month"));
+    await userEvent.click(await screen.findByText("Year"));
 
     expect(getNextBucketName()).toBe("Year");
   });
@@ -91,8 +91,8 @@ describe("TimeseriesBucketPicker", () => {
     const { query, column } = createQueryWithBreakout();
     const { getNextBucketName } = setup({ query, column });
 
-    userEvent.click(screen.getByText("Month"));
-    userEvent.click(await screen.findByText("Don't bin"));
+    await userEvent.click(screen.getByText("Month"));
+    await userEvent.click(await screen.findByText("Don't bin"));
 
     expect(getNextBucketName()).toBeNull();
   });

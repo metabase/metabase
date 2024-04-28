@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { Well, ToggleIcon } from "./QuestionDisplayToggle.styled";
 

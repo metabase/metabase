@@ -8,6 +8,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -162,6 +163,21 @@
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 
+(mr/def ::drill-thru.column-extract
+  [:merge
+   ::drill-thru.common.with-column
+   [:map
+    [:type         [:= :drill-thru/column-extract]]
+    [:query        [:ref ::lib.schema/query]]
+    [:stage-number number?]
+    [:extractions  [:sequential [:ref ::lib.schema.extraction/extraction]]]]])
+
+(mr/def ::drill-thru.combine-columns
+  [:merge
+   ::drill-thru.common.with-column
+   [:map
+    [:type         [:= :drill-thru/combine-columns]]]])
+
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
@@ -291,6 +307,8 @@
     [:drill-thru/summarize-column         ::drill-thru.summarize-column]
     [:drill-thru/summarize-column-by-time ::drill-thru.summarize-column-by-time]
     [:drill-thru/column-filter            ::drill-thru.column-filter]
+    [:drill-thru/column-extract           ::drill-thru.column-extract]
+    [:drill-thru/combine-columns          ::drill-thru.combine-columns]
     [:drill-thru/underlying-records       ::drill-thru.underlying-records]
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]

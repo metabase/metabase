@@ -8,7 +8,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import { Flex, Popover, Tooltip } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
 import QueryDownloadPopover from "../QueryDownloadPopover";
@@ -50,9 +50,9 @@ const QueryDownloadWidget = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownload({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -89,9 +89,9 @@ const QueryDownloadWidget = ({
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={type => {
+          onDownload={opts => {
             setIsPopoverOpen(false);
-            handleDownload(type);
+            handleDownload(opts);
           }}
         />
       </Popover.Dropdown>

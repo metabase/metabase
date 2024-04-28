@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Location } from "history";
 import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
 import { useMount } from "react-use";
@@ -16,6 +17,8 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
@@ -46,7 +49,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Bookmark as IBookmark,
   DashboardId,
@@ -62,7 +65,7 @@ import type {
   DashboardSidebarState,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -285,7 +288,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const saveAsPDF = async () => {
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });
@@ -317,7 +320,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     return [
       <Button
         key="cancel"
-        className="Button Button--small mr1"
+        className={cx(ButtonsS.Button, ButtonsS.ButtonSmall, CS.mr1)}
         onClick={() => onRequestCancel()}
       >
         {t`Cancel`}
@@ -330,7 +333,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         <span>
           <ActionButton
             actionFn={() => onSave()}
-            className="Button Button--primary Button--small"
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
             normalText={t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
@@ -518,13 +525,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title: t`Duplicate`,
-        icon: "clone",
-        link: `${location.pathname}/copy`,
-        event: "Dashboard;Copy",
-      });
-
-      extraButtons.push({
         title:
           Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
             ? t`Export tab as PDF`
@@ -543,6 +543,17 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/move`,
           event: "Dashboard;Move",
         });
+      }
+
+      extraButtons.push({
+        title: t`Duplicate`,
+        icon: "clone",
+        link: `${location.pathname}/copy`,
+        event: "Dashboard;Copy",
+      });
+
+      if (canEdit) {
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
           title: t`Archive`,
@@ -550,8 +561,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
-
-        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 
@@ -590,6 +599,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+            transitionDuration={0}
           />,
         );
       }
@@ -601,7 +612,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           key="expand"
           aria-label={t`Enter Fullscreen`}
           icon="expand"
-          className="text-brand-hover cursor-pointer"
+          className={CS.cursorPointer}
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
         />,
       );
@@ -626,7 +637,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   return (
     <>
       <DashboardHeaderComponent
-        headerClassName="wrapper"
+        headerClassName={CS.wrapper}
         location={location}
         dashboard={dashboard}
         collection={collection}

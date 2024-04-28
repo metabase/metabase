@@ -20,9 +20,9 @@ import { FilterApplyButton } from "metabase/parameters/components/FilterApplyBut
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -151,6 +151,7 @@ interface DashboardProps {
 
   addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
+  setParameterType: (id: ParameterId, type: string) => void;
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
@@ -533,6 +534,8 @@ function DashboardInner(props: DashboardProps) {
       {() => (
         <DashboardStyled>
           <DashboardHeaderContainer
+            data-element-id="dashboard-header-container"
+            id="Dashboard-Header-Container"
             isFullscreen={isFullscreen}
             isNightMode={shouldRenderAsNightMode}
           >
@@ -553,13 +556,14 @@ function DashboardInner(props: DashboardProps) {
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+              data-element-id="dashboard-parameters-and-cards"
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
                 !isFullscreen && (isEditing || isSharing)
               }
             >
               {renderParameterList()}
-              <CardsContainer id="Dashboard-Cards-Container">
+              <CardsContainer data-element-id="dashboard-cards-container">
                 {renderContent()}
               </CardsContainer>
             </ParametersAndCardsContainer>

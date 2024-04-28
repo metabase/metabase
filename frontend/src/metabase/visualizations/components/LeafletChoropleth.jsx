@@ -2,6 +2,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
@@ -19,9 +20,9 @@ const LeafletChoropleth = ({
   <CardRenderer
     card={{ display: "map" }}
     series={series}
-    className="spread"
+    className={CS.spread}
     renderer={(element, props) => {
-      element.className = "spread";
+      element.className = CS.spread;
       element.style.backgroundColor = "transparent";
 
       const map = L.map(element, {

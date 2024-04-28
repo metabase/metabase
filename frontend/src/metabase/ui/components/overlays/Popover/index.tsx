@@ -6,13 +6,12 @@ export { getPopoverOverrides } from "./Popover.styled";
 
 const MantinePopoverDropdown = Popover.Dropdown;
 
-const PopoverDropdown = Object.assign(function PopoverDropdown(
-  props: PopoverDropdownProps,
-) {
-  return <MantinePopoverDropdown {...props} data-popover="mantine-popover" />;
-},
-MantinePopoverDropdown);
-
-Popover.Dropdown = PopoverDropdown as typeof MantinePopoverDropdown;
+const PopoverDropdown = function PopoverDropdown(props: PopoverDropdownProps) {
+  return (
+    <MantinePopoverDropdown {...props} data-element-id="mantine-popover" />
+  );
+};
+PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+Popover.Dropdown = PopoverDropdown;
 
 export { Popover };

@@ -159,7 +159,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
+      (log/errorf e "Failed to authenticate with credentials %s" credentials)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))

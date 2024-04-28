@@ -53,8 +53,8 @@ describe("QueryDownloadWidget", () => {
   it("should display query export options", async () => {
     setup();
 
-    userEvent.click(getIcon("download"));
-    userEvent.unhover(getIcon("download"));
+    await userEvent.click(getIcon("download"));
+    await userEvent.unhover(getIcon("download"));
 
     expect(
       await screen.findByText("Download full results"),

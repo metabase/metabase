@@ -1,7 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import Humanize from "humanize-plus";
 import { Component } from "react";
 import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
 
 export default class ExpandableString extends Component {
   constructor(props, context) {
@@ -43,7 +46,7 @@ export default class ExpandableString extends Component {
         <span>
           {this.props.str}{" "}
           <span
-            className="block mt1 link"
+            className={cx(CS.block, CS.mt1, CS.link)}
             onClick={this.toggleExpansion}
           >{t`View less`}</span>
         </span>
@@ -53,7 +56,7 @@ export default class ExpandableString extends Component {
         <span>
           {truncated}{" "}
           <span
-            className="block mt1 link"
+            className={cx(CS.block, CS.mt1, CS.link)}
             onClick={this.toggleExpansion}
           >{t`View more`}</span>
         </span>

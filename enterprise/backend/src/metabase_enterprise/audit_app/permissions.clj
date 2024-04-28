@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.audit-db :refer [default-audit-collection]]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
@@ -61,13 +62,13 @@
   But it's cleaner to keep the audit DB permission paths in the database consistent."
   :feature :audit-app
   [group-id changes]
-  (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
+  (let [[change-id tyype] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
       (when change-id
-        (let [change-permissions! (case type
-                                    :read  perms/grant-permissions!
-                                    :none  perms/delete-related-permissions!
-                                    :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                           {:status-code 400})))
+        (let [create-queries-value (case tyype
+                                     :read  :query-builder
+                                     :none  :no
+                                     :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                            {:status-code 400})))
               view-tables         (t2/select :model/Table :db_id perms/audit-db-id :name [:in audit-db-view-names])]
           (doseq [table view-tables]
-            (change-permissions! group-id (perms/table-query-path table)))))))
+            (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

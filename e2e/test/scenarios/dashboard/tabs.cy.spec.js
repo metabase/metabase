@@ -44,6 +44,7 @@ import {
   dashboardGrid,
   modal,
   addHeadingWhileEditing,
+  setFilter,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -404,6 +405,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -416,16 +418,22 @@ describe("scenarios > dashboard > tabs", () => {
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
+
+    cy.wait("@cardQuery");
+
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
+    // it's possible to have two requests firing (but first one is canceled before running second)
     cy.intercept(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
-      cy.spy().as("firstTabQuery"),
+      req => {
+        req.on("response", cy.spy().as("firstTabQuery"));
+      },
     );
 
     cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
@@ -497,14 +505,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    cy.findByTestId("dashboard-header").within(() => {
-      cy.icon("filter").click();
-    });
-
-    popover().within(() => {
-      cy.contains("Time").click();
-      cy.findByText("Relative Date").click();
-    });
+    setFilter("Time", "Relative Date");
 
     // Auto-connection happens here
     selectDashboardFilter(getDashboardCard(0), "Created At");
@@ -516,10 +517,8 @@ describe("scenarios > dashboard > tabs", () => {
       delayResponse(500),
     ).as("saveCard");
 
-    filterWidget().contains("Relative Date").click();
-    popover().within(() => {
-      cy.findByText("Past 7 days").click();
-    });
+    filterWidget().click();
+    popover().findByText("Past 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {

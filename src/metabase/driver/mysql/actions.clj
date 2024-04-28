@@ -42,7 +42,7 @@
         (if (and (or (nil? catalog) (= table_catalog catalog))
                  (or (nil? schema) (= table_schema schema)))
           [(conj columns column_name) table_catalog table_schema]
-          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
+          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table"
                          constraint-name)
               (reduced nil))))
       [[] nil nil]
@@ -155,25 +155,30 @@
 ;;; has no primary key and this query returns multiple rows, then we
 ;;; cannot know which one resulted from this insert, so we log a
 ;;; warning and return nil.
-(defmethod sql-jdbc.actions/select-created-row :mysql
-  [driver create-hsql conn {:keys [insert_id] :as results}]
-  (let [jdbc-spec {:connection conn}
-        table-components (-> create-hsql :insert-into :components)
-        pks (primary-keys driver jdbc-spec table-components)
-        where-clause (if insert_id
-                       [:= (-> pks first keyword) insert_id]
+
+(defn- select-created-row-sql-args
+  [driver create-hsql pks insert-id]
+  (let [where-clause (if insert-id
+                       [:= (-> pks first keyword) insert-id]
                        (into [:and]
-                             (for [[col val] (:insert-into create-hsql)]
+                             (for [[col val] (first (:values create-hsql))]
                                [:= (keyword col) val])))
-        select-hsql (-> create-hsql
-                        (dissoc :insert-into :values)
-                        (assoc :select [:*]
-                               :from [(:insert-into create-hsql)]
-                               :where where-clause))
-        select-sql-args (sql.qp/format-honeysql driver select-hsql)
-        query-results (jdbc/query jdbc-spec
-                                  select-sql-args
-                                  {:identifiers identity, :transaction? false})]
+        select-hsql  (-> create-hsql
+                         (dissoc :insert-into :values)
+                         (assoc :select [:*]
+                                :from [(:insert-into create-hsql)]
+                                :where where-clause))]
+    (sql.qp/format-honeysql driver select-hsql)))
+
+(defmethod sql-jdbc.actions/select-created-row :mysql
+  [driver create-hsql conn {:strs [insert_id] :as results}]
+  (let [jdbc-spec        {:connection conn}
+        table-components (-> create-hsql :insert-into :components)
+        pks              (primary-keys driver jdbc-spec table-components)
+        select-sql-args  (select-created-row-sql-args driver create-hsql pks insert_id)
+        query-results    (jdbc/query jdbc-spec
+                           select-sql-args
+                           {:identifiers identity, :transaction? false, :keywordize? false})]
     (if (next query-results)
       (log/warn "cannot identify row inserted by" create-hsql "using results" results)
       (first query-results))))

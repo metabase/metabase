@@ -64,9 +64,9 @@ describe("ControlledPopoverWithTrigger", () => {
       );
     });
 
-    it("should be clickable via the onClick prop the function receives as an argument", () => {
+    it("should be clickable via the onClick prop the function receives as an argument", async () => {
       const { onOpen } = setup({ visible: false, renderTrigger });
-      userEvent.click(screen.getByText("custom trigger"));
+      await userEvent.click(screen.getByText("custom trigger"));
       expect(onOpen).toHaveBeenCalled();
     });
   });
@@ -78,9 +78,9 @@ describe("ControlledPopoverWithTrigger", () => {
       expect(screen.getByRole("button")).toHaveTextContent("trigger content");
     });
 
-    it("should be clickable and trigger the onOpen prop of the component", () => {
+    it("should be clickable and trigger the onOpen prop of the component", async () => {
       const { onOpen } = setup({ visible: false });
-      userEvent.click(screen.getByText("trigger content"));
+      await userEvent.click(screen.getByText("trigger content"));
       expect(onOpen).toHaveBeenCalled();
     });
   });
@@ -103,15 +103,17 @@ describe("ControlledPopoverWithTrigger", () => {
       expect(await screen.findByText("popover content")).toBeVisible();
     });
 
-    it("should be able to trigger an onClose event via an outside click", () => {
+    it("should be able to trigger an onClose event via an outside click", async () => {
       const { onClose } = setup({ visible: true });
-      userEvent.click(screen.getByText("something outside of the popover"));
+      await userEvent.click(
+        screen.getByText("something outside of the popover"),
+      );
       expect(onClose).toHaveBeenCalled();
     });
 
-    it("should be able to trigger an onClose event via an Esc press", () => {
+    it("should be able to trigger an onClose event via an Esc press", async () => {
       const { onClose } = setup({ visible: true });
-      userEvent.type(document.body, "{Escape}");
+      await userEvent.type(document.body, "{Escape}");
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -123,15 +125,15 @@ describe("ControlledPopoverWithTrigger", () => {
 
     it("should pass the onClose prop to the popoverContent fn", async () => {
       const { onClose } = setup({ visible: true, popoverContent });
-      userEvent.click(await screen.findByText("popover content"));
+      await userEvent.click(await screen.findByText("popover content"));
       expect(onClose).toHaveBeenCalled();
     });
   });
 
   describe("disabled true, visible false", () => {
-    it("should prevent the triggering of the onOpen fn", () => {
+    it("should prevent the triggering of the onOpen fn", async () => {
       const { onOpen } = setup({ disabled: true, visible: false });
-      userEvent.click(screen.getByText("trigger content"));
+      await userEvent.click(screen.getByText("trigger content"));
       expect(onOpen).not.toHaveBeenCalled();
     });
   });

@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,6 +9,8 @@ import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
 
 class SegmentListAppInner extends Component {
@@ -15,18 +18,18 @@ class SegmentListAppInner extends Component {
     const { segments, tableSelector, setArchived } = this.props;
 
     return (
-      <div className="px3 pb2">
-        <div className="flex py2">
+      <div className={cx(CS.px3, CS.pb2)}>
+        <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
-          <Link to="/admin/datamodel/segment/create" className="ml-auto">
+          <Link to="/admin/datamodel/segment/create" className={CS.mlAuto}>
             <Button primary>{t`New segment`}</Button>
           </Link>
         </div>
-        <table className="AdminTable">
-          <thead className="text-bold">
+        <table className={AdminS.AdminTable}>
+          <thead className={CS.textBold}>
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
-              <th className="full">{t`Definition`}</th>
+              <th className={CS.full}>{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>
           </thead>
@@ -41,7 +44,7 @@ class SegmentListAppInner extends Component {
           </tbody>
         </table>
         {segments.length === 0 && (
-          <div className="flex layout-centered m4 text-medium">
+          <div className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}>
             {t`Create segments to add them to the Filter dropdown in the query builder`}
           </div>
         )}

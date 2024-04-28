@@ -4,6 +4,7 @@ import {
   setTokenFeatures,
   appBar,
   main,
+  modal,
 } from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
@@ -157,7 +158,7 @@ function fixQuestion(name) {
 
   cy.findByText("Save").click();
 
-  cy.get(".Modal").within(() => {
+  modal().within(() => {
     cy.button("Save").click();
   });
 }

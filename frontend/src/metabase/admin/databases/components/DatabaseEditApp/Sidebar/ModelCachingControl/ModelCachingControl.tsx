@@ -8,11 +8,12 @@ import {
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/metadata/Database";
-import { getModelCacheSchemaName } from "metabase-lib/metadata/utils/models";
+import type Database from "metabase-lib/v1/metadata/Database";
+import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   ControlContainer,
@@ -93,7 +94,7 @@ function ModelCachingControl({ database }: Props) {
     <div>
       <ControlContainer>
         <ActionButton
-          className="Button"
+          className={ButtonsS.Button}
           normalText={normalText}
           failedText={t`Failed`}
           successText={t`Done`}

@@ -8,7 +8,6 @@ import {
   FormRadioGroup,
   FormProvider,
   FormSubmitButton,
-  requiredErrorMessage,
 } from "metabase/forms";
 import { Radio } from "metabase/ui";
 
@@ -59,8 +58,8 @@ describe("FormRadioGroup", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -73,20 +72,25 @@ describe("FormRadioGroup", () => {
   });
 
   it("should show validation errors", async () => {
+    // This is test used to test setting and unsetting the radio value, but userEvents 14
+    // cause this to not work (we weren't able to unselect the radio). To simulate, we have
+    // repaced the logic with a nonsense validation object to error after setting the value
     const validationSchema = Yup.object({
-      column: Yup.string().required(requiredErrorMessage),
+      column: Yup.string().email("This should error"),
     });
     setup({
       initialValues: validationSchema.getDefault(),
       validationSchema: validationSchema,
     });
-    expect(screen.queryByText("Required")).not.toBeInTheDocument();
+    expect(screen.queryByText("This should error")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.tab();
+    await userEvent.click(screen.getByText("Submit"));
+
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.tab();
+
     await waitFor(() => {
-      expect(screen.getByText("Required")).toBeInTheDocument();
+      expect(screen.getByText("This should error")).toBeInTheDocument();
     });
   });
 });

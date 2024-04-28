@@ -6,11 +6,13 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Modal from "metabase/components/Modal";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import { ALERT_TYPE_ROWS } from "metabase-lib/Alert";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 const ALLOWED_VISUALIZATION_PROPS = [
   // Table
@@ -55,6 +57,7 @@ export default class VisualizationResult extends Component {
       rawSeries,
       timelineEvents,
       selectedTimelineEventIds,
+      onNavigateBack,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -65,7 +68,7 @@ export default class VisualizationResult extends Component {
 
       // successful query but there were 0 rows returned with the result
       return (
-        <div className={cx(className, "flex")}>
+        <div className={cx(className, CS.flex)}>
           <ErrorMessage
             type="noRows"
             title={t`No results!`}
@@ -76,7 +79,7 @@ export default class VisualizationResult extends Component {
                   <p>
                     {jt`You can also ${(
                       <a
-                        className="link"
+                        className={CS.link}
                         key="link"
                         onClick={this.showCreateAlertModal}
                       >
@@ -86,8 +89,10 @@ export default class VisualizationResult extends Component {
                   </p>
                 )}
                 <button
-                  className="Button"
-                  onClick={() => window.history.back()}
+                  className={ButtonsS.Button}
+                  onClick={() =>
+                    onNavigateBack ? onNavigateBack() : window.history.back()
+                  }
                 >
                   {t`Back to previous results`}
                 </button>

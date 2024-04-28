@@ -1,11 +1,13 @@
 // Reducers shared between "main" and "public" apps
 
+import { Api } from "metabase/api";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import embed from "metabase/redux/embed";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 import requests from "metabase/redux/requests";
 import { settings } from "metabase/redux/settings";
+import { modal } from "metabase/redux/ui";
 import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
@@ -22,4 +24,6 @@ export default {
   entities,
   upload,
   auth,
+  [Api.reducerPath]: Api.reducer,
+  modal,
 };

@@ -4,14 +4,15 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.params :as params]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.time.temporal Temporal)))
 
@@ -26,7 +27,7 @@
 (mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- :keyword]
-  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
+  (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
@@ -386,8 +387,8 @@
 
 (def ^:private TemporalRange
   [:map
-   [:start {:optional true} [:fn #(instance? Temporal %)]]
-   [:end   {:optional true} [:fn #(instance? Temporal %)]]
+   [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
+   [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   TemporalUnit]])
 
 (mu/defn ^:private adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
@@ -410,8 +411,8 @@
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."
   [:and [:map {:closed true}
-         [:start {:optional true} ms/NonBlankString]
-         [:end   {:optional true} ms/NonBlankString]]
+         [:start {:optional true} ::lib.schema.common/non-blank-string]
+         [:end   {:optional true} ::lib.schema.common/non-blank-string]]
    [:fn {:error/message "must have either :start or :end"}
     (fn [{:keys [start end]}]
       (or start end))]
@@ -447,7 +448,7 @@
   ([date-string]
    (date-string->range date-string nil))
 
-  ([date-string  :- ms/NonBlankString
+  ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
      :or   {inclusive-start? true inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
@@ -471,8 +472,8 @@
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   field       :- [:or ms/PositiveInt mbql.s/Field]]
-  (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
+   field       :- [:or ::lib.schema.id/field mbql.s/Field]]
+  (or (execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter
                        :date-string date-string}))))

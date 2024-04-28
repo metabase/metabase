@@ -116,7 +116,7 @@ describe("issue 18061", () => {
       cy.findByTestId("qb-filters-panel")
         .findByText("ID is less than 2")
         .should("be.visible");
-      cy.get(".PinMap").should("be.visible");
+      cy.get("[data-element-id=pin-map]").should("be.visible");
 
       cy.window().should("have.prop", "beforeReload", true);
     });
@@ -146,12 +146,12 @@ describe("issue 18061", () => {
       cy.findByText("18061D");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
-      cy.get(".PinMap");
+      cy.get("[data-element-id=pin-map]");
 
       addFilter("Twitter");
       cy.location("search").should("eq", "?category=Twitter");
       cy.findAllByTestId("no-results-image");
-      cy.get(".PinMap").should("not.exist");
+      cy.get("[data-element-id=pin-map]").should("not.exist");
     });
   });
 });

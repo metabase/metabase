@@ -22,7 +22,7 @@
   (testing "underlying-records is available for non-header clicks with at least one breakout"
     (canned/canned-test
       :drill-thru/underlying-records
-      (fn [_test-case context {:keys [click]}]
+      (fn [_test-case context {:keys [click column-kind]}]
         ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
         ;; never occurs in actual pivot tables!
         ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
@@ -31,8 +31,10 @@
         ;;   contains all the breakouts (not exactly 2 as claimed in the spec).
         ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
         ;; code that should be setting the aggregation :value for cell clicks?
+        ;; Tech debt issue: #39380
         (and (#{:cell #_:pivot :legend} click)
-             (seq (:dimensions context)))))))
+             (or (seq (:dimensions context))
+                 (= column-kind :aggregation)))))))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -173,7 +175,7 @@
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
                     :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
+                    :lib/type :metadata/legacy-metric
                     :definition
                     {"source-table" (meta/id :orders)
                      "aggregation" [["count"]]

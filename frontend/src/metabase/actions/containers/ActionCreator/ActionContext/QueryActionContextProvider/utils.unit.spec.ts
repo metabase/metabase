@@ -3,7 +3,7 @@ import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
 } from "metabase/actions/utils";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   NativeDatasetQuery,
   Parameter,

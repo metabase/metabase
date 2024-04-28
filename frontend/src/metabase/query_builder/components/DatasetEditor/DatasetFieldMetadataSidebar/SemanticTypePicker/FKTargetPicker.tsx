@@ -1,3 +1,4 @@
+import { useField } from "formik";
 import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -5,7 +6,8 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import Databases from "metabase/entities/databases";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { DatabaseId } from "metabase-types/api";
 
 type FieldObject = {
   id: number;
@@ -22,13 +24,9 @@ type StateProps = {
 };
 
 type OwnProps = {
-  field: {
-    value: number | null;
-    onChange: (e: { target: { value: number } }) => void;
-  };
-  formField: {
-    databaseId: number;
-  };
+  name: "string";
+  databaseId: DatabaseId;
+  onChange?: (value: string) => void;
 };
 
 type Props = OwnProps & StateProps;
@@ -53,9 +51,8 @@ const SEARCH_PROPERTIES = [
 
 function mapStateToProps(
   state: Record<string, unknown>,
-  { formField }: OwnProps,
+  { databaseId }: OwnProps,
 ) {
-  const { databaseId } = formField;
   return {
     IDFields: Databases.selectors.getIdFields(state, { databaseId }),
   };
@@ -66,13 +63,13 @@ const mapDispatchToProps = {
 };
 
 function FKTargetPicker({
-  field,
-  formField,
+  name,
+  databaseId,
   IDFields,
   fetchDatabaseIDFields,
+  onChange,
 }: Props) {
-  const { value, onChange } = field;
-  const { databaseId } = formField;
+  const [{ value }, __, { setValue }] = useField(name);
 
   useEffect(() => {
     fetchDatabaseIDFields({ id: databaseId });
@@ -83,12 +80,17 @@ function FKTargetPicker({
     [IDFields],
   );
 
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setValue(e.target.value);
+    onChange?.(e.target.value);
+  };
+
   return (
     <Select
       placeholder={t`Select a target`}
       value={value}
       options={options}
-      onChange={onChange}
+      onChange={handleChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
       buttonProps={{

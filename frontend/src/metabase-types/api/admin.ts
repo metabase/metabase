@@ -1,6 +1,8 @@
+export type ApiKeyId = number;
+
 export type ApiKey = {
   name: string;
-  id: number;
+  id: ApiKeyId;
   group: {
     id: number;
     name: string;
@@ -15,11 +17,23 @@ export type ApiKey = {
   };
 };
 
-export interface Log {
-  timestamp: string;
-  process_uuid: string;
-  fqns: string;
-  msg: string;
-  level: string;
-  exception: any;
-}
+export type CreateApiKeyRequest = {
+  name: string;
+  group_id: number;
+};
+
+export type CreateApiKeyResponse = {
+  unmasked_key: string;
+};
+
+export type UpdateApiKeyRequest = {
+  id: ApiKeyId;
+  group_id: number;
+  name: string;
+};
+
+export type UpdateApiKeyResponse = void;
+
+export type RegenerateApiKeyResponse = {
+  unmasked_key: string;
+};

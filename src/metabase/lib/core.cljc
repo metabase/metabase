@@ -16,15 +16,16 @@
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.legacy-metric :as lib.legacy-metric]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
@@ -33,6 +34,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -54,10 +56,10 @@
          lib.filter/keep-me
          lib.filter.update/keep-me
          lib.join/keep-me
+         lib.legacy-metric/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
          lib.order-by/keep-me
@@ -104,7 +106,8 @@
   breakout-column
   breakoutable-columns
   breakouts
-  breakouts-metadata]
+  breakouts-metadata
+  remove-all-breakouts]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -170,6 +173,9 @@
   rtrim
   upper
   lower]
+ [lib.extraction
+  column-extractions
+  extract]
  [lib.fe-util
   dependent-metadata
   expression-clause
@@ -189,6 +195,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
   find-filter-for-legacy-filter
   find-filterable-column-for-legacy-ref
   and
@@ -229,6 +236,8 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
+ [lib.legacy-metric
+  available-legacy-metrics]
  [lib.limit
   current-limit
   limit]
@@ -245,21 +254,21 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metric
-  available-metrics]
  [lib.native
+  engine
+  extract-template-tags
+  has-write-permission
+  native-extras
   native-query
   raw-native-query
-  with-native-query
-  template-tags
-  engine
-  with-template-tags
   required-native-extras
-  native-extras
-  with-native-extras
+  template-tag-card-ids
+  template-tags-referenced-cards
+  template-tags
   with-different-database
-  has-write-permission
-  extract-template-tags]
+  with-native-extras
+  with-native-query
+  with-template-tags]
  [lib.order-by
   change-direction
   order-by
@@ -270,9 +279,10 @@
   normalize]
  [lib.query
   can-run
+  can-save
   query
   stage-count
-  uses-metric?
+  uses-legacy-metric?
   uses-segment?
   with-different-table]
  [lib.ref
@@ -290,12 +300,16 @@
   drop-stage
   drop-empty-stages
   has-clauses?]
+ [lib.swap
+  swap-clauses]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  normalized-query-type
   source-table-id])

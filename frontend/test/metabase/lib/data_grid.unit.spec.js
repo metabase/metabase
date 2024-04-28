@@ -8,7 +8,7 @@ import {
   COLUMN_SORT_ORDER,
   COLUMN_SHOW_TOTALS,
 } from "metabase/lib/data_grid";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 const dimension = i => ({
   name: "D" + i,

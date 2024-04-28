@@ -1,7 +1,7 @@
-import { dataForFormatting } from "metabase-lib/expressions/__support__/shared";
-import { format } from "metabase-lib/expressions/format";
+import { dataForFormatting } from "metabase-lib/v1/expressions/__support__/shared";
+import { format } from "metabase-lib/v1/expressions/format";
 
-describe("metabase-lib/expressions/format", () => {
+describe("metabase-lib/v1/expressions/format", () => {
   describe.each(dataForFormatting)("%s", (_name, cases, opts) => {
     const tests = cases.filter(([, mbql]) => mbql != null);
     it.each(tests)(`should format %s`, (source, mbql) => {

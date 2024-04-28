@@ -8,7 +8,7 @@ import type {
   PopoverClickAction,
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 const ACTIONS = {
   category: {
@@ -35,8 +35,14 @@ export const pivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
   );
 
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+  const DrillPopover = ({ onClick, onClose }: ClickActionPopoverProps) => {
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [

@@ -12,6 +12,8 @@ import {
   questionInfoButton,
   rightSidebar,
   openQuestionsSidebar,
+  editDashboard,
+  sidebar,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -34,12 +36,13 @@ describe("revision history", () => {
 
     it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
       cy.createDashboard().then(({ body }) => {
-        visitAndEditDashboard(body.id);
+        visitDashboard(body.id);
+        editDashboard();
       });
 
       // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
       saveDashboard();
-      cy.icon("pencil").click();
+      editDashboard();
       saveDashboard();
 
       openRevisionHistory();
@@ -71,20 +74,32 @@ describe("revision history", () => {
             });
 
             it("shouldn't create a rearrange revision when adding a card (metabase#6884)", () => {
+              cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+              cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
               cy.createDashboard().then(({ body }) => {
-                visitAndEditDashboard(body.id);
+                visitDashboard(body.id);
+                editDashboard();
               });
+
               openQuestionsSidebar();
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Orders, Count").click();
+              sidebar().findByText("Orders, Count").click();
+              cy.wait("@cardQuery");
               saveDashboard();
+
+              // this is dirty, but seems like the only reliable way
+              // to wait until SET_DASHBOARD_EDITING is dispatched,
+              // so it doesn't close the revisions sidebar
+              cy.wait("@fetchDashboard");
+              cy.wait(100);
+
               openRevisionHistory();
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText(/added a card/)
-                .siblings("button")
-                .should("not.exist");
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText(/rearranged the cards/).should("not.exist");
+              rightSidebar().within(() => {
+                cy.findByText(/added a card/)
+                  .siblings("button")
+                  .should("not.exist");
+                cy.findByText(/rearranged the cards/).should("not.exist");
+              });
             });
 
             // skipped because it's super flaky in CI
@@ -183,11 +198,6 @@ describe("revision history", () => {
 
 function clickRevert(event_name, index = 0) {
   cy.findAllByLabelText(event_name).eq(index).click();
-}
-
-function visitAndEditDashboard(id) {
-  visitDashboard(id);
-  cy.icon("pencil").click();
 }
 
 function openRevisionHistory() {

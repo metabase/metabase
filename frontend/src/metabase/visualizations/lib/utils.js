@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 
@@ -277,11 +277,12 @@ export function getDefaultDimensionAndMetric(series) {
   };
 }
 
-export function getDefaultDimensionsAndMetrics(
-  [{ data }],
+export function getSingleSeriesDimensionsAndMetrics(
+  series,
   maxDimensions = 2,
   maxMetrics = Infinity,
 ) {
+  const { data } = series;
   if (!data) {
     return {
       dimensions: [null],
@@ -338,6 +339,18 @@ export function getDefaultDimensionsAndMetrics(
     dimensions: dimensions.length > 0 ? dimensions.map(c => c.name) : [null],
     metrics: metrics.length > 0 ? metrics.map(c => c.name) : [null],
   };
+}
+
+export function getDefaultDimensionsAndMetrics(
+  rawSeries,
+  maxDimensions = 2,
+  maxMetrics = Infinity,
+) {
+  return getSingleSeriesDimensionsAndMetrics(
+    rawSeries[0],
+    maxDimensions,
+    maxMetrics,
+  );
 }
 
 // Figure out how many decimal places are needed to represent the smallest

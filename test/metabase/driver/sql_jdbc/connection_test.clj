@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -56,7 +56,7 @@
       (let [destroyed?         (atom false)
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
             connection-details {:db "mem:connection_test"}
-            spec               (mdb.spec/spec :h2 connection-details)]
+            spec               (mdb/spec :h2 connection-details)]
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]

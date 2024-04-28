@@ -492,8 +492,6 @@
         (when (seq v)
           v)))))
 
-(def ^:private ^:dynamic *disable-cache* false)
-
 (def ^:private ^:dynamic *disable-init* false)
 
 (declare get)
@@ -524,7 +522,7 @@
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (not-empty
-        (if *disable-cache*
+        (if config/*disable-setting-cache*
           (db-value setting)
           (do
             ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
@@ -702,11 +700,11 @@
   unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                                   (or *disable-cache* (not cache?))]
+        disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
-      (binding [*disable-cache* disable-cache?]
+      (binding [config/*disable-setting-cache* disable-cache?]
         (getter)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -731,9 +729,9 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn (deferred-tru "Error inserting a new Setting:") "\n"
-                   (.getMessage e) "\n"
-                   (deferred-tru "Assuming Setting already exists in DB and updating existing value."))
+         (log/warn "Error inserting a new Setting:\n"
+                   (ex-message e) "\n"
+                   "Assuming Setting already exists in DB and updating existing value.")
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -768,16 +766,15 @@
         setting-name                      (setting-name setting)]
     ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!` function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
-      (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
+      (log/infof "Attempted to set Setting %s to obfuscated value. Ignoring change." setting-name)
       (do
         (when (and deprecated (not (nil? new-value)))
-          (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
-                         setting-name
-                         deprecated)))
+          (log/warnf "Setting %s is deprecated as of Metabase %s and may be removed in a future version."
+                     setting-name deprecated))
         (when (and
                (= :only (:user-local setting))
                (not (should-set-user-local-value? setting)))
-          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*." setting-name)))
+          (log/warnf "Setting %s can only be set in a user-local way, but there are no *user-local-values*." setting-name))
         (if (should-set-user-local-value? setting)
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
@@ -806,7 +803,7 @@
             ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
-            (when-not *disable-cache*
+            (when-not config/*disable-setting-cache*
               (setting.cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
@@ -947,7 +944,7 @@
     (when-not bypass-read-only?
       (when (= setter :none)
         (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name)))))
-    (binding [*disable-cache* (not cache?)]
+    (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 
 
@@ -1338,7 +1335,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e (trs "Error fetching value of Setting"))))
+                         (log/error e "Error fetching value of Setting")))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))

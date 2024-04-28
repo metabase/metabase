@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
-import { Text, Icon } from "metabase/ui";
+import { rem, Text, Icon } from "metabase/ui";
 
 import {
   SearchDropdownFooter,
@@ -36,7 +36,7 @@ export const SearchResultsDropdown = ({
         position="apart"
         align="center"
         px="lg"
-        py="0.625rem"
+        py={rem(10)}
         onClick={goToSearchApp}
         isSelected={isSelected}
       >

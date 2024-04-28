@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, cartesianChartCircle } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "11435",
@@ -29,5 +29,5 @@ describe("issue 25007", () => {
 });
 
 const clickLineDot = ({ index } = {}) => {
-  cy.get(".Visualization .dot").eq(index).click({ force: true });
+  cartesianChartCircle().eq(index).click({ force: true });
 };

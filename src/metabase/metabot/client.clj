@@ -81,7 +81,7 @@
 (defn- default-embedding-endpoint
   "OpenAI is the default completion endpoint\""
   [params options]
-  (log/debugf "Creating embedding...")
+  (log/debug "Creating embedding...")
   (openai.api/create-embedding
    (select-keys params [:model :input])
    options))

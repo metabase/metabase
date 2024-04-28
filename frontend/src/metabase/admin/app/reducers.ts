@@ -14,7 +14,7 @@ import type { AdminPath, AdminPathKey } from "metabase-types/store";
 
 import { disableNotice } from "./actions";
 
-const getAdminPaths: () => AdminPath[] = () => {
+export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
     {
       name: t`Settings`,
@@ -40,6 +40,11 @@ const getAdminPaths: () => AdminPath[] = () => {
       name: t`Permissions`,
       path: "/admin/permissions",
       key: "permissions",
+    },
+    {
+      name: t`Performance`,
+      path: "/admin/performance",
+      key: "performance",
     },
   ];
 

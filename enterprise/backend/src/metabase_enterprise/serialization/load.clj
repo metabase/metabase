@@ -10,9 +10,10 @@
     :refer [fully-qualified-name->context]]
    [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.db :as mdb]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -22,7 +23,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -146,7 +147,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -177,7 +178,7 @@
   (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
 
 (def ^:private ^{:arglists '([])} default-user-id
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
      (let [user (t2/select-one-pk User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
@@ -281,7 +282,7 @@
 
 (defmethod load! "metrics"
   [path context]
-  (maybe-upsert-many! context Metric
+  (maybe-upsert-many! context LegacyMetric
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)
@@ -596,14 +597,14 @@
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :card)
     (catch Throwable e
-      (log/warn e (trs "Could not find context for fully qualified card name {0}" fully-qualified-name)))))
+      (log/warnf e "Could not find context for fully qualified card name %s" fully-qualified-name))))
 
 (defn- resolve-snippet
   [fully-qualified-name]
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :snippet)
     (catch Throwable e
-      (log/debug e (trs "Could not find context for fully qualified snippet name {0}" fully-qualified-name)))))
+      (log/debugf e "Could not find context for fully qualified snippet name %s" fully-qualified-name))))
 
 (defn- resolve-native
   [card]

@@ -7,13 +7,11 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [Database Permissions]]
+   [metabase.models :refer [Database]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user]
    [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
@@ -34,20 +32,12 @@
             trigger))
         (:triggers (task/job-info "metabase.task.sync-and-analyze.job"))))
 
-(deftest perms-test
-  (testing "After creating a Database, All Users group should get full permissions by default"
-    (t2.with-temp/with-temp [Database db]
-      (is (= true
-             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/data-perms-path db))))
-      (is (= true
-             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/feature-perms-path :download :full db))))))
-
-  (testing "After deleting a Database, no permissions for the DB should still exist"
-    (t2.with-temp/with-temp [Database {db-id :id}]
-      (t2/delete! Database :id db-id)
-      (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
+(deftest cleanup-permissions-after-delete-db-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
+    (t2/delete! :model/Database db-id)
+    (testing "All permissions are deleted when we delete the database"
+      (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -58,7 +48,7 @@
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
                  :may-fire-again?     true
-                 :schedule            "0 50 * * * ? *"
+                 :schedule            (mt/malli=? some?)
                  :final-fire-time     nil
                  :data                {"db-id" db-id}}
                 (trigger-for-db db-id)))
@@ -318,3 +308,17 @@
       (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
+
+(deftest hydrate-tables-test
+  (is (= ["CATEGORIES"
+          "CHECKINS"
+          "ORDERS"
+          "PEOPLE"
+          "PRODUCTS"
+          "REVIEWS"
+          "USERS"
+          "VENUES"]
+       (-> (mt/db)
+           (t2/hydrate :tables)
+           :tables
+           (#(map :name %))))))

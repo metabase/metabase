@@ -1,6 +1,6 @@
-import type Field from "metabase-lib/metadata/Field";
-import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
-import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Parameter,
   ParameterValue,

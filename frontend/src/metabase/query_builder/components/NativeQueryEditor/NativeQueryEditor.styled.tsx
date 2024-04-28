@@ -1,7 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
 const aceEditorStyle = css`
@@ -131,7 +133,7 @@ export const NativeQueryEditorRoot = styled.div`
 
   ${aceEditorStyle}
 
-  .GuiBuilder-data {
+  .${QueryBuilderS.GuiBuilderData} {
     border-right: none;
   }
 `;
@@ -161,9 +163,11 @@ export const EditorRoot = styled.div`
   flex: 1 0 auto;
 `;
 
-export const StyledResizableBox = styled(ResizableBox)<{
-  isOpen: boolean;
-}>`
+export const StyledResizableBox = styled(ResizableBox)<
+  ResizableBoxProps & {
+    isOpen: boolean;
+  }
+>`
   display: ${props => (props.isOpen ? "flex" : "none")};
   border-top: 1px solid ${color("border")};
 `;

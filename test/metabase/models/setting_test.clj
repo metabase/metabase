@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
@@ -1122,7 +1123,7 @@
     (is (nil? (test-setting-with-question-mark?)))
     ;; note now question mark on the environmental setting
     (with-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
-      (binding [setting/*disable-cache* false]
+      (binding [config/*disable-setting-cache* false]
         (is (= "resolved" (test-setting-with-question-mark?))))))
   (testing "Setting a setting that would munge the same throws an error"
     (is (= {:existing-setting

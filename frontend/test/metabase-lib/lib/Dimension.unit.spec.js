@@ -2,12 +2,12 @@ import { createMockMetadata } from "__support__/metadata";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
-} from "metabase-lib/Dimension";
-import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+} from "metabase-lib/v1/Dimension";
+import Question from "metabase-lib/v1/Question";
+import Field from "metabase-lib/v1/metadata/Field";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import {
   createSampleDatabase,
   ORDERS,

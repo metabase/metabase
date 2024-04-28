@@ -8,11 +8,12 @@
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
    [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Secret Setting User]]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
@@ -29,7 +30,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- raw-value [keyy]
-  (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
+  (:value (first (jdbc/query {:datasource (mdb/data-source)}
                              [(if (= driver/*driver* :h2)
                                 "select \"VALUE\" from setting where setting.\"KEY\"=?;"
                                 "select value from setting where setting.key=?;") keyy]))))
@@ -75,7 +76,7 @@
 
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues
-                      setting/*disable-cache*         true
+                      config/*disable-setting-cache*         true
                       mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))

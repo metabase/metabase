@@ -3,7 +3,7 @@ import { screen, within } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,

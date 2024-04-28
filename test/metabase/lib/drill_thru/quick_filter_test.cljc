@@ -16,10 +16,12 @@
   (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"
     (canned/canned-test
       :drill-thru/quick-filter
-      (fn [_test-case context {:keys [click column-type]}]
+      (fn [_test-case {:keys [column dimensions] :as _context} {:keys [click column-kind column-type]}]
         (and (= click :cell)
              (not (#{:pk :fk} column-type))
-             (not (lib.types.isa/structured? (:column context))))))))
+             (not (lib.types.isa/structured? column))
+             (or (not= column-kind :aggregation)
+                 (seq dimensions)))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -158,7 +160,7 @@
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
-  (testing "quick-filter not on an aggregation should NOT introduce an new stage"
+  (testing "quick-filter on a breakout should not introduce a new stage"
     (lib.drill-thru.tu/test-drill-application
      {:click-type     :cell
       :query-type     :aggregated

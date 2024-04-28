@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import IconBorder from "metabase/components/IconBorder";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
@@ -15,12 +16,14 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { getValue } from "./utils";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
+const MIN_BAR_HEIGHT = 30;
+const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
 export default class Progress extends Component {
   constructor(props) {
@@ -92,17 +95,13 @@ export default class Progress extends Component {
     const bar = this.barRef.current;
 
     // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
-    bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
-
-    if (this.props.gridSize && this.props.gridSize.height < 4) {
-      pointer.parentNode.style.display = "none";
-      label.parentNode.style.display = "none";
-      // no need to do the rest of the repositioning
-      return;
-    } else {
-      pointer.parentNode.style.display = null;
-      label.parentNode.style.display = null;
-    }
+    // we have to reset height before we can calculate new height
+    bar.style.height = 0;
+    bar.style.height = computeBarHeight({
+      cardHeight: this.props?.gridSize?.height,
+      componentHeight: component.clientHeight,
+      isMobile: this.props.isMobile,
+    });
 
     // reset the pointer transform for these computations
     pointer.style.transform = null;
@@ -176,21 +175,27 @@ export default class Progress extends Component {
     };
 
     return (
-      <div className={cx(this.props.className, "flex layout-centered")}>
+      <div className={cx(this.props.className, CS.flex, CS.layoutCentered)}>
         <div
-          className="flex-full full-height flex flex-column justify-center"
+          className={cx(
+            CS.flexFull,
+            CS.fullHeight,
+            CS.flex,
+            CS.flexColumn,
+            CS.justifyCenter,
+          )}
           style={{ padding: 10, paddingTop: 0 }}
         >
           <div
             ref={this.containerRef}
-            className="relative text-bold text-medium"
+            className={cx(CS.relative, CS.textBold, CS.textMedium)}
             style={{ height: 20 }}
           >
             <div ref={this.labelRef} style={{ position: "absolute" }}>
               {formatValue(value, settings.column(column))}
             </div>
           </div>
-          <div className="relative" style={{ height: 10, marginBottom: 5 }}>
+          <div className={CS.relative} style={{ height: 10, marginBottom: 5 }}>
             <div
               ref={this.pointerRef}
               style={{
@@ -207,7 +212,7 @@ export default class Progress extends Component {
           </div>
           <div
             ref={this.barRef}
-            className={cx("relative", { "cursor-pointer": isClickable })}
+            className={cx(CS.relative, { [CS.cursorPointer]: isClickable })}
             style={{
               backgroundColor: restColor,
               borderRadius: BORDER_RADIUS,
@@ -224,17 +229,27 @@ export default class Progress extends Component {
               }}
             />
             {barMessage && (
-              <div className="flex align-center absolute spread text-white text-bold px2">
+              <div
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.absolute,
+                  CS.spread,
+                  CS.textWhite,
+                  CS.textBold,
+                  CS.px2,
+                )}
+              >
                 <IconBorder borderWidth={2}>
                   <Icon name="check" />
                 </IconBorder>
-                <div className="pl2">{barMessage}</div>
+                <div className={CS.pl2}>{barMessage}</div>
               </div>
             )}
           </div>
-          <div className="mt1">
-            <span className="float-left">0</span>
-            <span className="float-right">{t`Goal ${formatValue(
+          <div className={CS.mt1}>
+            <span className={CS.floatLeft}>0</span>
+            <span className={CS.floatRight}>{t`Goal ${formatValue(
               goal,
               settings.column(column),
             )}`}</span>
@@ -243,4 +258,19 @@ export default class Progress extends Component {
       </div>
     );
   }
+}
+
+function computeBarHeight({ cardHeight, componentHeight, isMobile }) {
+  if (!cardHeight) {
+    return `${MAX_BAR_HEIGHT}px`;
+  }
+
+  const isSmallCard = cardHeight === Progress.minSize.height;
+  if (isSmallCard && !isMobile) {
+    const computedHeight =
+      MIN_BAR_HEIGHT + (componentHeight - COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT);
+    return `${Math.min(MAX_BAR_HEIGHT, computedHeight)}px`;
+  }
+
+  return `${MAX_BAR_HEIGHT}px`;
 }

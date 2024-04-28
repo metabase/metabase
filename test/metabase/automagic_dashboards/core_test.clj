@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
@@ -15,7 +14,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field Metric Segment Table]]
+    :refer [Card Collection Database Field LegacyMetric Segment Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -165,9 +164,9 @@
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
 (deftest source-root-metric-test
-  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Metric"
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/LegacyMetric"
     (testing "The source of a metric is its underlying table."
-      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+      (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)
                                               :definition {:aggregation [[:count]]}}]
         (let [{:keys [entity source]} (#'magic/->root metric)]
           (is (= entity metric))
@@ -234,7 +233,7 @@
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
-  (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)
+  (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)
                                           :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
@@ -341,24 +340,25 @@
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:native   {:query "select * from venues"}
-                        :type     :native
-                        :database (mt/id)}]
-      (mt/with-temp [Collection {collection-id :id} {}
-                     Card       {source-id :id}     {:table_id        nil
-                                                     :collection_id   collection-id
-                                                     :dataset_query   source-query
-                                                     :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
-                     Card       {card-id :id}       {:table_id      nil
-                                                     :collection_id collection-id
-                                                     :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                                :source-table (str "card__" source-id)}
-                                                                     :type     :query
-                                                                     :database lib.schema.id/saved-questions-virtual-database-id}}]
-        (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
+    (mt/with-full-data-perms-for-all-users!
+      (let [source-query {:native   {:query "select * from venues"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Collection {collection-id :id} {}
+                       Card       {source-id :id}     {:table_id        nil
+                                                       :collection_id   collection-id
+                                                       :dataset_query   source-query
+                                                       :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                       Card       {card-id :id}       {:table_id      nil
+                                                       :collection_id collection-id
+                                                       :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                                  :source-table (str "card__" source-id)}
+                                                                       :type     :query
+                                                                       :database lib.schema.id/saved-questions-virtual-database-id}}]
+          (mt/with-test-user :rasta
+            (automagic-dashboards.test/with-dashboard-cleanup
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -709,7 +709,7 @@
 (deftest test-metric-title-test
   (testing "Given the current automagic_dashboards/metric/GenericMetric.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [Metric {metric-name :name :as metric} {:table_id   (mt/id :venues)
+      (mt/with-temp [LegacyMetric {metric-name :name :as metric} {:table_id   (mt/id :venues)
                                                             :definition {:aggregation [[:count]]}}]
         (is (= (format "A look at the %s metrics" metric-name)
                (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil)))))))))
@@ -944,15 +944,13 @@
                  Table    {table-id :id} {:db_id db-id}
                  Field    _ {:table_id table-id}
                  Field    _ {:table_id table-id}
-                 Metric   _ {:table_id table-id}]
+                 LegacyMetric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
-      @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 5
+            (is (= 6
                    (call-count)))))))))
 
 (deftest empty-table-test
@@ -1242,7 +1240,7 @@
         (mt/with-temp [Card card {:table_id        nil
                                   :dataset_query   source-query
                                   :result_metadata (->> (result-metadata-for-query source-query)
-                                                        (mt/with-test-user :rasta)
+                                                        (mt/with-test-user :crowberto)
                                                         (mapv (fn [m]
                                                                 (assoc m
                                                                        :display_name "Frooby"
@@ -1347,10 +1345,10 @@
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric total-orders {:name       "Total Orders"
                                                     :table_id   (mt/id :orders)
                                                     :definition {:aggregation [[:count]]}}
-                               Metric avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                             :table_id   (mt/id :orders)
                                                             :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (testing "A metric links to a seq of a normalized version of itself"
@@ -1410,10 +1408,10 @@
 (deftest combination-grounded-metrics->dashcards-test
   (testing "Dashcard creation example test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
-                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                              :table_id   (mt/id :orders)
                                                              :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta
@@ -1457,10 +1455,10 @@
 (deftest generate-dashboard-pipeline-test
   (testing "Example new pipeline dashboard generation test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
-                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                              :table_id   (mt/id :orders)
                                                              :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta
@@ -1484,7 +1482,7 @@
                 grounded-metrics            (concat (set-score 50 template-grounded-metrics) (set-score 95 user-defined-metrics)
                                                     (let [entity (-> base-context :root :entity)]
                                                       ;; metric x-rays talk about "this" in the template
-                                                      (when (mi/instance-of? :model/Metric entity)
+                                                      (when (mi/instance-of? :model/LegacyMetric entity)
                                                         [{:metric-name       "this"
                                                           :metric-title      (:name entity)
                                                           :metric-definition {:aggregation [(interesting/->reference :mbql entity)]}
@@ -1562,7 +1560,7 @@
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1614,7 +1612,7 @@
 (deftest compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1713,7 +1711,7 @@
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [native-query {:native   {:query "select * from people"}
                             :type     :native
                             :database (mt/id)}]
@@ -1721,7 +1719,7 @@
             [Card {native-card-id :id :as native-card} {:table_id        nil
                                                         :name            "15655"
                                                         :dataset_query   native-query
-                                                        :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
+                                                        :result_metadata (mt/with-test-user :crowberto (result-metadata-for-query native-query))}
              ;card__19169
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:source-table (format "card__%s" native-card-id)

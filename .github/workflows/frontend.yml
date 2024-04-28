@@ -70,7 +70,7 @@ jobs:
   fe-tests-unit:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       JEST_JUNIT_OUTPUT_DIR: ./target/junit

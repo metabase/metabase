@@ -37,7 +37,7 @@ const normalUserName = getFullName(normal);
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/permissions/group").as("getGroups");
-    cy.intercept("GET", "/api/api-key").as("getApiKeys");
+    cy.intercept("GET", "/api/api-key").as("listApiKeys");
     restore();
     cy.signInAsAdmin();
   });
@@ -51,14 +51,17 @@ describe("scenarios > admin > people", () => {
       cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
-      cy.get(".AdminList-items").within(() => {
-        cy.findByText("People").should("have.class", "selected");
+      cy.findByTestId("admin-layout-sidebar").within(() => {
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("People")
+          .should("have.attr", "data-selected", "true");
         cy.log("Switch to 'Groups' and make sure it renders properly");
         cy.findByText("Groups").as("groupsTab").click();
-        cy.findByText("Groups").should("have.class", "selected");
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("Groups")
+          .should("have.attr", "data-selected", "true");
       });
-
-      cy.get(".PageTitle").contains("Groups");
+      cy.findByTestId("admin-pane-page-title").contains("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
 
       cy.log(
@@ -66,7 +69,7 @@ describe("scenarios > admin > people", () => {
       );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All Users").click();
-      cy.get(".PageTitle").contains("All Users");
+      cy.findByTestId("admin-pane-page-title").contains("All Users");
 
       // The same list as for "People"
       assertTableRowsCount(TOTAL_USERS);
@@ -332,7 +335,7 @@ describe("scenarios > admin > people", () => {
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
 
       cy.visit("/admin/people/groups");
-      cy.wait(["@getGroups", "@getApiKeys"]);
+      cy.wait(["@getGroups", "@listApiKeys"]);
 
       cy.findByTestId("admin-panel").within(() => {
         cy.button("Create a group").click();
@@ -355,7 +358,7 @@ describe("scenarios > admin > people", () => {
     it("should display api keys included in a group and display a warning when deleting the group", () => {
       createApiKey("MyApiKey", COLLECTION_GROUP_ID);
       cy.visit("/admin/people/groups");
-      cy.wait(["@getGroups", "@getApiKeys"]);
+      cy.wait(["@getGroups", "@listApiKeys"]);
 
       cy.findByTestId("admin-panel")
         .findByText("collection")
@@ -614,7 +617,9 @@ function clickButton(button_name) {
 }
 
 function assertTableRowsCount(length) {
-  cy.get(".ContentTable tbody tr").should("have.length", length);
+  cy.findByTestId("admin-layout-content")
+    .get("table tbody tr")
+    .should("have.length", length);
 }
 
 function generateUsers(count, groupIds) {

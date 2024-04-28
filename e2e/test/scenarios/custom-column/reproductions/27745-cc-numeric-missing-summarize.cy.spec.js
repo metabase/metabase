@@ -39,7 +39,7 @@ import {
       popover().findByText(/^Sum$/).click();
 
       cy.wait("@dataset");
-      cy.get(".ScalarValue").invoke("text").should("eq", "55");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "55");
 
       cy.findByTestId("sidebar-right")
         .should("be.visible")

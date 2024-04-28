@@ -5,7 +5,7 @@ import { useMount } from "react-use";
 
 import { refreshCurrentUser } from "metabase/redux/user";
 
-import { NotFound } from "./ErrorPages";
+import { NotFound } from "../components/ErrorPages";
 
 type DispatchProps = {
   refreshCurrentUser: () => any;

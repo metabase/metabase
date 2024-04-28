@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -7,6 +8,7 @@ import { t } from "ttag";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
@@ -98,7 +100,7 @@ const DatabaseDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -128,10 +130,21 @@ const DatabaseDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+          <div className={CS.wrapper}>
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -141,7 +154,7 @@ const DatabaseDetail = props => {
                     field={getFormField("description")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this database is interesting`}
@@ -151,7 +164,7 @@ const DatabaseDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this database`}

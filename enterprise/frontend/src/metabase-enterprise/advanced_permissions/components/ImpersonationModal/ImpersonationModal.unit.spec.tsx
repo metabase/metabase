@@ -134,7 +134,7 @@ describe("impersonation modal", () => {
   it("should not update impersonation if it has not changed", async () => {
     const store = await setup({ userAttributes: ["foo"] });
 
-    userEvent.click(screen.getByText(/save/i));
+    await userEvent.click(screen.getByText(/save/i));
 
     expect(
       getImpersonations(store.getState() as AdvancedPermissionsStoreState),
@@ -144,11 +144,11 @@ describe("impersonation modal", () => {
   it("should create impersonation", async () => {
     const store = await setup({ hasImpersonation: false });
 
-    userEvent.click(await screen.findByText(/pick a user attribute/i));
-    userEvent.click(await screen.findByText("foo"));
+    await userEvent.click(await screen.findByText(/pick a user attribute/i));
+    await userEvent.click(await screen.findByText("foo"));
 
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
-    userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
       expect(
@@ -166,11 +166,11 @@ describe("impersonation modal", () => {
   it("should update impersonation", async () => {
     const store = await setup();
 
-    userEvent.click(await screen.findByText(selectedAttribute));
-    userEvent.click(await screen.findByText("bar"));
+    await userEvent.click(await screen.findByText(selectedAttribute));
+    await userEvent.click(await screen.findByText("bar"));
 
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
-    userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
       expect(

@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import { color } from "metabase/lib/colors";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import {
@@ -56,7 +57,7 @@ export const Table = styled.table<{ canSelect: boolean }>`
   }}
 `;
 
-Table.defaultProps = { className: "ContentTable" };
+Table.defaultProps = { className: AdminS.ContentTable };
 
 export const ColumnHeader = styled.th`
   padding: 1em 1em 0.75em !important;
@@ -103,10 +104,12 @@ export const ItemNameCell = styled.td`
   ${ItemLink} {
     padding: 1em;
   }
+
   &:hover {
     ${ItemLink} {
       color: ${color("brand")};
     }
+
     cursor: pointer;
   }
 `;
@@ -134,11 +137,14 @@ export const SortingControlContainer = styled.div<{ isActive: boolean }>`
   color: ${props => (props.isActive ? color("text-dark") : "")};
   cursor: pointer;
   user-select: none;
+
   .Icon {
     visibility: ${props => (props.isActive ? "visible" : "hidden")};
   }
+
   &:hover {
     color: ${color("text-dark")};
+
     .Icon {
       visibility: visible;
     }

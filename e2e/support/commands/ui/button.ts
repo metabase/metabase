@@ -10,7 +10,7 @@ declare global {
        * modal().button("Save").click();
        */
       button(
-        buttonName: string,
+        buttonName: string | RegExp,
         timeout?: number,
       ): Cypress.Chainable<JQuery<HTMLElement>>;
     }

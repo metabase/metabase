@@ -237,12 +237,12 @@ describe("BrowseModels", () => {
 
   it("can collapse collections to hide models within them", async () => {
     renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("collapse Alpha"));
+    await userEvent.click(await screen.findByLabelText("collapse Alpha"));
     expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
     expect(screen.queryByText("Model 1")).not.toBeInTheDocument();
     expect(screen.queryByText("Model 2")).not.toBeInTheDocument();
 
-    userEvent.click(await screen.findByLabelText("collapse Beta"));
+    await userEvent.click(await screen.findByLabelText("collapse Beta"));
     expect(screen.queryByText("Model 3")).not.toBeInTheDocument();
     expect(screen.queryByText("Model 4")).not.toBeInTheDocument();
     expect(screen.queryByText("Model 5")).not.toBeInTheDocument();
@@ -250,9 +250,9 @@ describe("BrowseModels", () => {
 
   it("can expand a collection to see models within it", async () => {
     renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("collapse Alpha"));
+    await userEvent.click(await screen.findByLabelText("collapse Alpha"));
     expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByLabelText("expand Alpha"));
+    await userEvent.click(await screen.findByLabelText("expand Alpha"));
     expect(await screen.findByText("Model 0")).toBeInTheDocument();
   });
 
@@ -276,32 +276,32 @@ describe("BrowseModels", () => {
     renderBrowseModels(9999);
     await screen.findByText("6 of 100");
     expect(screen.queryByText("Model 350")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show all"));
+    await userEvent.click(await screen.findByText("Show all"));
     assertThatModelsExist(300, 399);
   });
 
   it("can show less than all models by clicking 'Show less'", async () => {
     renderBrowseModels(9999);
     expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show all"));
+    await userEvent.click(await screen.findByText("Show all"));
     await screen.findByText("Model 301");
     expect(screen.getByText("Model 399")).toBeInTheDocument();
-    userEvent.click(await screen.findByText("Show less"));
+    await userEvent.click(await screen.findByText("Show less"));
     await screen.findByText("Model 301");
     expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
   });
 
   it("persists show-all state when expanding and collapsing collections", async () => {
     renderBrowseModels(9999);
-    userEvent.click(screen.getByText("Show all"));
+    await userEvent.click(screen.getByText("Show all"));
     expect(await screen.findByText("Model 301")).toBeInTheDocument();
     expect(screen.getByText("Model 399")).toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("collapse Grande"));
+    await userEvent.click(screen.getByLabelText("collapse Grande"));
     expect(screen.queryByText("Model 301")).not.toBeInTheDocument();
     expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("expand Grande"));
+    await userEvent.click(screen.getByLabelText("expand Grande"));
     expect(await screen.findByText("Model 301")).toBeInTheDocument();
     expect(screen.getByText("Model 399")).toBeInTheDocument();
   });
@@ -309,7 +309,7 @@ describe("BrowseModels", () => {
   describe("local storage", () => {
     it("persists the expanded state of collections in local storage", async () => {
       renderBrowseModels(10);
-      userEvent.click(await screen.findByLabelText("collapse Alpha"));
+      await userEvent.click(await screen.findByLabelText("collapse Alpha"));
       expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
         JSON.stringify({ 99: { expanded: false, showAll: false } }),
@@ -327,7 +327,7 @@ describe("BrowseModels", () => {
 
     it("persists the 'show all' state of collections in local storage", async () => {
       renderBrowseModels(9999);
-      userEvent.click(await screen.findByText("Show all"));
+      await userEvent.click(await screen.findByText("Show all"));
       await screen.findByText("Model 399");
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
         JSON.stringify({ 7: { expanded: true, showAll: true } }),
@@ -348,7 +348,7 @@ describe("BrowseModels", () => {
       localStorage.setItem(BROWSE_MODELS_LOCALSTORAGE_KEY, "{invalid json[[[}");
       renderBrowseModels(10);
       expect(await screen.findByText("Model 0")).toBeInTheDocument();
-      userEvent.click(await screen.findByLabelText("collapse Alpha"));
+      await userEvent.click(await screen.findByLabelText("collapse Alpha"));
       expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
       // ignores invalid data and persists the new state
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(

@@ -7,7 +7,7 @@ import { isEmpty } from "metabase/lib/validate";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 export function computeTrend(
   series,

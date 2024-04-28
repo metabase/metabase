@@ -90,7 +90,7 @@ describe("SearchResultsDropdown", () => {
 
     expect(searchItem).toHaveTextContent("Test 1");
 
-    userEvent.click(searchItem);
+    await userEvent.click(searchItem);
 
     expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
   });
@@ -98,7 +98,7 @@ describe("SearchResultsDropdown", () => {
   it("should call goToSearchApp when the footer is clicked", async () => {
     const { goToSearchApp } = await setup();
     const footer = await screen.findByTestId("search-dropdown-footer");
-    userEvent.click(footer);
+    await userEvent.click(footer);
     expect(goToSearchApp).toHaveBeenCalled();
   });
 
@@ -107,7 +107,7 @@ describe("SearchResultsDropdown", () => {
       searchText: "Indexed record",
     });
     const searchItem = screen.getByText("Indexed record");
-    userEvent.click(searchItem);
+    await userEvent.click(searchItem);
     expect(onSearchItemSelect).toHaveBeenCalled();
   });
 

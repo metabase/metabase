@@ -3,7 +3,7 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -93,7 +93,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))

@@ -1,6 +1,12 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
 
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnMove,
+} from "metabase/collections/types";
 import {
   canArchiveItem,
   canMoveItem,
@@ -12,7 +18,7 @@ import {
 import EventSandbox from "metabase/components/EventSandbox";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getSetting } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -21,13 +27,13 @@ import { EntityItemMenu } from "./ActionMenu.styled";
 interface OwnProps {
   className?: string;
   item: CollectionItem;
-  collection: Collection;
+  collection?: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
-  onCopy: (items: CollectionItem[]) => void;
-  onMove: (items: CollectionItem[]) => void;
-  createBookmark?: (id: string, collection: string) => void;
-  deleteBookmark?: (id: string, collection: string) => void;
+  onCopy?: OnCopy;
+  onMove?: OnMove;
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
 }
 
 interface StateProps {
@@ -86,11 +92,11 @@ function ActionMenu({
   }, [item]);
 
   const handleCopy = useCallback(() => {
-    onCopy([item]);
+    onCopy?.([item]);
   }, [item, onCopy]);
 
   const handleMove = useCallback(() => {
-    onMove([item]);
+    onMove?.([item]);
   }, [item, onMove]);
 
   const handleArchive = useCallback(() => {
@@ -116,12 +122,12 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isXrayEnabled={isXrayEnabled}
         canUseMetabot={canUseMetabot}
-        onPin={canPin ? handlePin : null}
-        onMove={canMove ? handleMove : null}
-        onCopy={item.copy ? handleCopy : null}
-        onArchive={canArchive ? handleArchive : null}
+        onPin={canPin ? handlePin : undefined}
+        onMove={canMove ? handleMove : undefined}
+        onCopy={item.copy ? handleCopy : undefined}
+        onArchive={canArchive ? handleArchive : undefined}
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={canPreview ? handleTogglePreview : null}
+        onTogglePreview={canPreview ? handleTogglePreview : undefined}
       />
     </EventSandbox>
   );

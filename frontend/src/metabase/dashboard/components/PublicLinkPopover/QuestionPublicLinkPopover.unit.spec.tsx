@@ -8,7 +8,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -106,7 +106,7 @@ describe("QuestionPublicLinkPopover", () => {
 
   it("should call the Card public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove public link"));
+    await userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
         method: "DELETE",

@@ -44,7 +44,7 @@ describe("QuestionInfoSidebar", () => {
       await setup({ card });
 
       // show input
-      userEvent.click(screen.getByTestId("editable-text"));
+      await userEvent.click(screen.getByTestId("editable-text"));
 
       const input = screen.getByPlaceholderText("Add description");
       expect(input).toHaveValue(card.description);

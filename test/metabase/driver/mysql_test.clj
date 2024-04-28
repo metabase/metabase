@@ -24,7 +24,7 @@
     :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -171,7 +171,7 @@
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
-                 (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
+                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :mysql
@@ -216,7 +216,7 @@
     ;; 08:00:00+00:00, which when truncated is still 2018-08-17. That same scenario in Hong Kong is 2018-08-17
     ;; 00:00:00+08:00, which then becomes 2018-08-16 16:00:00+00:00 when converted to UTC, which will truncate to
     ;; 2018-08-16, instead of 2018-08-17
-    (mt/with-system-timezone-id "Asia/Hong_Kong"
+    (mt/with-system-timezone-id! "Asia/Hong_Kong"
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row
@@ -231,15 +231,20 @@
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
 
+        ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
         ;; with a UTC JVM timezone. This test catches a bug where we are incorrectly assuming a date is in UTC when
         ;; the JVM timezone is different.
         ;;
         ;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code
-        ;; was parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming
+        ;; was parsing the date using Joda Time's date parser, which is in UTC. The MySQL driver code was assuming
         ;; that date was in the system timezone rather than UTC which caused an incorrect conversion and with the
-        ;; trucation, let to it being off by a day
+        ;; trucation, let to it being off by a day.
+        ;;
+        ;; [April, 2024]
+        ;; We no longer use Joda Time at all (this logic has been pulled out to qp.timezone, and uses java-time), but
+        ;; are keeping the test in place since it's still a legitimate case.
         (testing "date formatting when system-timezone != report-timezone"
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
@@ -522,7 +527,7 @@
         (testing "When the query takes longer that the timeout, it is killed."
           (is (thrown-with-msg?
                 Exception
-                #"Killed mysql process id [\d,]+ due to timeout."
+                #"Killed MySQL process id [\d,]+ due to timeout."
                 (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
         (testing "When the query takes less time than the timeout, it is successful."
           (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
@@ -611,9 +616,9 @@
                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                         :status-code 400}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -624,14 +629,14 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
                                               :type       :query}))))))))))))
 
-(deftest parse-grant-test
+(deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
     (is (= {:type            :privileges
             :privilege-types #{:select :insert :update :delete}
@@ -658,7 +663,7 @@
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
 
-(deftest table-name->privileges-test
+(deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
     (is (= {"foo" #{:select}, "bar" #{:select}}
            (#'mysql/table-names->privileges [{:type            :privileges

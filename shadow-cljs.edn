@@ -21,7 +21,7 @@
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
-                metabase.mbql.js
+                metabase.legacy-mbql.js
                 metabase.shared.dashboards.constants
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date

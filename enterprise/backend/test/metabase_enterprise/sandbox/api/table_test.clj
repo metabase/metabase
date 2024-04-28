@@ -19,7 +19,7 @@
 
 (deftest query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
-    (met/with-gtaps {:gtaps      {:venues
+    (met/with-gtaps! {:gtaps      {:venues
                                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                    :query      (mt.tu/restricted-column-query (mt/id))}}
                      :attributes {:cat 50}}
@@ -35,7 +35,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing (str "If a GTAP has a question, but that question doesn't include a clause to restrict the columns that "
                   "are returned, all fields should be returned")
-      (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
+      (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
                                              :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                        :attributes {:cat 50}}
         (is (= all-columns
@@ -44,6 +44,6 @@
 (deftest query-metadata-sandbox-without-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure the endpoint doesn't blow up if the sandbox doesn't have a query associated with it"
-      (met/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps! {:gtaps {:venues {}}}
         (is (= all-columns
                (field-names :rasta)))))))

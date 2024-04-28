@@ -7,6 +7,8 @@ import _ from "underscore";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import CheckBox from "metabase/core/components/CheckBox";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations/index";
@@ -121,7 +123,7 @@ export class AuditTableVisualization extends Component {
       );
     }
     return (
-      <table className="ContentTable">
+      <table className={AdminS.ContentTable}>
         <thead>
           <tr>
             {isSelectable && (
@@ -148,7 +150,7 @@ export class AuditTableVisualization extends Component {
                   {formatColumn(cols[colIndex])}
                   {isSortedByColumn && (
                     <Icon
-                      className="ml1"
+                      className={CS.ml1}
                       name={sorting.isAscending ? "chevronup" : "chevrondown"}
                       size={10}
                     />
@@ -204,8 +206,14 @@ export class AuditTableVisualization extends Component {
                   >
                     <div
                       className={cx({
-                        "rounded p1 text-dark text-monospace text-small bg-light":
-                          column["code"],
+                        [cx(
+                          CS.rounded,
+                          CS.p1,
+                          CS.textDark,
+                          CS.textMonospace,
+                          CS.textSmall,
+                          CS.bgLight,
+                        )]: column["code"],
                       })}
                     >
                       {formatValue(value, {

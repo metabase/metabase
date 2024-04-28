@@ -36,35 +36,35 @@ const setup = ({
 };
 
 describe("ResourceEmbedButton", () => {
-  it('should render "Sharing" label when public sharing is enabled', () => {
+  it('should render "Sharing" label when public sharing is enabled', async () => {
     setup({ isPublicSharingEnabled: true });
-    userEvent.hover(screen.getByLabelText("share icon"));
+    await userEvent.hover(screen.getByLabelText("share icon"));
     expect(screen.getByText("Sharing")).toBeInTheDocument();
   });
 
-  it('should render "Embedding" label when public sharing is disabled', () => {
+  it('should render "Embedding" label when public sharing is disabled', async () => {
     setup({ isPublicSharingEnabled: false });
-    userEvent.hover(screen.getByLabelText("share icon"));
+    await userEvent.hover(screen.getByLabelText("share icon"));
     expect(screen.getByText("Embedding")).toBeInTheDocument();
   });
 
-  it("should display the tooltip text when a tooltip is passed", () => {
+  it("should display the tooltip text when a tooltip is passed", async () => {
     setup({ tooltip: "test tooltip" });
-    userEvent.hover(screen.getByLabelText("share icon"));
+    await userEvent.hover(screen.getByLabelText("share icon"));
     expect(screen.getByText("test tooltip")).toBeInTheDocument();
   });
 
-  it("should be disabled when disabled=true", () => {
+  it("should be disabled when disabled=true", async () => {
     const { onClick } = setup({ disabled: true });
-    userEvent.click(screen.getByTestId("resource-embed-button"));
+    await userEvent.click(screen.getByTestId("resource-embed-button"));
 
     expect(screen.getByTestId("resource-embed-button")).toBeDisabled();
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("should call onClick when the button is clicked", () => {
+  it("should call onClick when the button is clicked", async () => {
     const { onClick } = setup();
-    userEvent.click(screen.getByTestId("resource-embed-button"));
+    await userEvent.click(screen.getByTestId("resource-embed-button"));
     expect(onClick).toHaveBeenCalled();
   });
 });

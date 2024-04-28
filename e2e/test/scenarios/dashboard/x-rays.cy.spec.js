@@ -10,6 +10,8 @@ import {
   popover,
   getDashboardCards,
   saveDashboard,
+  cartesianChartCircle,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -75,7 +77,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.get(".dot")
+    cartesianChartCircle()
       .eq(23) // Random dot
       .click({ force: true });
 
@@ -114,7 +116,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           { visitQuestion: true },
         );
 
-        cy.get(".bar").first().click({ force: true });
+        chartPathWithFillColor("#509EE3").first().click({ force: true });
 
         popover().within(() => {
           cy.findByText("Automatic insights…").click();
@@ -138,7 +140,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           cy.findByText("A look at the number of 15655").should("exist");
         });
 
-        cy.get(".DashCard");
+        cy.findAllByTestId("dashcard-container");
       });
     });
 
@@ -158,7 +160,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         display: "bar",
       });
 
-      cy.get(".bar").first().click();
+      chartPathWithFillColor("#509EE3").first().click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Automatic insights…").click();
@@ -187,7 +189,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "a-look-at-orders");
 
-    cy.get(".Card").contains("18,760");
+    cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
   });
@@ -290,9 +292,10 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .contains("User → Source")
       .should("be.visible");
 
-    cy.get(".bar").should("have.length", 5);
+    // Bars
+    chartPathWithFillColor("#509EE3").should("have.length", 5);
+    chartPathWithFillColor("#509EE3").eq(0).realHover();
 
-    cy.get(".bar").eq(0).realHover();
     popover().within(() => {
       cy.findByText("Affiliate").should("be.visible");
       cy.findByText("3,520").should("be.visible");
@@ -320,13 +323,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.findByRole("tab", { name: "Tab 1" }).click();
         saveDashboard();
 
-        cy.get("circle").eq(0).click({ force: true });
+        cartesianChartCircle().eq(0).click({ force: true });
         popover().findByText("Automatic insights…").click();
         popover().findByText("X-ray").click();
         cy.wait("@dataset", { timeout: 60000 });
 
         // Ensure charts actually got rendered
-        cy.get("text.x-axis-label").contains("Created At");
+        cy.get("text").contains("Created At");
       });
   });
 

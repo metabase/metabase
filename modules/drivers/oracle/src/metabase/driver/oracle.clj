@@ -24,7 +24,6 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
@@ -572,7 +571,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -589,7 +588,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)

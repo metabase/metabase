@@ -2,7 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -33,15 +33,15 @@ const setup = ({ series, question }: SetupProps) => {
   );
 };
 
-describe("barchart", () => {
-  it("should not error when rendering for a question with new breakouts", () => {
+describe("BarChart", () => {
+  it("should not error when rendering for a question without breakouts", () => {
     const question = new Question(
       {
         dataset_query: {
           type: "query",
           query: {
             "source-table": ORDERS_ID,
-            aggregrations: [["count"]],
+            aggregation: [["count"]],
           },
           database: SAMPLE_DB_ID,
         },
@@ -69,6 +69,7 @@ describe("barchart", () => {
         }),
       },
     ];
+
     setup({ question, series });
 
     expect(screen.getByText("X-axis")).toBeInTheDocument();

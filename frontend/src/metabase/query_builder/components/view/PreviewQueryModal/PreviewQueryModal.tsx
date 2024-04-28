@@ -10,7 +10,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
 
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
@@ -32,7 +32,7 @@ export const PreviewQueryModal = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <NativeQueryModal
+    <NativeQueryPreview
       title={t`Query preview`}
       query={query}
       error={error}
@@ -44,6 +44,6 @@ export const PreviewQueryModal = ({
           {t`Learn how to debug SQL errors`}
         </ModalExternalLink>
       )}
-    </NativeQueryModal>
+    </NativeQueryPreview>
   );
 };

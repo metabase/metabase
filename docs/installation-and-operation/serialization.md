@@ -6,7 +6,7 @@ redirect_from:
 
 # Serialization
 
-{% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
+{% include plans-blockquote.html feature="Serialization" %}
 
 Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
@@ -111,11 +111,15 @@ If you're using Postgres or MySQL as your application database, you can import a
 
 ## Exporting a Metabase
 
+> To serialize data on Metabase Cloud, use the [import and export API endpoints](#serializing-metabase-via-the-api)
+
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
 java -jar metabase.jar export export_name
 ```
+
+Where `export_name` can be whatever you want to call the directory.
 
 ## Export options
 
@@ -248,7 +252,6 @@ site-name
 application-font-files
 loading-message
 report-timezone
-show-lighthouse-illustration
 persisted-models-enabled
 enable-content-management?
 subscription-allowed-domains
@@ -259,26 +262,6 @@ custom-formatting
 
 For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md)
 
-## Migrating from the old serialization commands
-
-If you're upgrading from Metabase version 46.X or older, here's what you need to know:
-
-- The `export` command replaces the `dump` command.
-- The `import` command replace the `load` command.
-
-A few other changes to call out:
-
-- The exported YAML files have a slightly different structure:
-  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-  - The file tree is slightly different.
-- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
-
-If you've written scripts to automate serialization, you'll need to:
-
-- Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
-- Update those scripts with the new commands. See the new [export options](#export-options).
-- If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
-
 ## Drop entity IDs
 
 Before exporting, you can also run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids).
@@ -287,7 +270,7 @@ Before exporting, you can also run a Metabase command to [drop entity IDs](./com
 
 > Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-You can initiate imports and exports of serialized Metabase data via the API.
+You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud/) deployments.
 
 There are two endpoints:
 
@@ -468,6 +451,26 @@ curl -X POST \
 ```
 
 Substituting `YOUR_API_KEY` with your API key. The `-o -` option will output logs in the terminal.
+
+## Migrating from the old serialization commands
+
+If you're upgrading from Metabase version 46.X or older, here's what you need to know:
+
+- The `export` command replaces the `dump` command.
+- The `import` command replace the `load` command.
+
+A few other changes to call out:
+
+- The exported YAML files have a slightly different structure:
+  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+  - The file tree is slightly different.
+- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
+
+If you've written scripts to automate serialization, you'll need to:
+
+- Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
+- Update those scripts with the new commands. See the new [export options](#export-options).
+- If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
 
 ## Further reading
 

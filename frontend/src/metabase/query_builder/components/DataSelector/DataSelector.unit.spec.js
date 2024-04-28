@@ -145,7 +145,7 @@ describe("DataSelector", () => {
 
     // db and schema are still visible
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
-    expect(screen.getByText("- First Schema")).toBeInTheDocument();
+    expect(screen.getByText("First Schema")).toBeInTheDocument();
 
     // but other schema is hidden
     expect(screen.queryByText("Second Schema")).not.toBeInTheDocument();
@@ -413,7 +413,7 @@ describe("DataSelector", () => {
 
     expect(
       screen.getByText("Sample Database", {
-        selector: ".List-item--selected h4",
+        selector: "[data-element-id=list-item] h4",
       }),
     ).toBeInTheDocument();
   });

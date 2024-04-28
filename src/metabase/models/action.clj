@@ -71,11 +71,12 @@
 (t2/deftransforms :model/HTTPAction
   {:template transform-json-with-nested-parameters})
 
-(mi/define-simple-hydration-method model
-  :model
-  "Return the Card this action uses as a model."
-  [{:keys [model_id]}]
-  (t2/select-one Card :id model_id))
+(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+  [_model k actions]
+  (mi/instances-with-hydrated-data
+   actions k
+   #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
+   :model_id))
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
@@ -305,8 +306,10 @@
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `t2/select-one` `& options` arg."
+   `options` is [[apply]]ed to [[t2/select]]."
   [& options]
+  ;; TODO -- it's dumb that we're calling `t2/select` rather than `t2/select-one` above, limiting like this should never
+  ;; be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))
 
 (defn- map-assoc-database-enable-actions

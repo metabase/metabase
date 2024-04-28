@@ -63,7 +63,7 @@ describe("11914, 18978, 18977", () => {
     assertNoOpenPopover();
 
     // No drills when clicking on a FK
-    cy.get(".Table-FK").contains("123").click();
+    cy.get(".test-Table-FK").contains("123").click();
     assertNoOpenPopover();
 
     assertIsNotAdHoc();

@@ -36,7 +36,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText(representativeResult);
       });
     });
@@ -51,17 +51,12 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
         FieldFilter.setWidgetType(subType);
 
-        // When we run the first iteration, there will be no default filter value set
-        if (index !== 0) {
-          FieldFilter.clearDefaultFilterValue();
-        }
-
         FieldFilter.openEntryForm({ isFilterRequired: true });
         FieldFilter.addDefaultNumberFilter(value);
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           cy.findByText(representativeResult);
         });
       },

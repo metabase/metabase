@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
@@ -145,7 +147,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           options={MONTH_DAY_OPTIONS}
         />
         {schedule.schedule_frame !== "mid" && (
-          <span className="mx1">
+          <span className={CS.mx1}>
             <Select
               value={schedule.schedule_day}
               onChange={(e: SelectChangeEvent<ScheduleDayType>) =>
@@ -164,7 +166,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
 
     return (
       <PickerRow>
-        <span className="text-bold mx1">{t`on`}</span>
+        <span className={cx(CS.textBold, CS.mx1)}>{t`on`}</span>
         <Select
           value={schedule.schedule_day}
           onChange={(e: SelectChangeEvent<ScheduleDayType>) =>
@@ -185,14 +187,14 @@ class SchedulePicker extends Component<SchedulePickerProps> {
       <PickerSpacedRow>
         <PickerText>{t`at`}</PickerText>
         <Select
-          className="mr1"
+          className={CS.mr1}
           value={minuteOfHour}
           options={MINUTE_OPTIONS}
           onChange={(e: SelectChangeEvent<number>) =>
             this.handleChangeProperty("schedule_minute", e.target.value)
           }
         />
-        <span className="text-bold">{t`minutes past the hour`}</span>
+        <span className={CS.textBold}>{t`minutes past the hour`}</span>
       </PickerSpacedRow>
     );
   }
@@ -212,7 +214,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
         <PickerSpacedRow>
           <PickerText>{t`at`}</PickerText>
           <Select
-            className="mr1"
+            className={CS.mr1}
             value={hour}
             options={HOUR_OPTIONS}
             onChange={(e: SelectChangeEvent<number>) =>

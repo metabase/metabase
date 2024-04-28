@@ -159,4 +159,7 @@
              (formatter/format-geographic-coordinates :type/Latitude 0))))
     (testing "A non-coordinate type just stringifies the value"
       (is (= "0.0"
-             (formatter/format-geographic-coordinates :type/Froobitude 0))))))
+             (formatter/format-geographic-coordinates :type/Froobitude 0))))
+    (testing "We handle missing values"
+      (is (= ""
+             (formatter/format-geographic-coordinates :type/Longitude nil))))))

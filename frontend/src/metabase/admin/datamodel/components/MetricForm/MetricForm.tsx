@@ -14,7 +14,7 @@ import {
 } from "metabase/forms";
 import { formatValue } from "metabase/lib/formatting";
 import { Group, Stack } from "metabase/ui";
-import * as Q from "metabase-lib/queries/utils/query";
+import * as Q from "metabase-lib/v1/queries/utils/query";
 import type { Metric, StructuredQuery } from "metabase-types/api";
 
 import FormInput from "../FormInput";

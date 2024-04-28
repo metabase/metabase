@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
 import { useState, useRef, useEffect } from "react";
 import { connect } from "react-redux";
@@ -9,13 +10,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
-import TokenField, {
-  parseNumberValue,
-  parseStringValue,
-} from "metabase/components/TokenField";
+import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import ValueComponent from "metabase/components/Value";
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { parseNumberValue } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -25,8 +25,8 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Dashboard,
   Parameter,
@@ -68,7 +68,7 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: string;
+  color?: "brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -106,7 +106,7 @@ export interface IFieldValuesWidgetProps {
 }
 
 export function FieldValuesWidgetInner({
-  color = "purple",
+  color,
   maxResults = MAX_SEARCH_RESULTS,
   alwaysShowOptions = true,
   style = {},
@@ -510,7 +510,10 @@ export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
 );
 
 const LoadingState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
+  <div
+    className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
+    style={{ minHeight: 82 }}
+  >
     <LoadingSpinner size={32} />
   </div>
 );

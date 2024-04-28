@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   ParameterTarget,
   ParameterTextTarget,

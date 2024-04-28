@@ -5,8 +5,8 @@ import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type { Collection } from "metabase-types/api";
 
 import { useDataPicker } from "../DataPickerContext";

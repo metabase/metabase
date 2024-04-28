@@ -2,8 +2,9 @@ import type { TextInputProps } from "@mantine/core";
 import { TextInput } from "@mantine/core";
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import _ from "underscore";
+
+import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
 type Value = string | undefined;
 
@@ -53,7 +54,7 @@ export function TextInputBlurChange({
     [normalize, onBlurChange, value],
   );
 
-  useUnmount(() => {
+  useUnmountLayout(() => {
     const lastPropsValue = value || "";
     const currentValue = ref.current?.value || "";
 

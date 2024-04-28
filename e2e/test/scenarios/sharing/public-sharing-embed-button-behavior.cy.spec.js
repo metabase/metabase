@@ -7,7 +7,6 @@ import {
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
-  mantinePopover,
   modal,
   openEmbedModalFromMenu,
   openNewPublicLinkDropdown,
@@ -320,7 +319,7 @@ describe("#39152 sharing an unsaved question", () => {
               format: "html",
             });
 
-            mantinePopover().findByText("csv").click();
+            popover().findByText("csv").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -328,7 +327,7 @@ describe("#39152 sharing an unsaved question", () => {
               format: "csv",
             });
 
-            mantinePopover().findByText("xlsx").click();
+            popover().findByText("xlsx").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -336,7 +335,7 @@ describe("#39152 sharing an unsaved question", () => {
               format: "xlsx",
             });
 
-            mantinePopover().findByText("json").click();
+            popover().findByText("json").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -352,7 +351,7 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           openPublicLinkPopoverFromMenu();
-          mantinePopover().button("Remove public link").click();
+          popover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,

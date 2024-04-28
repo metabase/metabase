@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/components/tree";
 import type { ITreeNodeItem } from "metabase/components/tree/types";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import {
@@ -34,7 +35,7 @@ function PanePicker({
       <LeftPaneContainer hasContent={hasContent}>
         {onBack && (
           <BackButton onClick={onBack}>
-            <Icon name="chevronleft" className="mr1" />
+            <Icon name="chevronleft" className={CS.mr1} />
             {t`Back`}
           </BackButton>
         )}

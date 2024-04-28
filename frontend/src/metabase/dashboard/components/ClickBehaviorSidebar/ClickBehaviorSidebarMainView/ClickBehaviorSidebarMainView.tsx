@@ -1,4 +1,4 @@
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   QuestionDashboardCard,

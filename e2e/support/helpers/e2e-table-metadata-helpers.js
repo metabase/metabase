@@ -5,7 +5,7 @@ export const createMetric = ({
   description = null,
 }) => {
   cy.log(`Create a metric: ${name}`);
-  return cy.request("POST", "/api/metric", {
+  return cy.request("POST", "/api/legacy-metric", {
     name,
     description,
     table_id,

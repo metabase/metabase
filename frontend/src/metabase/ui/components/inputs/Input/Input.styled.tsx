@@ -36,6 +36,11 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
       },
+      label: {
+        color: theme.fn.themeColor("text-medium"),
+        fontSize: getSize({ size, sizes: theme.fontSizes }),
+        marginBottom: theme.spacing.xs,
+      },
       icon: {
         color: theme.fn.themeColor("text-dark"),
       },

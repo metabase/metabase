@@ -8,18 +8,22 @@ import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import "./TableInteractive.module.css";
-
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
+import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { getQueryBuilderMode } from "metabase/query_builder/selectors";
+import {
+  getRowIndexToPKMap,
+  getQueryBuilderMode,
+} from "metabase/query_builder/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Icon, DelayGroup } from "metabase/ui";
 import {
@@ -29,12 +33,14 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
-import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { memoizeClass } from "metabase-lib/utils";
+import * as Lib from "metabase-lib";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
+import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 
+import TableS from "./TableInteractive.module.css";
 import {
   TableDraggable,
   ExpandButton,
@@ -75,6 +81,8 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
+  rowIndexToPkMap: getRowIndexToPKMap(state),
+  isEmbeddingSdk: getIsEmbeddingSdk(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -108,24 +116,50 @@ class TableInteractive extends Component {
     isPivoted: false,
     hasMetadataPopovers: true,
     renderTableHeaderWrapper: children => (
-      <div className="cellData">{children}</div>
-    ),
-    renderTableCellWrapper: children => (
-      <div className={cx({ cellData: children != null && children !== "" })}>
+      <div className={TableS.cellData} data-testid="cell-data">
         {children}
       </div>
     ),
+    renderTableCellWrapper: children => {
+      const hasChildren = children != null && children !== "";
+      return (
+        <div
+          className={cx({
+            [TableS.cellData]: hasChildren,
+          })}
+          data-testid={hasChildren ? "cell-data" : undefined}
+        >
+          {children}
+        </div>
+      );
+    },
   };
 
   UNSAFE_componentWillMount() {
     // for measuring cells:
     this._div = document.createElement("div");
-    this._div.className = "TableInteractive";
+    this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
     this._div.style.display = "inline-block";
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
-    document.body.appendChild(this._div);
+
+    if (this.props.isEmbeddingSdk) {
+      const rootElement = document.getElementById(
+        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+      );
+
+      if (rootElement) {
+        rootElement.appendChild(this._div);
+      } else {
+        console.warn(
+          // eslint-disable-next-line no-literal-metabase-strings -- not UI string
+          "Failed to find Embedding SDK provider component. Have you forgot to add MetabaseProvider?",
+        );
+      }
+    } else {
+      document.body.appendChild(this._div);
+    }
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
@@ -140,14 +174,14 @@ class TableInteractive extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    const { card, data } = this.props;
-    const { card: nextCard, data: nextData } = newProps;
+    const { question, data } = this.props;
+    const { question: nextQuestion, data: nextData } = newProps;
 
     const isDataChange =
       data && nextData && !_.isEqual(data.cols, nextData.cols);
     const isDatasetStatusChange =
-      isAdHocModelQuestionCard(nextCard, card) ||
-      isAdHocModelQuestionCard(card, nextCard);
+      isAdHocModelQuestion(nextQuestion, question) ||
+      isAdHocModelQuestion(question, nextQuestion);
 
     if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
@@ -184,11 +218,9 @@ class TableInteractive extends Component {
       column => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
-    const newShowDetailState = !(
-      isPivoted ||
-      hasAggregation ||
-      isNotebookPreview
-    );
+    const newShowDetailState =
+      !(isPivoted || hasAggregation || isNotebookPreview) &&
+      !this.props.isEmbeddingSdk;
 
     if (newShowDetailState !== this.state.showDetailShortcut) {
       this.setState({
@@ -389,6 +421,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _getCellClickedObjectCached(
     data,
@@ -444,6 +477,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
@@ -477,17 +511,24 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick = rowIndex => {
-    const objectId = this.state.IDColumn
-      ? this.props.data.rows[rowIndex][this.state.IDColumnIndex]
-      : rowIndex;
-    return e => this.props.onZoomRow(objectId);
+  pkClick = rowIndex => () => {
+    let objectId;
+
+    if (this.state.IDColumn) {
+      objectId = this.props.data.rows[rowIndex][this.state.IDColumnIndex];
+    } else {
+      objectId = this.props.rowIndexToPkMap[rowIndex] ?? rowIndex;
+    }
+
+    this.props.onZoomRow(objectId);
   };
 
   onKeyDown = event => {
     const detailEl = this.detailShortcutRef.current;
     const visibleDetailButton =
-      !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
+      !!detailEl &&
+      Array.from(detailEl.classList).includes(CS.show) &&
+      detailEl;
     const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
@@ -560,17 +601,23 @@ class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx(
-          "TableInteractive-cellWrapper text-dark hover-parent hover--visibility",
+          TableS.TableInteractiveCellWrapper,
+          "test-TableInteractive-cellWrapper",
+          CS.textDark,
+          CS.hoverParent,
+          CS.hoverVisibility,
           {
-            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-            padLeft: columnIndex === 0 && !showDetailShortcut,
-            "TableInteractive-cellWrapper--lastColumn":
+            [TableS.TableInteractiveCellWrapperFirstColumn]: columnIndex === 0,
+            "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            [TableS.padLeft]: columnIndex === 0 && !showDetailShortcut,
+            "test-TableInteractive-cellWrapper--lastColumn":
               columnIndex === cols.length - 1,
-            "TableInteractive-emptyCell": value == null,
-            "cursor-pointer": isClickable,
-            "justify-end": isColumnRightAligned(column),
-            "Table-ID": value != null && isID(column),
-            "Table-FK": value != null && isFK(column),
+            "test-TableInteractive-emptyCell": value == null,
+            [CS.cursorPointer]: isClickable,
+            [CS.justifyEnd]: isColumnRightAligned(column),
+            [TableS.TableID]: value != null && isID(column),
+            "test-Table-ID": value != null && isID(column),
+            "test-Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
           },
         )}
@@ -588,7 +635,7 @@ class TableInteractive extends Component {
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
-            className="hover-child"
+            className={CS.hoverChild}
             small
             borderless
             iconSize={10}
@@ -697,13 +744,16 @@ class TableInteractive extends Component {
     const isSorted = sortDirection != null;
     const isAscending = sortDirection === "asc";
 
-    const fieldInfoPopoverTestId = "field-info-popover";
+    const columnInfoPopoverTestId = "field-info-popover";
+    const question = this.props.question;
+    const query = question?.query();
+    const stageIndex = -1;
 
     return (
       <TableDraggable
-        /* needs to be index+name+counter so Draggable resets after each drag */
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
+        /* needs to be index+name+counter so Draggable resets after each drag */
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -749,7 +799,6 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -760,18 +809,28 @@ class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData",
+            TableS.TableInteractiveCellWrapper,
+            "test-TableInteractive-cellWrapper",
+            TableS.TableInteractiveHeaderCellData,
+            "test-TableInteractive-headerCellData",
             {
-              "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-              padLeft: columnIndex === 0 && !showDetailShortcut,
-              "TableInteractive-cellWrapper--lastColumn":
+              [TableS.TableInteractiveCellWrapperFirstColumn]:
+                columnIndex === 0,
+              "test-TableInteractive-cellWrapper--firstColumn":
+                columnIndex === 0,
+              [TableS.padLeft]: columnIndex === 0 && !showDetailShortcut,
+              "test-TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
-              "TableInteractive-cellWrapper--active": isDragging,
-              "TableInteractive-headerCellData--sorted": isSorted,
-              "cursor-pointer": isClickable,
-              "justify-end": isRightAligned,
+              [TableS.TableInteractiveHeaderCellDataSorted]: isSorted,
+              "test-TableInteractive-headerCellData--sorted": isSorted,
+              [CS.z1]: isDragging,
+              [CS.cursorPointer]: isClickable,
+              [CS.justifyEnd]: isRightAligned,
             },
           )}
+          role="columnheader"
+          aria-label={columnTitle}
+          data-testid={isVirtual ? undefined : "header-cell"}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
@@ -781,9 +840,11 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <FieldInfoPopover
+          <QueryColumnInfoPopover
             placement="bottom-start"
-            field={column}
+            query={query}
+            stageIndex={-1}
+            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
             showFingerprintInfo
@@ -792,26 +853,26 @@ class TableInteractive extends Component {
               <Ellipsified tooltip={columnTitle}>
                 {isSortable && isRightAligned && (
                   <Icon
-                    className="Icon mr1"
+                    className={cx("Icon", CS.mr1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
-                    data-testid={fieldInfoPopoverTestId}
+                    data-testid={columnInfoPopoverTestId}
                   />
                 )}
                 {columnTitle}
                 {isSortable && !isRightAligned && (
                   <Icon
-                    className="Icon ml1"
+                    className={cx("Icon", CS.ml1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
-                    data-testid={fieldInfoPopoverTestId}
+                    data-testid={columnInfoPopoverTestId}
                   />
                 )}
               </Ellipsified>,
               column,
               columnIndex,
             )}
-          </FieldInfoPopover>
+          </QueryColumnInfoPopover>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}
@@ -921,7 +982,7 @@ class TableInteractive extends Component {
       if (newIndex >= this.props.data.rows.length) {
         return;
       }
-      hoverDetailEl.classList.add("show");
+      hoverDetailEl.classList.add(CS.show);
       hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
       hoverDetailEl.dataset.showDetailRowindex = newIndex;
       hoverDetailEl.onclick = this.pkClick(newIndex);
@@ -929,14 +990,14 @@ class TableInteractive extends Component {
     }
 
     const targetOffset = event?.currentTarget?.offsetTop;
-    hoverDetailEl.classList.add("show");
+    hoverDetailEl.classList.add(CS.show);
     hoverDetailEl.style.top = `${targetOffset - scrollOffset}px`;
     hoverDetailEl.dataset.showDetailRowindex = rowIndex;
     hoverDetailEl.onclick = this.pkClick(rowIndex);
   };
 
   handleLeaveRow = () => {
-    this.detailShortcutRef.current.classList.remove("show");
+    this.detailShortcutRef.current.classList.remove(CS.show);
   };
 
   handleOnMouseEnter = () => {
@@ -980,18 +1041,21 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
-                  "TableInteractive--pivot": this.props.isPivoted,
-                  "TableInteractive--ready": this.state.contentWidths,
-                  // no hover if we're dragging a column
-                  "TableInteractive--noHover": this.state.dragColIndex != null,
-                })}
+                className={cx(
+                  className,
+                  TableS.TableInteractive,
+                  "test-TableInteractive",
+                  CS.relative,
+                  {
+                    [TableS.TableInteractivePivot]: this.props.isPivoted,
+                  },
+                )}
                 onMouseEnter={this.handleOnMouseEnter}
                 onMouseLeave={this.handleOnMouseLeave}
                 data-testid="TableInteractive-root"
               >
                 <canvas
-                  className="spread"
+                  className={CS.spread}
                   style={{ pointerEvents: "none", zIndex: 999 }}
                   width={width}
                   height={height}
@@ -999,7 +1063,7 @@ class TableInteractive extends Component {
                 {!!gutterColumn && (
                   <>
                     <div
-                      className="TableInteractive-header TableInteractive--noHover"
+                      className={TableS.TableInteractiveHeader}
                       style={{
                         position: "absolute",
                         top: 0,
@@ -1011,7 +1075,7 @@ class TableInteractive extends Component {
                     />
                     <div
                       id="gutter-column"
-                      className="TableInteractive-gutter"
+                      className={TableS.TableInteractiveGutter}
                       style={{
                         position: "absolute",
                         top: headerHeight,
@@ -1038,7 +1102,10 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx(
+                    TableS.TableInteractiveHeader,
+                    CS.scrollHideAll,
+                  )}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}
@@ -1047,7 +1114,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.tableHeaderRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1076,7 +1143,7 @@ class TableInteractive extends Component {
                   rowHeight={ROW_HEIGHT}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.cellRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1104,6 +1171,7 @@ class TableInteractive extends Component {
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();
+
     // console.profile();
     function next() {
       grid.scrollTop = top;
@@ -1122,6 +1190,7 @@ class TableInteractive extends Component {
         }
       }, 40);
     }
+
     next();
   }
 }
@@ -1142,7 +1211,11 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    className="TableInteractive-cellWrapper cursor-pointer"
+    className={cx(
+      TableS.TableInteractiveCellWrapper,
+      "test-TableInteractive-cellWrapper",
+      CS.cursorPointer,
+    )}
     ref={ref}
     style={{
       position: "absolute",
@@ -1159,7 +1232,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
         iconOnly
         iconSize={10}
         icon="expand"
-        className="TableInteractive-detailButton"
+        className={CS.TableInteractiveDetailButton}
       />
     </Tooltip>
   </div>

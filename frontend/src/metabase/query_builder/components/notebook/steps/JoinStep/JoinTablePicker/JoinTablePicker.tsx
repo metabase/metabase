@@ -9,7 +9,7 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../../NotebookCell";
@@ -58,7 +58,7 @@ export function JoinTablePicker({
 
   const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || isReadOnly;
+  const isDisabled = isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
@@ -76,6 +76,7 @@ export function JoinTablePicker({
           <JoinTableColumnPicker columnPicker={columnPicker} />
         ) : null
       }
+      containerStyle={CONTAINER_STYLE}
       rightContainerStyle={RIGHT_CONTAINER_STYLE}
       aria-label={t`Right table`}
     >
@@ -127,6 +128,10 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
   );
 }
 
+const CONTAINER_STYLE = {
+  padding: 0,
+};
+
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
   height: 37,
@@ -141,7 +146,7 @@ function getSelectedDataBucketId(
     return undefined;
   }
   if (isModelDataSource) {
-    return DATA_BUCKET.DATASETS;
+    return DATA_BUCKET.MODELS;
   }
   return undefined;
 }

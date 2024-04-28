@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { useMemo } from "react";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   QuestionDashboardCard,

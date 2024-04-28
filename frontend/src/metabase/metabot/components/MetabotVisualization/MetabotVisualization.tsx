@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabotMode } from "metabase/visualizations/click-actions/modes/MetabotMode";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { State } from "metabase-types/store";
 
 import { getQueryResultsError, getRawSeries } from "../../selectors";

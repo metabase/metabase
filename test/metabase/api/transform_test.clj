@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
@@ -19,7 +17,7 @@
 (deftest transform-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
     (testing "Run the transform and make sure it produces the correct result"
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (with-test-transform-specs
           (with-test-domain-entity-specs
             (mt/with-model-cleanup [Card Collection]
@@ -35,9 +33,6 @@
 (deftest permissions-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
     (testing "Do we correctly check for permissions?"
-      (try
-        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+      (mt/with-no-data-perms-for-all-users!
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (test-endpoint))))
-        (finally
-          (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))))
+               (mt/user-http-request :rasta :get 403 (test-endpoint))))))))

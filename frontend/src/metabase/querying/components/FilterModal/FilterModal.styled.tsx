@@ -15,6 +15,8 @@ interface ColumnItemRootProps extends BoxProps {
 
 export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
   border-bottom: 1px solid ${color("border")};
+  padding: 1rem 2rem;
+  padding-left: 0;
 
   &:last-of-type {
     border-bottom: none;

@@ -20,7 +20,7 @@ it("should configure data model settings", () => {
     "updateProductId",
   );
 
-  cy.get(".AdminList").findByText("Orders").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Orders").click();
 
   cy.findByDisplayValue("Product ID")
     .parent()
@@ -37,7 +37,7 @@ it("should configure data model settings", () => {
   cy.wait("@updateProductId");
 
   cy.visit(sampleDBDataModelPage);
-  cy.get(".AdminList").findByText("Reviews").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Reviews").click();
   cy.intercept("POST", `/api/field/${REVIEWS.RATING}/values`).as(
     "remapRatingValues",
   );
@@ -71,7 +71,7 @@ it("should configure data model settings", () => {
 
   // Hide PRODUCTS.EAN
   cy.visit(sampleDBDataModelPage);
-  cy.get(".AdminList").findByText("Products").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Products").click();
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.EAN}`).as("hideEan");
 
@@ -103,7 +103,7 @@ it("should configure data model settings", () => {
   cy.wait("@updatePriceField");
 
   // Hide PEOPLE.PASSWORD
-  cy.get(".AdminList").findByText("People").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("People").click();
 
   cy.intercept("PUT", `/api/field/${PEOPLE.PASSWORD}`).as("hidePassword");
 

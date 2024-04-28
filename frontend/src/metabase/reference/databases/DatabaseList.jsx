@@ -8,6 +8,7 @@ import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 
@@ -46,7 +47,7 @@ class DatabaseList extends Component {
       });
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
@@ -54,7 +55,7 @@ class DatabaseList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper">
+              <div className={CS.wrapper}>
                 <List>
                   {databases.map(database => (
                     <ListItem

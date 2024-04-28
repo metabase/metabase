@@ -6,7 +6,6 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -86,7 +85,7 @@
                                                     :ended_at   (t/instant end-time-ms)
                                                     :duration   duration-ms)))
       (catch Throwable e
-        (log/warn e (trs "Error saving task history"))))))
+        (log/warn e "Error saving task history")))))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."

@@ -5,6 +5,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import EditBar from "metabase/components/EditBar";
+import CS from "metabase/css/core/index.css";
 import { updateDashboard } from "metabase/dashboard/actions";
 import {
   getIsHeaderVisible,
@@ -58,7 +59,7 @@ export function DashboardHeaderComponent({
   editingButtons = [],
   editWarning,
   headerButtons = [],
-  headerClassName = "py1 lg-py2 xl-py3 wrapper",
+  headerClassName = cx(CS.py1, CS.lgPy2, CS.xlPy3, CS.wrapper),
   location,
   isEditing,
   isNavBarOpen,
@@ -116,7 +117,7 @@ export function DashboardHeaderComponent({
         />
       )}
       {editWarning && (
-        <EditWarning className="wrapper">
+        <EditWarning className={CS.wrapper}>
           <span>{editWarning}</span>
         </EditWarning>
       )}

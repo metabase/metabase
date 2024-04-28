@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
 
-import DateQuarterYearWidget from "./DateQuarterYearWidget";
+import { DateQuarterYearWidget } from "./DateQuarterYearWidget";
 
 export default {
   title: "Parameters/DateQuarterYearWidget",

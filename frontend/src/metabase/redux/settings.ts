@@ -20,7 +20,7 @@ export const refreshSiteSettings = createAsyncThunk(
 );
 
 export const settings = createReducer(
-  { values: window.MetabaseBootstrap, loading: false },
+  { values: window.MetabaseBootstrap || {}, loading: false },
   builder => {
     builder.addCase(refreshSiteSettings.pending, state => {
       state.loading = true;
@@ -40,7 +40,7 @@ export const updateUserSetting = createThunkAction(
   UPDATE_USER_SETTING,
   function <K extends keyof UserSettings>(setting: {
     key: K;
-    value: UserSettings[K];
+    value: Exclude<UserSettings[K], undefined>;
   }) {
     return async function (dispatch) {
       try {

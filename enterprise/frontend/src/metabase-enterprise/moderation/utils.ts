@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 export const getVerifyQuestionTitle = (question: Question): string => {
   const type = question.type();

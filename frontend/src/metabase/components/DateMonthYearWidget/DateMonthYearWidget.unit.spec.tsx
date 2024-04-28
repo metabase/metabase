@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import DateMonthYearWidget from "./DateMonthYearWidget";
+import { DateMonthYearWidget } from "./DateMonthYearWidget";
 
 describe("DateMonthYearWidget", () => {
   it("should render correctly", () => {

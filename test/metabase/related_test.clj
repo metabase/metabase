@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Metric Revision Segment]]
+    :refer [Card Collection Dashboard DashboardCard LegacyMetric Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -45,11 +45,11 @@
 
 (defn- do-with-world [f]
   (mt/with-temp [Collection {collection-id :id} {}
-                 Metric     {metric-id-a :id} (mt/$ids venues
+                 LegacyMetric     {metric-id-a :id} (mt/$ids venues
                                                        {:table_id   $$venues
                                                         :definition {:source-table $$venues
                                                                      :aggregation  [[:sum $price]]}})
-                 Metric     {metric-id-b :id} (mt/$ids venues
+                 LegacyMetric     {metric-id-b :id} (mt/$ids venues
                                                        {:table_id   $$venues
                                                         :definition {:source-table $$venues
                                                                      :aggregation  [[:count]]}})
@@ -125,7 +125,7 @@
     (is (= {:table    (mt/id :venues)
             :metrics  [metric-id-b]
             :segments (sort [segment-id-a segment-id-b])}
-           (->> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id-a))
+           (->> (mt/user-http-request :crowberto :get 200 (format "legacy-metric/%s/related" metric-id-a))
                 result-mask)))))
 
 (deftest related-segments-test

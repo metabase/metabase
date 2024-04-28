@@ -2,6 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
 class DefaultLogoIcon extends Component {
@@ -18,7 +19,11 @@ class DefaultLogoIcon extends Component {
     const { dark, height, width } = this.props;
     return (
       <svg
-        className={cx("Icon", { "text-brand": !dark }, { "text-white": dark })}
+        className={cx(
+          "Icon",
+          { [CS.textBrand]: !dark },
+          { [CS.textWhite]: dark },
+        )}
         viewBox="0 0 66 85"
         width={width}
         height={height}

@@ -1,0 +1,27 @@
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-css-modules"],
+  "rules": {
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "custom-property-pattern": null,
+    "function-no-unknown": [
+      true,
+      { "ignoreFunctions": ["color-mod", "alpha", "blackness"] }
+    ],
+    "import-notation": "string",
+    "media-feature-range-notation": "prefix",
+    "no-descending-specificity": null,
+    "property-no-vendor-prefix": null,
+    "selector-id-pattern": null,
+    "selector-class-pattern": null,
+    "selector-no-vendor-prefix": null,
+    "value-keyword-case": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "shorthand-property-no-redundant-values": null,
+    "declaration-block-no-duplicate-properties": [
+      true,
+      { "ignoreProperties": ["composes"] }
+    ],
+    "comment-empty-line-before": null
+  }
+}

@@ -15,6 +15,7 @@
 .ChartWithLegend .LegendWrapper {
   flex-basis: auto;
   flex-grow: 1;
+
   /* allow legend and spacer to shrink */
   min-width: 0;
   min-height: 0;
@@ -40,6 +41,7 @@
 .ChartWithLegend.small .Legend {
   display: none;
 }
+
 .ChartWithLegend.small .Chart {
   flex: 1;
 }
@@ -48,17 +50,21 @@
 .ChartWithLegend.vertical {
   flex-direction: column-reverse;
 }
+
 .ChartWithLegend.vertical .Legend {
   flex-shrink: 1;
   overflow: hidden;
 }
+
 .ChartWithLegend.vertical .LegendWrapper {
   flex-direction: column;
 }
+
 .ChartWithLegend.vertical.flexChart .Legend {
   flex-grow: 0;
   flex-shrink: 0;
 }
+
 .ChartWithLegend.vertical.flexChart .Chart {
   flex-grow: 1;
   flex-shrink: 1;
@@ -69,18 +75,22 @@
 .ChartWithLegend.horizontal {
   flex-direction: row;
 }
+
 .ChartWithLegend.horizontal .Legend {
   flex-grow: 0;
   flex-shrink: 1;
   overflow: hidden;
 }
+
 .ChartWithLegend.horizontal .LegendWrapper {
   flex-direction: row;
 }
+
 .ChartWithLegend.horizontal.flexChart .Legend {
   flex-grow: 0;
   flex-shrink: 0;
 }
+
 .ChartWithLegend.horizontal.flexChart .Chart {
   flex-grow: 1;
   flex-shrink: 1;

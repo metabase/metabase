@@ -1,19 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
-import Field from "metabase-lib/metadata/Field";
-import ForeignKey from "metabase-lib/metadata/ForeignKey";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Metric from "metabase-lib/metadata/Metric";
-import Schema from "metabase-lib/metadata/Schema";
-import Segment from "metabase-lib/metadata/Segment";
-import Table from "metabase-lib/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import Question from "metabase-lib/v1/Question";
+import Database from "metabase-lib/v1/metadata/Database";
+import Field from "metabase-lib/v1/metadata/Field";
+import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
+import Schema from "metabase-lib/v1/metadata/Schema";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import Table from "metabase-lib/v1/metadata/Table";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getFieldValues,
   getRemappings,
-} from "metabase-lib/queries/utils/field";
+} from "metabase-lib/v1/queries/utils/field";
 import type {
   Card,
   NormalizedDatabase,
@@ -339,10 +339,8 @@ function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
 function hydrateTableForeignKeys(
   table: Table,
   metadata: Metadata,
-): ForeignKey[] {
-  const fks = table.getPlainObject().fks ?? [];
-
-  return fks.map(fk => {
+): ForeignKey[] | undefined {
+  return table.getPlainObject().fks?.map(fk => {
     const instance = createForeignKey(fk, metadata);
     instance.origin = metadata.field(fk.origin_id) ?? undefined;
     instance.destination = metadata.field(fk.destination_id) ?? undefined;

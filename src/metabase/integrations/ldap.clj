@@ -9,6 +9,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -155,8 +156,15 @@
 
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
-  ^LDAPConnectionPool []
-  (ldap/connect (settings->ldap-options)))
+  ^LDAPConnectionPool
+  []
+  (let [options (settings->ldap-options)]
+    (log/debugf "Opening LDAP connection with options %s" (u/pprint-to-str options))
+    (try
+      (ldap/connect options)
+      (catch LDAPException e
+        (log/errorf "Failed to obtain LDAP connection: %s" (.getMessage e))
+        (throw e)))))
 
 (defn do-with-ldap-connection
   "Impl for [[with-ldap-connection]] macro."
@@ -202,10 +210,13 @@
              group-base-error)
            (catch Exception _e
              group-base-error)))
+       (log/debug "LDAP connection test successful")
        {:status :SUCCESS}))
     (catch LDAPException e
+       (log/debug "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
+      (log/debug "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e)})))
 
 (defn test-current-ldap-details

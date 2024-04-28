@@ -5,7 +5,9 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
@@ -13,7 +15,8 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -136,30 +139,38 @@
         (t2/delete! Database :id (u/the-id db))
         (throw e)))))
 
+(defn set-test-db-permissions!
+  "Set data permissions for a newly created test database. We need to do this explicilty since new DB perms are
+  set dynamically based on permissions for other existing DB, but we almost always want to start with full perms in tests."
+  [new-db-id]
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/view-data :unrestricted)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
     (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id "UTC"
+      (test.tz/with-system-timezone-id! "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
           db                 (first (t2/insert-returning-instances! Database
-                                                                    :name    database-name
-                                                                    :engine  (u/qualified-name driver)
-                                                                    :details connection-details))]
+                                                                    (merge
+                                                                     (t2.with-temp/with-temp-defaults :model/Database)
+                                                                     {:name    database-name
+                                                                      :engine  (u/qualified-name driver)
+                                                                      :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
+      (set-test-db-permissions! (u/the-id db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
-      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
-                      {:driver        driver
-                       :database-name database-name}
-                      e)))))
+      (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
   (letfn [(thunk []

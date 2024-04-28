@@ -2,6 +2,7 @@
 import PropTypes from "prop-types";
 import { Fragment } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Text } from "metabase/ui";
 
 export const BoldCode = ({ children, ...props }) => (
@@ -12,13 +13,13 @@ export const BoldCode = ({ children, ...props }) => (
 
 const Code = ({ children, block }) => {
   if (block) {
-    return <div className="text-code">{children}</div>;
+    return <div className={CS.textCode}>{children}</div>;
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
     return (
       <span>
         {children.split(/\n/g).map((line, index) => (
           <Fragment key={index}>
-            <span className="text-code" style={{ lineHeight: "1.8em" }}>
+            <span className={CS.textCode} style={{ lineHeight: "1.8em" }}>
               {line}
             </span>
             <br />
@@ -27,7 +28,7 @@ const Code = ({ children, block }) => {
       </span>
     );
   } else {
-    return <span className="text-code">{children}</span>;
+    return <span className={CS.textCode}>{children}</span>;
   }
 };
 

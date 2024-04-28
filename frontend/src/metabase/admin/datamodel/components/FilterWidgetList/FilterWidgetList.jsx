@@ -1,7 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 import { FilterWidget } from "../FilterWidget";
 
@@ -38,7 +42,14 @@ export class FilterWidgetList extends Component {
   render() {
     const { query, filters } = this.props;
     return (
-      <div className="Query-filterList ml2 scroll-x scroll-show">
+      <div
+        className={cx(
+          QueryBuilderS.QueryFilterList,
+          CS.ml2,
+          CS.scrollX,
+          CS.scrollShow,
+        )}
+      >
         {filters.map((filter, index) => (
           <FilterWidget
             key={index}

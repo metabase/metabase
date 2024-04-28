@@ -2,6 +2,9 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import type * as React from "react";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+
 const DEFAULT_STYLE = {
   borderWidth: 2,
 };
@@ -26,10 +29,10 @@ const LimitInput = ({
   ...props
 }: LimitInputProps) => (
   <input
-    className={cx("input", className, {
+    className={cx(CS.input, className, {
       // HACK: reuse Button styles
-      "Button--small": small,
-      "Button-medium": medium,
+      [ButtonsS.ButtonSmall]: small,
+      [ButtonsS.ButtonMedium]: medium,
     })}
     style={{ ...DEFAULT_STYLE, ...style }}
     {...props}

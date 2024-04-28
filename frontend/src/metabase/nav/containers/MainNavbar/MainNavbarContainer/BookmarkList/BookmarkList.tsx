@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
   restrictToVerticalAxis,
@@ -14,6 +15,8 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Sortable } from "metabase/core/components/Sortable";
 import Tooltip from "metabase/core/components/Tooltip";
+import GrabberS from "metabase/css/components/grabber.module.css";
+import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -122,7 +125,7 @@ const BookmarkList = ({
   }, [bookmarks]);
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const onToggleBookmarks = useCallback(isVisible => {
@@ -130,15 +133,15 @@ const BookmarkList = ({
   }, []);
 
   const handleSortStart = useCallback(() => {
-    document.body.classList.add("grabbing");
+    document.body.classList.add(GrabberS.grabbing);
     setIsSorting(true);
   }, []);
 
   const handleSortEnd = useCallback(
-    input => {
-      document.body.classList.remove("grabbing");
+    (input: DragEndEvent) => {
+      document.body.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
-      const newIndex = bookmarks.findIndex(b => b.id === input.over.id);
+      const newIndex = bookmarks.findIndex(b => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
       reorderBookmarks({ newIndex, oldIndex });
     },
@@ -153,7 +156,7 @@ const BookmarkList = ({
       initialState={BOOKMARKS_INITIALLY_VISIBLE ? "expanded" : "collapsed"}
       iconPosition="right"
       iconSize={8}
-      headerClass="mb1"
+      headerClass={CS.mb1}
       onToggle={onToggleBookmarks}
     >
       <DndContext

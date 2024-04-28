@@ -43,20 +43,20 @@ describe("CacheTTLField", () => {
     expect(screen.getByText("Cache results for")).toBeInTheDocument();
   });
 
-  it("calls onChange correctly", () => {
+  it("calls onChange correctly", async () => {
     const { field, onChange } = setup({ value: 4 });
 
-    userEvent.clear(field);
-    userEvent.type(field, "14");
+    await userEvent.clear(field);
+    await userEvent.type(field, "14");
     field.blur();
 
     expect(onChange).toHaveBeenLastCalledWith(14);
   });
 
-  it("calls onChange with null value if input is cleared", () => {
+  it("calls onChange with null value if input is cleared", async () => {
     const { field, onChange } = setup({ value: 4 });
 
-    userEvent.clear(field);
+    await userEvent.clear(field);
     field.blur();
 
     expect(onChange).toHaveBeenLastCalledWith(null);

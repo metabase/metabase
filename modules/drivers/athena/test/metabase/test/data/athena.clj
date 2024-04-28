@@ -128,19 +128,16 @@
 ;; Customize the create table table to include the S3 location
 ;; TODO: Specify a unique location each time
 (defmethod sql.tx/create-table-sql :athena
-  [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
-  (let [field-definitions (cons
-                           {:field-name "id", :base-type :type/Integer, :semantic-type :type/PK}
-                           (:field-definitions tabledef))
-        fields            (->> field-definitions
-                               (map (fn [{:keys [field-name base-type]}]
-                                      (format "`%s` %s"
-                                              (ddl.i/format-name driver field-name)
-                                              (if (map? base-type)
-                                                (:native base-type)
-                                                (sql.tx/field-base-type->sql-type driver base-type)))))
-                               (interpose ", ")
-                               str/join)]
+  [driver {:keys [database-name]} {:keys [table-name field-definitions], :as _tabledef}]
+  (let [fields (->> field-definitions
+                    (map (fn [{:keys [field-name base-type]}]
+                           (format "`%s` %s"
+                                   (ddl.i/format-name driver field-name)
+                                   (if (map? base-type)
+                                     (:native base-type)
+                                     (sql.tx/field-base-type->sql-type driver base-type)))))
+                    (interpose ", ")
+                    str/join)]
     ;; ICEBERG tables do what we want, and dropping them causes the data to disappear; dropping a normal non-ICEBERG
     ;; table doesn't delete data, so if you recreate it you'll have duplicate rows. 'normal' tables do not support
     ;; `DELETE .. FROM`, either, so there's no way to fix them here.
@@ -204,7 +201,7 @@
             ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
             ;; very fussy! See [[athena/*loading-data*]] for more info.
             athena/*loading-data*  true]
-    (apply load-data/load-data-add-ids-chunked! args)))
+    (apply load-data/load-data-maybe-add-ids-chunked! args)))
 
 (defn- server-connection-details []
   (tx/dbdef->connection-details :athena :server nil))

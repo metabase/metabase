@@ -12,7 +12,7 @@ import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Card,
   CardId,
@@ -22,9 +22,7 @@ import type {
   QuestionDashboardCard,
   Database,
   Dataset,
-  NativeDatasetQuery,
   Parameter,
-  StructuredDatasetQuery,
   ActionDashboardCard,
   EmbedDataset,
   BaseDashboardCard,
@@ -83,6 +81,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
   };
 }
 
+export function isQuestionCard(card: Card | VirtualCard) {
+  return card.dataset_query != null;
+}
+
 export function isQuestionDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is QuestionDashboardCard {
@@ -137,13 +139,17 @@ export function showVirtualDashCardInfoText(
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   if (isDateParameter(parameter)) {
     return t`Add a date variable to this question to connect it to a dashboard filter.`;
-  } else if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
-  } else if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
-  } else {
-    return t`Add a variable to this question to connect it to a dashboard filter.`;
   }
+
+  if (isNumberParameter(parameter)) {
+    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+  }
+
+  if (isStringParameter(parameter)) {
+    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+  }
+
+  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
@@ -193,14 +199,6 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   } catch (error) {
     return { error };
   }
-}
-
-export function getDatasetQueryParams(
-  datasetQuery: Partial<StructuredDatasetQuery> &
-    Partial<NativeDatasetQuery> = {},
-) {
-  const { type, query, native, parameters = [] } = datasetQuery;
-  return { type, query, native, parameters };
 }
 
 export function isDashcardLoading(

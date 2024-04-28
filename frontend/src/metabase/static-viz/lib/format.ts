@@ -10,7 +10,7 @@ import { formatCoordinate } from "metabase/lib/formatting/geography";
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatTime } from "metabase/lib/formatting/time";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
   ChartTicksFormatters,
@@ -18,15 +18,15 @@ import type {
 } from "metabase/visualizations/shared/types/format";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isCoordinate,
   isDate,
   isNumber,
   isTime,
   isBoolean,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RowValue,
@@ -103,7 +103,7 @@ export const formatStaticValue = (value: unknown, options: OptionsType) => {
 };
 
 export const getStaticFormatters = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
@@ -163,7 +163,7 @@ export const getStaticFormatters = (
 };
 
 export const getLabelsStaticFormatter = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;

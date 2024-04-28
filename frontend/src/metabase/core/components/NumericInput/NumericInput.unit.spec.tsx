@@ -20,21 +20,21 @@ const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {
 };
 
 describe("NumericInput", () => {
-  it("should set number", () => {
+  it("should set number", async () => {
     const onChange = jest.fn();
 
     render(<NumericInputTest onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "123");
+    await userEvent.type(screen.getByRole("textbox"), "123");
 
     expect(onChange).toHaveBeenLastCalledWith(123);
   });
 
-  it("should clear number", () => {
+  it("should clear number", async () => {
     const onChange = jest.fn();
 
     render(<NumericInputTest onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "123");
-    userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.type(screen.getByRole("textbox"), "123");
+    await userEvent.clear(screen.getByRole("textbox"));
 
     expect(onChange).toHaveBeenLastCalledWith(undefined);
   });

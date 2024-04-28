@@ -1,4 +1,8 @@
-import { restore, runNativeQuery } from "e2e/support/helpers";
+import {
+  restore,
+  runNativeQuery,
+  focusNativeEditor,
+} from "e2e/support/helpers";
 
 describe("issue 30680", () => {
   beforeEach(() => {
@@ -13,7 +17,7 @@ describe("issue 30680", () => {
       .findByText("Use a native query")
       .click();
 
-    cy.get(".ace_editor").type("select * from orders ");
+    focusNativeEditor().type("select * from orders ", { delay: 100 });
     runNativeQuery();
 
     cy.findByTestId("editor-tabs-metadata-name").click();

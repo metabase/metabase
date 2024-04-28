@@ -4,7 +4,7 @@ import _ from "underscore";
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
-import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";

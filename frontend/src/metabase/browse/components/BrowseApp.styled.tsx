@@ -30,7 +30,7 @@ export const BrowseTab = styled(Tabs.Tab)`
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
   padding: 10px 0px;
-  margin-right: 10px;
+  margin-inline-end: 10px;
   &:hover {
     color: ${color("brand")};
     background-color: inherit;

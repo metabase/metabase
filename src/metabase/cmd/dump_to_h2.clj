@@ -16,6 +16,7 @@
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.util.log :as log]))
 
@@ -36,7 +37,7 @@
      (log/infof "Dumping from configured Metabase db to H2 file %s" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
-     (copy/copy! (mdb.connection/db-type) (mdb.connection/data-source) :h2 h2-data-source)
+     (copy/copy! (mdb/db-type) (mdb/data-source) :h2 h2-data-source)
      (when dump-plaintext?
        (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
          (rotate-encryption/rotate-encryption-key! nil))))))
