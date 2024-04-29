@@ -15,6 +15,7 @@ import type {
 export const CheckBoxRoot = styled.label`
   display: block;
   position: relative;
+  line-height: 0;
 `;
 
 export const CheckBoxInput = styled.input<CheckBoxInputProps>`
