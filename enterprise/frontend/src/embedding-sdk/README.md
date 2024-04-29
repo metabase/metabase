@@ -145,7 +145,7 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 // Configuration
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL.
-  jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token. We'll explain more below how to implement this endpoint.
+  jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
   font: "Lato", // Optional: Specify a font to use fromt the set of fonts supported by Metabase.
 }
 
@@ -269,7 +269,7 @@ The Metabase Embedding SDK only supports React on SPA Webpack applications. Appl
 # Feedback
 For issues and feedback, there are two options:
 
-* Chat with the team directly on Slack: TODO
+* Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
 * Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
 
 For security issues, please follow the instructions for responsible disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
