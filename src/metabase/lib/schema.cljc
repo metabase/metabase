@@ -49,7 +49,7 @@
     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
     ;; nil.
-    [:params {:optional true} [:sequential :any]]
+    [:params {:optional true} [:maybe [:sequential :any]]]
     ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
     ;; is required.
     [:collection {:optional true} ::common/non-blank-string]
