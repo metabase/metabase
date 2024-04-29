@@ -224,7 +224,7 @@ Under the hood, all Metabase questions are SQL (gasp!). To view the SQL that Met
 
 ![SQL sidebar](../images/sql-sidebar.png)
 
-To view the SQL, you must have [SQL editor permissions](../../permissions/data.md).
+To view the SQL, you must have [query builder and native permissions](../../permissions/data.md).
 
 ### Convert query builder question to SQL
 
