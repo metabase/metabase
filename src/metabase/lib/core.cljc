@@ -176,7 +176,8 @@
   offset]
  [lib.extraction
   column-extractions
-  extract]
+  extract
+  extraction-expression]
  [lib.fe-util
   dependent-metadata
   expression-clause
