@@ -413,7 +413,7 @@
              (= @plural0 name1)
              (= @plural0 @plural1)))))
 
-(defn- calculate-join-alias [query joined home-col]
+(defn- calculate-join-alias [query joined home-col avoid-joining-home-name?]
   (let [joined-name (lib.metadata.calculation/display-name
                      (if (= (:lib/type joined) :mbql/query) joined query)
                      joined)
@@ -421,6 +421,7 @@
         similar     (similar-names? joined-name home-name)
         join-alias  (or (and joined-name
                              home-name
+                             (not avoid-joining-home-name?)
                              (not (re-matches #"(?i)id" home-name))
                              (not similar)
                              (str joined-name " - " home-name))
@@ -486,8 +487,19 @@
     (let [stage       (lib.util/query-stage query stage-number)
           home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
           cond-fields (lib.util.match/match (:conditions a-join) :field)
+          home-cols-no-joined (lib.metadata.calculation/visible-columns query stage-number stage
+                                                                          {:include-joined? false
+                                                                           :include-implicitly-joinable?                 false
+                                                                           :include-implicitly-joinable-for-source-card? false})
+          joined-cond-fields-ids* (set (keep (fn [[_ _ id]]
+                                               (when (not (some #(= id (:id %)) home-cols-no-joined))
+                                                 id))
+                                             cond-fields))
+          fk-to-joined-cond-fields (filter #(joined-cond-fields-ids* (:fk-target-field-id %)) home-cols-no-joined)
           home-col    (select-home-column home-cols cond-fields)
-          join-alias  (-> (calculate-join-alias query a-join home-col)
+          ;; TODO: count correctly (or #_(not (re-find #"and|or" (str (first (:conditions a-join)))))
+          ;;                                                     (< 1 (count fk-to-joined-cond-fields)))
+          join-alias  (-> (calculate-join-alias query a-join home-col (< 1 (count fk-to-joined-cond-fields)))
                           (generate-unique-name (keep :alias (:joins stage))))
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
