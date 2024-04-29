@@ -14,6 +14,7 @@ import type { CollectionItem } from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
 
+import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
 
 export interface ModelsTableProps {
@@ -75,6 +76,8 @@ const RowOfCells = ({ item }: { item: CollectionItem }) => {
     icon.color = color("text-light");
   }
 
+  const containerName = `collections-path-for-${item.id}`;
+
   return (
     <>
       {/* Type */}
@@ -99,10 +102,12 @@ const RowOfCells = ({ item }: { item: CollectionItem }) => {
         }`}
         {...collectionProps}
       >
-        {item.collection &&
-          item.collection?.effective_ancestors
-            ?.map(collection => getCollectionName(collection))
-            .join(" / ")}
+        {item.collection && (
+          <CollectionBreadcrumbsWithTooltip
+            containerName={containerName}
+            collection={item.collection}
+          />
+        )}
       </ItemCell>
 
       {/* Adds a border-radius to the table */}
