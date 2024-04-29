@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Anchor, Button, Icon, Text, List } from "metabase/ui";
@@ -60,7 +61,7 @@ export const InteractiveTabContent = ({
       <ExternalLink
         href={interactiveEmbeddingQuickstartUrl}
         // ExternalLink stops clicks events by default
-        onClickCapture={() => {}}
+        onClickCapture={_.noop}
         onClick={() => trackEmbeddingHomepageQuickstartClick(initialTab)}
       >
         <Button
