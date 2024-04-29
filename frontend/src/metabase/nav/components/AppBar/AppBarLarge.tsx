@@ -1,10 +1,10 @@
-import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
+import { SearchButton } from "../search/SearchButton";
 
 import {
   AppBarLeftContainer,
@@ -69,7 +69,7 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          {isSearchVisible && <SearchBar />}
+          {isSearchVisible && <SearchButton />}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer>

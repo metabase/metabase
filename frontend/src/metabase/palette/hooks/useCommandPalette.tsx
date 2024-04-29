@@ -125,7 +125,7 @@ export const useCommandPalette = () => {
         return [
           {
             id: `search-results-metadata`,
-            name: `View all ${searchResults?.total} results for "${debouncedSearchText}"`,
+            name: `View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
             icon: "link",
