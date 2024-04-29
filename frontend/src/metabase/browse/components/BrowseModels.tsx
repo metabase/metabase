@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import Search from "metabase/entities/search";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
@@ -35,6 +36,29 @@ export const BrowseModels = () => {
   useEffect(() => {
     setActualModelFilters(initialModelFilters);
   }, [initialModelFilters, setActualModelFilters]);
+
+  const contentViewportElement = useContext(ContentViewportContext);
+  const cachedViewportOverflowYRef = useRef<string>();
+
+  // Set the content viewport to scroll to prevent the page from jumping a little when filters are toggled
+  useEffect(() => {
+    if (!contentViewportElement) {
+      return;
+    }
+    cachedViewportOverflowYRef.current = getComputedStyle(
+      contentViewportElement,
+    ).overflowY;
+    contentViewportElement.style.overflowY = "scroll";
+    return () => {
+      if (!contentViewportElement) {
+        return;
+      }
+      const cachedViewportOverflowY = cachedViewportOverflowYRef.current;
+      if (cachedViewportOverflowY) {
+        contentViewportElement.style.overflowY = cachedViewportOverflowY;
+      }
+    };
+  }, [contentViewportElement]);
 
   return (
     <BrowseContainer>
