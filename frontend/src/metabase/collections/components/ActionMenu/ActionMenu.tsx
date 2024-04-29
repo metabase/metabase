@@ -55,7 +55,9 @@ function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
 // If item.model is `dataset`, that is, this is a Model in a product sense,
 // let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
 function normalizeItemModel(item: CollectionItem) {
-  return item.model === "dataset" ? "card" : item.model;
+  return item.model === "dataset" || item.model === "metric"
+    ? "card"
+    : item.model;
 }
 
 function mapStateToProps(state: State): StateProps {
