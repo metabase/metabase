@@ -3,8 +3,8 @@
   text-align: start;
 
   .content {
+    font-family: var(--mb-default-font-family);
     line-height: 1rem;
-    font-weight: normal;
   }
 
   &:hover {
