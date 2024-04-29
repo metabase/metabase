@@ -121,6 +121,10 @@ const getColumnExample = (
     return "https://www.example.com";
   }
 
+  if (Lib.isBoolean(column)) {
+    return "true";
+  }
+
   if (Lib.isID(column)) {
     return "12345";
   }
