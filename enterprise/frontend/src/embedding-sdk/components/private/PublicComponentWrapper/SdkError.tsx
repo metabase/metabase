@@ -5,7 +5,7 @@ import { getErrorComponent } from "embedding-sdk/store/selectors";
 
 export type SdkErrorProps = { message: string };
 
-export const SdkError = ({ message }: SdkErrorProps) => {
+let SdkError = ({ message }: SdkErrorProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
 
   if (CustomError) {
@@ -19,3 +19,11 @@ export const SdkError = ({ message }: SdkErrorProps) => {
     </div>
   );
 };
+
+const setSdkErrorComponent = (
+  Component: (({ message }: SdkErrorProps) => JSX.Element) | null,
+) => {
+  SdkError = Component ?? SdkError;
+};
+
+export { SdkError, setSdkErrorComponent };

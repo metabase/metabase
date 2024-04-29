@@ -3,11 +3,15 @@ import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import {
+  setSdkErrorComponent,
+  setSdkLoaderComponent,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
 import {
-  setErrorComponent,
-  setLoaderComponent,
+  // setErrorComponent,
+  // setLoaderComponent,
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
@@ -32,8 +36,13 @@ const MetabaseProviderInternal = ({
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
 
-  store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
-  store.dispatch(setErrorComponent(config.errorComponent ?? null));
+  useEffect(() => {
+    setSdkLoaderComponent(config.loaderComponent ?? null);
+  }, [config.loaderComponent]);
+
+  useEffect(() => {
+    setSdkErrorComponent(config.errorComponent ?? null);
+  }, [config.errorComponent]);
 
   return (
     <Provider store={store}>
