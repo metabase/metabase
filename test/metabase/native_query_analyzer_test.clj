@@ -1,7 +1,7 @@
 (ns metabase.native-query-analyzer-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db.connection :as mdb.connection]
+   #_[metabase.db.connection :as mdb.connection]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]))
@@ -30,6 +30,8 @@
            ;; this is "Perv""e""rse"
            (#'query-analyzer/field-query :f.name "\"Perv\"\"e\"\"rse\"")))))
 
+;; commented out in revert https://github.com/metabase/metabase/pull/42005
+#_
 (deftest ^:parallel field-matching-test
   (binding [query-analyzer/*parse-queries-in-test?* true]
     (let [q (fn [sql]
