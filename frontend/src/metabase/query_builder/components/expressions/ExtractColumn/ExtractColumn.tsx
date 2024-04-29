@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
 
 import { Button } from "./Button";
-import { getExample } from "./util";
+import { getExample, getName } from "./util";
 
 type Props = {
   query: Lib.Query;
@@ -48,7 +48,8 @@ export function ExtractColumn({
     // @todo this is a hack until Lib supports building an expression from an extraction
     const newQuery = Lib.extract(query, stageIndex, extraction);
     const expressions = Lib.expressions(newQuery, stageIndex);
-    onSubmit(expressions[0], info.displayName);
+    const name = getName(query, stageIndex, info);
+    onSubmit(expressions[0], name);
   }
 
   return (

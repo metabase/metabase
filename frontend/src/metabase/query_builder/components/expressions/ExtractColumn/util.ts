@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 export function getExample(info: Lib.ColumnExtractionInfo) {
   // @todo this should eventually be moved into Lib.displayInfo
@@ -25,4 +25,24 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
   }
 
   return undefined;
+}
+
+function getNextName(names: string[], name: string, index: number): string {
+  const suffixed = index === 0 ? name : `${name} (${index})`;
+  if (!names.includes(suffixed)) {
+    return suffixed;
+  }
+  return getNextName(names, name, index + 1);
+}
+
+export function getName(
+  query: Lib.Query,
+  stageIndex: number,
+  info: Lib.ColumnExtractionInfo,
+) {
+  const columnNames = Lib.returnedColumns(query, stageIndex).map(
+    column => Lib.displayInfo(query, stageIndex, column).displayName,
+  );
+
+  return getNextName(columnNames, info.displayName, 0);
 }
