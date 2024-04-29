@@ -79,7 +79,8 @@
         "null"
       ],
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1024
       }
     }
   },
