@@ -144,9 +144,9 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
 // Configuration
 const config = {
-  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL.
+  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-  font: "Lato", // Optional: Specify a font to use fromt the set of fonts supported by Metabase.
+  font: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
 }
 
 export default function App() {
