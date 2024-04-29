@@ -172,7 +172,8 @@
   ltrim
   rtrim
   upper
-  lower]
+  lower
+  offset]
  [lib.extraction
   column-extractions
   extract]
