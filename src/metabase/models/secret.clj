@@ -217,15 +217,15 @@
                   (when id
                     (String. ^bytes (:value (latest-for-id id)) "UTF-8")))]
     (case (options-kw details)
+      "uploaded" (try
+                   ;; When a secret is updated, the value has already been decoded
+                   ;; instead of checking if the string is base64 encoded, we just
+                   ;; try to decoded it and leave it as is if the attempt fails.
+                   (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+                   (catch IllegalArgumentException _
+                     value))
       "local" (slurp (if id value (path-kw details)))
-      ;; Attempt to decode when value of options is _"uploaded" or anything else_.
-      (try
-        ;; When a secret is updated, the value has already been decoded
-        ;; instead of checking if the string is base64 encoded, we just
-        ;; try to decoded it and leave it as is if the attempt fails.
-        (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
-        (catch IllegalArgumentException _
-          value)))))
+      value)))
 
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
