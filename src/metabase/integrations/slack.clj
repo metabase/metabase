@@ -334,6 +334,7 @@
             (when (not= 200 status)
               (throw (ex-info "Failed to upload file to Slack:" {:status status, :body body}))))
         ;; Step 3: Complete the upload using files.completeUploadExternal
+        ;; TODO: this step could be done once for all files uploaded, instead of once per file
         complete! (fn []
                     (POST "files.completeUploadExternal"
                       {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])

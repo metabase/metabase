@@ -35,6 +35,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- is-card-empty?
@@ -541,6 +543,8 @@
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
   (let [attachments (create-and-upload-slack-attachments! attachments)]
+    ;; Cal 2024-03-04: Without this sleep, attached images don't always appear. I tried with 1000ms and it wasn't enough.
+    (Thread/sleep 2000)
     (try
       (slack/post-chat-message! channel-id message attachments)
       (catch ExceptionInfo e
