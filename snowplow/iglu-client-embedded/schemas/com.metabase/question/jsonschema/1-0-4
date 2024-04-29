@@ -18,7 +18,7 @@
         "notebook_native_preview_shown",
         "notebook_native_preview_hidden",
         "column_combine_via_shortcut",
-        "column_combine_via_column_header"
+        "column_combine_via_column_header",
         "column_extract_via_shortcut",
         "column_extract_via_column_header"
       ],
