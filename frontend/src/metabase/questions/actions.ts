@@ -11,33 +11,31 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) =>
-  async (dispatch: Dispatch, getState: GetState) => {
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
     await dispatch(loadDependentMetadata(card, [], options));
-
-    const question = new Question(card, getMetadata(getState()));
-    if (shouldLoadAdhocMetadata(question)) {
-      const adhocQuestion = question.composeQuestionAdhoc();
-      await dispatch(loadDependentMetadata(adhocQuestion.card(), [], options));
-    }
   };
 
 const loadDependentMetadata =
   (
     card: Card,
-    prevDependencies: Lib.DependentItem[],
+    dependencies: Lib.DependentItem[],
     options?: LoadMetadataOptions,
   ) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const nextDependencies = getDependencies(card, getState);
+    const question = new Question(card, getMetadata(getState()));
+    const withAdhocMetadata = shouldLoadAdhocMetadata(question);
+    const nextDependencies = getDependencies(question, withAdhocMetadata);
     const dependenciesDiff = getDependenciesDiff(
-      prevDependencies,
+      dependencies,
       nextDependencies,
     );
     if (dependenciesDiff.length > 0) {
       await dispatch(loadMetadataForDependentItems(dependenciesDiff, options));
-      const mergedDependencies = [...prevDependencies, ...dependenciesDiff];
+      const mergedDependencies = [...dependencies, ...dependenciesDiff];
       await dispatch(loadDependentMetadata(card, mergedDependencies, options));
+    } else if (withAdhocMetadata) {
+      const adhocCard = question.composeQuestionAdhoc().card();
+      await dispatch(loadDependentMetadata(adhocCard, dependencies, options));
     }
   };
 
@@ -45,10 +43,9 @@ function shouldLoadAdhocMetadata(question: Question) {
   return question.isSaved() && question.type() !== "question";
 }
 
-function getDependencies(card: Card, getState: GetState) {
-  const question = new Question(card, getMetadata(getState()));
+function getDependencies(question: Question, withAdhocMetadata: boolean) {
   const dependencies = [...Lib.dependentMetadata(question.query())];
-  if (shouldLoadAdhocMetadata(question)) {
+  if (withAdhocMetadata) {
     const tableId = getQuestionVirtualTableId(question.id());
     dependencies.push({ id: tableId, type: "table" });
   }
