@@ -202,6 +202,24 @@
              (mt/rows (qp/process-query source-query))
              (mt/rows (qp/process-query query))))))))
 
+(deftest ^:parallel e2e-source-card-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
+                                              :database_id (mt/id)
+                                              :name "new_metric"
+                                              :type :metric}]
+      (let [query (as-> (lib/query mp (lib.metadata/card mp (:id source-metric))) $q
+                    (lib/remove-clause $q (first (lib/aggregations $q)))
+                    (lib/limit $q 1))]
+        (is (=?
+              (mt/rows
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                      (lib/limit 1))))
+              (mt/rows
+                (qp/process-query query))))))))
+
 
 (deftest ^:parallel e2e-join-to-table-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
