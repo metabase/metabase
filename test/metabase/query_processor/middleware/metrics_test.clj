@@ -212,8 +212,13 @@
                                               :type :metric}]
       (let [query (as-> (lib/query mp (lib.metadata/card mp (:id source-metric))) $q
                     (lib/remove-clause $q (first (lib/aggregations $q)))
-                    (lib/limit $q 10))]
-        (qp/process-query (lib.convert/->legacy-MBQL query))))))
+                    (lib/limit $q 1))]
+        (is (=?
+              (mt/rows
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                      (lib/limit 1))))
+              (mt/rows
+                (qp/process-query query))))))))
 
 
 (deftest ^:parallel e2e-join-to-table-test
