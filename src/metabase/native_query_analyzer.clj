@@ -6,7 +6,8 @@
   2. Contain Metabase-specific business logic.
 
   The primary way of interacting with parsed queries is through their associated QueryFields (see model
-  file). QueryFields are maintained through the `update-query-fields-for-card!` function.
+  file). QueryFields are maintained through the `update-query-fields-for-card!` function. This is invoked as part of
+  the lifecycle of a card (see Card model).
 
   Query rewriting happens with the `replace-names` function."
   (:require

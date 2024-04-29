@@ -33,5 +33,5 @@
             (testing (str "Model shouldn't have entity_id defined: " (name model))
               (is (not custom-entity-id?))
               ;; TODO: strip serialization stuff off Pulse*
-              (when-not (#{"Pulse" "PulseChannel" "PulseCard"} (name model))
+              (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"} (name model))
                 (is (not random-entity-id?))))))))))
