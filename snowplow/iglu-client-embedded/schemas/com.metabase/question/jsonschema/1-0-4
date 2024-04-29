@@ -79,6 +79,7 @@
         "null"
       ],
       "items": {
+        "description": "The name of a function used in the custom expression",
         "type": "string",
         "maxLength": 1024
       }
