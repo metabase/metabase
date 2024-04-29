@@ -163,7 +163,7 @@ describeEE("scenarios > embedding > full app", () => {
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
-        url: "/browse",
+        url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
       cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");

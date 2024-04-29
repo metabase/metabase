@@ -23,7 +23,6 @@ describe("scenarios > question > bookmarks", () => {
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
-      cy.icon("model").should("not.exist");
     });
 
     // Rename bookmarked question
@@ -49,6 +48,7 @@ describe("scenarios > question > bookmarks", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn back to saved question").click();
 
+    openNavigationSidebar();
     navigationSidebar().within(() => {
       cy.icon("model").should("not.exist");
     });

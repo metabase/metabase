@@ -494,6 +494,22 @@
   :type       :integer
   :default    nil)
 
+(defsetting expand-browse-in-nav
+  (deferred-tru "User preference for whether the 'Browse' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-bookmarks-in-nav
+  (deferred-tru "User preference for whether the 'Bookmarks' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User
