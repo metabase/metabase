@@ -12,16 +12,13 @@ import type {
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
+import type { IconName } from "metabase/ui";
+import { Text, Group, Icon, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
-import {
-  Container,
-  Grid,
-  SectionContainer,
-  SectionHeader,
-  SectionSubHeader,
-} from "./PinnedItemOverview.styled";
+import { Container, Grid, SectionContainer } from "./PinnedItemOverview.styled";
 
 type Props = {
   databases?: Database[];
@@ -48,7 +45,7 @@ function PinnedItemOverview({
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
-    dataset: dataModelItems = [],
+    dataset: modelItems = [],
     metric: metricItems = [],
   } = _.groupBy(sortedItems, "model");
   const cardGroups = _.partition(cardItems, isPreviewShown);
@@ -64,9 +61,7 @@ function PinnedItemOverview({
 
       {metricItems.length > 0 && (
         <SectionContainer>
-          <SectionHeader>
-            <h3>{t`Metrics`}</h3>
-          </SectionHeader>
+          <SectionTitle title={t`Metrics`} icon="metric" />
           {metricGroups.map(
             (cardGroup, cardGroupIndex) =>
               cardGroup.length > 0 && (
@@ -109,9 +104,7 @@ function PinnedItemOverview({
 
       {cardItems.length > 0 && (
         <SectionContainer>
-          <SectionHeader>
-            <h3>{t`Metrics`}</h3>
-          </SectionHeader>
+          <SectionTitle title={t`Pinned questions`} icon="pin" />
           {cardGroups.map(
             (cardGroup, cardGroupIndex) =>
               cardGroup.length > 0 && (
@@ -154,9 +147,7 @@ function PinnedItemOverview({
 
       {dashboardItems.length > 0 && (
         <SectionContainer>
-          <SectionHeader>
-            <h3>{t`Dashboards`}</h3>
-          </SectionHeader>
+          <SectionTitle title={t`Dashboards`} icon="dashboard" />
           <Grid>
             {dashboardItems.map(item => (
               <div key={item.id} className={CS.relative}>
@@ -192,18 +183,18 @@ function PinnedItemOverview({
         </SectionContainer>
       )}
 
-      {dataModelItems.length > 0 && (
+      {modelItems.length > 0 && (
         <SectionContainer>
-          <SectionHeader>
-            <h3>{t`Useful data`}</h3>
-            <SectionSubHeader>
-              {isRootCollection(collection)
+          <SectionTitle
+            title={t`Useful data`}
+            description={
+              isRootCollection(collection)
                 ? t`Start new explorations here`
-                : t`Start new explorations about ${collection.name} here`}
-            </SectionSubHeader>
-          </SectionHeader>
+                : t`Start new explorations about ${collection.name} here`
+            }
+          />
           <Grid>
-            {dataModelItems.map(item => (
+            {modelItems.map(item => (
               <div key={item.id} className={CS.relative}>
                 <PinnedItemSortDropTarget
                   isFrontTarget
@@ -237,6 +228,24 @@ function PinnedItemOverview({
         </SectionContainer>
       )}
     </Container>
+  );
+}
+
+interface SectionTitleProps {
+  title: string;
+  description?: string;
+  icon?: IconName;
+}
+
+function SectionTitle({ title, description, icon }: SectionTitleProps) {
+  return (
+    <Stack spacing="sm">
+      <Group spacing="sm" pb="1.15rem">
+        {icon && <Icon name={icon} color={color("brand")} />}
+        <h3>{title}</h3>
+      </Group>
+      {description && <Text color="text-medium">{description}</Text>}
+    </Stack>
   );
 }
 

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
 export const GAP_REM = 1.15;
@@ -27,13 +26,4 @@ export const SectionContainer = styled.div`
   &:not(:first-of-type) {
     margin-top: 1.5rem;
   }
-`;
-
-export const SectionHeader = styled.div`
-  padding-bottom: 1.15rem;
-`;
-
-export const SectionSubHeader = styled.div`
-  color: ${color("text-medium")};
-  padding-top: 0.5rem;
 `;
