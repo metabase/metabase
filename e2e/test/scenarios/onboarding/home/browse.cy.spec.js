@@ -108,7 +108,7 @@ describeWithSnowplowEE("scenarios > browse data (EE)", () => {
     toggle().next("label").click();
     toggle().should("have.attr", "aria-checked", "false");
     cy.findByRole("heading", { name: "Orders Model" }).click();
-    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByLabelText("Move, trash, and more...").click();
     cy.findByRole("dialog", {
       name: /ellipsis icon/i,
     })

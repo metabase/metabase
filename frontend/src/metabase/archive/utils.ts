@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 /**
@@ -8,6 +10,6 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
   updateActionResult: any,
 ): Pick<Collection, "id" | "name"> {
   return item.model === "collection"
-    ? updateActionResult?.payload?.collection?.effective_ancestors?.pop()
+    ? _.last(updateActionResult?.payload?.collection?.effective_ancestors)
     : updateActionResult?.payload?.object?.collection;
 }
