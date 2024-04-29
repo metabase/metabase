@@ -11,10 +11,14 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+  (card: Card, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     await dispatch(loadDependentMetadata(card, [], options));
-    if (shouldLoadAdhocMetadata(card)) {
-      await dispatch(loadDependentMetadata(card, [], options));
+
+    const question = new Question(card, getMetadata(getState()));
+    if (shouldLoadAdhocMetadata(question)) {
+      const adhocQuestion = question.composeQuestionAdhoc();
+      await dispatch(loadDependentMetadata(adhocQuestion.card(), [], options));
     }
   };
 
@@ -37,14 +41,14 @@ const loadDependentMetadata =
     }
   };
 
-function shouldLoadAdhocMetadata(card: Card) {
-  return card.id != null && card.type !== "question";
+function shouldLoadAdhocMetadata(question: Question) {
+  return question.isSaved() && question.type() !== "question";
 }
 
 function getDependencies(card: Card, getState: GetState) {
   const question = new Question(card, getMetadata(getState()));
   const dependencies = [...Lib.dependentMetadata(question.query())];
-  if (shouldLoadAdhocMetadata(card)) {
+  if (shouldLoadAdhocMetadata(question)) {
     const tableId = getQuestionVirtualTableId(question.id());
     dependencies.push({ id: tableId, type: "table" });
   }
