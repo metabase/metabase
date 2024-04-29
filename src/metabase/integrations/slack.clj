@@ -325,6 +325,8 @@
    filename   :- ms/NonBlankString
    channel-id :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
+  ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
+  ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
   (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
         {upload-url :upload_url
          file-id    :file_id} (POST "files.getUploadURLExternal" {:query-params {:filename filename
@@ -334,7 +336,6 @@
             (when (not= 200 status)
               (throw (ex-info "Failed to upload file to Slack:" {:status status, :body body}))))
         ;; Step 3: Complete the upload using files.completeUploadExternal
-        ;; TODO: this step could be done once for all files uploaded, instead of once per file
         complete! (fn []
                     (POST "files.completeUploadExternal"
                       {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
