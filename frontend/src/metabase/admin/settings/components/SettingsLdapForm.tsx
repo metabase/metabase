@@ -9,9 +9,9 @@ import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMapping
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { FormSection } from "metabase/containers/FormikForm";
 import CS from "metabase/css/core/index.css";
 import {
+  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,

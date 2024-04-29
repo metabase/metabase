@@ -7,6 +7,7 @@ import {
   saveDashboard,
   setupSMTP,
   sendEmailAndAssert,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -56,7 +57,8 @@ describe("issue 21559", { tags: "@external" }, () => {
     cy.findByTestId("add-series-modal").button("Done").click();
 
     // Make sure visualization changed to bars
-    cy.get(".bar").should("have.length", 2);
+    chartPathWithFillColor("#A989C5").should("have.length", 1);
+    chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
     saveDashboard();
 

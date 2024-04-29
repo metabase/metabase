@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  ChartColumns,
+  CartesianChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
 import type { Series } from "metabase/visualizations/shared/components/RowChart/types";
@@ -31,18 +32,6 @@ const getMetricValue = (value: RowValue): MetricValue => {
   return null;
 };
 
-export const sumMetric = (left: RowValue, right: RowValue) => {
-  if (typeof left === "number" && typeof right === "number") {
-    return left + right;
-  } else if (typeof left === "number") {
-    return left;
-  } else if (typeof right === "number") {
-    return right;
-  }
-
-  return null;
-};
-
 const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
   return Array.from(keys).reduce<MetricDatum>((datum, metricKey) => {
@@ -53,7 +42,7 @@ const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
 
 export const getGroupedDataset = (
   rows: RowValues[],
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
   const { dimension } = chartColumns;
@@ -228,7 +217,7 @@ const getMultipleMetricSeries = (
 
 export const getSeries = (
   data: DatasetData,
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   if ("breakout" in chartColumns) {
