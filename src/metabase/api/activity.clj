@@ -131,7 +131,8 @@
                     (not (or (:archived model-object)
                              (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
-             (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
+             (= (keyword (:type model-object)) :model) (assoc :model "dataset")
+             (= (keyword (:type model-object)) :metric) (assoc :model "metric")))
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
@@ -184,7 +185,7 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
-(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
+(def ^:private model-precedence ["dashboard" "card" "dataset" "metric" "table"])
 
 (defn- order-items
   [items]
@@ -211,7 +212,8 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
+                           (= (keyword (:type model-object)) :model) (assoc :model "dataset")
+                           (= (keyword (:type model-object)) :metric) (assoc :model "metric")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by :score)
