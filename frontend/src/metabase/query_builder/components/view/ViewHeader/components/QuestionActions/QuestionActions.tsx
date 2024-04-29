@@ -149,7 +149,7 @@ export const QuestionActions = ({
   if (canWrite) {
     if (isModelOrMetric) {
       extraButtons.push({
-        title: t`Edit query definition`,
+        title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
         action: handleEditQuery,
       });
