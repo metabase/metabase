@@ -4,6 +4,7 @@
 
   .content {
     line-height: 1rem;
+    font-weight: normal;
   }
 
   &:hover {

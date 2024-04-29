@@ -1,4 +1,5 @@
 import { Text, Box } from "metabase/ui";
+
 import styles from "./Button.module.css";
 
 export function Button({
@@ -12,10 +13,9 @@ export function Button({
 }) {
   return (
     <Box
-      as="button"
       component="button"
+      type="button"
       p="sm"
-      radius="sm"
       className={styles.button}
       onClick={onClick}
     >
