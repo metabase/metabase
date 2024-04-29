@@ -186,7 +186,7 @@ function PinnedItemOverview({
       {modelItems.length > 0 && (
         <SectionContainer>
           <SectionTitle
-            title={t`Useful data`}
+            title={t`Models`}
             description={
               isRootCollection(collection)
                 ? t`Start new explorations here`
