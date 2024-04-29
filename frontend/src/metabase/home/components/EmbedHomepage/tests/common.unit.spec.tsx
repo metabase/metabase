@@ -171,6 +171,8 @@ describe("EmbedHomepage (OSS)", () => {
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
 
+      // when both fields are empty, the button says "Skip" and
+      // we should not make the http call
       expect(getLastFeedbackCall()).toBeUndefined();
 
       expect(
