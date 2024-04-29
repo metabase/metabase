@@ -173,7 +173,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <StaticQuestion questionId={1} showVisualizationSelector={false} />
+      <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
     </MetabaseProvider>
   );
 }
