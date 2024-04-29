@@ -77,17 +77,18 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
-  or only non-archived (when `archived` is false).
+  For archived, we select archived collections if `exclude-archived` is `true`
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [exclude-archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when (some? archived)
-                         [:= :archived archived])
+                       (when exclude-archived
+                         [:and
+                          [:not [:like :location (str collection/trash-path "%")]]
+                          [:not= collection/trash-collection-id :id]])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -122,7 +123,7 @@
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
    (select-collections {:exclude-other-user-collections exclude-other-user-collections
-                        :archived                       archived
+                        :exclude-archived               true
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -196,6 +197,7 @@
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
+                                         :exclude-archived               exclude-archived
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -308,7 +310,7 @@
   rows)
 
 (defmethod collection-children-query :pulse
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [pinned-state]}]
   (-> {:select-distinct [:p.id
                          :p.name
                          :p.entity_id
@@ -318,7 +320,6 @@
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
-                         [:= :p.archived           (boolean archived?)]
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
@@ -346,13 +347,12 @@
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [pinned-state]}]
   {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+            [:= :collection_id (:id collection)]]})
 
 (defmethod post-process-collection-children :timeline
   [_ _collection rows]
@@ -517,7 +517,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [collection-namespace pinned-state]}]
+  [collection {:keys [collection-namespace pinned-state exclude-trash?]}]
   (-> (assoc (collection/effective-children-query
               collection
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
@@ -535,7 +535,8 @@
                       [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
-      (sql.helpers/where (pinned-state->clause pinned-state nil))))
+      (sql.helpers/where (pinned-state->clause pinned-state nil))
+      (sql.helpers/where (when exclude-trash? [:not= :id collection/trash-collection-id]))))
 
 (defmethod collection-children-query :collection
   [_ collection options]
@@ -930,9 +931,9 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state sort_column sort_direction]
+  [models exclude_trash namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
+   exclude_trash  [:maybe ms/BooleanValue]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
@@ -944,11 +945,11 @@
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
      root-collection
-     {:models       model-kwds
-      :archived?    archived
-      :pinned-state (keyword pinned_state)
-      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+     {:models         model-kwds
+      :exclude-trash? (if (nil? exclude_trash) true (boolean exclude_trash))
+      :pinned-state   (keyword pinned_state)
+      :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
+                          (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
