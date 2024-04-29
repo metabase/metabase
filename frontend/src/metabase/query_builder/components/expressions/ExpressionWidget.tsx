@@ -9,6 +9,8 @@ import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
+import { trackColumnCombineViaShortcut } from "../../analytics";
+
 import { CombineColumns } from "./CombineColumns/CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
@@ -22,7 +24,6 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
-import { trackColumnCombineViaShortcut } from "./analytics";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
