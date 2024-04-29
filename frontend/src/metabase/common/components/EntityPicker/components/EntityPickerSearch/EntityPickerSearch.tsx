@@ -6,16 +6,17 @@ import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
-import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
-import type { SearchModel, SearchResultId } from "metabase-types/api";
+import type {
+  SearchModel,
+  SearchResult,
+  SearchResultId,
+} from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
+import { ResultItem, ChunkyList } from "../ResultItem";
 
-import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 import { getSearchTabText } from "./utils";
 
 const defaultSearchFilter = <
@@ -26,11 +27,7 @@ const defaultSearchFilter = <
   results: Item[],
 ) => results;
 
-export function EntityPickerSearchInput<
-  Id extends SearchResultId,
-  Model extends SearchModel,
-  Item extends TypeWithModel<Id, Model>,
->({
+export function EntityPickerSearchInput({
   searchQuery,
   setSearchQuery,
   setSearchResults,
@@ -39,9 +36,9 @@ export function EntityPickerSearchInput<
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: Item[] | null) => void;
+  setSearchResults: (results: SearchResult[] | null) => void;
   models: SearchModel[];
-  searchFilter?: (results: Item[]) => Item[];
+  searchFilter?: (results: SearchResult[]) => SearchResult[];
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -58,7 +55,7 @@ export function EntityPickerSearchInput<
 
   useLayoutEffect(() => {
     if (data && !isFetching) {
-      setSearchResults(searchFilter(data.data as unknown as Item[]));
+      setSearchResults(searchFilter(data.data));
     } else {
       setSearchResults(null);
     }
@@ -78,7 +75,7 @@ export function EntityPickerSearchInput<
 }
 
 export const EntityPickerSearchResults = <
-  Id,
+  Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
@@ -86,12 +83,10 @@ export const EntityPickerSearchResults = <
   onItemSelect,
   selectedItem,
 }: {
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
 }) => {
-  const dispatch = useDispatch();
-
   if (!searchResults) {
     return <SearchLoadingSpinner />;
   }
@@ -103,21 +98,22 @@ export const EntityPickerSearchResults = <
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
               <Box p="lg" {...props}>
-                {children}
+                <ChunkyList>{children}</ChunkyList>
               </Box>
             )}
           >
-            {searchResults?.map(item => (
-              <EntityPickerSearchResult
+            {searchResults?.map((item, index) => (
+              <ResultItem
                 key={item.model + item.id}
-                result={Search.wrapEntity(item, dispatch)}
-                onClick={(item: WrappedResult) => {
+                item={item}
+                onClick={() => {
                   onItemSelect(item as unknown as Item);
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&
                   selectedItem?.model === item.model
                 }
+                isLast={index === searchResults.length - 1}
               />
             ))}
           </VirtualizedList>
