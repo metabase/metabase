@@ -276,7 +276,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByText("Browse data").should("not.exist");
+      cy.findByLabelText("Browse data").should("not.exist");
     });
 
     cy.visit("/admin/databases");
@@ -293,8 +293,8 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByText("Browse data").should("exist");
-      cy.findByText("Browse data").click();
+      cy.findByLabelText("Browse data").should("exist");
+      cy.findByLabelText("Browse data").click();
     });
 
     cy.findByRole("tab", { name: "Databases" }).click();

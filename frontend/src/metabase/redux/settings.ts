@@ -35,13 +35,20 @@ export const settings = createReducer(
   },
 );
 
+export type UpdateUserSettingOptions = {
+  shouldRefresh?: boolean;
+};
+
 export const UPDATE_USER_SETTING = "metabase/settings/UPDATE_USER_SETTING";
 export const updateUserSetting = createThunkAction(
   UPDATE_USER_SETTING,
-  function <K extends keyof UserSettings>(setting: {
-    key: K;
-    value: Exclude<UserSettings[K], undefined>;
-  }) {
+  function <K extends keyof UserSettings>(
+    setting: {
+      key: K;
+      value: UserSettings[K];
+    },
+    { shouldRefresh = true }: UpdateUserSettingOptions = {},
+  ) {
     return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
@@ -49,7 +56,9 @@ export const updateUserSetting = createThunkAction(
         console.error("error updating user setting", setting, error);
         throw error;
       } finally {
-        await dispatch(refreshSiteSettings({}));
+        if (shouldRefresh) {
+          await dispatch(refreshSiteSettings({}));
+        }
       }
     };
   },
