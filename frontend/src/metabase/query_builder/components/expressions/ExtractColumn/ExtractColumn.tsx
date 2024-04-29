@@ -49,7 +49,10 @@ export function ExtractColumn({
     const newQuery = Lib.extract(query, stageIndex, extraction);
     const expressions = Lib.expressions(newQuery, stageIndex);
     const name = getName(query, stageIndex, info);
-    onSubmit(expressions[0], name);
+    const last = expressions.at(-1);
+    if (last) {
+      onSubmit(last, name);
+    }
   }
 
   return (
