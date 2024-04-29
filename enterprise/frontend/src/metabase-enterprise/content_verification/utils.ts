@@ -1,4 +1,10 @@
-import type { AvailableModelFilters } from "metabase/browse/utils";
+import { useMemo } from "react";
+
+import type {
+  ActualModelFilters,
+  AvailableModelFilters,
+} from "metabase/browse/utils";
+import { useUserSetting } from "metabase/common/hooks";
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 
 export const sortCollectionsByVerification = (
@@ -33,4 +39,17 @@ export const availableModelFilters: AvailableModelFilters = {
     predicate: model => model.moderated_status === "verified",
     activeByDefault: true,
   },
+};
+
+export const useModelFilterSettings = (): ActualModelFilters => {
+  const [initialVerifiedFilterStatus, __] = useUserSetting(
+    "browse-filter-only-verified-models",
+    { shouldRefresh: false },
+  );
+  return useMemo(
+    () => ({
+      onlyShowVerifiedModels: initialVerifiedFilterStatus ?? false,
+    }),
+    [initialVerifiedFilterStatus],
+  );
 };
