@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
-  ensureDcChartVisibility,
+  ensureEchartsContainerHasSvg,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -35,7 +35,7 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    ensureDcChartVisibility();
+    ensureEchartsContainerHasSvg();
     cy.createPercySnapshot();
   });
 
@@ -61,7 +61,7 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    ensureDcChartVisibility();
+    ensureEchartsContainerHasSvg();
     cy.createPercySnapshot();
   });
 

@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { useState, useMemo, useCallback } from "react";
 import type * as tippy from "tippy.js";
 
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
@@ -35,7 +36,9 @@ const propTypes = {
 };
 
 function appendTo() {
-  return document.body;
+  return (
+    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+  );
 }
 
 function getPopperOptions({

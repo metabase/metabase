@@ -9,6 +9,7 @@ import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
+import { CombineColumns } from "./CombineColumns/CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
@@ -19,6 +20,7 @@ import {
   Footer,
   RemoveLink,
 } from "./ExpressionWidget.styled";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
@@ -77,6 +79,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     initialClause ?? null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
@@ -117,6 +120,33 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     setError(null);
   };
 
+  if (isCombiningColumns) {
+    const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+      setIsCombiningColumns(false);
+      setClause(clause);
+      setName(name);
+      setError(null);
+    };
+
+    const handleCancel = () => {
+      setIsCombiningColumns(false);
+    };
+
+    return (
+      <Container data-testid="expression-editor">
+        <ExpressionWidgetHeader
+          title={t`Select columns to combine`}
+          onBack={handleCancel}
+        />
+        <CombineColumns
+          query={query}
+          stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+        />
+      </Container>
+    );
+  }
+
   return (
     <Container data-testid="expression-editor">
       {header}
@@ -138,6 +168,15 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           onChange={handleExpressionChange}
           onCommit={handleCommit}
           onError={(errorMessage: string) => setError(errorMessage)}
+          shortcuts={[
+            !startRule && {
+              shortcut: true,
+              name: t`Combine columns`,
+              action: () => setIsCombiningColumns(true),
+              group: "shortcuts",
+              icon: "combine",
+            },
+          ].filter(Boolean)}
         />
       </ExpressionFieldWrapper>
       {withName && (
@@ -145,6 +184,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
           <Input
             id="expression-name"
+            data-testid="expression-name"
             type="text"
             value={name}
             placeholder={t`Something nice and descriptive`}

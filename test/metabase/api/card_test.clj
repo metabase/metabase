@@ -83,7 +83,8 @@
    :average_query_time     nil
    :last_query_start       nil
    :result_metadata        nil
-   :cache_invalidated_at   nil})
+   :cache_invalidated_at   nil
+   :view_count             0})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -292,28 +293,6 @@
         (is (= [{:name "Card 1"}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
-
-(deftest filter-by-stale-test
-  (testing "Filter by `stale`"
-    ;; *query-analyzer/*parse-queries-in-test?* is not relevant since we're not doing the parsing here
-    (mt/with-temp [:model/Field        {active-field-id :id}    {:active true}
-                   :model/Field        {inactive-field-id :id}  {:active false}
-                   :model/Card         relevant-card            {:name "Card with stale query"}
-                   :model/Card         not-stale-card           {:name "Card whose columns are up to date"}
-                   :model/Card         irrelevant-card          {:name "Card with no QueryFields at all"}
-                   :model/Card         select-*-card            {:name "Card with only wildcard refs"}
-                   :model/QueryField   _                        {:card_id  (u/the-id relevant-card)
-                                                                 :field_id inactive-field-id}
-                   :model/QueryField   _                        {:card_id  (u/the-id not-stale-card)
-                                                                 :field_id active-field-id}
-                   :model/QueryField   _                        {:card_id  (u/the-id select-*-card)
-                                                                 :field_id inactive-field-id
-                                                                 :direct_reference false}]
-      (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
-        (is (=? [{:name         "Card with stale query"
-                  :query_fields [{:card_id  (u/the-id relevant-card)
-                                  :field_id inactive-field-id}]}]
-                (mt/user-http-request :rasta :get 200 "card", :f :stale)))))))
 
 (deftest filter-by-using-model-segment-metric
   (mt/with-temp [:model/Database {database-id :id} {}

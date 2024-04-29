@@ -58,18 +58,6 @@ export function computeNumericDataInverval(xValues) {
   return bestPrecision;
 }
 
-// logTickFormat(chart.xAxis())
-export function logTickFormat(axis) {
-  const superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  const formatPower = d =>
-    (d + "")
-      .split("")
-      .map(c => superscript[c])
-      .join("");
-  const formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
-  axis.tickFormat(formatTick);
-}
-
 export const isMultipleOf = (value, base) => {
   // Ideally we could use Number.EPSILON as constant diffThreshold here.
   // However, we sometimes see very small errors that are bigger than EPSILON.

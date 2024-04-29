@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import Dashboards from "metabase/entities/dashboards";
 import withToast from "metabase/hoc/Toast";
 import { entityTypeForObject } from "metabase/lib/schema";
 
@@ -58,7 +57,6 @@ function CollectionCopyEntityModal({
         ...entityObject,
         collection_id: initialCollectionId,
       }}
-      form={Dashboards.forms.duplicate}
       title={title}
       copy={async values => {
         return entityObject.copy(dissoc(values, "id"));

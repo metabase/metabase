@@ -238,7 +238,7 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position :initially_published_at])
+   :position :initially_published_at :view_count])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
@@ -268,7 +268,7 @@
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)

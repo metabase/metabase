@@ -635,6 +635,7 @@
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (map #(assoc % :collection_id (:id collection)))
        (map remove-unwanted-keys)
        (group-by :model)
        (into []
