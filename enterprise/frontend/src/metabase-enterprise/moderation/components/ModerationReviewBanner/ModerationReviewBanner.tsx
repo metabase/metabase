@@ -1,52 +1,44 @@
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 
 import Users from "metabase/entities/users";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import {
-  getTextForReviewBanner,
   getIconForReview,
+  getTextForReviewBanner,
 } from "metabase-enterprise/moderation/service";
+import type { ModerationReview, User } from "metabase-types/api";
 
 import {
   Container,
   Text,
-  Time,
   TextContainer,
+  Time,
 } from "./ModerationReviewBanner.styled";
 
 const ICON_BUTTON_SIZE = 16;
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state: any, _props: any) => ({
   currentUser: getUser(state),
 });
 
-export default _.compose(
-  Users.load({
-    id: (state, props) => props.moderationReview.moderator_id,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(ModerationReviewBanner);
+interface ModerationReviewBannerProps {
+  moderationReview: ModerationReview;
+  user?: User | null;
+  currentUser: User;
+  onRemove?: () => void;
+  className?: string;
+}
 
-ModerationReviewBanner.propTypes = {
-  moderationReview: PropTypes.object.isRequired,
-  user: PropTypes.object,
-  currentUser: PropTypes.object.isRequired,
-  onRemove: PropTypes.func,
-  className: PropTypes.func,
-};
-
-export function ModerationReviewBanner({
+export const ModerationReviewBanner = ({
   moderationReview,
-  user: moderator,
+  user: moderator = null,
   currentUser,
   className,
-}) {
+}: ModerationReviewBannerProps) => {
   const { bannerText } = getTextForReviewBanner(
     moderationReview,
     moderator,
@@ -57,7 +49,10 @@ export function ModerationReviewBanner({
     getIconForReview(moderationReview);
 
   return (
-    <Container backgroundColor={alpha(iconColor, 0.2)} className={className}>
+    <Container
+      style={{ backgroundColor: alpha(iconColor, 0.2) }}
+      className={className}
+    >
       <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
       <TextContainer>
         <Text>{bannerText}</Text>
@@ -67,4 +62,13 @@ export function ModerationReviewBanner({
       </TextContainer>
     </Container>
   );
-}
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(
+  Users.load({
+    id: (_state: any, props: any) => props.moderationReview.moderator_id,
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps),
+)(ModerationReviewBanner);
