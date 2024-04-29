@@ -6580,6 +6580,38 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
+      id: v50.2024-04-25T03:15:01
+      author: noahmoss
+      comment: Add entity_id to core_user
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: core_user
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:02
+      author: noahmoss
+      comment: Add entity_id to permissions_group
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: permissions_group
+
+  - changeSet:
       id: v50.2024-04-25T16:29:31
       author: calherries
       comment: Add report_card.view_count
