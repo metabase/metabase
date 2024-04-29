@@ -1,7 +1,5 @@
 import { useState } from "react";
 
-import Question from "metabase-lib/v1/Question";
-
 import { ObjectDetailView } from "./ObjectDetailView";
 import { PaginationFooter, RootModal } from "./ObjectDetailWrapper.styled";
 import type { ObjectDetailProps } from "./types";
