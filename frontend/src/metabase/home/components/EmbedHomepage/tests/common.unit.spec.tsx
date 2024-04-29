@@ -27,7 +27,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
     expect(screen.getByText("Learn more")).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
+      "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=embedding-homepage",
     );
   });
 
@@ -167,7 +167,7 @@ describe("EmbedHomepage (OSS)", () => {
       const lastCall = getLastHomepageSettingSettingCall();
 
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
 
@@ -194,7 +194,7 @@ describe("EmbedHomepage (OSS)", () => {
 
       const lastCall = getLastHomepageSettingSettingCall();
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
