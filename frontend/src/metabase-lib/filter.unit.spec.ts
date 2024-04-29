@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
@@ -772,6 +772,8 @@ describe("filter", () => {
   describe.each(["en", "ja", "ar", "th", "ko", "vi", "zh"])(
     "specific date filters for locale %s",
     locale => {
+      require(`dayjs/locale/${locale}`);
+
       const tableName = "PRODUCTS";
       const columnName = "CREATED_AT";
       const column = findColumn(query, tableName, columnName);
@@ -779,7 +781,7 @@ describe("filter", () => {
       beforeEach(() => {
         jest.useFakeTimers();
         jest.setSystemTime(new Date(2020, 0, 1));
-        moment.locale(locale);
+        dayjs.locale(locale);
       });
 
       it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
@@ -795,6 +797,8 @@ describe("filter", () => {
             }),
           );
 
+          // verifies locale is specified correctly
+          expect(dayjs.locale()).toBe(locale);
           expect(filterParts).toMatchObject({
             operator,
             column: expect.anything(),
@@ -806,7 +810,9 @@ describe("filter", () => {
       );
 
       it('should be able to create and destructure a specific date filter with "between" operator and 2 values', () => {
-        moment.locale("ja");
+        require("dayjs/locale/ja");
+        dayjs.locale("ja");
+
         const values = [new Date(2018, 2, 10), new Date(2019, 10, 20)];
         const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
           query,
@@ -817,6 +823,8 @@ describe("filter", () => {
           }),
         );
 
+        // verifies locale is specified correctly
+        expect(dayjs.locale()).toBe("ja");
         expect(filterParts).toMatchObject({
           operator: "between",
           column: expect.anything(),
