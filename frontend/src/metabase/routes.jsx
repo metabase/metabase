@@ -10,8 +10,6 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-import { BrowseApp } from "metabase/browse/components/BrowseApp";
-import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
@@ -60,7 +58,9 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { BrowseRedirect } from "./browse/components/BrowseRedirect";
+import { BrowseDatabases } from "./browse/components/BrowseDatabases";
+import { BrowseModels } from "./browse/components/BrowseModels";
+import BrowseSchemas from "./browse/components/BrowseSchemas";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -200,27 +200,13 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse">
-            <IndexRoute component={BrowseRedirect} />
-            <Route path="models" component={() => <BrowseApp tab="models" />} />
-            <Route
-              path="databases"
-              component={() => <BrowseApp tab="databases" />}
-            />
-            <Route
-              path="databases/:slug"
-              component={({ params }) => (
-                <BrowseApp tab="databases">
-                  <SchemaBrowser params={params} />
-                </BrowseApp>
-              )}
-            />
+            <IndexRedirect to="/browse/models" />
+            <Route path="models" component={BrowseModels} />
+            <Route path="databases" component={BrowseDatabases} />
+            <Route path="databases/:slug" component={BrowseSchemas} />
             <Route
               path="databases/:dbId/schema/:schemaName"
-              component={({ params }) => (
-                <BrowseApp tab="databases">
-                  <TableBrowser params={params} />
-                </BrowseApp>
-              )}
+              component={TableBrowser}
             />
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
