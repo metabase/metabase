@@ -62,10 +62,11 @@
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
   (lib.util.match/replace stage
     #{:field :expression}
-    (let [col (lib.equality/find-matching-column &match first-stage-cols)]
+    (if-let [col (lib.equality/find-matching-column &match first-stage-cols)]
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
-          lib/ref))))
+          lib/ref)
+      (lib.util/fresh-uuids &match))))
 
 (mu/defn ^:private new-second-stage :- ::lib.schema/stage
   "All references need to be updated to be prior-stage references using the desired alias from the previous stage.
@@ -77,7 +78,7 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata)
+        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols))))
 
 (mu/defn ^:private nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]

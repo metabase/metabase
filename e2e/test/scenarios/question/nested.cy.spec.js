@@ -11,6 +11,7 @@ import {
   summarize,
   filter,
   filterField,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -66,7 +67,7 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by Count: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
+    chartPathWithFillColor("#A989C5").should("have.length.of.at.least", 8);
 
     // Go back to the nested question and make sure Sum over time works
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -104,7 +105,7 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by COUNT: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 5);
+    chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested SQL").click();
@@ -310,7 +311,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Group by").parent().findByText("COUNT(*)").click();
       cy.wait("@dataset");
 
-      cy.get(".bar").should("have.length.of.at.least", 5);
+      chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 5);
 
       // Replace "Count" with the "Average"
       cy.findByTestId("aggregation-item").contains("Count").click();
@@ -318,7 +319,7 @@ describe("scenarios > question > nested", () => {
       popover().findByText("COUNT(*)").click();
       cy.wait("@dataset");
 
-      cy.get(".bar").should("have.length.of.at.least", 5);
+      chartPathWithFillColor("#A989C5").should("have.length.of.at.least", 5);
     });
   });
 

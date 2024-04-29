@@ -6,6 +6,7 @@ import {
   visitQuestion,
   visitDashboard,
   assertQueryBuilderRowCount,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -80,7 +81,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     visitQuestion("@nestedQuestionId");
 
     // We can click on any circle; this index was chosen randomly
-    cy.get("circle").eq(25).click({ force: true });
+    cartesianChartCircle().eq(25).click({ force: true });
     popover()
       .findByText(/^See these/)
       .click();
@@ -100,10 +101,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy
-      .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
-      .as("loadTargetDashboard"),
-      cy.get("circle").eq(25).click({ force: true });
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+      "loadTargetDashboard",
+    );
+    cartesianChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
@@ -116,7 +117,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
 function mapModelColumnToDatabase({ table, field }) {
   cy.findByText("Database column this maps to")
-    .closest("#formField-id")
+    .parent()
     .findByTestId("select-button")
     .click();
   popover().findByRole("option", { name: table }).click();

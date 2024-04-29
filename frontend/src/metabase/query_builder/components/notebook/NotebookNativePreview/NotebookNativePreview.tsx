@@ -108,6 +108,9 @@ export const NotebookNativePreview = (): JSX.Element => {
               fontSize={12}
               style={{ backgroundColor: color("bg-light") }}
               showPrintMargin={false}
+              setOptions={{
+                highlightGutterLine: false,
+              }}
             />
           </NativeQueryEditorRoot>
         )}

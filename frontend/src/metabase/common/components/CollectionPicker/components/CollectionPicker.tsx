@@ -7,7 +7,10 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection, SearchRequest } from "metabase-types/api";
+import type {
+  Collection,
+  ListCollectionItemsRequest,
+} from "metabase-types/api";
 
 import {
   LoadingSpinner,
@@ -48,7 +51,7 @@ export const CollectionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, SearchRequest>
+    PickerState<CollectionPickerItem, ListCollectionItemsRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
@@ -71,8 +74,7 @@ export const CollectionPickerInner = (
     ({ folder }: { folder: CollectionPickerItem }) => {
       const isUserPersonalCollection = folder?.id === userPersonalCollectionId;
       const isUserSubfolder =
-        path?.[1]?.query?.collection === "personal" &&
-        !isUserPersonalCollection;
+        path?.[1]?.query?.id === "personal" && !isUserPersonalCollection;
 
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(
@@ -124,7 +126,7 @@ export const CollectionPickerInner = (
           ...oldPath,
           {
             query: {
-              collection: parentCollectionId,
+              id: parentCollectionId,
               models: ["collection"],
               namespace: options.namespace,
             },
