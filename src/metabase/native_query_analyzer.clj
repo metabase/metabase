@@ -35,37 +35,50 @@
        (or (not config/is-test?)
            *parse-queries-in-test?*)))
 
-(defn- normalize-name
-  ;; TODO: This is wildly naive and will be revisited once the rest of the plumbing is sorted out
-  ;; c.f. Milestone 3 of the epic: https://github.com/metabase/metabase/issues/36911
-  [name]
-  (-> name
-      (str/replace "\"" "")
-      u/lower-case-en))
-
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
   {:from [[:metabase_field :f]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join [[:metabase_table :t] [:= :table_id :t.id]]})
 
+(defn- field-query
+  "Exact match for quoted fields, case-insensitive match for non-quoted fields"
+  [field value]
+  (if (= (first value) \")
+    [:= field (-> value (subs 1 (dec (count value))) (str/replace "\"\"" "\""))]
+    [:= [:lower field] (u/lower-case-en value)]))
+
+(defn- table-query
+  [t]
+  (if-not (:schema t)
+    (field-query :t.name (:table t))
+    [:and
+     (field-query :t.name (:table t))
+     (field-query :t.schema (:schema t))]))
+
+(defn- column-query
+  "Generates the query for a column, incorporating its concrete table information (if known) or matching it against
+  the provided list of all possible tables."
+  [tables column]
+  (if (:table column)
+    [:and
+     (field-query :f.name (:column column))
+     (table-query column)]
+    [:and
+     (field-query :f.name (:column column))
+     (into [:or] (map table-query tables))]))
+
 (defn- direct-field-ids-for-query
-  "Very naively selects the IDs of Fields that could be used in the query. Improvements to this are planned for Q2 2024,
-  c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911"
+  "Selects IDs of Fields that could be used in the query"
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
-        tables (map :component table-maps)]
-    (t2/select-pks-set :model/Field (merge field-and-table-fragment
-                                           {:where [:and
-                                                    [:= :t.db_id db-id]
-                                                    (if (seq tables)
-                                                      [:in :%lower.t/name (map normalize-name tables)]
-                                                      ;; if we don't know what tables it's from, look everywhere
-                                                      true)
-                                                    (if (seq columns)
-                                                      [:in :%lower.f/name (map normalize-name columns)]
-                                                      ;; if there are no columns, it must be a select * or similar
-                                                      false)]}))))
+        tables  (map :component table-maps)]
+    (t2/select-pks-set :model/Field (assoc field-and-table-fragment
+                                           :where
+                                           [:and
+                                            [:= :t.db_id db-id]
+                                            (into [:or]
+                                                  (map (partial column-query tables) columns))]))))
 
 (defn- indirect-field-ids-for-query
   "Similar to direct-field-ids-for-query, but for wildcard selects"
@@ -78,13 +91,12 @@
                                        (reduce #(and %1 %2) true (map :component all-wildcard-maps)))
         tables                    (map :component table-maps)
         active-fields-from-tables
-        (fn [table-names]
+        (fn [tables]
           (t2/select-pks-set :model/Field (merge field-and-table-fragment
                                                  {:where [:and
                                                           [:= :t.db_id db-id]
-                                                          [:= true :f.active]
-                                                          [:in :%lower.t/name
-                                                               (map normalize-name table-names)]]})))]
+                                                          [:= :f.active true]
+                                                          (into [:or] (map table-query tables))]})))]
     (cond
       ;; select * from ...
       ;; so, get everything in all the tables

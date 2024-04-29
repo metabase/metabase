@@ -1,0 +1,356 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            { "base-type": "type/DateTime", "temporal-unit": "month" }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": { "distinct-count": 10001, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Sum of Total",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 49, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 52.75594257942132,
+                "q1": 13840.198767080305,
+                "q3": 47157.879273573344,
+                "max": 52249.59075544257,
+                "sd": 17760.55846233951,
+                "avg": 30829.013939808803
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Subtotal",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "sum_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 49, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 49.535942579421324,
+                "q1": 13282.175879100561,
+                "q3": 45176.00141113813,
+                "max": 50072.97781904539,
+                "sd": 17004.896168609248,
+                "avg": 29554.86052812048
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": 36,
+      "query_type": "query",
+      "name": "Line MultiSeries Trend - Sum of Total and Subtotal by Month",
+      "creator_id": 1,
+      "updated_at": "2023-11-20T14:05:22.666263-08:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [
+            ["sum", ["field", 15, { "base-type": "type/Float" }]],
+            ["sum", ["field", 17, { "base-type": "type/Float" }]]
+          ],
+          "breakout": [
+            [
+              "field",
+              14,
+              { "base-type": "type/DateTime", "temporal-unit": "month" }
+            ]
+          ]
+        }
+      },
+      "id": 113,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "line",
+      "entity_id": "6Sahqf3mvdbu07qOsIh3O",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_trendline": true,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum", "sum_2"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-11-16T15:40:10.945711",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            { "base-type": "type/DateTime", "temporal-unit": "month" }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": { "distinct-count": 10001, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Total",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "sum_2",
+          "display_name": "Sum of Subtotal",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        }
+      ],
+      "download_perms": "full",
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", SUM(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"sum\", SUM(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"sum_2\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.show_trendline": true,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum", "sum_2"],
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              14,
+              { "base-type": "type/DateTime", "temporal-unit": "month" }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 14,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": { "distinct-count": 10001, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 49, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 52.75594257942132,
+                  "q1": 13840.198767080305,
+                  "q3": 47157.879273573344,
+                  "max": 52249.59075544257,
+                  "sd": 17760.55846233951,
+                  "avg": 30829.013939808803
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Subtotal",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "sum_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 49, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 49.535942579421324,
+                  "q1": 13282.175879100561,
+                  "q3": 45176.00141113813,
+                  "max": 50072.97781904539,
+                  "sd": 17004.896168609248,
+                  "avg": 29554.86052812048
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 45683.67779822104,
+          "unit": "month",
+          "offset": -708850.430131143,
+          "last-change": -0.3266857736407914,
+          "col": "sum",
+          "slope": 37.33061521775562,
+          "last-value": 30759.470173952555,
+          "best-fit": [
+            "+",
+            -7307101.36934912,
+            ["*", 741660.4151552218, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 43873.02890639238,
+          "unit": "month",
+          "offset": -678887.0180235447,
+          "last-change": -0.32718860961047647,
+          "col": "sum_2",
+          "slope": 35.75409778430905,
+          "last-value": 29518.273579109613,
+          "best-fit": [
+            "+",
+            -6998491.083090355,
+            ["*", 710339.7279626131, ["log", "x"]]
+          ]
+        }
+      ],
+      "rows": [
+        ["2022-04-01T00:00:00-07:00", 52.75594257942132, 49.535942579421324],
+        ["2022-05-01T00:00:00-07:00", 1265.7162964063327, 1211.9862964063327],
+        ["2022-06-01T00:00:00-07:00", 2072.940953535274, 1989.6356288869447],
+        ["2022-07-01T00:00:00-07:00", 3734.685704745626, 3585.3246821242137],
+        ["2022-08-01T00:00:00-07:00", 4960.6397462410805, 4796.906243335047],
+        ["2022-09-01T00:00:00-07:00", 5372.079269521636, 5152.831208187582],
+        ["2022-10-01T00:00:00-07:00", 7702.856950312799, 7390.137513216126],
+        ["2022-11-01T00:00:00-07:00", 7926.7420321754435, 7608.266064332847],
+        ["2022-12-01T00:00:00-08:00", 9068.452350901081, 8717.002197846683],
+        ["2023-01-01T00:00:00-08:00", 11094.701739078233, 10717.630934681327],
+        ["2023-02-01T00:00:00-08:00", 11243.56955251039, 10795.663423756252],
+        ["2023-03-01T00:00:00-08:00", 14115.657943115426, 13544.197293271729],
+        ["2023-04-01T00:00:00-07:00", 13013.821238974942, 12496.11163658706],
+        ["2023-05-01T00:00:00-07:00", 15720.51649644341, 15075.549660029425],
+        ["2023-06-01T00:00:00-07:00", 15517.711760113332, 14877.949774986722],
+        ["2023-07-01T00:00:00-07:00", 18570.55897166545, 17829.305004464717],
+        ["2023-08-01T00:00:00-07:00", 18976.961312687356, 18297.099599358215],
+        ["2023-09-01T00:00:00-07:00", 19139.126159638396, 18352.375666837503],
+        ["2023-10-01T00:00:00-07:00", 20555.387091195505, 19785.524644048823],
+        ["2023-11-01T00:00:00-07:00", 22577.57607259682, 21752.472525511515],
+        ["2023-12-01T00:00:00-08:00", 24730.433341694705, 23807.05683709572],
+        ["2024-01-01T00:00:00-08:00", 38569.69761756364, 37019.6427276864],
+        ["2024-02-01T00:00:00-08:00", 34367.60365920118, 32923.87879439165],
+        ["2024-03-01T00:00:00-08:00", 38183.95652465268, 36592.60967859522],
+        ["2024-04-01T00:00:00-07:00", 37080.9022462271, 35548.2306892218],
+        ["2024-05-01T00:00:00-07:00", 45506.820164951256, 43556.649375537934],
+        ["2024-06-01T00:00:00-07:00", 41301.88124203161, 39538.065116589816],
+        ["2024-07-01T00:00:00-07:00", 44280.9768033513, 42292.23008882605],
+        ["2024-08-01T00:00:00-07:00", 44361.726210027264, 42443.92701115228],
+        ["2024-09-01T00:00:00-07:00", 43988.54090495764, 42077.49672496922],
+        ["2024-10-01T00:00:00-07:00", 47728.73753277259, 45708.921922326925],
+        ["2024-11-01T00:00:00-07:00", 46431.9490978185, 44498.62917250798],
+        ["2024-12-01T00:00:00-08:00", 48242.242174191815, 46245.65789935836],
+        ["2025-01-01T00:00:00-08:00", 51634.16097900004, 49436.66806086141],
+        ["2025-02-01T00:00:00-08:00", 47075.848588280416, 45101.08954034002],
+        ["2025-03-01T00:00:00-08:00", 51347.097928837946, 49293.82118137571],
+        ["2025-04-01T00:00:00-07:00", 47555.12081598483, 45535.79215588472],
+        ["2025-05-01T00:00:00-07:00", 47723.98086983522, 45763.581549961986],
+        ["2025-06-01T00:00:00-07:00", 46482.43621941869, 44689.34748926272],
+        ["2025-07-01T00:00:00-07:00", 47993.86376063984, 46111.9136874956],
+        ["2025-08-01T00:00:00-07:00", 50597.15768009923, 48418.60958017262],
+        ["2025-09-01T00:00:00-07:00", 44712.65087520471, 42785.017676314215],
+        ["2025-10-01T00:00:00-07:00", 46273.4992306102, 44263.66304780227],
+        ["2025-11-01T00:00:00-07:00", 47410.4756440499, 45444.068114669484],
+        ["2025-12-01T00:00:00-08:00", 48260.755297722746, 46201.074486975],
+        ["2026-01-01T00:00:00-08:00", 52249.59075544257, 50072.97781904539],
+        ["2026-02-01T00:00:00-08:00", 47403.97132945211, 45400.73702353247],
+        ["2026-03-01T00:00:00-08:00", 45683.67779822104, 43873.02890639238],
+        ["2026-04-01T00:00:00-07:00", 30759.470173952555, 29518.273579109613]
+      ]
+    }
+  }
+]

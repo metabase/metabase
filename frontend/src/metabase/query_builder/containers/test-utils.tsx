@@ -342,10 +342,10 @@ export const triggerNativeQueryChange = async () => {
 
 export const triggerMetadataChange = async () => {
   await waitFor(() => {
-    expect(screen.getByTitle("Display name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
   });
 
-  const columnDisplayName = screen.getByTitle("Display name");
+  const columnDisplayName = screen.getByLabelText("Display name");
 
   await userEvent.click(columnDisplayName);
   await userEvent.type(columnDisplayName, "X");

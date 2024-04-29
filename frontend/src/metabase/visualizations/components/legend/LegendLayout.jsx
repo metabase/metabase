@@ -54,6 +54,7 @@ const LegendLayout = ({
   isReversed,
   canRemoveSeries,
 }) => {
+  const hasDimensions = width != null && height != null;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / itemHeight);
@@ -93,7 +94,7 @@ const LegendLayout = ({
         {isVertical && actionButtons && (
           <LegendActions>{actionButtons}</LegendActions>
         )}
-        <ChartContainer>{children}</ChartContainer>
+        {hasDimensions && <ChartContainer>{children}</ChartContainer>}
       </MainContainer>
     </LegendLayoutRoot>
   );
