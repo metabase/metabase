@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
-import { useSdkSelector } from "embedding-sdk/store";
-import { getErrorComponent } from "embedding-sdk/store/selectors";
+// import { useSdkSelector } from "embedding-sdk/store";
+// import { getErrorComponent } from "embedding-sdk/store/selectors";
 
 export type SdkErrorProps = { message: string };
 
 let SdkError = ({ message }: SdkErrorProps) => {
-  const CustomError = useSdkSelector(getErrorComponent);
+  // const CustomError = useSdkSelector(getErrorComponent);
 
-  if (CustomError) {
-    return <CustomError message={message} />;
-  }
+  // if (CustomError) {
+  //   return <CustomError message={message} />;
+  // }
 
   return (
     <div>

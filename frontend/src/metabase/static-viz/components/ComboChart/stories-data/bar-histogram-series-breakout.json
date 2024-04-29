@@ -1,0 +1,502 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-11T22:26:47.581526Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "bar",
+        "name": "Bar",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 14,
+        "entity_id": "7cs7gCidO3n43FfJ22e7a",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-12T22:54:03.258587Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["generation", "type_1"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.x_axis.scale": "histogram",
+        "stackable.stack_type": null,
+        "graph.metrics": ["count"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-03-11T22:26:47.782485Z"
+      },
+      "collection_preview": true,
+      "entity_id": "RpCYlBI4xQl8VF9H9_0vg",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 271,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "generation",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            [
+              "field",
+              "type_1",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "source-table": "card__104"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-11T22:26:47.581526Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 320.9,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-12T17:45:26.046068Z",
+      "name": "Bar Histogram Series Breakout - Pokedex count by gen, breakout by type 1",
+      "query_type": "query",
+      "collection_id": 14,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-08T20:14:19.465128Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "generation",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1503, null],
+          "effective_type": "type/BigInteger",
+          "id": 1503,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "type_1",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1475, null],
+          "effective_type": "type/Text",
+          "id": 1475,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 21,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 3.6101330809702503,
+                "q3": 10.283484861008832,
+                "max": 31,
+                "sd": 5.479663179653555,
+                "avg": 7.6716417910447765
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 156,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, "Bug", 14],
+        [1, "Dark", 4],
+        [1, "Dragon", 3],
+        [1, "Electric", 11],
+        [1, "Fairy", 2],
+        [1, "Fighting", 8],
+        [1, "Fire", 15],
+        [1, "Ghost", 4],
+        [1, "Grass", 14],
+        [1, "Ground", 10],
+        [1, "Ice", 6],
+        [1, "Normal", 25],
+        [1, "Poison", 17],
+        [1, "Psychic", 14],
+        [1, "Rock", 13],
+        [1, "Steel", 1],
+        [1, "Water", 31],
+        [2, "Bug", 12],
+        [2, "Dark", 6],
+        [2, "Electric", 7],
+        [2, "Fairy", 5],
+        [2, "Fighting", 2],
+        [2, "Fire", 8],
+        [2, "Ghost", 2],
+        [2, "Grass", 9],
+        [2, "Ground", 3],
+        [2, "Ice", 4],
+        [2, "Normal", 15],
+        [2, "Poison", 1],
+        [2, "Psychic", 7],
+        [2, "Rock", 5],
+        [2, "Steel", 3],
+        [2, "Water", 18],
+        [3, "Bug", 12],
+        [3, "Dark", 8],
+        [3, "Dragon", 12],
+        [3, "Electric", 5],
+        [3, "Fighting", 5],
+        [3, "Fire", 9],
+        [3, "Ghost", 5],
+        [3, "Grass", 13],
+        [3, "Ground", 7],
+        [3, "Ice", 8],
+        [3, "Normal", 18],
+        [3, "Poison", 3],
+        [3, "Psychic", 12],
+        [3, "Rock", 8],
+        [3, "Steel", 12],
+        [3, "Water", 28],
+        [4, "Bug", 10],
+        [4, "Dark", 3],
+        [4, "Dragon", 4],
+        [4, "Electric", 12],
+        [4, "Fairy", 1],
+        [4, "Fighting", 3],
+        [4, "Fire", 5],
+        [4, "Ghost", 7],
+        [4, "Grass", 15],
+        [4, "Ground", 4],
+        [4, "Ice", 3],
+        [4, "Normal", 18],
+        [4, "Poison", 6],
+        [4, "Psychic", 8],
+        [4, "Rock", 6],
+        [4, "Steel", 3],
+        [4, "Water", 13],
+        [5, "Bug", 18],
+        [5, "Dark", 13],
+        [5, "Dragon", 9],
+        [5, "Electric", 8],
+        [5, "Fighting", 7],
+        [5, "Fire", 9],
+        [5, "Flying", 2],
+        [5, "Ghost", 5],
+        [5, "Grass", 15],
+        [5, "Ground", 12],
+        [5, "Ice", 9],
+        [5, "Normal", 19],
+        [5, "Poison", 2],
+        [5, "Psychic", 14],
+        [5, "Rock", 6],
+        [5, "Steel", 4],
+        [5, "Water", 19],
+        [6, "Bug", 3],
+        [6, "Dark", 3],
+        [6, "Dragon", 6],
+        [6, "Electric", 3],
+        [6, "Fairy", 9],
+        [6, "Fighting", 3],
+        [6, "Fire", 8],
+        [6, "Flying", 2],
+        [6, "Ghost", 10],
+        [6, "Grass", 5],
+        [6, "Ice", 2],
+        [6, "Normal", 4],
+        [6, "Poison", 2],
+        [6, "Psychic", 5],
+        [6, "Rock", 9],
+        [6, "Steel", 5],
+        [6, "Water", 6],
+        [7, "Bug", 9],
+        [7, "Dark", 1],
+        [7, "Dragon", 3],
+        [7, "Electric", 5],
+        [7, "Fairy", 1],
+        [7, "Fighting", 4],
+        [7, "Fire", 6],
+        [7, "Ghost", 5],
+        [7, "Grass", 12],
+        [7, "Ground", 2],
+        [7, "Normal", 12],
+        [7, "Poison", 6],
+        [7, "Psychic", 10],
+        [7, "Rock", 9],
+        [7, "Steel", 4],
+        [7, "Water", 10],
+        [8, "Bug", 3],
+        [8, "Dark", 6],
+        [8, "Dragon", 3],
+        [8, "Electric", 10],
+        [8, "Fairy", 4],
+        [8, "Fighting", 6],
+        [8, "Fire", 5],
+        [8, "Flying", 4],
+        [8, "Ghost", 3],
+        [8, "Grass", 8],
+        [8, "Ground", 3],
+        [8, "Ice", 4],
+        [8, "Normal", 4],
+        [8, "Poison", 2],
+        [8, "Psychic", 6],
+        [8, "Rock", 4],
+        [8, "Steel", 4],
+        [8, "Water", 9]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 156,
+          "coercion_strategy": null,
+          "name": "generation",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1503, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1503,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 156,
+          "coercion_strategy": null,
+          "name": "type_1",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1475, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1475,
+          "position": 9,
+          "visibility_type": "normal",
+          "display_name": "Type 1",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 18,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.281128404669261
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"generation\" AS \"generation\", \"source\".\"type_1\" AS \"type_1\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"german_name\" AS \"german_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"japanese_name\" AS \"japanese_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"generation\" AS \"generation\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"status\" AS \"status\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"species\" AS \"species\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_number\" AS \"type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_1\" AS \"type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_2\" AS \"type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"height_m\" AS \"height_m\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"weight_kg\" AS \"weight_kg\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"abilities_number\" AS \"abilities_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_1\" AS \"ability_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_2\" AS \"ability_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_hidden\" AS \"ability_hidden\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"total_points\" AS \"total_points\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"attack\" AS \"attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"defense\" AS \"defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_attack\" AS \"sp_attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_defense\" AS \"sp_defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"speed\" AS \"speed\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"catch_rate\" AS \"catch_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_friendship\" AS \"base_friendship\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_experience\" AS \"base_experience\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"growth_rate\" AS \"growth_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_number\" AS \"egg_type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_1\" AS \"egg_type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_2\" AS \"egg_type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"percentage_male\" AS \"percentage_male\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_cycles\" AS \"egg_cycles\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_normal\" AS \"against_normal\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fire\" AS \"against_fire\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_water\" AS \"against_water\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_electric\" AS \"against_electric\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_grass\" AS \"against_grass\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ice\" AS \"against_ice\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fight\" AS \"against_fight\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_poison\" AS \"against_poison\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ground\" AS \"against_ground\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_flying\" AS \"against_flying\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_psychic\" AS \"against_psychic\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_bug\" AS \"against_bug\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_rock\" AS \"against_rock\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ghost\" AS \"against_ghost\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dragon\" AS \"against_dragon\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dark\" AS \"against_dark\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_steel\" AS \"against_steel\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fairy\" AS \"against_fairy\" FROM \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\") AS \"source\" GROUP BY \"source\".\"generation\", \"source\".\"type_1\" ORDER BY \"source\".\"generation\" ASC, \"source\".\"type_1\" ASC",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "generation",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1503, null],
+            "effective_type": "type/BigInteger",
+            "id": 1503,
+            "visibility_type": "normal",
+            "display_name": "Generation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 2.1045160333142734,
+                  "q3": 5.716989271844637,
+                  "max": 8,
+                  "sd": 2.234937326790694,
+                  "avg": 4.034046692607004
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "type_1",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1475, null],
+            "effective_type": "type/Text",
+            "id": 1475,
+            "visibility_type": "normal",
+            "display_name": "Type 1",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 18,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 5.281128404669261
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 21,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 3.6101330809702503,
+                  "q3": 10.283484861008832,
+                  "max": 31,
+                  "sd": 5.479663179653555,
+                  "avg": 7.6716417910447765
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

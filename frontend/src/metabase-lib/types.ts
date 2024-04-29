@@ -1,4 +1,5 @@
 import type {
+  CardId,
   DatasetColumn,
   DatabaseId,
   FieldId,
@@ -566,6 +567,7 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
+  cardId?: CardId;
   settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;

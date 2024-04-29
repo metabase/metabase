@@ -70,6 +70,9 @@ const defaultConfig = {
     on(
       "file:preprocessor",
       createBundler({
+        loader: {
+          ".svg": "text",
+        },
         plugins: [NodeModulesPolyfillPlugin()],
         sourcemap: "inline",
       }),
