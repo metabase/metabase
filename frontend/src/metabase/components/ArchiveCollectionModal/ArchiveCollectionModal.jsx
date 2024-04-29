@@ -29,7 +29,7 @@ class ArchiveCollectionModalInner extends Component {
     if (object.archived) {
       const parent =
         object.effective_ancestors.length > 0
-          ? object.effective_ancestors.pop()
+          ? object.effective_ancestors.at(-1)
           : null;
       push(Urls.collection(parent));
     }
