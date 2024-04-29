@@ -43,8 +43,10 @@
           (jwt-attribute-email)
           (jwt-attribute-firstname)
           (jwt-attribute-lastname)
+          :exp
           :iat
-          :max_age))
+          :max_age
+          :sub))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
