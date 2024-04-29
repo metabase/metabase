@@ -336,20 +336,18 @@
             (when (not= 200 status)
               (throw (ex-info "Failed to upload file to Slack:" {:status status, :body body}))))
         ;; Step 3: Complete the upload using files.completeUploadExternal
+        channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
         complete! (fn []
                     (POST "files.completeUploadExternal"
                       {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
-                                      :channel_id (maybe-lookup-id channel-id
-                                                                   (slack-cached-channels-and-usernames))}}))
+                                      :channel_id channel-id}}))
         complete-response (try
                             (complete!)
                             (catch Throwable e
                               ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
                               ;; This is expected to happen the first time a Slack subscription is sent.
                               (if (= "not_in_channel" (:error-code (ex-data e)))
-                                (do (-> channel-id
-                                        (maybe-lookup-id (slack-cached-channels-and-usernames))
-                                        join-channel!)
+                                (do (join-channel! channel-id)
                                     (complete!))
                                 (throw e))))]
     (u/prog1 (get-in complete-response [:files 0 :url_private])
