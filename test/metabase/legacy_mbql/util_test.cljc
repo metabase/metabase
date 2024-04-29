@@ -4,7 +4,7 @@
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]
-   #?@(:clj ([metabase.test :as mt]))))
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
