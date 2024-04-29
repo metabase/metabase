@@ -234,17 +234,28 @@
      [:relative-datetime n unit]]))
 
 (defn desugar-does-not-contain
-  "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
+  "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
+
+  Note that [[desugar-multi-argument-comparisons]] will have already desugared any 3+ argument `:does-not-contain` to
+  several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
+  `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
   [m]
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-equals-and-not-equals-with-extra-args
-  "`:=` and `!=` clauses with more than 2 args automatically get rewritten as compound filters.
+(defn desugar-multi-argument-comparisons
+  "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
+  automatically get rewritten as compound filters.
 
-     [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
-     [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
+     [:= field x y]                -> [:or  [:=  field x] [:=  field y]]
+     [:!= field x y]               -> [:and [:!= field x] [:!= field y]]
+     [:does-not-contain field x y] -> [:and [:does-not-contain field x] [:does-not-contain field y]]
+
+  Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
+  `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
+  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  `[:contains {} field x y z]`."
   [m]
   (lib.util.match/replace m
     [:= field x y & more]
@@ -253,7 +264,16 @@
 
     [:!= field x y & more]
     (apply vector :and (for [x (concat [x y] more)]
-                         [:!= field x]))))
+                         [:!= field x]))
+
+    [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
+     (opts :guard map?)
+     field x y & more]
+    (let [tail (when (seq opts) [opts])]
+      (apply vector
+           (if (= op :does-not-contain) :and :or)
+           (for [x (concat [x y] more)]
+             (into [op field x] tail))))))
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
@@ -431,7 +451,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
-      desugar-equals-and-not-equals-with-extra-args
+      desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
       desugar-is-null-and-not-null
