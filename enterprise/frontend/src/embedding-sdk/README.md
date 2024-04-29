@@ -44,7 +44,7 @@ Features planned:
 
 ## Authenticate users from your back-end
 
-> **Note:** Metabase Embedding SDK for React only supports JWT authentication.**
+> **Note:** Metabase Embedding SDK for React only supports JWT authentication.
 
 The SDK requires an endpoint in the backend that signs a user into Metabase and returns a token that the SDK will use to make authenticated calls to Metabase.
 
@@ -164,7 +164,7 @@ After the SDK is configured, you can use embed your question using the `StaticQu
 
 ```jsx
 import React from "react";
-import { MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
@@ -183,7 +183,7 @@ export default function App() {
 
 ```jsx
 import React from "react";
-import { MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
