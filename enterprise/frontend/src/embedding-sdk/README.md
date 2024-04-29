@@ -18,7 +18,7 @@ Features planned:
 # Prerequisites
 
 * You have an application using React 17 or higher
-* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase 
+* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
 * You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
 
 # Getting started
@@ -250,8 +250,12 @@ return (
 The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
 
 # Feedback
-TODO: how to share feedback with us
-______
+For issues and feedback, there are two options:
+
+* Chat with the team directly on Slack: TODO
+* Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
+
+For security issues, please follow the instructions for responsible disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Development
 
