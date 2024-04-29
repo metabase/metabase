@@ -5,7 +5,6 @@ const fs = require("fs");
 const path = require("path");
 
 const IGNORED_PACKAGES = ["react", "react-dom"];
-const SDK_ROOT = "./enterprise/frontend/src/embedding-sdk";
 
 function filterOutReactDependencies(object) {
   const result = {};
@@ -35,7 +34,9 @@ function generateSdkPackage() {
   const mainPackageJsonContent = JSON.parse(mainPackageJson);
 
   const sdkPackageTemplateJson = fs.readFileSync(
-    path.resolve(`${SDK_ROOT}/package.template.json`),
+    path.resolve(
+      "./enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
     "utf-8",
   );
   const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
@@ -70,7 +71,7 @@ function generateSdkPackage() {
   );
 
   const licenseContent = fs.readFileSync(
-    path.resolve(`${SDK_ROOT}/LICENSE.txt`),
+    path.resolve(`./enterprise/LICENSE.txt`),
     "utf-8",
   );
 
