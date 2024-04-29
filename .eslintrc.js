@@ -124,7 +124,11 @@ module.exports = {
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests", "postcss-modules"],
+  plugins: [
+    "react",
+    "no-only-tests",
+    shouldLintCssModules && "postcss-modules",
+  ].filter(Boolean),
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
