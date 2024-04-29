@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const IGNORED_PACKAGES = ["react", "react-dom"];
+const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
 function filterOutReactDependencies(object) {
   const result = {};
@@ -59,27 +60,29 @@ function generateSdkPackage() {
   console.log("Generated SDK package.json:");
   console.log(mergedContentString);
 
-  const sdkDistDirPath = path.resolve("./resources/embedding-sdk");
-  if (!fs.existsSync(sdkDistDirPath)) {
-    fs.mkdirSync(sdkDistDirPath);
-  }
-
   fs.writeFileSync(
-    path.resolve(path.join(sdkDistDirPath), "package.json"),
+    path.resolve(path.join(SDK_DIST_DIR), "package.json"),
     mergedContentString,
     "utf-8",
   );
+}
 
+function generateLicenseFile() {
   const licenseContent = fs.readFileSync(
     path.resolve(`./enterprise/LICENSE.txt`),
     "utf-8",
   );
 
   fs.writeFileSync(
-    path.resolve(path.join(sdkDistDirPath), "LICENSE.txt"),
+    path.resolve(path.join(SDK_DIST_DIR), "LICENSE.txt"),
     licenseContent,
     "utf-8",
   );
 }
 
+if (!fs.existsSync(SDK_DIST_DIR)) {
+  fs.mkdirSync(SDK_DIST_DIR);
+}
+
 generateSdkPackage();
+generateLicenseFile();
