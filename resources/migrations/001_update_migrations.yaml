@@ -6794,7 +6794,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-04-22T14:03:28
+      id: v50.2024-04-29T14:07:18
       author: johnswanson
       comment: Drop foreign key constraint fk_snippet_collection_id
       rollback:
@@ -6811,7 +6811,7 @@ databaseChangeLog:
             constraintName: fk_snippet_collection_id
 
   - changeSet:
-      id: v50.2024-04-22T14:03:33
+      id: v50.2024-04-29T14:07:24
       author: johnswanson
       comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
       rollback:
@@ -6828,7 +6828,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-22T14:04:25
+      id: v50.2024-04-29T14:07:33
       author: johnswanson
       comment: Drop foreign key constraint fk_pulse_collection_id
       rollback:
@@ -6845,7 +6845,7 @@ databaseChangeLog:
             constraintName: fk_pulse_collection_id
 
   - changeSet:
-      id: v50.2024-04-22T14:04:29
+      id: v50.2024-04-29T14:07:37
       author: johnswanson
       comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
       rollback:
@@ -6862,7 +6862,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-22T14:05:35
+      id: v50.2024-04-29T14:07:40
       author: johnswanson
       comment: Drop foreign key constraint fk_card_collection_id
       rollback:
@@ -6879,7 +6879,7 @@ databaseChangeLog:
             constraintName: fk_card_collection_id
 
   - changeSet:
-      id: v50.2024-04-22T14:05:40
+      id: v50.2024-04-29T14:07:47
       author: johnswanson
       comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
       rollback:
@@ -6896,7 +6896,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-22T14:06:29
+      id: v50.2024-04-29T14:07:49
       author: johnswanson
       comment: Drop foreign key constraint fk_dashboard_collection_id
       rollback:
@@ -6913,7 +6913,7 @@ databaseChangeLog:
             constraintName: fk_dashboard_collection_id
 
   - changeSet:
-      id: v50.2024-04-22T14:06:34
+      id: v50.2024-04-29T14:07:53
       author: johnswanson
       comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
       rollback:
