@@ -1,5 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupSearchEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
@@ -15,18 +19,15 @@ import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
-  return renderWithProviders(
-    <BrowseModels
-      modelsResult={{ data: models, isLoading: false, error: false }}
-    />,
-    {
-      storeInitialState: {
-        setup: createMockSetupState({
-          locale: { name: "English", code: "en" },
-        }),
-      },
+  setupSearchEndpoints(models);
+  setupSettingsEndpoints([]);
+  return renderWithProviders(<BrowseModels />, {
+    storeInitialState: {
+      setup: createMockSetupState({
+        locale: { name: "English", code: "en" },
+      }),
     },
-  );
+  });
 };
 
 const collectionAlpha = createMockCollection({ id: 99, name: "Alpha" });
