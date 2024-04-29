@@ -18,6 +18,7 @@ import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import {
   Container,
   Grid,
+  SectionContainer,
   SectionHeader,
   SectionSubHeader,
 } from "./PinnedItemOverview.styled";
@@ -48,8 +49,10 @@ function PinnedItemOverview({
     card: cardItems = [],
     dashboard: dashboardItems = [],
     dataset: dataModelItems = [],
+    metric: metricItems = [],
   } = _.groupBy(sortedItems, "model");
   const cardGroups = _.partition(cardItems, isPreviewShown);
+  const metricGroups = _.partition(metricItems, isPreviewShown);
 
   return items.length === 0 ? (
     <Container>
@@ -58,47 +61,100 @@ function PinnedItemOverview({
   ) : (
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
-      {cardGroups.map(
-        (cardGroup, cardGroupIndex) =>
-          cardGroup.length > 0 && (
-            <Grid key={cardGroupIndex}>
-              {cardGroup.map(item => (
-                <div key={item.id} className={CS.relative}>
-                  <PinnedItemSortDropTarget
-                    isFrontTarget
-                    itemModel="card"
-                    pinIndex={item.collection_position}
-                    enableDropTargetBackground={false}
-                  />
-                  <ItemDragSource item={item} collection={collection}>
-                    <div>
-                      <PinnedQuestionCard
-                        item={item}
-                        collection={collection}
-                        databases={databases}
-                        bookmarks={bookmarks}
-                        onCopy={onCopy}
-                        onMove={onMove}
-                        onCreateBookmark={createBookmark}
-                        onDeleteBookmark={deleteBookmark}
+
+      {metricItems.length > 0 && (
+        <SectionContainer>
+          <SectionHeader>
+            <h3>{t`Metrics`}</h3>
+          </SectionHeader>
+          {metricGroups.map(
+            (cardGroup, cardGroupIndex) =>
+              cardGroup.length > 0 && (
+                <Grid key={cardGroupIndex}>
+                  {cardGroup.map(item => (
+                    <div key={item.id} className={CS.relative}>
+                      <PinnedItemSortDropTarget
+                        isFrontTarget
+                        itemModel="metric"
+                        pinIndex={item.collection_position}
+                        enableDropTargetBackground={false}
+                      />
+                      <ItemDragSource item={item} collection={collection}>
+                        <div>
+                          <PinnedQuestionCard
+                            item={item}
+                            collection={collection}
+                            databases={databases}
+                            bookmarks={bookmarks}
+                            onCopy={onCopy}
+                            onMove={onMove}
+                            onCreateBookmark={createBookmark}
+                            onDeleteBookmark={deleteBookmark}
+                          />
+                        </div>
+                      </ItemDragSource>
+                      <PinnedItemSortDropTarget
+                        isBackTarget
+                        itemModel="metric"
+                        pinIndex={item.collection_position}
+                        enableDropTargetBackground={false}
                       />
                     </div>
-                  </ItemDragSource>
-                  <PinnedItemSortDropTarget
-                    isBackTarget
-                    itemModel="card"
-                    pinIndex={item.collection_position}
-                    enableDropTargetBackground={false}
-                  />
-                </div>
-              ))}
-            </Grid>
-          ),
+                  ))}
+                </Grid>
+              ),
+          )}
+        </SectionContainer>
+      )}
+
+      {cardItems.length > 0 && (
+        <SectionContainer>
+          <SectionHeader>
+            <h3>{t`Metrics`}</h3>
+          </SectionHeader>
+          {cardGroups.map(
+            (cardGroup, cardGroupIndex) =>
+              cardGroup.length > 0 && (
+                <Grid key={cardGroupIndex}>
+                  {cardGroup.map(item => (
+                    <div key={item.id} className={CS.relative}>
+                      <PinnedItemSortDropTarget
+                        isFrontTarget
+                        itemModel="card"
+                        pinIndex={item.collection_position}
+                        enableDropTargetBackground={false}
+                      />
+                      <ItemDragSource item={item} collection={collection}>
+                        <div>
+                          <PinnedQuestionCard
+                            item={item}
+                            collection={collection}
+                            databases={databases}
+                            bookmarks={bookmarks}
+                            onCopy={onCopy}
+                            onMove={onMove}
+                            onCreateBookmark={createBookmark}
+                            onDeleteBookmark={deleteBookmark}
+                          />
+                        </div>
+                      </ItemDragSource>
+                      <PinnedItemSortDropTarget
+                        isBackTarget
+                        itemModel="card"
+                        pinIndex={item.collection_position}
+                        enableDropTargetBackground={false}
+                      />
+                    </div>
+                  ))}
+                </Grid>
+              ),
+          )}
+        </SectionContainer>
       )}
 
       {dashboardItems.length > 0 && (
-        <div>
-          <SectionHeader hasTopMargin={cardItems.length > 0}>
+        <SectionContainer>
+          <SectionHeader>
             <h3>{t`Dashboards`}</h3>
           </SectionHeader>
           <Grid>
@@ -133,14 +189,12 @@ function PinnedItemOverview({
               </div>
             ))}
           </Grid>
-        </div>
+        </SectionContainer>
       )}
 
       {dataModelItems.length > 0 && (
-        <div>
-          <SectionHeader
-            hasTopMargin={cardItems.length > 0 || dashboardItems.length > 0}
-          >
+        <SectionContainer>
+          <SectionHeader>
             <h3>{t`Useful data`}</h3>
             <SectionSubHeader>
               {isRootCollection(collection)
@@ -180,7 +234,7 @@ function PinnedItemOverview({
               </div>
             ))}
           </Grid>
-        </div>
+        </SectionContainer>
       )}
     </Container>
   );

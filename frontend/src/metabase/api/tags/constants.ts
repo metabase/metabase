@@ -18,6 +18,7 @@ export const TAG_TYPES = [
   "schema",
   "snippet",
   "segment",
+  "subscription",
   "table",
   "task",
   "timeline",
