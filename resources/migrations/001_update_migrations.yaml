@@ -6703,6 +6703,20 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v50.2024-04-26T09:25:00
+      author: adam-james
+      comment: Index user_parameter_value.user_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id
+            columns:
+              column:
+                name: user_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
