@@ -3,6 +3,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { IconName } from "metabase/ui";
@@ -23,8 +27,8 @@ import {
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
-  createBookmark: (id: string, collection: string) => void;
-  deleteBookmark: (id: string, collection: string) => void;
+  createBookmark: CreateBookmark;
+  deleteBookmark: DeleteBookmark;
   className?: string;
   item: CollectionItem;
   collection: Collection;

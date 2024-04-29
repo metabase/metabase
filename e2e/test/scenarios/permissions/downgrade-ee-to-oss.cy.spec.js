@@ -41,36 +41,38 @@ describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
       cy.button("Yes").click();
     });
 
-    setTokenFeatures("none");
-    cy.reload();
+    setTokenFeatures("none").then(() => {
+      cy.reload();
 
-    assertPermissionTable([["Sample Database", "No"]]);
-    isPermissionDisabled(OSS_NATIVE_QUERIES_PERMISSION_INDEX, "No", false);
+      assertPermissionTable([["Sample Database", "No"]]);
+      isPermissionDisabled(OSS_NATIVE_QUERIES_PERMISSION_INDEX, "No", false);
 
-    modifyPermission(
-      "Sample Database",
-      OSS_NATIVE_QUERIES_PERMISSION_INDEX,
-      "Query builder and native",
-    );
-    cy.button("Save changes").click();
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.button("Yes").click();
-    });
-
-    setTokenFeatures("all");
-    cy.reload();
-
-    assertPermissionTable([
-      [
+      modifyPermission(
         "Sample Database",
-        "Can view",
+        OSS_NATIVE_QUERIES_PERMISSION_INDEX,
         "Query builder and native",
-        "No",
-        "No",
-        "No",
-      ],
-    ]);
+      );
+      cy.button("Save changes").click();
+      modal().within(() => {
+        cy.findByText("Save permissions?");
+        cy.button("Yes").click();
+      });
+
+      setTokenFeatures("all").then(() => {
+        cy.reload();
+
+        assertPermissionTable([
+          [
+            "Sample Database",
+            "Can view",
+            "Query builder and native",
+            "No",
+            "No",
+            "No",
+          ],
+        ]);
+      });
+    });
   });
 
   // same context as other test, but also make sure that other rows with EE values are

@@ -70,10 +70,6 @@ const Segments = createEntity({
     getColor: segment => color("filter"),
     getIcon: segment => ({ name: "segment" }),
   },
-
-  form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
-  },
 });
 
 export default Segments;

@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]))
+   [metabase.types]
+   #?@(:clj ([metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
@@ -851,3 +852,171 @@
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
            (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+
+(t/deftest ^:parallel host-regex-on-urls-test
+  (t/are [host url] (= host (re-find @#'mbql.u/host-regex url))
+    "cdbaby.com"      "https://cdbaby.com/some.txt"
+    "fema.gov"        "https://fema.gov/some/path/Vatini?search=foo"
+    "geocities.jp"    "https://www.geocities.jp/some/path/Turbitt?search=foo"
+    "jalbum.net"      "https://jalbum.net/some/path/Kirsz?search=foo"
+    "usa.gov"         "https://usa.gov/some/path/Curdell?search=foo"
+    ;; Oops, this one captures a subdomain because it can't tell va.gov is supposed to be that short.
+    "taxes.va.gov"    "http://taxes.va.gov/some/path/Marritt?search=foo"
+    "gmpg.org"        "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+    "hatena.ne.jp"    "http://hatena.ne.jp/"
+    "telegraph.co.uk" "//telegraph.co.uk?foo=bar#tail"
+    "bbc.co.uk"       "bbc.co.uk/some/path?search=foo"
+    "bbc.co.uk"       "news.bbc.co.uk:port"))
+
+(t/deftest ^:parallel host-regex-on-emails-test
+  (t/are [host email] (= host (re-find @#'mbql.u/host-regex email))
+    "metabase.com"      "braden@metabase.com"
+    "homeoffice.gov.uk" "mholmes@homeoffice.gov.uk"
+    "someisp.com"       "john.smith@mail.someisp.com"
+    "amazon.co.uk"      "trk@amazon.co.uk"
+    "hatena.ne.jp"      "takashi@hatena.ne.jp"
+    "hatena.ne.jp"      "takashi@mail.hatena.ne.jp"
+    "ne.jp"             "takashi@www.ne.jp"))
+
+(t/deftest ^:parallel domain-regex-on-urls-test
+  (t/are [domain url] (= domain (re-find @#'mbql.u/domain-regex url))
+    "cdbaby"    "https://cdbaby.com/some.txt"
+    "fema"      "https://fema.gov/some/path/Vatini?search=foo"
+    "geocities" "https://www.geocities.jp/some/path/Turbitt?search=foo"
+    "jalbum"    "https://jalbum.net/some/path/Kirsz?search=foo"
+    "usa"       "https://usa.gov/some/path/Curdell?search=foo"
+    "taxes"     "http://taxes.va.gov/some/path/Marritt?search=foo"
+    "gmpg"      "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+    "hatena"    "http://hatena.ne.jp/"
+    "telegraph" "//telegraph.co.uk?foo=bar#tail"
+    "bbc"       "bbc.co.uk/some/path?search=foo"))
+
+(t/deftest ^:parallel domain-regex-on-emails-test
+  (t/are [domain email] (= domain (re-find @#'mbql.u/domain-regex email))
+    "metabase"   "braden@metabase.com"
+    "homeoffice" "mholmes@homeoffice.gov.uk"
+    "someisp"    "john.smith@mail.someisp.com"
+    "amazon"     "trk@amazon.co.uk"
+    "hatena"     "takashi@hatena.ne.jp"
+    "ne"         "takashi@www.ne.jp"))
+
+(t/deftest ^:parallel subdomain-regex-on-urls-test
+  (t/are [subdomain url] (= subdomain (re-find @#'mbql.u/subdomain-regex url))
+       ;; Blanks. "www" doesn't count.
+    nil "cdbaby.com"
+    nil "https://fema.gov"
+    nil "http://www.geocities.jp"
+    nil "usa.gov/some/page.cgi.htm"
+    nil "va.gov"
+
+       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
+    "sub"        "sub.jalbum.net"
+    "subdomains" "subdomains.go.here.jalbum.net"
+    "log"        "log.stuff.gmpg.org"
+    "log"        "https://log.stuff.gmpg.org"
+    "log"        "log.stuff.gmpg.org/some/path"
+    "log"        "log.stuff.gmpg.org?search=yes"
+
+       ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
+       ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
+       ;; fragments like .co.uk - see below.
+    nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
+    nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
+
+       ;; Sometimes the second-last part is a short suffix.
+       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+       ;; we use a best-effort matcher that gets the domain right most of the time.
+    nil         "telegraph.co.uk"
+    nil         "https://telegraph.co.uk"
+    nil         "telegraph.co.uk/some/article.php"
+    "local"     "local.news.telegraph.co.uk"
+    nil         "bbc.co.uk#fragment"
+    "video"     "video.bbc.co.uk"
+       ;; "www" is disregarded as a possible subdomain.
+    nil         "www.usa.gov"
+    nil         "www.dot.va.gov"
+    "licensing" "www.licensing.dot.va.gov"))
+
+(t/deftest ^:parallel desugar-host-and-domain-test
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/host-regex)]
+           (mbql.u/desugar-expression [:host [:field 1 nil]]))
+        "`host` should desugar to a `regex-match-first` clause with the host regex")
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/domain-regex)]
+           (mbql.u/desugar-expression [:domain [:field 1 nil]]))
+        "`domain` should desugar to a `regex-match-first` clause with the domain regex")
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.u/subdomain-regex)]
+           (mbql.u/desugar-expression [:subdomain [:field 1 nil]]))
+        "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test
+  (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
+                   [[:= [:field 1 nil] 2]  "Feb"]
+                   [[:= [:field 1 nil] 3]  "Mar"]
+                   [[:= [:field 1 nil] 4]  "Apr"]
+                   [[:= [:field 1 nil] 5]  "May"]
+                   [[:= [:field 1 nil] 6]  "Jun"]
+                   [[:= [:field 1 nil] 7]  "Jul"]
+                   [[:= [:field 1 nil] 8]  "Aug"]
+                   [[:= [:field 1 nil] 9]  "Sep"]
+                   [[:= [:field 1 nil] 10] "Oct"]
+                   [[:= [:field 1 nil] 11] "Nov"]
+                   [[:= [:field 1 nil] 12] "Dec"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+        "`month-name` should desugar to a `:case` clause with values for each month")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                   [[:= [:field 1 nil] 2] "Q2"]
+                   [[:= [:field 1 nil] 3] "Q3"]
+                   [[:= [:field 1 nil] 4] "Q4"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+        "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Sunday"]
+                   [[:= [:field 1 nil] 2] "Monday"]
+                   [[:= [:field 1 nil] 3] "Tuesday"]
+                   [[:= [:field 1 nil] 4] "Wednesday"]
+                   [[:= [:field 1 nil] 5] "Thursday"]
+                   [[:= [:field 1 nil] 6] "Friday"]
+                   [[:= [:field 1 nil] 7] "Saturday"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+        "`day-name` should desugar to a `:case` clause with values for each weekday"))
+
+#?(:clj
+   (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
+     (mt/with-user-locale "es"
+       ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
+       ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
+       ;; before I made them flexible about the dot.
+       (t/is (=? [:case [[[:= [:field 1 nil] 1]  #(#{"ene"  "ene."}  %)]
+                         [[:= [:field 1 nil] 2]  #(#{"feb"  "feb."}  %)]
+                         [[:= [:field 1 nil] 3]  #(#{"mar"  "mar."}  %)]
+                         [[:= [:field 1 nil] 4]  #(#{"abr"  "abr."}  %)]
+                         [[:= [:field 1 nil] 5]  #(#{"may"  "may."}  %)]
+                         [[:= [:field 1 nil] 6]  #(#{"jun"  "jun."}  %)]
+                         [[:= [:field 1 nil] 7]  #(#{"jul"  "jul."}  %)]
+                         [[:= [:field 1 nil] 8]  #(#{"ago"  "ago."}  %)]
+                         [[:= [:field 1 nil] 9]  #(#{"sept" "sept."} %)]
+                         [[:= [:field 1 nil] 10] #(#{"oct"  "oct."}  %)]
+                         [[:= [:field 1 nil] 11] #(#{"nov"  "nov."}  %)]
+                         [[:= [:field 1 nil] 12] #(#{"dic"  "dic."}  %)]]
+                  {:default ""}]
+                 (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+             "`month-name` should desugar to a `:case` clause with values for each month")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                        [[:= [:field 1 nil] 2] "Q2"]
+                        [[:= [:field 1 nil] 3] "Q3"]
+                        [[:= [:field 1 nil] 4] "Q4"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+             "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "domingo"]
+                        [[:= [:field 1 nil] 2] "lunes"]
+                        [[:= [:field 1 nil] 3] "martes"]
+                        [[:= [:field 1 nil] 4] "miércoles"]
+                        [[:= [:field 1 nil] 5] "jueves"]
+                        [[:= [:field 1 nil] 6] "viernes"]
+                        [[:= [:field 1 nil] 7] "sábado"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+             "`day-name` should desugar to a `:case` clause with values for each weekday"))))

@@ -1,0 +1,280 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            14,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 3520,
+                "q1": 3703,
+                "q3": 3825,
+                "max": 3906,
+                "sd": 141.59802258506295,
+                "avg": 3752
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "funnel bar",
+      "creator_id": 1,
+      "updated_at": "2024-01-11T01:53:42.781742-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "count"
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              14,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ]
+          ]
+        }
+      },
+      "id": 121,
+      "parameter_mappings": [],
+      "display": "funnel",
+      "entity_id": "7nfzvY52htrwY14KL0AkP",
+      "collection_preview": true,
+      "visualization_settings": {
+        "funnel.type": "bar"
+      },
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-04T18:54:05.284081-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 40,
+          "field_ref": [
+            "field",
+            14,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "position": 8,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PEOPLE__via__USER_ID"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"PEOPLE__via__USER_ID\".\"SOURCE\" AS \"PEOPLE__via__USER_ID__SOURCE\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"PEOPLE__via__USER_ID\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"PEOPLE__via__USER_ID\".\"ID\" GROUP BY \"PEOPLE__via__USER_ID\".\"SOURCE\" ORDER BY \"PEOPLE__via__USER_ID\".\"SOURCE\" ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "funnel.type": "bar",
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              14,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 14,
+            "visibility_type": "normal",
+            "display_name": "User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3520,
+                  "q1": 3703,
+                  "q3": 3825,
+                  "max": 3906,
+                  "sd": 141.59802258506295,
+                  "avg": 3752
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          "Affiliate",
+          3520
+        ],
+        [
+          "Facebook",
+          3906
+        ],
+        [
+          "Google",
+          3798
+        ],
+        [
+          "Organic",
+          3764
+        ],
+        [
+          "Twitter",
+          3772
+        ]
+      ]
+    }
+  }
+]

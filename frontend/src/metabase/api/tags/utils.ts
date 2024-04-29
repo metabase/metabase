@@ -10,6 +10,7 @@ import type {
   CollectionItem,
   CollectionItemModel,
   Dashboard,
+  DashboardSubscription,
   Database,
   DatabaseCandidate,
   Field,
@@ -19,8 +20,11 @@ import type {
   GroupListQuery,
   ListDashboardsResponse,
   Metric,
+  NativeQuerySnippet,
+  ModelCacheRefreshStatus,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
@@ -143,6 +147,15 @@ export function provideCollectionItemTags(
   item: CollectionItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideCollectionListTags(
+  collections: Collection[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.flatMap(collection => provideCollectionTags(collection)),
+  ];
 }
 
 export function provideCollectionTags(
@@ -287,6 +300,45 @@ export function providePermissionsGroupTags(
   return [idTag("permissions-group", group.id)];
 }
 
+export function providePersistedInfoListTags(
+  statuses: ModelCacheRefreshStatus[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("persisted-info"),
+    ...statuses.flatMap(providePersistedInfoTags),
+  ];
+}
+
+export function providePersistedInfoTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-info", status.id)];
+}
+
+/**
+ * We have to differentiate between the `persisted-info` and `persisted-model` tags
+ * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * That endpoint doesn't have information about the persisted info id, so we have to
+ * map the model id to the `card_id` on the ModelCacheRefreshStatus.
+ */
+export function providePersistedModelTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-model", status.card_id)];
+}
+
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
+}
+
 export function provideSearchItemListTags(
   items: SearchResult[],
   models: SearchModel[] = Array.from(SEARCH_MODELS),
@@ -319,6 +371,33 @@ export function provideSegmentTags(
     idTag("segment", segment.id),
     ...(segment.table ? provideTableTags(segment.table) : []),
   ];
+}
+
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
+}
+
+export function provideSubscriptionListTags(
+  subscriptions: DashboardSubscription[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("subscription"),
+    ...subscriptions.flatMap(provideSubscriptionTags),
+  ];
+}
+
+export function provideSubscriptionTags(
+  subscription: DashboardSubscription,
+): TagDescription<TagType>[] {
+  return [idTag("subscription", subscription.id)];
 }
 
 export function provideTableListTags(

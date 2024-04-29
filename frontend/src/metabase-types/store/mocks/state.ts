@@ -1,3 +1,5 @@
+import type { SdkStoreState } from "embedding-sdk/store/types";
+import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { EnterpriseState } from "metabase-enterprise/settings/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
@@ -18,7 +20,7 @@ import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
 
 export const createMockState = (
-  opts?: Partial<State> | Partial<EnterpriseState>,
+  opts?: Partial<State> | Partial<EnterpriseState> | Partial<SdkStoreState>,
 ): State => ({
   admin: createMockAdminState(),
   app: createMockAppState(),
@@ -36,5 +38,6 @@ export const createMockState = (
   setup: createMockSetupState(),
   upload: createMockUploadState(),
   modal: null,
+  sdk: createMockSdkState(),
   ...opts,
 });

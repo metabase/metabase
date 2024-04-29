@@ -1,7 +1,6 @@
 import type {
   CollectionId,
-  SearchRequest,
-  SearchModel,
+  ListCollectionItemsRequest,
   SearchResult,
   CollectionItemModel,
   DashboardId,
@@ -19,7 +18,7 @@ export type CollectionItemId = CollectionId | CardId | DashboardId;
 // internally, this picker supports all items that live in collections
 // so that we can use its components for picking all of them
 export type CollectionPickerModel = Extract<
-  SearchModel,
+  CollectionItemModel,
   "collection" | "card" | "dataset" | "dashboard"
 >;
 
@@ -57,6 +56,6 @@ export type CollectionItemListProps = ListProps<
   CollectionItemId,
   CollectionPickerModel,
   CollectionPickerItem,
-  SearchRequest,
+  ListCollectionItemsRequest,
   CollectionPickerOptions
 >;

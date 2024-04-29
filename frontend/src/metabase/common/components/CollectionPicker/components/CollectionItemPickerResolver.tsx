@@ -2,9 +2,9 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 import type { CollectionItemListProps } from "../types";
 
+import { CollectionItemList } from "./CollectionItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
-import { SearchItemList } from "./SearchItemList";
 
 export const CollectionItemPickerResolver = ({
   onClick,
@@ -28,7 +28,7 @@ export const CollectionItemPickerResolver = ({
     );
   }
 
-  if (query.collection === PERSONAL_COLLECTIONS.id) {
+  if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
         onClick={onClick}
@@ -42,7 +42,7 @@ export const CollectionItemPickerResolver = ({
   }
 
   return (
-    <SearchItemList
+    <CollectionItemList
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}

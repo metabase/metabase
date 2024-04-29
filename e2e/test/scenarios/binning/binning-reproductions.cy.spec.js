@@ -12,6 +12,8 @@ import {
   openOrdersTable,
   getNotebookStep,
   rightSidebar,
+  chartPathWithFillColor,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -177,7 +179,7 @@ describe("binning related reproductions", () => {
     );
 
     visualize();
-    cy.get("circle");
+    cartesianChartCircle();
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
@@ -283,7 +285,7 @@ describe("binning related reproductions", () => {
         toBinning: "10 bins",
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for notebook mode", () => {
@@ -304,7 +306,7 @@ describe("binning related reproductions", () => {
 
       visualize();
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
