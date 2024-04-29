@@ -13,6 +13,7 @@ import {
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
+  ActualModelFilters,
   AvailableModelFilters,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
@@ -426,6 +427,7 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
+  useModelFilterSettings: () => ({} as ActualModelFilters),
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {
