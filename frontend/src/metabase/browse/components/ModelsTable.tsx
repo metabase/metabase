@@ -14,7 +14,9 @@ import type { CollectionItem } from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
 
+import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
+import { getModelDescription } from "./utils";
 
 export interface ModelsTableProps {
   items: CollectionItem[];
@@ -70,6 +72,9 @@ const TBodyRow = ({ item }: { item: CollectionItem }) => {
   if (item.model === "card") {
     icon.color = color("text-light");
   }
+
+  const containerName = `collections-path-for-${item.id}`;
+
   return (
     <tr>
       {/* Type */}
@@ -81,7 +86,7 @@ const TBodyRow = ({ item }: { item: CollectionItem }) => {
       {/* Description */}
       <ItemCell {...descriptionProps}>
         <EllipsifiedWithMarkdown>
-          {item.description || ""}
+          {getModelDescription(item) || ""}
         </EllipsifiedWithMarkdown>
       </ItemCell>
 
@@ -94,10 +99,12 @@ const TBodyRow = ({ item }: { item: CollectionItem }) => {
         }`}
         {...collectionProps}
       >
-        {item.collection &&
-          item.collection?.effective_ancestors
-            ?.map(collection => getCollectionName(collection))
-            .join(" / ")}
+        {item.collection && (
+          <CollectionBreadcrumbsWithTooltip
+            containerName={containerName}
+            collection={item.collection}
+          />
+        )}
       </ItemCell>
 
       {/* Adds a border-radius to the table */}
