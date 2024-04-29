@@ -186,14 +186,12 @@
 
                               #"^https://slack.com/api/files\.completeUploadExternal.*"
                               (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}]
-      ;; todo replace this
       (http-fake/with-fake-routes fake-upload-routes
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                  (slack/upload-file! image-bytes filename channel-id)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
-      ;; todo replace this
       (http-fake/with-fake-routes
         (assoc fake-upload-routes
                #"^https://slack.com/api/conversations\.join.*"
