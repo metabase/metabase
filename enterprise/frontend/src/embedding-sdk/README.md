@@ -181,7 +181,24 @@ export default function App() {
 
 ### Embedding an interactive question (drill-down)
 
-TODO
+```jsx
+import React from "react";
+import { MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const questionId = 1; // This is the question ID you want to embed
+
+  return (
+    <MetabaseProvider config={config}>
+      <InteractiveQuestion questionId={questionId}  />
+    </MetabaseProvider>
+  );
+}
+const questionId = 1; // This is the question ID you want to embed
+
+```
 
 ### Implementing custom actions
 
