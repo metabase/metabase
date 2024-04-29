@@ -40,9 +40,17 @@ You can also export data by setting up an [alert](../sharing/alerts.md).
 
 ## Exporting results of a dashboard
 
+You can export the results of a dashboard and its cards in different ways.
+
+- [Export dashboard as PDF](#export-dashboard-as-pdf)
+- [Exporting dashboard card](#exporting-results-of-a-dashboard-card)
+- [Exporting via dashboard subscriptions](#exporting-results-of-a-dashboard-via-dashboard-subscriptions)
+
+### Export dashboard as PDF
+
 You can export a dashboard as a PDF. Click on the three dot menu (**...**) and select **Export as PDF**.
 
-![Exporting a dashboard as a PDF](../images/export-dashboard-as-pdf.png).
+![Exporting a dashboard as a PDF](../images/export-dashboard-as-pdf.png)
 
 The PDF will only include screenshots of the charts as they are visible on the dashboard.
 
@@ -63,7 +71,7 @@ To export the raw, unformatted results, hold down the `option` key for Macs, or 
 
 If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
 
-## Exporting results of a dashboard via dashboard subscriptions
+### Exporting results of a dashboard via dashboard subscriptions
 
 You can use [dashboard subscriptions](../../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment.
 
