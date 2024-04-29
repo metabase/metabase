@@ -81,12 +81,15 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [exclude-archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [exclude-archived archived? exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       (when (some? archived?)
+                         [:= :archived archived?])
                        (when exclude-archived
                          [:and
+                          [:= :archived false]
                           [:not [:like :location (str collection/trash-path "%")]]
                           [:not= collection/trash-collection-id :id]])
                        (when shallow
@@ -123,7 +126,7 @@
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
    (select-collections {:exclude-other-user-collections exclude-other-user-collections
-                        :exclude-archived               true
+                        :archived?                      archived
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -310,7 +313,7 @@
   rows)
 
 (defmethod collection-children-query :pulse
-  [_ collection {:keys [pinned-state]}]
+  [_ collection {:keys [pinned-state archived?]}]
   (-> {:select-distinct [:p.id
                          :p.name
                          :p.entity_id
@@ -322,6 +325,7 @@
                          [:= :p.collection_id      (:id collection)]
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
+                         [:= :archived archived?]
                          ;; exclude dashboard subscriptions
                          [:= :p.dashboard_id nil]]}
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
@@ -340,18 +344,19 @@
   [_ {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+   :where  [:= :archived archived?]})
 
 (defmethod collection-children-query :snippet
   [_ collection options]
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [pinned-state]}]
+  [_ collection {:keys [pinned-state archived?]}]
   {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
+            [:= :archived archived?]
             [:= :collection_id (:id collection)]]})
 
 (defmethod post-process-collection-children :timeline
@@ -369,7 +374,7 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [pinned-state]}]
+(defn- card-query [dataset? collection {:keys [pinned-state archived?]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.trashed_from_collection_id
@@ -402,6 +407,7 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
+                   [:= :archived archived?]
                    [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
@@ -476,7 +482,7 @@
   [_ _ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [pinned-state]}]
+(defn- dashboard-query [collection {:keys [pinned-state archived?]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    :d.trashed_from_collection_id
                    [(h2x/literal "dashboard") :model]
@@ -493,6 +499,7 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
+                   [:= :archived archived?]
                    [:= :collection_id (:id collection)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
@@ -517,7 +524,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [collection-namespace pinned-state exclude-trash?]}]
+  [collection {:keys [collection-namespace pinned-state exclude-trash? archived?]}]
   (-> (assoc (collection/effective-children-query
               collection
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
@@ -536,6 +543,7 @@
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))
+      (sql.helpers/where [:= :archived archived?])
       (sql.helpers/where (when exclude-trash? [:not= :id collection/trash-collection-id]))))
 
 (defmethod collection-children-query :collection
@@ -877,7 +885,7 @@
   [id models archived pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
+   archived       ms/MaybeBooleanValue
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
@@ -885,7 +893,8 @@
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
-                                   :archived?    archived
+                                   :archived?    (if (nil? archived) (or (:archived collection)
+                                                                         (collection/is-trash? collection)) archived)
                                    :pinned-state (keyword pinned_state)
                                    :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                                   (or (some-> sort_direction normalize-sort-choice) :asc)]})
@@ -931,8 +940,9 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models exclude_trash namespace pinned_state sort_column sort_direction]
+  [models exclude_trash archived namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
+   archived       ms/MaybeBooleanValue
    exclude_trash  [:maybe ms/BooleanValue]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
@@ -945,7 +955,8 @@
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
      root-collection
-     {:models         model-kwds
+     {:archived?      (if (nil? archived) false archived)
+      :models         model-kwds
       :exclude-trash? (if (nil? exclude_trash) true (boolean exclude_trash))
       :pinned-state   (keyword pinned_state)
       :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)

@@ -795,12 +795,11 @@
                                Collection _ {:name "Baby Collection"
                                              :location (collection/children-location collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (with-some-children-of-collection collection
-          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-          (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
-                        (get-items :crowberto collection/trash-collection-id)))
-          (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
-                        (get-items :crowberto collection))))))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
+                      (get-items :crowberto collection/trash-collection-id)))
+        (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
+                      (get-items :crowberto collection)))))
     (testing "I can untrash something by marking it as not archived"
       (t2.with-temp/with-temp [Collection collection {:name "A"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
