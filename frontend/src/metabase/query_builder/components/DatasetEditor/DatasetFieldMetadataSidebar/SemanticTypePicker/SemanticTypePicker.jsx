@@ -1,34 +1,33 @@
+import { useField } from "formik";
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import Select from "metabase/core/components/Select";
 import SelectButon from "metabase/core/components/SelectButton";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
+import { Text } from "metabase/ui";
 
 import { FieldTypeIcon } from "./SemanticTypePicker.styled";
 
 const propTypes = {
-  field: PropTypes.shape({
-    value: PropTypes.any,
-    onChange: PropTypes.func.isRequired,
-  }).isRequired,
-  formField: PropTypes.shape({
-    options: PropTypes.array.isRequired,
-    icon: PropTypes.string,
-  }),
+  name: PropTypes.string,
+  label: PropTypes.string,
   tabIndex: PropTypes.string,
-  onChange: PropTypes.func.isRequired,
   onKeyDown: PropTypes.func,
+  options: PropTypes.array,
+  onChange: PropTypes.func,
 };
 
 function SemanticTypePicker({
-  field,
-  formField,
+  name,
   tabIndex,
-  onChange,
   onKeyDown,
+  options,
+  label,
+  onChange,
 }) {
-  const { options, icon } = formField;
+  const [field, _, { setValue }] = useField(name);
 
   const selectButtonRef = useRef();
 
@@ -41,11 +40,11 @@ function SemanticTypePicker({
       if (e.target.value === field.value) {
         return;
       }
-      field.onChange(e);
-      onChange(e);
+      setValue(e.target.value);
+      onChange?.(e.target.value);
       selectButtonRef.current?.focus();
     },
-    [field, onChange],
+    [field, setValue, onChange],
   );
 
   const pickerLabel = useMemo(() => {
@@ -54,6 +53,7 @@ function SemanticTypePicker({
   }, [field, options]);
 
   const renderSelectButton = useCallback(() => {
+    const icon = getSemanticTypeIcon(field.value, "ellipsis");
     return (
       <SelectButon
         hasValue={!!field.value}
@@ -65,22 +65,27 @@ function SemanticTypePicker({
         {pickerLabel}
       </SelectButon>
     );
-  }, [field, icon, tabIndex, pickerLabel, onKeyDown]);
+  }, [field, tabIndex, pickerLabel, onKeyDown]);
 
   return (
-    <Select
-      value={field.value}
-      options={options}
-      onChange={onSelectValue}
-      optionValueFn={o => o.id}
-      optionSectionFn={o => o.section}
-      placeholder={t`Select a semantic type`}
-      searchProp="name"
-      searchPlaceholder={t`Search for a special type`}
-      hideEmptySectionsInSearch
-      triggerElement={renderSelectButton}
-      onClose={focusSelectButton}
-    />
+    <>
+      <Text fw="bold" color="text-medium">
+        {label}
+      </Text>
+      <Select
+        value={field.value}
+        options={options}
+        onChange={onSelectValue}
+        optionValueFn={o => o.id}
+        optionSectionFn={o => o.section}
+        placeholder={t`Select a semantic type`}
+        searchProp="name"
+        searchPlaceholder={t`Search for a special type`}
+        hideEmptySectionsInSearch
+        triggerElement={renderSelectButton}
+        onClose={focusSelectButton}
+      />
+    </>
   );
 }
 

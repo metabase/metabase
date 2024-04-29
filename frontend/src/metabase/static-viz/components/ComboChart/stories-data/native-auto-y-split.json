@@ -1,0 +1,304 @@
+[
+  {
+    "card": {
+      "original_card_id": 153,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-04-17T00:12:31.210034Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (6fcf88a)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.metrics": ["m1", "m2"]
+      },
+      "collection_preview": true,
+      "entity_id": "WGi4e84chXhmvEz3NtPb2",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 153,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT\n  products.category AS \"x\",\n  COUNT(*) AS \"m1\",\n  AVG(orders.discount) AS \"m2\"\nFROM\n  orders\nJOIN products ON orders.product_id = products.id\nGROUP BY\n  products.category"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-04-17T00:12:31.210034Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "auto-split native repro",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "x",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.5
+              }
+            }
+          }
+        },
+        {
+          "display_name": "m1",
+          "field_ref": [
+            "field",
+            "m1",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "name": "m1",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 3976,
+                "q1": 4380,
+                "q3": 5000,
+                "max": 5061,
+                "sd": 489.3103990992493,
+                "avg": 4690
+              }
+            }
+          }
+        },
+        {
+          "display_name": "m2",
+          "field_ref": [
+            "field",
+            "m2",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "m2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 5.099004426256296,
+                "q1": 5.121216567744209,
+                "q3": 5.289763666824191,
+                "max": 5.322411243587737,
+                "sd": 0.10251278229940979,
+                "avg": 5.2054901172842
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Doohickey", 3976, 5.257116090060644],
+        ["Gadget", 4939, 5.143428709232123],
+        ["Gizmo", 4784, 5.322411243587737],
+        ["Widget", 5061, 5.099004426256296]
+      ],
+      "cols": [
+        {
+          "display_name": "x",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "m1",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "m1",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "name": "m1",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "display_name": "m2",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "m2",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "m2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT\n  products.category AS \"x\",\n  COUNT(*) AS \"m1\",\n  AVG(orders.discount) AS \"m2\"\nFROM\n  orders\nJOIN products ON orders.product_id = products.id\nGROUP BY\n  products.category"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "x",
+            "field_ref": [
+              "field",
+              "x",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "x",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.5
+                }
+              }
+            }
+          },
+          {
+            "display_name": "m1",
+            "field_ref": [
+              "field",
+              "m1",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            "name": "m1",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3976,
+                  "q1": 4380,
+                  "q3": 5000,
+                  "max": 5061,
+                  "sd": 489.3103990992493,
+                  "avg": 4690
+                }
+              }
+            }
+          },
+          {
+            "display_name": "m2",
+            "field_ref": [
+              "field",
+              "m2",
+              {
+                "base-type": "type/Float"
+              }
+            ],
+            "name": "m2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 5.099004426256296,
+                  "q1": 5.121216567744209,
+                  "q3": 5.289763666824191,
+                  "max": 5.322411243587737,
+                  "sd": 0.10251278229940979,
+                  "avg": 5.2054901172842
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

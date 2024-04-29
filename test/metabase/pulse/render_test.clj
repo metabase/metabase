@@ -22,24 +22,27 @@
   ([card results]
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
-(defn- render-results [query]
-  (t2.with-temp/with-temp [Card card {:dataset_query query
-                                      :display       :line}]
-    (render-pulse-card card)))
-
 (deftest render-test
-  (testing "if the pulse rendered correctly it will have an img tag."
-    (is (some? (lib.util.match/match-one (render-results
-                                  (mt/mbql-query checkins
-                                    {:aggregation [[:count]]
-                                     :breakout    [!month.date]}))
-                                 [:img _])))))
+  (testing "If the pulse renders correctly, it will have an img tag."
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :orders)
+                  :aggregation  [[:count]]
+                  :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+      (t2.with-temp/with-temp [Card card {:dataset_query          query
+                                          :display                :line
+                                          :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                                   :graph.metrics    ["count"]}}]
+        (is (some? (lib.util.match/match-one
+                       (render-pulse-card card)
+                     [:img _])))))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
     (is (= (get-in (render/render-pulse-card-for-display
-                     nil nil
-                     {:error "some error"}) [1 2 4 2 2])
+                    nil nil
+                    {:error "some error"}) [1 2 4 2 2])
            "There was a problem with this question."))))
 
 (deftest detect-pulse-chart-type-test
@@ -94,15 +97,24 @@
                                            {}
                                            {:cols [{:base_type :type/Number}]
                                             :rows [[6]]}))))
+  (testing "The isomorphic display-types return correct chart-type."
+    (doseq [chart-type [:line :area :bar :combo]]
+      (is (= :javascript_visualization
+             (render/detect-pulse-chart-type {:display chart-type}
+                                             {}
+                                             {:cols [{:base_type :type/Text}
+                                                     {:base_type :type/Number}]
+                                              :rows [["A" 2]
+                                                     ["B" 3]]})))))
   (testing "Various Single-Series display-types return correct chart-types."
-    (mapv #(is (= %
-                 (render/detect-pulse-chart-type {:display %}
-                                                 {}
-                                                 {:cols [{:base_type :type/Text}
-                                                         {:base_type :type/Number}]
-                                                  :rows [["A" 2]
-                                                         ["B" 3]]})))
-          [:line :area :bar :combo :funnel :progress :table :waterfall]))
+    (doseq [chart-type [:row :funnel :progress :table]]
+      (is (= chart-type
+             (render/detect-pulse-chart-type {:display chart-type}
+                                             {}
+                                             {:cols [{:base_type :type/Text}
+                                                     {:base_type :type/Number}]
+                                              :rows [["A" 2]
+                                                     ["B" 3]]})))))
   (testing "Pie charts are correctly identified and return `:categorical/donut`."
     (is (= :categorical/donut
            (render/detect-pulse-chart-type {:display :pie}
@@ -112,7 +124,7 @@
                                             :rows [["apple" 3]
                                                    ["banana" 4]]}))))
   (testing "Dashboard Cards can return `:multiple`."
-    (is (= :multiple
+    (is (= :javascript_visualization
            (mt/with-temp [Card                card1 {:display :pie}
                           Card                card2 {:display :funnel}
                           Dashboard           dashboard {}
@@ -124,12 +136,12 @@
                                                      {:base_type :type/Number}]
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))
-    (is (= :multiple
-         (mt/with-temp [Card                card1 {:display :line}
-                        Card                card2 {:display :funnel}
-                        Dashboard           dashboard {}
-                        DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
-                        DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
+    (is (= :javascript_visualization
+           (mt/with-temp [Card                card1 {:display :line}
+                          Card                card2 {:display :funnel}
+                          Dashboard           dashboard {}
+                          DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
+                          DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
            (render/detect-pulse-chart-type card1
                                            dc1
                                            {:cols [{:base_type :type/Temporal}

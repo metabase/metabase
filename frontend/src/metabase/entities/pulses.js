@@ -85,17 +85,6 @@ const Pulses = createEntity({
     getColor: pulse => color("pulse"),
   },
 
-  form: {
-    fields: [
-      { name: "name" },
-      {
-        name: "collection_id",
-        title: "Collection",
-        type: "collection",
-      },
-    ],
-  },
-
   getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
