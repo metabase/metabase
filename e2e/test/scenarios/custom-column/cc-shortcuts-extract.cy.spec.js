@@ -8,7 +8,7 @@ import {
   openTable,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const DATE_EXTRACTIONS = [
   {
@@ -64,12 +64,42 @@ const EMAIL_EXTRACTIONS = [
   },
 ];
 
-const EXTRACTIONS = [...EMAIL_EXTRACTIONS, ...DATE_EXTRACTIONS];
+const URL_EXRACTIONS = [
+  {
+    table: ORDERS_ID,
+    column: "Product ID",
+    name: "Domain",
+    fn: "domain",
+  },
+  {
+    table: ORDERS_ID,
+    column: "Product ID",
+    name: "Subdomain",
+    fn: "subdomain",
+  },
+  {
+    table: ORDERS_ID,
+    column: "Product ID",
+    name: "Host",
+    fn: "host",
+  },
+];
+
+const EXTRACTIONS = [
+  ...EMAIL_EXTRACTIONS,
+  ...DATE_EXTRACTIONS,
+  ...URL_EXRACTIONS,
+];
 
 describe("scenarios > question > custom column > expression shortcuts > extract", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
+
+    // Make the PRODUCT_ID column a URL column for these tests, to avoid having to create a new model
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      semantic_type: "type/URL",
+    });
   });
 
   for (const extraction of EXTRACTIONS) {
