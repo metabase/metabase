@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 
@@ -31,7 +31,7 @@ export default function QueryVisualization(props) {
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
-  const canRun = useMemo(() => Lib.canRun(question.query()), [question]);
+  const canRun = Lib.canRun(question.query());
   const [warnings, setWarnings] = useState([]);
 
   return (
