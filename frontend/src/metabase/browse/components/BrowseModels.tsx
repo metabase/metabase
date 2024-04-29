@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -31,49 +31,18 @@ import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelGroup } from "./ModelGroup";
 
-const { availableModelFilters } = PLUGIN_CONTENT_VERIFICATION;
+const { availableModelFilters, useModelFilterSettings } =
+  PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
-  const getInitialModelFilters = useCallback(() => {
-    return _.reduce(
-      availableModelFilters,
-      (acc, filter, filterName) => {
-        const storedFilterStatus = localStorage.getItem(
-          `browseFilters.${filterName}`,
-        );
-        const shouldFilterBeActive =
-          storedFilterStatus === null
-            ? filter.activeByDefault
-            : storedFilterStatus === "on";
-        return {
-          ...acc,
-          [filterName]: shouldFilterBeActive,
-        };
-      },
-      {},
-    );
-  }, []);
+  const initialModelFilters = useModelFilterSettings();
 
   const [actualModelFilters, setActualModelFilters] =
-    useState<ActualModelFilters>({});
+    useState<ActualModelFilters>(initialModelFilters);
 
   useEffect(() => {
-    const initialModelFilters = getInitialModelFilters();
     setActualModelFilters(initialModelFilters);
-  }, [getInitialModelFilters, setActualModelFilters]);
-
-  const handleModelFilterChange = useCallback(
-    (modelFilterName: string, active: boolean) => {
-      localStorage.setItem(
-        `browseFilters.${modelFilterName}`,
-        active ? "on" : "off",
-      );
-      setActualModelFilters((prev: ActualModelFilters) => {
-        return { ...prev, [modelFilterName]: active };
-      });
-    },
-    [setActualModelFilters],
-  );
+  }, [initialModelFilters, setActualModelFilters]);
 
   return (
     <BrowseContainer>
@@ -88,7 +57,7 @@ export const BrowseModels = () => {
             </Title>
             <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
               actualModelFilters={actualModelFilters}
-              handleModelFilterChange={handleModelFilterChange}
+              setActualModelFilters={setActualModelFilters}
             />
           </Flex>
         </BrowseSection>
