@@ -1,46 +1,70 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
   restore,
   popover,
   openOrdersTable,
   expressionEditorWidget,
+  openTable,
 } from "e2e/support/helpers";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATE_EXTRACTIONS = [
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Hour of day",
     fn: "hour",
   },
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Day of month",
     fn: "day",
   },
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Day of week",
     fn: "weekday",
   },
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Month of year",
     fn: "month",
   },
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Quarter of year",
     fn: "quarter",
   },
   {
+    table: ORDERS_ID,
     column: "Created At",
     name: "Year",
     fn: "year",
   },
 ];
 
-const URL_EXTRACTIONS = [];
-const EXTRACTIONS = [...URL_EXTRACTIONS, ...DATE_EXTRACTIONS];
+const EMAIL_EXTRACTIONS = [
+  {
+    table: ORDERS_ID,
+    column: "Email",
+    name: "Domain",
+    fn: "domain",
+  },
+  {
+    table: ORDERS_ID,
+    column: "Email",
+    name: "Host",
+    fn: "host",
+  },
+];
+
+const EXTRACTIONS = [...EMAIL_EXTRACTIONS, ...DATE_EXTRACTIONS];
 
 describe("scenarios > question > custom column > expression shortcuts > extract", () => {
   beforeEach(() => {
@@ -50,7 +74,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
 
   for (const extraction of EXTRACTIONS) {
     it(`should be possible to use the ${extraction.name} extraction on ${extraction.column}`, () => {
-      openOrdersTable({ mode: "notebook", limit: 1 });
+      openTable({ mode: "notebook", limit: 1, table: extraction.table });
       addCustomColumn();
       selectExtractColumn();
 
