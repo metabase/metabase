@@ -16,7 +16,7 @@ export const processResults = (
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...actions.slice(0, 6), ...recent, ...admin, ...search, ...docs];
+  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
 };
 
 export const processSection = (sectionName: string, items?: ActionImpl[]) => {

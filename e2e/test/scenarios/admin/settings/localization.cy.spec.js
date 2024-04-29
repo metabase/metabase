@@ -7,6 +7,7 @@ import {
   visitQuestion,
   popover,
   undoToast,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -45,7 +46,7 @@ describe("scenarios > admin > localization", () => {
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    cy.get(".axis.x").contains("April 25, 2022");
+    echartsContainer().get("text").contains("April 25, 2022");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -77,11 +78,16 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("13604").click();
 
     cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
-    cy.get(".axis.x")
+    echartsContainer()
+      .get("text")
       .contains(/sunday/i)
       .should("not.exist");
-    cy.get(".axis.x").contains(/monday/i);
-    cy.get(".axis.x").contains(/tuesday/i);
+    echartsContainer()
+      .get("text")
+      .contains(/monday/i);
+    echartsContainer()
+      .get("text")
+      .contains(/tuesday/i);
   });
 
   // HANDLE WITH CARE!

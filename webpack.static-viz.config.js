@@ -1,7 +1,6 @@
 const YAML = require("json-to-pretty-yaml");
 const TerserPlugin = require("terser-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
-const { IgnorePlugin } = require("webpack");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -76,8 +75,9 @@ module.exports = env => {
           ],
         },
         {
-          test: /\.svg$/i,
-          use: "null-loader",
+          test: /\.svg$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
         },
       ],
     },
@@ -92,7 +92,7 @@ module.exports = env => {
       },
     },
     optimization: {
-      minimize: !shouldDisableMinimization,
+      minimize: false,
       minimizer: [
         new TerserPlugin({
           minify: TerserPlugin.swcMinify,

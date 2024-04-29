@@ -2,7 +2,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
-import type { CardDisplayType } from "./card";
+import type { CardDisplayType, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
@@ -97,7 +97,7 @@ export interface CollectionItem {
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
-  type?: string;
+  type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
   can_write?: boolean;
