@@ -26,7 +26,7 @@ describe(
         .eq(0)
         .should("have.text", "ID");
       cy.get("[data-element-id=list-item-title]").eq(0).click();
-      cy.findByPlaceholderText("Search by ID").type("66315368ba4a275f7a44c57d");
+      cy.findByPlaceholderText("Search by ID").type("663167e513bd481495a98bd0");
       cy.get("button").contains("Add filter").click();
       cy.get("button").contains("Visualize").click();
       cy.get("button").contains("Showing 1 row");
@@ -38,7 +38,7 @@ describe(
       cy.get("[data-testid=cell-data]").eq(0).should("have.text", "ID");
       cy.get("[data-testid=cell-data]").eq(0).click();
       cy.get("button").contains("Filter by this column").click();
-      cy.findByPlaceholderText("Search by ID").type("66315368ba4a275f7a44c57d");
+      cy.findByPlaceholderText("Search by ID").type("663167e513bd481495a98bd0");
       cy.get("button").contains("Add filter").click();
       cy.get("button").contains("Showing 1 row");
     });
