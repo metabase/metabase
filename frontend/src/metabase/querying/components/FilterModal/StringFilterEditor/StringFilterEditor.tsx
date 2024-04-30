@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Grid, TextInput } from "metabase/ui";
+import { Grid } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -27,8 +26,7 @@ export function StringFilterEditor({
     operator,
     availableOptions,
     values,
-    valueCount,
-    hasMultipleValues,
+    hasValues,
     options,
     getDefaultValues,
     getFilterClause,
@@ -90,8 +88,7 @@ export function StringFilterEditor({
             stageIndex={stageIndex}
             column={column}
             values={values}
-            valueCount={valueCount}
-            hasMultipleValues={hasMultipleValues}
+            hasValues={hasValues}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
@@ -107,8 +104,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  valueCount: number;
-  hasMultipleValues?: boolean;
+  hasValues: boolean;
   onChange: (values: string[]) => void;
   onFocus: () => void;
   onBlur: () => void;
@@ -119,13 +115,12 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  valueCount,
-  hasMultipleValues,
+  hasValues,
   onChange,
   onFocus,
   onBlur,
 }: StringValueInputProps) {
-  if (hasMultipleValues) {
+  if (hasValues) {
     return (
       <StringFilterValuePicker
         query={query}
@@ -134,19 +129,6 @@ function StringValueInput({
         values={values}
         compact
         onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />
-    );
-  }
-
-  if (valueCount === 1) {
-    return (
-      <TextInput
-        value={values[0]}
-        placeholder={t`Enter some text`}
-        aria-label={t`Filter value`}
-        onChange={event => onChange([event.target.value])}
         onFocus={onFocus}
         onBlur={onBlur}
       />

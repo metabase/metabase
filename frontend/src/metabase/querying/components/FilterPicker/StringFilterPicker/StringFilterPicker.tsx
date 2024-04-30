@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -31,8 +31,7 @@ export function StringFilterPicker({
     operator,
     availableOptions,
     values,
-    valueCount,
-    hasMultipleValues,
+    hasValues,
     hasCaseSensitiveOption,
     options,
     isValid,
@@ -86,8 +85,7 @@ export function StringFilterPicker({
           stageIndex={stageIndex}
           column={column}
           values={values}
-          valueCount={valueCount}
-          hasMultipleValues={hasMultipleValues}
+          hasValues={hasValues}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
@@ -108,8 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  valueCount: number;
-  hasMultipleValues?: boolean;
+  hasValues: boolean;
   onChange: (values: string[]) => void;
 }
 
@@ -118,11 +115,10 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  valueCount,
-  hasMultipleValues,
+  hasValues,
   onChange,
 }: StringValueInputProps) {
-  if (hasMultipleValues) {
+  if (hasValues) {
     return (
       <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
@@ -134,21 +130,6 @@ function StringValueInput({
           onChange={onChange}
         />
       </Box>
-    );
-  }
-
-  if (valueCount === 1) {
-    return (
-      <Flex p="md">
-        <TextInput
-          value={values[0]}
-          placeholder={t`Enter some text`}
-          autoFocus
-          w="100%"
-          aria-label={t`Filter value`}
-          onChange={event => onChange([event.target.value])}
-        />
-      </Flex>
     );
   }
 

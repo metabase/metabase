@@ -3,40 +3,38 @@ import type { OperatorOption } from "./types";
 export const OPERATOR_OPTIONS: Record<string, OperatorOption> = {
   "=": {
     operator: "=",
-    valueCount: 1,
-    hasMultipleValues: true,
+    hasValues: true,
   },
   "!=": {
     operator: "!=",
-    valueCount: 1,
-    hasMultipleValues: true,
+    hasValues: true,
   },
   contains: {
     operator: "contains",
-    valueCount: 1,
+    hasValues: true,
     hasCaseSensitiveOption: true,
   },
   "does-not-contain": {
     operator: "does-not-contain",
-    valueCount: 1,
+    hasValues: true,
     hasCaseSensitiveOption: true,
   },
   "starts-with": {
     operator: "starts-with",
-    valueCount: 1,
+    hasValues: true,
     hasCaseSensitiveOption: true,
   },
   "ends-with": {
     operator: "ends-with",
-    valueCount: 1,
+    hasValues: true,
     hasCaseSensitiveOption: true,
   },
   "is-empty": {
     operator: "is-empty",
-    valueCount: 0,
+    hasValues: false,
   },
   "not-empty": {
     operator: "not-empty",
-    valueCount: 0,
+    hasValues: false,
   },
 };

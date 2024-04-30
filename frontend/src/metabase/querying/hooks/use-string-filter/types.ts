@@ -3,7 +3,6 @@ import type * as Lib from "metabase-lib";
 
 export interface OperatorOption
   extends FilterOperatorOption<Lib.StringFilterOperatorName> {
-  valueCount: number;
-  hasMultipleValues?: boolean;
+  hasValues: boolean;
   hasCaseSensitiveOption?: boolean;
 }
