@@ -1,6 +1,5 @@
 import type { RouterState } from "react-router-redux";
 
-import type { SdkState } from "embedding-sdk/store/types";
 import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
@@ -35,10 +34,6 @@ export interface State {
   setup: SetupState;
   upload: FileUploadState;
   modal: modalName;
-}
-
-export interface StateWithSdk extends State {
-  sdk: SdkState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
