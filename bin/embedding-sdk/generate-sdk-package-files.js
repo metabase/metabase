@@ -72,7 +72,7 @@ function generateSdkPackage() {
  * @param {string} target
  */
 function copyFileToOutput(source, target = source) {
-  const licenseContent = fs.readFileSync(
+  const fileContent = fs.readFileSync(
     path.resolve(`./enterprise/${source}`),
     "utf-8",
   );
