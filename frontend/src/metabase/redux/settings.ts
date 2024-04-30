@@ -36,8 +36,8 @@ export const updateUserSetting = createThunkAction(
     return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
-
         if (!shouldRefresh) {
+          // When we aren't refreshing all the settings, we need to put the setting into the state
           return setting;
         }
       } catch (error) {
