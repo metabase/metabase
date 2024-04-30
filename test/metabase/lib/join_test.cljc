@@ -1470,3 +1470,46 @@
           (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
             (is (=? nil
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))
+
+(deftest ^:parallel default-join-alias-multiple-fks
+  (testing "Multiple foreign keys to joined table in joining query columns produce expected alias (#40477)"
+    (let [metadata-map-1-fk {:database {:id 1000}
+                             :tables [{:id 100
+                                       :name "tickets"
+                                       :display-name "Tickets"}
+                                      {:id 200
+                                       :name "users"
+                                       :display-name "Users"}]
+                             :fields [{:id 10
+                                       :table-id 100
+                                       :name "tickets__id"
+                                       :display-name "Id"
+                                       :base-type :type/Integer}
+                                      {:id 20
+                                       :table-id 100
+                                       :name "tickets__asignee_id"
+                                       :display-name "Assignee Id"
+                                       :base-type :type/Integer
+                                       :fk-target-field-id 40}
+                                      {:id 40
+                                       :table-id 200
+                                       :name "users__id"
+                                       :display-name "Id"
+                                       :base-type :type/Integer}]}
+          metadata-map-2-fk (update metadata-map-1-fk :fields conj {:id 30
+                                                                    :table-id 100
+                                                                    :name "tickets__requester_id"
+                                                                    :display-name "Requester Id"
+                                                                    :base-type :type/Integer
+                                                                    :fk-target-field-id 40})
+          metadata-provider-1-fk (lib.tu/mock-metadata-provider metadata-map-1-fk)
+          metadata-provider-2-fk (lib.tu/mock-metadata-provider metadata-map-2-fk)]
+      (doseq [[fk-count provider expected-alias] [[1 metadata-provider-1-fk "Users - Assignee"]
+                                                  [2 metadata-provider-2-fk "Users"]]]
+        (testing (str "foreign key count: " fk-count)
+          (is (=? {:stages [{:joins [{:alias expected-alias}]}]}
+                  (-> (lib/query provider (lib.metadata/table provider 100))
+                      (lib/join (lib/join-clause (lib.metadata/table provider 200)
+                                                 [(lib/=
+                                                   (lib.metadata/field provider 20)
+                                                   (lib.metadata/field provider 40))]))))))))))
