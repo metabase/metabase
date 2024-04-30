@@ -866,8 +866,17 @@
           (storage/store! (extract/extract {:no-settings   true
                                             :no-data-model true}) dump-dir)
 
-          (spit (io/file dump-dir "collections" ".hidden.yaml") "\0")
+          (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
           (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
 
           (testing "No exceptions when loading despite unreadable files"
-            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))))))))
+            (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
+                         (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
+                                          (map (comp second second))
+                                          (map #(.getName %))
+                                          set)]
+                           (testing "Hidden YAML wasn't read even though it's not throwing errors"
+                             (is (not (contains? files ".hidden.yaml"))))))]
+              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
+                (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
+                        logs))))))))))
