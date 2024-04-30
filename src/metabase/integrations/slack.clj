@@ -350,7 +350,8 @@
                               (if (= "not_in_channel" (:error-code (ex-data e)))
                                 (do (join-channel! channel-id)
                                     (complete!))
-                                (throw e))))
+                                (throw (ex-info (ex-message e)
+                                                (assoc (ex-data e) :channel-id channel-id, :filename filename))))))
                 ;; Step 4: Poll the endpoint until to confirm the file is uploaded to the channel
         uploaded-to-channel? (fn [response]
                                (boolean (some-> response :files first :shares not-empty)))
@@ -362,7 +363,8 @@
                             ;; If it takes more than 10 seconds, something else is wrong and we should abort.
                             :timeout-ms  3000
                             :interval-ms 500}))
-            (throw (Exception. "Confirming the file was uploaded to a Slack channel timed out.")))]
+            (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
+                            {:channel-id channel-id, :filename filename})))]
     (get-in complete-response [:files 0 :url_private])))
 
 (defn- get-upload-url! [filename file]
