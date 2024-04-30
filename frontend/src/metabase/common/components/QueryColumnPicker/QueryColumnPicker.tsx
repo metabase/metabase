@@ -41,6 +41,7 @@ export interface QueryColumnPickerProps {
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
   "data-testid"?: string;
+  width?: number | string;
 }
 
 type Sections = {
@@ -62,6 +63,7 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
+  width,
   "data-testid": dataTestId,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
@@ -203,6 +205,7 @@ export function QueryColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         globalSearch
+        width={width}
       />
     </DelayGroup>
   );

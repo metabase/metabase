@@ -1,13 +1,19 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { IconName } from "metabase/ui";
 import type {
-  RegularClickAction,
   ClickActionSection,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 
+const SUMMARIZE_SECTION = "summarize";
+type SummarizeSection = typeof SUMMARIZE_SECTION;
+
 type Section = {
-  icon: string;
+  // There is no such icon as "summarize." This is used to ID and select the actions that we,
+  // want to make larger, like Distribution, Sum over Time, etc.
+  icon: IconName | SummarizeSection;
   index?: number;
 };
 
@@ -30,13 +36,17 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   standalone_filter: {
     icon: "filter",
   },
-  // There is no such icon as "summarize." This is used to ID and select the actions that we,
-  // want to make larger, like Distribution, Sum over Time, etc.
   summarize: {
     icon: "summarize",
   },
   sum: {
     icon: "sum",
+  },
+  combine: {
+    icon: "add",
+  },
+  "combine-popover": {
+    icon: "add",
   },
   extract: {
     icon: "extract",
