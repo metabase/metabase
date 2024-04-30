@@ -120,7 +120,7 @@ app.listen(PORT, () => {
 
 ## Installation
 
-You can install Metabase Embedding SDK for react via npm:
+You can install Metabase Embedding SDK for React via npm:
 
 ```bash
 npm install @metabase/embedding-sdk-react

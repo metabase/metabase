@@ -30,7 +30,7 @@ export function setupCollectionsEndpoints({
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      query: { tree: true, "exclude-archived": true },
+      query: { "exclude-archived": true },
       overwriteRoutes: false,
     },
     collections.filter(collection => !collection.archived),
@@ -38,7 +38,6 @@ export function setupCollectionsEndpoints({
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      query: { tree: true },
       overwriteRoutes: false,
     },
     collections,

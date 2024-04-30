@@ -1,9 +1,14 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addCustomColumn,
   restore,
   popover,
   openOrdersTable,
   expressionEditorWidget,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > custom column > expression shortcuts", () => {
@@ -107,6 +112,39 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
     });
   });
 });
+
+describeWithSnowplow(
+  "scenarios > question > custom column > combine shortcuts",
+  () => {
+    beforeEach(() => {
+      restore();
+      resetSnowplow();
+      cy.signInAsNormalUser();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
+    it("should send an event for combine columns", () => {
+      openOrdersTable({ mode: "notebook" });
+      addCustomColumn();
+      selectCombineColumns();
+
+      selectColumn("User", "Email");
+      selectColumn("User", "Email");
+
+      expressionEditorWidget().button("Done").click();
+
+      expectGoodSnowplowEvent({
+        event: "column_combine_via_shortcut",
+        custom_expressions_used: ["concat"],
+        database_id: SAMPLE_DB_ID,
+        question_id: 0,
+      });
+    });
+  },
+);
 
 function selectCombineColumns() {
   cy.findByTestId("expression-suggestions-list").within(() => {
