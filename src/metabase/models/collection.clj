@@ -49,10 +49,19 @@
   "The fixed ID of the trash collection."
   13371339)
 
-(defn trash-collection
+(defn- trash-collection*
   "Gets the Trash collection from the database."
   []
-  (t2/select-one :model/Collection :id trash-collection-id))
+  (if-let [trash (t2/select-one :model/Collection :id trash-collection-id)]
+    trash
+    (do (t2/insert! :model/Collection {:id trash-collection-id
+                                       :name "Trash"
+                                       :type "trash"})
+        (t2/select-one :model/Collection :id trash-collection-id))))
+
+(def trash-collection
+  "Gets the Trash collection from the database."
+  (memoize trash-collection*))
 
 (def trash-path
   "The fixed location path for the trash collection."
@@ -72,10 +81,8 @@
 (defn ensure-trash-collection-created!
   "Creates the trash collection if it does not already exist."
   []
-  (when (nil? (trash-collection))
-    (t2/insert! :model/Collection {:id trash-collection-id
-                                   :name "Trash"
-                                   :type "trash"})))
+  ;; just call `trash-collection`
+  (trash-collection))
 
 (def Collection
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
@@ -679,6 +686,7 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
+  (ensure-trash-collection-created!)
   (let [namespaced?   (some? (:namespace collection))
         archived? (:archived updates)
         new-parent-id (cond
