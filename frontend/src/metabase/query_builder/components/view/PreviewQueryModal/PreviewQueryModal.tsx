@@ -38,7 +38,7 @@ export const PreviewQueryModal = ({
 
   const engine = question.database()?.engine;
   const formattedQuery = formatNativeQuery(data?.query, engine);
-  const formattedError = getResponseErrorMessage(error);
+  const formattedError = error ? getResponseErrorMessage(error) : undefined;
 
   return (
     <NativeQueryPreview
