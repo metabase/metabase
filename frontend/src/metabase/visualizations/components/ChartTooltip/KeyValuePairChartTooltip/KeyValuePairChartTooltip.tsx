@@ -33,9 +33,11 @@ const KeyValuePairChartTooltip = ({
   const rows = useMemo(() => getRows(hovered), [hovered]);
   const footerRows = hovered.footerData;
 
+  const showFooter = footerRows && footerRows.length > 0;
+
   return (
     <TooltipTable>
-      <TableBody>
+      <TableBody hasBottomSpacing={showFooter}>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
             key={index}
@@ -46,7 +48,7 @@ const KeyValuePairChartTooltip = ({
           />
         ))}
       </TableBody>
-      {footerRows && footerRows.length > 0 && (
+      {showFooter && (
         <TableFooter>
           {footerRows.map(({ key, value, col }, index) => (
             <TooltipRow

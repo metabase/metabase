@@ -10,9 +10,11 @@ export const TooltipTable = styled.table`
   margin: 0.5rem 1rem;
 `;
 
-export const TableBody = styled.tbody`
+export const TableBody = styled.tbody<{
+  hasBottomSpacing?: boolean;
+}>`
   &:after {
-    ${tableRowSpacingStyle}
+    ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
 
