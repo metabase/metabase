@@ -8,7 +8,6 @@
      :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]

@@ -229,9 +229,19 @@
          hsql-form]
         (h2x/with-database-type-info return-type))))
 
+(defn- in-report-timezone
+  "Convert timestamps with time zones (`timestamp_tz`) to timestamps that should be interpreted in the session
+  timezone (`timestamp_ltz`) so various datetime extraction and truncation operations work as expected."
+  [expr]
+  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
+    (if (and report-timezone
+             (= (h2x/database-type expr) "timestamptz"))
+      [:to_timestamp_ltz expr]
+      expr)))
+
 (defn- extract
   [unit expr]
-  (-> [:date_part unit expr]
+  (-> [:date_part (h2x/literal unit) (in-report-timezone expr)]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-trunc
@@ -240,7 +250,7 @@
                            (:millisecond :second :minute :hour) #{"time" "timestampltz" "timestampntz" "timestamptz"}
                            (:day :week :month :quarter :year)   #{"date" "timestampltz" "timestampntz" "timestamptz"})
         expr             (h2x/cast-unless-type-in "timestampntz" acceptable-types expr)]
-    (-> [:date_trunc unit expr]
+    (-> [:date_trunc (h2x/literal unit) (in-report-timezone expr)]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
@@ -248,7 +258,7 @@
 (defmethod sql.qp/date [:snowflake :minute-of-hour]  [_ _ expr] (extract :minute expr))
 (defmethod sql.qp/date [:snowflake :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:snowflake :hour-of-day]     [_ _ expr] (extract :hour expr))
-(defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (h2x/->date expr))
+(defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (date-trunc :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-month]    [_ _ expr] (extract :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-year]     [_ _ expr] (extract :dayofyear expr))
 (defmethod sql.qp/date [:snowflake :month]           [_ _ expr] (date-trunc :month expr))
@@ -256,6 +266,7 @@
 (defmethod sql.qp/date [:snowflake :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:snowflake :year-of-era]     [_ _ expr] (extract :year expr))
 
 ;; these don't need to be adjusted for start of week, since we're Setting the WEEK_START connection parameter
 (defmethod sql.qp/date [:snowflake :week]
@@ -272,6 +283,9 @@
   ;; we don't support it at the moment because the implementation in (defmethod date [:sql :week-of-year-us])
   ;; relies on the ability to dynamicall change `start-of-week` setting, but with snowflake we set the
   ;; start-of-week in connection session instead of manipulate in MBQL
+  ;;
+  ;; TODO -- what about the `weekofyear()` or `week()` functions in Snowflake? Would that do what we want?
+  ;; https://docs.snowflake.com/en/sql-reference/functions/year
   (throw (ex-info (tru "Snowflake doesn''t support extract us week")
           {:driver driver
            :form   expr
@@ -396,6 +410,8 @@
     (cond-> identifier
       qualify? qualify-identifier)))
 
+;;; TODO -- I don't think these actually ever get qualified since the parent method returns things wrapped
+;;; in [[h2x/with-database-type-info]] thus nothing will ever be an identifier.
 (defmethod sql.qp/->honeysql [:snowflake :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])

@@ -6,11 +6,12 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.date-2 :as u.date]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -96,10 +97,14 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key))))
+  (sql.qp/->honeysql driver/*driver*
+                     (lib.metadata/table (qp.store/metadata-provider) (mt/id table-key))))
 
 (defn- field-identifier [table-key field-key]
-  (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key) (name field-key))))
+  (sql.qp/->honeysql driver/*driver*
+                     [:field
+                      (mt/id table-key field-key)
+                      {:metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}]))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
@@ -166,22 +171,25 @@
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (mt/test-drivers (filter
-                     #(isa? driver/hierarchy % :sql)
-                     (set/intersection (set-timezone-drivers)
-                                       (mt/normal-drivers-with-feature :native-parameters)))
+                    #(isa? driver/hierarchy % :sql)
+                    (set/intersection (set-timezone-drivers)
+                                      (mt/normal-drivers-with-feature :native-parameters)))
     (mt/dataset tz-test-data
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
-          (doseq [[params-description query] (native-params-queries)]
-            (testing (format "Query with %s" params-description)
-              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
-                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
-                     (mt/formatted-rows [int identity identity]
-                                        (qp/process-query
-                                          (merge
-                                            {:database (mt/id)
-                                             :type     :native}
-                                            query))))))))))))
+          (qp.store/with-metadata-provider (mt/id)
+            (doseq [[params-description query] (native-params-queries)]
+              (testing (format "Query with %s" params-description)
+                (mt/with-native-query-testing-context query
+                  (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                          [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
+                         (mt/formatted-rows
+                          [int identity identity]
+                          (qp/process-query
+                           (merge
+                            {:database (mt/id)
+                             :type     :native}
+                            query))))))))))))))
 
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
@@ -239,10 +247,21 @@
       (for [i (range 366)]
         [(u.date/add start-date :day i)])]]))
 
+(defmethod driver/database-supports? [:driver ::extract-week-of-year-us]
+  [_driver _feature _database]
+  true)
+
+;;; Snowflake doesn't support extracting week of year US
+(defmethod driver/database-supports? [:snowflake ::extract-week-of-year-us]
+  [_driver _feature _database]
+  false)
+
 (deftest general-timezone-support-test
   (mt/dataset all-dates-leap-year
     (mt/test-drivers (set-timezone-drivers)
-      (let [extract-units (disj u.date/extract-units :day-of-year)
+      (let [extract-units (cond-> (disj u.date/extract-units :day-of-year)
+                            (not (driver/database-supports? driver/*driver* ::extract-week-of-year-us (mt/db)))
+                            (disj :week-of-year))
             ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
             extract-translate {:year :year-of-era :week-of-year :week-of-year-us}
             trunc-units (disj u.date/truncate-units :millisecond :second)]
