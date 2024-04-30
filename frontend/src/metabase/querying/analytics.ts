@@ -8,7 +8,7 @@ export const trackColumnExtractViaHeader = (
   question?: Question,
 ) => {
   trackSchemaEvent("question", "1-0-4", {
-    event: "column_combine_via_header",
+    event: "column_extract_via_column_header",
     custom_expressions_used: expressionsUsedBy(tag),
     database_id: Lib.databaseID(query),
     question_id: question?.id() ?? 0,
