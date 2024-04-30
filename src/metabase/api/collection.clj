@@ -1042,7 +1042,7 @@
   permissions checks and then move it to the trash."
   [collection-before-update collection-updates]
   ;; sanity check
-  (when (contains? collection-updates :archived)
+  (when (api/column-will-change? :archived collection-before-update collection-updates)
     (collection/archive-or-unarchive-collection!
      collection-before-update
      (select-keys collection-updates [:parent_id :archived]))

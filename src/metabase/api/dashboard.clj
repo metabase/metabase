@@ -704,7 +704,7 @@
           update-dashcards-and-tabs? (contains? dash-updates :dashcards)
           dash-updates (cond-> dash-updates
                          ;; changing `archived` also means changing the `collection_id` and `trashed_from_collection_id`
-                         (contains? dash-updates :archived)
+                         (api/column-will-change? :archived current-dash dash-updates)
                          (assoc :collection_id (if (:archived dash-updates)
                                                  collection/trash-collection-id
                                                  (:trashed_from_collection_id current-dash))

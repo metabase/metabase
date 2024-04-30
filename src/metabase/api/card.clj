@@ -500,7 +500,7 @@
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (cond-> card-updates
-                                 (contains? card-updates :archived)
+                                 (api/column-will-change? :archived card-before-update card-updates)
                                  (assoc :collection_id (if (:archived card-updates)
                                                          collection/trash-collection-id
                                                          (:trashed_from_collection_id card-before-update))
