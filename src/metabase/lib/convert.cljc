@@ -286,6 +286,12 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->pMBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->pMBQL expr) n])
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -331,7 +337,13 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
+(defmulti ^:private aggregation->legacy-MBQL
+  {:arglists '([aggregation-clause])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod aggregation->legacy-MBQL :default
+  [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
@@ -341,6 +353,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :offset
+  [clause]
+  (->legacy-MBQL clause))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
@@ -454,6 +470,12 @@
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
     [:value value opts]))
+
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->legacy-MBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->legacy-MBQL expr) n])
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

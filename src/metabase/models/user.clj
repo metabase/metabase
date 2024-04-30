@@ -50,7 +50,8 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?))
+  (derive :hook/updated-at-timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization

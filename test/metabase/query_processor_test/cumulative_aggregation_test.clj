@@ -216,7 +216,7 @@
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count with a temporally bucketed breakout"
-      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -276,7 +276,7 @@
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -289,21 +289,22 @@
                                   ;; 3. cumulative sum of order total
                                   (lib/aggregate (lib/cum-sum orders-total))
                                   ;; 4. cumulative average order total (cumulative sum of total / cumulative count)
-                                  (lib/aggregate (lib// (lib/cum-sum orders-total)
-                                                        (lib/cum-count)))
+                                  (lib/aggregate (lib/+ (lib// (lib/cum-sum orders-total)
+                                                               (lib/cum-count))
+                                                        1.0))
                                   (lib/limit 3)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;;       1               2  3       4
-          (is (= [[#t "2016-04-01" 1  52.76   52.76]
-                  [#t "2016-05-01" 20 1318.49 65.92]
-                  [#t "2016-06-01" 57 3391.41 59.50]]
+          (is (= [[#t "2016-04-01" 1  52.76   53.76]
+                  [#t "2016-05-01" 20 1318.49 66.92]
+                  [#t "2016-06-01" 57 3391.41 60.50]]
                  (mt/formatted-rows [->local-date int 2.0 2.0]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel expressions-inside-cumulative-aggregations-test
   (testing "Expressions inside of cumulative aggregations should work correctly"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -321,7 +322,7 @@
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -344,3 +345,27 @@
                 [#t "2016-06-01" 57 3391.41 2072.92]]
                (mt/formatted-rows [->local-date int 2.0 2.0]
                  (qp/process-query query))))))))
+
+(deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
+  (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          orders            (lib.metadata/table metadata-provider (mt/id :orders))
+          orders-quantity   (lib.metadata/field metadata-provider (mt/id :orders :quantity))
+          orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+          orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
+          query             (-> (lib/query metadata-provider orders)
+                                (lib/filter (lib/> orders-id 5000))
+                                (lib/aggregate (lib/cum-count))
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                (lib/breakout orders-quantity)
+                                (lib/limit 5)
+                                (assoc-in [:middleware :format-rows?] false))]
+      (mt/with-native-query-testing-context query
+        (is (= [[#t "2016-04-01" 2 1]
+                [#t "2016-05-01" 2 1]
+                [#t "2016-05-01" 3 4]
+                [#t "2016-05-01" 4 10]
+                [#t "2016-05-01" 5 17]]
+               (mt/formatted-rows
+                [->local-date int int]
+                (qp/process-query query))))))))

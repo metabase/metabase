@@ -1,0 +1,251 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 164,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "category",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1553, null],
+          "effective_type": "type/Text",
+          "id": 1553,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": { "distinct-count": 5, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 1
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1554, null],
+          "effective_type": "type/BigInteger",
+          "id": 1554,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 4, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -5,
+                "q1": -3.5,
+                "q3": 4.769750529242292,
+                "max": 10,
+                "sd": 5.761944116355173,
+                "avg": 0.8
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Starts Above Crosses 0 Ends Above",
+      "creator_id": 1,
+      "updated_at": "2023-12-16T22:06:54.43378Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "fields": [
+            ["field", "category", { "base-type": "type/Text" }],
+            ["field", "change", { "base-type": "type/BigInteger" }]
+          ],
+          "source-table": "card__166"
+        }
+      },
+      "id": 167,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "uMQcGViGQ7zeOgk2Hvmmx",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["category"],
+        "graph.metrics": ["change"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-16T22:06:54.43378Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "category",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1553, null],
+            "effective_type": "type/Text",
+            "id": 1553,
+            "visibility_type": "normal",
+            "display_name": "Category",
+            "fingerprint": {
+              "global": { "distinct-count": 5, "nil%": 0 },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 1
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "change",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1554, null],
+            "effective_type": "type/BigInteger",
+            "id": 1554,
+            "visibility_type": "normal",
+            "display_name": "Change",
+            "fingerprint": {
+              "global": { "distinct-count": 4, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": -5,
+                  "q1": -3.5,
+                  "q3": 4.769750529242292,
+                  "max": 10,
+                  "sd": 5.761944116355173,
+                  "avg": 0.8
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        ["A", 1],
+        ["B", 1],
+        ["C", -5],
+        ["D", -3],
+        ["E", 10]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 164,
+          "coercion_strategy": null,
+          "name": "category",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1553, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1553,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": { "distinct-count": 5, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 1
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 164,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1554, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1554,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 4, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -5,
+                "q1": -3.5,
+                "q3": 4.769750529242292,
+                "max": 10,
+                "sd": 5.761944116355173,
+                "avg": 0.8
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["category"],
+        "graph.metrics": ["change"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1553}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1554}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_starts_above_crosses_0_ends_20231216140607\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

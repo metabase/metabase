@@ -33,7 +33,7 @@ export function isPublicCollection(
 }
 
 export function isInstanceAnalyticsCollection(
-  collection?: Partial<Collection>,
+  collection?: Pick<Collection, "type">,
 ): boolean {
   return (
     !!collection &&

@@ -16,6 +16,7 @@ import type {
   AvailableModelFilters,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
+import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -234,6 +235,8 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+type GetIconType = ((item: ObjectWithModel) => IconData) | null;
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -256,6 +259,7 @@ export const PLUGIN_COLLECTIONS = {
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
+  getIcon: null as GetIconType,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

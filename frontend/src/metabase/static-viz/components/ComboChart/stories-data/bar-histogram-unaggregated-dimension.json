@@ -1,0 +1,258 @@
+[
+  {
+    "card": {
+      "original_card_id": 275,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-11T22:56:06.984662Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "bar",
+        "name": "Bar",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 14,
+        "entity_id": "7cs7gCidO3n43FfJ22e7a",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-12T22:54:03.258587Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.x_axis.scale": "histogram",
+        "graph.metrics": ["y"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-03-11T22:56:07.102661Z"
+      },
+      "collection_preview": true,
+      "entity_id": "UnvMzhskFQNS8jPTbVSGN",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 275,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 1 x, 10 y\nunion all select 1, 10\nunion all select 4, 5\nunion all select 5, 15"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-12T17:45:26.240093Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 339.5,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-12T17:45:26.080727Z",
+      "name": "Bar Histogram Unaggregated Dimension SQL",
+      "query_type": "native",
+      "collection_id": 14,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-08T20:14:19.465128Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "display_name": "x",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1,
+                "q3": 4.5,
+                "max": 5,
+                "sd": 2.0615528128088303,
+                "avg": 2.75
+              }
+            }
+          }
+        },
+        {
+          "display_name": "y",
+          "field_ref": [
+            "field",
+            "y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 7.0710678118654755,
+                "q3": 12.928932188134524,
+                "max": 15,
+                "sd": 4.08248290463863,
+                "avg": 10
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 10],
+        [1, 10],
+        [4, 5],
+        [5, 15]
+      ],
+      "cols": [
+        {
+          "display_name": "x",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select 1 x, 10 y\nunion all select 1, 10\nunion all select 4, 5\nunion all select 5, 15",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "x",
+            "field_ref": [
+              "field",
+              "x",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "x",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1,
+                  "q3": 4.5,
+                  "max": 5,
+                  "sd": 2.0615528128088303,
+                  "avg": 2.75
+                }
+              }
+            }
+          },
+          {
+            "display_name": "y",
+            "field_ref": [
+              "field",
+              "y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 5,
+                  "q1": 7.0710678118654755,
+                  "q3": 12.928932188134524,
+                  "max": 15,
+                  "sd": 4.08248290463863,
+                  "avg": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

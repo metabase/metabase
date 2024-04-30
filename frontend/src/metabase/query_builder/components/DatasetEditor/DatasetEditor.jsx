@@ -110,6 +110,7 @@ function getSidebar(
     focusedFieldIndex,
     focusFirstField,
     onFieldMetadataChange,
+    onMappedDatabaseColumnChange,
   },
 ) {
   const {
@@ -141,6 +142,7 @@ function getSidebar(
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
         onFieldMetadataChange={onFieldMetadataChange}
+        onMappedDatabaseColumnChange={onMappedDatabaseColumnChange}
         modelIndexes={modelIndexes}
       />
     );
@@ -290,10 +292,15 @@ function DatasetEditor(props) {
   );
 
   const onFieldMetadataChange = useCallback(
-    _changes => {
-      const changes = _changes.id
-        ? inheritMappedFieldProperties(_changes)
-        : _changes;
+    values => {
+      setFieldMetadata({ field_ref: focusedFieldRef, changes: values });
+    },
+    [focusedFieldRef, setFieldMetadata],
+  );
+
+  const onMappedDatabaseColumnChange = useCallback(
+    value => {
+      const changes = inheritMappedFieldProperties({ id: value });
       setFieldMetadata({ field_ref: focusedFieldRef, changes });
     },
     [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
@@ -446,6 +453,7 @@ function DatasetEditor(props) {
       focusedFieldIndex,
       focusFirstField,
       onFieldMetadataChange,
+      onMappedDatabaseColumnChange,
     },
   );
 

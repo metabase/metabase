@@ -78,9 +78,14 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 }
 
 export type SeriesSettings = {
-  title: string;
+  title?: string;
   color?: string;
   show_series_values?: boolean;
+  display?: string;
+  axis?: string;
+  "line.interpolate"?: string;
+  "line.marker_enabled"?: boolean;
+  "line.missing"?: string;
 };
 
 export type SeriesOrderSetting = {
@@ -115,27 +120,47 @@ export type TableColumnOrderSetting = {
   field_ref?: DimensionReference;
 };
 
+export type StackType = "stacked" | "normalized" | null;
+
+export const numericScale = ["linear", "pow", "log"] as const;
+export type NumericScale = typeof numericScale[number];
+
+export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
+
+export type YAxisScale = NumericScale;
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
-  "stackable.stack_type"?: "stacked" | "normalized" | null;
+  "stackable.stack_type"?: StackType;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
 
   // X-axis
   "graph.x_axis.title_text"?: string;
-  "graph.x_axis.scale"?: "ordinal";
-  "graph.x_axis.axis_enabled"?: "compact";
+  "graph.x_axis.scale"?: XAxisScale;
+  "graph.x_axis.axis_enabled"?:
+    | true
+    | false
+    | "compact"
+    | "rotate-45"
+    | "rotate-90";
 
   // Y-axis
   "graph.y_axis.title_text"?: string;
-  "graph.y_axis.scale"?: "linear" | "pow" | "log";
-  "graph.y_axis.axis_enabled"?: true;
+  "graph.y_axis.scale"?: YAxisScale;
+  "graph.y_axis.axis_enabled"?: boolean;
+
+  "graph.y_axis.min"?: number;
+  "graph.y_axis.max"?: number;
 
   // Goal
   "graph.goal_value"?: number;
   "graph.show_goal"?: boolean;
   "graph.goal_label"?: string;
+
+  // Trend
+  "graph.show_trendline"?: boolean;
 
   // Series
   "graph.dimensions"?: string[];
@@ -145,6 +170,15 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings>;
 
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Scatter plot settings
+  "scatter.bubble"?: string; // col name
+
+  // Waterfall settings
+  "waterfall.increase_color"?: string;
+  "waterfall.decrease_color"?: string;
+  "waterfall.total_color"?: string;
+  "waterfall.show_total"?: boolean;
 
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
@@ -162,14 +196,14 @@ export type VisualizationSettings = {
 };
 
 export interface ModerationReview {
+  status: ModerationReviewStatus;
   moderator_id: number;
-  status: ModerationReviewStatus | null;
   created_at: string;
-  most_recent: boolean;
+  most_recent?: boolean;
 }
 
 export type CardId = number;
-export type ModerationReviewStatus = "verified";
+export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"

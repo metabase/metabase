@@ -55,7 +55,7 @@
             last-metric-stage (last pre-transition-stages)
             metric-aggregation (-> last-metric-stage :aggregation first)
             new-metric-stage (cond-> last-metric-stage
-                                 :always (dissoc :aggregation :fields)
+                                 :always (dissoc :aggregation :fields :lib/stage-metadata)
                                  (seq following-stages) (dissoc :breakout :order-by :limit))
             ;; Store lookup for metric references created in this set of stages.
             ;; These will be adjusted later if these stages are in a join
@@ -97,10 +97,15 @@
                     (let [result (update stage-or-join :stages #(adjust-metric-stages query % metric-ref-lookup))]
                       ;; Once the stages are processed any ref-lookup missing a join alias must have
                       ;; come from this join's stages, so further references must include the join alias.
-                      (vswap! metric-ref-lookup update-keys (fn [[lookup-alias lookup-card]]
-                                                              (if-not lookup-alias
+                      (vswap! metric-ref-lookup #(m/map-kv (fn [[lookup-alias lookup-card] v]
+                                                             [(if-not lookup-alias
                                                                 [(:alias stage-or-join) lookup-card]
-                                                                [lookup-alias lookup-card])))
+                                                                [lookup-alias lookup-card])
+                                                              (lib.util.match/replace
+                                                                v
+                                                                [:field (_ :guard (complement :join-alias)) _]
+                                                                (update &match 1 assoc :join-alias (:alias stage-or-join)))])
+                                                           %))
                       result)
                     stage-or-join)))
         new-stages (adjust-metric-stages query (:stages query) metric-ref-lookup)]
@@ -110,4 +115,6 @@
         @metric-ref-lookup)
       (when-let [match (lib.util.match/match-one <>
                          [:metric {} _] &match)]
-        (log/warn "Failed to replace metric" (pr-str match) (pr-str @metric-ref-lookup))))))
+        (log/warn "Failed to replace metric"
+                  (pr-str {:match match
+                           :lookup @metric-ref-lookup}))))))

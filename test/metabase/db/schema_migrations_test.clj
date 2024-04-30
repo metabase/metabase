@@ -29,8 +29,7 @@
             Permissions
             PermissionsGroup
             Table
-            User
-            Dashboard]]
+            User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -542,7 +541,7 @@
   (testing "Migration v48.00-049"
     (mt/test-drivers [:postgres :mysql]
      (impl/test-migrations "v48.00-049" [migrate!]
-       (create-raw-user! "noah@metabase.com")
+       (create-raw-user! (mt/random-email))
        ;; Use raw :activity keyword as table name since the model has since been removed
        (let [_activity-1 (t2/insert-returning-pks! :activity
                                                    {:topic       "card-create"
@@ -574,7 +573,7 @@
 
     (mt/test-drivers [:h2]
      (impl/test-migrations "v48.00-049" [migrate!]
-       (create-raw-user! "noah@metabase.com")
+       (create-raw-user! (mt/random-email))
        (let [_activity-1 (t2/insert-returning-pks! "activity"
                                                    {:topic       "card-create"
                                                     :user_id     1
@@ -663,11 +662,12 @@
                                                              {:name       "Normal Collection"
                                                               :type       nil
                                                               :slug       "normal_collection"}))
-            _internal-user-id (first (t2/insert-returning-pks! :model/User
+            _internal-user-id (first (t2/insert-returning-pks! (t2/table-name :model/User)
                                                                {:id 13371338
                                                                 :first_name "Metabase Internal User"
                                                                 :email "internal@metabase.com"
-                                                                :password (str (random-uuid))}))
+                                                                :password (str (random-uuid))
+                                                                :date_joined :%now}))
             original-db-names (t2/select-fn-set :name :metabase_database)
             original-collections (t2/select-fn-set :name :collection)
             check-before (fn []
@@ -1444,19 +1444,28 @@
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
 
-      (let [db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+      (let [user (create-raw-user! (mt/random-email))
+            db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
                                                                  (update :details json/generate-string)
                                                                  (update :engine str)
                                                                  (assoc :cache_ttl 10)))
-            dash (t2/insert-returning-pk! :report_dashboard (-> (mt/with-temp-defaults Dashboard)
-                                                                (assoc :cache_ttl 20
-                                                                       :parameters "")))
-            card (t2/insert-returning-pk! :report_card (-> (mt/with-temp-defaults Card)
-                                                           (update :display str)
-                                                           (update :visualization_settings json/generate-string)
-                                                           (update :dataset_query json/generate-string)
-                                                           (assoc :cache_ttl 30)))]
-
+            dash (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
+                                          {:name       "A dashboard"
+                                           :creator_id (:id user)
+                                           :created_at :%now
+                                           :updated_at :%now
+                                           :cache_ttl  20
+                                           :parameters ""})
+            card (t2/insert-returning-pk! (t2/table-name Card)
+                                          {:name                   "Card"
+                                           :display                "table"
+                                           :dataset_query          "{}"
+                                           :visualization_settings "{}"
+                                           :cache_ttl              30
+                                           :creator_id             (:id user)
+                                           :database_id            db
+                                           :created_at             :%now
+                                           :updated_at             :%now})]
         (migrate!)
 
         (is (=? [{:model    "root"
@@ -1915,3 +1924,38 @@
         (migrate! :down 49)
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest view-count-test
+  (testing "report_card.view_count and report_dashboard.view_count should be populated"
+    (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:34"] [migrate!]
+      (let [user-id 13371338 ; use internal user to avoid creating a real user
+            db-id   (t2/insert-returning-pk! :metabase_database {:name       "db"
+                                                                 :engine     "postgres"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now
+                                                                 :details    "{}"})
+            dash-id (t2/insert-returning-pk! :report_dashboard {:name       "A dashboard"
+                                                                :creator_id user-id
+                                                                :parameters "[]"
+                                                                :created_at :%now
+                                                                :updated_at :%now})
+            card-id (t2/insert-returning-pk! :report_card {:creator_id             user-id
+                                                           :database_id            db-id
+                                                           :dataset_query          "{}"
+                                                           :visualization_settings "{}"
+                                                           :display                "table"
+                                                           :name                   "a card"
+                                                           :created_at             :%now
+                                                           :updated_at             :%now})
+            _ (t2/insert-returning-pk! :view_log {:user_id   user-id
+                                                  :model     "card"
+                                                  :model_id  card-id
+                                                  :timestamp :%now})
+            _ (dotimes [_ 2]
+                (t2/insert-returning-pk! :view_log {:user_id   user-id
+                                                    :model     "dashboard"
+                                                    :model_id  dash-id
+                                                    :timestamp :%now}))]
+        (migrate!)
+        (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
+        (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
