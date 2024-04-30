@@ -67,14 +67,18 @@ function generateSdkPackage() {
   );
 }
 
-function generateLicenseFile() {
+/**
+ * @param {string} source
+ * @param {string} target
+ */
+function copyFileToOutput(source, target = source) {
   const licenseContent = fs.readFileSync(
-    path.resolve(`./enterprise/LICENSE.txt`),
+    path.resolve(`./enterprise/${source}`),
     "utf-8",
   );
 
   fs.writeFileSync(
-    path.resolve(path.join(SDK_DIST_DIR), "LICENSE.txt"),
+    path.resolve(path.join(SDK_DIST_DIR), target),
     licenseContent,
     "utf-8",
   );
@@ -85,4 +89,5 @@ if (!fs.existsSync(SDK_DIST_DIR)) {
 }
 
 generateSdkPackage();
-generateLicenseFile();
+copyFileToOutput("LICENSE.txt");
+copyFileToOutput("frontend/src/embedding-sdk/README.md", "README.md");
