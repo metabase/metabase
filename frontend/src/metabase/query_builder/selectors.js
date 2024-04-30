@@ -351,8 +351,7 @@ export const getQuestion = createSelector(
     if (!question) {
       return;
     }
-    const isEditingModel = queryBuilderMode === "dataset";
-    if (isEditingModel) {
+    if (question.type() === "model" && queryBuilderMode === "dataset") {
       return question.lockDisplay();
     }
 
