@@ -1,6 +1,8 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatNumber } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
@@ -45,6 +47,8 @@ import type {
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
+
+import { computeChange } from "../SmartScalar/compute";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -130,7 +134,7 @@ export const getEventDimensions = (
   );
 };
 
-export const getEventColumnsData = (
+const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
@@ -139,7 +143,8 @@ export const getEventColumnsData = (
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
-  return getSameCardDataKeys(datum, seriesModel)
+
+  const dataPoints: DataPoint[] = getSameCardDataKeys(datum, seriesModel)
     .map(dataKey => {
       const value = datum[dataKey];
       const col = chartModel.columnByDataKey[dataKey];
@@ -174,6 +179,24 @@ export const getEventColumnsData = (
       };
     })
     .filter(isNotNull);
+
+  if (chartModel.xAxisModel.axisType === "time" && dataIndex > 0) {
+    // TODO handle series breakout
+    const currentValue = datum[seriesModel.dataKey];
+    const previousValue =
+      chartModel.dataset[dataIndex - 1][seriesModel.dataKey];
+    const change = computeChange(previousValue, currentValue);
+
+    dataPoints.push({
+      key: t`Percent Change`,
+      col: seriesModel.column,
+      value: formatNumber(change, {
+        number_style: "percent",
+      }),
+    });
+  }
+
+  return dataPoints;
 };
 
 export const getStackedTooltipModel = (
