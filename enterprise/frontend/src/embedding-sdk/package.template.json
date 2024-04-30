@@ -1,6 +1,6 @@
 {
-  "name": "metabase-embedding-sdk-react",
-  "version": "0.1.1",
+  "name": "@metabase/embedding-sdk-react",
+  "version": "0.1.0",
   "description": "Metabase React Embedding SDK",
   "repository": {
     "url": "git+https://github.com/metabase/metabase.git"
