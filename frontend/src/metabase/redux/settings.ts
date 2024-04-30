@@ -19,22 +19,6 @@ export const refreshSiteSettings = createAsyncThunk(
   },
 );
 
-export const settings = createReducer(
-  { values: window.MetabaseBootstrap || {}, loading: false },
-  builder => {
-    builder.addCase(refreshSiteSettings.pending, state => {
-      state.loading = true;
-    });
-    builder.addCase(refreshSiteSettings.fulfilled, (state, { payload }) => {
-      state.loading = false;
-      state.values = payload;
-    });
-    builder.addCase(refreshSiteSettings.rejected, state => {
-      state.loading = false;
-    });
-  },
-);
-
 export type UpdateUserSettingOptions = {
   shouldRefresh?: boolean;
 };
@@ -52,6 +36,10 @@ export const updateUserSetting = createThunkAction(
     return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
+
+        if (!shouldRefresh) {
+          return setting;
+        }
       } catch (error) {
         console.error("error updating user setting", setting, error);
         throw error;
@@ -61,5 +49,24 @@ export const updateUserSetting = createThunkAction(
         }
       }
     };
+  },
+);
+
+export const settings = createReducer(
+  { values: window.MetabaseBootstrap || {}, loading: false },
+  builder => {
+    builder.addCase(refreshSiteSettings.pending, state => {
+      state.loading = true;
+    });
+    builder.addCase(refreshSiteSettings.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.values = payload;
+    });
+    builder.addCase(refreshSiteSettings.rejected, state => {
+      state.loading = false;
+    });
+    builder.addCase(UPDATE_USER_SETTING, (state, { payload }) => {
+      state.values[payload.key] = payload.value;
+    });
   },
 );
