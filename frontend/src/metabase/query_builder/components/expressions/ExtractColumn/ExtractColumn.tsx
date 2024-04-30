@@ -2,12 +2,12 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { Box, Stack } from "metabase/ui";
+import { Text, Box, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
 
-import { Button } from "./Button";
+import styles from "./ExtractColumn.module.css";
 import { getExample, getName } from "./util";
 
 type Props = {
@@ -146,7 +146,7 @@ function ExtractionPicker({
       <Box p="sm">
         <Stack spacing={0}>
           {extractions.map(extraction => (
-            <Button
+            <ExtractColumnButton
               key={extraction.info.tag}
               title={extraction.info.displayName}
               example={getExample(extraction.info) ?? ""}
@@ -156,5 +156,32 @@ function ExtractionPicker({
         </Stack>
       </Box>
     </>
+  );
+}
+
+function ExtractColumnButton({
+  title,
+  example,
+  onClick,
+}: {
+  title: string;
+  example: string;
+  onClick: () => void;
+}) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      p="sm"
+      className={styles.button}
+      onClick={onClick}
+    >
+      <Text color="text-dark" className={styles.content} weight="bold" p={0}>
+        {title}
+      </Text>
+      <Text color="text-light" size="sm" className={styles.content}>
+        {example}
+      </Text>
+    </Box>
   );
 }
