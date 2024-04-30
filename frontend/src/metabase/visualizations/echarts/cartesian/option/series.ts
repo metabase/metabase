@@ -378,6 +378,10 @@ const buildEChartsLineAreaSeries = (
     z: CHART_STYLE.series.zIndexLineArea,
     id: seriesModel.dataKey,
     type: "line",
+    lineStyle: {
+      type: seriesSettings["line.style"],
+      width: seriesSettings["line.size"],
+    },
     yAxisIndex,
     showSymbol: true,
     symbolSize: CHART_STYLE.symbolSize,
