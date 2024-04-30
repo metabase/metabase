@@ -201,27 +201,6 @@
                         ;; TODO Find a way to unify has-write-permissions and this function?
                         (= :write (:native-permissions (database query)))))))))
 
-(mu/defn fetch-bulk-metadata-with-non-bulk-provider :- [:maybe [:sequential :map]]
-  "Adapter to use a non-BulkMetadataProvider like one by calling the single-instance methods repeatedly. This is
-  mostly useful for mock metadata providers and the like; the only metadata provider where the performance boost
-  from [[bulk-metadata]] is important, the application database MetadataProvider, implements `BulkMetadata` natively."
-  [provider      :- ::lib.schema.metadata/metadata-provider
-   metadata-type :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
-   ids           :- [:maybe
-                     [:or
-                      [:set pos-int?]
-                      [:sequential pos-int?]]]]
-  (let [f (case metadata-type
-            :metadata/card    lib.metadata.protocols/card
-            :metadata/column  lib.metadata.protocols/field
-            :metadata/legacy-metric  lib.metadata.protocols/legacy-metric
-            :metadata/segment lib.metadata.protocols/segment
-            :metadata/table   lib.metadata.protocols/table)]
-    (into []
-          (keep (fn [id]
-                  (f provider id)))
-          ids)))
-
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
 ;;; this (like QP middleware). Maybe we should only have a throwing version.
@@ -243,10 +222,7 @@
   (when-let [ids (not-empty (cond-> ids
                               (not (set? ids)) distinct))] ; remove duplicates but preserve order.
     (let [provider   (->metadata-provider metadata-providerable)
-          f          (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                       lib.metadata.protocols/bulk-metadata
-                       fetch-bulk-metadata-with-non-bulk-provider)
-          results    (f provider metadata-type ids)
+          results    (lib.metadata.protocols/metadatas provider metadata-type ids)
           id->result (into {} (map (juxt :id identity)) results)]
       (into []
             (comp (map id->result)

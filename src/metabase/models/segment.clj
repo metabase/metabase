@@ -95,13 +95,13 @@
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
                                   segments)))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
+        fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 cat
                                 [(map :table-id fields)
                                  (map :table_id segments)])]
     ;; this is done for side effects
-    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
+    (lib.metadata.protocols/metadatas metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (mu/defn ^:private segments->table-id->warmed-metadata-provider :- fn?

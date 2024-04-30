@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.protocols
   (:require
-   [metabase.util :as u]
-   #?@(:clj [[potemkin :as p]])))
+   #?@(:clj [[potemkin :as p]])
+   [medley.core :as m]))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) MetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
@@ -29,51 +29,36 @@
     "Metadata about the Database we're querying. Should match the [[metabase.lib.metadata/DatabaseMetadata]] schema.
   This includes important info such as the supported `:features` and the like.")
 
-  (table [metadata-provider table-id]
-    "Return metadata for a specific Table. Metadata should satisfy [[metabase.lib.metadata/TableMetadata]].")
+  (metadatas [metadata-provider metadata-type metadata-ids]
+    "Return a sequence of non-nil metadata objects of `metadata-type` associated with `metadata-ids`, which is either
+ a sequence or set of integer object IDs. Objects should be fetched as needed, but if this MetadataProvider has an
+ internal cache, it should return any cached objects and only fetch ones not present in the cache. This should not
+ error if any objects were not found. The order objects are returned in does not matter. For MetadataProviders that
+ have a cache, calling this method can be done for side-effects (to warm the cache).")
 
-  (field [metadata-provider field-id]
-    "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]].")
+  (cached-metadatas [metadata-provider metadata-type metadata-ids]
+    "Like [[metadatas]], but only return metadata that is already present in the cache. MetadataProviders that do not
+  have a cache should return `nil`.")
 
-  (card [metadata-provider card-id]
-    "Return information about a specific Saved Question, aka a Card. This should
-    match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
-    source query.")
-
-  (legacy-metric [metadata-provider metric-id]
-    "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
-    database. Metadata should match [[metabase.lib.metadata/LegacyMetricMetadata]].")
-
-  (segment [metadata-provider segment-id]
-    "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
-    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
-
-  ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
-  ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.
-  ;; I'm on the fence about maybe putting these in a different protocol. They're part of this protocol for now tho so
-  ;; implement them anyway.
+  (store-metadata! [metadata-provider a-metadata]
+    "For MetadataProviders that have a cache -- store a given metadata `a-metadata` in the cache. MetadataProviders
+  that successfully stored this value in a cache should return a truthy value; MetadataProviders that do not have a
+  cache should return a falsey value.")
 
   (tables [metadata-provider]
-    "Return a sequence of Tables in this Database. Tables should satisfy the [[metabase.lib.metadata/TableMetadata]]
+    "Return a sequence of Tables in this Database. Tables should satisfy the `:metabase.lib.schema.metadata/table`
   schema. This should also include things that serve as 'virtual' tables, e.g. Saved Questions or Models. But users of
   MLv2 should not need to know that! If we add support for Super Models or Quantum Questions in the future, they can
   just come back from this method in the same shape as everything else, the Query Builder can display them, and the
   internals can be tucked away here in MLv2.")
 
-  (fields [metadata-provider table-id]
-    "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
-  the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error.")
+  (metadatas-for-table [metadata-provider metadata-type table-id]
+    "Return active (non-archived) metadatas associated with a particular Table, either Fields, LegacyMetrics, or
+  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/legacy-metric`, or
+  `:metadata/segment`.")
 
-  (legacy-metrics [metadata-provider table-id]
-    "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the [[metabase.lib.metadata/LegacyMetricMetadata]] schema. If no such Table exists, this should error.")
-
-  (segments [metadata-provider table-id]
-    "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
-  the [[metabase.lib.metadata/SegmentMetadata]] schema. If no Table with ID `table-id` exists, this should error.")
-
-  (setting [metadata-provider setting-name]
-    "Return the value of the given Metabase setting, a keyword."))
+  (setting [metadata-provider setting-key]
+    "Return the value of the given Metabase setting with keyword `setting-name`."))
 
 (defn metadata-provider?
   "Whether `x` is a valid [[MetadataProvider]]."
@@ -86,32 +71,67 @@
   (or (metadata-provider? x)
       (some-> x :lib/metadata metadata-providerable?)))
 
-(#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
-  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
-  MetadataProviders that can hit some sort of relatively expensive external service,
-  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
-  pre-warming the cache with stuff that was already fetched elsewhere.
-  See [[metabase.models.legacy-metric/warmed-metadata-provider]] for example.
-
-  See [[cached-metadata-provider]] below to wrap for a way to wrap an existing MetadataProvider to add caching on top
-  of it."
-  (cached-database [cached-metadata-provider]
-    "Get cached metadata for the query's Database.")
-  (cached-metadata [cached-metadata-provider metadata-type id]
-    "Get cached metadata of a specific type, e.g. `:metadata/table`.")
-  (store-database! [cached-metadata-provider database-metadata]
-    "Store metadata for the query's Database.")
-  (store-metadata! [cached-metadata-provider metadata-type id metadata]
-    "Store metadata of a specific type, e.g. `:metadata/table`."))
-
-(#?(:clj p/defprotocol+ :cljs defprotocol) BulkMetadataProvider
-  "A protocol for a MetadataProvider that can fetch several objects in a single batched operation. This is mostly
-  useful for MetadataProviders e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]."
-  (bulk-metadata [bulk-metadata-provider metadata-type ids]
-    "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
-
 (defn store-metadatas!
   "Convenience. Store several metadata maps at once."
-  [cached-metadata-provider metadata-type metadatas]
-  (doseq [metadata metadatas]
-    (store-metadata! cached-metadata-provider metadata-type (u/the-id metadata) metadata)))
+  [metadata-provider objects]
+  (doseq [object objects]
+    (store-metadata! metadata-provider object)))
+
+(defn- metadata [metadata-provider metadata-type metadata-id]
+  (m/find-first (fn [a-metadata]
+                  (= (:id a-metadata) metadata-id))
+                (metadatas metadata-provider metadata-type [metadata-id])))
+
+(defn table
+  "Return metadata for a specific Table. Metadata should satisfy [[metabase.lib.metadata/TableMetadata]]."
+  [metadata-provider table-id]
+  (metadata metadata-provider :metadata/table table-id))
+
+(defn field
+  "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]]."
+  [metadata-provider field-id]
+  (metadata metadata-provider :metadata/column field-id))
+
+(defn card
+  "Return information about a specific Saved Question, aka a Card. This should
+  match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
+  source query."
+  [metadata-provider card-id]
+  (metadata metadata-provider :metadata/card card-id))
+
+(defn legacy-metric
+  "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
+  database. Metadata should match [[metabase.lib.metadata/LegacyMetricMetadata]]."
+  [metadata-provider legacy-metric-id]
+  (metadata metadata-provider :metadata/legacy-metric legacy-metric-id))
+
+(defn segment
+  "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
+  database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]."
+  [metadata-provider segment-id]
+  (metadata metadata-provider :metadata/segment segment-id))
+
+(defn fields
+  "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
+  the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."
+  [metadata-provider table-id]
+  (metadatas-for-table metadata-provider :metadata/column table-id))
+
+(defn legacy-metrics
+  "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
+  the [[metabase.lib.metadata/LegacyMetricMetadata]] schema. If no such Table exists, this should error."
+  [metadata-provider table-id]
+  (metadatas-for-table metadata-provider :metadata/legacy-metric table-id))
+
+(defn segments
+  "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
+  the [[metabase.lib.metadata/SegmentMetadata]] schema. If no Table with ID `table-id` exists, this should error."
+  [metadata-provider table-id]
+  (metadatas-for-table metadata-provider :metadata/segment table-id))
+
+(defn cached-metadata
+  "Get cached metadata of a specific type, e.g. `:metadata/table`."
+  [metadata-provider metadata-type metadata-id]
+  (m/find-first (fn [a-metadata]
+                  (= (:id a-metadata) metadata-id))
+                (cached-metadatas metadata-provider metadata-type [metadata-id])))

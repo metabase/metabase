@@ -344,53 +344,60 @@
 ;;; MetadataProvider
 ;;;
 
-(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/database
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (t2/select-one :metadata/database database-id))
+(defn- database [database-id]
+  (when-not database-id
+    (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                            `lib.metadata.protocols/database
+                            `UncachedApplicationDatabaseMetadataProvider)
+                    {})))
+  (t2/select-one :metadata/database database-id))
 
-  (table         [_this table-id]   (t2/select-one :metadata/table         :id table-id   :db_id       database-id))
-  (field         [_this field-id]   (t2/select-one :metadata/column        :id field-id   :table/db_id database-id))
-  (card          [_this card-id]    (t2/select-one :metadata/card          :id card-id    :database_id database-id))
-  (legacy-metric [_this metric-id]  (t2/select-one :metadata/legacy-metric :id metric-id  :table/db_id database-id))
-  (segment       [_this segment-id] (t2/select-one :metadata/segment       :id segment-id :table/db_id database-id))
+(defn- metadatas [database-id metadata-type ids]
+  (let [database-id-key (case metadata-type
+                          :metadata/table :db_id
+                          :metadata/card  :database_id
+                          :table/db_id)]
+    (when (seq ids)
+      (t2/select metadata-type
+                 database-id-key database-id
+                 :id             [:in (set ids)]))))
 
-  (tables [_this]
-    (t2/select :metadata/table
-               :db_id           database-id
-               :active          true
-               :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+(defn- tables [database-id]
+  (t2/select :metadata/table
+             :db_id           database-id
+             :active          true
+             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
 
-  (fields [_this table-id]
+(defn- metadatas-for-table [metadata-type table-id]
+  (case metadata-type
+    :metadata/field
     (t2/select :metadata/column
                :table_id        table-id
                :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}]))
+               :visibility_type [:not-in #{"sensitive" "retired"}])
 
-  (legacy-metrics [_this table-id]
-    (t2/select :metadata/legacy-metric :table_id table-id, :archived false))
+    :metadata/legacy-metric
+    (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
 
-  (segments [_this table-id]
-    (t2/select :metadata/segment :table_id table-id, :archived false))
+    :metadata/segment
+    (t2/select :metadata/segment :table_id table-id, :archived false)))
 
+(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]
+    (database database-id))
+  (metadatas [_this metadata-type ids]
+    (metadatas database-id metadata-type ids))
+  (cached-metadatas [_this _metadata-type _metadata-ids]
+    nil)
+  (store-metadata! [_this _a-metadata]
+    nil)
+  (tables [_this]
+    (tables database-id))
+  (metadatas-for-table [_this metadata-type table-id]
+    (metadatas-for-table metadata-type table-id))
   (setting [_this setting-name]
     (setting/get setting-name))
-
-  lib.metadata.protocols/BulkMetadataProvider
-  (bulk-metadata [_this metadata-type ids]
-    (let [database-id-key (case metadata-type
-                            :metadata/table :db_id
-                            :metadata/card  :database_id
-                            :table/db_id)]
-      (when (seq ids)
-        (t2/select metadata-type
-                   database-id-key database-id
-                   :id             [:in (set ids)]))))
 
   pretty/PrettyPrintable
   (pretty [_this]
@@ -404,10 +411,7 @@
 (mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
 
-  The application database metadata provider implements both of the optional
-  protocols, [[metabase.lib.metadata.protocols/CachedMetadataProvider]]
-  and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
-  operations to pre-warm the cache if you need to."
+  All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
   [database-id :- ::lib.schema.id/database]
   (lib.metadata.cached-provider/cached-metadata-provider
    (->UncachedApplicationDatabaseMetadataProvider database-id)))

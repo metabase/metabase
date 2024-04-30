@@ -103,18 +103,18 @@
         segment-ids       (into #{} (lib.util.match/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
-        segments          (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/segment segment-ids)
+        segments          (lib.metadata.protocols/metadatas metadata-provider :metadata/segment segment-ids)
         field-ids         (mbql.u/referenced-field-ids (into []
                                                              (comp cat (map :definition))
                                                              [metrics segments]))
-        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
+        fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 cat
                                 [(map :table-id fields)
                                  (map :table-id segments)
                                  (map :table_id metrics)])]
     ;; this is done for side-effects
-    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
+    (lib.metadata.protocols/metadatas metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
