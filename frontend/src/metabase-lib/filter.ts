@@ -137,6 +137,7 @@ export function stringFilterParts(
   if (
     !isColumnMetadata(column) ||
     !isString(column) ||
+    !isStringLike(column) ||
     !isStringLiteralArray(values)
   ) {
     return null;
