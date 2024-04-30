@@ -583,7 +583,7 @@
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
-                        :archived?          (boolean archived)
+                        :archived?          archived
                         :models             models
                         :model-ancestors?   (boolean model-ancestors?)}
                  (some? created-at)                          (assoc :created-at created-at)

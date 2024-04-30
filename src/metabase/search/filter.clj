@@ -39,7 +39,9 @@
 
 (defmethod archived-clause :default
   [model archived?]
-  [:= (search.config/column-with-model-alias model :archived) archived?])
+  (if (nil? archived?)
+    true-clause
+    [:= (search.config/column-with-model-alias model :archived) archived?]))
 
 ;; Databases can't be archived
 (defmethod archived-clause "database"
@@ -50,9 +52,9 @@
 
 (defmethod archived-clause "indexed-entity"
   [_model archived?]
-  (if-not archived?
-    true-clause
-    false-clause))
+  (if archived?
+    false-clause
+    true-clause))
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-clause "table"
@@ -296,7 +298,7 @@
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 
-      (some? archived?)
+      true
       (sql.helpers/where (archived-clause model archived?))
 
       ;; build optional filters
