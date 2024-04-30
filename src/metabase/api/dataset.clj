@@ -16,7 +16,6 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -156,19 +155,6 @@
      :was-pivot    was-pivot)))
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
-
-;; TODO - this is no longer used. Should we remove it?
-(api/defendpoint POST "/duration"
-  "Get historical query execution duration."
-  [:as {{:keys [database], :as query} :body}]
-  (api/read-check Database database)
-  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
-  ;; there's no data there. If we still can't find relevant info, just default to 0
-  {:average (or
-             (some (comp query/average-execution-time-ms qp.util/query-hash)
-                   [query
-                    (assoc query :constraints (qp.constraints/default-query-constraints))])
-             0)})
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
