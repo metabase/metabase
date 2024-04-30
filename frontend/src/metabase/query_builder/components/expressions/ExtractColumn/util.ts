@@ -3,6 +3,8 @@ import * as Lib from "metabase-lib";
 export function getExample(info: Lib.ColumnExtractionInfo) {
   // @todo this should eventually be moved into Lib.displayInfo
   // to avoid the keys going out of sync with the MLv2-defined extractions.
+  //
+  // @see https://github.com/metabase/metabase/issues/42039
   switch (info.tag) {
     case "hour-of-day":
       return "0, 1";
