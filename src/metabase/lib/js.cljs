@@ -2201,6 +2201,7 @@
 
 (defn ^:export can-run
   "Returns true if the query is runnable.
+  `card-type` is optional and defaults to \"question\".
 
   MBQL queries are always runnable. Native queries can run when:
 
@@ -2208,11 +2209,13 @@
   - The native query is non-empty.
 
   > **Code health:** Healthy"
-  [a-query]
-  (lib.cache/side-channel-cache
-    :can-run a-query
+  ([a-query]
+   (can-run a-query "question"))
+  ([a-query card-type]
+   (lib.cache/side-channel-cache
+    (keyword "can-run" card-type) a-query
     (fn [_]
-      (lib.core/can-run a-query))))
+      (lib.core/can-run a-query (keyword card-type))))))
 
 (defn ^:export can-save
   "Returns true if the query can be saved.
