@@ -379,6 +379,7 @@ const buildEChartsLineAreaSeries = (
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
+    triggerLineEvent: true,
     showSymbol: true,
     symbolSize: CHART_STYLE.symbolSize,
     smooth: seriesSettings["line.interpolate"] === "cardinal",

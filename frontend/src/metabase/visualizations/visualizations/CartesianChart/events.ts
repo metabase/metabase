@@ -31,6 +31,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
+  HoveredObject,
   OnChangeCardAndRun,
   TooltipRowModel,
 } from "metabase/visualizations/types";
@@ -278,11 +279,35 @@ const isValidDatumElement = (
   return element?.getAttribute("d") === CIRCLE_PATH;
 };
 
+function getAreaSeriesHoverData(
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  event: EChartsSeriesMouseEvent,
+): HoveredObject {
+  const seriesIndex = event.seriesIndex; // TODO fix type error
+  const target = event.event.event.target as SVGElement | undefined;
+
+  return {
+    settings,
+    index: seriesIndex,
+    datumIndex: 0,
+    event: event.event.event,
+    element: target, // TODO fix tooltip not attaching to elem
+    data: [
+      {
+        key: "",
+        col: null,
+        value: chartModel.seriesModels[seriesIndex].name,
+      },
+    ],
+  };
+}
+
 export const getSeriesHoverData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-) => {
+): HoveredObject | undefined => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
   const dataIndex = getDataIndex(
     chartModel.transformedDataset,
@@ -290,7 +315,22 @@ export const getSeriesHoverData = (
   );
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
 
-  if (seriesIndex < 0 || dataIndex == null) {
+  const hoveredArea = seriesIndex < 0 || dataIndex == null;
+  if (hoveredArea) {
+    const isStackedArea =
+      settings["stackable.stack_type"] &&
+      chartModel.seriesModels.length > 1 &&
+      chartModel.seriesModels.some(seriesModel => {
+        const seriesSettings = settings.series(
+          seriesModel.legacySeriesSettingsObjectKey,
+        );
+        return seriesSettings.display === "area";
+      });
+
+    if (isStackedArea) {
+      return getAreaSeriesHoverData(chartModel, settings, event);
+    }
+
     return;
   }
 

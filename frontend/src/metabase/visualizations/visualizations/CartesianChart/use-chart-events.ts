@@ -111,7 +111,7 @@ export const useChartEvents = (
             return;
           }
 
-          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
+          onHoverChange?.(hoveredData);
         },
       },
       {
