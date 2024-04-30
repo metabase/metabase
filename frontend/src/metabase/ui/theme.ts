@@ -95,6 +95,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       },
     },
   },
+  fontFamily: "var(--mb-default-font-family), sans-serif",
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
