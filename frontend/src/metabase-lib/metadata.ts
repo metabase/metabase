@@ -218,15 +218,22 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
 }
 
 export function dependentMetadata(
-  queryOrMetadataProvider: Query | MetadataProvider,
+  metadataProvider: MetadataProvider,
+  tableId: TableId,
+): DependentItem[];
+export function dependentMetadata(
+  query: Query,
   cardId: CardId | undefined,
   cardType: CardType,
-  tableId?: TableId,
+): DependentItem[];
+export function dependentMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  cardOrTableId: TableId | CardId | undefined,
+  cardType?: CardType,
 ): DependentItem[] {
   return ML.dependent_metadata(
     queryOrMetadataProvider,
-    cardId,
+    cardOrTableId,
     cardType,
-    tableId,
   );
 }

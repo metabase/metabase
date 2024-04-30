@@ -2,7 +2,7 @@ import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, DatabaseId, TableId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
@@ -10,23 +10,40 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(loadCardMetadata(card, [], options));
+  (card: Card, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const getDependencies = () => {
+      const question = new Question(card, getMetadata(getState()));
+      return Lib.dependentMetadata(
+        question.query(),
+        question.id(),
+        question.type(),
+      );
+    };
+    await dispatch(loadMetadata(getDependencies, [], options));
   };
 
-const loadCardMetadata =
+export const loadMetadataForTable =
+  (databaseId: DatabaseId, tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const getDependencies = () => {
+      const metadataProvider = Lib.metadataProvider(
+        databaseId,
+        getMetadata(getState()),
+      );
+      return Lib.dependentMetadata(metadataProvider, tableId);
+    };
+    await dispatch(loadMetadata(getDependencies, [], options));
+  };
+
+const loadMetadata =
   (
-    card: Card,
+    getDependencies: () => Lib.DependentItem[],
     prevDependencies: Lib.DependentItem[],
     options?: LoadMetadataOptions,
   ) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const question = new Question(card, getMetadata(getState()));
-    const nextDependencies = Lib.dependentMetadata(
-      question.query(),
-      question.id(),
-      question.type(),
-    );
+  async (dispatch: Dispatch) => {
+    const nextDependencies = getDependencies();
     const newDependencies = getNewDependencies(
       prevDependencies,
       nextDependencies,
@@ -34,7 +51,9 @@ const loadCardMetadata =
     if (newDependencies.length > 0) {
       const mergedDependencies = [...prevDependencies, ...newDependencies];
       await dispatch(loadMetadataForDependentItems(newDependencies, options));
-      await dispatch(loadCardMetadata(card, mergedDependencies, options));
+      await dispatch(
+        loadMetadata(getDependencies, mergedDependencies, options),
+      );
     }
   };
 
