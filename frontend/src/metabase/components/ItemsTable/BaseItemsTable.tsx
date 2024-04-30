@@ -1,17 +1,16 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { t } from "ttag";
 
-import CheckBox from "metabase/core/components/CheckBox";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
 import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
   OnMove,
   OnToggleSelectedWithItem,
-} from "../types";
+} from "metabase/collections/types";
+import CheckBox from "metabase/core/components/CheckBox";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   BulkSelectWrapper,
@@ -112,7 +111,7 @@ const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
   );
 };
 
-const BaseItemsTable = ({
+export const BaseItemsTable = ({
   databases,
   bookmarks,
   createBookmark,
@@ -222,6 +221,3 @@ const BaseItemsTable = ({
 };
 
 BaseItemsTable.Item = BaseTableItem;
-
-// eslint-disable-next-line import/no-default-export
-export default BaseItemsTable;

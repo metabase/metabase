@@ -211,7 +211,7 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
-                              :window-functions                false}]
+                              :window-functions/cumulative     false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
