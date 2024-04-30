@@ -346,8 +346,8 @@
         complete-response (try
                             (complete!)
                             (catch Throwable e
-                                      ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
-                                      ;; This is expected to happen the first time a Slack subscription is sent.
+                              ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
+                              ;; This is expected to happen the first time a Slack subscription is sent.
                               (if (= "not_in_channel" (:error-code (ex-data e)))
                                 (do (join-channel! channel-id)
                                     (complete!))
