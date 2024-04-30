@@ -21,9 +21,3 @@ export const Grid = styled.div`
     grid-template-columns: minmax(0, 1fr);
   }
 `;
-
-export const SectionContainer = styled.div`
-  &:not(:first-of-type) {
-    margin-top: 1.5rem;
-  }
-`;
