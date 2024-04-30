@@ -46,7 +46,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.history.atom :as history]))
 
 (set! *warn-on-reflection* true)
 
@@ -475,6 +476,21 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
+(require '[metabase.history.atom :as history])
+
+(comment
+  ;; FIDDLE WITH BRANCHES
+  (history/set-current-branch! nil))
+
+(comment
+  ;; TODO: run through a whole test
+  (def branch (history/create-branch! "My card update Branch" {}))
+
+  (history/set-current-branch! branch)
+
+  (history/current-branch)
+  )
+
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
@@ -526,9 +542,12 @@
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata
                                          :verified-result-metadata? true))]
-      (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
-                                       :card-updates       card-updates
-                                       :actor              @api/*current-user*})
+
+      (u/prog1 (-> (if-let [branch-id (history/current-branch)]
+                     (history/divert-write branch-id :model/Card id :update card-updates)
+                     (card/update-card! {:card-before-update card-before-update
+                                         :card-updates       card-updates
+                                         :actor              @api/*current-user*}))
                    hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
@@ -543,7 +562,9 @@
   [id]
   {id ms/PositiveInt}
   (let [card (api/write-check Card id)]
-    (t2/delete! Card :id id)
+    (if-let [branch-id (history/current-branch)]
+      (history/add-delta-to-branch! branch-id :model/Card id {:op :delete})
+      (t2/delete! Card :id id))
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
