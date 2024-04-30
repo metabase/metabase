@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel caching-test
   (let [fetch-count (atom 0)
@@ -14,37 +15,37 @@
                            :metadata/table (for [id ids]
                                              (do
                                                (swap! fetch-count inc)
-                                               {:id id}))))))]
+                                               (assoc (meta/table-metadata :venues) :id id)))))))]
     (testing "Initial fetch"
-      (is (= {:id 1}
-             (lib.metadata.protocols/table provider 1)))
+      (is (=? {:id 1}
+              (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
     (testing "Second fetch"
-      (is (= {:id 1}
-             (lib.metadata.protocols/table provider 1)))
+      (is (=? {:id 1}
+              (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
     (testing "Second fetch"
-      (is (= {:id 1}
-             (lib.metadata.protocols/table provider 1)))
+      (is (=? {:id 1}
+              (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
     (testing "Bulk fetch"
-      (is (= [{:id 1}]
-             (lib.metadata.protocols/metadatas provider :metadata/table #{1})))
+      (is (=? [{:id 1}]
+              (lib.metadata.protocols/metadatas provider :metadata/table #{1})))
       (is (= 1
              @fetch-count))
       (testing "Fetch a new Table, 1 Table already fetched"
-        (is (= [{:id 1}
-                {:id 2}]
-               (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
+        (is (=? [{:id 1}
+                 {:id 2}]
+                (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
         (is (= 2
                @fetch-count)))
       (testing "Bulk fetch again, should use cached results"
-        (is (= [{:id 1}
-                {:id 2}]
-               (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
+        (is (=? [{:id 1}
+                 {:id 2}]
+                (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
         (is (= 2
                @fetch-count))))))
 

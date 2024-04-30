@@ -1,7 +1,11 @@
 (ns metabase.lib.metadata.protocols
   (:require
    #?@(:clj [[potemkin :as p]])
-   [medley.core :as m]))
+   [medley.core :as m]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) MetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
@@ -57,62 +61,94 @@
   [x]
   (satisfies? MetadataProvider x))
 
+(mr/def ::metadata-provider
+  "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+  [:fn
+   {:error/message "Valid MetadataProvider"}
+   #'metadata-provider?])
+
 (defn metadata-providerable?
   "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
   [x]
   (or (metadata-provider? x)
       (some-> x :lib/metadata metadata-providerable?)))
 
-(defn- metadata [metadata-provider metadata-type metadata-id]
+(mr/def ::metadata-providerable
+  "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
+  the key `:lib/metadata` (i.e., a query)."
+  [:fn
+   {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
+   #'metadata-providerable?])
+
+(mr/def ::metadata-type
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/segment])
+
+(mr/def ::metadata
+  [:map
+   [:lib/type ::metadata-type]
+   [:id       pos-int?]])
+
+(mu/defn ^:private metadata :- [:maybe ::metadata]
+  [metadata-provider :- ::metadata-provider
+   metadata-type     :- ::metadata-type
+   metadata-id       :- pos-int?]
   (m/find-first (fn [object]
                   (= (:id object) metadata-id))
                 (metadatas metadata-provider metadata-type [metadata-id])))
 
-(defn table
+(mu/defn table :- [:maybe ::lib.schema.metadata/table]
   "Return metadata for a specific Table. Metadata should satisfy `:metabase.lib.schema.metadata/table`."
-  [metadata-provider table-id]
+  [metadata-provider :- ::metadata-provider
+   table-id          :- ::lib.schema.id/table]
   (metadata metadata-provider :metadata/table table-id))
 
-(defn field
+(mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Return metadata for a specific Field. Metadata should satisfy `:metabase.lib.schema.metadata/column`."
-  [metadata-provider field-id]
+  [metadata-provider :- ::metadata-provider
+   field-id          :- ::lib.schema.id/field]
   (metadata metadata-provider :metadata/column field-id))
 
-(defn card
+(mu/defn card :- [:maybe ::lib.schema.metadata/card]
   "Return information about a specific Saved Question, aka a Card. This should match
   `:metabase.lib.schema.metadata/card`. Currently just used for display name purposes if you have a Card as a source
   query."
-  [metadata-provider card-id]
+  [metadata-provider :- ::metadata-provider
+   card-id           :- ::lib.schema.id/card]
   (metadata metadata-provider :metadata/card card-id))
 
-(defn legacy-metric
+(mu/defn legacy-metric :- [:maybe ::lib.schema.metadata/legacy-metric]
   "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
   database. Metadata should match `:metabase.lib.schema.metadata/legacy-metric`."
-  [metadata-provider legacy-metric-id]
+  [metadata-provider :- ::metadata-provider
+   legacy-metric-id  :- ::lib.schema.id/legacy-metric]
   (metadata metadata-provider :metadata/legacy-metric legacy-metric-id))
 
-(defn segment
+(mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
   database. Metadata should match `:metabase.lib.schema.metadata/segment`."
-  [metadata-provider segment-id]
+  [metadata-provider :- ::metadata-provider
+   segment-id        :- ::lib.schema.id/segment]
   (metadata metadata-provider :metadata/segment segment-id))
 
-(defn fields
+(mu/defn fields :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the `:metabase.lib.schema.metadata/column` schema. If no such Table exists, this should error."
-  [metadata-provider table-id]
+  [metadata-provider :- ::metadata-provider
+   table-id          :- ::lib.schema.id/table]
   (metadatas-for-table metadata-provider :metadata/column table-id))
 
-(defn legacy-metrics
+(mu/defn legacy-metrics :- [:maybe [:sequential ::lib.schema.metadata/legacy-metric]]
   "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
   the `:metabase.lib.schema.metadata/legacy-metric` schema. If no such Table exists, this should error."
-  [metadata-provider table-id]
+  [metadata-provider :- ::metadata-provider
+   table-id          :- ::lib.schema.id/table]
   (metadatas-for-table metadata-provider :metadata/legacy-metric table-id))
 
-(defn segments
+(mu/defn segments :- [:maybe [:sequential ::lib.schema.metadata/segment]]
   "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
   the `:metabase.lib.schema.metadata/segment` schema. If no Table with ID `table-id` exists, this should error."
-  [metadata-provider table-id]
+  [metadata-provider :- ::metadata-provider
+   table-id          :- ::lib.schema.id/table]
   (metadatas-for-table metadata-provider :metadata/segment table-id))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
@@ -134,19 +170,23 @@
   [x]
   (satisfies? CachedMetadataProvider x))
 
-(defn store-metadatas!
+(mr/def ::cached-metadata-provider
+  [:fn
+   {:error/message "A CachedMetadataProvider"}
+   #'cached-metadata-provider?])
+
+(mu/defn store-metadatas!
   "Convenience. Store several metadata maps at once."
-  [cached-metadata-provider objects]
-  (assert (cached-metadata-provider? cached-metadata-provider)
-          (str "Not a CachedMetadataProvider: " (pr-str cached-metadata-provider)))
+  [cached-metadata-provider :- ::cached-metadata-provider
+   objects                  :- [:maybe [:sequential ::metadata]]]
   (doseq [object objects]
     (store-metadata! cached-metadata-provider object)))
 
-(defn cached-metadata
+(mu/defn cached-metadata :- [:maybe ::metadata]
   "Get cached metadata of a specific type, e.g. `:metadata/table`."
-  [cached-metadata-provider metadata-type metadata-id]
-  (assert (cached-metadata-provider? cached-metadata-provider)
-          (str "Not a CachedMetadataProvider: " (pr-str cached-metadata-provider)))
+  [cached-metadata-provider :- ::cached-metadata-provider
+   metadata-type            :- ::metadata-type
+   id                       :- pos-int?]
   (m/find-first (fn [object]
-                  (= (:id object) metadata-id))
-                (cached-metadatas cached-metadata-provider metadata-type [metadata-id])))
+                  (= (:id object) id))
+                (cached-metadatas cached-metadata-provider metadata-type [id])))
