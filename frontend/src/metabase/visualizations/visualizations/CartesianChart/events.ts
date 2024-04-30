@@ -23,6 +23,7 @@ import type {
   EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
 } from "metabase/visualizations/echarts/types";
+import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   hasClickBehavior,
   isRemappedToString,
@@ -47,8 +48,6 @@ import type {
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
-
-import { computeChange } from "../SmartScalar/compute";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;

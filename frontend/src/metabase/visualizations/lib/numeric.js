@@ -65,3 +65,11 @@ export const isMultipleOf = (value, base) => {
   const diffThreshold = Math.pow(10, SMALLEST_PRECISION_EXP);
   return Math.abs(value - Math.round(value / base) * base) < diffThreshold;
 };
+
+export function computeChange(comparisonVal, currVal) {
+  if (comparisonVal === 0) {
+    return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
+  }
+
+  return (currVal - comparisonVal) / Math.abs(comparisonVal);
+}
