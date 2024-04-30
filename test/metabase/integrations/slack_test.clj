@@ -224,7 +224,7 @@
                                        (case endpoint
                                          "files.completeUploadExternal"
                                          (if @joined?
-                                           {:file [{:url_private filename}]}
+                                           (json/parse-string (slurp "./test_resources/slack_upload_file_response.json") keyword)
                                            (throw (ex-info "Not in that channel"
                                                            {:error-code "not_in_channel"})))
                                          "conversations.join"
