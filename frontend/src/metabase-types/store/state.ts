@@ -35,6 +35,9 @@ export interface State {
   setup: SetupState;
   upload: FileUploadState;
   modal: modalName;
+}
+
+export interface StateWithSdk extends State {
   sdk: SdkState;
 }
 
