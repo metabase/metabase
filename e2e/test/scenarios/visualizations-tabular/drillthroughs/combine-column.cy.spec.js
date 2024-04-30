@@ -39,31 +39,33 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
       cy.findByText("Separated by (empty)").click();
       cy.findByLabelText("Separator").type("__");
       cy.findByTestId("combine-column-example").should(
-        "contain",
+        "have.text",
         "email@example.com__text",
       );
 
       cy.findByText("Add column").click();
       cy.findByTestId("combine-column-example").should(
-        "contain",
+        "have.text",
         "email@example.com__text__12345",
       );
 
       cy.findAllByRole("textbox").last().clear();
       cy.findByTestId("combine-column-example").should(
-        "contain",
+        "have.text",
         "email@example.com__text12345",
       );
 
       cy.findAllByRole("textbox").last().clear().type("+");
       cy.findByTestId("combine-column-example").should(
-        "contain",
+        "have.text",
         "email@example.com__text+12345",
       );
 
       cy.findByText("Done").click();
     });
 
-    cy.findAllByTestId("header-cell").last().should("contain", "Email Name ID");
+    cy.findAllByTestId("header-cell")
+      .last()
+      .should("have.text", "Email Name ID");
   });
 });
