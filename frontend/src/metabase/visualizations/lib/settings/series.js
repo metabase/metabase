@@ -82,7 +82,7 @@ export function seriesSetting({
         ]),
     },
     "line.interpolate": {
-      title: t`Line style`,
+      title: t`Line shape`,
       widget: "segmentedControl",
       props: {
         options: [
