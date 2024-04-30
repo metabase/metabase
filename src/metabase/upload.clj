@@ -1,4 +1,4 @@
-;; # Upload Module Guide
+;; # Upload Module Contract
 ;;
 ;; ## Facilities
 ;; - The upload module provides functions for creating, updating, and replacing tables with CSV data.
