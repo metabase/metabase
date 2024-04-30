@@ -39,7 +39,12 @@ export const ResultItem = ({
   });
 
   return (
-    <ChunkyListItem onClick={onClick} isSelected={isSelected} isLast={isLast}>
+    <ChunkyListItem
+      onClick={onClick}
+      isSelected={isSelected}
+      isLast={isLast}
+      data-testid="result-item"
+    >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
         <Icon
           color="brand"

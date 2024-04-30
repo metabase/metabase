@@ -76,9 +76,9 @@ describe("Collections plugin utils", () => {
         ).toEqual({ name: "badge", color: "saturated-yellow" });
       });
 
-      it("should return the correct icon for an official dataset", () => {
+      it("should return the correct icon for an official model", () => {
         expect(
-          getIcon({ model: "dataset", authority_level: "official" }),
+          getIcon({ model: "dataset", moderated_status: "verified" }),
         ).toEqual({ name: "model_with_badge", color: "saturated-yellow" });
       });
     });
