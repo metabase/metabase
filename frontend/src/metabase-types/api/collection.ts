@@ -72,6 +72,7 @@ export interface Collection {
 export const COLLECTION_ITEM_MODELS = [
   "card",
   "dataset",
+  "metric",
   "dashboard",
   "snippet",
   "collection",
