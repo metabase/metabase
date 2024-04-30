@@ -49,9 +49,9 @@ export function ExtractColumn({
     const newQuery = Lib.extract(query, stageIndex, extraction);
     const expressions = Lib.expressions(newQuery, stageIndex);
     const name = getName(query, stageIndex, info);
-    const last = expressions.at(-1);
-    if (last) {
-      onSubmit(last, name);
+    const lastExpression = expressions.at(-1);
+    if (lastExpression) {
+      onSubmit(lastExpression, name);
     }
   }
 
