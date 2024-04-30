@@ -38,16 +38,17 @@ export const PreviewQueryModal = ({
 
   const engine = question.database()?.engine;
   const formattedQuery = formatNativeQuery(data?.query, engine);
+  const formattedError = getResponseErrorMessage(error);
 
   return (
     <NativeQueryPreview
       title={t`Query preview`}
       query={formattedQuery}
-      error={getResponseErrorMessage(error)}
+      error={formattedError}
       isLoading={isFetching}
       onClose={onClose}
     >
-      {error && showMetabaseLinks && (
+      {formattedError && showMetabaseLinks && (
         <ModalExternalLink href={learnUrl}>
           {t`Learn how to debug SQL errors`}
         </ModalExternalLink>
