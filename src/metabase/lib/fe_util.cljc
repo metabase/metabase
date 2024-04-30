@@ -12,6 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -164,6 +165,18 @@
       {:type :table, :id (:table-id fk-target-field)}
       {:type :field, :id fk-target-field-id})))
 
+(declare query-dependents)
+
+(defn- card-dependents
+  [metadata-providerable card-id]
+  (let [card-metadata (lib.metadata/card metadata-providerable card-id)
+        definition (:dataset-query card-metadata)]
+    (list* {:type :table, :id (str "card__" card-id)}
+           {:type :card, :id card-id}
+           (when (and (= (:type card-metadata) :metric) definition)
+             (query-dependents metadata-providerable
+                               (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
+
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -179,13 +192,7 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)
-             definition (:dataset-query card-metadata)]
-         (list* {:type :table, :id (str "card__" card-id)}
-                {:type :card, :id card-id}
-                (when (and (= (:type card-metadata) :metric) definition)
-                  (query-dependents metadata-providerable
-                                    (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
+       (card-dependents metadata-providerable card-id))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
@@ -209,5 +216,25 @@
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
   for the FE to function properly."
-  [query :- ::lib.schema/query]
-  (into [] (distinct) (query-dependents query query)))
+  [query :- ::lib.schema/query
+   _card-id :- [:maybe :int]
+   _card-type :- ::lib.schema.metadata/card.type]
+  (into []
+        (distinct)
+        (concat (query-dependents query query)
+                #_(when (and card-id (= card-type :metric))
+                  (card-dependents query card-id)))))
+
+(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
+  "Return the IDs and types of entities the metadata about is required
+  for the FE to create a brand new query based on `table-id` which is the
+  id of a table or string encoding the id of a card using the `card__<id>`
+  syntax."
+  [_metadata-providerable :- lib.metadata/MetadataProviderable
+   _table-id :- [:or ::lib.schema.id/table :string]]
+  (into []
+        (distinct)
+        nil #_(cons {:type :table, :id table-id}
+                    (when-let [[_ id-str] (when (string? table-id)
+                                            (re-matches #"card__(\d+)" table-id))]
+                      (card-dependents metadata-providerable (parse-long id-str))))))

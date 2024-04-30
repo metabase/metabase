@@ -380,6 +380,7 @@
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
       :type            (keyword v)
+      :model           (keyword v)
       ;; this is not complete, add more stuff as needed.
       v)))
 

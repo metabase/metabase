@@ -194,7 +194,8 @@
         base-query (query-with-stages metadata-providerable
                                       [{:lib/type :mbql.stage/mbql
                                         :source-card card-id}])]
-    (if (= (:type card-metadata) :metric)
+    (if (or (= (:type card-metadata) :metric)
+            (= (:model card-metadata) :metric))
       (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
             metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
             base-query (reduce

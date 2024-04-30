@@ -182,7 +182,8 @@
   dependent-metadata
   expression-clause
   expression-parts
-  filter-args-display-name]
+  filter-args-display-name
+  table-or-card-dependent-metadata]
  [lib.field
   add-field
   fieldable-columns
