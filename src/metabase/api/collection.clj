@@ -943,7 +943,7 @@
   [models exclude_trash archived namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
    archived       ms/MaybeBooleanValue
-   exclude_trash  [:maybe ms/BooleanValue]
+   exclude_trash  ms/MaybeBooleanValue
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]

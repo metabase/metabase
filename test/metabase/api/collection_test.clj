@@ -2099,3 +2099,14 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
+
+(deftest root-items-excludes-trash-by-default
+  (testing "Trash collection is usually not included"
+    (is (= [] (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+                   (filter #(= (:name %) "Trash"))))))
+  (testing "We can optionally request to include the Trash"
+    (is (= [{:name "Trash"
+             :id collection/trash-collection-id}]
+           (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :exclude_trash false))
+                (filter #(= (:id %) collection/trash-collection-id))
+                (map #(select-keys % [:name :id])))))))
