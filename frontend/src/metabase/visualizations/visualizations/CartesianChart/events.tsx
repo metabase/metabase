@@ -10,7 +10,10 @@ import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isBreakoutSeries } from "metabase/visualizations/echarts/cartesian/model/guards";
+import {
+  isBreakoutSeries,
+  isTimeSeriesAxis,
+} from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -180,7 +183,7 @@ const getEventColumnsData = (
     })
     .filter(isNotNull);
 
-  if (chartModel.xAxisModel.axisType === "time" && dataIndex > 0) {
+  if (isTimeSeriesAxis(chartModel.xAxisModel) && dataIndex > 0) {
     // TODO handle series breakout
     const currentValue = datum[seriesModel.dataKey];
     const previousValue =
@@ -195,7 +198,7 @@ const getEventColumnsData = (
     }
 
     dataPoints.push({
-      key: t`Percent Change`,
+      key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
       col: seriesModel.column,
       // TODO fix type error
       value: (
