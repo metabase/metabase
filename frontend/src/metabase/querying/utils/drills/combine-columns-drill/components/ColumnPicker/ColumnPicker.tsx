@@ -56,7 +56,7 @@ export function ColumnPicker({
       return;
     }
     if (!evt.currentTarget.contains(evt.relatedTarget as Node)) {
-      setTimeout(() => setOpen(false), 100);
+      setOpen(false);
     }
   }
 
