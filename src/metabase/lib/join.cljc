@@ -487,18 +487,20 @@
     (let [stage       (lib.util/query-stage query stage-number)
           home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
           cond-fields (lib.util.match/match (:conditions a-join) :field)
-          home-cols-no-joined (lib.metadata.calculation/visible-columns query stage-number stage
-                                                                          {:include-joined? false
-                                                                           :include-implicitly-joinable?                 false
-                                                                           :include-implicitly-joinable-for-source-card? false})
+          ;; Following 3 definitions are used to determine if there are multiple columns in the joining query that
+          ;; are fks to rhs condition column. If there are more than one of those, home column should not be used
+          ;; in join alias. See the issue #40477.
+          home-cols-no-joined (lib.metadata.calculation/visible-columns
+                               query stage-number stage
+                               {:include-joined?                              false
+                                :include-implicitly-joinable?                 false
+                                :include-implicitly-joinable-for-source-card? false})
           joined-cond-fields-ids* (set (keep (fn [[_ _ id]]
                                                (when (not (some #(= id (:id %)) home-cols-no-joined))
                                                  id))
                                              cond-fields))
           fk-to-joined-cond-fields (filter #(joined-cond-fields-ids* (:fk-target-field-id %)) home-cols-no-joined)
           home-col    (select-home-column home-cols cond-fields)
-          ;; TODO: count correctly (or #_(not (re-find #"and|or" (str (first (:conditions a-join)))))
-          ;;                                                     (< 1 (count fk-to-joined-cond-fields)))
           join-alias  (-> (calculate-join-alias query a-join home-col (< 1 (count fk-to-joined-cond-fields)))
                           (generate-unique-name (keep :alias (:joins stage))))
           join-cols   (lib.metadata.calculation/returned-columns
