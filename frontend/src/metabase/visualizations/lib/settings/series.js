@@ -113,6 +113,21 @@ export function seriesSetting({
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
     },
+    "line.size": {
+      title: t`Line size`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { name: "S", value: 1 },
+          { name: "M", value: 2 },
+          { name: "L", value: 3 },
+        ],
+      },
+      default: 2,
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
     "line.marker_enabled": {
       title: t`Show dots on lines`,
       widget: "segmentedControl",

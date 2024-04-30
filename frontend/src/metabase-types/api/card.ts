@@ -83,6 +83,7 @@ export type SeriesSettings = {
   show_series_values?: boolean;
   display?: string;
   axis?: string;
+  "line.size"?: number;
   "line.style"?: "solid" | "dashed" | "dotted";
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
