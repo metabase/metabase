@@ -133,6 +133,7 @@
      :topic topic
      :user-id user-id}
     (try
+      (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
             has-access? (when (= api/*current-user-id* user-id)

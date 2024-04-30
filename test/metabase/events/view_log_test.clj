@@ -135,6 +135,19 @@
         (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))
             "view_count for cards on the dashboard be incremented too")))))
 
+(deftest table-read-view-count-test
+  (mt/with-temp [:model/User  user  {}
+                 :model/Table table {}]
+    (testing "A card read events are recorded by a card's view_count"
+      (is (= 0 (:view_count table))
+          "view_count should be 0 before the event is published")
+      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+      (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+          "view_count should be incremented")
+      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+      (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+          "view_count should be incremented"))))
+
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
