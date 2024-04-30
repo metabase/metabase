@@ -70,7 +70,7 @@ Metabase uses a group-based permission model: people belong to groups, and admin
 ## Check if the table is hidden
 
 1. Go to **Admin > Table Metadata** and choose the database where your table is.
-2. Check that **Visibility** is not set to **Hidden**.
+2. Check that **Visibility** of your table is not set to **Hidden**.
 
 **Explanation**
 
