@@ -64,8 +64,8 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
-  "data-testid": dataTestId,
   width,
+  "data-testid": dataTestId,
   hasInitialFocus = true,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(

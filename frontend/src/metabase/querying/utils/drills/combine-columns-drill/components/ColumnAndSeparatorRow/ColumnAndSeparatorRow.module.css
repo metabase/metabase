@@ -1,0 +1,17 @@
+.separator {
+  flex: 0 0 auto;
+}
+
+.column {
+  flex: 1;
+}
+
+button.remove {
+  flex: 0 0 auto;
+  border-color: transparent;
+}
+
+.whitespacePlaceholder {
+  pointer-events: none;
+  user-select: none;
+}
