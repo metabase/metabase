@@ -11,7 +11,12 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import {
+  useShorthands,
+  adjustCase,
+  adjustOptions,
+  adjustOffset,
+} from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
@@ -224,6 +229,7 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustCase,
+      adjustOffset,
       expression =>
         resolve({
           expression,
