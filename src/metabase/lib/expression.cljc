@@ -291,6 +291,7 @@
 (lib.common/defop month-name [n])
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
+(lib.common/defop offset [x n])
 
 (mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
   [query                 :- ::lib.schema/query

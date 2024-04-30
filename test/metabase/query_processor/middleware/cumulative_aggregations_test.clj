@@ -83,7 +83,7 @@
 
 (driver/register! ::no-window-function-driver)
 
-(defmethod driver/database-supports? [::no-window-function-driver :window-functions]
+(defmethod driver/database-supports? [::no-window-function-driver :window-functions/cumulative]
   [_driver _feature _database]
   false)
 

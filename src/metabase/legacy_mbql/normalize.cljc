@@ -101,7 +101,7 @@
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
   [[_ expression-name opts]]
   (let [expression [:expression (if (keyword? expression-name)
-                                  (mbql.u/qualified-name expression-name)
+                                  (u/qualified-name expression-name)
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
@@ -132,7 +132,7 @@
   [[_ field-name field-type]]
   [:field-literal
    (if (keyword? field-name)
-     (mbql.u/qualified-name field-name)
+     (u/qualified-name field-name)
      field-name)
    (keyword field-type)])
 
@@ -204,6 +204,11 @@
   [[_ value info]]
   [:value value info])
 
+(defmethod normalize-mbql-clause-tokens :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [:offset (or opts {}) (normalize-tokens expr :ignore-path) n])
+
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
   ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
@@ -246,7 +251,7 @@
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(mbql.u/qualified-name expression-name)
+             [(u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens
@@ -300,7 +305,7 @@
   (into
    {}
    (map (fn [[tag-name tag-definition]]
-          (let [tag-name (mbql.u/qualified-name tag-name)]
+          (let [tag-name (u/qualified-name tag-name)]
             [tag-name
              (-> (normalize-template-tag-definition tag-definition)
                  (assoc :name tag-name))])))
@@ -310,7 +315,7 @@
   "Normalize a parameter in the query `:parameters` list."
   [{param-type :type, :keys [target id values_source_config], :as param}]
   (cond-> param
-    id                   (update :id mbql.u/qualified-name)
+    id                   (update :id u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     param-type           (update :type maybe-normalize-token)
     target               (update :target #(normalize-tokens % :ignore-path))
@@ -337,7 +342,7 @@
       (update :fields maybe-normalize-token)
 
       join-alias
-      (update :alias mbql.u/qualified-name))))
+      (update :alias u/qualified-name))))
 
 (declare canonicalize-mbql-clauses)
 
@@ -659,6 +664,11 @@
          (if (= 0 start) 1 (canonicalize-mbql-clause start))]
         (map canonicalize-mbql-clause more)))
 
+(defmethod canonicalize-mbql-clause :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [:offset (or opts {}) (canonicalize-mbql-clause expr) n])
+
 ;;; top-level key canonicalization
 
 (defn- canonicalize-mbql-clauses
@@ -886,11 +896,29 @@
     (when (seq m)
       m)))
 
-(defn- remove-empty-clauses-in-sequence [xs path]
+(defn- remove-empty-clauses-in-sequence* [xs path]
   (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
                  xs)]
     (when (some some? xs)
       xs)))
+
+(defmulti ^:private remove-empty-clauses-in-mbql-clause
+  {:arglists '([clause path])}
+  (fn [[tag] _path]
+    tag))
+
+(defmethod remove-empty-clauses-in-mbql-clause :default
+  [clause path]
+  (remove-empty-clauses-in-sequence* clause path))
+
+(defmethod remove-empty-clauses-in-mbql-clause :offset
+  [[_tag opts expr n] path]
+  [:offset opts (remove-empty-clauses expr (conj path :offset)) n])
+
+(defn- remove-empty-clauses-in-sequence [x path]
+  (if (mbql-clause? x)
+    (remove-empty-clauses-in-mbql-clause x path)
+    (remove-empty-clauses-in-sequence* x path)))
 
 (defn- remove-empty-clauses-in-join [join]
   (remove-empty-clauses join [:query]))

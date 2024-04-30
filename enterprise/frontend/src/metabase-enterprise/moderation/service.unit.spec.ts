@@ -1,4 +1,10 @@
 import { ModerationReviewApi } from "metabase/services";
+import type Question from "metabase-lib/v1/Question";
+import type { ModerationReview, User } from "metabase-types/api";
+import {
+  createMockModerationReview,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import {
   verifyItem,
@@ -93,15 +99,21 @@ describe("moderation/service", () => {
 
   describe("getIconForReview", () => {
     it("should return icon name/color for given review", () => {
-      expect(getIconForReview({ status: "verified" })).toEqual(
-        getStatusIcon("verified"),
-      );
+      expect(
+        getIconForReview(createMockModerationReview({ status: "verified" })),
+      ).toEqual(getStatusIcon("verified"));
     });
   });
 
   describe("getTextForReviewBanner", () => {
     it("should return text for a verified review", () => {
-      expect(getTextForReviewBanner({ status: "verified" })).toEqual({
+      expect(
+        getTextForReviewBanner(
+          createMockModerationReview({ status: "verified" }),
+          null,
+          null,
+        ),
+      ).toEqual({
         bannerText: "A moderator verified this",
         tooltipText: "Remove verification",
       });
@@ -110,12 +122,12 @@ describe("moderation/service", () => {
     it("should include the moderator name", () => {
       expect(
         getTextForReviewBanner(
-          { status: "verified" },
-          {
+          createMockModerationReview({ status: "verified" }),
+          createMockUser({
             common_name: "Foo",
             id: 1,
-          },
-          { id: 2 },
+          }),
+          createMockUser({ id: 2 }),
         ),
       ).toEqual({
         bannerText: "Foo verified this",
@@ -126,12 +138,12 @@ describe("moderation/service", () => {
     it("should handle the moderator being the current user", () => {
       expect(
         getTextForReviewBanner(
-          { status: "verified" },
-          {
+          createMockModerationReview({ status: "verified" }),
+          createMockUser({
             common_name: "Foo",
             id: 1,
-          },
-          { id: 1 },
+          }),
+          createMockUser({ id: 1 }),
         ),
       ).toEqual({
         bannerText: "You verified this",
@@ -142,11 +154,15 @@ describe("moderation/service", () => {
 
   describe("isItemVerified", () => {
     it("should return true for a verified review", () => {
-      expect(isItemVerified({ status: "verified" })).toBe(true);
+      expect(
+        isItemVerified(createMockModerationReview({ status: "verified" })),
+      ).toBe(true);
     });
 
     it("should return false for a null review", () => {
-      expect(isItemVerified({ status: null })).toBe(false);
+      expect(isItemVerified(createMockModerationReview({ status: null }))).toBe(
+        false,
+      );
     });
 
     it("should return false for no review", () => {
@@ -156,24 +172,30 @@ describe("moderation/service", () => {
 
   describe("getLatestModerationReview", () => {
     it("should return the review flagged as most recent", () => {
-      const reviews = [
-        { id: 1, status: "verified" },
-        { id: 2, status: "verified", most_recent: true },
-        { id: 3, status: null },
+      const reviews: ModerationReview[] = [
+        { moderator_id: 0, created_at: "", status: "verified" },
+        {
+          moderator_id: 0,
+          created_at: "",
+          status: "verified",
+          most_recent: true,
+        },
+        { moderator_id: 0, created_at: "", status: null },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual({
-        id: 2,
+        moderator_id: 0,
+        created_at: "",
         status: "verified",
         most_recent: true,
       });
     });
 
     it("should return undefined when there is no review flagged as most recent", () => {
-      const reviews = [
-        { id: 1, status: "verified" },
-        { id: 2, status: "verified" },
-        { id: 3, status: null },
+      const reviews: ModerationReview[] = [
+        { moderator_id: 0, created_at: "", status: "verified" },
+        { moderator_id: 0, created_at: "", status: "verified" },
+        { moderator_id: 0, created_at: "", status: null },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual(undefined);
@@ -181,10 +203,10 @@ describe("moderation/service", () => {
     });
 
     it("should return undefined when there is a review with a status of null flagged as most recent", () => {
-      const reviews = [
-        { id: 1, status: "verified" },
-        { id: 2, status: "verified" },
-        { id: 3, status: null, most_recent: true },
+      const reviews: ModerationReview[] = [
+        { moderator_id: 0, created_at: "", status: "verified" },
+        { moderator_id: 0, created_at: "", status: "verified" },
+        { moderator_id: 0, created_at: "", status: null, most_recent: true },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual(undefined);
@@ -199,31 +221,34 @@ describe("moderation/service", () => {
           { id: 2, status: "verified", most_recent: true },
           { id: 3, status: null },
         ],
-      };
+      } as unknown as Question;
 
-      expect(getStatusIconForQuestion(questionWithReviews)).toEqual(
-        getStatusIcon("verified"),
-      );
+      const { color: actualColor, name: actualName } =
+        getStatusIconForQuestion(questionWithReviews) || {};
+      const { color: expectedColor, name: expectedName } =
+        getStatusIcon("verified");
+      expect(expectedColor).toEqual(actualColor);
+      expect(expectedName).toEqual(actualName);
     });
 
     it("should return undefined vals for no review", () => {
       const questionWithNoMostRecentReview = {
         getModerationReviews: () => [
-          { id: 1, status: "verified" },
-          { id: 2, status: "verified" },
-          { id: 3, status: null, most_recent: true },
+          { moderator_id: 0, created_at: "", status: "verified" },
+          { moderator_id: 0, created_at: "", status: "verified" },
+          { moderator_id: 0, created_at: "", status: null, most_recent: true },
         ],
-      };
+      } as unknown as Question;
 
       const questionWithNoReviews = {
         getModerationReviews: () => [],
-      };
+      } as unknown as Question;
 
       const questionWithUndefinedReviews = {
         getModerationReviews: () => undefined,
-      };
+      } as unknown as Question;
 
-      const noIcon = { name: undefined, color: undefined };
+      const noIcon = {};
 
       expect(getStatusIconForQuestion(questionWithNoMostRecentReview)).toEqual(
         noIcon,
@@ -237,25 +262,23 @@ describe("moderation/service", () => {
 
   describe("getModerationTimelineEvents", () => {
     it("should return the moderation timeline events", () => {
-      const reviews = [
+      const reviews: ModerationReview[] = [
         {
-          id: 1,
           status: "verified",
           created_at: "2018-01-01T00:00:00.000Z",
           moderator_id: 1,
         },
         {
-          id: 2,
           status: null,
           created_at: "2018-01-02T00:00:00.000Z",
           moderator_id: 123,
         },
       ];
-      const usersById = {
-        1: {
+      const usersById: Record<number, User> = {
+        1: createMockUser({
           id: 1,
           common_name: "Foo",
-        },
+        }),
       };
 
       expect(getModerationTimelineEvents(reviews, usersById)).toEqual([
