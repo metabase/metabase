@@ -370,7 +370,7 @@
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
-    :metadata/field
+    :metadata/column
     (t2/select :metadata/column
                :table_id        table-id
                :active          true
