@@ -79,7 +79,7 @@ function copyFileToOutput(source, target = source) {
 
   fs.writeFileSync(
     path.resolve(path.join(SDK_DIST_DIR), target),
-    licenseContent,
+    fileContent,
     "utf-8",
   );
 }
