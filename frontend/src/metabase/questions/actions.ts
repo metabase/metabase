@@ -11,10 +11,10 @@ export interface LoadMetadataOptions {
 
 export const loadMetadataForCard =
   (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(loadDependentMetadata(card, [], options));
+    await dispatch(loadCardMetadata(card, [], options));
   };
 
-const loadDependentMetadata =
+const loadCardMetadata =
   (
     card: Card,
     prevDependencies: Lib.DependentItem[],
@@ -34,7 +34,7 @@ const loadDependentMetadata =
     if (newDependencies.length > 0) {
       const mergedDependencies = [...prevDependencies, ...newDependencies];
       await dispatch(loadMetadataForDependentItems(newDependencies, options));
-      await dispatch(loadDependentMetadata(card, mergedDependencies, options));
+      await dispatch(loadCardMetadata(card, mergedDependencies, options));
     }
   };
 
