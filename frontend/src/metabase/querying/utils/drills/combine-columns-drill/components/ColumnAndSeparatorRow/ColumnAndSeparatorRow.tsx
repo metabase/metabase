@@ -1,8 +1,15 @@
 import { useState, type FocusEvent } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Icon, Text, TextInput } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Text,
+  TextInput,
+  useMantineTheme,
+} from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
@@ -25,8 +32,6 @@ interface Props {
   onRemove: (index: number) => void;
 }
 
-const { fontFamilyMonospace } = getThemeOverrides();
-
 export const ColumnAndSeparatorRow = ({
   query,
   stageIndex,
@@ -41,6 +46,7 @@ export const ColumnAndSeparatorRow = ({
   onRemove,
 }: Props) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { fontFamilyMonospace } = useMantineTheme();
 
   function handleFocus(event: FocusEvent<HTMLInputElement>) {
     setIsFocused(true);

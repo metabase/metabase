@@ -6,8 +6,14 @@ import { t } from "ttag";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { color } from "metabase/lib/colors";
-import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
+import {
+  Button,
+  Icon,
+  Input,
+  Popover,
+  FocusTrap,
+  useMantineTheme,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import styles from "./ColumnPicker.module.css";
@@ -21,8 +27,6 @@ type ColumnInputProps = {
   onChange: (column: Lib.ColumnMetadata) => void;
 };
 
-const theme = getThemeOverrides();
-
 export function ColumnPicker({
   query,
   stageIndex,
@@ -31,6 +35,8 @@ export function ColumnPicker({
   value,
   onChange,
 }: ColumnInputProps) {
+  const theme = useMantineTheme();
+
   const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
 
   const [open, setOpen] = useState(false);
