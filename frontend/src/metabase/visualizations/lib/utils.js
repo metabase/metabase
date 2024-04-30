@@ -277,11 +277,12 @@ export function getDefaultDimensionAndMetric(series) {
   };
 }
 
-export function getDefaultDimensionsAndMetrics(
-  [{ data }],
+export function getSingleSeriesDimensionsAndMetrics(
+  series,
   maxDimensions = 2,
   maxMetrics = Infinity,
 ) {
+  const { data } = series;
   if (!data) {
     return {
       dimensions: [null],
@@ -338,6 +339,18 @@ export function getDefaultDimensionsAndMetrics(
     dimensions: dimensions.length > 0 ? dimensions.map(c => c.name) : [null],
     metrics: metrics.length > 0 ? metrics.map(c => c.name) : [null],
   };
+}
+
+export function getDefaultDimensionsAndMetrics(
+  rawSeries,
+  maxDimensions = 2,
+  maxMetrics = Infinity,
+) {
+  return getSingleSeriesDimensionsAndMetrics(
+    rawSeries[0],
+    maxDimensions,
+    maxMetrics,
+  );
 }
 
 // Figure out how many decimal places are needed to represent the smallest

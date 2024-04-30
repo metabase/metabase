@@ -40,4 +40,5 @@ export const TAG_TYPE_MAPPING = {
   segment: "segment",
   metric: "metric",
   snippet: "snippet",
+  pulse: "subscription",
 } as const;

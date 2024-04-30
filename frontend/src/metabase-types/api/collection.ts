@@ -2,7 +2,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
-import type { CardDisplayType } from "./card";
+import type { CardDisplayType, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
@@ -97,7 +97,7 @@ export interface CollectionItem {
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
-  type?: string;
+  type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
   can_write?: boolean;
@@ -136,20 +136,33 @@ export type ListCollectionItemsResponse = {
   models: CollectionItemModel[] | null;
 } & PaginationResponse;
 
-export type CollectionRequest = {
-  id: CollectionId;
-};
+export interface UpdateCollectionRequest {
+  id: RegularCollectionId;
+  name?: string;
+  description?: string;
+  archived?: boolean;
+  parent_id?: RegularCollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+}
 
-export type ListCollectionsRequest = {
-  "personal-only"?: boolean;
-};
-
-export type ListCollectionsResponse = Collection[];
-
-export type CreateCollectionRequest = {
+export interface CreateCollectionRequest {
   name: string;
   description?: string;
-  color?: string; // deprecated
   parent_id?: CollectionId | null;
+  namespace?: string;
   authority_level?: CollectionAuthorityLevel;
-};
+}
+
+export interface ListCollectionsRequest {
+  archived?: boolean;
+  namespace?: string;
+  "personal-only"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+}
+export interface ListCollectionsTreeRequest {
+  "exclude-archived"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+  namespace?: string;
+  shallow?: boolean;
+  "collection-id"?: RegularCollectionId | null;
+}

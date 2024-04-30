@@ -92,9 +92,8 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))
-             (not (#{:combo} display-type)))
-        (chart-type :multiple "result has multiple card semantics, a multiple chart")
+             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+        (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (not (contains? #{:progress :gauge} display-type))
@@ -102,19 +101,21 @@
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
-           :line
-           :area
-           :bar
-           :combo
            :row
-           :funnel
            :progress
            :gauge
            :table
-           :waterfall} display-type)
+           :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
-        (#{:smartscalar} display-type)
+        (#{:smartscalar
+           :scalar
+           :scatter
+           :waterfall
+           :line
+           :area
+           :bar
+           :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
         (= display-type :pie)

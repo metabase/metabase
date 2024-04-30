@@ -45,7 +45,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true }); // needs to be forced because Mantine
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -63,7 +63,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -80,7 +80,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -104,7 +104,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     openColumnOptions("ID");
 
@@ -149,7 +149,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Product");
+      cy.findByRole("heading", { name: /Product/ });
       cy.findByText("Small Marble Shoes");
       cy.findByText("Doohickey");
     });
@@ -211,7 +211,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Product");
+      cy.findByRole("heading", { name: /Product/ });
       cy.findByText("Small Marble Shoes");
       cy.findByText("Doohickey");
     });

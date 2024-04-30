@@ -141,7 +141,10 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
-                   #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil :type nil})
+                   #(assoc % :collection {:id true,
+                                          :name (if (= (:model %) "action") nil true)
+                                          :authority_level nil
+                                          :type nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -919,6 +922,7 @@
                                                 :archived?          false
                                                 :models             search.config/all-models
                                                 :current-user-perms #{"/"}
+                                                :model-ancestors?   false
                                                 :limit-int          100}))]
           ;; warm it up, in case the DB call depends on the order of test execution and it needs to
           ;; do some initialization
@@ -1658,3 +1662,43 @@
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
                   :data
                   (map :name)))))))
+
+(deftest model-ancestors-gets-ancestor-collections
+  (testing "Collection names are correct"
+    (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/"}
+                   Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
+                   Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}
+                   Card {top-card-id :id} {:type :model :collection_id top-col-id :name "top model"}]
+      (is (= #{[leaf-card-id [{:name "top level col" :id top-col-id}]]
+               [top-card-id []]}
+             (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                  :data
+                  (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                  (into #{}))))))
+  (testing "Models not in a collection work correctly"
+    (mt/with-temp [Card {card-id :id} {:type :model
+                                       :name "model"
+                                       :collection_id nil}]
+      (is (= #{[card-id []]}
+             (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                  :data
+                  (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                  (into #{}))))))
+  (testing "Non-models don't get collection_ancestors"
+    (mt/with-temp [Card _ {:name "question"
+                           :collection_id nil}]
+      (is (not (contains? (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "question" :models ["dataset" "card"])
+                               :data
+                               (filter #(= (:name %) "question"))
+                               first
+                               :collection)
+                          :effective_ancestors)))))
+  (testing "If `model_parents` is not passed, it doesn't get populated"
+    (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/"}
+                   Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
+                   Card _ {:type :model :collection_id mid-col-id :name "leaf model"}
+                   Card _ {:type :model :collection_id top-col-id :name "top model"}]
+      (is (= [nil nil]
+             (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors false :q "model" :models ["dataset"])
+                  :data
+                  (map #(get-in % [:collection :effective_ancestors]))))))))
