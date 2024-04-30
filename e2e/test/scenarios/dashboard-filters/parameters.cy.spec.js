@@ -641,7 +641,7 @@ describe("scenarios > dashboard > parameters", () => {
       editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
 
       selectDashboardFilter(getDashboardCard(0), "Created At");
@@ -654,7 +654,7 @@ describe("scenarios > dashboard > parameters", () => {
       // Connect filter to 1 card only
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
       selectDashboardFilter(getDashboardCard(0), "Created At");
       disconnectDashboardFilter(getDashboardCard(1));
@@ -665,7 +665,7 @@ describe("scenarios > dashboard > parameters", () => {
       // Disconnect filter from the 1st card
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
       disconnectDashboardFilter(getDashboardCard(0));
       saveDashboard();

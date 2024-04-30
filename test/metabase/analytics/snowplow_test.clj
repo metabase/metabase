@@ -80,13 +80,13 @@
 
 (defn valid-datetime-for-snowplow?
   "Check if a datetime string has the format that snowplow accepts.
-  The string should have the format yyyy-mm-dd'T'hh:mm:ss.SSXXX which is a RFC3339 format.
+  The string should have the format yyyy-mm-dd'T'HH:mm:ss.SSXXX which is a RFC3339 format.
   Reference: https://json-schema.org/understanding-json-schema/reference/string.html#dates-and-times"
   [t]
   (try
     (java.time.LocalDate/parse
       t
-      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
+      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSXXX"))
     true
     (catch Exception _e
       false)))
@@ -105,7 +105,7 @@
                      :application_database_version (#'snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
 
-      (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
+      (testing "the created_at should have the format be formatted as RFC3339"
         (is (valid-datetime-for-snowplow?
               (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 

@@ -335,6 +335,7 @@
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
+      (test.data.impl.get-or-create/set-test-db-permissions! new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally

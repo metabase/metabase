@@ -2,12 +2,8 @@ import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 
 export const getRootStyle = (theme: Theme) => css`
-  --default-font-size: 0.875em;
-  --default-font-color: ${theme.fn.themeColor("text-dark")};
-  --default-bg-color: ${theme.fn.themeColor("bg-light")};
-
-  font-family: var(--default-font-family), sans-serif;
-  font-size: var(--default-font-size);
+  font-family: var(--mb-default-font-family), sans-serif;
+  font-size: 0.875em;
   font-weight: 400;
   font-style: normal;
   color: ${theme.fn.themeColor("text-dark")};
@@ -79,7 +75,7 @@ export const baseStyle = css`
   button,
   input,
   textarea {
-    font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
+    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
       sans-serif;
   }
 

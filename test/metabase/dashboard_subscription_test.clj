@@ -713,7 +713,7 @@
                                                               {:query "SELECT * FROM venues LIMIT 1"})}
                      DashboardCard _ {:dashboard_id dashboard-id
                                       :card_id      card-id}]
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
                    first :result :data :rows)))))))

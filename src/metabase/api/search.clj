@@ -334,7 +334,8 @@
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref :location}))
+                                         :initial_sync_status :pk_ref :location
+                                         :collection_location}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -355,18 +356,27 @@
 (defmethod check-permissions-for-model :table
   [_archived instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (data-perms/user-has-permission-for-table?
-   api/*current-user-id*
-   :perms/data-access
-   :unrestricted
-   (database/table-id->database-id (:id instance))
-   (:id instance)))
+  (and
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/view-data
+    :unrestricted
+    (database/table-id->database-id (:id instance))
+    (:id instance))
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/create-queries
+    :query-builder
+    (database/table-id->database-id (:id instance))
+    (:id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [_archived? instance]
   (and
-   (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/native-query-editing :yes (:database_id instance))
-   (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/data-access (:database_id instance)))))
+   (= :query-builder-and-native
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries (:database_id instance)))
+   (= :unrestricted
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
   [archived? instance]
@@ -435,6 +445,47 @@
                    :last_editor_common_name (get user-id->common-name last_editor_id)))
           results)))
 
+(defn add-dataset-collection-hierarchy
+  "Adds `collection_effective_ancestors` to *datasets* in the search results."
+  [search-results]
+  (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
+        ;; effective location of the result.
+        result->loc (fn [{:keys [collection_id collection_location]}]
+                      (:effective_location
+                       (t2/hydrate
+                        (if (nil? collection_id)
+                          collection/root-collection
+                          {:location collection_location})
+                        :effective_location)))
+        ;; a map of collection-ids to collection info
+        col-id->name&loc (into {}
+                               (for [item search-results
+                                     :when (= (:model item) "dataset")]
+                                 [(:collection_id item)
+                                  {:name (:collection_name item)
+                                   :effective_location (result->loc item)}]))
+        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
+        ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
+        to-fetch         (into #{} (comp (keep :effective_location)
+                                         (mapcat collection/location-path->ids)
+                                         ;; already have these names
+                                         (remove col-id->name&loc))
+                               (vals col-id->name&loc))
+        ;; the complete map of collection IDs to names
+        id->name         (merge (if (seq to-fetch)
+                                  (t2/select-pk->fn :name :model/Collection :id [:in to-fetch])
+                                  {})
+                                (update-vals col-id->name&loc :name))
+        annotate         (fn [x]
+                           (cond-> x
+                             (= (:model x) "dataset")
+                             (assoc :collection_effective_ancestors
+                                    (if-let [loc (result->loc x)]
+                                      (->> (collection/location-path->ids loc)
+                                           (map (fn [id] {:id id :name (id->name id)})))
+                                      []))))]
+    (map annotate search-results)))
+
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -460,8 +511,10 @@
                             (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
-        total-results      (hydrate-user-metadata
-                            (scoring/top-results reducible-results search.config/max-filtered-results xf))
+        total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                              true hydrate-user-metadata
+                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                              true (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
@@ -495,6 +548,7 @@
            filter-items-in-personal-collection
            offset
            search-string
+           model-ancestors?
            table-db-id
            search-native-query
            verified]}      :- [:map {:closed true}
@@ -510,6 +564,7 @@
                                [:offset                              {:optional true} [:maybe ms/Int]]
                                [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
                                [:search-native-query                 {:optional true} [:maybe boolean?]]
+                               [:model-ancestors?                    {:optional true} [:maybe boolean?]]
                                [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
   (when (some? verified)
     (premium-features/assert-has-any-features
@@ -519,7 +574,8 @@
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
-                        :models             models}
+                        :models             models
+                        :model-ancestors?   (boolean model-ancestors?)}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -580,7 +636,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection search_native_query verified]
+   filter_items_in_personal_collection model_ancestors search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -591,6 +647,7 @@
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   model_ancestors                     [:maybe :boolean]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
@@ -610,6 +667,7 @@
                              :models              models-set
                              :limit               mw.offset-paging/*limit*
                              :offset              mw.offset-paging/*offset*
+                             :model-ancestors?    model_ancestors
                              :search-native-query search_native_query
                              :verified            verified}))
         duration   (- (System/currentTimeMillis) start-time)

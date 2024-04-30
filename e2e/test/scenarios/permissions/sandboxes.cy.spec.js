@@ -25,6 +25,7 @@ import {
   setTokenFeatures,
   selectFilterOperator,
   entityPickerModal,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const {
@@ -38,12 +39,12 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP } = USER_GROUPS;
+const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
       cy.visit("/admin/people");
@@ -86,7 +87,7 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
 
@@ -191,7 +192,7 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
     });
@@ -204,12 +205,17 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: "all",
-            [PRODUCTS_ID]: "all",
-            [REVIEWS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [ORDERS_ID]: "query-builder",
+                [PRODUCTS_ID]: "query-builder",
+                [REVIEWS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -312,10 +318,19 @@ describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.updatePermissionsSchemas({
-          schemas: {
-            PUBLIC: {
-              [PRODUCTS_ID]: "all",
+        cy.updatePermissionsGraph({
+          [COLLECTION_GROUP]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "unrestricted",
+                },
+              },
+              "create-queries": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "query-builder",
+                },
+              },
             },
           },
         });
@@ -354,7 +369,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          cy.get(".bar").eq(0).click({ force: true });
+          chartPathWithFillColor("#509EE3").eq(0).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
@@ -381,10 +396,15 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [PRODUCTS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [PRODUCTS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -431,7 +451,7 @@ describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.findByTestId("query-visualization-root").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar").eq(0).click({ force: true });
+        chartPathWithFillColor("#509EE3").eq(0).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See these Orders").click();
@@ -657,10 +677,14 @@ describeEE("formatting > sandboxes", () => {
             },
           });
 
-          cy.updatePermissionsSchemas({
-            schemas: {
-              PUBLIC: {
-                [PRODUCTS_ID]: "all",
+          cy.updatePermissionsGraph({
+            [COLLECTION_GROUP]: {
+              [SAMPLE_DB_ID]: {
+                "view-data": {
+                  PUBLIC: {
+                    [PRODUCTS_ID]: "unrestricted",
+                  },
+                },
               },
             },
           });
@@ -744,7 +768,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          cy.get(".bar").eq(1).click({ force: true });
+          chartPathWithFillColor("#509EE3").eq(1).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();

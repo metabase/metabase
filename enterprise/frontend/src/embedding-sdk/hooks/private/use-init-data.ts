@@ -1,88 +1,110 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { store } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
-  getSessionTokenState,
+  setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
-import type { SDKConfigType } from "embedding-sdk/types";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
+import type {
+  EmbeddingSessionTokenState,
+  SdkDispatch,
+} from "embedding-sdk/store/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
-export const useInitData = ({
-  config,
-}: InitDataLoaderParameters): {
-  isLoggedIn: boolean;
-  isInitialized: boolean;
-} => {
-  const dispatch = useDispatch();
+const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
+const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
+  api.onBeforeRequest = async () => {
+    const tokenState = await dispatch(
+      getOrRefreshSession(config.jwtProviderUri),
+    );
+
+    api.sessionToken = (
+      tokenState.payload as EmbeddingSessionTokenState["token"]
+    )?.id;
+  };
+};
+
+export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const dispatch = useSdkDispatch();
+
+  const loginStatus = useSdkSelector(getLoginStatus);
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, []);
+  }, [dispatch]);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
   useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
+    if (loginStatus.status === "uninitialized") {
+      api.basename = config.metabaseInstanceUrl;
+
+      if (isValidJwtAuth(config)) {
+        setupJwtAuth(config, dispatch);
+        dispatch(setLoginStatus({ status: "validated" }));
+      } else {
+        dispatch(
+          setLoginStatus({
+            status: "error",
+            error: new Error(t`Invalid JWT URI provided.`),
+          }),
+        );
+      }
+    }
+  }, [config, dispatch, loginStatus.status]);
+
+  useEffect(() => {
+    if (loginStatus.status === "validated") {
+      const fetchData = async () => {
+        dispatch(setLoginStatus({ status: "loading" }));
+
+        try {
+          const [userResponse, [_, siteSettingsResponse]] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(reloadSettings()),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(
+                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+                ),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(
+                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+              ),
+            }),
+          );
+        }
       };
 
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
+      fetchData();
     }
-  }, [config.authType, dispatch, jwtProviderUri]);
-
-  useEffect(() => {
-    api.basename = config.metabaseInstanceUrl;
-
-    if (config.authType === "jwt") {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
-    } else if (config.authType === "apiKey" && config.apiKey) {
-      api.apiKey = config.apiKey;
-    } else {
-      setIsLoggedIn(false);
-      return;
-    }
-
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
-    });
-  }, [config, dispatch, sessionTokenState]);
-
-  return {
-    isLoggedIn,
-    isInitialized,
-  };
+  }, [dispatch, loginStatus.status]);
 };

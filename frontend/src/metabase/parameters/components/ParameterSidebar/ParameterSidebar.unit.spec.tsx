@@ -48,6 +48,7 @@ const setup = ({
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={onChangeName}
+          onChangeType={jest.fn()}
           onChangeDefaultValue={jest.fn()}
           onChangeIsMultiSelect={jest.fn()}
           onChangeQueryType={jest.fn()}

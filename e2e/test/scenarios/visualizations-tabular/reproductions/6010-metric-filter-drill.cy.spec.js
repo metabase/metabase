@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visitQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitQuestion,
+  cartesianChartCircle,
+} from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -17,7 +22,7 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => visitQuestion(id));
 
-    cy.get(".dot").eq(0).click({ force: true });
+    cartesianChartCircle().eq(0).click();
 
     popover().findByText("See these Orders").click();
     cy.wait("@dataset");

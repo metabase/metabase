@@ -1,14 +1,11 @@
-type SDKAuthType =
-  | {
-      authType: "apiKey";
-      apiKey: string;
-    }
-  | {
-      authType: "jwt";
-      jwtProviderUri: string;
-    };
+import type { JSX } from "react";
 
-export type SDKConfigType = {
+import type { SdkErrorProps } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+
+export type SDKConfig = {
   metabaseInstanceUrl: string;
   font?: string;
-} & SDKAuthType;
+  jwtProviderUri: string;
+  loaderComponent?: () => JSX.Element;
+  errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;
+};

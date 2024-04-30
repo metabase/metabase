@@ -1,17 +1,32 @@
-import type { AnyAction, Store } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
+import type { TypedUseSelectorHook } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 
-import { tokenReducer } from "embedding-sdk/store/reducer";
-import type { SdkState } from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk/store/types";
 import reducers from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
-const SDK_REDUCERS = {
-  ...reducers,
-  embeddingSessionToken: tokenReducer,
-};
+import { sdk } from "./reducer";
 
-export const store = getStore(SDK_REDUCERS, null, {
+export const sdkReducers = {
+  ...reducers,
+  sdk,
+} as unknown as Record<string, Reducer>;
+
+export const store = getStore(sdkReducers, null, {
   embed: {
     isEmbeddingSdk: true,
   },
-}) as unknown as Store<SdkState, AnyAction>;
+}) as unknown as Store<SdkStoreState, AnyAction>;
+
+export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = useSelector;
+export const useSdkDispatch: () => ThunkDispatch<
+  SdkStoreState,
+  void,
+  AnyAction
+> = useDispatch;

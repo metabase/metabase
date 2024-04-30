@@ -856,3 +856,27 @@
                            (get-in viz [:column_settings
                                         (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                         :pivot_table.column_sort_order])))))))))))))
+
+(deftest extra-files-test
+  (testing "Adding some extra files does not break deserialization"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db
+        (let [coll (ts/create! Collection :name "coll")
+              _    (ts/create! Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+
+          (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
+          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+
+          (testing "No exceptions when loading despite unreadable files"
+            (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
+                         (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
+                                          (map (comp second second))
+                                          (map #(.getName %))
+                                          set)]
+                           (testing "Hidden YAML wasn't read even though it's not throwing errors"
+                             (is (not (contains? files ".hidden.yaml"))))))]
+              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
+                (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
+                        logs))))))))))

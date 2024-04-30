@@ -17,6 +17,7 @@ export const IconContainer = styled.div<{ color: string }>`
   height: 20px;
   color: ${color("white")};
   background-color: ${props => color(props.color)};
+  flex-shrink: 0;
 `;
 
 export const PermissionsSelectLabel = styled.div`

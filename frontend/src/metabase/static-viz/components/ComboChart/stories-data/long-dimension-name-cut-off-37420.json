@@ -1,0 +1,390 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-02-09T19:37:19.202282Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "line",
+        "name": "Line",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 16,
+        "entity_id": "ZGzZ_san2Y2DqAAQpGVar",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:25:57.520827Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["y"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-02-09T19:37:19.325776Z"
+      },
+      "collection_preview": true,
+      "entity_id": "n02eMNh7XExOTyXoAno48",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 247,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "source-table": "card__246"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-02-09T19:37:19.202282Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 239.64583333333334,
+      "type": "question",
+      "dashboard_count": 2,
+      "last_query_start": "2024-02-19T19:51:06.572725Z",
+      "name": "Line - Long Dimension Name",
+      "query_type": "query",
+      "collection_id": 16,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-02-06T22:10:03.807542Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1610, null],
+          "effective_type": "type/BigInteger",
+          "id": 1610,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1609, null],
+          "effective_type": "type/Text",
+          "id": 1609,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 50,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 85.82
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1608, null],
+          "effective_type": "type/Float",
+          "id": 1608,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 12,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -6,
+                "q1": 2.1617773616313856,
+                "q3": 6.49507834773733,
+                "max": 10.1111,
+                "sd": 3.625966730899189,
+                "avg": 4.2542219999999995
+              }
+            }
+          },
+          "base_type": "type/Float"
+        }
+      ],
+      "table_id": 180,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["1", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf1", 5],
+        ["2", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf2", 2],
+        ["3", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf3", 2],
+        ["4", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf4", -2],
+        ["5", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf5", 2],
+        ["6", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf6", 2],
+        ["7", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf7", 2],
+        ["8", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf8", 2],
+        ["9", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf9", -2],
+        ["10", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf10", 2],
+        ["11", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf11", 2],
+        ["12", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf12", 2],
+        ["13", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf13", 6],
+        ["14", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf14", 6],
+        ["15", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf15", 6],
+        ["16", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf16", 6],
+        ["17", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf17", -6],
+        ["18", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf18", 6],
+        ["19", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf19", 6],
+        ["20", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf20", 6],
+        ["21", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf21", 6],
+        ["22", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf22", 6],
+        ["23", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf23", 5],
+        ["24", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf24", 5],
+        ["25", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf25", 5],
+        ["26", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf26", 5],
+        ["27", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf27", 5],
+        ["28", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf28", 5],
+        ["29", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf29", 5],
+        ["30", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf30", 5],
+        ["31", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf31", -5],
+        ["32", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf32", 5],
+        ["33", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf33", 5],
+        ["34", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf34", 8.2],
+        ["35", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf35", 8.2],
+        ["36", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf36", 8.2],
+        ["37", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf37", 8.2],
+        ["38", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf38", 8.2],
+        ["39", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf39", 8.2],
+        ["40", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf40", 8.2],
+        ["41", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf41", 8.2],
+        ["42", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf42", 4],
+        ["43", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf43", 1],
+        ["44", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf44", 5],
+        ["45", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf45", 2],
+        ["46", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf46", 5],
+        ["47", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf47", 3],
+        ["48", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf48", -5],
+        ["49", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf49", 10],
+        ["50", "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf50", 10.1111]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 180,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1610, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1610,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 180,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1609, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1609,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 50,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 85.82
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 180,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1608, null],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1608,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 12,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -6,
+                "q1": 2.1617773616313856,
+                "q3": 6.49507834773733,
+                "max": 10.1111,
+                "sd": 3.625966730899189,
+                "avg": 4.2542219999999995
+              }
+            }
+          },
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"x\" AS \"x\", \"source\".\"y\" AS \"y\" FROM (SELECT \"csv_upload_data\".\"csv_upload_long_dimension_name_20240209113624\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_long_dimension_name_20240209113624\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_long_dimension_name_20240209113624\".\"y\" AS \"y\" FROM \"csv_upload_data\".\"csv_upload_long_dimension_name_20240209113624\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1610, null],
+            "effective_type": "type/BigInteger",
+            "id": 1610,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "x",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1609, null],
+            "effective_type": "type/Text",
+            "id": 1609,
+            "visibility_type": "normal",
+            "display_name": "X",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 50,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 85.82
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "y",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1608, null],
+            "effective_type": "type/Float",
+            "id": 1608,
+            "visibility_type": "normal",
+            "display_name": "Y",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 12,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -6,
+                  "q1": 2.1617773616313856,
+                  "q3": 6.49507834773733,
+                  "max": 10.1111,
+                  "sd": 3.625966730899189,
+                  "avg": 4.2542219999999995
+                }
+              }
+            },
+            "base_type": "type/Float"
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

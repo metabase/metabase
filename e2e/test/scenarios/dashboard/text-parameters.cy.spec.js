@@ -34,7 +34,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       parseSpecialCharSequences: false,
     });
 
-    setFilter("Number", "Equal to");
+    setFilter("Number", "Equal to", "Equal to");
 
     getDashboardCard(0).findByText("Select…").click();
     popover().findByText("foo").click();

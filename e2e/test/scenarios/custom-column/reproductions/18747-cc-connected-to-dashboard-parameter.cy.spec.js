@@ -5,6 +5,7 @@ import {
   visitDashboard,
   editDashboard,
   setFilter,
+  filterWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -78,7 +79,7 @@ function mapParameterToCustomColumn() {
 }
 
 function addValueToParameterFilter() {
-  cy.contains("Equal to").click();
+  filterWidget().click();
   popover().find("input").type("14");
   popover().contains("Add filter").click();
 }

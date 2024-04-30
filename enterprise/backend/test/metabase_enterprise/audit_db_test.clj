@@ -59,11 +59,11 @@
           "Cards should be created for Audit DB when the content is there."))
 
     (testing "Audit DB starts with no permissions for all users"
-      (is (= {:perms/native-query-editing  :no
-              :perms/manage-database       :no
-              :perms/data-access           :no-self-service
+      (is (= {:perms/manage-database       :no
               :perms/download-results      :one-million-rows
-              :perms/manage-table-metadata :no}
+              :perms/manage-table-metadata :no
+              :perms/view-data             :unrestricted
+              :perms/create-queries        :no}
              (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
 

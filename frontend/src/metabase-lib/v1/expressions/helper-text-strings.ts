@@ -97,6 +97,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "offset",
+    structure: "Offset",
+    description: () => t`Returns the value of an expression in a different row`,
+    args: [
+      {
+        name: t`expression`,
+        description: t`The value to get from a different row.`,
+        example: formatIdentifier(t`Total`),
+      },
+      {
+        name: t`rowOffset`,
+        description: t`Row number relative to the current row, for example -1 for the previous row or 1 for the next row.`,
+        example: "-1",
+      },
+    ],
+  },
+  {
     name: "avg",
     structure: "Average",
     description: () => t`Returns the average of the values in the column.`,
@@ -390,6 +407,83 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         name: t`text`,
         description: t`The column or text you want to trim.`,
         example: formatIdentifier(t`Comment`),
+      },
+    ],
+  },
+  {
+    name: "host",
+    structure: "host",
+    description: () =>
+      t`Extracts the host (domain name and TLD, eg. "metabase.com" from "status.metabase.com") from a URL or email`,
+    args: [
+      {
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract the host from.`,
+        example: formatIdentifier(t`Email`),
+      },
+    ],
+  },
+  {
+    name: "domain",
+    structure: "domain",
+    description: () =>
+      t`Extracts the domain name (eg. "metabase") from a URL or email`,
+    args: [
+      {
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract domain names from.`,
+        example: formatIdentifier(t`Email`),
+      },
+    ],
+  },
+  {
+    name: "subdomain",
+    structure: "subdomain",
+    description: () =>
+      t`Extracts the first subdomain (eg. "status" from "status.metabase.com", "" from "bbc.co.uk") from a URL. Ignores "www".`,
+    args: [
+      {
+        name: t`url`,
+        description: t`The URL column to extract the subdomain from.`,
+        example: formatIdentifier(t`ProfileImage`),
+      },
+    ],
+  },
+  {
+    name: "month-name",
+    structure: "monthName",
+    description: () =>
+      t`Returns the localized short name ("Apr") for the given month number (4)`,
+    args: [
+      {
+        name: t`monthNumber`,
+        description: t`Column or expression giving the number of a month in the year, 1 to 12.`,
+        example: formatIdentifier(t`Birthday Month`),
+      },
+    ],
+  },
+  {
+    name: "quarter-name",
+    structure: "quarterName",
+    description: () => t`Returns a string like "Q1", given the quarter number`,
+    args: [
+      {
+        name: t`quarterNumber`,
+        description: t`Column or expression giving the number of a quarter of the year, 1 to 4.`,
+        example: formatIdentifier(t`Fiscal Quarter`),
+      },
+    ],
+  },
+  {
+    name: "day-name",
+    structure: "dayName",
+    description: () =>
+      t`Returns the localized name of a day of the week, given the day's number.`,
+    args: [
+      {
+        name: t`dayNumber`,
+        description: t`Column or expression giving the number of a day of the week, 1 to 7. Which day is 1 is defined in your localization setting; default Sunday.`,
+        example: formatIdentifier(t`Weekday`),
       },
     ],
   },
@@ -851,7 +945,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "get-day-of-week",
     structure: "weekday",
     description: () =>
-      t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
+      t`Takes a datetime and returns an integer (1-7) with the number of the day of the week. Which day is 1 is defined in your localization settings.`,
     args: [
       {
         name: t`column`,

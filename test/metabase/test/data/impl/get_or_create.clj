@@ -5,7 +5,9 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
@@ -137,6 +139,14 @@
         (t2/delete! Database :id (u/the-id db))
         (throw e)))))
 
+(defn set-test-db-permissions!
+  "Set data permissions for a newly created test database. We need to do this explicilty since new DB perms are
+  set dynamically based on permissions for other existing DB, but we almost always want to start with full perms in tests."
+  [new-db-id]
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/view-data :unrestricted)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
@@ -154,6 +164,7 @@
                                                                       :engine  (u/qualified-name driver)
                                                                       :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
+      (set-test-db-permissions! (u/the-id db))
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e

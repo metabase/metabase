@@ -3,7 +3,6 @@ import _ from "underscore";
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
-import { injectTableMetadata } from "metabase-lib/v1/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
@@ -314,10 +313,6 @@ export const MetabaseApi = {
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-  table_query_metadata: GET(
-    "/api/table/:tableId/query_metadata",
-    injectTableMetadata,
-  ),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -415,7 +410,6 @@ export const PermissionsApi = {
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
