@@ -77,21 +77,17 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we select archived collections if `exclude-archived` is `true`
+  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
+  or only non-archived (when `archived` is false).
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [exclude-archived archived? exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when (some? archived?)
-                         [:= :archived archived?])
-                       (when exclude-archived
-                         [:and
-                          [:= :archived false]
-                          [:not [:like :location (str collection/trash-path "%")]]
-                          [:not= collection/trash-collection-id :id]])
+                       (when (some? archived)
+                         [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -126,7 +122,7 @@
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
    (select-collections {:exclude-other-user-collections exclude-other-user-collections
-                        :archived?                      archived
+                        :archived                       archived
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -190,8 +186,8 @@
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
-  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
-  {exclude-archived               [:maybe :boolean]
+  [archived exclude-other-user-collections namespace shallow collection-id]
+  {archived                       ms/MaybeBooleanValue
    exclude-other-user-collections [:maybe :boolean]
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
@@ -200,7 +196,7 @@
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
-                                         :exclude-archived               exclude-archived
+                                         :archived                       archived
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
