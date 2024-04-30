@@ -65,7 +65,7 @@ export const settings = createReducer(
     builder.addCase(refreshSiteSettings.rejected, state => {
       state.loading = false;
     });
-    builder.addCase(UPDATE_USER_SETTING, (state, { payload }) => {
+    builder.addCase(updateUserSetting.toString(), (state, { payload }) => {
       state.values[payload.key] = payload.value;
     });
   },

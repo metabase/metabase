@@ -244,13 +244,14 @@ export const QuestionActions = ({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && question._card.based_on_upload) {
-      uploadFile({
-        file,
-        tableId: question._card.based_on_upload,
-        reloadQuestionData: true,
-        uploadMode,
-      })(dispatch);
-
+      dispatch(
+        uploadFile({
+          file,
+          tableId: question._card.based_on_upload,
+          reloadQuestionData: true,
+          uploadMode,
+        }),
+      );
       // reset the file input so that subsequent uploads of the same file trigger the change handler
       if (fileInputRef.current?.value) {
         fileInputRef.current.value = "";
