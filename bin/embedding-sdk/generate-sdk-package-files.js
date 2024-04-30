@@ -48,7 +48,7 @@ function generateSdkPackage() {
     ...sdkPackageTemplateJsonContent,
     dependencies: {
       ...filterOutReactDependencies(mainPackageJsonContent.dependencies),
-      "patch-package": "^8.0.0",
+      "patch-package": mainPackageJsonContent.devDependencies["patch-package"],
     },
     resolutions: filterOutReactDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
