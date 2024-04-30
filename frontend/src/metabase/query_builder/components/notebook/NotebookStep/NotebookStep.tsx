@@ -66,19 +66,20 @@ function NotebookStep({
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
+        const title = stepUi.getTitle(step.question.type());
         return {
           priority: stepUi.priority,
           button: (
             <ActionButton
-              key={`actionButton_${stepUi.title}`}
+              key={`actionButton_${title}`}
               className={cx({
                 [cx(CS.mr2, CS.mt2)]: isLastStep,
                 [CS.mr1]: !isLastStep,
               })}
-              color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
-              aria-label={stepUi.title}
+              title={title}
+              aria-label={title}
               onClick={() => action.action({ openStep })}
             />
           ),
@@ -89,7 +90,7 @@ function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.actions, isLastStep, openStep]);
+  }, [step.actions, step.question, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
@@ -103,12 +104,12 @@ function NotebookStep({
   }, [step, updateQuery]);
 
   const {
-    title,
-    getColor,
+    getTitle,
+    color,
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
-  const color = getColor();
+  const title = getTitle(step.question.type());
   const canPreview = Lib.canRun(step.query) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
