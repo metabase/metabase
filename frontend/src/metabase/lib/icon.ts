@@ -24,7 +24,7 @@ const modelIconMap: Record<SearchModel, IconName> = {
   dashboard: "dashboard",
   card: "table",
   segment: "segment",
-  metric: "funnel",
+  metric: "metric",
   snippet: "snippet",
 };
 
