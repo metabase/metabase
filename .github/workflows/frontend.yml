@@ -95,6 +95,7 @@ jobs:
         with:
           files: ./coverage/lcov.info
           flags: front-end
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
