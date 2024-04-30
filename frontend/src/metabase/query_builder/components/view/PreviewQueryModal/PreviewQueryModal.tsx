@@ -30,7 +30,7 @@ export const PreviewQueryModal = ({
   const payload = {
     ...Lib.toLegacyQuery(sourceQuery),
     parameters,
-    ...{ pretty: false },
+    pretty: false,
   };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
   const learnUrl = getLearnUrl("debugging-sql/sql-syntax");
