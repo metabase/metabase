@@ -64,7 +64,7 @@ class DraggedItems extends Component {
     // necessary for decent drag performance
     return (
       nextProps.items.length !== this.props.items.length ||
-      nextProps.pinnedItems.length !== this.props.pinnedItems ||
+      nextProps.pinnedItems.length !== this.props.pinnedItems.length ||
       nextProps.draggedItem !== this.props.draggedItem
     );
   }
