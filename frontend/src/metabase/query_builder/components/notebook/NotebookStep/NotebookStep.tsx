@@ -110,7 +110,8 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const title = getTitle(step.question.type());
-  const canPreview = Lib.canRun(step.query) && step.active && step.visible;
+  const canPreview =
+    Lib.canRun(step.query, step.question.type()) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 
