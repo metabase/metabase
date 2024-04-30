@@ -6543,6 +6543,14 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
+      id: v50.2024-04-09T15:55:23
+      author: piranha
+      comment: Backfill query_field for native queries
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
+  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -6562,14 +6570,6 @@ databaseChangeLog:
       rollback: # no rollback necessary, we're not removing the columns yet
 
   - changeSet:
-      id: v50.2024-04-18T14:33:19
-      author: piranha
-      comment: Backfill query_field
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
-
-  - changeSet:
       id: v50.2024-04-19T17:04:04
       author: noahmoss
       comment: Clean up deprecated view-data and native-query-editing permissions (again)
@@ -6578,6 +6578,38 @@ databaseChangeLog:
         - sql:
             sql: >
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:01
+      author: noahmoss
+      comment: Add entity_id to core_user
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: core_user
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:02
+      author: noahmoss
+      comment: Add entity_id to permissions_group
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: permissions_group
 
   - changeSet:
       id: v50.2024-04-25T16:29:31
@@ -6707,6 +6739,57 @@ databaseChangeLog:
                   AND v.model_id = t.id
               );
       rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-26T09:19:00
+      author: adam-james
+      comment: Added 0.50.0 - Per-user Dashboard Parameter values table
+      changes:
+        - createTable:
+            tableName: user_parameter_value
+            remarks: Table holding last set value of a parameter per user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who has set the parameter value'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_user_parameter_value_user_id
+                    deleteCascade: true
+              - column:
+                  name: parameter_id
+                  type: varchar(36)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: Value of the parameter
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-26T09:25:00
+      author: adam-james
+      comment: Index user_parameter_value.user_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id
+            columns:
+              column:
+                name: user_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

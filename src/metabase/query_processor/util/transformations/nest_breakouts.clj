@@ -11,9 +11,9 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(defn- stage-has-cumulative-aggregation? [stage]
+(defn- stage-has-window-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
-    #{:cum-sum :cum-count}))
+    #{:cum-sum :cum-count :offset}))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))
@@ -62,10 +62,11 @@
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
   (lib.util.match/replace stage
     #{:field :expression}
-    (let [col (lib.equality/find-matching-column &match first-stage-cols)]
+    (if-let [col (lib.equality/find-matching-column &match first-stage-cols)]
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
-          lib/ref))))
+          lib/ref)
+      (lib.util/fresh-uuids &match))))
 
 (mu/defn ^:private new-second-stage :- ::lib.schema/stage
   "All references need to be updated to be prior-stage references using the desired alias from the previous stage.
@@ -77,7 +78,7 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata)
+        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols))))
 
 (mu/defn ^:private nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
@@ -88,7 +89,7 @@
     [first-stage
      (new-second-stage query path stage first-stage)]))
 
-(mu/defn nest-breakouts-in-stages-with-cumulative-aggregation :- ::lib.schema/query
+(mu/defn nest-breakouts-in-stages-with-window-aggregation :- ::lib.schema/query
   "Some picky databases like BigQuery don't let you use anything inside `ORDER BY` in `OVER` expressions except for
   plain column identifiers that also appear in the `GROUP BY` clause... no inline temporal bucketing or things like
   that.
@@ -101,6 +102,6 @@
   (lib.walk/walk-stages
    query
    (fn [query path stage]
-     (when (and (stage-has-cumulative-aggregation? stage)
+     (when (and (stage-has-window-aggregation? stage)
                 (stage-has-breakout? stage))
        (nest-breakouts-in-stage query path stage)))))

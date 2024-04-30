@@ -5,7 +5,7 @@
   "repository": {
     "url": "git+https://github.com/metabase/metabase.git"
   },
-  "license": "private",
+  "license": "SEE LICENSE IN LICENSE.txt",
   "main": "./dist/main.bundle.js",
   "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
   "peerDependencies": {

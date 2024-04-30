@@ -1,6 +1,6 @@
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { getCollectionType, isRegularCollection } from "./utils";
+import { getCollectionType, isRegularCollection, getIcon } from "./utils";
 
 describe("Collections plugin utils", () => {
   const COLLECTION = {
@@ -49,6 +49,38 @@ describe("Collections plugin utils", () => {
       const collection = createMockCollection();
       expect(getCollectionType(collection).type).toBe(null);
       expect(getCollectionType({}).type).toBe(null);
+    });
+  });
+
+  describe("getIcon", () => {
+    it("should return the default icon for a regular collection", () => {
+      expect(getIcon({ model: "collection" })).toEqual({ name: "folder" });
+    });
+    it("should return the default icon for a regular dashboard", () => {
+      expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
+    });
+    it("should return the default icon for a regular question", () => {
+      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+    });
+
+    describe("enterprise icons", () => {
+      it("should return the correct icon for an instance analytics collection", () => {
+        expect(
+          getIcon({ model: "collection", type: "instance-analytics" }),
+        ).toEqual({ name: "audit" });
+      });
+
+      it("should return the correct icon for an official collection", () => {
+        expect(
+          getIcon({ model: "collection", authority_level: "official" }),
+        ).toEqual({ name: "badge", color: "saturated-yellow" });
+      });
+
+      it("should return the correct icon for an official dataset", () => {
+        expect(
+          getIcon({ model: "dataset", authority_level: "official" }),
+        ).toEqual({ name: "model_with_badge", color: "saturated-yellow" });
+      });
     });
   });
 });

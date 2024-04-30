@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeWithSnowplow,
   enableTracking,
-  ensureDcChartVisibility,
+  echartsContainer,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
@@ -163,13 +163,13 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
-  ensureDcChartVisibility();
+  echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("be.visible");
   cy.findByLabelText("table2 icon").click();
   verifyTableVisibility();
   cy.findByLabelText("bar icon").click();
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyManualQueryEditing = () => {
@@ -179,7 +179,7 @@ const verifyManualQueryEditing = () => {
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("not.exist");
 };
@@ -188,7 +188,7 @@ const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyCollectionMetabot = () => {
@@ -199,7 +199,7 @@ const verifyCollectionMetabot = () => {
   cy.findByLabelText("Get Answer").click();
   cy.wait("@modelPrompt");
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyQueryBuilderMetabot = () => {

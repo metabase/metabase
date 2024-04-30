@@ -146,6 +146,7 @@ function GroupsPermissionsPage({
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
+
   return (
     <Fragment>
       <PermissionsSidebar
