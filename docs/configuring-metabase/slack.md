@@ -71,9 +71,7 @@ On the Slack site page for your Slack app, on the left in the **Features** secti
 
 In your Slack workspace, create a public channel named whatever you want — we think something like "metabase" does just fine — then enter that channel's name in the **Public channel to store image files** field in Metabase. We'll upload charts and tables here before sending out [dashboard subscriptions](../dashboards/subscriptions.md#slack-subscription-options). This allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Make sure the channel you create is the same channel that you enter in this field in Metabase (omit the "#" prefix).
 
-> If you rename the channel in Slack, you'll need to update the **Public channel to store image files** in Metabase to that new name.
-
-> This channel does not have to be the same as the channel where you send dashboard subscriptions. It's only used for storing image files.
+> If you rename the channel in Slack, you'll need to update the **Public channel to store image files** in Metabase to that new name. This channel does not have to be the same as the channel where you send dashboard subscriptions. It's only used for storing image files.
 
 ## Save your changes in Metabase
 
