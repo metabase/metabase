@@ -138,7 +138,7 @@ export function showVirtualDashCardInfoText(
 
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   if (isDateParameter(parameter)) {
-    return t`Add a date variable to this question to connect it to a dashboard filter.`;
+    return t`A date variable in this card can only be connected to a time type with the single date option.`;
   }
 
   if (isNumberParameter(parameter)) {
