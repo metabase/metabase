@@ -353,18 +353,18 @@
     [(into [:case] case-clauses)]))
 
 (defmulti ^:private check-permissions-for-model
-  {:arglists '([search-result])}
-  (fn [search-result] ((comp keyword :model) search-result)))
+  {:arglists '([archived? search-result])}
+  (fn [_ search-result] ((comp keyword :model) search-result)))
 
 (defmethod check-permissions-for-model :default
-  [instance]
-  (if (:archived instance)
+  [archived? instance]
+  (if archived?
     (mi/can-write? instance)
     ;; We filter what we can (ie. everything that is in a collection) out already when querying
     true))
 
 (defmethod check-permissions-for-model :table
-  [instance]
+  [_archived instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
   (and
    (data-perms/user-has-permission-for-table?
@@ -381,7 +381,7 @@
     (:id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
-  [instance]
+  [_archived? instance]
   (and
    (= :query-builder-and-native
       (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries (:database_id instance)))
@@ -389,20 +389,20 @@
       (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
-  [instance]
-  (if (:archived instance)
+  [archived? instance]
+  (if archived?
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :segment
-  [instance]
-  (if (:archived instance)
+  [archived? instance]
+  (if archived?
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :database
-  [instance]
-  (if (:archived instance)
+  [archived? instance]
+  (if archived?
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
@@ -513,7 +513,7 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
-                            (filter check-permissions-for-model)
+                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
@@ -583,7 +583,7 @@
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
-                        :archived?          archived
+                        :archived?          (boolean archived)
                         :models             models
                         :model-ancestors?   (boolean model-ancestors?)}
                  (some? created-at)                          (assoc :created-at created-at)
