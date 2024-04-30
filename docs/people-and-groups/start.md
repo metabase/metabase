@@ -28,6 +28,8 @@ Tell Metabase how long it should wait before asking people to log in again.
 
 Metabase offers several options for single sign-on (SSO) authentication.
 
+> If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
+
 ### SSO for Metabase Open Source Edition
 
 - [Google Sign-in][google-sign-in]
