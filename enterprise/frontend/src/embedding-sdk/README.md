@@ -123,13 +123,13 @@ app.listen(PORT, () => {
 You can install Metabase Embedding SDK for react via npm:
 
 ```bash
-npm install metabase-embedding-sdk-react
+npm install @metabase/embedding-sdk-react
 ```
 
 or using yarn:
 
 ```bash
-yarn add metabase-embedding-sdk-react
+yarn add @metabase/embedding-sdk-react
 ```
 
 ## Using the SDK
@@ -140,7 +140,7 @@ Once installed, you need to import `MetabaseProvider` and provide it with a `con
 
 ```jsx
 import React from "react";
-import { MetabaseProvider } from "metabase-embedding-sdk-react";
+import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
 // Configuration
 const config = {
@@ -164,7 +164,7 @@ After the SDK is configured, you can use embed your question using the `StaticQu
 
 ```jsx
 import React from "react";
-import { MetabaseProvider, StaticQuestion } from "metabase-embedding-sdk-react";
+import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
@@ -183,7 +183,7 @@ export default function App() {
 
 ```jsx
 import React from "react";
-import { MetabaseProvider, InteractiveQuestion } from "metabase-embedding-sdk-react";
+import { MetabaseProvider, InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
@@ -296,7 +296,7 @@ After that you need to add this built SDK package location to your package.json.
 
 ```json
 "dependencies": {
-  "metabase-embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
+  "@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
 }
 ```
 
