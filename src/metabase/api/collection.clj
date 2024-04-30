@@ -86,9 +86,10 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       [:= :archived archived]
                        (when-not archived
-                         [:not= :id collection/trash-collection-id])
+                         [:and
+                          [:not= :id collection/trash-collection-id]
+                          [:not :archived]])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -122,8 +123,8 @@
    namespace                      [:maybe ms/NonBlankString]
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
-   (select-collections {:exclude-other-user-collections exclude-other-user-collections
-                        :archived                       (boolean archived)
+   (select-collections {:archived                       (boolean archived)
+                        :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -206,7 +207,8 @@
                                         {:dataset #{}
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]}))
+                                                                    :from            [:report_card]
+                                                                    :where [:= :archived archived]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -882,7 +884,7 @@
   [id models archived pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
-   archived       ms/MaybeBooleanValue
+   archived       ms/BooleanValue
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
@@ -890,8 +892,7 @@
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
-                                   :archived?    (if (nil? archived) (or (:archived collection)
-                                                                         (collection/is-trash? collection)) archived)
+                                   :archived?    (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state (keyword pinned_state)
                                    :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                                   (or (some-> sort_direction normalize-sort-choice) :asc)]})

@@ -1672,9 +1672,12 @@
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
-                            {:archived true})))
-
-    ;; TODO: Add `exclude-archived` or something similar, and a test of it here
+                            {:archived true})
+        (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
+      (with-collection-hierarchy [a b d e f g]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                              {:archived true})
+        (is (= [] (remove-non-test-collections (api-get-root-collection-children))))))
 
     (testing "\n?namespace= parameter"
       (t2.with-temp/with-temp [Collection {normal-id :id} {:name "Normal Collection"}
@@ -2110,3 +2113,9 @@
            (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :exclude_trash false))
                 (filter #(= (:id %) collection/trash-collection-id))
                 (map #(select-keys % [:name :id])))))))
+
+(deftest collection-tree-includes-trash-if-requested
+  (testing "Trash collection is included if requested"
+    (is (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree" :archived "true"))))
+  (testing "Trash collection is NOT included by default"
+    (is (not (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree"))))))
