@@ -1,3 +1,4 @@
+import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -7,6 +8,8 @@ import type {
 import type * as Lib from "metabase-lib";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
+  query,
+  question,
   drill,
   drillInfo,
   clicked,
@@ -21,15 +24,27 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         section: "extract-popover",
         buttonType: "horizontal",
         question: () => applyDrill(drill, extraction.tag),
-        extra: () => ({ settingsSyncOptions: { column: clicked.column } }),
+        extra: () => ({
+          tag: extraction.tag,
+          settingsSyncOptions: { column: clicked.column },
+        }),
       }),
     );
+
+    function handleClick(action: RegularClickAction) {
+      const { tag } = action.extra?.() as {
+        tag: string;
+      };
+
+      trackColumnExtractViaHeader(query, tag, question);
+      onClick(action);
+    }
 
     return (
       <ClickActionsView
         clickActions={actions}
         close={onClose}
-        onClick={onClick}
+        onClick={handleClick}
       />
     );
   };
