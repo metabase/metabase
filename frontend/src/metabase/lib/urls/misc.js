@@ -28,6 +28,8 @@ export function modelToUrl(item) {
       return question(modelData);
     case "dataset":
       return model(modelData);
+    case "metric":
+      return question(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "pulse":
