@@ -66,11 +66,11 @@
 }
 
 .sidebarBreadcrumb.breadcrumbPath:hover {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 .sidebarBreadcrumb.breadcrumbPage {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }

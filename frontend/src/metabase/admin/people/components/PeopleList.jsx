@@ -10,7 +10,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Group from "metabase/entities/groups";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -229,7 +229,7 @@ const PeopleList = ({
           className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
           data-testid="people-list-footer"
         >
-          <div className={cx("text-medium", CS.textBold)}>
+          <div className={cx(CS.textMedium, CS.textBold)}>
             {ngettext(
               msgid`${total} person found`,
               `${total} people found`,
@@ -302,7 +302,7 @@ export default _.compose(
   Group.loadList({
     reload: true,
   }),
-  User.loadList({
+  Users.loadList({
     reload: true,
     query: (_, { query }) => ({
       query: query.searchText,

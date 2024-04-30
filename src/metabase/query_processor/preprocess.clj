@@ -83,7 +83,7 @@
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
    (ensure-legacy #'parameters/substitute-parameters)
    (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
-   (ensure-legacy #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
+   (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)

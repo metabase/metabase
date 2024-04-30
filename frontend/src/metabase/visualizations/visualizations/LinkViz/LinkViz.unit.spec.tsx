@@ -159,6 +159,41 @@ describe("LinkViz", () => {
       expect(screen.getByText("https://example23.com")).toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
     });
+
+    it("should open absolute links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "http://localhost/question/1-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(window.location.origin).toBe("http://localhost");
+
+      expect(
+        screen.getByText("http://localhost/question/1-example"),
+      ).toBeInTheDocument();
+
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
+
+    it("should open relative links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "question/2-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByText("question/2-example")).toBeInTheDocument();
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
   });
 
   describe("entity links", () => {

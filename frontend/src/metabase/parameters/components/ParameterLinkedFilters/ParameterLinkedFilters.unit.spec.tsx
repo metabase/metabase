@@ -5,7 +5,7 @@ import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { ValuesSourceType } from "metabase-types/api/parameters";
 
-import ParameterLinkedFilters from "./ParameterLinkedFilters";
+import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
 
 interface SetupOpts {
   parameter: UiParameter;

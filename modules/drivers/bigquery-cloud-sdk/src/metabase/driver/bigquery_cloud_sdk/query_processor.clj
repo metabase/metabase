@@ -11,19 +11,14 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -957,21 +952,3 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (h2x/->time expr))
-
-(mu/defn ^:private nest-breakouts-in-stages-with-cumulative-aggregation :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery]
-  (let [metadata-provider (qp.store/metadata-provider)
-        database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
-    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
-        qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation
-        lib.convert/->legacy-MBQL
-        :query)))
-
-(defmethod sql.qp/preprocess :bigquery-cloud-sdk
-  [driver inner-query]
-  (let [parent-method                (get-method sql.qp/preprocess :sql)
-        has-cumulative-aggregations? (lib.util.match/match (:aggregation inner-query)
-                                       #{:cum-sum :cum-count})
-        inner-query                  (cond-> inner-query
-                                       has-cumulative-aggregations? nest-breakouts-in-stages-with-cumulative-aggregation)]
-    (parent-method driver inner-query)))

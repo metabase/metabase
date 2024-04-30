@@ -1,3 +1,6 @@
+import { useState, useEffect } from "react";
+import { useMount, usePrevious } from "react-use";
+
 import { Icon, Tabs } from "metabase/ui";
 
 import type { EntityTab, TypeWithModel } from "../../types";
@@ -16,19 +19,42 @@ export const TabsView = <
   searchQuery,
   searchResults,
   selectedItem,
+  initialValue,
 }: {
-  tabs: [EntityTab<Model>, ...EntityTab<Model>[]];
+  tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
   searchResults: Item[] | null;
   selectedItem: Item | null;
+  initialValue?: Partial<Item>;
 }) => {
   const hasSearchTab = !!searchQuery;
+  const previousSearchQuery = usePrevious(searchQuery);
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useMount(() => {
+    if (
+      initialValue?.model &&
+      tabs.some(tab => tab.model === initialValue.model)
+    ) {
+      setSelectedTab(initialValue.model);
+    }
+  });
+
+  useEffect(() => {
+    // when the searchQuery changes, switch to the search tab
+    if (!!searchQuery && searchQuery !== previousSearchQuery) {
+      setSelectedTab("search");
+    } else if (selectedTab === "search") {
+      setSelectedTab(defaultTab.model);
+    }
+  }, [searchQuery, previousSearchQuery, selectedTab, defaultTab.model]);
 
   return (
     <Tabs
       defaultValue={defaultTab.model}
+      value={selectedTab}
       style={{
         flexGrow: 1,
         height: 0,
@@ -43,8 +69,9 @@ export const TabsView = <
           return (
             <Tabs.Tab
               key={model}
-              value={displayName}
+              value={model}
               icon={<Icon name={icon} />}
+              onClick={() => setSelectedTab(model)}
             >
               {displayName}
             </Tabs.Tab>
@@ -52,6 +79,7 @@ export const TabsView = <
         })}
         {hasSearchTab && (
           <EntityPickerSearchTab
+            onClick={() => setSelectedTab("search")}
             searchResults={searchResults}
             searchQuery={searchQuery}
           />
@@ -59,12 +87,12 @@ export const TabsView = <
       </Tabs.List>
 
       {tabs.map(tab => {
-        const { displayName, model } = tab;
+        const { model } = tab;
 
         return (
           <Tabs.Panel
             key={model}
-            value={displayName}
+            value={model}
             style={{
               flexGrow: 1,
               height: 0,

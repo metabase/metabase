@@ -97,10 +97,16 @@ export const EntityPickerSearchResults = <
   }
 
   return (
-    <Box p="lg" h="100%">
+    <Box h="100%">
       {searchResults.length > 0 ? (
         <Stack h="100%">
-          <VirtualizedList>
+          <VirtualizedList
+            Wrapper={({ children, ...props }) => (
+              <Box p="lg" {...props}>
+                {children}
+              </Box>
+            )}
+          >
             {searchResults?.map(item => (
               <EntityPickerSearchResult
                 key={item.model + item.id}
@@ -136,11 +142,13 @@ export const EntityPickerSearchTab = <
 >({
   searchResults,
   searchQuery,
+  onClick,
 }: {
   searchResults: Item[] | null;
   searchQuery: string;
+  onClick: () => void;
 }) => (
-  <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
+  <Tabs.Tab value="search" icon={<Icon name="search" />} onClick={onClick}>
     {getSearchTabText(searchResults, searchQuery)}
   </Tabs.Tab>
 );

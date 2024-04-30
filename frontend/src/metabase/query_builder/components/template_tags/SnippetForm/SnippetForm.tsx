@@ -127,8 +127,8 @@ function SnippetForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
-      if (isEditing) {
+    async (values: SnippetFormValues) => {
+      if (isEditing && snippet.id) {
         await handleUpdate({ ...values, id: snippet.id });
       } else {
         await handleCreate(values);

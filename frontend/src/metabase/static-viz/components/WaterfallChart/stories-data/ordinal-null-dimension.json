@@ -1,0 +1,328 @@
+[
+  {
+    "card": {
+      "original_card_id": 284,
+      "fully_parametrized": true,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.x_axis.scale": "ordinal",
+        "graph.show_values": true,
+        "graph.label_value_formatting": "compact",
+        "graph.metrics": ["y"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "last_name": "Usmani",
+        "first_name": "Emmad",
+        "email": "emmad@metabase.com",
+        "timestamp": "2024-03-16T00:23:18.928479Z"
+      },
+      "collection_preview": true,
+      "entity_id": "me9goAoL0Tu5bSsAVHFDm",
+      "display": "waterfall",
+      "parameter_mappings": [],
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "moderation_reviews": [],
+      "average_query_time": 251.11111111111111,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-28T19:20:44.980834Z",
+      "query_type": "native",
+      "enable_embedding": false,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-22T21:21:40.815784Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "display_name": "x",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.3333333333333333
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1,
+                "q3": 3,
+                "max": 3,
+                "sd": 1.4142135623730951,
+                "avg": 2
+              }
+            }
+          }
+        },
+        {
+          "display_name": "y",
+          "field_ref": [
+            "field",
+            "y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 10,
+                "q1": 10,
+                "q3": 10,
+                "max": 10,
+                "sd": 0,
+                "avg": 10
+              }
+            }
+          }
+        }
+      ],
+      "model": "card",
+      "created_at": "2024-03-16T00:22:41.329157Z",
+      "collection": {
+        "id": 10,
+        "name": "Waterfall",
+        "authority_level": null,
+        "type": null
+      },
+      "table_name": null,
+      "initial_sync_status": null,
+      "scores": [
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "pinned"
+        },
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "bookmarked"
+        },
+        {
+          "weight": 1.5,
+          "score": 1,
+          "name": "recency"
+        },
+        {
+          "weight": 1,
+          "score": 0.02,
+          "name": "dashboard"
+        },
+        {
+          "weight": 0.5,
+          "score": 0.5,
+          "name": "model"
+        },
+        {
+          "score": 1,
+          "name": "text-consecutivity",
+          "weight": 3.333333333333333,
+          "match": "Waterfall Ordinal Null Dimension",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@6385cf53",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-total-occurrences",
+          "weight": 3.333333333333333,
+          "match": "Waterfall Ordinal Null Dimension",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@8bbd715",
+          "column": "name"
+        },
+        {
+          "score": 0.25,
+          "name": "text-fullness",
+          "weight": 1.666666666666667,
+          "match": "Waterfall Ordinal Null Dimension",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@1592f629",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-prefix",
+          "weight": 1.666666666666667,
+          "match": "Waterfall Ordinal Null Dimension",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@37134f79",
+          "column": "name"
+        }
+      ],
+      "context": null,
+      "dashboardcard_count": 1,
+      "table_description": null,
+      "last_edited_at": "2024-03-16T00:23:18.928479Z",
+      "id": 284,
+      "model_name": null,
+      "last_editor_id": 1,
+      "model_id": null,
+      "model_index_id": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 1 x, 10 y\nunion all select null, 10\nunion all select 3, 10"
+        }
+      },
+      "moderated_status": null,
+      "updated_at": "2024-03-28T19:25:00.857021Z",
+      "creator_id": 1,
+      "collection_authority_level": null,
+      "creator_common_name": "Emmad Usmani",
+      "table_schema": null,
+      "name": "Waterfall Ordinal Null Dimension",
+      "pk_ref": null,
+      "last_editor_common_name": "Emmad Usmani",
+      "database_id": null,
+      "bookmark": false,
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "collection_id": 10,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 10],
+        [null, 10],
+        [3, 10]
+      ],
+      "cols": [
+        {
+          "display_name": "x",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select 1 x, 10 y\nunion all select null, 10\nunion all select 3, 10",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "x",
+            "field_ref": [
+              "field",
+              "x",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "x",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.3333333333333333
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1,
+                  "q3": 3,
+                  "max": 3,
+                  "sd": 1.4142135623730951,
+                  "avg": 2
+                }
+              }
+            }
+          },
+          {
+            "display_name": "y",
+            "field_ref": [
+              "field",
+              "y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 10,
+                  "q3": 10,
+                  "max": 10,
+                  "sd": 0,
+                  "avg": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

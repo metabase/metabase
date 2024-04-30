@@ -184,7 +184,7 @@ const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
   const getId = rule => rule.id.toString();
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd = ({ id, newIndex }) => {
@@ -265,7 +265,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >
-    <div className={cx(CS.p1, CS.borderBottom, CS.relative, "bg-light")}>
+    <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
       <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
         <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
@@ -283,7 +283,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className={cx(CS.cursorPointer, CS.textLight, "text-medium-hover")}
+          className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
           onClick={e => {
             e.stopPropagation();
             onRemove();
@@ -295,7 +295,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
       <RuleBackground
         rule={rule}
         className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
-          bordered: rule.type === "range",
+          [CS.bordered]: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}
       />

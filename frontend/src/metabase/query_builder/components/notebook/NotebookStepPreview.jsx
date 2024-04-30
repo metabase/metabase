@@ -59,7 +59,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
             onClick={onClose}
             className={cx(
               CS.textLight,
-              "text-medium-hover",
+              CS.textMediumHover,
               CS.cursorPointer,
               CS.ml1,
             )}

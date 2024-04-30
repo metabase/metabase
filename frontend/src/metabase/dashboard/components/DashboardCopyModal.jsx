@@ -65,11 +65,10 @@ const DashboardCopyModal = ({
         ...dashboard,
         collection_id: initialCollectionId,
       }}
-      form={Dashboards.forms.duplicate}
       title={title}
       overwriteOnInitialValuesChange
-      copy={object =>
-        copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
+      copy={async object =>
+        await copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
       }
       onClose={onClose}
       onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}

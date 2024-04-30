@@ -1,4 +1,5 @@
 import type {
+  CardId,
   DatasetColumn,
   DatabaseId,
   FieldId,
@@ -447,20 +448,20 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
-export type ColumnExtraction = {
-  key: ColumnExtractionKey;
-  displayName: string;
+declare const ColumnExtraction: unique symbol;
+export type ColumnExtraction = unknown & {
+  _opaque: typeof ColumnExtraction;
 };
 
-declare const ColumnExtractionKey: unique symbol;
-export type ColumnExtractionKey = unknown & {
-  _opaque: typeof ColumnExtractionKey;
+export type ColumnExtractionInfo = {
+  tag: string;
+  displayName: string;
 };
 
 export type ColumnExtractDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-extract"> & {
     displayName: string;
-    extractions: ColumnExtraction[];
+    extractions: ColumnExtractionInfo[];
   };
 
 export type CombineColumnsDrillThruInfo =
@@ -571,6 +572,7 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
+  cardId?: CardId;
   settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;

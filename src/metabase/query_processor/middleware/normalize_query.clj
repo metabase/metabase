@@ -20,14 +20,17 @@
     ;; a well-formed pMBQL query, we don't need that and it actually ends up breaking some stuff
     (lib/query metadata-provider (dissoc query :lib.convert/converted?))))
 
-(mu/defn normalize-preprocessing-middleware :- [:and
-                                                [:map
-                                                 [:database ::lib.schema.id/database]
-                                                 [:lib/type {:optional true} [:= :mbql/query]]
-                                                 [:type     {:optional true} [:= :internal]]]
-                                                [:fn
-                                                 {:error/message "valid pMBQL query or :internal audit query"}
-                                                 (some-fn :lib/type :type)]]
+(def ^:private NormalizedQuery
+  [:and
+   [:map
+    [:database ::lib.schema.id/database]
+    [:lib/type {:optional true} [:= :mbql/query]]
+    [:type     {:optional true} [:= :internal]]]
+   [:fn
+    {:error/message "valid pMBQL query or :internal audit query"}
+    (some-fn :lib/type :type)]])
+
+(mu/defn normalize-preprocessing-middleware :- NormalizedQuery
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
   keywords. Convert query to pMBQL if needed."
   [query :- [:map [:database ::lib.schema.id/database]]]

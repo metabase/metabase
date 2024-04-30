@@ -2,6 +2,7 @@ export type TagType = typeof TAG_TYPES[number];
 
 export const TAG_TYPES = [
   "action",
+  "alert",
   "api-key",
   "bookmark",
   "card",
@@ -12,10 +13,16 @@ export const TAG_TYPES = [
   "field-values",
   "indexed-entity",
   "metric",
+  "permissions-group",
+  "persisted-info",
+  "persisted-model",
+  "revision",
   "schema",
-  "snippet",
   "segment",
+  "snippet",
+  "subscription",
   "table",
+  "task",
   "timeline",
   "timeline-event",
   "user",
@@ -33,4 +40,5 @@ export const TAG_TYPE_MAPPING = {
   segment: "segment",
   metric: "metric",
   snippet: "snippet",
+  pulse: "subscription",
 } as const;

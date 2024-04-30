@@ -1,3 +1,7 @@
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
 import type {
   Database,
   Group,
@@ -19,13 +23,12 @@ export const createMockPermissionsGraph = ({
     for (const database of databases) {
       permissionGroups[group.id] = {
         [database.id]: {
-          data: {
-            native: "write",
-            schemas: "all",
-          },
-          download: {
-            native: "full",
-            schemas: "full",
+          [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+          [DataPermission.CREATE_QUERIES]:
+            DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+          [DataPermission.DOWNLOAD]: {
+            native: DataPermissionValue.FULL,
+            schemas: DataPermissionValue.FULL,
           },
         },
       };

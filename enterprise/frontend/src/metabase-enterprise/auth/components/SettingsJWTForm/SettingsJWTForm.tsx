@@ -8,9 +8,9 @@ import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMapping
 import { updateSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { FormSection } from "metabase/containers/FormikForm";
 import CS from "metabase/css/core/index.css";
 import {
+  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,
@@ -68,7 +68,7 @@ export const SettingsJWTForm = ({
   }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: SettingValues) => {
       return onSubmit({ ...values, "jwt-enabled": true });
     },
     [onSubmit],

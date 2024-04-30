@@ -34,14 +34,15 @@ import {
   ModelCacheRefreshJobs,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
-import TaskModal from "metabase/admin/tasks/containers/TaskModal";
-import TasksApp from "metabase/admin/tasks/containers/TasksApp";
+import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
+import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
 import {
   createAdminRouteGuard,
   createAdminRedirect,
 } from "metabase/admin/utils";
+import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -75,7 +76,7 @@ const UserCanAccessTools = connectedReduxRedirect({
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
     path="/admin"
-    component={withBackground("bg-white")(CanAccessSettings)}
+    component={withBackground(CS.bgWhite)(CanAccessSettings)}
   >
     <Route title={t`Admin`} component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />

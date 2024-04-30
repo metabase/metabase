@@ -904,3 +904,39 @@
                 :aggregation  [[:aggregation-options
                                 [:cum-sum [:field "sum" {:base-type :type/Integer}]]
                                 {:name "sum"}]]}))))))
+
+(deftest ^:parallel nested-query-field-literals-test
+  (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (is (=? {:source-query {:fields [[:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT"}]
+                                         [:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT_2"}]
+                                         [:field (meta/id :orders :total)
+                                          {::add/source-alias "TOTAL"
+                                           ::add/desired-alias "TOTAL"}]]}
+                 :aggregation [[:aggregation-options
+                                [:cum-sum
+                                 [:field "TOTAL" {::add/source-table ::add/source
+                                                  ::add/source-alias "TOTAL"}]]
+                                {:name "sum"
+                                 ::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                 ::add/desired-alias "sum"}]]
+                 :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
+                                                  ::add/desired-alias "CREATED_AT"}]
+                            [:field "CREATED_AT_2" {::add/source-alias "CREATED_AT_2"
+                                                    ::add/desired-alias "CREATED_AT_2"}]]}
+                (-> (lib.tu.macros/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :fields [!year.created-at
+                                               !month.created-at
+                                               $total]}
+                       :aggregation [[:cum-sum [:field "TOTAL" {:base-type :type/Integer}]]]
+                       :breakout    [[:field "CREATED_AT" {:base-type :type/Date, :temporal-unit :default}]
+                                     [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    :query)))))))

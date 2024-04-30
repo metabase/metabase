@@ -117,7 +117,7 @@ const DataSelectorTablePicker = ({
           <AccordionList
             id="TablePicker"
             key="tablePicker"
-            className="text-brand"
+            className={CS.textBrand}
             hasInitialFocus={hasInitialFocus}
             sections={sections}
             maxHeight={Infinity}

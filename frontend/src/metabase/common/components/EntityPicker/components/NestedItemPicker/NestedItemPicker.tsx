@@ -26,7 +26,6 @@ export interface NestedItemPickerProps<
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
   generateKey: (query?: Query) => string;
-  itemName: string;
   options: Options;
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
@@ -68,7 +67,6 @@ export function NestedItemPicker<
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
-
           const isCurrentLevel = Boolean(
             selectedItem &&
               lastSelectedItem &&

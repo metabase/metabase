@@ -1,4 +1,4 @@
-import type { DndContextProps } from "@dnd-kit/core";
+import type { DndContextProps, DragEndEvent } from "@dnd-kit/core";
 import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
@@ -115,11 +115,11 @@ function ClauseStepDndContext<T>({
   onReorder,
 }: ClauseStepDndContextProps<T>) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
-    input => {
+    (input: DragEndEvent) => {
       if (input.over) {
         const sourceIndex = getItemIndexFromId(input.active.id);
         const targetIndex = getItemIndexFromId(input.over.id);

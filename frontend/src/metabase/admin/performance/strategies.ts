@@ -1,10 +1,12 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import type { Strategy, StrategyType } from "metabase-types/api";
+import type { Config, Strategy, StrategyType } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
+
+import { defaultCron, getFrequencyFromCron } from "./utils";
 
 export type UpdateTargetId = (
   newTargetId: number | null,
@@ -22,8 +24,8 @@ export const rootId = 0;
 const durationUnits = new Set(Object.values(DurationUnit).map(String));
 
 const positiveInteger = Yup.number()
-  .positive(t`The minimum query duration must be a positive number.`)
-  .integer(t`The minimum query duration must be an integer.`);
+  .positive(t`Enter a positive number.`)
+  .integer(t`Enter an integer.`);
 
 export const inheritStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["inherit"]),
@@ -33,9 +35,13 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["nocache"]),
 });
 
-export const ttlStrategyValidationSchema = Yup.object({
+export const defaultMinDurationMs = 1000;
+export const multiplierStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
-  min_duration_ms: positiveInteger.default(60000),
+  min_duration_ms: positiveInteger.default(defaultMinDurationMs),
+  min_duration_seconds: positiveInteger.default(
+    Math.ceil(defaultMinDurationMs / 1000),
+  ),
   multiplier: positiveInteger.default(10),
 });
 
@@ -47,6 +53,13 @@ export const durationStrategyValidationSchema = Yup.object({
     "${path} is not a valid duration",
     value => !!value && durationUnits.has(value),
   ),
+});
+
+export const scheduleStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["schedule"]),
+  schedule: Yup.string()
+    .required(t`A cron expression is required`)
+    .default(defaultCron),
 });
 
 export const strategyValidationSchema = Yup.object().test(
@@ -85,18 +98,23 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
-  ttl: {
-    label: t`TTL: When the time-to-live (TTL) expires`,
-    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
-    validateWith: ttlStrategyValidationSchema,
-  },
   duration: {
-    label: t`Duration: after a specific number of hours`,
+    label: t`Hours: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
-    shortLabel: t`Duration`,
+    shortLabel: t`Hours`,
+  },
+  schedule: {
+    label: t`Schedule: at regular intervals`,
+    shortLabel: t`Scheduled`,
+    validateWith: scheduleStrategyValidationSchema,
+  },
+  ttl: {
+    label: t`Query duration multiplier: the longer the query takes the longer its cached results persist`,
+    shortLabel: t`Query duration multiplier`,
+    validateWith: multiplierStrategyValidationSchema,
   },
   nocache: {
-    label: t`Don't cache results`,
+    label: t`Don’t cache results`,
     validateWith: doNotCacheStrategyValidationSchema,
     shortLabel: t`No caching`,
   },
@@ -115,7 +133,13 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
     return null;
   }
   const type = Strategies[strategy.type];
-  return type.shortLabel ?? type.label;
+  const mainLabel = type.shortLabel ?? type.label;
+  if (strategy.type === "schedule") {
+    const frequency = getFrequencyFromCron(strategy.schedule);
+    return `${mainLabel}: ${frequency}`;
+  } else {
+    return mainLabel;
+  }
 };
 
 export const getFieldsForStrategyType = (strategyType: StrategyType) => {
@@ -126,3 +150,36 @@ export const getFieldsForStrategyType = (strategyType: StrategyType) => {
   const fields = Object.keys(fieldRecord);
   return fields;
 };
+
+export const translateConfig = (
+  config: Config,
+  direction: "fromAPI" | "toAPI",
+): Config => {
+  const translated: Config = { ...config };
+
+  // If strategy type is unsupported, use a fallback
+  if (!isValidStrategyName(translated.strategy.type)) {
+    translated.strategy.type =
+      translated.model_id === rootId ? "nocache" : "inherit";
+  }
+
+  if (translated.strategy.type === "ttl") {
+    if (direction === "fromAPI") {
+      translated.strategy.min_duration_seconds = Math.ceil(
+        translated.strategy.min_duration_ms / 1000,
+      );
+    } else {
+      translated.strategy.min_duration_ms =
+        translated.strategy.min_duration_seconds === undefined
+          ? defaultMinDurationMs
+          : translated.strategy.min_duration_seconds * 1000;
+      delete translated.strategy.min_duration_seconds;
+    }
+  }
+  return translated;
+};
+
+export const translateConfigFromAPI = (config: Config): Config =>
+  translateConfig(config, "fromAPI");
+export const translateConfigToAPI = (config: Config): Config =>
+  translateConfig(config, "toAPI");

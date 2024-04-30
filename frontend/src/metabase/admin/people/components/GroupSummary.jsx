@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t, ngettext, msgid } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
 import { AdminGroupLabel } from "./GroupSummary.styled";
@@ -17,7 +18,7 @@ const GroupSummary = ({ groups, selectedGroupIds }) => {
         <AdminGroupLabel>{t`Admin`}</AdminGroupLabel>
         {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
-          <span className="text-brand">
+          <span className={CS.textBrand}>
             {(n => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
               otherGroups.length,
             )}
@@ -26,10 +27,10 @@ const GroupSummary = ({ groups, selectedGroupIds }) => {
       </span>
     );
   } else if (otherGroups.length === 1) {
-    return <span className="text-brand">{otherGroups[0].name}</span>;
+    return <span className={CS.textBrand}>{otherGroups[0].name}</span>;
   } else if (otherGroups.length > 1) {
     return (
-      <span className="text-brand">
+      <span className={CS.textBrand}>
         {(n => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
           otherGroups.length,
         )}

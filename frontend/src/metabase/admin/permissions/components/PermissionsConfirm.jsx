@@ -1,23 +1,19 @@
 /* eslint-disable react/prop-types */
-import { t, ngettext, msgid } from "ttag";
+import { t, jt, ngettext, msgid } from "ttag";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 
-import {
-  ReadPermissionLabel,
-  WritePermissionLabel,
-} from "./PermissionsConfirm.styled";
-
 const GroupName = ({ group }) => (
-  <span className="text-brand">{group.name}</span>
+  <span className={CS.textBrand}>{group.name}</span>
 );
 
 const DatabaseName = ({ database }) => (
-  <span className="text-brand">{database.name}</span>
+  <span className={CS.textBrand}>{database.name}</span>
 );
 
-const TableAccessChange = ({ tables, verb, color }) => {
+const TableAccessChange = ({ tables, verb, colorClassName }) => {
   const tableEntries = Object.entries(tables);
   return (
     <span>
@@ -32,7 +28,7 @@ const TableAccessChange = ({ tables, verb, color }) => {
         }
       >
         <span>
-          <span className={color}>
+          <span className={colorClassName}>
             {" " +
               (n => ngettext(msgid`${n} table`, `${n} tables`, n))(
                 tableEntries.length,
@@ -56,7 +52,7 @@ const PermissionsConfirm = ({ diff }) => (
               {database.grantedTables && (
                 <TableAccessChange
                   verb={t`given access to`}
-                  color="text-success"
+                  colorClassName={CS.textSuccess}
                   tables={database.grantedTables}
                 />
               )}
@@ -64,7 +60,7 @@ const PermissionsConfirm = ({ diff }) => (
               {database.revokedTables && (
                 <TableAccessChange
                   verb={t`denied access to`}
-                  color="text-error"
+                  colorClassName={CS.textError}
                   tables={database.revokedTables}
                 />
               )}
@@ -75,20 +71,30 @@ const PermissionsConfirm = ({ diff }) => (
           )}
           {database.native && (
             <div>
-              <GroupName group={group} />
-              {database.native === "none"
-                ? t` will no longer be able to `
-                : t` will now be able to `}
-              {database.native === "read" ? (
-                <ReadPermissionLabel>{t`read`}</ReadPermissionLabel>
-              ) : database.native === "write" ? (
-                <WritePermissionLabel>{t`write`}</WritePermissionLabel>
-              ) : (
-                <span>{t`read or write`}</span>
-              )}
-              {t` native queries for `}
-              <DatabaseName database={database} />
-              {"."}
+              {database.native === DataPermissionValue.QUERY_BUILDER &&
+                jt`${(
+                  <GroupName group={group} />
+                )} will only be able to use the query
+                  builder for ${(<DatabaseName database={database} />)}.`}
+              {database.native ===
+                DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+                jt`${(
+                  <GroupName group={group} />
+                )} will be able to use the query builder and write native queries for ${(
+                  <DatabaseName database={database} />
+                )}.`}
+              {database.native === DataPermissionValue.NO &&
+                jt`${(
+                  <GroupName group={group} />
+                )} will not be able to use the query builder or write native queries for ${(
+                  <DatabaseName database={database} />
+                )}.`}
+              {database.native === DataPermissionValue.CONTROLLED &&
+                jt`${(
+                  <GroupName group={group} />
+                )} will have granular query creation permissions for ${(
+                  <DatabaseName database={database} />
+                )}.`}
             </div>
           )}
         </div>

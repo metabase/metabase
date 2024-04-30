@@ -42,6 +42,7 @@ export interface QueryColumnPickerProps {
   onClose?: () => void;
   "data-testid"?: string;
   width?: number | string;
+  hasInitialFocus?: boolean;
 }
 
 type Sections = {
@@ -65,6 +66,7 @@ export function QueryColumnPicker({
   onClose,
   width,
   "data-testid": dataTestId,
+  hasInitialFocus = true,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -172,7 +174,7 @@ export function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    item => (
+    (item: ColumnListItem) => (
       <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
@@ -205,6 +207,8 @@ export function QueryColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         globalSearch
+        withBorders
+        hasInitialFocus={hasInitialFocus}
         width={width}
       />
     </DelayGroup>

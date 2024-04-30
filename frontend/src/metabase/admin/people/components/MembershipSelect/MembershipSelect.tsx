@@ -72,7 +72,7 @@ export const MembershipSelect = ({
       <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
-      <Icon className="text-light" name="chevrondown" size={10} />
+      <Icon className={CS.textLight} name="chevrondown" size={10} />
     </div>
   );
 

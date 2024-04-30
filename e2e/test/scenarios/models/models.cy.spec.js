@@ -29,6 +29,7 @@ import {
   getNotebookStep,
   selectFilterOperator,
   focusNativeEditor,
+  echartsContainer,
 } from "e2e/support/helpers";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -167,18 +168,20 @@ describe("scenarios > models", () => {
   it("changes model's display to table", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.get("[data-element-id=line-area-bar-chart]");
-    cy.get(".TableInteractive").should("not.exist");
+    echartsContainer();
+    // TODO (styles): migrate
+    cy.get(".test-TableInteractive").should("not.exist");
 
     turnIntoModel();
 
-    cy.get(".TableInteractive");
-    cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
+    // TODO (styles): migrate
+    cy.get(".test-TableInteractive");
+    echartsContainer().should("not.exist");
   });
 
   it("allows to undo turning a question into a model", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    cy.get("[data-element-id=line-area-bar-chart]");
+    echartsContainer();
 
     turnIntoModel();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,7 +189,7 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
-    cy.get("[data-element-id=line-area-bar-chart]");
+    echartsContainer();
     openQuestionActions();
     assertIsQuestion();
   });
@@ -322,7 +325,7 @@ describe("scenarios > models", () => {
       selectFromDropdown("Created At");
 
       visualize();
-      cy.get("[data-element-id=line-area-bar-chart]");
+      echartsContainer();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 

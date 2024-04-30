@@ -366,7 +366,8 @@
 
 (defmulti describe-fks
   "Returns a reducible collection of maps, each containing information about foreign keys.
-  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+  Takes optional keyword arguments to narrow down the results to a set of `schema-names`
+  and `table-names`.
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
@@ -592,7 +593,11 @@
     :fingerprint
 
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
-    :window-functions})
+    :window-functions/cumulative
+
+    ;; Does this driver support the new `:offset` MBQL clause added in 50? (i.e. SQL `lag` and `lead` or equivalent
+    ;; functions)
+    :window-functions/offset})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

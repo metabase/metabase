@@ -44,7 +44,9 @@
   ([card-id]
    (trigger-parse! card-id "SELECT TAX, TOTAL FROM orders"))
   ([card-id query]
-   (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})))
+   (if (string? query)
+     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
+     (t2/update! :model/Card card-id {:dataset_query query}))))
 
 ;;;;
 ;;;; Actual tests
@@ -68,9 +70,22 @@
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
-      (testing "Removing columns from the query removes the Queryfields"
+      (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
         (is (= #{tax-qf}
+               (query-fields-for-card card-id))))
+
+      (testing "Columns referenced via field filters are still found"
+        (trigger-parse! card-id
+                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                                          :template-tags {"adequate_total"
+                                                          {:type         :dimension
+                                                           :name         "adequate_total"
+                                                           :display-name "Total is big enough"
+                                                           :dimension    [:field (mt/id :orders :total)
+                                                                          {:base-type :type/Number}]
+                                                           :widget-type  :number/>=}}}))
+        (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
@@ -105,9 +120,7 @@
       (testing "mix of select table.* and named columns"
         (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
         (let [qfs (query-fields-for-card card-id)]
-          ;; TODO: o.id is a bug; the query only has p.id but we don't link tables and columns yet
-          ;; c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911
-          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id 1 #_o.id)
+          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
                  (count qfs)))
           ;; 13 total, but id is referenced directly
           (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))

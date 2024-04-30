@@ -1,5 +1,7 @@
 import querystring from "querystring";
 
+import { safeJsonParse } from "metabase/lib/utils";
+
 function parseQueryStringOptions(s) {
   const options = querystring.parse(s);
 
@@ -7,7 +9,7 @@ function parseQueryStringOptions(s) {
     if (options[name] === "") {
       options[name] = true;
     } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
-      options[name] = JSON.parse(options[name]);
+      options[name] = safeJsonParse(options[name]);
     }
   }
 

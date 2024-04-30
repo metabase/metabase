@@ -243,12 +243,11 @@
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
                                                (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
+                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (fn [{:keys [db event-action-field event-label-field date-field], :as objects}]
+                (fn [{:keys [db], :as objects}]
                   (qp.store/with-metadata-provider (u/the-id db)
-                    (qp.store/bulk-metadata :metadata/column (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end

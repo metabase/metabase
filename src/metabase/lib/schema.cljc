@@ -18,6 +18,7 @@
    [metabase.lib.schema.expression.conditional]
    [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.info :as info]
@@ -35,6 +36,7 @@
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
+         metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.native
@@ -270,9 +272,10 @@
     (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
-         (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-           [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
-           (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
+         (when (map? stage)
+           (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
+             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+             (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))
 

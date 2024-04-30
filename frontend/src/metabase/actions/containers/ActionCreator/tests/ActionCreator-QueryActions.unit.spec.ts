@@ -65,9 +65,9 @@ describe("ActionCreator > Query Actions", () => {
         expect(
           await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          "Select a model",
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent("Select a model");
       });
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
@@ -90,9 +90,9 @@ describe("ActionCreator > Query Actions", () => {
           screen.getByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         // model is preselected
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          MODEL_NAME,
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent(MODEL_NAME);
       });
     });
   });

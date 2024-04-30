@@ -56,7 +56,7 @@ class ClickMappings extends Component {
     if (unsetTargetsWithSourceOptions.length === 0 && setTargets.length === 0) {
       return (
         <p
-          className={cx(CS.textCentered, "text-medium")}
+          className={cx(CS.textCentered, CS.textMedium)}
         >{t`No available targets`}</p>
       );
     }
@@ -255,7 +255,7 @@ function TargetWithSource({
         </svg>
         <div>
           <div>
-            <span className={cx(CS.textBold, "text-dark")}>{source.name}</span>{" "}
+            <span className={cx(CS.textBold, CS.textDark)}>{source.name}</span>{" "}
             {
               {
                 column: t`column`,
@@ -265,7 +265,7 @@ function TargetWithSource({
             }
           </div>
           <div style={{ marginTop: 9 }}>
-            <span className={cx("text-brand", CS.textBold)}>{name}</span>{" "}
+            <span className={cx(CS.textBrand, CS.textBold)}>{name}</span>{" "}
             {targetName}
           </div>
         </div>

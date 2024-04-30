@@ -3,7 +3,6 @@ import _ from "underscore";
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
-import { injectTableMetadata } from "metabase-lib/v1/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
@@ -182,8 +181,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
@@ -316,10 +313,6 @@ export const MetabaseApi = {
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-  table_query_metadata: GET(
-    "/api/table/:tableId/query_metadata",
-    injectTableMetadata,
-  ),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -365,15 +358,6 @@ export const PulseApi = {
   form_input: GET("/api/pulse/form_input"),
   preview_card: GET("/api/pulse/preview_card_info/:id"),
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
-};
-
-export const AlertApi = {
-  list: GET("/api/alert"),
-  list_for_question: GET("/api/alert/question/:questionId"),
-  get: GET("/api/alert/:id"),
-  create: POST("/api/alert"),
-  update: PUT("/api/alert/:id"),
-  unsubscribe: DELETE("/api/alert/:id/subscription"),
 };
 
 export const SegmentApi = {
@@ -426,7 +410,6 @@ export const PermissionsApi = {
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
@@ -451,16 +434,9 @@ export const SetupApi = {
 };
 
 export const UserApi = {
-  create: POST("/api/user"),
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  // get:                         GET("/api/user/:userId"),
-  update: PUT("/api/user/:id"),
-  update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-  delete: DELETE("/api/user/:userId"),
-  reactivate: PUT("/api/user/:userId/reactivate"),
-  send_invite: POST("/api/user/:id/send_invite"),
 };
 
 export const UtilApi = {
@@ -488,7 +464,6 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("/api/task"),
   getJobsInfo: GET("/api/task/info"),
 };
 
@@ -589,4 +564,5 @@ export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),
   delete: DELETE("/api/cache"),
+  invalidate: POST("/api/cache/invalidate"),
 };

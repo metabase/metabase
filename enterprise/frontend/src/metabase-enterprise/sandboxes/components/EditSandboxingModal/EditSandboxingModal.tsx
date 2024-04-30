@@ -5,16 +5,17 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useGetCardQuery, skipToken } from "metabase/api";
+import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
-import QuestionPicker from "metabase/containers/QuestionPicker";
-import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, Button } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -92,6 +93,9 @@ const EditSandboxingModal = ({
   const normalizedPolicy = getNormalizedPolicy(policy, shouldUseSavedQuestion);
   const isValid = isPolicyValid(normalizedPolicy, shouldUseSavedQuestion);
 
+  const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
+    useToggle(false);
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
@@ -112,6 +116,10 @@ const EditSandboxingModal = ({
     isValid &&
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
+
+  const { data: currentQuestion } = useGetCardQuery(
+    policy.card_id != null ? { id: policy.card_id } : skipToken,
+  );
 
   return (
     <div>
@@ -145,11 +153,38 @@ const EditSandboxingModal = ({
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <QuestionPicker
-              maxHeight={undefined}
-              value={policy.card_id}
-              onChange={(card_id: number) => setPolicy({ ...policy, card_id })}
-            />
+            <Button
+              data-testid="collection-picker-button"
+              onClick={showModal}
+              fullWidth
+              rightIcon={<Icon name="ellipsis" />}
+              styles={{
+                inner: {
+                  justifyContent: "space-between",
+                },
+                root: { "&:active": { transform: "none" } },
+              }}
+            >
+              {currentQuestion?.name ?? t`Select a question`}
+            </Button>
+            {showPickerModal && (
+              <QuestionPickerModal
+                value={
+                  currentQuestion && policy.card_id != null
+                    ? {
+                        id: policy.card_id,
+                        model:
+                          currentQuestion.type === "model" ? "dataset" : "card",
+                      }
+                    : undefined
+                }
+                onChange={newCard => {
+                  setPolicy({ ...policy, card_id: newCard.id });
+                  hideModal();
+                }}
+                onClose={hideModal}
+              />
+            )}
           </div>
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&

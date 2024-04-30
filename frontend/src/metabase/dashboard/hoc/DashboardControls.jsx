@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import screenfull from "screenfull";
 
-import CS from "metabase/css/core/spacing.module.css";
+import HideS from "metabase/css/core/hide.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
@@ -210,9 +210,9 @@ export const DashboardControls = ComposedComponent =>
           );
 
           if (show && nav) {
-            nav.classList.remove(CS.hide);
+            nav.classList.remove(HideS.hide);
           } else if (!show && nav) {
-            nav.classList.add(CS.hide);
+            nav.classList.add(HideS.hide);
           }
         }
       }

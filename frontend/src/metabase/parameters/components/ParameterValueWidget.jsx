@@ -135,7 +135,12 @@ class ParameterValueWidget extends Component {
     }
 
     if (!hasNoPopover(this.props.parameter)) {
-      return <WidgetStatusIcon name="chevrondown" />;
+      return (
+        <WidgetStatusIcon
+          name="chevrondown"
+          size={this.props.mimicMantine ? 16 : undefined}
+        />
+      );
     }
   }
 

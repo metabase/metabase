@@ -14,6 +14,7 @@ Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If yo
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Redshift](../databases/connections/redshift.md)
 
 ## Enabling uploads
 

@@ -92,7 +92,7 @@ const MetadataTableColumn = ({
               value={field.displayName()}
               onBlurChange={handleChangeName}
             />
-            <div className="clearfix">
+            <div className={CS.clearfix}>
               <div className={cx(CS.flex, CS.flexAuto)}>
                 <div className={cx(CS.pl1, CS.flexAuto)}>
                   <FieldVisibilityPicker

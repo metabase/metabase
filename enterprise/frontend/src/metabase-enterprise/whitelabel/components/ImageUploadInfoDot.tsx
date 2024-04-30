@@ -1,7 +1,6 @@
 import { useTheme } from "@emotion/react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { Icon, Stack, Text, HoverCard } from "metabase/ui";
 
 type IllustrationType = "background" | "icon";
@@ -31,11 +30,7 @@ export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>
-        <Icon
-          className={CS.flexShrink}
-          name="info"
-          color={theme.fn.themeColor("text-light")}
-        />
+        <Icon name="info" color={theme.fn.themeColor("text-light")} />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="md" spacing="sm" maw={DESCRIPTIONS_WIDTHS[type]}>

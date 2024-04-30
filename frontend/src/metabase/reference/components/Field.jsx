@@ -69,8 +69,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                     field.semantic_type,
                     "name",
                   ])
-                    ? "text-medium"
-                    : "text-light"
+                    ? CS.textMedium
+                    : CS.textLight
                 }
               >
                 {getIn(MetabaseCore.field_semantic_types_map, [

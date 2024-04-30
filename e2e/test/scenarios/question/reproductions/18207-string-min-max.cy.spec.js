@@ -6,6 +6,7 @@ import {
   openProductsTable,
   summarize,
   leftSidebar,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 describe("issue 18207", () => {
@@ -70,7 +71,7 @@ describe("issue 18207", () => {
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "Max([Vendor])",
         name: "LastVendor",

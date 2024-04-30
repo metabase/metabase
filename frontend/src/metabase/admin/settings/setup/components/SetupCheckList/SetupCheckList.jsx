@@ -80,7 +80,7 @@ const Task = ({ title, description, completed, link }) => (
     <div>
       <TaskTitle
         title={title}
-        titleClassName={completed ? "text-success" : "text-brand"}
+        titleClassName={completed ? CS.textSuccess : CS.textBrand}
       />
       {!completed ? <TaskDescription description={description} /> : null}
     </div>

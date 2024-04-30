@@ -10,6 +10,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -21,6 +22,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -124,7 +126,7 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(mu/defn ^:private table-identifier
+(mu/defn table-identifier
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
    :- [:map
@@ -257,18 +259,18 @@
 ;;;; |  Create upload
 ;;;; +------------------+
 
-(def ^:dynamic *sync-synchronously?*
-  "For testing purposes, often we'd like to sync synchronously so that we can test the results immediately and avoid
-  race conditions."
-  false)
+(def ^:dynamic *auxiliary-sync-steps*
+  "For testing purposes, we'd like to control whether the analyze and field values steps of sync are run synchronously, or not at all.
+   In production this should always be asynchronous, so users can use the table earlier."
+  :asynchronous)
 
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (if *sync-synchronously?*
-    (sync/sync-table! table)
-    (future
-      (sync/sync-table! table))))
+  (case *auxiliary-sync-steps*
+    :asynchronous (future (sync/sync-table! table))
+    :synchronous (sync/sync-table! table)
+    :never nil))
 
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
@@ -297,10 +299,18 @@
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
-        (not= :unrestricted (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                        :perms/data-access
-                                                                        (u/the-id db)
-                                                                        schema-name))
+        (not
+         (and
+          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                                   :perms/view-data
+                                                                   (u/the-id db)))
+          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
+          ;; (at least) `:query-builder` plus unrestricted view-data
+          (contains? #{:query-builder :query-builder-and-native}
+                     (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                                 :perms/create-queries
+                                                                 (u/the-id db)
+                                                                 schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -339,6 +349,25 @@
          :num-rows          (count (rest rows))
          :generated-columns 0}))))
 
+(defn- create-from-csv-and-sync!
+  "This is separated from `create-csv-upload!` for testing"
+  [{:keys [db file schema table-name]}]
+  (let [driver            (driver.u/database->driver db)
+        schema            (some->> schema (ddl.i/format-name driver))
+        table-name        (some->> table-name (ddl.i/format-name driver))
+        schema+table-name (table-identifier {:schema schema :name table-name})
+        stats             (create-from-csv! driver (:id db) schema+table-name file)
+        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+        table             (sync-tables/create-or-reactivate-table! db {:name table-name :schema (not-empty schema)})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+        _sync             (scan-and-sync-table! db table)
+        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+        auto-pk-field     (table-id->auto-pk-column (:id table))
+        _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})]
+    {:table table
+     :stats stats}))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -376,22 +405,14 @@
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (start-timer)
-            driver            (driver.u/database->driver database)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
+            driver            (driver.u/database->driver database)
             table-name        (->> (str table-prefix filename-prefix)
                                    (unique-table-name driver)
                                    (u/lower-case-en))
-            schema+table-name (table-identifier {:schema schema-name :name table-name})
-            stats             (create-from-csv! driver (:id database) schema+table-name file)
-            ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-            table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
-            _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
-            _sync             (scan-and-sync-table! database table)
-            ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-            ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-            auto-pk-field     (table-id->auto-pk-column (:id table))
-            _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
+            {:keys [stats
+                    table]}   (create-from-csv-and-sync! {:db database :file file :schema schema-name :table-name table-name})
             card              (card/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
@@ -491,7 +512,41 @@
   (when (seq field->new-type)
     (apply driver/alter-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
-            args)))
+           args)))
+
+(defn- mbql? [model]
+  (= "query" (name (:query_type model "query"))))
+
+(defn- no-joins?
+  "Returns true if `query` has no explicit joins in it, otherwise false."
+  [query]
+  ;; TODO while it's unlikely (at the time of writing this) that uploaded tables have FKs, we should probably check
+  ;;      for implicit joins as well.
+  (->> (range (lib/stage-count query))
+       (not-any? (fn [stage-idx]
+                   (lib/joins query stage-idx)))))
+
+(defn- only-table-id
+  "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
+  [model]
+  ; dataset_query can be empty in tests
+  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+    (when (and (mbql? model) (no-joins? query))
+      (lib/source-table-id query))))
+
+(defn- invalidate-cached-models!
+  "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
+  [table]
+  ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
+  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
+                                       :table_id (:id table)
+                                       :type     :model
+                                       :archived false)
+                            (filter (comp #{(:id table)} only-table-id))
+                            (map :id)
+                            seq)]
+    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
+    (persisted-info/invalidate! {:card_id [:in model-ids]})))
 
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try
@@ -549,6 +604,8 @@
             (let [auto-pk-field (table-id->auto-pk-column (:id table))]
               (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
 
+          (invalidate-cached-models! table)
+
           (events/publish-event! :event/upload-append
                                  {:user-id  (:id @api/*current-user*)
                                   :model-id (:id table)
@@ -589,9 +646,64 @@
   [db table]
   (nil? (can-update-error db table)))
 
+(defn- can-delete-error
+  "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
+  [table]
+  (cond
+    (not (:is_upload table))
+    (ex-info (tru "The table must be an uploaded table.")
+             {:status-code 422})
+
+    (not (mi/can-write? table))
+    (ex-info (tru "You don''t have permissions to do that.")
+             {:status-code 403})))
+
+(defn- check-can-delete
+  "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
+  [table]
+  ;; For now anyone that can update a table is allowed to delete it.
+  (when-let [error (can-delete-error table)]
+    (throw error)))
+
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
+
+(defn delete-upload!
+  "Delete the given table from both the app-db and the customer database."
+  [table & {:keys [archive-cards?]}]
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-can-delete table)
+
+    ;; Attempt to delete the underlying data from the customer database.
+    ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
+    ;; visible to administrators and the operation is easy to retry again later.
+    (driver/drop-table! driver (:id database) table-name)
+
+    ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
+    (t2/update! :model/Table :id (:id table) {:active false})
+
+    ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
+    ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
+    ;; relies on their absence from the tables being described during the database sync itself.
+    ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
+    ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
+    #_(future (sync/retire-table! (assoc table :active false)))
+
+    ;; Archive the related cards if the customer opted in.
+    ;;
+    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+    ;; 1. A MBQL question or model that has this table as their first or only data source, or
+    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
+    (when archive-cards?
+      (t2/update-returning-pks! :model/Card
+                                {:table_id (:id table) :archived false}
+                                {:archived true}))
+
+    :done))
 
 (def update-action-schema
   "The :action values supported by [[update-csv!]]"
@@ -624,14 +736,6 @@
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
-(defn- no-joins?
-  "Returns true if `query` has no joins in it, otherwise false."
-  [query]
-  (let [all-joins (mapcat (fn [stage]
-                            (lib/joins query stage))
-                          (range (lib/stage-count query)))]
-    (empty? all-joins)))
-
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
   [models :- [:sequential [:map
@@ -649,15 +753,12 @@
                                    (remove #(false? (:is_upload %)))
                                    (keep :table_id)
                                    set)
-        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
-      (m/assoc-some
-       model
-       :based_on_upload
-       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
-         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
-           (lib/source-table-id query)))))))
+      ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
+      ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
+      (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
+                                             (only-table-id model))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload

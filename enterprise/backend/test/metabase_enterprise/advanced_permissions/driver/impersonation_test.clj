@@ -125,11 +125,11 @@
                            mt/process-query
                            mt/rows)))
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                      #"permission denied for relation table_without_access"
-                      (-> {:query (format "SELECT * FROM \"%s\".table_without_access;" schema)}
-                          mt/native-query
-                          mt/process-query
-                          mt/rows)))))
+                                      #"permission denied for relation table_without_access"
+                                      (-> {:query (format "SELECT * FROM \"%s\".table_without_access;" schema)}
+                                          mt/native-query
+                                          mt/process-query
+                                          mt/rows)))))
             (finally
              (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\"" schema user)
                                 (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\";" schema user)

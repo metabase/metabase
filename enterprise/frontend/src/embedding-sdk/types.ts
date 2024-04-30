@@ -1,6 +1,11 @@
-export type SDKConfigType = {
+import type { JSX } from "react";
+
+import type { SdkErrorProps } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+
+export type SDKConfig = {
   metabaseInstanceUrl: string;
   font?: string;
-  authType: "apiKey";
-  apiKey: string;
+  jwtProviderUri: string;
+  loaderComponent?: () => JSX.Element;
+  errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;
 };

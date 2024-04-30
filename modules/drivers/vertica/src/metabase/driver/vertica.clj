@@ -27,12 +27,11 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :now                                                 true
-                              :percentile-aggregations                             false
-                              :sql/window-functions.order-by-output-column-numbers false
-                              :test/jvm-timezone-setting                           false}]
+(doseq [[feature supported?] {:convert-timezone          true
+                              :datetime-diff             true
+                              :now                       true
+                              :percentile-aggregations   false
+                              :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica

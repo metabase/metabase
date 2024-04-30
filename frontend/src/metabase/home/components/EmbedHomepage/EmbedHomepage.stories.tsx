@@ -27,7 +27,7 @@ export const Default: Story = {
     return (
       <EmbedHomepageView
         {...args}
-        exampleDashboardId={args.hasExampleDashboard ? 1 : undefined}
+        exampleDashboardId={args.hasExampleDashboard ? 1 : null}
         key={args.defaultTab}
       />
     );

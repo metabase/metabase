@@ -29,6 +29,7 @@
     :model/CacheConfig
     :model/CardFavorite
     :model/DashboardFavorite
+    :model/FieldUsage
     :model/Query
     :model/QueryCache
     :model/QueryExecution

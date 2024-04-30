@@ -9,24 +9,20 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:clj
-       [[metabase.models.dispatch :as models.dispatch]])))
-
-(defn qualified-name
-  "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (str (namespace x) "/" (name x))
-    (name x)))
+       [[metabase.models.dispatch :as models.dispatch]
+        [metabase.util.i18n]])))
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (qualified-name token)
+  (-> (u/qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
@@ -304,12 +300,124 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
+(def ^:private host-regex
+  ;; Extracts the "host" from a URL or an email.
+  ;; By host we mean the main domain name and the TLD, eg. metabase.com, amazon.co.jp, bbc.co.uk.
+  ;; For a URL, this is not the RFC3986 "host", which would include any subdomains and the optional `:3000` port number.
+  ;;
+  ;; For an email, this is generally the part after the @, but it will skip any subdomains:
+  ;;   someone@email.mycompany.net -> mycompany.net
+  ;;
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as part of the domain
+  ;; 7.  Main domain segment
+  ;; 8.  Ending in a dot
+  ;; 9.  Optional short final segment (eg. co in .co.uk)
+  ;; 10. Top-level domain
+  ;; 11. Optional :port, /path, ?query or #hash
+  ;; 12. Anchor to the end
+  ;;1   2 3  4  5 6        7          8 9                     10         11           12
+  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+\.(?:[^@\.:/?#]{1,3}\.)?[^@\.:/?#]+(?=[:/?#].*$|$)")
+
+(def ^:private domain-regex
+  ;; Deliberately no ^ at the start; there might be several subdomains before this spot.
+  ;; By "short tail" below, I mean a pseudo-TLD nested under a proper TLD. For example, mycompany.co.uk.
+  ;; This can accidentally capture a short domain name, eg. "subdomain.aol.com" -> "subdomain", oops.
+  ;; But there's a load of these, not a short list we can include here, so it's either preprocess the (huge) master list
+  ;; from Mozilla or accept that this regex is a bit best-effort.
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as the domain
+  ;; 7.  One domain segment
+  ;; 8.  Positive lookahead:
+  ;;       Either:
+  ;; 9.      Short final segment (eg. .co.uk)
+  ;; 10.     Top-level domain
+  ;; 11.     Optional :port, /path, ?query or #hash
+  ;; 12.     Anchor to end
+  ;;       Or:
+  ;; 13.     Top-level domain
+  ;; 14.     Optional :port, /path, ?query or #hash
+  ;; 15.     Anchor to end
+  ;;1   2 3  4  5 6        7          (8   9                10         11          12|  13         14           15)
+  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+(?=\.[^@\.:/?#]{1,3}\.[^@\.:/?#]+(?:[:/?#].*)?$|\.[^@\.:/?#]+(?:[:/?#].*)?$)")
+
+(def ^:private subdomain-regex
+  ;; This grabs the first segment that isn't "www", AND excludes the main domain name.
+  ;; See [[domain-regex]] for more details about how those are matched.
+  ;; Referencing the indexes below:
+  ;; 1.  Positive lookbehind:
+  ;;       Just past one of:
+  ;; 2.      @  from an email or URL userinfo@ prefix
+  ;; 3.      // from a URL scheme
+  ;; 4.      .  from a previous subdomain segment
+  ;; 5.      Start of string
+  ;; 6.  Negative lookahead: don't capture www as the domain
+  ;; 7.  Negative lookahead: don't capture the main domain name or part of the TLD
+  ;;       That would look like:
+  ;; 8.      The next segment we *would* capture as the subdomain
+  ;; 9.      Optional short segment, like "co" in .co.uk
+  ;; 10.     Top-level domain
+  ;; 11.     Optionally more URL things: :port or /path or ?query or #fragment
+  ;; 12.     End of string
+  ;; 13. Match the actual subdomain
+  ;; 14. Positive lookahead: the . after the subdomain, which we want to detect but not capture.
+  ;;1   2 3  4  5 6        7  8           9                    10        11           12 13       14
+  #"(?<=@|//|\.|^)(?!www\.)(?![^\.:/?#]+\.(?:[^\.:/?#]{1,3}\.)?[^\.:/?#]+(?:[:/?#].*)?$)[^\.:/?#]+(?=\.)")
+
+(defn- desugar-host-and-domain [expression]
+  (lib.util.match/replace expression
+    [:host column]
+    (recur [:regex-match-first column (str host-regex)])
+    [:domain column]
+    (recur [:regex-match-first column (str domain-regex)])
+    [:subdomain column]
+    (recur [:regex-match-first column (str subdomain-regex)])))
+
+(defn- temporal-case-expression
+  "Creates a `:case` expression with a condition for each value of the given unit."
+  [column unit n]
+  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+                       :cljs nil)]
+    [:case
+     (vec (for [raw-value (range 1 (inc n))]
+            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+     {:default ""}]))
+
+(defn- desugar-temporal-names
+  "Given an expression like `[:month-name column]`, transforms this into a `:case` expression, which matches the input
+  numbers and transforms them into names.
+
+  Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
+  the query itself. Filtering should be done based on the number, rather than the name."
+  [expression]
+  (lib.util.match/replace expression
+    [:month-name column]
+    (recur (temporal-case-expression column :month-of-year 12))
+    [:quarter-name column]
+    (recur (temporal-case-expression column :quarter-of-year 4))
+    [:day-name column]
+    (recur (temporal-case-expression column :day-of-week 7))))
+
 (mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
   [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
-      desugar-divide-with-extra-args))
+      desugar-divide-with-extra-args
+      desugar-host-and-domain
+      desugar-temporal-names))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
@@ -435,9 +543,9 @@
    (dispatch-by-clause-name-or-class x)))
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
-  "Return the `Expression` referenced by a given `expression-name`."
+  "Return the expression referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
        ;; look for either string or keyword version of `expression-name` in `expressions`
@@ -448,13 +556,13 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (qualified-name expression-name))
+           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names
                             :found           found}))))))))
 
-(mu/defn aggregation-at-index :- mbql.s/Aggregation
+(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -638,7 +746,7 @@
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -653,7 +761,7 @@
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 

@@ -288,7 +288,7 @@
   [{:keys [database-name]} driver]
   (assert (string? database-name))
   (assert (keyword? driver))
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)

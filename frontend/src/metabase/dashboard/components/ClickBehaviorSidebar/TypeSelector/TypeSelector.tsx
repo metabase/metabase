@@ -80,9 +80,13 @@ export function TypeSelector({
   }, []);
 
   const handleSelect = useCallback(
-    value => {
+    (value: ClickBehaviorType) => {
       if (value !== clickBehavior.type) {
-        updateSettings(value === "actionMenu" ? undefined : { type: value });
+        updateSettings(
+          value === "actionMenu"
+            ? undefined
+            : ({ type: value } as ClickBehavior),
+        );
       } else if (value !== "actionMenu") {
         moveToNextPage();
       }

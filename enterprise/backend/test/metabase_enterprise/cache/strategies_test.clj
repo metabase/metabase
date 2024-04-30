@@ -4,53 +4,15 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase-enterprise.task.cache :as task.cache]
-   [metabase.models :refer [Card Dashboard Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (comment
   strategies/keep-me)
-
-(deftest query-cache-strategy-hierarchy-test
-  (mt/with-premium-features #{:cache-granular-controls}
-    (mt/discard-setting-changes [enable-query-caching]
-      (public-settings/enable-query-caching! true)
-      ;; corresponding OSS tests in metabase.query-processor.card-test
-      (testing "database TTL takes effect when no dashboard or card TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {}
-                       Card card {:database_id (u/the-id db)}]
-          (is (= {:type     :duration
-                  :duration 1337
-                  :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)}))))))
-      (testing "card ttl only"
-        (mt/with-temp [Card card {:cache_ttl 1337}]
-          (is (= {:type     :duration
-                  :duration 1337
-                  :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card [] {} {}))))))
-      (testing "multiple ttl, card wins if dash and database TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {:cache_ttl 1338}
-                       Card card {:database_id (u/the-id db) :cache_ttl 1339}]
-          (is (= {:type     :duration
-                  :duration 1339
-                  :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)}))))))
-      (testing "multiple ttl, dash wins when no card TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {:cache_ttl 1338}
-                       Card card {:database_id (u/the-id db)}]
-          (is (= {:type     :duration
-                  :duration 1338
-                  :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)})))))))))
 
 (deftest caching-strategies
   (mt/with-empty-h2-app-db
@@ -164,6 +126,11 @@
                          :model/Card       card4 {:dataset_query (mt/mbql-query table)}
                          :model/Card       card5 {:dataset_query (mt/mbql-query table)}
 
+                         :model/CacheConfig _cr {:model    "root"
+                                                 :model_id 0
+                                                 :strategy :ttl
+                                                 :config   {:multiplier      200
+                                                            :min_duration_ms 10}}
                          :model/CacheConfig _c1 {:model    "question"
                                                  :model_id (:id card1)
                                                  :strategy :ttl
@@ -197,7 +164,7 @@
                   (mt/with-clock (t 0)
                     (let [q (with-redefs [query/average-execution-time-ms (constantly 1000)]
                               (#'qp.card/query-for-card card1 [] {} {} {}))]
-                      (is (=? {:type :ttl}
+                      (is (=? {:type :ttl :multiplier 100}
                               (:cache-strategy q)))
                       (is (=? (mkres nil)
                               (-> (qp/process-query q) (dissoc :data))))
@@ -282,5 +249,5 @@
 
               (testing "default strategy = ttl"
                 (let [q (#'qp.card/query-for-card card5 [] {} {} {})]
-                  (is (=? {:type :ttl}
+                  (is (=? {:type :ttl :multiplier 200}
                           (:cache-strategy q))))))))))))

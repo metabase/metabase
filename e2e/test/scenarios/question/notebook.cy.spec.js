@@ -840,7 +840,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 });
 
 function assertTableRowCount(expectedCount) {
-  cy.get(".Table-ID:not(.Table-FK)").should("have.length", expectedCount);
+  cy.get(".test-Table-ID:not(.test-Table-FK)").should(
+    "have.length",
+    expectedCount,
+  );
 }
 
 function addSimpleCustomColumn(name) {

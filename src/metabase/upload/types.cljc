@@ -80,6 +80,8 @@
   {::*boolean-int*  ::boolean
    ::*float-or-int* ::float})
 
+;; TODO: the set of allowed promotions should be driver-specific, because not all drivers support coercions between all
+;; types e.g. redshift does not allow coercions except between text types
 (def ^:private allowed-promotions
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
   If we require a relaxation which is not allow-listed here, we will reject the corresponding file."

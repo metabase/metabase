@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -17,6 +16,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    #?@(:clj ([metabase.util.log :as log])))
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
@@ -52,7 +52,7 @@
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (loop [almost-stage almost-stage
            removals []]
-      (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+      (if-let [[error-type error-location] (->> (mr/explain ::lib.schema/stage.mbql almost-stage)
                                                 :errors
                                                 (filter (comp stage-keys first :in))
                                                 (map (juxt :type :in))
@@ -61,7 +61,7 @@
               error-desc (pr-str (or error-type
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
-                                     (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage))))]
+                                     (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
@@ -286,6 +286,12 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->pMBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->pMBQL expr) n])
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -331,7 +337,13 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
+(defmulti ^:private aggregation->legacy-MBQL
+  {:arglists '([aggregation-clause])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod aggregation->legacy-MBQL :default
+  [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
@@ -341,6 +353,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :offset
+  [clause]
+  (->legacy-MBQL clause))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
@@ -388,7 +404,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(defn- chain-stages [{:keys [stages]}]
+(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.
@@ -454,6 +470,12 @@
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
     [:value value opts]))
+
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->legacy-MBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->legacy-MBQL expr) n])
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

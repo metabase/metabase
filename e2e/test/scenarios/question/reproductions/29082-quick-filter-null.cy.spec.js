@@ -29,7 +29,7 @@ describe("issue 29082", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");
 
-    cy.get(".TableInteractive-emptyCell").first().click();
+    cy.get(".test-TableInteractive-emptyCell").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("=").click());
     cy.wait("@dataset");
@@ -44,7 +44,7 @@ describe("issue 29082", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");
 
-    cy.get(".TableInteractive-emptyCell").first().click();
+    cy.get(".test-TableInteractive-emptyCell").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("≠").click());
     cy.wait("@dataset");

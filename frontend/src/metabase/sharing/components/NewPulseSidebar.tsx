@@ -47,18 +47,18 @@ export function NewPulseSidebar({
                 className={cx(
                   CS.mr1,
                   {
-                    [cx("text-brand", CS.hoverChild, CS.hoverInherit)]:
+                    [cx(CS.textBrand, CS.hoverChild, CS.hoverInherit)]:
                       emailConfigured,
                   },
-                  { "text-light": !emailConfigured },
+                  { [CS.textLight]: !emailConfigured },
                 )}
               />
               <h3
-                className={cx({ "text-light": !emailConfigured })}
+                className={cx({ [CS.textLight]: !emailConfigured })}
               >{t`Email it`}</h3>
             </div>
             <Text
-              className={cx("text-medium", {
+              className={cx(CS.textMedium, {
                 [cx(CS.hoverChild, CS.hoverInherit)]: emailConfigured,
               })}
             >
@@ -91,16 +91,16 @@ export function NewPulseSidebar({
                 name={slackConfigured ? "slack_colorized" : "slack"}
                 size={16}
                 className={cx(CS.mr1, {
-                  "text-light": !slackConfigured,
+                  [CS.textLight]: !slackConfigured,
                   [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
                 })}
               />
               <h3
-                className={cx({ "text-light": !slackConfigured })}
+                className={cx({ [CS.textLight]: !slackConfigured })}
               >{t`Send it to Slack`}</h3>
             </div>
             <Text
-              className={cx("text-medium", {
+              className={cx(CS.textMedium, {
                 [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
               })}
             >

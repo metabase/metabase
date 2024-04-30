@@ -10,15 +10,10 @@
    [metabase.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :refer [Pulse]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -170,15 +165,22 @@
    :hosted?    (premium-features/is-hosted?)
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)}
-   :counts     {:user  (t2/count User)
-                :card  (t2/count Card)
-                :table (t2/count Table)}
-   :exists     {:non-sample-db (t2/exists? Database, :is_sample false)
-                :dashboard     (t2/exists? Dashboard)
-                :pulse         (t2/exists? Pulse)
-                :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
-                :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :type :model)}})
+   :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
+                :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
+                :table (val (ffirst (t2/query {:select [:%count.*]
+                                               :from   [[(t2/table-name :model/Table) :t]]
+                                               :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                                               :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})))}
+   :exists     {:non-sample-db (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
+                :dashboard     (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+                :pulse         (t2/exists? :model/Pulse)
+                :hidden-table  (t2/exists? :model/Table {:where [:and
+                                                                 [:not= :visibility_type nil]
+                                                                 (mi/exclude-internal-content-hsql :model/Table)]})
+                :collection    (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+                :model         (t2/exists? :model/Card {:where [:and
+                                                                [:= :type "model"]
+                                                                (mi/exclude-internal-content-hsql :model/Card)]})}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]

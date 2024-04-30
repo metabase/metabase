@@ -1,7 +1,8 @@
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
+import type { IconName, IconProps } from "metabase/ui";
+import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
-import type { CardDisplayType } from "./card";
+import type { CardDisplayType, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
@@ -52,7 +53,7 @@ export interface Collection {
   authority_level?: "official" | null;
   type?: "instance-analytics" | null;
 
-  parent_id?: CollectionId;
+  parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
@@ -91,22 +92,23 @@ export interface CollectionItem {
   fully_parameterized?: boolean | null;
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
+  collection_id: CollectionId | null; // parent collection id
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
-  type?: string;
+  type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
-  getIcon: () => { name: IconName };
+  getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
+  setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
@@ -119,21 +121,48 @@ export interface CollectionListQuery {
   tree?: boolean;
 }
 
-export interface ListCollectionItemsRequest {
+export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  limit?: number;
-  offset?: number;
   sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
   sort_direction?: "asc" | "desc";
-}
+  namespace?: "snippets";
+} & PaginationRequest;
 
-export interface ListCollectionItemsResponse {
+export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
-  limit: number;
-  offset: number;
-  total: number;
+} & PaginationResponse;
+
+export interface UpdateCollectionRequest {
+  id: RegularCollectionId;
+  name?: string;
+  description?: string;
+  archived?: boolean;
+  parent_id?: RegularCollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+}
+
+export interface CreateCollectionRequest {
+  name: string;
+  description?: string;
+  parent_id?: CollectionId | null;
+  namespace?: string;
+  authority_level?: CollectionAuthorityLevel;
+}
+
+export interface ListCollectionsRequest {
+  archived?: boolean;
+  namespace?: string;
+  "personal-only"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+}
+export interface ListCollectionsTreeRequest {
+  "exclude-archived"?: boolean;
+  "exclude-other-user-collections"?: boolean;
+  namespace?: string;
+  shallow?: boolean;
+  "collection-id"?: RegularCollectionId | null;
 }

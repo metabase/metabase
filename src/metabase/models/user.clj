@@ -23,6 +23,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -49,7 +50,8 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?))
+  (derive :hook/updated-at-timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
@@ -236,6 +238,10 @@
    [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
    [:is_group_manager {:optional true} :boolean]])
+
+(defmethod mi/exclude-internal-content-hsql :model/User
+  [_model & {:keys [table-alias]}]
+  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

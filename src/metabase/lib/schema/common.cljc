@@ -8,6 +8,8 @@
 
 (comment metabase.types/keep-me)
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn normalize-keyword
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
@@ -151,3 +153,18 @@
                [false :keyword]]]
    [:args     [:sequential :any]]
    [:options {:optional true} ::options]])
+
+#?(:clj
+   (defn- instance-of-class* [& classes]
+     [:fn {:error/message (str "instance of "
+                               (str/join " or "
+                                         (map #(.getName ^Class %) classes)))}
+      (fn [x]
+        (some (fn [klass]
+                (instance? klass x))
+              classes))]))
+
+#?(:clj
+   (def ^{:arglists '([& classes])} instance-of-class
+     "Convenience for defining a Malli schema for an instance of a particular Class."
+     (memoize instance-of-class*)))

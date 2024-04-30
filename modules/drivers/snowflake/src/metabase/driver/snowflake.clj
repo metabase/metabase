@@ -49,12 +49,11 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:connection-impersonation                            true
-                              :connection-impersonation-requires-role              true
-                              :convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :now                                                 true
-                              :sql/window-functions.order-by-output-column-numbers false}]
+(doseq [[feature supported?] {:connection-impersonation               true
+                              :connection-impersonation-requires-role true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -111,8 +110,11 @@
           private-key-file (handle-conn-uri user account private-key-file)))
 
       :else
-      ;; get-secret-string should get the right value (using private-key-value or private-key-id) and decode it automatically
-      (let [decoded (secret/get-secret-string details "private-key")
+      ;; Why setting `:private-key-options` to "uploaded"? To fix the issue #41852. Snowflake's database edit gui
+      ;; is designed in a way, that `:private-key-options` are not sent if `hosting` enterprise feature is enabled.
+      ;; The option must be set to "uploaded" for base64 decoding to happen. Setting that option at this point is fine
+      ;; because the alternative ("local") is ruled out already in this `cond` branch.
+      (let [decoded (secret/get-secret-string (assoc details :private-key-options "uploaded") "private-key")
             file    (secret/value->file! {:connection-property-name "private-key-file"
                                           :value                    decoded})]
         (assoc (handle-conn-uri base-details user account file)

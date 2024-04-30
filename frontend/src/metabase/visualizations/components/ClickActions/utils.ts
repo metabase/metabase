@@ -1,74 +1,34 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { IconName } from "metabase/ui";
 import type {
-  ClickActionSection,
   RegularClickAction,
+  ClickActionSection,
 } from "metabase/visualizations/types";
 
-const SUMMARIZE_SECTION = "summarize";
-type SummarizeSection = typeof SUMMARIZE_SECTION;
-
 type Section = {
-  // There is no such icon as "summarize." This is used to ID and select the actions that we,
-  // want to make larger, like Distribution, Sum over Time, etc.
-  icon: IconName | SummarizeSection;
   index?: number;
 };
 
 export const SECTIONS: Record<ClickActionSection, Section> = {
-  records: {
-    icon: "table2",
-  },
-  zoom: {
-    icon: "zoom_in",
-  },
-  sort: {
-    icon: "sort",
-  },
-  breakout: {
-    icon: "breakout",
-  },
-  "breakout-popover": {
-    icon: "breakout",
-  },
-  standalone_filter: {
-    icon: "filter",
-  },
-  summarize: {
-    icon: "summarize",
-  },
-  sum: {
-    icon: "sum",
-  },
-  combine: {
-    icon: "add",
-  },
-  "combine-popover": {
-    icon: "add",
-  },
-  extract: {
-    icon: "extract",
-  },
-  "extract-popover": {
-    icon: "extract",
-  },
-  auto: {
-    icon: "bolt",
-  },
-  "auto-popover": {
-    icon: "bolt",
-  },
-  info: {
-    icon: "info",
-  },
-  filter: {
-    icon: "funnel_outline",
-  },
-  details: {
-    icon: "document",
-  },
+  records: {},
+  zoom: {},
+  sort: {},
+  breakout: {},
+  "breakout-popover": {},
+  standalone_filter: {},
+  summarize: {},
+  sum: {},
+  combine: {},
+  "combine-popover": {},
+  extract: {},
+  "extract-popover": {},
+  auto: {},
+  "auto-popover": {},
+  info: {},
+  filter: {},
+  details: {},
+  custom: {},
 };
 Object.values(SECTIONS).map((section, index) => {
   section.index = index;

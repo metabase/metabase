@@ -11,7 +11,7 @@ import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { clearTemporaryPassword } from "../people";
@@ -88,7 +88,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
 );
 
 export default _.compose(
-  User.load({
+  Users.load({
     id: (state, props) => props.params.userId,
   }),
   connect(

@@ -19,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn ^:private add-bindings :- Bindings
@@ -137,7 +138,7 @@
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
 (def ^:private Tableset
-  [:sequential (mi/InstanceOf Table)])
+  [:sequential (ms/InstanceOf Table)])
 
 (mu/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset

@@ -235,11 +235,14 @@
                       {:query query, :stage-number stage-number, :x x}
                       e)))))
 
-(mu/defn metadata :- [:map [:lib/type [:and
-                                       :keyword
-                                       [:fn
-                                        {:error/message ":lib/type should be a :metadata/ keyword"}
-                                        #(= (namespace %) "metadata")]]]]
+(def ^:private MetadataMap
+  [:map [:lib/type [:and
+                    :keyword
+                    [:fn
+                     {:error/message ":lib/type should be a :metadata/ keyword"}
+                     #(= (namespace %) "metadata")]]]])
+
+(mu/defn metadata :- MetadataMap
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
   map (i.e., something satisfying the `::lib.schema.metadata/column` schema."

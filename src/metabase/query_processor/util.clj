@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -193,3 +194,13 @@
                              (get by-key (field-ref->key field_ref)))]
         (merge col (select-keys existing preserved-keys))
         col))))
+
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
+
+(mu/defn internal-query? :- :boolean
+  "Returns `true` if query is an internal query."
+  [{query-type :type} :- ::qp.schema/qp]
+  (= :internal (keyword query-type)))

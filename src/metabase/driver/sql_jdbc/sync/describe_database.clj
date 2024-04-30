@@ -10,12 +10,12 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -40,7 +40,7 @@
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
-(mu/defn simple-select-probe-query :- [:cat ms/NonBlankString [:* :any]]
+(mu/defn simple-select-probe-query :- [:cat ::lib.schema.common/non-blank-string [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)
 
@@ -144,7 +144,7 @@
       (fn [{schema :schema table :name ttype :type}]
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
-        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+        (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
           (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
           (contains? schema+table-with-select-privileges [schema table]))))

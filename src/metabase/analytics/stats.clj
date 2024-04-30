@@ -19,6 +19,7 @@
             PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
             Table User]]
    [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -179,7 +180,8 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
+  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query]
+                         {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)]
                                       {:total       1
@@ -203,8 +205,12 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (t2/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params])
-        dashcards  (t2/select [DashboardCard :card_id :dashboard_id])]
+  (let [dashboards (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
+                              {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+        dashcards  (t2/query {:select :dc.*
+                              :from [[(t2/table-name DashboardCard) :dc]]
+                              :join [[(t2/table-name Dashboard) :d] [:= :d.id :dc.dashboard_id]]
+                              :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -298,8 +304,8 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select Collection)
-        cards       (t2/select [Card :collection_id])]
+  (let [collections (t2/select Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -309,7 +315,8 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (t2/select [Database :is_full_sync :engine :dbms_version])]
+  (let [databases (t2/select [:model/Database :is_full_sync :engine :dbms_version]
+                             {:where (mi/exclude-internal-content-hsql :model/Database)})]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -323,7 +330,10 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (t2/select [Table :db_id :schema])]
+  (let [tables (t2/query {:select [:t.db_id :t.schema]
+                          :from   [[(t2/table-name :model/Table) :t]]
+                          :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                          :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -331,7 +341,11 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (t2/select [Field :table_id])]
+  (let [fields (t2/query {:select [:f.table_id]
+                          :from [[(t2/table-name Field) :f]]
+                          :join [[(t2/table-name Table) :t] [:= :t.id :f.table_id]
+                                 [(t2/table-name Database) :d] [:= :d.id :t.db_id]]
+                          :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 

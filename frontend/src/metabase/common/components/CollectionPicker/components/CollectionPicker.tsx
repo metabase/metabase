@@ -1,13 +1,16 @@
 import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
-import { t } from "ttag";
 
+import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection, SearchRequest } from "metabase-types/api";
+import type {
+  Collection,
+  ListCollectionItemsRequest,
+} from "metabase-types/api";
 
 import {
   LoadingSpinner,
@@ -48,7 +51,7 @@ export const CollectionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, SearchRequest>
+    PickerState<CollectionPickerItem, ListCollectionItemsRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
@@ -61,7 +64,7 @@ export const CollectionPickerInner = (
     error,
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
-    id: initialValue?.id ?? "root",
+    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
     enabled: !!initialValue?.id,
   });
 
@@ -71,8 +74,7 @@ export const CollectionPickerInner = (
     ({ folder }: { folder: CollectionPickerItem }) => {
       const isUserPersonalCollection = folder?.id === userPersonalCollectionId;
       const isUserSubfolder =
-        path?.[1]?.query?.collection === "personal" &&
-        !isUserPersonalCollection;
+        path?.[1]?.query?.id === "personal" && !isUserPersonalCollection;
 
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(
@@ -124,7 +126,7 @@ export const CollectionPickerInner = (
           ...oldPath,
           {
             query: {
-              collection: parentCollectionId,
+              id: parentCollectionId,
               models: ["collection"],
               namespace: options.namespace,
             },
@@ -140,7 +142,7 @@ export const CollectionPickerInner = (
     [path, handleItemSelect, onItemSelect, setPath, options.namespace],
   );
 
-  // Exposing onItemSelect so that parent can select newly created
+  // Exposing onNewCollection so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
@@ -179,7 +181,7 @@ export const CollectionPickerInner = (
   );
 
   if (error) {
-    <LoadingAndErrorWrapper error={error} />;
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (loadingCurrentCollection) {
@@ -188,7 +190,6 @@ export const CollectionPickerInner = (
 
   return (
     <NestedItemPicker
-      itemName={t`collection`}
       isFolder={isFolder}
       shouldDisableItem={shouldDisableItem}
       options={options}

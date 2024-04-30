@@ -417,7 +417,7 @@ describe("FilterPicker", () => {
       const { query, getNextFilter } = setup();
 
       await userEvent.click(screen.getByText(/Custom expression/i));
-      await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
+      await editExpressionAndSubmit("[[Total] > [[Discount]");
 
       const filter = getNextFilter();
 

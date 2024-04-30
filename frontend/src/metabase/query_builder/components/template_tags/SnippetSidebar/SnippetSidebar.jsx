@@ -108,7 +108,9 @@ class SnippetSidebarInner extends React.Component {
                 d="M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3"
               />
             </svg>
-            <h4 className="text-medium">{t`Snippets are reusable bits of SQL`}</h4>
+            <h4
+              className={CS.textMedium}
+            >{t`Snippets are reusable bits of SQL`}</h4>
             <button
               onClick={openSnippetModalWithSelectedText}
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}

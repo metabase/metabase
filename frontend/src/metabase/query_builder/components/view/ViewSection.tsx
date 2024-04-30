@@ -36,7 +36,7 @@ interface ViewSubHeadingProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (
-  <div className={cx("text-medium", CS.textBold)} {...props}>
+  <div className={cx(CS.textMedium, CS.textBold)} {...props}>
     {children}
   </div>
 );

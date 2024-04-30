@@ -1,55 +1,110 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import {
+  getOrRefreshSession,
+  setLoginStatus,
+} from "embedding-sdk/store/reducer";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
+import type {
+  EmbeddingSessionTokenState,
+  SdkDispatch,
+} from "embedding-sdk/store/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
-
-import type { SDKConfigType } from "../../types";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
-export const useInitData = ({
-  config,
-}: InitDataLoaderParameters): {
-  isLoggedIn: boolean;
-  isInitialized: boolean;
-} => {
-  const dispatch = useDispatch();
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
+
+const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
+  api.onBeforeRequest = async () => {
+    const tokenState = await dispatch(
+      getOrRefreshSession(config.jwtProviderUri),
+    );
+
+    api.sessionToken = (
+      tokenState.payload as EmbeddingSessionTokenState["token"]
+    )?.id;
+  };
+};
+
+export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const dispatch = useSdkDispatch();
+
+  const loginStatus = useSdkSelector(getLoginStatus);
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    api.basename = config.metabaseInstanceUrl;
+    if (loginStatus.status === "uninitialized") {
+      api.basename = config.metabaseInstanceUrl;
 
-    if (config.authType === "apiKey" && config.apiKey) {
-      api.apiKey = config.apiKey;
-    } else {
-      setIsLoggedIn(false);
-      return;
+      if (isValidJwtAuth(config)) {
+        setupJwtAuth(config, dispatch);
+        dispatch(setLoginStatus({ status: "validated" }));
+      } else {
+        dispatch(
+          setLoginStatus({
+            status: "error",
+            error: new Error(t`Invalid JWT URI provided.`),
+          }),
+        );
+      }
     }
+  }, [config, dispatch, loginStatus.status]);
 
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
-    });
-  }, [config, dispatch]);
+  useEffect(() => {
+    if (loginStatus.status === "validated") {
+      const fetchData = async () => {
+        dispatch(setLoginStatus({ status: "loading" }));
 
-  return {
-    isLoggedIn,
-    isInitialized,
-  };
+        try {
+          const [userResponse, [_, siteSettingsResponse]] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(reloadSettings()),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(
+                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+                ),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(
+                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
+              ),
+            }),
+          );
+        }
+      };
+
+      fetchData();
+    }
+  }, [dispatch, loginStatus.status]);
 };

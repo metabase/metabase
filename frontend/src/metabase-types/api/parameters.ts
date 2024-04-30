@@ -102,6 +102,7 @@ export type ParameterMappingOptions = {
   name: string;
   sectionId: string;
   combinedName?: string;
+  menuName?: string;
   type: string;
 };
 

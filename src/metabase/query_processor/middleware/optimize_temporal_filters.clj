@@ -6,13 +6,14 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
@@ -120,14 +121,17 @@
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
          (field-and-temporal-value-have-compatible-units? field temporal-value-2))))
 
-(mu/defn ^:private temporal-literal-lower-bound :- (ms/InstanceOfClass java.time.temporal.Temporal)
+(mr/def ::temporal
+  (lib.schema.common/instance-of-class java.time.temporal.Temporal))
+
+  (mu/defn ^:private temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
-   t    :- (ms/InstanceOfClass java.time.temporal.Temporal)]
+   t    :- ::temporal]
   (:start (u.date/range t unit)))
 
-(mu/defn ^:private temporal-literal-upper-bound :- (ms/InstanceOfClass java.time.temporal.Temporal)
+(mu/defn ^:private temporal-literal-upper-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
-   t    :- (ms/InstanceOfClass java.time.temporal.Temporal)]
+   t    :- ::temporal]
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]

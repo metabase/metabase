@@ -84,6 +84,9 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (prometheus/shutdown!)
+  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
+  (let [timeout-seconds 20]
+    (mdb/release-migration-locks! timeout-seconds))
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -106,7 +109,11 @@
   (settings/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
-  (mdb/setup-db!)
+  ;; Cal 2024-04-03:
+  ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
+  ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
+  ;; negatives, but for now there's not much we can do
+  (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
   (when (prometheus/prometheus-server-port)
@@ -130,11 +137,12 @@
       (events/publish-event! :event/install {}))
     (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
-    (if new-install?
-      ;; add the sample database DB for fresh installs
-      (sample-data/add-sample-database!)
-      ;; otherwise update if appropriate
-      (sample-data/update-sample-database-if-needed!))
+    (when (config/load-sample-content?)
+      (if new-install?
+        ;; add the sample database DB for fresh installs
+        (sample-data/extract-and-sync-sample-database!)
+        ;; otherwise update if appropriate
+        (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.9))
 
   (ensure-audit-db-installed!)

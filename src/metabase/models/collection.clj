@@ -375,7 +375,7 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private ancestors* :- [:maybe [:sequential (mi/InstanceOf Collection)]]
+(mu/defn ^:private ancestors* :- [:maybe [:sequential (ms/InstanceOf Collection)]]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (t2/select [Collection :name :id :personal_owner_id]
@@ -389,7 +389,7 @@
   [collection]
   (ancestors* collection))
 
-(mu/defn ^:private effective-ancestors* :- [:sequential [:or RootCollection (mi/InstanceOf Collection)]]
+(mu/defn ^:private effective-ancestors* :- [:sequential [:or RootCollection (ms/InstanceOf Collection)]]
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     []
@@ -441,7 +441,7 @@
 (def ^:private Children
   [:schema
    {:registry {::children [:and
-                           (mi/InstanceOf Collection)
+                           (ms/InstanceOf Collection)
                            [:map
                             [:children [:set [:ref ::children]]]]]}}
    [:ref ::children]])
@@ -548,7 +548,7 @@
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(mu/defn ^:private effective-children* :- [:set (mi/InstanceOf Collection)]
+(mu/defn ^:private effective-children* :- [:set (ms/InstanceOf Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (t2/select [Collection :id :name :description]
                   {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
@@ -822,7 +822,7 @@
   would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
-  [collection :- (mi/InstanceOf Collection) new-location :- LocationPath]
+  [collection :- (ms/InstanceOf Collection) new-location :- LocationPath]
   (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
 (mu/defn ^:private revoke-perms-when-moving-into-personal-collection!
@@ -831,7 +831,7 @@
   need to be deleted, so other users cannot access this newly-Personal Collection.
 
   This needs to be done recursively for all descendants as well."
-  [collection :- (mi/InstanceOf Collection)]
+  [collection :- (ms/InstanceOf Collection)]
   (t2/query-one {:delete-from :permissions
                  :where       [:in :object (for [collection (cons collection (descendants collection))
                                                  path-fn    [perms/collection-read-path
@@ -943,6 +943,17 @@
       #{(case read-or-write
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
+
+(def ^:private instance-analytics-collection-type
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
+  "instance-analytics")
+
+(defmethod mi/exclude-internal-content-hsql :model/Collection
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+    [:and
+     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+     [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
@@ -1107,14 +1118,14 @@
              :name collection-name
              :slug (u/slugify collection-name)))))
 
-(mu/defn user->existing-personal-collection :- [:maybe (mi/InstanceOf Collection)]
+(mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
   (t2/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
-(mu/defn user->personal-collection :- (mi/InstanceOf Collection)
+(mu/defn user->personal-collection :- (ms/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)

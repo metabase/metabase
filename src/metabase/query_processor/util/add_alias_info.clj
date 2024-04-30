@@ -87,6 +87,7 @@
                         :unique-alias-fn (fn [original suffix]
                                            (driver/escape-alias driver/*driver* (str original \_ suffix))))]
     (fn unique-alias-fn [position original-alias]
+      {:pre (string? original-alias)}
       (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -147,6 +148,10 @@
       (map-indexed
        (fn [i ag]
          (lib.util.match/replace ag
+           ;; :offset is a special case since it doesn't NEED to get wrapped in aggregation options.
+           [:offset _opts _expr _n]
+           [:aggregation i]
+
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -235,32 +240,38 @@
             (m/find-first (fn [[_field an-id-or-name _opts]]
                             (= an-id-or-name id-or-name))
                           field-exports)))
-        ;; look for a matching expression clause with the same name if still no match
+        ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or ;; Expressions by exact name.
+          (or ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
+              ;; name we're searching for.
+              (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+                              (when (#{:expression :field} tag)
+                                (= desired-alias field-name)))
+                            all-exports)
+              ;; Expressions by exact name.
               (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
-              ;; Expressions whose ::desired-alias matches the name we're searching for.
-              (m/find-first (fn [[_expression _expression-name {::keys [desired-alias]} :as _expression-clause]]
-                              (= desired-alias field-name))
-                            (filter (partial mbql.u/is-clause? :expression) all-exports))
-              (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
-                              (= (::source-alias opts) field-name))
-                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))))
-        ;; look for a field referenced by the name in source-metadata
-        (let [field-name (second field-clause)]
-          (when (string? field-name)
-            (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
-              (let [signature (field-signature (:field_ref column))]
-                (or ;; First try to match with the join alias.
-                    (m/find-first #(= (field-signature %) signature) field-exports)
-                    ;; Then just the names, but if the match is ambiguous, warn and return nil.
-                    (let [matches (filter #(= (second %) field-name) field-exports)]
-                      (when (= (count matches) 1)
-                        (first matches)))))))))))
+              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
+              ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
+              ;; all TBH -- Cam)
+              (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
+                (some (fn [k]
+                        (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
+                                        (= (get opts k) field-name))
+                                      ag-clauses))
+                      [::desired-alias ::source-alias]))
+              ;; look for a field referenced by the name in source-metadata
+              (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
+                (let [signature (field-signature (:field_ref column))]
+                  (or ;; First try to match with the join alias.
+                   (m/find-first #(= (field-signature %) signature) field-exports)
+                   ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                   (let [matches (filter #(= (second %) field-name) field-exports)]
+                     (when (= (count matches) 1)
+                       (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -290,7 +301,7 @@
 
 (defn- field-alias-in-source-query
   [inner-query field-clause]
-  (when-let [[_ _ {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
+  (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
 (defmulti ^String field-reference
@@ -429,14 +440,29 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
-  (let [position     (clause->position inner-query [:aggregation ag-index])
-        unique-alias (unique-alias-fn position original-ag-name)]
-    [:aggregation-options wrapped-ag-clause (assoc opts
-                                                   :name           unique-alias
-                                                   ::source-alias  original-ag-name
-                                                   ::position      position
-                                                   ::desired-alias unique-alias)]))
+  [inner-query unique-alias-fn ag-clause ag-index]
+  (lib.util.match/replace ag-clause
+    [:offset opts expr n]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:offset (assoc opts
+                      :name           unique-alias
+                      ::source-alias  original-ag-name
+                      ::position      position
+                      ::desired-alias unique-alias)
+       expr
+       n])
+
+    [:aggregation-options wrapped-ag-clause opts, :as _ag-clause]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:aggregation-options wrapped-ag-clause (assoc opts
+                                                     :name           unique-alias
+                                                     ::source-alias  original-ag-name
+                                                     ::position      position
+                                                     ::desired-alias unique-alias)])))
 
 (defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
   (cond-> inner-query

@@ -612,7 +612,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           key="expand"
           aria-label={t`Enter Fullscreen`}
           icon="expand"
-          className={cx("text-brand-hover", CS.cursorPointer)}
+          className={CS.cursorPointer}
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
         />,
       );

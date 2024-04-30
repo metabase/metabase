@@ -56,18 +56,21 @@
 (doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
-                              :case-sensitivity-string-filter-options              false
-                              :convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :full-join                                           false
-                              :index-info                                          true
-                              :now                                                 true
-                              :percentile-aggregations                             false
-                              :persist-models                                      true
-                              :regex                                               false
-                              :schemas                                             false
-                              :sql/window-functions.order-by-output-column-numbers false
-                              :uploads                                             true}]
+                              :case-sensitivity-string-filter-options false
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :full-join                              false
+                              :index-info                             true
+                              :now                                    true
+                              :percentile-aggregations                false
+                              :persist-models                         true
+                              :regex                                  false
+                              :schemas                                false
+                              :uploads                                true
+                              ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
+                              ;; fully support `offset` we need to do some kooky query transformations just for MySQL
+                              ;; and make this work.
+                              :window-functions/offset                false}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.

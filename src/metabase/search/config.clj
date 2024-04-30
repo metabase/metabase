@@ -13,7 +13,7 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
+    (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -99,6 +99,7 @@
    [:map {:closed true}
     [:search-string                                        [:maybe ms/NonBlankString]]
     [:archived?                                            :boolean]
+    [:model-ancestors?                                     :boolean]
     [:current-user-perms                                   [:set perms.u/PathSchema]]
     [:models                                               [:set SearchableModel]]
     [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
@@ -112,7 +113,6 @@
     [:search-native-query                 {:optional true} true?]
     ;; true to search for verified items only, nil will return all items
     [:verified                            {:optional true} true?]]))
-
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
@@ -139,6 +139,7 @@
    :collection_id       :integer
    :collection_name     :text
    :collection_type     :text
+   :collection_location :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
@@ -164,6 +165,7 @@
    :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
+   :database_name       :text
    ;; returned for Action
    :model_id            :integer
    :model_name          :text
@@ -236,10 +238,10 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-   [{:select [:%count.*]
-     :from   [:report_dashboardcard]
-     :where  [:= :report_dashboardcard.card_id :card.id]}
-    :dashboardcard_count])
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
 
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
@@ -270,6 +272,7 @@
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
+        [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
 
@@ -314,18 +317,19 @@
 
 (defmethod columns-for-model "table"
   [_]
-  [:id
-   :name
-   :created_at
-   :display_name
-   :description
-   :updated_at
-   :initial_sync_status
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
+  [[:table.id :id]
+   [:table.name :name]
+   [:table.created_at :created_at]
+   [:table.display_name :display_name]
+   [:table.description :description]
+   [:table.updated_at :updated_at]
+   [:table.initial_sync_status :initial_sync_status]
+   [:table.id :table_id]
+   [:table.db_id :database_id]
+   [:table.schema :table_schema]
+   [:table.name :table_name]
+   [:table.description :table_description]
+   [:metabase_database.name :database_name]])
 
 (defmulti column->string
   "Turn a complex column into a string"

@@ -12,12 +12,12 @@
   color: var(--color-text-dark);
   cursor: pointer;
   font-weight: bold;
-  font-family: var(--default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 
 .Button:hover {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
   border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
   transition: all 200ms linear;
@@ -25,7 +25,7 @@
 }
 
 .Button:focus {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
 }
 
 .Button:focus:not(:focus-visible) {
@@ -62,14 +62,14 @@
 
 .ButtonPrimary {
   color: var(--color-text-white);
-  background: var(--color-brand);
-  border: 1px solid var(--color-brand);
+  background: var(--mb-color-brand);
+  border: 1px solid var(--mb-color-brand);
 }
 
 .ButtonPrimary:hover {
   color: var(--color-text-white);
-  border-color: var(--color-brand);
-  background-color: var(--color-brand-alpha-88);
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-alpha-88);
 }
 
 .ButtonWarning {
@@ -145,12 +145,12 @@
 
 .ButtonGroupBrand .Button {
   border-color: white;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
   background-color: var(--color-bg-medium);
 }
 
 .ButtonGroupBrand .ButtonActive {
-  background-color: var(--color-brand);
+  background-color: var(--mb-color-brand);
   color: white;
 }
 

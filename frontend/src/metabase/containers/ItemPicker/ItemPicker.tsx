@@ -225,7 +225,7 @@ function ItemPicker<TId>({
   );
 
   const handleCollectionOpen = useCallback(
-    collectionId => {
+    (collectionId: CollectionId) => {
       setOpenCollectionId(collectionId);
       onOpenCollectionChange?.(collectionId);
     },

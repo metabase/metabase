@@ -128,8 +128,8 @@ class LogoIcon extends Component {
         className={cx(
           "Icon",
           CS.textCentered,
-          { "text-brand": !dark },
-          { "text-white": dark },
+          { [CS.textBrand]: !dark },
+          { [CS.textWhite]: dark },
           className,
         )}
         style={style}

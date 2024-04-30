@@ -15,9 +15,11 @@ import {
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
 import { UploadMode } from "metabase-types/store/upload";
 
+import type { OnFileUpload } from "../types";
+
 import { findLastEditedCollectionItem } from "./utils";
 
-type CollectionOrTableIdProps =
+export type CollectionOrTableIdProps =
   | {
       uploadMode: UploadMode.create;
       collectionId: CollectionId;
@@ -38,11 +40,7 @@ export function ModelUploadModal({
 }: {
   opened: boolean;
   onClose: () => void;
-  onUpload: ({
-    collectionId,
-    tableId,
-    uploadMode,
-  }: CollectionOrTableIdProps) => void;
+  onUpload: OnFileUpload;
   collectionId: CollectionId;
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);

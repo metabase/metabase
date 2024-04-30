@@ -14,7 +14,7 @@ import {
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
   createMockCacheConfigWithDurationStrategy,
-  createMockCacheConfigWithTTLStrategy,
+  createMockCacheConfigWithMultiplierStrategy,
 } from "metabase-types/api/mocks/performance";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -44,7 +44,7 @@ export const setup = ({
   }
 
   const cacheConfigs = [
-    createMockCacheConfigWithTTLStrategy({ model_id: 1 }),
+    createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
     createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
     createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
     createMockCacheConfig({
@@ -73,7 +73,9 @@ export const changeInput = async (
   expectedPlaceholder: number,
   value: number,
 ) => {
-  const input = (await screen.findByLabelText(label)) as HTMLInputElement;
+  const input = (await screen.findByRole("spinbutton", {
+    name: new RegExp(label),
+  })) as HTMLInputElement;
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
   fireEvent.change(input, { target: { value } });
   expect(input).toHaveValue(value);
