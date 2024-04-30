@@ -178,12 +178,6 @@
    [:map
     [:type         [:= :drill-thru/combine-columns]]]])
 
-(mr/def ::drill-thru.combine-columns
-  [:merge
-   ::drill-thru.common.with-column
-   [:map
-    [:type         [:= :drill-thru/combine-columns]]]])
-
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
