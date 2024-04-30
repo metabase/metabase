@@ -1,6 +1,6 @@
 import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
   Box,
@@ -116,7 +116,7 @@ export const CombineColumnsDrill = ({
         <Title
           mb="lg"
           order={4}
-        >{jt`Combine “${columnInfo.displayName}” with other columns`}</Title>
+        >{t`Combine “${columnInfo.displayName}” with other columns`}</Title>
 
         <Stack spacing="lg">
           <Stack spacing={12}>
@@ -151,7 +151,7 @@ export const CombineColumnsDrill = ({
               {isUsingDefaultSeparator && (
                 <Box>
                   <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                    {jt`Separated by ${formatSeparator(defaultSeparator)}`}
+                    {t`Separated by ${formatSeparator(defaultSeparator)}`}
                   </Button>
                 </Box>
               )}
