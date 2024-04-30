@@ -325,7 +325,7 @@
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]
-        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
 (deftest can-connect-test
@@ -360,6 +360,20 @@
                                   (dissoc :password)
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
+
+(deftest can-connect-pk-no-options-test
+  (mt/test-driver
+   :snowflake
+   (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+     (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+           pk-user (tx/db-test-env-var :snowflake :pk-user)
+           pk-db "SNOWFLAKE_SAMPLE_DATA"
+           details (-> (:details (mt/db))
+                       (dissoc :password)
+                       (assoc :dbname pk-db
+                              :private-key-value (u/encode-base64 pk-key)
+                              :user pk-user))]
+       (is (driver/can-connect? :snowflake details))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake

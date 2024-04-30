@@ -2,6 +2,14 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { useCallback } from "react";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnDrop,
+  OnMove,
+  OnToggleSelectedWithItem,
+} from "metabase/collections/types";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
 import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
@@ -14,15 +22,6 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
-import type {
-  CreateBookmark,
-  DeleteBookmark,
-  OnCopy,
-  OnDrop,
-  OnMove,
-  OnToggleSelectedWithItem,
-} from "../types";
 
 import {
   DescriptionIcon,

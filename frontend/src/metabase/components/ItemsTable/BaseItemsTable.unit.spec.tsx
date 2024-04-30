@@ -13,7 +13,7 @@ import type { CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
-import BaseItemsTable from "./BaseItemsTable";
+import { BaseItemsTable } from "./BaseItemsTable";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
