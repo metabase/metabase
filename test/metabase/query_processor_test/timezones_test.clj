@@ -264,51 +264,52 @@
                             (disj :week-of-year))
             ;; :week-of-year-instance is the behavior of u.date/extract (based on public-settings start-of-week)
             extract-translate {:year :year-of-era :week-of-year :week-of-year-us}
-            trunc-units (disj u.date/truncate-units :millisecond :second)]
+            trunc-units (disj u.date/truncate-units :millisecond :second)
+            cols        (concat
+                         (for [extract-unit extract-units]
+                           extract-unit)
+                         (for [trunc-unit trunc-units]
+                           trunc-unit)
+                         [:dt_tz])]
         (doseq [timezone ["Pacific/Honolulu" "America/Los_Angeles" "UTC" "Pacific/Auckland"]
                 :let [expected-rows (for [i (range 366)
                                           :let [expected-datetime (u.date/add #t "2012-01-01T01:30:54Z" :day i)
                                                 in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)]]
-                                      (concat
-                                        (for [extract-unit extract-units]
-                                          [extract-unit (u.date/extract in-tz extract-unit)])
-                                        (for [trunc-unit trunc-units]
-                                          [trunc-unit
-                                           (-> in-tz
-                                               (u.date/truncate trunc-unit)
-                                               u.date/format-sql
-                                               (str/replace #" " "T"))])
-                                        [[:dt_tz
-                                          (-> in-tz
-                                              u.date/format-sql
-                                              (str/replace #" " "T"))]]))]]
+                                      (into {}
+                                            cat
+                                            [(for [extract-unit extract-units]
+                                               [extract-unit (u.date/extract in-tz extract-unit)])
+                                             (for [trunc-unit trunc-units]
+                                               [trunc-unit
+                                                (-> in-tz
+                                                    (u.date/truncate trunc-unit)
+                                                    u.date/format-sql
+                                                    (str/replace #" " "T"))])
+                                             [[:dt_tz
+                                               (-> in-tz
+                                                   u.date/format-sql
+                                                   (str/replace #" " "T"))]]]))]]
           (mt/with-temporary-setting-values [report-timezone timezone]
             (let [rows (->> (mt/run-mbql-query alldates
                               {:expressions (->> extract-units
                                                  (map
-                                                   (fn [extract-unit]
-                                                     [extract-unit [:temporal-extract
-                                                                    [:field (mt/id :alldates :dt) nil]
-                                                                    (get extract-translate extract-unit extract-unit)]]))
+                                                  (fn [extract-unit]
+                                                    [extract-unit [:temporal-extract
+                                                                   [:field (mt/id :alldates :dt) nil]
+                                                                   (get extract-translate extract-unit extract-unit)]]))
                                                  (into {}))
                                :fields (concat
-                                         (for [extract-unit extract-units]
-                                           [:expression extract-unit])
-                                         (for [trunc-unit trunc-units]
-                                           [:field (mt/id :alldates :dt)
-                                            {:temporal-unit trunc-unit}])
-                                         [[:field (mt/id :alldates :dt)]])
+                                        (for [extract-unit extract-units]
+                                          [:expression extract-unit])
+                                        (for [trunc-unit trunc-units]
+                                          [:field (mt/id :alldates :dt)
+                                           {:temporal-unit trunc-unit}])
+                                        [[:field (mt/id :alldates :dt)]])
                                :order-by [[:asc (mt/id :alldates :id)]]})
                             (mt/rows)
                             (map (fn [row]
-                                   (map vector
-                                        (concat
-                                          (for [extract-unit extract-units]
-                                            extract-unit)
-                                          (for [trunc-unit trunc-units]
-                                            trunc-unit)
-                                          [:dt_tz])
-                                        row))))]
+                                   (zipmap cols
+                                           row))))]
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
