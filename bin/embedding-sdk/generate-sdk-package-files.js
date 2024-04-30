@@ -46,13 +46,17 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
-    dependencies: filterOutReactDependencies(
-      mainPackageJsonContent.dependencies,
-    ),
+    dependencies: {
+      ...filterOutReactDependencies(mainPackageJsonContent.dependencies),
+      "patch-package": "^8.0.0",
+    },
     resolutions: filterOutReactDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
+    scripts: {
+      postinstall: "patch-package",
+    },
   };
 
   const mergedContentString = JSON.stringify(mergedContent, null, 2);

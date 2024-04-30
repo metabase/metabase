@@ -363,7 +363,7 @@
     "dev-ee": "yarn && yarn clean:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js-wait' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn build-static-viz:watch-wait'",
     "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json",
     "embedding-sdk:fixup-types-imports": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
-    "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
+    "embedding-sdk:generate-package": "cp -r patches resources/embedding-sdk/ && node ./bin/embedding-sdk/generate-sdk-package-files.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "eslint-fix": "yarn lint-eslint --fix",
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
