@@ -98,6 +98,21 @@ export function seriesSetting({
         getSeriesDefaultLinearInterpolate(vizSettings),
       readDependencies: ["display"],
     },
+    "line.style": {
+      title: t`Line style`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { name: t`Solid`, value: "solid" },
+          { name: t`Dashed`, value: "dashed" },
+          { name: t`Dotted`, value: "dotted" },
+        ],
+      },
+      default: "solid",
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
     "line.marker_enabled": {
       title: t`Show dots on lines`,
       widget: "segmentedControl",
