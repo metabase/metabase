@@ -32,10 +32,14 @@ interface ReducerObject {
   [slice: string]: ReducerValue;
 }
 
+/**
+ * The testing mode changes the reducers and initial state to be used for
+ * public or sdk-specific tests.
+ */
+type TestMode = "default" | "public" | "sdk";
+
 export interface RenderWithProvidersOptions {
-  // the mode changes the reducers and initial state to be used for
-  // public or sdk-specific tests
-  mode?: "default" | "public" | "sdk";
+  mode?: TestMode;
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
@@ -44,6 +48,15 @@ export interface RenderWithProvidersOptions {
   customReducers?: ReducerObject;
   sdkConfig?: SDKConfig | null;
 }
+
+/**
+ * Set of reducer configurations for various testing environments.
+ */
+const REDUCERS_BY_MODE = {
+  default: mainReducers,
+  public: publicReducers,
+  sdk: sdkReducers,
+};
 
 /**
  * Custom wrapper of react testing library's render function,
@@ -67,13 +80,8 @@ export function renderWithProviders(
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
-  if (mode === "public") {
-    const publicReducerNames = Object.keys(publicReducers);
-    initialState = _.pick(initialState, ...publicReducerNames) as State;
-  } else if (mode === "sdk") {
-    const sdkReducerNames = Object.keys(sdkReducers);
-    initialState = _.pick(initialState, ...sdkReducerNames) as State;
-  }
+  const reducerKeys = Object.keys(REDUCERS_BY_MODE[mode]);
+  initialState = _.pick(initialState, ...reducerKeys) as State;
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
   // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
