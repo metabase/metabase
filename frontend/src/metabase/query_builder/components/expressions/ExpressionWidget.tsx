@@ -9,6 +9,8 @@ import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
+import { trackColumnCombineViaShortcut } from "../../analytics";
+
 import { CombineColumns } from "./CombineColumns/CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
@@ -122,6 +124,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+      trackColumnCombineViaShortcut(query);
+
       setIsCombiningColumns(false);
       setClause(clause);
       setName(name);
