@@ -37,7 +37,7 @@
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
 (def ^:private Joinable
-  [:or lib.metadata/TableMetadata ::lib.schema.metadata/card])
+  [:or ::lib.schema.metadata/table ::lib.schema.metadata/card])
 
 (def ^:private JoinOrJoinable
   [:or
@@ -584,7 +584,7 @@
 
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    a-join                :- lib.join.util/PartialJoin]
   (let [origin (-> a-join :stages first)]
     (cond

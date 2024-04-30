@@ -126,6 +126,18 @@
    [:human-readable-values [:sequential :any]]])
 
 (mr/def ::column
+  "Malli schema for a valid map of column metadata, which can mean one of two things:
+
+  1. Metadata about a particular Field in the application database. This will always have an `:id`
+
+  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor
+     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns
+     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`
+     and thus will not have an `:id`.
+
+  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
+  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
+  to differentiate between the two versions."
   [:map
    {:error/message "Valid column metadata"}
    [:lib/type  [:= :metadata/column]]
@@ -244,6 +256,7 @@
    [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]])
 
 (mr/def ::segment
+  "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:map
    {:error/message "Valid Segment metadata"}
    [:lib/type   [:= :metadata/segment]]
@@ -256,6 +269,10 @@
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::legacy-metric
+  "Malli schema for a legacy v1 [[metabase.models.legacy-metric]], but with kebab-case keys. A Metric defines an MBQL
+  snippet with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations`
+  in an MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
+  see [[metabase.query-processor.middleware.expand-macros]]."
   [:map
    {:error/message "Valid legacy (v1) Metric metadata"}
    [:lib/type   [:= :metadata/legacy-metric]]
@@ -268,6 +285,8 @@
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::table
+  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
+  but with kebab-case keys."
   [:map
    {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
@@ -277,6 +296,8 @@
    [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database
+  "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
+  the frontend Query Builder."
   [:map
    {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
@@ -291,11 +312,14 @@
    [:settings     {:optional true} [:maybe :map]]])
 
 (mr/def ::metadata-provider
+  "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
   [:fn
    {:error/message "Valid MetadataProvider"}
    #'lib.metadata.protocols/metadata-provider?])
 
 (mr/def ::metadata-providerable
+  "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
+  the key `:lib/metadata` (i.e., a query)."
   [:fn
    {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
    #'lib.metadata.protocols/metadata-providerable?])

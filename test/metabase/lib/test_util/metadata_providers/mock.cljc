@@ -2,9 +2,7 @@
   (:require
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -92,7 +90,7 @@
   (datafy [_this]
     (list `mock-metadata-provider metadata)))
 
-(mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn mock-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Create a mock metadata provider to facilitate writing tests. All keys except `:database` should be a sequence of maps
   e.g.
 

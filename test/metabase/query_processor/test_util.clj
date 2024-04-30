@@ -6,6 +6,7 @@
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,6 +17,7 @@
    [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -30,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -486,7 +487,7 @@
   {:dataset_query   query
    :result_metadata (actual-query-results query)})
 
-(mu/defn metadata-provider-with-cards-for-queries :- lib.metadata/MetadataProvider
+(mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
@@ -494,11 +495,11 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries))
 
-  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
-(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
+(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
   "Like [[metadata-provider-with-cards-for-queries]], but includes the results
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
@@ -508,7 +509,7 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries))
 
-  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (transduce
     (map-indexed (fn [i {database-id :database, :as query}]

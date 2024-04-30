@@ -69,49 +69,49 @@
                 (metadatas metadata-provider metadata-type [metadata-id])))
 
 (defn table
-  "Return metadata for a specific Table. Metadata should satisfy [[metabase.lib.metadata/TableMetadata]]."
+  "Return metadata for a specific Table. Metadata should satisfy `:metabase.lib.schema.metadata/table`."
   [metadata-provider table-id]
   (metadata metadata-provider :metadata/table table-id))
 
 (defn field
-  "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]]."
+  "Return metadata for a specific Field. Metadata should satisfy `:metabase.lib.schema.metadata/column`."
   [metadata-provider field-id]
   (metadata metadata-provider :metadata/column field-id))
 
 (defn card
-  "Return information about a specific Saved Question, aka a Card. This should
-  match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
-  source query."
+  "Return information about a specific Saved Question, aka a Card. This should match
+  `:metabase.lib.schema.metadata/card`. Currently just used for display name purposes if you have a Card as a source
+  query."
   [metadata-provider card-id]
   (metadata metadata-provider :metadata/card card-id))
 
 (defn legacy-metric
   "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
-  database. Metadata should match [[metabase.lib.metadata/LegacyMetricMetadata]]."
+  database. Metadata should match `:metabase.lib.schema.metadata/legacy-metric`."
   [metadata-provider legacy-metric-id]
   (metadata metadata-provider :metadata/legacy-metric legacy-metric-id))
 
 (defn segment
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
-  database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]."
+  database. Metadata should match `:metabase.lib.schema.metadata/segment`."
   [metadata-provider segment-id]
   (metadata metadata-provider :metadata/segment segment-id))
 
 (defn fields
   "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
-  the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."
+  the `:metabase.lib.schema.metadata/column` schema. If no such Table exists, this should error."
   [metadata-provider table-id]
   (metadatas-for-table metadata-provider :metadata/column table-id))
 
 (defn legacy-metrics
   "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the [[metabase.lib.metadata/LegacyMetricMetadata]] schema. If no such Table exists, this should error."
+  the `:metabase.lib.schema.metadata/legacy-metric` schema. If no such Table exists, this should error."
   [metadata-provider table-id]
   (metadatas-for-table metadata-provider :metadata/legacy-metric table-id))
 
 (defn segments
   "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
-  the [[metabase.lib.metadata/SegmentMetadata]] schema. If no Table with ID `table-id` exists, this should error."
+  the `:metabase.lib.schema.metadata/segment` schema. If no Table with ID `table-id` exists, this should error."
   [metadata-provider table-id]
   (metadatas-for-table metadata-provider :metadata/segment table-id))
 

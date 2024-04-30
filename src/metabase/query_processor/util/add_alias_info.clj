@@ -55,6 +55,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -170,7 +171,7 @@
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private field-instance :- [:maybe ::lib.schema.metadata/column]
   [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
@@ -320,7 +321,7 @@
 
 (mu/defmethod field-reference-mlv2 ::driver/driver
   [driver :- :keyword
-   field  :- lib.metadata/ColumnMetadata]
+   field  :- ::lib.schema.metadata/column]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (if (get-method field-reference driver)
     (do

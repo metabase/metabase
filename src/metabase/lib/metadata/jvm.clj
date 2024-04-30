@@ -2,10 +2,10 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.string :as str]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
@@ -404,7 +404,7 @@
     (and (instance? UncachedApplicationDatabaseMetadataProvider another)
          (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
-(mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.
 
   All operations are cached; so you can use the bulk operations to pre-warm the cache if you need to."
