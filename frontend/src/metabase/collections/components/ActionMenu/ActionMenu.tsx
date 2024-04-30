@@ -24,12 +24,7 @@ import type { State } from "metabase-types/store";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-interface ActionMenuStateProps {
-  isXrayEnabled: boolean;
-  isMetabotEnabled: boolean;
-}
-
-export interface ActionMenuProps extends ActionMenuStateProps {
+export interface ActionMenuProps {
   className?: string;
   item: CollectionItem;
   collection?: Collection;
@@ -39,6 +34,11 @@ export interface ActionMenuProps extends ActionMenuStateProps {
   onMove?: OnMove;
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
+}
+
+interface ActionMenuStateProps {
+  isXrayEnabled: boolean;
+  isMetabotEnabled: boolean;
 }
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
@@ -75,7 +75,7 @@ function ActionMenu({
   onMove,
   createBookmark,
   deleteBookmark,
-}: ActionMenuProps) {
+}: ActionMenuProps & ActionMenuStateProps) {
   const database = databases?.find(({ id }) => id === item.database_id);
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canPin = canPinItem(item, collection);
