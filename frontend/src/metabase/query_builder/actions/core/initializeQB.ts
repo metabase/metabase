@@ -56,13 +56,6 @@ type QueryParams = BlankQueryOptions & {
 
 type UIControls = Partial<QueryBuilderUIControls>;
 
-const ARCHIVED_ERROR = {
-  data: {
-    error_code: "archived",
-  },
-  context: "query-builder",
-};
-
 const NOT_FOUND_ERROR = {
   data: {
     error_code: "not-found",
@@ -275,7 +268,6 @@ async function handleQBInit(
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
-  const currentUser = getUser(getState());
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
@@ -288,11 +280,6 @@ async function handleQBInit(
     dispatch,
     getState,
   });
-
-  if (isSavedCard(card) && card.archived && !currentUser) {
-    dispatch(setErrorPage(ARCHIVED_ERROR));
-    return;
-  }
 
   if (
     isSavedCard(card) &&
@@ -340,6 +327,7 @@ async function handleQBInit(
       question = question.lockDisplay();
     }
 
+    const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");

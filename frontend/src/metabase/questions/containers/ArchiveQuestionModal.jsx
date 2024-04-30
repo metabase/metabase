@@ -15,14 +15,14 @@ const getLabels = question => {
 
   if (type === "question") {
     return {
-      title: t`Trash this question?`,
+      title: t`Move this question to trash?`,
       message: t`This question will be removed from any dashboards or alerts using it.`,
     };
   }
 
   if (type === "model") {
     return {
-      title: t`Trash this model?`,
+      title: t`Move this model to trash?`,
       message: t`This model will be removed from any dashboards or alerts using it.`,
     };
   }
