@@ -388,10 +388,6 @@
     (database database-id))
   (metadatas [_this metadata-type ids]
     (metadatas database-id metadata-type ids))
-  (cached-metadatas [_this _metadata-type _metadata-ids]
-    nil)
-  (store-metadata! [_this _a-metadata]
-    nil)
   (tables [_this]
     (tables database-id))
   (metadatas-for-table [_this metadata-type table-id]

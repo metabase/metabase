@@ -7,6 +7,9 @@
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as metadata.protocols]))
 
+(defn- cached-providers [providers]
+  (filter metadata.protocols/cached-metadata-provider? providers))
+
 (defn- metadatas-for-f [f providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
     (cond
@@ -28,14 +31,14 @@
   (metadatas-for-f metadata.protocols/metadatas providers metadata-type ids))
 
 (defn- cached-metadatas [providers metadata-type ids]
-  (metadatas-for-f metadata.protocols/cached-metadatas providers metadata-type ids))
+  (metadatas-for-f metadata.protocols/cached-metadatas
+                   (cached-providers providers)
+                   metadata-type
+                   ids))
 
 (defn- store-metadata! [metadata-providers metadata]
-  ;; [[metadata.protocols/store-metadata!]] should return truthy if the metadata provider stored it, i.e. if it has a
-  ;; cache, so try with each metadata provider until one of them stores it.
-  (some (fn [metadata-provider]
-          (metadata.protocols/store-metadata! metadata-provider metadata))
-        metadata-providers))
+  (when-first [provider (cached-providers metadata-providers)]
+    (metadata.protocols/store-metadata! provider metadata)))
 
 (defn- tables [metadata-providers]
   (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
@@ -59,16 +62,18 @@
     (some metadata.protocols/database metadata-providers))
   (metadatas [_this metadata-type ids]
     (metadatas metadata-providers metadata-type ids))
-  (cached-metadatas [_this metadata-type metadata-ids]
-    (cached-metadatas metadata-providers metadata-type metadata-ids))
-  (store-metadata! [_this metadata]
-    (store-metadata! metadata-providers metadata))
   (tables [_this]
     (tables metadata-providers))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-type table-id metadata-providers))
   (setting [_this setting-key]
     (setting metadata-providers setting-key))
+
+  metadata.protocols/CachedMetadataProvider
+  (cached-metadatas [_this metadata-type metadata-ids]
+    (cached-metadatas metadata-providers metadata-type metadata-ids))
+  (store-metadata! [_this metadata]
+    (store-metadata! metadata-providers metadata))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

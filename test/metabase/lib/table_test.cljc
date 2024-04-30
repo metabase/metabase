@@ -41,10 +41,6 @@
                 (= metadata-type :metadata/column)
                 (mapv (fn [field]
                         (assoc field :name nil)))))
-            (cached-metadatas [_this _metadata-type _metadata-ids]
-              nil)
-            (store-metadata! [_this _a-metadata]
-              nil)
             (tables [_this]
               (metadata.protocols/tables meta/metadata-provider))
             (metadatas-for-table [_this metadata-type table-id]

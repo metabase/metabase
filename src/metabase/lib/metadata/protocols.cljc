@@ -32,18 +32,10 @@
   (metadatas [metadata-provider metadata-type metadata-ids]
     "Return a sequence of non-nil metadata objects of `metadata-type` associated with `metadata-ids`, which is either
  a sequence or set of integer object IDs. Objects should be fetched as needed, but if this MetadataProvider has an
- internal cache, it should return any cached objects and only fetch ones not present in the cache. This should not
- error if any objects were not found. The order objects are returned in does not matter. For MetadataProviders that
- have a cache, calling this method can be done for side-effects (to warm the cache).")
-
-  (cached-metadatas [metadata-provider metadata-type metadata-ids]
-    "Like [[metadatas]], but only return metadata that is already present in the cache. MetadataProviders that do not
-  have a cache should return `nil`.")
-
-  (store-metadata! [metadata-provider a-metadata]
-    "For MetadataProviders that have a cache -- store a given metadata `a-metadata` in the cache. MetadataProviders
-  that successfully stored this value in a cache should return a truthy value; MetadataProviders that do not have a
-  cache should return a falsey value.")
+ internal cache (i.e., if it is a [[CachedMetadataProvider]]), it should return any cached objects and only fetch ones
+ not present in the cache. This should not error if any objects were not found. The order objects are returned in does
+ not matter. For MetadataProviders that have a cache, calling this method can be done for side-effects (to warm the
+ cache).")
 
   (tables [metadata-provider]
     "Return a sequence of Tables in this Database. Tables should satisfy the `:metabase.lib.schema.metadata/table`
@@ -71,15 +63,9 @@
   (or (metadata-provider? x)
       (some-> x :lib/metadata metadata-providerable?)))
 
-(defn store-metadatas!
-  "Convenience. Store several metadata maps at once."
-  [metadata-provider objects]
-  (doseq [object objects]
-    (store-metadata! metadata-provider object)))
-
 (defn- metadata [metadata-provider metadata-type metadata-id]
-  (m/find-first (fn [a-metadata]
-                  (= (:id a-metadata) metadata-id))
+  (m/find-first (fn [object]
+                  (= (:id object) metadata-id))
                 (metadatas metadata-provider metadata-type [metadata-id])))
 
 (defn table
@@ -129,9 +115,38 @@
   [metadata-provider table-id]
   (metadatas-for-table metadata-provider :metadata/segment table-id))
 
+(#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
+  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
+  MetadataProviders that can hit some sort of relatively expensive external service,
+  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
+  pre-warming the cache with stuff that was already fetched elsewhere.
+  See [[metabase.models.metric/warmed-metadata-provider]] for example.
+
+  See [[metabase.lib.metadata.cached-provider/cached-metadata-provider]] for a way to wrap an existing
+  MetadataProvider to add caching on top of it."
+  (cached-metadatas [cached-metadata-provider metadata-type metadata-ids]
+    "Like [[metadatas]], but only return metadata that is already present in the cache.")
+  (store-metadata! [cached-metadata-provider object]
+    "Store metadata of a specific type, e.g. `:metadata/table`."))
+
+(defn cached-metadata-provider?
+  "Whether `x` is a valid [[CachedMetadataProvider]]."
+  [x]
+  (satisfies? CachedMetadataProvider x))
+
+(defn store-metadatas!
+  "Convenience. Store several metadata maps at once."
+  [cached-metadata-provider objects]
+  (assert (cached-metadata-provider? cached-metadata-provider)
+          (str "Not a CachedMetadataProvider: " (pr-str cached-metadata-provider)))
+  (doseq [object objects]
+    (store-metadata! cached-metadata-provider object)))
+
 (defn cached-metadata
   "Get cached metadata of a specific type, e.g. `:metadata/table`."
-  [metadata-provider metadata-type metadata-id]
-  (m/find-first (fn [a-metadata]
-                  (= (:id a-metadata) metadata-id))
-                (cached-metadatas metadata-provider metadata-type [metadata-id])))
+  [cached-metadata-provider metadata-type metadata-id]
+  (assert (cached-metadata-provider? cached-metadata-provider)
+          (str "Not a CachedMetadataProvider: " (pr-str cached-metadata-provider)))
+  (m/find-first (fn [object]
+                  (= (:id object) metadata-id))
+                (cached-metadatas cached-metadata-provider metadata-type [metadata-id])))

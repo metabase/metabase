@@ -99,16 +99,18 @@
     (database cache metadata-provider))
   (metadatas [_this metadata-type ids]
     (metadatas cache metadata-provider metadata-type ids))
-  (cached-metadatas [_this metadata-type metadata-ids]
-    (cached-metadatas cache metadata-type metadata-ids))
-  (store-metadata! [_this a-metadata]
-    (store-metadata! cache (:lib/type a-metadata) (:id a-metadata) a-metadata))
   (tables [_this]
     (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-provider cache metadata-type table-id))
   (setting [_this setting-key]
     (setting metadata-provider cache setting-key))
+
+  lib.metadata.protocols/CachedMetadataProvider
+  (cached-metadatas [_this metadata-type metadata-ids]
+    (cached-metadatas cache metadata-type metadata-ids))
+  (store-metadata! [_this a-metadata]
+    (store-metadata! cache (:lib/type a-metadata) (:id a-metadata) a-metadata))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

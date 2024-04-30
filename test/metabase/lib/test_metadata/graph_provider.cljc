@@ -73,10 +73,6 @@
     (graph-database metadata-graph))
   (metadatas [_this metadata-type ids]
     (graph-metadatas metadata-graph metadata-type ids))
-  (cached-metadatas [_this _metadata-type _metadata-ids]
-    nil)
-  (store-metadata! [_this _a-metadata]
-    nil)
   (tables [_this]
     (graph-tables metadata-graph))
   (metadatas-for-table [_this metadata-type table-id]

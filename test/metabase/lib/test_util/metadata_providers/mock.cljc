@@ -75,10 +75,6 @@
     (mock-database metadata))
   (metadatas [_this metadata-type ids]
     (mock-metadatas metadata metadata-type ids))
-  (cached-metadatas [_this _metadata-type _metadata-ids]
-    nil)
-  (store-metadata! [_this _a-metadata]
-    nil)
   (tables [_this]
     (mock-tables metadata))
   (metadatas-for-table [_this metadata-type table-id]

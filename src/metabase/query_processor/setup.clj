@@ -58,10 +58,6 @@
     nil)
   (metadatas [_this metadata-type ids]
     (bootstrap-metadatas metadata-type ids))
-  (cached-metadatas [_this _metadata-type _metadata-ids]
-    nil)
-  (store-metadata! [_this _a-metadata]
-    nil)
   (tables [_this]
     nil)
   (metadatas-for-table [_this _metadata-type _table-id]
