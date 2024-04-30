@@ -91,7 +91,7 @@ jobs:
         run: yarn run test-unit --silent
       - name: Upload coverage to codecov.io
         if: github.ref_name == 'master'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage/lcov.info
           flags: front-end
