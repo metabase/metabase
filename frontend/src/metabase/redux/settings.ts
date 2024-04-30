@@ -19,10 +19,6 @@ export const refreshSiteSettings = createAsyncThunk(
   },
 );
 
-export type UpdateUserSettingOptions = {
-  shouldRefresh?: boolean;
-};
-
 export const UPDATE_USER_SETTING = "metabase/settings/UPDATE_USER_SETTING";
 export const updateUserSetting = createThunkAction(
   UPDATE_USER_SETTING,
@@ -31,7 +27,7 @@ export const updateUserSetting = createThunkAction(
       key: K;
       value: UserSettings[K];
     },
-    { shouldRefresh = true }: UpdateUserSettingOptions = {},
+    { shouldRefresh = true }: { shouldRefresh?: true } = {},
   ) {
     return async function (dispatch) {
       try {
