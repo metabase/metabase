@@ -352,7 +352,7 @@
                                     (complete!))
                                 (throw (ex-info (ex-message e)
                                                 (assoc (ex-data e) :channel-id channel-id, :filename filename))))))
-                ;; Step 4: Poll the endpoint until to confirm the file is uploaded to the channel
+        ;; Step 4: Poll the endpoint to confirm the file is uploaded to the channel
         uploaded-to-channel? (fn [response]
                                (boolean (some-> response :files first :shares not-empty)))
         _ (when-not (or
