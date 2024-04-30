@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -39,12 +40,22 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
 Table.defaultProps = { className: AdminS.ContentTable };
 
+const hideResponsively = ({
+  hideAtContainerBreakpoint,
+  containerName,
+}: ResponsiveProps) =>
+  css`
+    ${getContainerQuery({
+      hideAtContainerBreakpoint,
+      containerName,
+    })}
+  `;
+
 export const ColumnHeader = styled.th<ResponsiveProps>`
   padding: 0.75em 1em 0.75em !important;
   font-weight: bold;
   color: ${color("text-medium")};
-  ${({ hideAtContainerBreakpoint, containerName }) =>
-    getContainerQuery({ hideAtContainerBreakpoint, containerName })};
+  ${hideResponsively}
 `;
 
 export const BulkSelectWrapper = styled(IconButtonWrapper)`
@@ -54,13 +65,11 @@ export const BulkSelectWrapper = styled(IconButtonWrapper)`
 
 export const ItemCell = styled.td<ResponsiveProps>`
   padding: 0.25em 0 0.25em 1em !important;
-  ${({ hideAtContainerBreakpoint, containerName }) =>
-    getContainerQuery({ hideAtContainerBreakpoint, containerName })};
+  ${hideResponsively}
 `;
 
 export const TableColumn = styled.col<ResponsiveProps>`
-  ${({ hideAtContainerBreakpoint, containerName }) =>
-    getContainerQuery({ hideAtContainerBreakpoint, containerName })};
+  ${hideResponsively}
 `;
 
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
