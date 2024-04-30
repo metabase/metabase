@@ -253,7 +253,6 @@ export const AutoApi = {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
   }),
-  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {
