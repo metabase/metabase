@@ -7,14 +7,16 @@
 
 (deftest user-parameter-value-crud-test
   (mt/with-empty-db
-    (testing "Upsert creates new user parameter value entry if the param_id user_id pair doesn't exist"
-      (upv/upsert! (mt/user->id :rasta) "some-param" "A")
-      (is (= 1 (t2/count :model/UserParameterValue)))
-      (is (= "A" (:value (t2/select-one :model/UserParameterValue :user_id 1 :parameter_id "some-param")))))
-    (testing "Upsert updates user parameter value entry if the param_id user_id pair already exists"
-      (upv/upsert! (mt/user->id :rasta) "some-param" "B")
-      (is (= 1 (t2/count :model/UserParameterValue)))
-      (is (= "B" (:value (t2/select-one :model/UserParameterValue :user_id 1 :parameter_id "some-param")))))
-    (testing "Upsert deletes user parameter value entry if value is `nil`."
-      (upv/upsert! (mt/user->id :rasta) "some-param" nil)
-      (is (= 0 (count (t2/select :model/UserParameterValue)))))))
+    (let [user-id   (mt/user->id :rasta)
+          upv-count (t2/count :model/UserParameterValue)]
+      (testing "Upsert creates new user parameter value entry if the param_id user_id pair doesn't exist"
+        (upv/upsert! user-id "some-param" "A")
+        (is (= (inc upv-count) (t2/count :model/UserParameterValue)))
+        (is (= "A" (:value (t2/select-one :model/UserParameterValue :user_id user-id :parameter_id "some-param")))))
+      (testing "Upsert updates user parameter value entry if the param_id user_id pair already exists"
+        (upv/upsert! user-id "some-param" "B")
+        (is (= (inc upv-count) (t2/count :model/UserParameterValue)))
+        (is (= "B" (:value (t2/select-one :model/UserParameterValue :user_id user-id :parameter_id "some-param")))))
+      (testing "Upsert deletes user parameter value entry if value is `nil`."
+        (upv/upsert! user-id "some-param" nil)
+        (is (= upv-count (count (t2/select :model/UserParameterValue))))))))
