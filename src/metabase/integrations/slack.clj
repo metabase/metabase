@@ -318,6 +318,25 @@
         channel-id' (get name->id channel-id channel-id)]
     channel-id'))
 
+(defn- poll-endpoint
+  "Returns true if the request-thunk returns a response that satisfies the done? predicate within the timeout,
+   and false otherwise"
+  [request-thunk done?]
+  (let [start-time (System/currentTimeMillis)
+        timeout-ms 10000
+        interval-ms 500]
+    (loop []
+      (let [response (request-thunk)]
+        (if (done? response)
+          true
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              false ; timeout reached
+              (do
+                (Thread/sleep interval-ms)
+                (recur)))))))))
+
 (mu/defn upload-file!
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
    the URL of the uploaded file."
@@ -326,7 +345,7 @@
    channel-id :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
-  ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
+  ;; Steps 1 and 2 can be done for all files in parallel, and steps 3 and 4 can be done once at the end.
   (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
         {upload-url :upload_url
          file-id    :file_id} (POST "files.getUploadURLExternal" {:query-params {:filename filename
@@ -349,7 +368,12 @@
                               (if (= "not_in_channel" (:error-code (ex-data e)))
                                 (do (join-channel! channel-id)
                                     (complete!))
-                                (throw e))))]
+                                (throw e))))
+        ;; Step 4: Poll the endpoint until to confirm the file is uploaded to the channel
+        uploaded-to-channel? (fn [response]
+                               (boolean (some-> response :files first :shares not-empty)))
+        _ (when-not (and (uploaded-to-channel? complete-response) (poll-endpoint complete! uploaded-to-channel?))
+            (throw (Exception. "Confirming the file was uploaded to a Slack channel timed out.")))]
     (u/prog1 (get-in complete-response [:files 0 :url_private])
       (log/debug "Uploaded image" <>))))
 
