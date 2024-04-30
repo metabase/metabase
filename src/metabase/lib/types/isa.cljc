@@ -85,6 +85,11 @@
   [column]
   (field-type? ::lib.types.constants/string_like column))
 
+(defn ^:export string-or-string-like?
+  "Is `column` of a temporal type?"
+  [column]
+  (or (string? column) (string-like? column)))
+
 (defn ^:export summable?
   "Is `column` of a summable type?"
   [column]
