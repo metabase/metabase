@@ -340,7 +340,6 @@
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
-  {:style/indent :defn}
   ([format-fns response]
    (format-rows-by format-fns (rows response)))
 
