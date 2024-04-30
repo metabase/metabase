@@ -4,12 +4,12 @@ import { useGetNativeDatasetQuery } from "metabase/api";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { checkNotNull } from "metabase/lib/types";
 import {
   getQuestion,
   getNextRunParameters,
 } from "metabase/query_builder/selectors";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
 
@@ -33,7 +33,7 @@ export const PreviewQueryModal = ({
     ...{ pretty: false },
   };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
-  const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
+  const learnUrl = getLearnUrl("debugging-sql/sql-syntax");
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const engine = question.database()?.engine;
