@@ -135,7 +135,25 @@ export const getIsYAxisLabelEnabledDefault = () => true;
 
 export const getYAxisAutoRangeDefault = () => true;
 
-export const getYAxisUnpinFromZero = (display: string) => display === "scatter";
+export const getYAxisUnpinFromZeroDefault = (display: string) =>
+  display === "scatter";
+
+export const isYAxisUnpinFromZeroValid = (
+  seriesDisplays: string[],
+  settings: ComputedVisualizationSettings,
+) => {
+  if (
+    !settings["graph.y_axis.auto_range"] ||
+    settings["stackable.stack_type"] != null
+  ) {
+    return false;
+  }
+
+  return seriesDisplays.every(
+    display =>
+      display !== "area" && display !== "bar" && display !== "waterfall",
+  );
+};
 
 export const getDefaultXAxisTitle = (
   dimensionColumn: DatasetColumn | undefined,

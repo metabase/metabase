@@ -30,7 +30,8 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
-  getYAxisUnpinFromZero,
+  getYAxisUnpinFromZeroDefault,
+  isYAxisUnpinFromZeroValid,
   isStackingValueValid,
   isXAxisScaleValid,
   getDefaultLegendIsReversed,
@@ -47,6 +48,10 @@ import {
   isNumeric,
   isAny,
 } from "metabase-lib/v1/types/utils/isa";
+
+export const getSeriesDisplays = (transformedSeries, settings) => {
+  return transformedSeries.map(single => settings.series(single).display);
+};
 
 export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
@@ -265,9 +270,7 @@ export const STACKABLE_SETTINGS = {
       ],
     },
     isValid: (series, settings) => {
-      const seriesDisplays = series.map(
-        single => settings.series(single).display,
-      );
+      const seriesDisplays = getSeriesDisplays(series, settings);
 
       return isStackingValueValid(
         series[0].card.display,
@@ -518,15 +521,18 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "toggle",
     index: 5,
     inline: true,
-    getHidden: (series, vizSettings) => {
-      return (
-        !vizSettings["graph.y_axis.auto_range"] ||
-        series[0].card.display === "waterfall"
-      );
+    isValid: (series, settings) => {
+      const seriesDisplays = getSeriesDisplays(series, settings);
+      return isYAxisUnpinFromZeroValid(seriesDisplays, settings);
+    },
+    getHidden: (series, settings) => {
+      const seriesDisplays = getSeriesDisplays(series, settings);
+      return !isYAxisUnpinFromZeroValid(seriesDisplays, settings);
     },
     getDefault: series => {
-      return getYAxisUnpinFromZero(series[0].card.display);
+      return getYAxisUnpinFromZeroDefault(series[0].card.display);
     },
+    readDependencies: ["series", "graph.y_axis.auto_range"],
   },
   "graph.y_axis.auto_range": {
     section: t`Axes`,

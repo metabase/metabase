@@ -24,9 +24,10 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
-  getYAxisUnpinFromZero,
+  getYAxisUnpinFromZeroDefault,
   isStackingValueValid,
   isXAxisScaleValid,
+  isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -180,7 +181,8 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.y_axis.unpin_from_zero",
-    getYAxisUnpinFromZero(mainCard.display),
+    getYAxisUnpinFromZeroDefault(mainCard.display),
+    isYAxisUnpinFromZeroValid(seriesDisplays, settings),
   );
 
   fillWithDefaultValue(
