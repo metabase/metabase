@@ -86,8 +86,9 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when (some? archived)
-                         [:= :archived archived])
+                       [:= :archived archived]
+                       (when-not archived
+                         [:not= :id collection/trash-collection-id])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -122,7 +123,7 @@
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
    (select-collections {:exclude-other-user-collections exclude-other-user-collections
-                        :archived                       archived
+                        :archived                       (boolean archived)
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -187,7 +188,7 @@
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
   [archived exclude-other-user-collections namespace shallow collection-id]
-  {archived                       ms/MaybeBooleanValue
+  {archived                       [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
@@ -196,7 +197,7 @@
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
-                                         :archived                       archived
+                                         :archived                       (boolean archived)
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
