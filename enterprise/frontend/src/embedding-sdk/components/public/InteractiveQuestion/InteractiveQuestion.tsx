@@ -2,11 +2,11 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import {
   withPublicComponentWrapper,
   SdkError,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
