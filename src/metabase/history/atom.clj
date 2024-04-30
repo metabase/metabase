@@ -132,6 +132,19 @@
       (add-delta-to-branch! id type entity-id branch-delta))
     @*entity-store))
 
+(defn delete-branch* [store branch-id]
+  (-> store
+      (update :branches dissoc branch-id)
+      (update :entities
+              (fn [ent]
+                (vec (remove
+                      (fn [[[bid _ _] _]] (= branch-id bid))
+                      ent))))))
+
+(defn ^:api delete-branch! [branch-id]
+  "Deletes the branch and all its entities."
+  (swap! *entity-store delete-branch* branch-id))
+
 (mu/defn ^:api entities-for-branch-id
   "Returns entities for the given branch. Or nil if the branch doesn't exist."
   [branch-id]
@@ -251,28 +264,26 @@
            (entities-for-branch-id 11) := [{:id 88, :type :model/Card, :op :update, :data {:name "FOO"}}])
 
 
-(defmulti publish! (fn [branch-id entity-type entity-id] entity-type))
+(defmulti publish! (fn [branch-id entity-type entity-id {:keys [op data] :as delta}]
+                     entity-type))
 
-(defmethod publish! :model/Card [branch-id _entity-type _entity-id]
-  (let [entities (entities-for-branch-id branch-id)]
-    (doseq [[_ entity] entities]
-      (maybe-divert-write (:type entity) (:id entity) (:op entity) (:data entity)))))
+(defmethod publish! :model/Card [branch-id _entity-type entity-id {:keys [op data]}]
+  (case op
+    :create (t2/insert! :model/Card entity-id (dissoc data :id))
+    :update (let [old-card (t2/select-one :model/Card entity-id)]
+              (t2/update! :model/Card entity-id (merge old-card data)))
+    :delete (t2/delete! :model/Card entity-id)))
 
+(defn ^:api publish-branch! [branch-id]
+  (doseq [{:keys [id type op data]} (entities-for-branch-id branch-id)]
+    (publish! branch-id type id {:op op :data data}))
+  (delete-branch! branch-id))
 
-#_(rcf/tests "get entites on branch"
-           (entities-for-branch-id 11)
-           :=
-           [{:id 88,
-             :type :model/Card,
-             :op :update,
-             :data {:name "Update Card Name on Branch 7", :description nil, :collection_position nil, :result_metadata nil, :collection_id nil, :type :question, :dataset_query {:database 66, :type "query", :query {:source-table 184, :limit 1}}, :display "table", :visualization_settings {}}}]
-
-
-#_#_#_#_#_           (set-current-branch! 11)
-           "publishing a branch"
+(rcf/tests "publishing a branch"
            (def branched-card (maybe-divert-read :model/Card 88))
 
-           (publish! 11 :model/Card 88)
+           (publish-branch! 11)
+
            (get-in @*entity-store [:entities [11 :model/Card 88]]) := nil)
 
 
