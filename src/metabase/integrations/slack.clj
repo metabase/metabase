@@ -318,15 +318,13 @@
         channel-id' (get name->id channel-id channel-id)]
     channel-id'))
 
-(defn- poll-endpoint
-  "Returns true if the request-thunk returns a response that satisfies the done? predicate within the timeout,
-   and false otherwise"
-  [request-thunk done?]
-  (let [start-time (System/currentTimeMillis)
-        timeout-ms 10000
-        interval-ms 500]
+(defn- poll
+  "Returns true if `(thunk)` returns a result that satisfies the `done?` predicate within the timeout,
+   and false otherwise."
+  [{:keys [thunk done? timeout-ms interval-ms]}]
+  (let [start-time (System/currentTimeMillis)]
     (loop []
-      (let [response (request-thunk)]
+      (let [response (thunk)]
         (if (done? response)
           true
           (let [current-time (System/currentTimeMillis)
@@ -337,6 +335,48 @@
                 (Thread/sleep interval-ms)
                 (recur)))))))))
 
+(defn complete!
+  "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
+   same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
+  [& {:keys [channel-id file-id filename]}]
+  (let [complete! (fn []
+                    (POST "files.completeUploadExternal"
+                      {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
+                                      :channel_id channel-id}}))
+        complete-response (try
+                            (complete!)
+                            (catch Throwable e
+                                      ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
+                                      ;; This is expected to happen the first time a Slack subscription is sent.
+                              (if (= "not_in_channel" (:error-code (ex-data e)))
+                                (do (join-channel! channel-id)
+                                    (complete!))
+                                (throw e))))
+                ;; Step 4: Poll the endpoint until to confirm the file is uploaded to the channel
+        uploaded-to-channel? (fn [response]
+                               (boolean (some-> response :files first :shares not-empty)))
+        _ (when-not (or
+                     (uploaded-to-channel? complete-response)
+                     (poll {:thunk       complete!
+                            :done?       uploaded-to-channel?
+                            ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
+                            ;; If it takes more than 10 seconds, something else is wrong and we should abort.
+                            :timeout-ms  10000
+                            :interval-ms 500}))
+            (throw (Exception. "Confirming the file was uploaded to a Slack channel timed out.")))]
+    (get-in complete-response [:files 0 :url_private])))
+
+(defn- get-upload-url! [filename file]
+  (POST "files.getUploadURLExternal" {:query-params {:filename filename
+                                                     :length   (count file)}}))
+
+
+(defn- upload-file-to-url! [upload-url file]
+  (let [response (http/post upload-url {:multipart [{:name "file", :content file}]})]
+    (if (= (:status response) 200)
+      response
+      (throw (ex-info "Failed to upload file to Slack:" (select-keys response [:status :body]))))))
+
 (mu/defn upload-file!
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
    the URL of the uploaded file."
@@ -345,36 +385,16 @@
    channel-id :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
-  ;; Steps 1 and 2 can be done for all files in parallel, and steps 3 and 4 can be done once at the end.
+  ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
   (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
-        {upload-url :upload_url
-         file-id    :file_id} (POST "files.getUploadURLExternal" {:query-params {:filename filename
-                                                                                 :length   (count file)}})
+        {:keys [upload_url file_id]} (get-upload-url! filename file)
         ;; Step 2: Upload the file to the obtained upload URL
-        _ (let [{:keys [status body]} (http/post upload-url {:multipart [{:name "file" :content file}]})]
-            (when (not= 200 status)
-              (throw (ex-info "Failed to upload file to Slack:" {:status status, :body body}))))
+        _ (upload-file-to-url! upload_url file)
         ;; Step 3: Complete the upload using files.completeUploadExternal
-        channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
-        complete! (fn []
-                    (POST "files.completeUploadExternal"
-                      {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
-                                      :channel_id channel-id}}))
-        complete-response (try
-                            (complete!)
-                            (catch Throwable e
-                              ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
-                              ;; This is expected to happen the first time a Slack subscription is sent.
-                              (if (= "not_in_channel" (:error-code (ex-data e)))
-                                (do (join-channel! channel-id)
-                                    (complete!))
-                                (throw e))))
-        ;; Step 4: Poll the endpoint until to confirm the file is uploaded to the channel
-        uploaded-to-channel? (fn [response]
-                               (boolean (some-> response :files first :shares not-empty)))
-        _ (when-not (and (uploaded-to-channel? complete-response) (poll-endpoint complete! uploaded-to-channel?))
-            (throw (Exception. "Confirming the file was uploaded to a Slack channel timed out.")))]
-    (u/prog1 (get-in complete-response [:files 0 :url_private])
+        file-url (complete! {:channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
+                             :file-id    file_id
+                             :filename   filename})]
+    (u/prog1 file-url
       (log/debug "Uploaded image" <>))))
 
 (mu/defn post-chat-message!
