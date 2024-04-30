@@ -45,6 +45,7 @@ export interface HoveredObject {
   column?: RemappingHydratedDatasetColumn;
   timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
+  footerData?: DataPoint[];
   dimensions?: HoveredDimension[];
   settings?: ComputedVisualizationSettings;
   element?: Element;

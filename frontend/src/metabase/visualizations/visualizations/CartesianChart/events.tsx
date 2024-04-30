@@ -183,6 +183,17 @@ const getEventColumnsData = (
     })
     .filter(isNotNull);
 
+  return dataPoints;
+};
+
+const getTooltipFooterData = (
+  chartModel: BaseCartesianChartModel,
+  seriesIndex: number,
+  dataIndex: number,
+): DataPoint[] => {
+  const datum = chartModel.dataset[dataIndex];
+  const seriesModel = chartModel.seriesModels[seriesIndex];
+
   if (isTimeSeriesAxis(chartModel.xAxisModel) && dataIndex > 0) {
     // TODO handle series breakout
     const currentValue = datum[seriesModel.dataKey];
@@ -197,26 +208,28 @@ const getEventColumnsData = (
       textColor = "danger";
     }
 
-    dataPoints.push({
-      key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
-      col: seriesModel.column,
-      // TODO fix type error
-      value: (
-        <span
-          style={textColor !== undefined ? { color: color(textColor) } : {}}
-        >
-          {formatNumber(change, {
-            number_style: "percent",
-          })}
-        </span>
-      ),
-    });
+    return [
+      {
+        key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
+        col: seriesModel.column,
+        // TODO fix type error
+        value: (
+          <span
+            style={textColor !== undefined ? { color: color(textColor) } : {}}
+          >
+            {formatNumber(change, {
+              number_style: "percent",
+            })}
+          </span>
+        ),
+      },
+    ];
   }
 
-  return dataPoints;
+  return [];
 };
 
-export const getStackedTooltipModel = (
+const getStackedTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   seriesIndex: number,
@@ -344,6 +357,8 @@ export const getSeriesHoverData = (
 
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
 
+  const footerData = getTooltipFooterData(chartModel, seriesIndex, dataIndex);
+
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
       ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
@@ -356,6 +371,7 @@ export const getSeriesHoverData = (
     event: event.event.event,
     element: target,
     data,
+    footerData,
     stackedTooltipModel,
   };
 };
