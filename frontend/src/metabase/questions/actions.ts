@@ -31,7 +31,7 @@ export const loadMetadataForTable =
         databaseId,
         getMetadata(getState()),
       );
-      return Lib.dependentMetadata(metadataProvider, tableId);
+      return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
     };
     await dispatch(loadMetadata(getDependencies, [], options));
   };
