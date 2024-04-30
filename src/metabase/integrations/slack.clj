@@ -319,18 +319,17 @@
     channel-id'))
 
 (defn- poll
-  "Returns true if `(thunk)` returns a result that satisfies the `done?` predicate within the timeout,
-   and false otherwise."
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
   [{:keys [thunk done? timeout-ms interval-ms]}]
   (let [start-time (System/currentTimeMillis)]
     (loop []
       (let [response (thunk)]
         (if (done? response)
-          true
+          response
           (let [current-time (System/currentTimeMillis)
                 elapsed-time (- current-time start-time)]
             (if (>= elapsed-time timeout-ms)
-              false ; timeout reached
+              nil ; timeout reached
               (do
                 (Thread/sleep interval-ms)
                 (recur)))))))))
@@ -361,7 +360,7 @@
                             :done?       uploaded-to-channel?
                             ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
                             ;; If it takes more than 10 seconds, something else is wrong and we should abort.
-                            :timeout-ms  10000
+                            :timeout-ms  3000
                             :interval-ms 500}))
             (throw (Exception. "Confirming the file was uploaded to a Slack channel timed out.")))]
     (get-in complete-response [:files 0 :url_private])))
