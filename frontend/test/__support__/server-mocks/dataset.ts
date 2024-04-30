@@ -22,3 +22,16 @@ export function setupCardDataset(
     overwriteRoutes,
   });
 }
+
+const nativeDatasetPreview = {
+  query: "SELECT\n COUNT(*)\n FROM\n ORDERS",
+  params: null,
+};
+
+export function setupNativeDatasetEndpoints(response = nativeDatasetPreview) {
+  fetchMock.post("path:/api/dataset/native", response);
+}
+
+export function setupErrorNativeDatasetEndpoints() {
+  fetchMock.post("path:/api/dataset/native", 500);
+}
