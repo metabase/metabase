@@ -1,3 +1,30 @@
+;; # Upload Module Guide
+;;
+;; ## Facilities
+;; - The upload module provides functions for creating, updating, and replacing tables with CSV data.
+;;
+;; ## Guarantees
+;; - When an uploaded table is created, the uploaded data will be inserted into a new table in the customer database,
+;;   and a new card will be created in Metabase that wraps the uploaded table.
+;; - Any schema changes will be synced to the Metabase internal database.
+;; - Each uploaded table will have an auto-incrementing integer primary key in the uploaded table, so the rows in a can
+;;   be uniquely identified. This column is named `_mb_row_id`.
+;;
+;; ## Secrets
+;; The upload module hides the following implementation details which are subject to change:
+;; - Permissions and settings checks:
+;;    - It defines the set of permissions and instance settings that are required for uploading data.
+;; - CSV parsing and column type logic:
+;;    - It handles inferring the schema of the CSV data by inferring column types based on the values in each column.
+;;    - It handles parsing the CSV data and converting the values to the correct types.
+;; - Database interactions:
+;;    - It interacts with both the customer database to create new tables and insert the uploaded data. It uses the
+;;      `metabase.driver` namespace to perform database-specific operations, so the details of different database
+;;      drivers are not this module's concern.
+;;    - It interacts with Metabase's internal database to create new cards and tables associated with the tables in the
+;;      customer DB, using `metabase.sync` and `metabase.models`. The result of uploading a CSV file with this module is
+;;      a new card in Metabase that wraps the uploaded table in the customer database.
+
 (ns metabase.upload
   (:require
    [clj-bom.core :as bom]
