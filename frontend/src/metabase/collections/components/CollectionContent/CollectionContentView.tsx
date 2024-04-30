@@ -8,7 +8,6 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
-import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
@@ -18,6 +17,11 @@ import type {
   UploadFile,
 } from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
+import { ItemsTable } from "metabase/components/ItemsTable";
+import {
+  Sort,
+  type SortingOptions,
+} from "metabase/components/ItemsTable/BaseItemsTable";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -35,7 +39,6 @@ import type {
   CollectionItem,
 } from "metabase-types/api";
 
-import { Sort, type SortingOptions } from "../BaseItemsTable";
 import type { CollectionOrTableIdProps } from "../ModelUploadModal";
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
