@@ -42,7 +42,7 @@ type MetricListItem = Lib.MetricDisplayInfo & {
 type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
-  name: string;
+  name?: string;
   key: string;
   items: ListItem[];
   icon?: string;
@@ -95,25 +95,21 @@ export function AggregationPicker({
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
 
-    if (operators.length > 0) {
-      sections.push({
-        key: "basic-metrics",
-        name: t`Basic Metrics`,
-        items: operators.map(operator =>
-          getOperatorListItem(query, stageIndex, operator),
-        ),
-        icon: "table2",
-      });
-    }
-
     if (metrics.length > 0) {
       sections.push({
-        key: "common-metrics",
-        name: t`Common Metrics`,
+        key: "metrics",
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric),
         ),
         icon: "star",
+      });
+    } else if (operators.length > 0) {
+      sections.push({
+        key: "operators",
+        items: operators.map(operator =>
+          getOperatorListItem(query, stageIndex, operator),
+        ),
+        icon: "table2",
       });
     }
 
@@ -246,7 +242,6 @@ export function AggregationPicker({
     <Root className={className} color="summarize">
       <AccordionList
         sections={sections}
-        alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
         itemIsSelected={checkIsItemSelected}
@@ -255,6 +250,7 @@ export function AggregationPicker({
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
+        globalSearch
         withBorders
       />
     </Root>
