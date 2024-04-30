@@ -34,6 +34,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- is-card-empty?
