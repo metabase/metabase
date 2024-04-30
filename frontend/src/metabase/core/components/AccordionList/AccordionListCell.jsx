@@ -11,9 +11,9 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
 
-import styles from "./AccordionListCell.module.css";
 import {
   ListCellItem,
+  ListCellHeader,
   FilterContainer,
   Content,
   IconWrapper,
@@ -48,7 +48,6 @@ export const AccordionListCell = ({
   getItemStyles,
   searchInputProps,
   hasCursor,
-  withBorders,
 }) => {
   const {
     type,
@@ -60,9 +59,6 @@ export const AccordionListCell = ({
     isLastSection,
   } = row;
   let content;
-  let borderTop;
-  let borderBottom;
-
   if (type === "header") {
     if (alwaysExpanded) {
       content = (
@@ -83,16 +79,11 @@ export const AccordionListCell = ({
     } else {
       const icon = renderSectionIcon(section);
       const name = section.name;
-
-      borderTop =
-        section.type === "back" ||
-        section.type === "action" ||
-        section.items?.length > 0;
-      borderBottom = section.type === "back";
-
       content = (
-        <div
+        <ListCellHeader
           data-element-id="list-section-header"
+          borderTop={section.type === "back" || section.items?.length > 0}
+          borderBottom={!isLastSection && section.type === "back"}
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
@@ -145,25 +136,23 @@ export const AccordionListCell = ({
               />
             </span>
           )}
-        </div>
+        </ListCellHeader>
       );
     }
   } else if (type === "action") {
     const icon = renderSectionIcon(section);
     const name = section.name;
-    borderTop = true;
-    borderBottom = !isLastSection;
-
     content = (
-      <div
+      <ListCellHeader
+        borderTop
+        borderBottom={!isLastSection}
         className={cx(
-          ListS.ListSectionHeader,
+          "List-section-header",
           CS.px2,
           CS.py2,
           CS.flex,
           CS.alignCenter,
           CS.hoverParent,
-          styles.action,
           {
             "List-section-header--cursor": hasCursor,
             [CS.cursorPointer]: canToggleSections,
@@ -177,23 +166,13 @@ export const AccordionListCell = ({
       >
         {icon && (
           <span
-            className={cx(
-              CS.mr1,
-              CS.flex,
-              CS.alignCenter,
-              ListS.ListSectionIcon,
-            )}
+            className={cx(CS.mr1, CS.flex, CS.alignCenter, "List-section-icon")}
           >
             {icon}
           </span>
         )}
         {name && (
-          <h3
-            data-element-id="list-section-title"
-            className={cx(ListS.ListSectionTitle, CS.textWrap)}
-          >
-            {name}
-          </h3>
+          <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
         )}
         {showSpinner(section) && (
           <Box ml="0.5rem">
@@ -203,7 +182,7 @@ export const AccordionListCell = ({
         <IconWrapper>
           <Icon name="chevronright" size={12} />
         </IconWrapper>
-      </div>
+      </ListCellHeader>
     );
   } else if (type === "header-hidden") {
     content = <div className={CS.my1} />;
@@ -220,7 +199,6 @@ export const AccordionListCell = ({
       </div>
     );
   } else if (type === "search") {
-    borderBottom = true;
     content = (
       <FilterContainer>
         <ListSearchField
@@ -327,8 +305,6 @@ export const AccordionListCell = ({
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
-        [styles.borderTop]: withBorders && borderTop,
-        [styles.borderBottom]: withBorders && borderBottom,
       })}
     >
       {content}

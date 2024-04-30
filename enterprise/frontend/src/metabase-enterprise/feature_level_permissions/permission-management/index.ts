@@ -1,5 +1,4 @@
 import type {
-  DataPermissionValue,
   EntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -14,7 +13,7 @@ export const getFeatureLevelDataPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  dataAccessPermissionValue: DataPermissionValue,
+  dataAccessPermissionValue: string,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
 ) => {

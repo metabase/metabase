@@ -322,8 +322,7 @@
                              grant-permission?)]
         (mt/with-restored-data-perms-for-group! group-id
           (when grant?
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
-            (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))
+            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted))
           (binding [upload/*auxiliary-sync-steps* auxiliary-sync-steps]
             (upload/create-csv-upload! {:collection-id collection-id
                                         :filename      csv-file-prefix
@@ -1060,13 +1059,13 @@
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
   [action & {:keys [uploads-enabled user-id file table-id is-upload]
-             :or {uploads-enabled true
-                  user-id         (mt/user->id :crowberto)
-                  file            (csv-file-with
-                                   ["name"
-                                    "Luke Skywalker"
-                                    "Darth Vader"])
-                  is-upload       true}}]
+      :or {uploads-enabled true
+           user-id         (mt/user->id :crowberto)
+           file            (csv-file-with
+                            ["name"
+                             "Luke Skywalker"
+                             "Darth Vader"])
+           is-upload       true}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
       (mt/with-model-cleanup [:model/Table]

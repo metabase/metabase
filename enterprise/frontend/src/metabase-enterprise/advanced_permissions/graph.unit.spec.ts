@@ -1,13 +1,8 @@
-import {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
 import Database from "metabase-lib/v1/metadata/Database";
-import type { SchemasPermissions } from "metabase-types/api";
+import type { DatabaseAccessPermissions } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import { upgradeViewPermissionsIfNeeded } from "./graph";
-
+import { updateNativePermission } from "./graph";
 const groupId = 10;
 const databaseId = 20;
 const schema = "my_schema";
@@ -20,57 +15,95 @@ const database = new Database({
   tables: [tableId],
 });
 
-const createGraph = (viewPermissions: SchemasPermissions) => ({
+const createGraph = (dataPermissions: DatabaseAccessPermissions) => ({
   [groupId]: {
-    [databaseId]: {
-      [DataPermission.VIEW_DATA]: viewPermissions,
-    },
+    [databaseId]: { data: dataPermissions },
   },
 });
 
-describe("upgradeViewPermissionsIfNeeded", () => {
+describe("updateNativePermission", () => {
+  it("should revoke native query permission and keep the schema access permission", () => {
+    const graph = createGraph({ schemas: "all", native: "write" });
+    const updatedGraph = updateNativePermission(
+      graph,
+      groupId,
+      entityId,
+      undefined,
+      database,
+      "data",
+    );
+
+    expect(updatedGraph).toStrictEqual({
+      [groupId]: {
+        [databaseId]: { data: { native: undefined, schemas: "all" } },
+      },
+    });
+  });
+
+  it("should grant native query permission when schema access permission already granted", () => {
+    const graph = createGraph({ schemas: "all", native: "write" });
+    const updatedGraph = updateNativePermission(
+      graph,
+      groupId,
+      entityId,
+      "write",
+      database,
+      "data",
+    );
+
+    expect(updatedGraph).toStrictEqual({
+      [groupId]: {
+        [databaseId]: { data: { native: "write", schemas: "all" } },
+      },
+    });
+  });
+
   it.each([
-    createGraph(DataPermissionValue.BLOCKED),
-    createGraph(DataPermissionValue.NO),
-    createGraph({ [schema]: DataPermissionValue.UNRESTRICTED }),
-    createGraph({ [schema]: { [tableId]: DataPermissionValue.UNRESTRICTED } }),
-    createGraph({ [schema]: { [tableId]: DataPermissionValue.SANDBOXED } }),
+    createGraph({ schemas: "block" }),
+    createGraph({ schemas: "none" }),
+    createGraph({ schemas: { [schema]: "all" } }),
+    createGraph({
+      schemas: { [schema]: { [tableId]: "all" } },
+    }),
+    createGraph({
+      schemas: {
+        [schema]: { [tableId]: { read: "all", query: "segmented" } },
+      },
+    }),
   ])(
     "should upgrade data access permission if it is not fully granted except impersonated",
     graph => {
-      const updatedGraph = upgradeViewPermissionsIfNeeded(
+      const updatedGraph = updateNativePermission(
         graph,
         groupId,
         entityId,
-        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        "write",
         database,
+        "data",
       );
 
       expect(updatedGraph).toStrictEqual({
         [groupId]: {
-          [databaseId]: {
-            [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
-          },
+          [databaseId]: { data: { native: "write", schemas: "all" } },
         },
       });
     },
   );
 
   it("should not upgrade data access permission if it is impersonated", () => {
-    const graph = createGraph(DataPermissionValue.IMPERSONATED);
-    const updatedGraph = upgradeViewPermissionsIfNeeded(
+    const graph = createGraph({ schemas: "impersonated" });
+    const updatedGraph = updateNativePermission(
       graph,
       groupId,
       entityId,
-      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+      "write",
       database,
+      "data",
     );
 
     expect(updatedGraph).toStrictEqual({
       [groupId]: {
-        [databaseId]: {
-          [DataPermission.VIEW_DATA]: DataPermissionValue.IMPERSONATED,
-        },
+        [databaseId]: { data: { native: "write", schemas: "impersonated" } },
       },
     });
   });

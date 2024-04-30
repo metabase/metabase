@@ -48,11 +48,6 @@ export const FormTextarea = forwardRef(function FormTextarea(
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
     />
   );
 });

@@ -24,9 +24,9 @@
 (api/defendpoint GET "/"
   "Fetch all snippets"
   [archived]
-  {archived [:maybe ms/BooleanValue]}
+  {archived [:maybe ms/BooleanString]}
   (let [snippets (t2/select NativeQuerySnippet
-                            :archived archived
+                            :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
     (t2/hydrate (filter mi/can-read? snippets) :creator)))
 

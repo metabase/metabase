@@ -1,69 +1,45 @@
-import _ from "underscore";
-
 import type {
-  DatabaseEntityId,
-  EntityId,
-} from "metabase/admin/permissions/types";
-import {
   DataPermission,
-  DataPermissionValue,
+  DatabaseEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getSchemasPermission,
+  updatePermission,
   updateSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 
-export function shouldRestrictNativeQueryPermissions(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: EntityId,
-  _permission: DataPermission,
-  value: DataPermissionValue,
-  _database: Database,
-) {
-  const currDbNativePermission = getSchemasPermission(
-    permissions,
-    groupId,
-    { databaseId: entityId.databaseId },
-    DataPermission.CREATE_QUERIES,
-  );
-
-  return (
-    value === DataPermissionValue.SANDBOXED &&
-    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-  );
-}
-
-export function upgradeViewPermissionsIfNeeded(
+export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: DatabaseEntityId,
   value: NativePermissions,
   database: Database,
+  permission: DataPermission,
 ) {
-  const dbPermission = getSchemasPermission(
+  const schemasPermission = getSchemasPermission(
     permissions,
     groupId,
-    { databaseId: entityId.databaseId },
-    DataPermission.VIEW_DATA,
+    entityId,
+    permission,
   );
 
-  if (
-    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    dbPermission !== DataPermissionValue.IMPERSONATED
-  ) {
+  if (value === "write" && schemasPermission !== "impersonated") {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
-      entityId,
-      DataPermissionValue.UNRESTRICTED,
+      { databaseId: entityId.databaseId },
+      "all",
       database,
-      DataPermission.VIEW_DATA,
+      permission,
       false,
     );
   }
-
-  return permissions;
+  return updatePermission(
+    permissions,
+    groupId,
+    [entityId.databaseId, permission, "native"],
+    value,
+  );
 }

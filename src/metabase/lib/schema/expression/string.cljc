@@ -7,10 +7,6 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text
     [:schema [:ref ::expression/string]]))
 
-(doseq [op [:host :domain :subdomain]]
-  (mbql-clause/define-tuple-mbql-clause op :- :type/Text
-    [:schema [:ref ::expression/string]]))
-
 (mbql-clause/define-tuple-mbql-clause :length :- :type/Integer
   [:schema [:ref ::expression/string]])
 

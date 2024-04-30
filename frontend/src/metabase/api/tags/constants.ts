@@ -13,8 +13,6 @@ export const TAG_TYPES = [
   "field-values",
   "indexed-entity",
   "metric",
-  "permissions-group",
-  "revision",
   "schema",
   "snippet",
   "segment",

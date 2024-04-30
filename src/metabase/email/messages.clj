@@ -96,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn common-context
+(defn- common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)

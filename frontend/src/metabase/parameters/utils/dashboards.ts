@@ -67,21 +67,6 @@ export function setParameterName(
   };
 }
 
-export function setParameterType(
-  parameter: Parameter,
-  type: string,
-  sectionId: string,
-): Parameter {
-  // reset default value
-  const { default: _, ...rest } = parameter;
-
-  return {
-    ...rest,
-    type,
-    sectionId,
-  };
-}
-
 export function getIsMultiSelect(parameter: Parameter): boolean {
   return parameter.isMultiSelect ?? true;
 }

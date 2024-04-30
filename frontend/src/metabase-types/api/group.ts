@@ -18,8 +18,3 @@ export type Group = {
 };
 
 export type GroupListQuery = Omit<Group, "members">;
-
-export type BaseGroupInfo = {
-  id: GroupId;
-  name: string;
-};

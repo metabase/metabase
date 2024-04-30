@@ -1,20 +1,18 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Collection, CollectionItem } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
 
 import PinnedItemOverview from "./PinnedItemOverview";
 
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
 
-const defaultCollection = createMockCollection({
+const defaultCollection = {
   can_write: true,
   id: 1,
   name: "Collection Foo",
   archived: false,
-});
+};
 
-const dashboardItem1: CollectionItem = {
+const dashboardItem1 = {
   id: 1,
   model: "dashboard",
   collection_position: 2,
@@ -26,7 +24,7 @@ const dashboardItem1: CollectionItem = {
   setPinned: jest.fn(),
 };
 
-const dashboardItem2: CollectionItem = {
+const dashboardItem2 = {
   id: 2,
   model: "dashboard",
   collection_position: 1,
@@ -38,10 +36,7 @@ const dashboardItem2: CollectionItem = {
   setPinned: jest.fn(),
 };
 
-function setup({
-  items,
-  collection,
-}: { items?: CollectionItem[]; collection?: Collection } = {}) {
+function setup({ items, collection } = {}) {
   items = items || [dashboardItem1, dashboardItem2];
   collection = collection || defaultCollection;
 
@@ -52,10 +47,10 @@ function setup({
     <PinnedItemOverview
       items={items}
       collection={collection}
+      metadata={{}}
       onCopy={mockOnCopy}
       onMove={mockOnMove}
-      createBookmark={jest.fn()}
-      deleteBookmark={jest.fn()}
+      onDrop={jest.fn()}
     />,
     {
       withDND: true,

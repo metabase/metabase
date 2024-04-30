@@ -6,15 +6,11 @@ import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
-  type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
+import type {
+  EntityId,
+  PermissionSubject,
+  SchemaEntityId,
+  TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -27,19 +23,19 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 export const DATA_MODEL_PERMISSION_OPTIONS = {
   none: {
     label: t`No`,
-    value: DataPermissionValue.NONE,
+    value: "none",
     icon: "close",
     iconColor: "danger",
   },
   edit: {
     label: t`Yes`,
-    value: DataPermissionValue.ALL,
+    value: "all",
     icon: "check",
     iconColor: "success",
   },
   controlled: {
     label: t`Granular`,
-    value: DataPermissionValue.CONTROLLED,
+    value: "controlled",
     icon: "permissions_limited",
     iconColor: "warning",
   },
@@ -56,29 +52,24 @@ const getPermissionValue = (
   groupId: number,
   entityId: EntityId,
   permissionSubject: PermissionSubject,
-): DataPermissionValue => {
+) => {
   switch (permissionSubject) {
     case "fields":
       return getFieldsPermission(
         permissions,
         groupId,
         entityId as TableEntityId,
-        DataPermission.DATA_MODEL,
+        "data-model",
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
         entityId as SchemaEntityId,
-        DataPermission.DATA_MODEL,
+        "data-model",
       );
     default:
-      return getSchemasPermission(
-        permissions,
-        groupId,
-        entityId,
-        DataPermission.DATA_MODEL,
-      );
+      return getSchemasPermission(permissions, groupId, entityId, "data-model");
   }
 };
 
@@ -89,7 +80,7 @@ export const buildDataModelPermission = (
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
-): PermissionSectionConfig => {
+) => {
   const hasChildEntities = permissionSubject !== "fields";
 
   const value = getPermissionValue(
@@ -115,7 +106,7 @@ export const buildDataModelPermission = (
     DATA_MODEL_PERMISSIONS_DESC,
   );
 
-  const confirmations = (newValue: DataPermissionValue) => [
+  const confirmations = (newValue: string) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -127,8 +118,8 @@ export const buildDataModelPermission = (
   ];
 
   return {
-    permission: DataPermission.DATA_MODEL,
-    type: DataPermissionType.DATA_MODEL,
+    permission: "data-model",
+    type: "data-model",
     isDisabled: isAdmin,
     warning,
     confirmations,

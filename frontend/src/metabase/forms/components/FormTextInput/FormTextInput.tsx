@@ -60,11 +60,6 @@ export const FormTextInput = forwardRef(function FormTextInput(
       onBlur={handleBlur}
       rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
       rightSectionWidth={hasCopyButton ? 40 : undefined}
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
     />
   );
 });

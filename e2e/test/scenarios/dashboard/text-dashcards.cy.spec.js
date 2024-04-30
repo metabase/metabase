@@ -13,7 +13,6 @@ import {
   resetSnowplow,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
-  setFilter,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > text and headings", () => {
@@ -142,9 +141,11 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
       addTextBox("text text text");
-
-      setFilter("Text or Category", "Is");
-
+      cy.findByLabelText("Add a filter").click();
+      popover().within(() => {
+        cy.findByText("Text or Category").click();
+        cy.findByText("Is").click();
+      });
       selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
       cy.findByTestId("edit-bar").findByText("Save").click();
 

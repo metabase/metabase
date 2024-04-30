@@ -1,9 +1,6 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
 import { restore } from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo";
-const MONGO_DB_ID = 2;
-const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   before(() => {
@@ -11,15 +8,6 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore("mongo-5");
-    cy.signInAsAdmin();
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [MONGO_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
-      },
-    });
     cy.signInAsNormalUser();
 
     cy.visit("/");

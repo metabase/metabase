@@ -11,24 +11,6 @@ export type EmbeddingSessionTokenState = {
   error: SerializedError | null;
 };
 
-type LoginStatusUninitialized = { status: "uninitialized" };
-type LoginStatusInitialized = { status: "initialized" };
-type LoginStatusSuccess = { status: "success" };
-type LoginStatusLoading = { status: "loading" };
-export type LoginStatusError = { status: "error"; error: Error };
-
-export type LoginStatus =
-  | LoginStatusUninitialized
-  | LoginStatusInitialized
-  | LoginStatusSuccess
-  | LoginStatusLoading
-  | LoginStatusError;
-
-export type SdkState = {
-  token: EmbeddingSessionTokenState;
-  loginStatus: LoginStatus;
-};
-
-export interface SdkStoreState extends State {
-  sdk: SdkState;
+export interface SdkState extends State {
+  embeddingSessionToken: EmbeddingSessionTokenState;
 }

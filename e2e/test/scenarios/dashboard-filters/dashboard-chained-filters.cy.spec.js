@@ -14,7 +14,6 @@ import {
   filterWidget,
   editDashboard,
   setFilter,
-  sidebar,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -33,7 +32,7 @@ describe("scenarios > dashboard > chained filter", () => {
       editDashboard();
 
       // add a state filter
-      setFilter("Location", "Is", "Location");
+      setFilter("Location", "Is");
 
       // connect that to people.state
       getDashboardCard().within(() => {
@@ -52,10 +51,10 @@ describe("scenarios > dashboard > chained filter", () => {
         .findByText("add another dashboard filter")
         .click();
 
-      popover().findByText("Location").click();
-
-      sidebar().findByText("Filter operator").next().click();
-      popover().findByText("Is").click();
+      popover().within(() => {
+        cy.findByText("Location").click();
+        cy.findByText("Is").click();
+      });
 
       // connect that to person.city
       getDashboardCard().within(() => {

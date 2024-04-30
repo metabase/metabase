@@ -255,7 +255,9 @@ describe("permissions", () => {
     cy.updatePermissionsGraph({
       1: {
         [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
+          data: {
+            schemas: "block",
+          },
         },
       },
     });
@@ -298,13 +300,16 @@ describe("permissions", () => {
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
-            "view-data": "blocked",
+            data: {
+              schemas: "block",
+            },
           },
         },
         [NOSQL_GROUP]: {
           [WRITABLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": "query-builder",
+            data: {
+              schemas: "all",
+            },
           },
         },
       });

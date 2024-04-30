@@ -2,13 +2,7 @@ import type { CardId, CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 
-export const BOOKMARK_TYPES = [
-  "card",
-  "collection",
-  "dashboard",
-  "snippet",
-  "indexed-entity",
-] as const;
+export const BOOKMARK_TYPES = ["card", "collection", "dashboard"] as const;
 export type BookmarkType = typeof BOOKMARK_TYPES[number];
 export type BookmarkId = string;
 

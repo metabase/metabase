@@ -17,8 +17,6 @@ import {
   queryBuilderHeader,
   openNotebook,
   selectFilterOperator,
-  entityPickerModal,
-  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -151,25 +149,18 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").click();
+      cy.findByTestId("select-button").click();
     });
-
-    entityPickerModal().findByText("Create a new collection").click();
+    popover().findByText("New collection").click();
 
     const NEW_COLLECTION = "Foo";
-    collectionOnTheGoModal().then(() => {
-      cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
-      cy.findByText("Create").click();
-    });
-
-    entityPickerModal().findByText("Select").click();
-
-    modal().within(() => {
-      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").should(
-        "have.text",
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
         NEW_COLLECTION,
       );
+      cy.findByText("Create").click();
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });

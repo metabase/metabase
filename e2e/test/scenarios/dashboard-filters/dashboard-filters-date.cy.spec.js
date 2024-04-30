@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Time", "Month and Year", "Month and Year");
+    setFilter("Time", "Month and Year");
 
     // Can't save without a default value
     toggleRequiredParameter();
@@ -143,9 +143,13 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
 
-    setFilter("Time", "All Options");
+    popover().within(() => {
+      cy.findByText("Time").click();
+      cy.findByText("All Options").click();
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -181,7 +185,10 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover().findByText("Heure").click(); // "Time" -> "All Options"
+    popover().within(() => {
+      cy.findByText("Heure").click(); // "Time"
+      cy.findByText("Toutes les options").click(); // "All Options"
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"

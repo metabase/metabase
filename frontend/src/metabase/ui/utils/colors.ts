@@ -37,7 +37,6 @@ const CUSTOM_COLORS = [
   "success",
   "error",
   "white",
-  "accent5",
 ];
 
 function getColorShades(color: string): ColorShades {

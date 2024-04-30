@@ -1,10 +1,12 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
+  popover,
   modal,
   describeEE,
   isOSS,
@@ -13,17 +15,21 @@ import {
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
+  isPermissionDisabled,
   visitQuestion,
   visitDashboard,
   selectPermissionRow,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const { ALL_USERS_GROUP, ADMIN_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 0;
+const DATA_ACCESS_PERMISSION_INDEX = 0;
+const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
@@ -42,22 +48,22 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     );
 
     assertPermissionTable([
-      ["Accounts", "No"],
-      ["Analytic Events", "No"],
-      ["Feedback", "No"],
-      ["Invoices", "No"],
-      ["Orders", "No"],
-      ["People", "No"],
-      ["Products", "No"],
-      ["Reviews", "No"],
+      ["Accounts", "No self-service", "No"],
+      ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
+      ["Invoices", "No self-service", "No"],
+      ["Orders", "No self-service", "No"],
+      ["People", "No self-service", "No"],
+      ["Products", "No self-service", "No"],
+      ["Reviews", "No self-service", "No"],
     ]);
   });
 
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-    cy.icon("close").first().click();
-    cy.findAllByRole("option").contains("Query builder and native").click();
+    cy.icon("eye").first().click();
+    cy.findAllByRole("option").contains("Unrestricted").click();
 
     // stub out the PUT and save
     cy.intercept("PUT", "/api/permissions/graph", req => {
@@ -280,8 +286,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
       modifyPermission(
         "Sample Database",
-        NATIVE_QUERIES_PERMISSION_INDEX,
-        "Query builder and native",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Unrestricted",
       );
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -365,23 +371,136 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1 person");
 
-        assertPermissionTable([
-          ["Sample Database", "Query builder and native"],
-        ]);
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
-          ["Accounts", "Query builder and native"],
-          ["Analytic Events", "Query builder and native"],
-          ["Feedback", "Query builder and native"],
-          ["Invoices", "Query builder and native"],
-          ["Orders", "Query builder and native"],
-          ["People", "Query builder and native"],
-          ["Products", "Query builder and native"],
-          ["Reviews", "Query builder and native"],
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
         ]);
+      });
+
+      it("allows view and edit permissions", () => {
+        cy.visit("/admin/permissions");
+
+        selectSidebarItem("collection");
+
+        assertPermissionTable([["Sample Database", "No self-service", "No"]]);
+
+        // Drill down to tables permissions
+        cy.findByTextEnsureVisible("Sample Database").click();
+
+        assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
+          ["Orders", "No self-service", "No"],
+          ["People", "No self-service", "No"],
+          ["Products", "No self-service", "No"],
+          ["Reviews", "No self-service", "No"],
+        ]);
+
+        modifyPermission(
+          "Orders",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        modal().within(() => {
+          cy.findByText("Change access to this database to granular?");
+          cy.button("Change").click();
+        });
+
+        assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
+          ["Orders", "Unrestricted", "No"],
+          ["People", "No self-service", "No"],
+          ["Products", "No self-service", "No"],
+          ["Reviews", "No self-service", "No"],
+        ]);
+
+        // Navigate back
+        selectSidebarItem("collection");
+
+        assertPermissionTable([["Sample Database", "Granular", "No"]]);
+
+        modifyPermission(
+          "Sample Database",
+          NATIVE_QUERIES_PERMISSION_INDEX,
+          "Yes",
+        );
+
+        modal().within(() => {
+          cy.findByText("Allow native query editing?");
+          cy.button("Allow").click();
+        });
+
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
+
+        // Drill down to tables permissions
+        cy.findByTextEnsureVisible("Sample Database").click();
+
+        assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
+        ]);
+
+        cy.button("Save changes").click();
+
+        modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.contains(
+            "collection will be given access to 8 tables in Sample Database.",
+          );
+          cy.contains(
+            "collection will now be able to write native queries for Sample Database.",
+          );
+          cy.button("Yes").click();
+        });
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Save changes").should("not.exist");
+
+        assertPermissionTable([
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
+        ]);
+
+        // After saving permissions, user should be able to make further edits without refreshing the page
+        // metabase#37811
+        selectSidebarItem("data");
+
+        modifyPermission(
+          "Sample Database",
+          NATIVE_QUERIES_PERMISSION_INDEX,
+          "No",
+        );
+
+        cy.button("Refresh the page").should("not.exist");
       });
 
       it("should show a modal when a revision changes while an admin is editing", () => {
@@ -392,8 +511,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         modifyPermission(
           "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
         );
 
         cy.get("@graph").then(data => {
@@ -410,6 +529,109 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("database focused view", () => {
+      it("allows view and edit permissions", () => {
+        cy.visit("/admin/permissions/");
+
+        cy.get("label").contains("Databases").click();
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Select a database to see group permissions");
+
+        selectSidebarItem("Sample Database");
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "No self-service", "No"],
+        ]);
+
+        selectSidebarItem("Orders");
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "No self-service", "No"],
+        ]);
+
+        modifyPermission(
+          "readonly",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        modal().within(() => {
+          cy.findByText("Change access to this database to granular?");
+          cy.button("Change").click();
+        });
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "No"],
+        ]);
+
+        // Navigate back
+        cy.get("a").contains("Sample Database").click();
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Granular", "No"],
+        ]);
+
+        modifyPermission("readonly", NATIVE_QUERIES_PERMISSION_INDEX, "Yes");
+
+        modal().within(() => {
+          cy.findByText("Allow native query editing?");
+          cy.button("Allow").click();
+        });
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "Yes"],
+        ]);
+
+        cy.button("Save changes").click();
+
+        modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.contains(
+            "readonly will be given access to 8 tables in Sample Database.",
+          );
+          cy.contains(
+            "readonly will now be able to write native queries for Sample Database.",
+          );
+          cy.button("Yes").click();
+        });
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Save changes").should("not.exist");
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "Yes"],
+        ]);
+      });
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions/");
@@ -418,8 +640,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         modifyPermission(
           "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
         );
 
         cy.get("@graph").then(data => {
@@ -445,16 +667,196 @@ describeEE("scenarios > admin > permissions", () => {
     setTokenFeatures("all");
   });
 
+  it("allows editing sandboxed access in the database focused view", () => {
+    cy.visit(
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+    );
+
+    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
+
+    modal().within(() => {
+      cy.findByText("Change access to this database to granular?");
+      cy.button("Change").click();
+    });
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Grant sandboxed access to this table");
+    cy.button("Save").should("be.disabled");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a column").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("User ID").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a user attribute").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("attr_uid").click();
+    cy.button("Save").click();
+
+    assertPermissionTable([
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Yes"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
+    ]);
+
+    modifyPermission(
+      "All Users",
+      DATA_ACCESS_PERMISSION_INDEX,
+      "Edit sandboxed access",
+    );
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Grant sandboxed access to this table");
+
+    cy.button("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Grant sandboxed access to this table").should("not.exist");
+
+    cy.button("Save changes").click();
+
+    assertPermissionTable([
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Yes"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
+    ]);
+  });
+
+  it("allows editing sandboxed access in the group focused view", () => {
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
+    );
+
+    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
+
+    modal().within(() => {
+      cy.findByText("Change access to this database to granular?");
+      cy.button("Change").click();
+    });
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+    );
+    modal().within(() => {
+      cy.findByText("Grant sandboxed access to this table");
+      cy.button("Save").should("be.disabled");
+      cy.findByText("Pick a column").click();
+    });
+
+    popover().findByText("User ID").click();
+    modal().findByText("Pick a user attribute").click();
+    popover().findByText("attr_uid").click();
+    modal().button("Save").click();
+
+    assertPermissionTable([
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
+      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
+    ]);
+
+    modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERMISSION_INDEX,
+      "Edit sandboxed access",
+    );
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+    );
+
+    modal().findByText("Grant sandboxed access to this table");
+
+    cy.button("Save").click();
+
+    modal().should("not.exist");
+
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+    );
+
+    cy.button("Save changes").click();
+
+    modal().within(() => {
+      cy.findByText("Save permissions?").should("exist");
+      cy.contains(
+        "All Users will be given access to 1 table in Sample Database",
+      ).should("exist");
+      cy.button("Yes").click();
+    });
+
+    cy.wait("@saveGraph");
+
+    // assertions that specifically targets metabase#37774. Should be able to reload with the schema in the URL and not error
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+    );
+    cy.reload();
+
+    assertPermissionTable([
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
+      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
+    ]);
+  });
+
+  it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("All Users")
+      .closest("tr")
+      .as("allUsersRow")
+      .within(() => {
+        isPermissionDisabled(
+          DATA_ACCESS_PERMISSION_INDEX,
+          "No self-service",
+          false,
+        ).click();
+        isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
+      });
+
+    popover().contains("Block").click();
+
+    cy.get("@allUsersRow").within(() => {
+      isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Block", false);
+      isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
+    });
+  });
+
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
+          data: { schemas: "block" },
         },
       },
     });
@@ -473,12 +875,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
+          data: { schemas: "block" },
         },
       },
     });
@@ -500,63 +897,18 @@ describe("scenarios > admin > permissions", () => {
   it("shows permissions help", () => {
     cy.visit("/admin/permissions");
 
-    // Data permissions w/o `legacy-no-self-service` in graph
+    // Data permissions
     cy.get("main").within(() => {
-      cy.findByText("Permissions help").as("permissionHelpButton").click();
-      cy.get("@permissionHelpButton").should("not.exist");
-    });
-
-    cy.findByLabelText("Permissions help reference").within(() => {
-      cy.findByText("Data permissions");
-
-      cy.findByText("Database ‘View data’ levels").click();
-      cy.findByTestId("database-view-data-level").should(
-        "not.contain",
-        /No self-service/,
-      );
-      cy.findByText("Database ‘View data’ levels").click();
-
-      cy.findByText(/Schema or table ‘View data’ levels/).click();
-      cy.findByTestId("schema-table-level").should(
-        "not.contain",
-        /No self-service/,
-      );
-      cy.findByText(/Schema or table ‘View data’ levels/).click();
-
-      cy.findByText("‘Create queries’ levels");
-
-      cy.findByLabelText("Close").click();
-    });
-
-    // Data permissions w/ `legacy-no-self-service` in graph
-    cy.visit("/admin/permissions");
-
-    cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
-      statusCode: 200,
-      body: {
-        revision: 1,
-        groups: {
-          1: {
-            1: {
-              "view-data": "legacy-no-self-service",
-              "create-queries": "query-builder-and-native",
-              download: { schemas: "full" },
-            },
-          },
-        },
-      },
-    });
-
-    cy.get("main").within(() => {
-      cy.findByText("Permissions help").as("permissionHelpButton").click();
+      cy.findByText("Permission help").as("permissionHelpButton").click();
       cy.get("@permissionHelpButton").should("not.exist");
     });
 
     cy.findByLabelText("Permissions help reference")
       .as("permissionsHelpContent")
       .within(() => {
-        cy.findByText("Database ‘View data’ levels").click();
-        cy.findAllByText(/No self-service/);
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
         cy.findByLabelText("Close").click();
       });
 

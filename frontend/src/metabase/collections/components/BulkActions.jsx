@@ -1,5 +1,6 @@
+/* eslint-disable react/prop-types */
 import { memo } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
@@ -7,13 +8,6 @@ import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
 import { Transition } from "metabase/ui";
-import type { Collection, CollectionItem } from "metabase-types/api";
-
-import type {
-  OnArchive,
-  OnCopyWithoutArguments,
-  OnMoveWithOneItem,
-} from "../types";
 
 import {
   BulkActionsToast,
@@ -29,20 +23,7 @@ const slideIn = {
   transitionProperty: "transform, opacity",
 };
 
-type BulkActionsProps = {
-  selected: any[];
-  collection: Collection;
-  selectedItems: CollectionItem[] | null;
-  selectedAction: string | null;
-  onArchive?: OnArchive;
-  onMoveStart: () => void;
-  onCloseModal: () => void;
-  onMove: OnMoveWithOneItem;
-  onCopy: OnCopyWithoutArguments;
-  isNavbarOpen: boolean;
-};
-
-const BulkActions = ({
+function BulkActions({
   selected,
   collection,
   selectedItems,
@@ -53,12 +34,10 @@ const BulkActions = ({
   onMove,
   onCopy,
   isNavbarOpen,
-}: BulkActionsProps) => {
+}) {
   const canMove = selected.every(item => canMoveItem(item, collection));
   const canArchive = selected.every(item => canArchiveItem(item, collection));
   const isVisible = selected.length > 0;
-
-  const areSomeItemsSelected = !!selectedItems && !_.isEmpty(selectedItems);
 
   return (
     <>
@@ -89,28 +68,26 @@ const BulkActions = ({
                   medium
                   purple
                   disabled={!canArchive}
-                  onClick={() => {
-                    onArchive?.();
-                  }}
+                  onClick={onArchive}
                 >{t`Archive`}</CardButton>
               </CardSide>
             </ToastCard>
           </BulkActionsToast>
         )}
       </Transition>
-      {areSomeItemsSelected && selectedAction === "copy" && (
+      {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>
           <CollectionCopyEntityModal
             entityObject={selectedItems[0]}
             onClose={onCloseModal}
             onSaved={() => {
-              onCloseModal?.();
-              onCopy?.();
+              onCloseModal();
+              onCopy();
             }}
           />
         </Modal>
       )}
-      {areSomeItemsSelected && selectedAction === "move" && (
+      {!_.isEmpty(selectedItems) && selectedAction === "move" && (
         <BulkMoveModal
           selectedItems={selectedItems}
           onClose={onCloseModal}
@@ -120,7 +97,6 @@ const BulkActions = ({
       )}
     </>
   );
-};
+}
 
-// eslint-disable-next-line import/no-default-export
 export default memo(BulkActions);

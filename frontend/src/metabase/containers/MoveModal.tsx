@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
   CollectionPickerModal,
@@ -12,7 +11,7 @@ import type { CollectionId, CollectionItem } from "metabase-types/api";
 interface MoveModalProps {
   title: string;
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
+  onMove: (item: { id: CollectionId }) => void;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
 }
@@ -57,7 +56,7 @@ export const MoveModal = ({
 
 interface BulkMoveModalProps {
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
+  onMove: (item: { id: CollectionId }) => void;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
 }

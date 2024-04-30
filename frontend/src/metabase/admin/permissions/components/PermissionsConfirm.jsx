@@ -1,9 +1,13 @@
 /* eslint-disable react/prop-types */
-import { t, jt, ngettext, msgid } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+
+import {
+  ReadPermissionLabel,
+  WritePermissionLabel,
+} from "./PermissionsConfirm.styled";
 
 const GroupName = ({ group }) => (
   <span className={CS.textBrand}>{group.name}</span>
@@ -71,30 +75,20 @@ const PermissionsConfirm = ({ diff }) => (
           )}
           {database.native && (
             <div>
-              {database.native === DataPermissionValue.QUERY_BUILDER &&
-                jt`${(
-                  <GroupName group={group} />
-                )} will only be able to use the query
-                  builder for ${(<DatabaseName database={database} />)}.`}
-              {database.native ===
-                DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-                jt`${(
-                  <GroupName group={group} />
-                )} will be able to use the query builder and write native queries for ${(
-                  <DatabaseName database={database} />
-                )}.`}
-              {database.native === DataPermissionValue.NO &&
-                jt`${(
-                  <GroupName group={group} />
-                )} will not be able to use the query builder or write native queries for ${(
-                  <DatabaseName database={database} />
-                )}.`}
-              {database.native === DataPermissionValue.CONTROLLED &&
-                jt`${(
-                  <GroupName group={group} />
-                )} will have granular query creation permissions for ${(
-                  <DatabaseName database={database} />
-                )}.`}
+              <GroupName group={group} />
+              {database.native === "none"
+                ? t` will no longer be able to `
+                : t` will now be able to `}
+              {database.native === "read" ? (
+                <ReadPermissionLabel>{t`read`}</ReadPermissionLabel>
+              ) : database.native === "write" ? (
+                <WritePermissionLabel>{t`write`}</WritePermissionLabel>
+              ) : (
+                <span>{t`read or write`}</span>
+              )}
+              {t` native queries for `}
+              <DatabaseName database={database} />
+              {"."}
             </div>
           )}
         </div>

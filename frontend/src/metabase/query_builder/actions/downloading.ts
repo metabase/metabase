@@ -1,8 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import api, { GET, POST } from "metabase/lib/api";
-import { checkNotNull } from "metabase/lib/types";
+import api from "metabase/lib/api";
 import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
@@ -43,18 +42,18 @@ export const downloadQueryResults =
     }
   };
 
-const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
-  const fileName = getChartFileName(question);
-  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage(chartSelector, fileName);
-};
-
 const downloadDataset = async (opts: DownloadQueryResultsOpts) => {
   const params = getDatasetParams(opts);
   const response = await getDatasetResponse(params);
   const fileName = getDatasetFileName(response.headers, opts.type);
   const fileContent = await response.blob();
   openSaveDialog(fileName, fileContent);
+};
+
+const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
+  const fileName = getChartFileName(question);
+  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  await saveChartImage(chartSelector, fileName);
 };
 
 const getDatasetParams = ({
@@ -145,15 +144,12 @@ const getDatasetParams = ({
 
 export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
   url = url.replace(api.basename, ""); // make url relative if it's not
+  url = api.basename + url;
   if (params) {
     url += `?${params.toString()}`;
   }
-
-  return url;
-}
-
-interface TransformResponseProps {
-  response?: Response;
+  const requestUrl = new URL(url, location.origin);
+  return requestUrl.href;
 }
 
 const getDatasetResponse = ({
@@ -172,20 +168,9 @@ const getDatasetResponse = ({
         formattedBody.append(key, JSON.stringify(body[key]));
       }
     }
-    return POST(requestUrl, {
-      formData: true,
-      fetch: true,
-      transformResponse: ({ response }: TransformResponseProps) =>
-        checkNotNull(response),
-    })({
-      formData: formattedBody,
-    });
+    return fetch(requestUrl, { method, body: formattedBody });
   } else {
-    return GET(requestUrl, {
-      fetch: true,
-      transformResponse: ({ response }: TransformResponseProps) =>
-        checkNotNull(response),
-    })();
+    return fetch(requestUrl);
   }
 };
 

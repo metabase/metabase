@@ -380,8 +380,7 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case
-    :host :domain :subdomain})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -557,15 +556,6 @@
 
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern :string)
-
-(defclause ^{:requires-features #{:expressions :regex}} host
-  s StringExpressionArg)
-
-(defclause ^{:requires-features #{:expressions :regex}} domain
-  s StringExpressionArg)
-
-(defclause ^{:requires-features #{:expressions :regex}} subdomain
-  s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} +
   x Addable, y Addable, more (rest Addable))
@@ -873,7 +863,7 @@
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case host domain subdomain))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a

@@ -326,8 +326,7 @@ describe("collection permissions", () => {
               cy.visit("/collection/root");
               openCollectionItemMenu("Orders in a dashboard");
               popover().findByText("Duplicate").click();
-              cy.findByTestId("collection-picker-button").should(
-                "have.text",
+              cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
               );
             });

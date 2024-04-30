@@ -1,4 +1,3 @@
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import {
@@ -144,7 +143,7 @@ describe("buildDataModelPermission", () => {
       );
 
       const [downgradePermissionConfirmation] =
-        permissionModel.confirmations?.(DataPermissionValue.NONE) ?? [];
+        permissionModel.confirmations("none");
 
       expect(downgradePermissionConfirmation?.message).toBe(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
@@ -162,7 +161,7 @@ describe("buildDataModelPermission", () => {
       );
 
       const [downgradePermissionConfirmation] =
-        permissionModel.confirmations?.(DataPermissionValue.ALL) ?? [];
+        permissionModel.confirmations("all");
 
       expect(permissionModel.warning).toBe(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
@@ -180,7 +179,7 @@ describe("buildDataModelPermission", () => {
         "schemas",
       );
 
-      permissionModel.confirmations?.(DataPermissionValue.ALL);
+      permissionModel.confirmations("all");
 
       expect(permissionModel.warning).toBe(null);
     });

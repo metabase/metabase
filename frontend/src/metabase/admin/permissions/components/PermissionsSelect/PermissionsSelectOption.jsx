@@ -11,7 +11,7 @@ import {
 } from "./PermissionsSelectOption.styled";
 
 export const optionShape = {
-  label: PropTypes.oneOfType([PropTypes.string, PropTypes.element]).isRequired,
+  label: PropTypes.string.isRequired,
   icon: PropTypes.string.isRequired,
   iconColor: PropTypes.string.isRequired,
 };

@@ -16,7 +16,7 @@
 
 .editHeaderButton {
   border: none;
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }
 
 .saveButton {

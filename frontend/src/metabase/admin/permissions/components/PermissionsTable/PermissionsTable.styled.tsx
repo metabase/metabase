@@ -20,7 +20,6 @@ export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
   max-height: 100%;
   overflow-y: auto;
-  min-width: max-content;
 `;
 
 export const PermissionsTableCell = styled.td`

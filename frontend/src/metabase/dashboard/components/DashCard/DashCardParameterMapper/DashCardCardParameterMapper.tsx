@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,7 +15,6 @@ import {
   showVirtualDashCardInfoText,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -27,10 +25,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  getParameterSubType,
-  isDateParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
@@ -43,7 +38,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { resetParameterMapping, setParameterMapping } from "../../../actions";
+import { setParameterMapping } from "../../../actions";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
@@ -123,43 +118,12 @@ export function DashCardCardParameterMapper({
   mappingOptions,
 }: DashcardCardParameterMapperProps) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-  const prevParameter = usePrevious(editingParameter);
-  const dispatch = useDispatch();
 
   const hasSeries =
     isQuestionDashCard(dashcard) &&
     dashcard.series &&
     dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const isVirtual = isVirtualDashCard(dashcard);
-  const virtualCardType = getVirtualCardType(dashcard);
-  const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
-
-  useEffect(() => {
-    if (!prevParameter || !editingParameter) {
-      return;
-    }
-
-    if (
-      isNative &&
-      isDisabled &&
-      prevParameter.type !== editingParameter.type
-    ) {
-      const subType = getParameterSubType(editingParameter);
-      const prevSubType = getParameterSubType(prevParameter);
-
-      if (prevSubType === "=" && subType !== "=") {
-        dispatch(resetParameterMapping(editingParameter.id, dashcard.id));
-      }
-    }
-  }, [
-    isNative,
-    isDisabled,
-    prevParameter,
-    editingParameter,
-    dispatch,
-    dashcard.id,
-  ]);
 
   const handleChangeTarget = useCallback(
     (target: ParameterTarget | null) => {
@@ -169,6 +133,10 @@ export function DashCardCardParameterMapper({
     },
     [card.id, dashcard.id, editingParameter, setParameterMapping],
   );
+
+  const isVirtual = isVirtualDashCard(dashcard);
+  const virtualCardType = getVirtualCardType(dashcard);
+  const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
 
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,

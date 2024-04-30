@@ -17,7 +17,7 @@ const DEFAULT_OPTIONS = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: ({ body }) => body,
+  transformResponse: o => o,
   raw: {},
   headers: {},
   retry: false,
@@ -218,7 +218,7 @@ export class Api extends EventEmitter {
           }
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse({ body, data });
+              body = options.transformResponse(body, { data });
             }
             resolve(body);
           } else {
@@ -266,7 +266,6 @@ export class Api extends EventEmitter {
 
     return fetch(request)
       .then(response => {
-        const unreadResponse = response.clone();
         return response.text().then(body => {
           if (options.json) {
             try {
@@ -290,11 +289,7 @@ export class Api extends EventEmitter {
 
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse({
-                body,
-                data,
-                response: unreadResponse,
-              });
+              body = options.transformResponse(body, { data });
             }
             return body;
           } else {

@@ -19,14 +19,3 @@ export interface RevisionListQuery {
   model_type: string;
   model_id: number | string;
 }
-
-export interface ListRevisionRequest {
-  entity: "card" | "dashboard";
-  id: number | string;
-}
-
-export interface RevertRevisionRequest {
-  entity: "card" | "dashboard";
-  id: number | string;
-  revision_id: number;
-}

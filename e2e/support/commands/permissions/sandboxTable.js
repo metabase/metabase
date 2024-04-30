@@ -20,17 +20,14 @@ Cypress.Commands.add(
       const attr = Object.keys(attribute_remappings).join(", "); // Account for the possiblity of passing multiple user attributes
 
       cy.log(`Sandbox "${name}" table on "${attr}"`);
-      cy.updatePermissionsGraph({
-        [group_id]: {
-          [db_id]: {
-            "view-data": {
-              [schema]: {
-                [table_id]: "sandboxed",
-              },
-            },
-            "create-queries": "query-builder",
+      cy.updatePermissionsSchemas({
+        schemas: {
+          [schema]: {
+            [table_id]: { query: "segmented", read: "all" },
           },
         },
+        user_group: group_id,
+        database_id: db_id,
       });
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings,

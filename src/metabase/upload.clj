@@ -298,18 +298,10 @@
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
-        (not
-         (and
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                   :perms/view-data
-                                                                   (u/the-id db)))
-          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
-          ;; (at least) `:query-builder` plus unrestricted view-data
-          (contains? #{:query-builder :query-builder-and-native}
-                     (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                 :perms/create-queries
-                                                                 (u/the-id db)
-                                                                 schema-name))))
+        (not= :unrestricted (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                                        :perms/data-access
+                                                                        (u/the-id db)
+                                                                        schema-name))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -511,7 +503,7 @@
   (when (seq field->new-type)
     (apply driver/alter-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
-           args)))
+            args)))
 
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try

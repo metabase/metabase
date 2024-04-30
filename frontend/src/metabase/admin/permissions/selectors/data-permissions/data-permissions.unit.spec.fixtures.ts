@@ -1,7 +1,5 @@
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { DataPermission, DataPermissionValue } from "../../types";
-
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)
 export const normalizedMetadata = {
@@ -143,38 +141,47 @@ export const initialPermissions = {
   1: {
     // Sample database
     1: {
-      [DataPermission.CREATE_QUERIES]:
-        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary multi-schema
     2: {
-      [DataPermission.CREATE_QUERIES]:
-        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary schemaless
     3: {
-      [DataPermission.CREATE_QUERIES]:
-        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
   },
   2: {
     // Sample database
     1: {
-      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary multi-schema
     2: {
-      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary schemaless
     3: {
-      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
-      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
   },
 };

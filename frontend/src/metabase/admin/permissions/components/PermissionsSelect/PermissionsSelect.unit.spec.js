@@ -1,7 +1,5 @@
 import { render, fireEvent, screen, getIcon } from "__support__/ui";
 
-import { DataPermissionValue } from "../../types";
-
 import { PermissionsSelect } from "./PermissionsSelect";
 
 const options = [
@@ -13,7 +11,7 @@ const options = [
   },
   {
     label: "Limited",
-    value: DataPermissionValue.CONTROLLED,
+    value: "controlled",
     icon: "permissions_limited",
     iconColor: "blue",
   },
@@ -65,10 +63,7 @@ describe("PermissionSelect", () => {
     const [limited] = screen.getAllByRole("option");
     fireEvent.click(limited);
 
-    expect(onChangeMock).toHaveBeenCalledWith(
-      DataPermissionValue.CONTROLLED,
-      null,
-    );
+    expect(onChangeMock).toHaveBeenCalledWith("controlled", null);
   });
 
   it("does not show options after click when disabled", () => {

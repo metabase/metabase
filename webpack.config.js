@@ -105,7 +105,7 @@ const config = (module.exports = {
           ]
         : []),
       {
-        test: /\.(svg|png)$/,
+        test: /\.(eot|woff2?|ttf|svg|png)$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
       },

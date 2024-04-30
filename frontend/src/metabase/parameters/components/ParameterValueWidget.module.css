@@ -9,8 +9,8 @@
 
 .parameter.selected {
   font-weight: bold;
-  color: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+  color: var(--color-brand);
+  border-color: var(--color-brand);
 }
 
 .parameter input {
@@ -34,7 +34,7 @@
 
 .parameter.noPopover.selected input {
   font-weight: bold;
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }
 
 .parameter.noPopover input:focus {

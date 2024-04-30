@@ -13,7 +13,6 @@ import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
-import { UndoListing } from "metabase/containers/UndoListing";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -33,7 +32,6 @@ export interface RenderWithProvidersOptions {
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
   withDND?: boolean;
-  withUndos?: boolean;
   customReducers?: ReducerObject;
 }
 
@@ -50,7 +48,6 @@ export function renderWithProviders(
     storeInitialState = {},
     withRouter = false,
     withDND = false,
-    withUndos = false,
     customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -98,7 +95,6 @@ export function renderWithProviders(
       history={history}
       withRouter={withRouter}
       withDND={withDND}
-      withUndos={withUndos}
     />
   );
 
@@ -120,14 +116,12 @@ function Wrapper({
   history,
   withRouter,
   withDND,
-  withUndos,
 }: {
   children: React.ReactElement;
   store: any;
   history?: History;
   withRouter: boolean;
   withDND: boolean;
-  withUndos?: boolean;
 }): JSX.Element {
   return (
     <Provider store={store}>
@@ -136,7 +130,6 @@ function Wrapper({
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
-          {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
     </Provider>

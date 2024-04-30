@@ -221,7 +221,7 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
-export function getSitePath() {
+function getSitePath() {
   return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 

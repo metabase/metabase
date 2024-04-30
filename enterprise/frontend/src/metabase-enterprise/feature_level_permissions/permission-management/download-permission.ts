@@ -6,15 +6,11 @@ import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
-  type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
+import type {
+  EntityId,
+  PermissionSubject,
+  SchemaEntityId,
+  TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -41,25 +37,25 @@ const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
 export const DOWNLOAD_PERMISSION_OPTIONS = {
   none: {
     label: t`No`,
-    value: DataPermissionValue.NONE,
+    value: "none",
     icon: "close",
     iconColor: "danger",
   },
   limited: {
     label: t`10 thousand rows`,
-    value: DataPermissionValue.LIMITED,
+    value: "limited",
     icon: "10k",
     iconColor: "accent7",
   },
   full: {
     label: t`1 million rows`,
-    value: DataPermissionValue.FULL,
+    value: "full",
     icon: "1m",
     iconColor: "accent7",
   },
   controlled: {
     label: t`Granular`,
-    value: DataPermissionValue.CONTROLLED,
+    value: "controlled",
     icon: "permissions_limited",
     iconColor: "warning",
   },
@@ -84,22 +80,17 @@ const getPermissionValue = (
         permissions,
         groupId,
         entityId as TableEntityId,
-        DataPermission.DOWNLOAD,
+        "download",
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
         entityId as SchemaEntityId,
-        DataPermission.DOWNLOAD,
+        "download",
       );
     default:
-      return getSchemasPermission(
-        permissions,
-        groupId,
-        entityId,
-        DataPermission.DOWNLOAD,
-      );
+      return getSchemasPermission(permissions, groupId, entityId, "download");
   }
 };
 
@@ -108,13 +99,12 @@ export const buildDownloadPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  dataAccessPermissionValue: DataPermissionValue,
+  dataAccessPermissionValue: string,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
-): PermissionSectionConfig => {
+) => {
   const hasChildEntities = permissionSubject !== "fields";
-  const isBlockPermission =
-    dataAccessPermissionValue === DataPermissionValue.BLOCKED;
+  const isBlockPermission = dataAccessPermissionValue === "block";
 
   const value = isBlockPermission
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
@@ -140,7 +130,7 @@ export const buildDownloadPermission = (
     DOWNLOAD_PERMISSIONS_DESC,
   );
 
-  const confirmations = (newValue: DataPermissionValue) => [
+  const confirmations = (newValue: string) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -152,8 +142,8 @@ export const buildDownloadPermission = (
   ];
 
   return {
-    permission: DataPermission.DOWNLOAD,
-    type: DataPermissionType.DOWNLOAD,
+    permission: "download",
+    type: "download",
     isDisabled,
     disabledTooltip,
     value,

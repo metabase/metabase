@@ -49,8 +49,7 @@
   [_ db-details]
   (mongo.connection/with-mongo-client [^MongoClient c db-details]
     (let [db-names (mongo.util/list-database-names c)
-          db-name (mongo.db/db-name db-details)
-          db (mongo.util/database c db-name)
+          db (mongo.util/database c (mongo.db/db-name db-details))
           db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
       (and
        ;; 1. check db.dbStats command completes successfully
@@ -58,7 +57,7 @@
           1.0)
        ;; 2. check the database is actually on the server
        ;; (this is required because (1) is true even if the database doesn't exist)
-       (boolean (some #(= % db-name) db-names))))))
+       (boolean (some #(= % (:db db-stats)) db-names))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo

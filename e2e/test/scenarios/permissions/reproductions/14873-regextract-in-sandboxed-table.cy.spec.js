@@ -20,22 +20,13 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
     // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
       [DATA_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
+        [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
       },
       [COLLECTION_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
     });
 

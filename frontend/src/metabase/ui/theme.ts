@@ -4,7 +4,6 @@ import { rem } from "@mantine/core";
 import {
   getAccordionOverrides,
   getActionIconOverrides,
-  getAlertOverrides,
   getAnchorOverrides,
   getAutocompleteOverrides,
   getButtonOverrides,
@@ -95,7 +94,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       },
     },
   },
-  fontFamily: "var(--mb-default-font-family)",
+  fontFamily: "var(--default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
@@ -106,7 +105,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   components: {
     ...getAccordionOverrides(),
     ...getActionIconOverrides(),
-    ...getAlertOverrides(),
     ...getAnchorOverrides(),
     ...getAutocompleteOverrides(),
     ...getButtonOverrides(),

@@ -46,7 +46,6 @@ type Section = {
   key: string;
   items: ListItem[];
   icon?: string;
-  type?: string;
 };
 
 function isOperatorListItem(item: ListItem): item is OperatorListItem {
@@ -123,7 +122,6 @@ export function AggregationPicker({
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
-        type: "action",
       });
     }
 
@@ -255,7 +253,6 @@ export function AggregationPicker({
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
-        withBorders
       />
     </Root>
   );

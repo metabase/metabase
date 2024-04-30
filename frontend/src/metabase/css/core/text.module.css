@@ -1,3 +1,8 @@
+:root {
+  --body-text-color: var(--color-text-medium);
+  --70-percent-black: var(--color-text-dark);
+}
+
 /* center */
 .textCentered {
   text-align: center;

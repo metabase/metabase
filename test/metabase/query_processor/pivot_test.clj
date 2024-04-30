@@ -409,8 +409,7 @@
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
            (mt/with-no-data-perms-for-all-users!
-             (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/create-queries :no)
-             (data-perms/set-database-permission! (perms-group/all-users) (data/id) :perms/view-data :unrestricted)
+             (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/data-access :no-self-service)
              (testing "User without perms shouldn't be able to run the query normally"
                (is (thrown-with-msg?
                     clojure.lang.ExceptionInfo

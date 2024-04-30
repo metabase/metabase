@@ -128,7 +128,6 @@ export function FilterColumnPicker({
         itemTestId="dimension-list-item"
         searchProp={["name", "displayName"]}
         globalSearch
-        withBorders
       />
     </DelayGroup>
   );

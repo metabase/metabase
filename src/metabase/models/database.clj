@@ -22,13 +22,11 @@
     :refer [defenterprise]]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.realize :as t2.realize]))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -56,15 +54,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
-  [_model _explicit-attributes f]
-  (fn [temp-object]
-    ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
-    (f temp-object)))
-
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
@@ -76,15 +65,10 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (and (= :unrestricted (data-perms/full-db-permission-for-user
-                            api/*current-user-id*
-                            :perms/view-data
-                            pk))
-          (contains? #{:query-builder :query-builder-and-native}
-                    (data-perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
-                     :perms/create-queries
-                     pk))))))
+     (= :unrestricted (data-perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/data-access
+                       pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -151,15 +135,26 @@
     (let [all-users-group  (perms-group/all-users)
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
+      ;; We only set native-query-editing and manage-database permissions here, because they are only ever set at the
+      ;; database-level. Perms which can have table-level granularity are set in the `define-after-insert` hook for
+      ;; tables.
       (if (:is_audit database)
         (doseq [group non-admin-groups]
-          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! group database :perms/create-queries :no)
-          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (data-perms/set-database-permission! group database :perms/manage-database :no))
-        (doseq [group non-admin-groups]
-          (data-perms/set-new-database-permissions! group database))))))
+          (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! group database :perms/native-query-editing :no)
+          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
+        (do
+          (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
+          (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
+          (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
+          (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/download-results :no)
+            (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! group database :perms/native-query-editing :no))))
+
+      (doseq [group non-admin-groups]
+        (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
+        (data-perms/set-database-permission! group database :perms/manage-database :no)))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -323,11 +318,6 @@
   :type           :boolean
   :visibility     :public
   :database-local :only)
-
-(defmethod mi/exclude-internal-content-hsql :model/Database
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field table-alias %)]
-    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
