@@ -90,11 +90,9 @@ function MainNavbarView({
 
   const [expandBrowse, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
-    { shouldRefresh: false },
   );
   const [expandBookmarks, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
-    { shouldRefresh: false },
   );
   const debounceTimeout = 200;
 
