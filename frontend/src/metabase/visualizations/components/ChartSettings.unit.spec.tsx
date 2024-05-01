@@ -3,11 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, fireEvent, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import type { DashboardCard, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import type { ComputedVisualizationSettings } from "../types";
 
 registerVisualizations();
 
@@ -27,7 +30,17 @@ function widget(widget = {}) {
   };
 }
 
-const setup = props => {
+// TODO Use ChartSettingsProps after ChartSettings is converted to TypeScript
+type SetupOpts = {
+  series?: Series;
+  settings?: ComputedVisualizationSettings;
+  dashcard?: DashboardCard;
+  widgets?: any[];
+  initial?: { section: string };
+  onChange?: (settings: ComputedVisualizationSettings) => void;
+};
+
+const setup = (props: SetupOpts) => {
   return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
 };
 
