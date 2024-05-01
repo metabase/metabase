@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -210,14 +211,23 @@
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
   for the FE to function properly."
-  [query :- ::lib.schema/query]
-  (into [] (distinct) (query-dependents query query)))
+  [query     :- ::lib.schema/query
+   card-id   :- [:maybe ::lib.schema.id/card]
+   card-type :- ::lib.schema.metadata/card.type]
+  (into [] (distinct)
+    (concat
+     (query-dependents query query)
+     (when (and (some? card-id) (or (= card-type :model) (= card-type :metric)))
+       (concat
+         [{:type :table, :id (str "card__" card-id)}]
+         (when-let [card (lib.metadata/card query card-id)]
+           (query-dependents query (lib.query/query query card))))))))
 
 (mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
   "Return a JS array of entities which are needed upfront to create a new query based on a table/card."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   table-id :- [:or ::lib.schema.id/table :string]]
+   table-id              :- [:or ::lib.schema.id/table :string]]
   (concat
     [{:type :table, :id table-id}]
-    (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+    (when-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
       [{:type :card, :id card-id}])))
