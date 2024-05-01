@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
@@ -18,15 +19,15 @@ import type {
   OnFileUpload,
   UploadFile,
 } from "metabase/collections/types";
+import {
+  isRootTrashCollection,
+  isPersonalCollectionChild,
+} from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import {
   Sort,
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
-import {
-  isRootTrashCollection,
-  isPersonalCollectionChild,
-} from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -246,6 +247,11 @@ export const CollectionContentView = ({
           list && !isRootTrashCollection(collection) ? list : [];
         const hasPinnedItems = pinnedItems.length > 0;
         const actionId = { id: collectionId };
+        const parentCollection =
+          collection.effective_ancestors &&
+          _.last(collection.effective_ancestors);
+        const canRestore =
+          !!parentCollection && isRootTrashCollection(parentCollection);
 
         return (
           <CollectionRoot {...dropzoneProps}>
@@ -266,10 +272,15 @@ export const CollectionContentView = ({
 
             {collection.archived && (
               <ArchivedEntityBanner
-                entity="collection"
+                name={collection.name}
+                entityType="collection"
                 canWrite={collection.can_write}
+                canRestore={canRestore}
                 onUnarchive={() =>
                   dispatch(Collections.actions.setArchived(actionId, false))
+                }
+                onMove={id =>
+                  dispatch(Collections.actions.setCollection(actionId, { id }))
                 }
                 onDeletePermanently={() =>
                   dispatch(

@@ -46,7 +46,7 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <HeaderContainer>
           <h3>{t`About`}</h3>
-          {question.type() === "model" && (
+          {question.type() === "model" && !question.isArchived() && (
             <Link
               variant="brand"
               to={Urls.modelDetail(question.card())}

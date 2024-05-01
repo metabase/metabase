@@ -173,8 +173,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !item.archived
+    !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }
 
@@ -187,10 +186,19 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   );
 }
 
-export function canModifyArchivedItem(
+export function canUnarchiveItem(
   item: CollectionItem,
   collection?: Collection,
 ) {
+  return (
+    item.archived &&
+    collection &&
+    isRootTrashCollection(collection) &&
+    (item.can_write ?? collection?.can_write ?? true)
+  );
+}
+
+export function canDeleteItem(item: CollectionItem, collection?: Collection) {
   return item.archived && (item.can_write ?? collection?.can_write ?? true);
 }
 

@@ -90,7 +90,7 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
   }
 
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} style={{ marginBottom: "-.25rem" }} />;
+    return <Icon name="trash" size={24} />;
   }
 
   if (

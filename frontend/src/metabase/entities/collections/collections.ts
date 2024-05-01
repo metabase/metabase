@@ -17,6 +17,7 @@ import type {
   Collection,
   CreateCollectionRequest,
   UpdateCollectionRequest,
+  DeleteCollectionRequest,
 } from "metabase-types/api";
 import type { GetState, ReduxAction, Dispatch } from "metabase-types/store";
 
@@ -88,9 +89,12 @@ const Collections = createEntity({
         dispatch,
         collectionApi.endpoints.updateCollection,
       ),
-    delete: () => {
-      throw new TypeError("Collections.api.delete is not supported");
-    },
+    delete: (entityQuery: DeleteCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.deleteCollection,
+      ),
   },
 
   objectActions: {
@@ -112,7 +116,7 @@ const Collections = createEntity({
     ) =>
       Collections.actions.update(
         { id },
-        { parent_id: canonicalCollectionId(collection?.id) },
+        { parent_id: canonicalCollectionId(collection?.id), archived: false },
         undo(opts, "collection", "moved"),
       ),
   },

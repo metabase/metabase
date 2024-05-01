@@ -90,7 +90,10 @@ const Dashboards = createEntity({
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
+        {
+          collection_id: canonicalCollectionId(collection && collection.id),
+          archived: false,
+        },
         undo(opts, "dashboard", "moved"),
       ),
 

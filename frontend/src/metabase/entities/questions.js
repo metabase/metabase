@@ -72,6 +72,7 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
+              archived: false,
             },
             undo(opts, getLabel(card), t`moved`),
           ),

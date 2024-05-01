@@ -2,6 +2,7 @@ import { assocIn, dissocIn, getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { canonicalCollectionId } from "metabase/collections/utils";
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -21,6 +22,8 @@ export const UPDATE_DASHBOARD_AND_CARDS =
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 export const SET_ARCHIVED_DASHBOARD =
   "metabase/dashboard/SET_ARCHIVED_DASHBOARD";
+export const MOVE_DASHBOARD_TO_COLLECTION =
+  "metabase/dashboard/MOVE_DASHBOARD_TO_COLLECTION";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
@@ -213,6 +216,51 @@ export const setArchivedDashboard = createThunkAction(
       dispatch(
         fetchDashboard({
           dashId: dashboardId,
+          queryParam: null,
+          options: { preserveParameters: true },
+        }),
+      );
+    };
+  },
+);
+
+// just using the entity action doesn't cause the dashboard to live update
+// calling fetchDashboard ensures that the view updates with the last values
+export const moveDashboardToCollection = createThunkAction(
+  MOVE_DASHBOARD_TO_COLLECTION,
+  function (collection, forceArchive) {
+    return async function (dispatch, getState) {
+      const dashboardView = getState().dashboard;
+      const dashboard = dashboardView.dashboards?.[dashboardView.dashboardId];
+      const { id, archived, collection_id: current_collection_id } = dashboard;
+
+      await dispatch(
+        Dashboards.actions.update(
+          { id },
+          {
+            collection_id: canonicalCollectionId(collection && collection.id),
+            archived: forceArchive ?? false,
+          },
+        ),
+      );
+
+      dispatch(
+        addUndo({
+          subject: t`dashboard`,
+          verb: t`moved`,
+          action: () =>
+            dispatch(
+              moveDashboardToCollection(
+                { id: current_collection_id },
+                archived,
+              ),
+            ),
+        }),
+      );
+
+      dispatch(
+        fetchDashboard({
+          dashId: id,
           queryParam: null,
           options: { preserveParameters: true },
         }),

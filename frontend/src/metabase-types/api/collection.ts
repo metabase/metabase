@@ -169,3 +169,7 @@ export interface ListCollectionsTreeRequest {
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
 }
+
+export interface DeleteCollectionRequest {
+  id: RegularCollectionId;
+}

@@ -6,8 +6,10 @@ import CollectionCopyEntityModal from "metabase/collections/components/Collectio
 import {
   isTrashedCollection,
   canArchiveItem,
-  canModifyArchivedItem,
+  canUnarchiveItem,
+  canDeleteItem,
   canMoveItem,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
@@ -94,13 +96,18 @@ const BulkActions = ({
     }
   };
 
-  // archive / restore
-  const disableBulkModifyArchivedItems = useMemo(() => {
-    return selected.some(item => !canModifyArchivedItem(item, collection));
-  }, [selected, collection]);
-
   const canArchive = useMemo(() => {
     return selected.every(item => canArchiveItem(item, collection));
+  }, [selected, collection]);
+
+  const showUnarchive = isRootTrashCollection(collection);
+
+  const canUnarchive = useMemo(() => {
+    return selected.every(item => canUnarchiveItem(item, collection));
+  }, [selected, collection]);
+
+  const canDelete = useMemo(() => {
+    return selected.every(item => canDeleteItem(item, collection));
   }, [selected, collection]);
 
   const handleBulkSetArchive = async (archived: boolean) => {
@@ -151,19 +158,29 @@ const BulkActions = ({
               <CardSide>
                 {isTrashedCollection(collection) ? (
                   <>
+                    {showUnarchive && (
+                      <CardButton
+                        medium
+                        purple
+                        onClick={() => handleBulkSetArchive(false)}
+                        disabled={!canUnarchive}
+                      >
+                        {t`Restore`}
+                      </CardButton>
+                    )}
                     <CardButton
                       medium
                       purple
-                      onClick={() => handleBulkSetArchive(false)}
-                      disabled={disableBulkModifyArchivedItems}
+                      onClick={handleBulkMoveStart}
+                      disabled={!canMove}
                     >
-                      {t`Restore`}
+                      {t`Move`}
                     </CardButton>
                     <CardButton
                       medium
                       purple
                       onClick={handleBulkDeletePermanentlyStart}
-                      disabled={disableBulkModifyArchivedItems}
+                      disabled={!canDelete}
                     >
                       <Box c={color("danger")}>{t`Delete permanently`}</Box>
                     </CardButton>
@@ -205,7 +222,9 @@ const BulkActions = ({
           selectedItems={selectedItems}
           onClose={handleCloseModal}
           onMove={handleBulkMove}
-          initialCollectionId={collection.id}
+          initialCollectionId={
+            isTrashedCollection(collection) ? "root" : collection.id
+          }
         />
       )}
 

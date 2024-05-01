@@ -8,6 +8,7 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
+import { isTrashedCollection } from "metabase/collections/utils";
 import CheckBox from "metabase/core/components/CheckBox";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -152,7 +153,7 @@ export const BaseItemsTable = ({
     });
 
   const canSelect = !!collection?.can_write;
-  const isTrashed = collection && isTrashedCollection(collection);
+  const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
     <Table canSelect={canSelect} {...props}>

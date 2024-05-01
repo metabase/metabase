@@ -7,10 +7,12 @@ import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
   setArchivedDashboard,
+  moveDashboardToCollection,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
@@ -291,6 +293,9 @@ function DashboardInner(props: DashboardProps) {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
   const hasVisibleParameters = visibleParameters.length > 0;
+  const canRestore =
+    !!dashboard?.collection_id &&
+    isRootTrashCollection({ id: dashboard?.collection_id });
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -542,9 +547,14 @@ function DashboardInner(props: DashboardProps) {
         <DashboardStyled>
           {dashboard.archived && (
             <ArchivedEntityBanner
-              entity="dashboard"
-              canWrite={dashboard.can_write}
+              name={dashboard.name}
+              entityType="dashboard"
+              canWrite={canWrite}
+              canRestore={canRestore}
               onUnarchive={() => dispatch(setArchivedDashboard(false))}
+              onMove={newParentId =>
+                dispatch(moveDashboardToCollection({ id: newParentId }))
+              }
               onDeletePermanently={() => {
                 const deleteAction = Dashboards.actions.delete({
                   id: dashboard.id,

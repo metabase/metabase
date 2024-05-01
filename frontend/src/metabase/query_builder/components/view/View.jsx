@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
@@ -211,20 +212,26 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { question, onUnarchive, onDeletePermanently } = this.props;
+    const { question, onUnarchive, onMove, onDeletePermanently } = this.props;
     const query = question.query();
+    const card = question.card();
     const { isNative } = Lib.queryDisplayInfo(query);
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
+    const canRestore =
+      !!card.collection_id && isRootTrashCollection({ id: card.collection_id });
 
     return (
       <QueryBuilderViewHeaderContainer>
-        {question.card().archived && (
+        {card.archived && (
           <ArchivedEntityBanner
-            entity={question.type()}
-            canWrite={question.card().can_write}
+            name={card.name}
+            entityType={card.type}
+            canWrite={card.can_write}
+            canRestore={canRestore}
             onUnarchive={() => onUnarchive(question)}
-            onDeletePermanently={() => onDeletePermanently(question.card().id)}
+            onMove={id => onMove(card.id, id)}
+            onDeletePermanently={() => onDeletePermanently(card.id)}
           />
         )}
 
@@ -445,6 +452,9 @@ class View extends Component {
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
+  onMove: (id, newCollectionId) => {
+    dispatch(Questions.actions.setCollection({ id }, { id: newCollectionId }));
+  },
   onDeletePermanently: id => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));

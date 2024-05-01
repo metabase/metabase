@@ -12,13 +12,14 @@ import type {
 } from "metabase/collections/types";
 import {
   canArchiveItem,
-  canModifyArchivedItem,
   canCopyItem,
   canMoveItem,
   canPinItem,
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
+  canUnarchiveItem,
+  canDeleteItem,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 import Search from "metabase/entities/search";
@@ -97,7 +98,8 @@ function ActionMenu({
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const canModArchived = canModifyArchivedItem(item, collection);
+  const canUnarchive = canUnarchiveItem(item, collection);
+  const canDelete = canDeleteItem(item, collection);
   const canCopy = canCopyItem(item);
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
@@ -164,10 +166,8 @@ function ActionMenu({
         onArchive={canArchive ? handleArchive : undefined}
         onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
-        onUnarchive={canModArchived ? handleUnarchive : undefined}
-        onDeletePermanently={
-          canModArchived ? handleDeletePermanently : undefined
-        }
+        onUnarchive={canUnarchive ? handleUnarchive : undefined}
+        onDeletePermanently={canDelete ? handleDeletePermanently : undefined}
       />
     </EventSandbox>
   );
