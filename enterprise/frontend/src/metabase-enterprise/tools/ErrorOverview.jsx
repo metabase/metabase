@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { CardApi } from "metabase/services";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
@@ -108,7 +109,7 @@ export default function ErrorOverview(props) {
               sorting.column,
               getSortOrder(sorting.isAscending),
             )}
-            className="mt2 bounded-overflow-x-scroll"
+            className={CS.mt2}
           />
         )}
       </AuditParameters>

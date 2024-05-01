@@ -11,7 +11,7 @@ describe("ColorSettings", () => {
     accent1: color("text-medium"),
   };
 
-  it("should update brand colors", () => {
+  it("should update brand colors", async () => {
     const onChange = jest.fn();
 
     render(
@@ -23,8 +23,8 @@ describe("ColorSettings", () => {
     );
 
     const input = screen.getByPlaceholderText(color("summarize"));
-    userEvent.clear(input);
-    userEvent.type(input, color("error"));
+    await userEvent.clear(input);
+    await userEvent.type(input, color("error"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("success"),
@@ -33,7 +33,7 @@ describe("ColorSettings", () => {
     });
   });
 
-  it("should update chart colors", () => {
+  it("should update chart colors", async () => {
     const onChange = jest.fn();
 
     render(
@@ -45,8 +45,8 @@ describe("ColorSettings", () => {
     );
 
     const input = screen.getByDisplayValue(color("text-medium"));
-    userEvent.clear(input);
-    userEvent.type(input, color("text-light"));
+    await userEvent.clear(input);
+    await userEvent.type(input, color("text-light"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("success"),
@@ -54,7 +54,7 @@ describe("ColorSettings", () => {
     });
   });
 
-  it("should reset chart colors", () => {
+  it("should reset chart colors", async () => {
     const onChange = jest.fn();
 
     render(
@@ -65,15 +65,15 @@ describe("ColorSettings", () => {
       />,
     );
 
-    userEvent.click(screen.getByText("Reset to default colors"));
-    userEvent.click(screen.getByText("Reset"));
+    await userEvent.click(screen.getByText("Reset to default colors"));
+    await userEvent.click(screen.getByText("Reset"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("success"),
     });
   });
 
-  it("should generate chart colors", () => {
+  it("should generate chart colors", async () => {
     const onChange = jest.fn();
 
     render(
@@ -84,7 +84,7 @@ describe("ColorSettings", () => {
       />,
     );
 
-    userEvent.click(screen.getByText("Generate chart colors"));
+    await userEvent.click(screen.getByText("Generate chart colors"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("success"),

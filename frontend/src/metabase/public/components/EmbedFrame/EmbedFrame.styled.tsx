@@ -17,6 +17,7 @@ export const Root = styled.div<{
 }>`
   display: flex;
   flex-direction: column;
+  overflow: auto;
 
   ${props =>
     props.hasScroll &&

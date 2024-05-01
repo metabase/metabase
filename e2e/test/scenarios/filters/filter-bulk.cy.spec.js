@@ -587,7 +587,6 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       visitQuestionAdhoc(productsQuestion);
       filter();
-      cy.get("body").type("{ctrl}k");
     });
 
     it("can search for a column", () => {

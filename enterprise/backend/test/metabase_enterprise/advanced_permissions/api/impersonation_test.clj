@@ -107,8 +107,8 @@
                                                                :attribute "Attribute Name"}]
         ;; Grant full data access to the DB and group
         (let [graph (assoc-in (data-perms.graph/api-graph)
-                              [:groups group-id (mt/id) :data :schemas]
-                              :all)]
+                              [:groups group-id (mt/id) :view-data]
+                              :unrestricted)]
           (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
         (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 

@@ -314,36 +314,6 @@
     (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
                                      [:stages 0] dissoc :collection))))))
 
-(defn- query-with-default [default]
-  (lib/with-template-tags
-   (lib/native-query meta/metadata-provider "select * {{foo}}")
-   {"foo" {:type :text
-           :id "1"
-           :name "foo"
-           :display-name "foo"
-           :required true
-           :default default}}))
-
-(deftest ^:parallel can-save-native-test
-  (is (lib/can-save (lib/native-query meta/metadata-provider "select 1")))
-  (is (lib/can-save (lib/native-query meta/metadata-provider "select * {{foo}}")))
-  (is (lib/can-save (lib/with-template-tags
-                      (lib/native-query meta/metadata-provider "select * {{foo}}")
-                      {"foo" {:type :text
-                              :id "1"
-                              :name "foo"
-                              :display-name "foo"}})))
-  (is (lib/can-save (query-with-default 1)))
-  (is (lib/can-save (query-with-default "A")))
-  (is (lib/can-save (query-with-default [""])))
-  (is (lib/can-save (query-with-default ["A"])))
-  (is (lib/can-save (query-with-default [1])))
-  (is (not (lib/can-save (query-with-default nil))))
-  (is (not (lib/can-save (query-with-default ""))))
-  (is (not (lib/can-save (query-with-default []))))
-  (mu/disable-enforcement
-    (is (not (lib/can-save (lib/native-query meta/metadata-provider ""))))))
-
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))
 

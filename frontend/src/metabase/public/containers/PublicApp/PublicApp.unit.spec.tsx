@@ -60,9 +60,9 @@ describe("PublicApp", () => {
     expect(screen.queryByText("My Description")).not.toBeInTheDocument();
   });
 
-  it("renders description", () => {
+  it("renders description", async () => {
     setup({ name: "My Title", description: "My Description" });
-    userEvent.hover(getIcon("info"));
+    await userEvent.hover(getIcon("info"));
     expect(screen.getByText("My Description")).toBeInTheDocument();
   });
 
@@ -120,18 +120,15 @@ describe("PublicApp", () => {
 
       const embedFrame = screen.getByTestId("embed-frame");
 
-      // eslint-disable-next-line jest-dom/prefer-to-have-class
-      expect(embedFrame.className).not.toEqual(
-        expect.stringContaining("Theme--"),
-      );
+      expect(embedFrame).not.toHaveAttribute("data-embed-theme");
     });
 
-    test.each([
-      ["night", "Theme--night"],
-      ["transparent", "Theme--transparent"],
-    ])("correctly handles %s theme", (theme, expectedClass) => {
+    test.each(["night", "transparent"])("correctly handles %s theme", theme => {
       setup({ hash: `#theme=${theme}` });
-      expect(screen.getByTestId("embed-frame")).toHaveClass(expectedClass);
+      expect(screen.getByTestId("embed-frame")).toHaveAttribute(
+        "data-embed-theme",
+        theme,
+      );
     });
   });
 });

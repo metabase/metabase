@@ -138,11 +138,20 @@ export class AddSeriesModal extends Component<Props, State> {
 
     return (
       <div className={cx(CS.spread, CS.flex)}>
-        <div className="flex flex-column flex-full">
-          <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">
+        <div className={cx(CS.flex, CS.flexColumn, CS.flexFull)}>
+          <div
+            className={cx(
+              CS.flexNoShrink,
+              CS.h3,
+              CS.pl4,
+              CS.pt4,
+              CS.pb2,
+              CS.textBold,
+            )}
+          >
             Edit data
           </div>
-          <div className="flex-full ml2 mr1 relative">
+          <div className={cx(CS.flexFull, CS.ml2, CS.mr1, CS.relative)}>
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className={CS.spread}
@@ -154,21 +163,30 @@ export class AddSeriesModal extends Component<Props, State> {
               rawSeries={series}
               showTitle
               isDashboard
-              isMultiseries
+              showAllLegendItems
               onRemoveSeries={this.handleRemoveSeries}
             />
             {this.state.isLoading && (
               <div
-                className="spred flex layout-centered"
+                className={cx(CS.spread, CS.flex, CS.layoutCentered)}
                 style={{ backgroundColor: color("bg-white") }}
               >
-                <div className="h3 rounded bordered p3 bg-white shadowed">
+                <div
+                  className={cx(
+                    CS.h3,
+                    CS.rounded,
+                    CS.bordered,
+                    CS.p3,
+                    CS.bgWhite,
+                    CS.shadowed,
+                  )}
+                >
                   {t`Applying Question`}
                 </div>
               </div>
             )}
           </div>
-          <div className="flex-no-shrink pl4 pb4 pt1">
+          <div className={cx(CS.flexNoShrink, CS.pl4, CS.pb4, CS.pt1)}>
             <button
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={this.handleDone}
@@ -184,7 +202,7 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
         </div>
         <div
-          className="border-left flex flex-column"
+          className={cx(CS.borderLeft, CS.flex, CS.flexColumn)}
           style={{
             width: 370,
             backgroundColor: color("bg-light"),

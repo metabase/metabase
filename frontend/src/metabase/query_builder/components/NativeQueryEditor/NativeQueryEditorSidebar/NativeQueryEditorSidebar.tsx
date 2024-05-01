@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
@@ -117,13 +118,13 @@ export const NativeQueryEditorSidebar = (
         </Tooltip>
       ) : null}
       {features.dataReference ? (
-        <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
+        <DataReferenceButton {...props} size={ICON_SIZE} className={CS.mt3} />
       ) : null}
       {features.variables ? (
-        <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
+        <NativeVariablesButton {...props} size={ICON_SIZE} className={CS.mt3} />
       ) : null}
       {features.snippets && showSnippetSidebarButton ? (
-        <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
+        <SnippetSidebarButton {...props} size={ICON_SIZE} className={CS.mt3} />
       ) : null}
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />

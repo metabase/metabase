@@ -32,7 +32,7 @@ describe("issue 27257", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".ScalarValue").invoke("text").should("eq", "0");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "0");
   });
 
   it("should not drop numeric filter widget value on refresh even if it's zero (metabase#27257)", () => {

@@ -17,11 +17,10 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util.malli :as mu]
@@ -246,7 +245,7 @@
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
 ;; Kondo gets confused
-#_{:clj-kondo/ignore [:unresolved-namespace]}
+#_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
 (lib.common/defop case [x y & more])
 (lib.common/defop coalesce [x y & more])
@@ -286,6 +285,13 @@
 (lib.common/defop rtrim [s])
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
+(lib.common/defop host [s])
+(lib.common/defop domain [s])
+(lib.common/defop subdomain [s])
+(lib.common/defop month-name [n])
+(lib.common/defop quarter-name [n])
+(lib.common/defop day-name [n])
+(lib.common/defop offset [x n])
 
 (mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
   [query                 :- ::lib.schema/query
@@ -428,7 +434,7 @@
   [expr]
   (into #{}
         (map #(get % 2))
-        (mbql.match/match expr :expression)))
+        (lib.util.match/match expr :expression)))
 
 (defn- cyclic-definition
   ([node->children]

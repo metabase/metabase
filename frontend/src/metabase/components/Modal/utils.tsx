@@ -9,7 +9,6 @@ export type ModalSize = typeof modalSizes[number];
 export type BaseModalProps = {
   children?: React.ReactNode;
   className?: string;
-  backdropClassName?: string;
   enableMouseEvents?: boolean;
   enableTransition?: boolean;
   closeOnClickOutside?: boolean;

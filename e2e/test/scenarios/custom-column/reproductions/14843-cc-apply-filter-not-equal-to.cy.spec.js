@@ -6,6 +6,7 @@ import {
   visualize,
   filter,
   openNotebook,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -38,8 +39,7 @@ describe("issue 14843", () => {
 
     filter({ mode: "notebook" });
     popover().findByText(CC_NAME).click();
-    popover().findByDisplayValue("Equal to").click();
-    cy.findByRole("listbox").findByText("Not equal to").click();
+    selectFilterOperator("Not equal to");
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("3");
       cy.button("Add filter").click();

@@ -5,7 +5,7 @@
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models
-    :refer [Card Collection Dashboard Metric ModelIndex ModelIndexValue Segment]]
+    :refer [Card Collection Dashboard LegacyMetric ModelIndex ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -89,7 +89,7 @@
 
 (deftest metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:query {:aggregation ["count"]}}}]
       (is (some? (api-call! "metric/%s" [metric-id]))))))
 
@@ -505,7 +505,7 @@
 
 (deftest metric-xray-show-param-test
   (testing "x-ray of a metric with show set reduces the number of returned cards"
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:query {:aggregation ["count"]}}}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit "metric/%s" [metric-id])]

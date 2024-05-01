@@ -7,7 +7,14 @@ import {
   SAMPLE_DB_TABLES,
   METABASE_SECRET_KEY,
 } from "e2e/support/cypress_data";
-import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
+import {
+  snapshot,
+  restore,
+  withSampleDatabase,
+  setTokenFeatures,
+  describeEE,
+  deleteToken,
+} from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -63,6 +70,29 @@ describe("snapshots", () => {
     });
   });
 
+  describeEE("default-ee", () => {
+    it("default-ee", () => {
+      restore("blank");
+      setup();
+      updateSettings();
+      setTokenFeatures("all");
+      addUsersAndGroups(true);
+      createCollections();
+      withSampleDatabase(SAMPLE_DATABASE => {
+        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        hideNewSampleTables(SAMPLE_DATABASE);
+        createQuestionsAndDashboards(SAMPLE_DATABASE);
+        createModels(SAMPLE_DATABASE);
+        cy.writeFile(
+          "e2e/support/cypress_sample_database.json",
+          SAMPLE_DATABASE,
+        );
+      });
+      deleteToken();
+      snapshot("default-ee");
+    });
+  });
+
   function setup() {
     cy.request("GET", "/api/session/properties").then(
       ({ body: properties }) => {
@@ -86,10 +116,13 @@ describe("snapshots", () => {
 
   function updateSettings() {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding", { value: true });
-    cy.request("PUT", "/api/setting/embedding-secret-key", {
-      value: METABASE_SECRET_KEY,
-    });
+    cy.request("PUT", "/api/setting/enable-embedding", { value: true }).then(
+      () => {
+        cy.request("PUT", "/api/setting/embedding-secret-key", {
+          value: METABASE_SECRET_KEY,
+        });
+      },
+    );
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
@@ -99,26 +132,28 @@ describe("snapshots", () => {
     });
   }
 
-  function addUsersAndGroups() {
+  function addUsersAndGroups(isEE = false) {
+    const lowest_read_data_permission = isEE ? "blocked" : "unrestricted";
+
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(COLLECTION_GROUP); // 4
+        expect(body.id).to.eq(COLLECTION_GROUP); // 3
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "data" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(DATA_GROUP); // 5
+        expect(body.id).to.eq(DATA_GROUP); // 4
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "readonly" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(READONLY_GROUP); // 6
+        expect(body.id).to.eq(READONLY_GROUP); // 5
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "nosql" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(NOSQL_GROUP); // 7
+        expect(body.id).to.eq(NOSQL_GROUP); // 6
       },
     );
 
@@ -132,19 +167,35 @@ describe("snapshots", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          // set the data permission so the UI doesn't warn us that "all users has higher permissions than X"
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
       },
       [NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
       [READONLY_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
     });
 

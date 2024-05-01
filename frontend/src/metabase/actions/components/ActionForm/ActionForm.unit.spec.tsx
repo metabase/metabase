@@ -249,9 +249,9 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
-      userEvent.type(screen.getByLabelText(/number input/i), "12345");
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
+      await userEvent.type(screen.getByLabelText(/number input/i), "12345");
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -290,13 +290,13 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
-      userEvent.type(screen.getByLabelText(/number input/i), "12345");
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
+      await userEvent.type(screen.getByLabelText(/number input/i), "12345");
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       expect(await screen.findByText(message)).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: action.name }),
+        await screen.findByRole("button", { name: /failed/i }),
       ).toHaveTextContent("Failed");
     });
   });
@@ -327,9 +327,9 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
+      await userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -360,15 +360,15 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
+      await userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
+      await userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       await waitFor(() =>
         expect(
           screen.getByRole("button", { name: action.name }),
         ).toBeDisabled(),
       );
 
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
@@ -401,12 +401,12 @@ describe("Actions > ActionForm", () => {
 
       expect(screen.getByRole("button", { name: action.name })).toBeDisabled();
 
-      userEvent.type(screen.getByLabelText(/foo input/i), "baz");
+      await userEvent.type(screen.getByLabelText(/foo input/i), "baz");
       await waitFor(() => {
         expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
       });
 
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
       });
@@ -439,7 +439,7 @@ describe("Actions > ActionForm", () => {
 
       expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
 
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
@@ -456,7 +456,7 @@ describe("Actions > ActionForm", () => {
       });
 
       const input = await screen.findByLabelText(/form field name/i);
-      userEvent.type(input, "baz");
+      await userEvent.type(input, "baz");
 
       await waitFor(() => expect(input).not.toHaveValue());
     });
@@ -486,9 +486,9 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
+      await userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -521,7 +521,7 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -559,10 +559,10 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "1");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "1");
-      userEvent.type(await screen.findByLabelText(/baz input/i), "1");
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.type(await screen.findByLabelText(/foo input/i), "1");
+      await userEvent.type(await screen.findByLabelText(/bar input/i), "1");
+      await userEvent.type(await screen.findByLabelText(/baz input/i), "1");
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -602,7 +602,9 @@ describe("Actions > ActionForm", () => {
         fireEvent.change(screen.getByLabelText(/input/i), {
           target: { value: "" },
         });
-        userEvent.click(screen.getByRole("button", { name: action.name }));
+        await userEvent.click(
+          screen.getByRole("button", { name: action.name }),
+        );
 
         await waitFor(() => {
           expect(onSubmit).toHaveBeenCalledWith(
@@ -634,8 +636,8 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.clear(screen.getByLabelText(/input/i));
-      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await userEvent.clear(screen.getByLabelText(/input/i));
+      await userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(

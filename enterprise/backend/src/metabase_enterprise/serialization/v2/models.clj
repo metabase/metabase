@@ -4,7 +4,7 @@
   "Schema model types"
   ["Database"
    "Field"
-   "Metric"
+   "LegacyMetric"
    "Segment"
    "Table"])
 
@@ -48,11 +48,12 @@
    "ConnectionImpersonation"
    "DashboardBookmark"
    "DataPermissions"
+   "FieldUsage"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
-   "MetricImportantField"
+   "LegacyMetricImportantField"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
@@ -77,4 +78,5 @@
    "TablePrivileges"
    "TaskHistory"
    "User"
+   "UserParameterValue"
    "ViewLog"])

@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -135,7 +136,7 @@ const TableDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -171,9 +172,20 @@ const TableDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -184,7 +196,7 @@ const TableDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -193,7 +205,7 @@ const TableDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this table is interesting`}
@@ -203,7 +215,7 @@ const TableDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this table`}
@@ -214,7 +226,7 @@ const TableDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(table, metadata)}
                     />

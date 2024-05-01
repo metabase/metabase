@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
@@ -80,7 +82,7 @@ export const OverviewSettings = ({
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
-        <Stack spacing="2rem" className="flex-full w-full">
+        <Stack spacing="2rem" className={cx(CS.flexFull, CS.wFull)}>
           {serverEmbedCodeSlot}
 
           <ClientEmbedCodePane

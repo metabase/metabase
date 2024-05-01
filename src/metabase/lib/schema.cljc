@@ -1,14 +1,15 @@
 (ns metabase.lib.schema
   "Malli schema for the pMBQL query type, the version of MBQL produced and manipulated by the new Cljc
   Metabase lib. Currently this is a little different from the version of MBQL consumed by the QP, specified
-  in [[metabase.mbql.schema]]. Hopefully these versions will converge in the future.
+  in [[metabase.legacy-mbql.schema]]. Hopefully these versions will converge in the future.
 
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
-  copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
+  copied from [[metabase.legacy-mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref])
   (:require
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
@@ -17,6 +18,7 @@
    [metabase.lib.schema.expression.conditional]
    [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.info :as info]
@@ -27,14 +29,14 @@
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
+         metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.native
@@ -161,7 +163,7 @@
   [:map
    {:decode/normalize common/normalize-map}
    [:lib/type [:enum {:decode/normalize common/normalize-keyword} :source/metric]]
-   [:id [:ref ::id/metric]]])
+   [:id [:ref ::id/card]]])
 
 (mr/def ::sources
   [:sequential {:min 1} ::source])
@@ -270,9 +272,10 @@
     (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
-         (mbql.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-           [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
-           (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
+         (when (map? stage)
+           (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
+             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+             (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))
 
@@ -303,19 +306,19 @@
 (mr/def ::settings
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.mbql.schema/Settings])
+   :metabase.legacy-mbql.schema/Settings])
 
 ;;; TODO -- move/copy this schema from the legacy schema to here
 (mr/def ::middleware-options
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.mbql.schema/MiddlewareOptions])
+   :metabase.legacy-mbql.schema/MiddlewareOptions])
 
 ;;; TODO -- move/copy this schema from the legacy schema to here
 (mr/def ::constraints
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.mbql.schema/Constraints])
+   :metabase.legacy-mbql.schema/Constraints])
 
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered

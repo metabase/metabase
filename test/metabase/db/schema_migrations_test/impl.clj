@@ -225,7 +225,7 @@
                  :down
                  (do
                   (assert (int? version), "Downgrade requires a version")
-                  (mdb/migrate! driver (mdb/data-source) :down version)))))]
+                  (mdb/migrate! (mdb/data-source) :down version)))))]
      (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

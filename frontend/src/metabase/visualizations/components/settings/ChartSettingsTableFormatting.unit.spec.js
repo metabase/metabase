@@ -82,20 +82,20 @@ describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
     setup();
     expect(screen.getByText("Conditional formatting")).toBeInTheDocument();
-    userEvent.click(await screen.findByText("Add a rule"));
-    userEvent.click(await screen.findByText("String Column"));
+    await userEvent.click(await screen.findByText("Add a rule"));
+    await userEvent.click(await screen.findByText("String Column"));
     //Dismiss Popup
-    userEvent.click(
+    await userEvent.click(
       await screen.findByText("Which columns should be affected?"),
     );
 
     expect(await screen.findByText("is equal to")).toBeInTheDocument();
 
-    userEvent.type(
+    await userEvent.type(
       await screen.findByTestId("conditional-formatting-value-input"),
       "toucan",
     );
-    userEvent.click(await screen.findByText("Add rule"));
+    await userEvent.click(await screen.findByText("Add rule"));
 
     expect(await screen.findByText("String Column")).toBeInTheDocument();
     expect(await screen.findByText(/is equal to toucan/g)).toBeInTheDocument();
@@ -104,8 +104,8 @@ describe("ChartSettingsTableFormatting", () => {
   it("should only let you choose columns of the same type for a rule", async () => {
     setup();
     expect(screen.getByText("Conditional formatting")).toBeInTheDocument();
-    userEvent.click(await screen.findByText("Add a rule"));
-    userEvent.click(await screen.findByText("String Column"));
+    await userEvent.click(await screen.findByText("Add a rule"));
+    await userEvent.click(await screen.findByText("String Column"));
 
     expect(
       await screen.findByRole("option", { name: "Number Column" }),
@@ -121,17 +121,19 @@ describe("ChartSettingsTableFormatting", () => {
   });
 
   describe("should show appropriate operators based on column selection", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setup();
-      userEvent.click(screen.getByText("Add a rule"));
+      await userEvent.click(screen.getByText("Add a rule"));
     });
 
-    it("string", () => {
-      userEvent.click(screen.getByText("String Column"));
+    it("string", async () => {
+      await userEvent.click(screen.getByText("String Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
@@ -142,12 +144,14 @@ describe("ChartSettingsTableFormatting", () => {
       });
     });
 
-    it("number", () => {
-      userEvent.click(screen.getByText("Number Column"));
+    it("number", async () => {
+      await userEvent.click(screen.getByText("Number Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
@@ -167,12 +171,14 @@ describe("ChartSettingsTableFormatting", () => {
       ).not.toBeChecked();
     });
 
-    it("boolean", () => {
-      userEvent.click(screen.getByText("Boolean Column"));
+    it("boolean", async () => {
+      await userEvent.click(screen.getByText("Boolean Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 

@@ -10,17 +10,18 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest uploads-disabled-for-sandboxed-user-test
+(deftest create-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
       (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
             (upload-test/upload-example-csv! {:grant-permission? false}))))))
 
-(deftest appends-disabled-for-sandboxed-user-test
+(deftest update-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
-      (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
-            (upload-test/append-csv-with-defaults! :user-id (mt/user->id :rasta)))))))
+    (doseq [verb [:metabase.upload/append :metabase.upload/replace]]
+      (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+        (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
+              (upload-test/update-csv-with-defaults! verb :user-id (mt/user->id :rasta))))))))
 
 (deftest based-on-upload-for-sandboxed-user-test
   (mt/with-temporary-setting-values [uploads-enabled true]

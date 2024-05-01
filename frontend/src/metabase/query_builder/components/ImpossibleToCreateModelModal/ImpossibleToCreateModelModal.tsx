@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { t, jt } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -40,7 +42,7 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
       title={t`Variables in models aren't supported yet`}
       onClose={onClose}
     >
-      <p className="text-paragraph">
+      <p className={CS.textParagraph}>
         {showMetabaseLinks
           ? jt`To solve this, just remove the variables in this question and try again. (It's okay to use ${(
               <SQLSnippetsDocLink key="link-1" />
@@ -49,7 +51,7 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
             )} in your query.)`
           : t`To solve this, just remove the variables in this question and try again. (It's okay to use SQL snippets or reference the results of another saved question in your query.)`}
       </p>
-      <div className="flex justify-center py1">
+      <div className={cx(CS.flex, CS.justifyCenter, CS.py1)}>
         <Button primary onClick={onClose}>{t`Okay`}</Button>
       </div>
     </ModalContent>

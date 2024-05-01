@@ -33,17 +33,17 @@ export const setupEmbedding = async ({
   fetchMock.get("path:/api/dashboard/embeddable", []);
   fetchMock.get("path:/api/card/embeddable", []);
 
-  userEvent.click(screen.getByText("Embedding"));
+  await userEvent.click(screen.getByText("Embedding"));
 
   return { ...returnedValue, history: checkNotNull(returnedValue.history) };
 };
 
-export const goToStaticEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Manage"));
+export const goToStaticEmbeddingSettings = async () => {
+  await userEvent.click(screen.getByText("Manage"));
 };
 
-export const goToInteractiveEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Configure"));
+export const goToInteractiveEmbeddingSettings = async () => {
+  await userEvent.click(screen.getByText("Configure"));
 };
 
 export const getQuickStartLink = () => {

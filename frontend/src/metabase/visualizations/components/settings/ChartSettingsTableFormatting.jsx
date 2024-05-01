@@ -16,6 +16,7 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getAccentColors,
@@ -90,7 +91,7 @@ const DEFAULTS_BY_TYPE = {
 // predicate for columns that can be formatted
 export const isFormattable = field => isNumeric(field) || isString(field);
 
-const INPUT_CLASSNAME = "mt1 full";
+const INPUT_CLASSNAME = cx(CS.mt1, CS.full);
 
 const getValueForDescription = rule =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
@@ -183,7 +184,7 @@ const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
   const getId = rule => rule.id.toString();
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd = ({ id, newIndex }) => {
@@ -225,19 +226,19 @@ const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
 const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
   <div>
     <h3>{t`Conditional formatting`}</h3>
-    <div className="mt2">
+    <div className={CS.mt2}>
       {t`You can add rules to make the cells in this table change color if
     they meet certain conditions.`}
     </div>
-    <div className="mt2">
+    <div className={CS.mt2}>
       <Button borderless icon="add" onClick={onAdd}>
         {t`Add a rule`}
       </Button>
     </div>
     {rules.length > 0 ? (
-      <div className="mt2">
+      <div className={CS.mt2}>
         <h3>{t`Rules will be applied in this order`}</h3>
-        <div className="mt2">{t`Click and drag to reorder.`}</div>
+        <div className={CS.mt2}>{t`Click and drag to reorder.`}</div>
         <SortableRuleList
           rules={rules}
           cols={cols}
@@ -253,13 +254,20 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
-    className="my2 bordered rounded shadowed cursor-pointer bg-white"
+    className={cx(
+      CS.my2,
+      CS.bordered,
+      CS.rounded,
+      CS.shadowed,
+      CS.cursorPointer,
+      CS.bgWhite,
+    )}
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >
-    <div className="p1 border-bottom relative bg-light">
-      <div className="px1 flex align-center relative">
-        <span className="h4 flex-auto text-dark text-wrap">
+    <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
+      <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
+        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
               .map(
@@ -275,7 +283,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-light text-medium-hover"
+          className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
           onClick={e => {
             e.stopPropagation();
             onRemove();
@@ -283,11 +291,11 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         />
       </div>
     </div>
-    <div className="p2 flex align-center">
+    <div className={cx(CS.p2, CS.flex, CS.alignCenter)}>
       <RuleBackground
         rule={rule}
-        className={cx("mr2 flex-no-shrink rounded", {
-          bordered: rule.type === "range",
+        className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
+          [CS.bordered]: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}
       />
@@ -318,7 +326,7 @@ const RuleDescription = ({ rule }) => {
         ? t`Cells in this column will be tinted based on their values.`
         : rule.type === "single"
         ? jt`When a cell in these columns ${(
-            <span className="text-bold">
+            <span className={CS.textBold}>
               {ALL_OPERATOR_NAMES[rule.operator]}
               {getValueForDescription(rule)}
             </span>
@@ -370,7 +378,7 @@ const RuleEditor = ({
 
   return (
     <div>
-      <h3 className="mb1">{t`Which columns should be affected?`}</h3>
+      <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
         onChange={e => handleColumnChange(e.target.value)}
@@ -394,7 +402,7 @@ const RuleEditor = ({
       </Select>
       {isNumericRule && (
         <div>
-          <h3 className="mt3 mb1">{t`Formatting style`}</h3>
+          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
           <Radio
             value={rule.type}
             options={[
@@ -410,7 +418,7 @@ const RuleEditor = ({
       )}
       {rule.type === "single" ? (
         <div>
-          <h3 className="mt3 mb1">
+          <h3 className={cx(CS.mt3, CS.mb1)}>
             {ngettext(
               msgid`When a cell in this column…`,
               `When any cell in these columns…`,
@@ -457,7 +465,9 @@ const RuleEditor = ({
               placeholder={t`Column value`}
             />
           ) : null}
-          <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
+          <h3
+            className={cx(CS.mt3, CS.mb1)}
+          >{t`…turn its background this color:`}</h3>
           <ColorSelector
             data-testid="conditional-formatting-color-selector"
             value={rule.color}
@@ -466,7 +476,9 @@ const RuleEditor = ({
           />
           {canHighlightRow && (
             <>
-              <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
+              <h3
+                className={cx(CS.mt3, CS.mb1)}
+              >{t`Highlight the whole row`}</h3>
 
               <Toggle
                 value={rule.highlight_row}
@@ -477,7 +489,7 @@ const RuleEditor = ({
         </div>
       ) : rule.type === "range" ? (
         <div>
-          <h3 className="mt3 mb1">{t`Colors`}</h3>
+          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Colors`}</h3>
           <ColorRangeSelector
             value={rule.colors}
             onChange={colors => {
@@ -492,7 +504,7 @@ const RuleEditor = ({
             colors={COLORS}
             colorRanges={COLOR_RANGES}
           />
-          <h3 className="mt3 mb1">{t`Start the range at`}</h3>
+          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Start the range at`}</h3>
           <Radio
             value={rule.min_type}
             onChange={min_type => onChange({ ...rule, min_type })}
@@ -516,7 +528,7 @@ const RuleEditor = ({
               onChange={min_value => onChange({ ...rule, min_value })}
             />
           )}
-          <h3 className="mt3 mb1">{t`End the range at`}</h3>
+          <h3 className={cx(CS.mt3, CS.mb1)}>{t`End the range at`}</h3>
           <Radio
             value={rule.max_type}
             onChange={max_type => onChange({ ...rule, max_type })}
@@ -542,7 +554,7 @@ const RuleEditor = ({
           )}
         </div>
       ) : null}
-      <div className="mt4">
+      <div className={CS.mt4}>
         {rule.columns.length === 0 ? (
           <Button primary onClick={onRemove}>
             {isNew ? t`Cancel` : t`Delete`}

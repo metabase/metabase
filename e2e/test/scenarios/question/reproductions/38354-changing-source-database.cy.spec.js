@@ -42,6 +42,6 @@ describe("issue 38354", { tags: "@external" }, () => {
     cy.findByTestId("query-builder-main")
       .findByText("There was a problem with your question")
       .should("not.exist");
-    cy.get(".cellData").should("contain", "37.65"); // assert visualization renders the data
+    cy.get("[data-testid=cell-data]").should("contain", "37.65"); // assert visualization renders the data
   });
 });

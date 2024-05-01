@@ -24,47 +24,72 @@ function setup({
   return { input, onChange };
 }
 
-function type({ input, value }: { input: HTMLElement; value: string }) {
-  userEvent.clear(input);
-  userEvent.type(input, value);
+async function type({ input, value }: { input: HTMLElement; value: string }) {
+  await userEvent.clear(input);
+  await userEvent.type(input, value);
   fireEvent.blur(input);
 }
 
 describe("ChartSettingInputNumber", () => {
-  it("allows integer values", () => {
+  it("allows integer values", async () => {
     const { input, onChange } = setup();
 
-    type({ input, value: "123" });
+    await type({ input, value: "123" });
     expect(input).toHaveDisplayValue("123");
     expect(onChange).toHaveBeenCalledWith(123);
 
-    type({ input, value: "-456" });
+    await type({ input, value: "-456" });
     expect(input).toHaveDisplayValue("-456");
     expect(onChange).toHaveBeenCalledWith(-456);
   });
 
-  it("allows decimal values", () => {
+  it("allows decimal values", async () => {
     const { input, onChange } = setup();
 
-    type({ input, value: "1.23" });
+    await type({ input, value: "1.23" });
     expect(input).toHaveDisplayValue("1.23");
     expect(onChange).toHaveBeenCalledWith(1.23);
 
-    type({ input, value: "-4.56" });
+    await type({ input, value: "-4.56" });
     expect(input).toHaveDisplayValue("-4.56");
     expect(onChange).toHaveBeenCalledWith(-4.56);
 
     // multiple decimal places should call onChange with
     // undefined since it's an invalid value
-    type({ input, value: "1.2.3" });
+    await type({ input, value: "1.2.3" });
     expect(input).toHaveDisplayValue("1.2.3");
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
-  it("does not allow non-alphanumeric values", () => {
+  it("allows scientific notation", async () => {
     const { input, onChange } = setup();
 
-    type({ input, value: "asdf" });
+    await type({ input, value: "1.5e3" });
+    expect(input).toHaveDisplayValue("1.5e3");
+    expect(onChange).toHaveBeenCalledWith(1.5e3);
+  });
+
+  it("does not allow non-numeric values", async () => {
+    const { input, onChange } = setup();
+
+    await type({ input, value: "asdf" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    // Inputs with `e` that are not valid scientific notation
+    type({ input, value: "e123" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "e123e" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "1e23e" });
+    expect(input).toHaveDisplayValue("");
+    expect(onChange).toHaveBeenCalledWith(undefined);
+
+    type({ input, value: "e1e23e" });
     expect(input).toHaveDisplayValue("");
     expect(onChange).toHaveBeenCalledWith(undefined);
   });

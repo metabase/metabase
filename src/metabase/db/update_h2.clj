@@ -103,5 +103,5 @@
         (try
          (update! jdbc-url)
          (catch Exception e
-           (log/error "Failed to update H2 database:" e)
+           (log/error e "Failed to update H2 database:")
            (throw e)))))))

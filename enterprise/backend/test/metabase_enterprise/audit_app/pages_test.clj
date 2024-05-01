@@ -125,7 +125,7 @@
   (doseq [query (test-query-maps query-type objects)]
     (testing (format "\nquery =\n%s" (u/pprint-to-str query))
       (is (=? {:status :completed}
-              (qp/process-query query))))))
+              (qp/process-query (mt/userland-query query)))))))
 
 (defn- do-with-temp-objects [f]
   (t2.with-temp/with-temp [Database      database {}

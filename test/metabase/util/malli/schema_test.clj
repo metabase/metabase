@@ -57,9 +57,6 @@
            {:schema        ms/IntString
             :failed-cases  [:a "a" "1.5"]
             :success-cases ["1"]}
-           {:schema        ms/BooleanString
-            :failed-cases  [:false :true true "f" "t"]
-            :success-cases ["true" "false"]}
            {:schema        ms/TemporalString
             :failed-cases  ["random string"]
             :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}

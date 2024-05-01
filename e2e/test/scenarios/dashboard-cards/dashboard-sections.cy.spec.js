@@ -5,6 +5,7 @@ import {
   describeWithSnowplow,
   editDashboard,
   enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   findDashCardAction,
@@ -125,7 +126,7 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  modal().findByText(question).click();
+  entityPickerModal().findByText(question).click();
   cy.wait("@cardQuery");
   dashboardGrid().findByText(question).should("exist");
 }

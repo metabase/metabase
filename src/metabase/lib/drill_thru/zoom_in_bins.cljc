@@ -19,8 +19,9 @@
   - Remove breakouts for `dimensions`. Please note that with regular cells and pivot cells it would mean removing all
     breakouts; but with legend item clicks it would remove the breakout for the legend item column only.
 
-  - Add a filter based on columns and values from `dimensions`. Take temporal units and binning strategies into
-    account
+  - Remove any existing filters for this column.
+
+  - Add new filters limiting this column to the range defined by the clicked bin.
     https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
 
   - Add a breakout based on the numeric column (from requirements). For location columns, use the binning strategy
@@ -71,6 +72,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -128,7 +130,11 @@
   [query                                        :- ::lib.schema/query
    stage-number                                 :- :int
    {:keys [column min-value max-value new-binning]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
-  (-> query
-      (lib.filter/filter stage-number (lib.filter/>= column min-value))
-      (lib.filter/filter stage-number (lib.filter/< column max-value))
-      (update-breakout stage-number column new-binning)))
+  (let [old-filters (filter (fn [[operator _opts filter-column]]
+                              (and (#{:>= :<} operator)
+                                   (lib.equality/find-matching-column filter-column [column])))
+                            (lib.filter/filters query stage-number))]
+    (-> (reduce lib.remove-replace/remove-clause query old-filters)
+        (lib.filter/filter stage-number (lib.filter/>= column min-value))
+        (lib.filter/filter stage-number (lib.filter/< column max-value))
+        (update-breakout stage-number column new-binning))))

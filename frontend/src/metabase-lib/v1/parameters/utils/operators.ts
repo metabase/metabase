@@ -8,7 +8,7 @@ import {
   getParameterSubType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/v1/types/constants";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
 import { getIsMultiSelect } from "../../../../metabase/parameters/utils/dashboards";
 
@@ -66,7 +66,7 @@ export function buildTypedOperatorOptions(
   operatorType: OperatorType,
   sectionId: string,
   sectionName: string,
-) {
+): ParameterMappingOptions[] {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
     return {
       ...operatorOption,

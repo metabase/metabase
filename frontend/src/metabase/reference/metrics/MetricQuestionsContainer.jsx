@@ -1,9 +1,11 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
+import CS from "metabase/css/core/index.css";
 import Questions from "metabase/entities/questions";
 import * as metadataActions from "metabase/redux/metadata";
 import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
@@ -65,7 +67,7 @@ class MetricQuestionsContainer extends Component {
 
     return (
       <SidebarLayout
-        className="flex-full relative"
+        className={cx(CS.flexFull, CS.relative)}
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<MetricSidebar metric={metric} user={user} />}
       >

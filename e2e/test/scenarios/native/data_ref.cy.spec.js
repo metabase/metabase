@@ -2,6 +2,8 @@ import {
   restore,
   openNativeEditor,
   openQuestionActions,
+  popover,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 describe("scenarios > native question > data reference sidebar", () => {
@@ -52,11 +54,12 @@ describe("scenarios > native question > data reference sidebar", () => {
     );
     // Move question to personal collection
     openQuestionActions();
-    cy.findByTestId("move-button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My personal collection").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Move").click();
+    popover().findByTestId("move-button").click();
+
+    entityPickerModal().within(() => {
+      cy.findByText("Bobby Tables's Personal Collection").click();
+      cy.button("Move").click();
+    });
 
     openNativeEditor();
     cy.icon("reference").click();

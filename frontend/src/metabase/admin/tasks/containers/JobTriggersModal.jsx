@@ -35,7 +35,7 @@ const renderTriggersTable = triggers => {
         {triggers &&
           triggers.map(trigger => (
             <tr key={trigger.key}>
-              <td className="text-bold">{trigger.key}</td>
+              <td className={CS.textBold}>{trigger.key}</td>
               <td>{trigger.description}</td>
               <td>{trigger.state}</td>
               <td>{trigger.priority}</td>

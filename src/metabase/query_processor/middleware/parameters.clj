@@ -3,10 +3,10 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [medley.core :as m]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.util :as u]
@@ -56,7 +56,7 @@
    (expand-all outer-query outer-query))
 
   ([outer-query m]
-   (mbql.u/replace m
+   (lib.util.match/replace m
      (_ :guard (every-pred map? (some-fn :parameters :template-tags)))
      (let [expanded (expand-one outer-query &match)]
        ;; now recursively expand any remaining maps that contain `:parameters`
@@ -91,12 +91,11 @@
 
 (defn- assoc-db-in-snippet-tag
   [db template-tags]
-  (->> template-tags
-       (m/map-vals
-        (fn [v]
-          (cond-> v
-            (= (:type v) :snippet) (assoc :database db))))
-       (into {})))
+  (update-vals
+   template-tags
+   (fn [v]
+     (cond-> v
+       (= (:type v) :snippet) (assoc :database db)))))
 
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."

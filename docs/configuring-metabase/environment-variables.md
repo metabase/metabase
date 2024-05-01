@@ -176,7 +176,7 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: string<br>
 Default: `"app/assets/img/logo.svg"`
 
-Path or URL to logo file. For best results use SVG format.
+Path or URL to logo file. For best results use SVG format (inline styling and inline scripts are not supported).
 
 ### `MB_APPLICATION_NAME`
 
@@ -928,6 +928,23 @@ Default: `"substring"`<br>
 Since: v44.1
 
 Matching style for native query editor's autocomplete. Larger instances can have performance issues matching using `substring`, so can use `prefix` matching, or turn autocompletions `off`.
+
+### `MB_NO_SURVEYS`
+
+Type: boolean<br>
+Default: `false`<br>
+
+Metabase will send a sentiment survey to people who create a number of questions and dashboards to gauge how well the product is doing with respect to making things easy for creators.
+
+Metabase will only send these emails to people who have in the past 2 months:
+
+- Created at least 10 questions total
+- Created at least 2 SQL questions
+- Created at least 1 dashboard
+
+If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance who meet that criteria.
+
+If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 

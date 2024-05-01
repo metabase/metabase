@@ -12,7 +12,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.formatting.date :as fmt.date]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
@@ -120,7 +120,7 @@
                         (temporal? maybe-clause)
                         (lib.util/clause? maybe-clause)
                         (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
-    (mbql.u/match-one filter-clause
+    (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 

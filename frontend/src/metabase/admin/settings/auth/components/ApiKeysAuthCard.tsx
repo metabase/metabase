@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { useCountApiKeyQuery } from "metabase/api";
+import { useCountApiKeysQuery } from "metabase/api";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 
 export const ApiKeysAuthCard = () => {
-  const { data } = useCountApiKeyQuery();
+  const { data } = useCountApiKeysQuery();
   const keyCount = data ?? 0;
   const isConfigured = keyCount > 0;
 

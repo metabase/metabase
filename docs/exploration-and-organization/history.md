@@ -4,7 +4,7 @@ title: History
 
 # History
 
-For questions, dashboards, and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, and revert to previous versions. 
+For questions, dashboards, and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, and revert to previous versions.
 
 You can also archive, unarchive, and permanently delete outdated items.
 
@@ -51,6 +51,8 @@ Archiving a collection archives all of the collection's contents as well. You ca
 1. Open the main Metabase sidebar.
 2. Click the `...` beside the "Collections" header in the sidebar.
 3. Click **View archive**.
+
+To view archived [events and timelines](./events-and-timelines.md), go to the relevant unarchived collection, click on the collection's **Calendar** icon, then the three-dot menu (**...**) and select the option to view the archived events or timelines.
 
 ## Unarchiving items
 

@@ -10,6 +10,7 @@ import {
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
+import CS from "metabase/css/core/index.css";
 import Collection, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
@@ -119,7 +120,7 @@ function SavedEntityPicker({
     <SavedEntityPickerRoot>
       <CollectionsContainer>
         <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
-          <Icon name="chevronleft" className="mr1" />
+          <Icon name="chevronleft" className={CS.mr1} />
           {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
         <TreeContainer data-testid="saved-entity-collection-tree">

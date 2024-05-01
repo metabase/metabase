@@ -42,8 +42,12 @@
                  :when                    (.isSupported temporal-accessor field)]
              [k (.getLong temporal-accessor field)])))
 
-(mu/defn parse-with-formatter :- [:maybe [:fn {:error/message "Instance of java.time.temporal.Temporal"}
-                                          (partial instance? Temporal)]]
+(def ^:private InstanceOfTemporal
+  [:fn
+   {:error/message "Instance of a java.time.temporal.Temporal"}
+   (partial instance? Temporal)])
+
+(mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
   [formattr
    s :- [:maybe :string]]

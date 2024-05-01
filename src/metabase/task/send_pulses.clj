@@ -100,8 +100,8 @@
                                  (time/now)
                                  (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
             curr-hour          (time/hour now)
-            ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
-            ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
+            ;; clj-time produces values of 1-7 here (Mon -> Sun), so we subtract 1 from it to make the values
+            ;; zero-based to correspond to the indices in pulse-channel/days-of-week
             curr-weekday       (->> (dec (time/day-of-week now))
                                     (get pulse-channel/days-of-week)
                                     :id)

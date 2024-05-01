@@ -38,7 +38,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: var(--color-brand-alpha-04);
+  background-color: var(--mb-color-brand-alpha-04);
 }
 
 .ContentTable tr:hover .TableActions {
@@ -87,7 +87,7 @@
 }
 
 .AdminListItem.selected {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .AdminListItem.selected,
@@ -119,23 +119,9 @@
 }
 
 .AdminInput:focus {
-  border-color: var(--color-brand);
+  border-color: var(--mb-color-brand);
   box-shadow: none;
   outline: 0;
-}
-
-.AdminSelect {
-  display: inline-block;
-  padding: 0.6em 0.9em;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-white);
-  border-radius: var(--default-border-radius);
-  font-weight: 700;
-  min-width: 104px;
-}
-
-.AdminSelect:hover {
-  border-color: color-mod(var(--color-border) blackness(10%));
 }
 
 .MetadataTable {

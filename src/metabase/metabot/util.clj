@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card Field FieldValues Table]]

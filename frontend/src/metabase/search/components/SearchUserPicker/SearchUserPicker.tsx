@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import { without } from "underscore";
 
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { useUserListQuery } from "metabase/common/hooks";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserItemContainer,

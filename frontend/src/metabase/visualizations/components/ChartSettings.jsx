@@ -384,7 +384,7 @@ class ChartSettings extends Component {
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">
           {showSectionPicker && sectionPicker}
-          <ChartSettingsListContainer className="scroll-show">
+          <ChartSettingsListContainer className={CS.scrollShow}>
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}

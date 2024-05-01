@@ -4,7 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -121,8 +121,8 @@ function ActionsPopover({
 }) {
   return (
     <PopoverWithTrigger
-      className="block"
-      triggerElement={<Icon className="text-light" name="ellipsis" />}
+      className={CS.block}
+      triggerElement={<Icon className={CS.textLight} name="ellipsis" />}
     >
       <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
@@ -152,10 +152,10 @@ function EditingGroupRow({
 }) {
   const textIsValid = group.name && group.name.length;
   return (
-    <tr className="bordered border-brand rounded">
+    <tr className={cx(CS.bordered, CS.borderBrand, CS.rounded)}>
       <td>
         <Input
-          className="h3"
+          className={CS.h3}
           type="text"
           autoFocus={true}
           value={group.name}
@@ -163,11 +163,8 @@ function EditingGroupRow({
         />
       </td>
       <td />
-      <td className="text-right">
-        <span
-          className="link no-decoration cursor-pointer"
-          onClick={onCancelClicked}
-        >{t`Cancel`}</span>
+      <td className={CS.textRight}>
+        <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
         <button
           className={cx(ButtonsS.Button, CS.ml2, {
             [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
@@ -213,22 +210,24 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className="link no-decoration flex align-center"
+          className={cx(CS.link, CS.flex, CS.alignCenter)}
         >
-          <span className="text-white">
+          <span className={CS.textWhite}>
             <UserAvatar
               user={{ first_name: getGroupNameLocalized(group) }}
               bg={backgroundColor}
             />
           </span>
-          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
+          <span className={cx(CS.ml2, CS.textBold)}>
+            {getGroupNameLocalized(group)}
+          </span>
         </Link>
       </td>
       <td>
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         {showActionsButton ? (
           <ActionsPopover
             group={group}
@@ -247,7 +246,7 @@ const ApiKeyCount = ({ apiKeys }) => {
     return null;
   }
   return (
-    <span className="text-light">
+    <span className={CS.textLight}>
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
@@ -277,7 +276,7 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} />;

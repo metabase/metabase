@@ -9,6 +9,9 @@ import NormalCollections, {
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,

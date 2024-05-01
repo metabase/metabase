@@ -13,7 +13,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
@@ -161,7 +161,7 @@
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
   {:pre [(map? database)]}
-  (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
+  (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s ..." driver id))
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -173,7 +173,7 @@
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
 (defn- destroy-pool! [database-id pool-spec]
-  (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
+  (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
   (connection-pool/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
@@ -216,13 +216,11 @@
   (set-pool! (u/the-id database) nil nil))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
-  (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
-                                      db-id)))
+  (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
   nil)
 
 (defn- log-jdbc-spec-hash-change-msg! [db-id]
-  (log/warn (u/format-color 'yellow (trs "Hash of database {0} details changed; marking pool invalid to reopen it"
-                                          db-id)))
+  (log/warn (u/format-color :yellow "Hash of database %s details changed; marking pool invalid to reopen it" db-id))
   nil)
 
 (defn db->pooled-connection-spec

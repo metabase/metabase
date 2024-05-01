@@ -7,7 +7,6 @@ import {
   checkCanRefreshModelCache,
   getModelCacheSchemaName,
   isAdHocModelQuestion,
-  isAdHocModelQuestionCard,
   getDatasetMetadataCompletenessPercentage,
 } from "metabase-lib/v1/metadata/utils/models";
 import {
@@ -191,7 +190,7 @@ describe("data model utils", () => {
     });
   });
 
-  describe("isAdHocModelQuestion & isAdHocModelQuestionCard", () => {
+  describe("isAdHocModelQuestion", () => {
     it("returns false when original question is not provided", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
       const composedModelCard = createSavedStructuredCard({
@@ -202,7 +201,6 @@ describe("data model utils", () => {
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question)).toBe(false);
-      expect(isAdHocModelQuestionCard(question.card())).toBe(false);
     });
 
     it("returns false for native questions", () => {
@@ -212,7 +210,6 @@ describe("data model utils", () => {
       const question = metadata.question(card.id);
 
       expect(isAdHocModelQuestion(question, question)).toBe(false);
-      expect(isAdHocModelQuestionCard(card, card)).toBe(false);
     });
 
     it("identifies when model goes into ad-hoc exploration mode", () => {
@@ -227,9 +224,6 @@ describe("data model utils", () => {
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(true);
-      expect(
-        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
-      ).toBe(true);
     });
 
     it("returns false when IDs don't match", () => {
@@ -244,9 +238,6 @@ describe("data model utils", () => {
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
-      expect(
-        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
-      ).toBe(false);
     });
 
     it("returns false when questions are not models", () => {
@@ -261,9 +252,6 @@ describe("data model utils", () => {
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
-      expect(
-        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
-      ).toBe(false);
     });
 
     it("returns false when potential ad-hoc model question is not self-referencing", () => {
@@ -278,9 +266,6 @@ describe("data model utils", () => {
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
-      expect(
-        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
-      ).toBe(false);
     });
   });
 

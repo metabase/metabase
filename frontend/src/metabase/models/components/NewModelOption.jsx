@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
 import S from "./NewModelOption.module.css";
@@ -31,7 +32,7 @@ export default class NewModelOption extends Component {
         onMouseLeave={() => this.setState({ hover: false })}
       >
         <div
-          className="flex align-center layout-centered"
+          className={cx(CS.flex, CS.alignCenter, CS.layoutCentered)}
           style={{ height: "160px" }}
         >
           <img
@@ -41,11 +42,16 @@ export default class NewModelOption extends Component {
           />
         </div>
         <div
-          className="text-normal mt2 mb2 text-paragraph"
+          className={cx(CS.textNormal, CS.mt2, CS.mb2, CS.textParagraph)}
           style={{ lineHeight: "1.25em" }}
         >
-          <h2 className={cx(S.modelTitle, { "text-brand": hover })}>{title}</h2>
-          <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
+          <h2 className={cx(S.modelTitle, { [CS.textBrand]: hover })}>
+            {title}
+          </h2>
+          <p
+            className={cx(CS.textMedium, CS.textSmall)}
+            style={{ maxWidth: "360px" }}
+          >
             {description}
           </p>
         </div>

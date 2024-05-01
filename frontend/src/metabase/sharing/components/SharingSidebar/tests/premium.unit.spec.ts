@@ -18,7 +18,7 @@ describe("SharingSidebar Premium Features", () => {
         hasEnterprisePlugins: true,
       });
 
-      userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(await screen.findByText("Email it"));
 
       await screen.findByText("Email this dashboard");
 
@@ -35,7 +35,7 @@ describe("SharingSidebar Premium Features", () => {
         hasEnterprisePlugins: true,
       });
 
-      userEvent.click(await screen.findByText("Send it to Slack"));
+      await userEvent.click(await screen.findByText("Send it to Slack"));
 
       await screen.findByText("Send this dashboard to Slack");
 

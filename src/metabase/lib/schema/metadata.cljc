@@ -215,6 +215,11 @@
    :model
    :metric])
 
+(mr/def ::metadata-types
+  [:enum
+   :metadata/database :metadata/table :metadata/column
+   :metadata/card :metadata/legacy-metric :metadata/segment])
+
 ;;; Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
 ;;; a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted
 ;;; to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
@@ -255,15 +260,15 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(mr/def ::metric
+(mr/def ::legacy-metric
   [:map
-   {:error/message "Valid Metric metadata"}
-   [:lib/type   [:= :metadata/metric]]
-   [:id         ::lib.schema.id/metric]
+   {:error/message "Valid legacy (v1) Metric metadata"}
+   [:lib/type   [:= :metadata/legacy-metric]]
+   [:id         ::lib.schema.id/legacy-metric]
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Metric; this may still be in legacy
-   ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
+   ;; format. [[metabase.lib.legacy-metric/metric-definition]] handles conversion to pMBQL if needed.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 

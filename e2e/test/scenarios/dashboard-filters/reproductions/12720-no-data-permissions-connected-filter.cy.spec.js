@@ -101,7 +101,7 @@ describe("issue 12720", () => {
 
 function clickThrough(title) {
   visitDashboard(ORDERS_DASHBOARD_ID);
-  cy.get(".DashCard").contains(title).click();
+  cy.findAllByTestId("dashcard-container").contains(title).click();
 
   cy.location("search").should("contain", dashboardFilter.default);
   filterWidget().contains("After January 1, 2026");

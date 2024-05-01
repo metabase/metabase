@@ -22,44 +22,64 @@
   "Schema for the mock metadata passed in to [[mock-metadata-provider]]."
   [:map
    {:closed true}
-   [:database {:optional true} [:maybe (with-optional-lib-type lib.metadata/DatabaseMetadata :metadata/database)]]
-   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
-   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
-   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card   :metadata/card)]]]
-   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/MetricMetadata  :metadata/metric)]]]
-   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]
+   [:database {:optional true} [:maybe (with-optional-lib-type ::lib.schema.metadata/database :metadata/database)]]
+   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table         :metadata/table)]]]
+   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column        :metadata/column)]]]
+   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card          :metadata/card)]]]
+   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/legacy-metric :metadata/legacy-metric)]]]
+   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment       :metadata/segment)]]]
    [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
 (deftype MockMetadataProvider [metadata]
   metadata.protocols/MetadataProvider
-  (database [_this]            (some-> (:database metadata)
-                                       (assoc :lib/type :metadata/database)
-                                       (dissoc :tables)))
-  (table    [_this table-id]   (some-> (m/find-first #(= (:id %) table-id) (:tables metadata))
-                                       (assoc :lib/type :metadata/table)
-                                       (dissoc :fields)))
-  (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) (:fields metadata))
-                                       (assoc :lib/type :metadata/column)))
-  (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) (:cards metadata))
-                                       (assoc :lib/type :metadata/card)))
-  (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) (:metrics metadata))
-                                       (assoc :lib/type :metadata/metric)))
-  (segment  [_this segment-id] (some-> (m/find-first #(= (:id %) segment-id) (:segments metadata))
-                                       (assoc :lib/type :metadata/segment)))
-  (tables   [_this]            (for [table (:tables metadata)]
-                                 (-> (assoc table :lib/type :metadata/table)
-                                     (dissoc :fields))))
-  (fields   [_this table-id]   (for [field (:fields metadata)
-                                     :when (= (:table-id field) table-id)]
-                                 (assoc field :lib/type :metadata/column)))
-  (metrics  [_this table-id]   (for [metric (:metrics metadata)
-                                     :when  (= (:table-id metric) table-id)]
-                                 (assoc metric :lib/type :metadata/metric)))
-  (segments [_this table-id]   (for [segment (:segments metadata)
-                                     :when   (= (:table-id segment) table-id)]
-                                 (assoc segment :lib/type :metadata/segment)))
+  (database [_this]
+    (some-> (:database metadata)
+            (assoc :lib/type :metadata/database)
+            (dissoc :tables)))
 
-  (setting [_this setting]     (get-in metadata [:settings (keyword setting)]))
+  (table [_this table-id]
+    (some-> (m/find-first #(= (:id %) table-id) (:tables metadata))
+            (assoc :lib/type :metadata/table)
+            (dissoc :fields)))
+
+  (field [_this field-id]
+    (some-> (m/find-first #(= (:id %) field-id) (:fields metadata))
+            (assoc :lib/type :metadata/column)))
+
+  (card [_this card-id]
+    (some-> (m/find-first #(= (:id %) card-id) (:cards metadata))
+            (assoc :lib/type :metadata/card)))
+
+  (legacy-metric [_this metric-id]
+    (some-> (m/find-first #(= (:id %) metric-id) (:metrics metadata))
+            (assoc :lib/type :metadata/legacy-metric)))
+
+  (segment [_this segment-id]
+    (some-> (m/find-first #(= (:id %) segment-id) (:segments metadata))
+            (assoc :lib/type :metadata/segment)))
+
+  (tables [_this]
+    (for [table (:tables metadata)]
+      (-> (assoc table :lib/type :metadata/table)
+          (dissoc :fields))))
+
+  (fields [_this table-id]
+    (for [field (:fields metadata)
+          :when (= (:table-id field) table-id)]
+      (assoc field :lib/type :metadata/column)))
+
+  (legacy-metrics [_this table-id]
+    (for [metric (:metrics metadata)
+          :when  (= (:table-id metric) table-id)]
+      (assoc metric :lib/type :metadata/legacy-metric)))
+
+  (segments [_this table-id]
+    (for [segment (:segments metadata)
+          :when   (= (:table-id segment) table-id)]
+      (assoc segment :lib/type :metadata/segment)))
+
+  (setting [_this setting]
+    (get-in metadata [:settings (keyword setting)]))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

@@ -49,8 +49,8 @@ runs:
             ["visualizations-charts", {} ],
             ["visualizations-tabular", {} ],
             ["oss-subset", { edition: 'oss', context: "special" } ],
-            ["slow", { runner: beefierRunner, context: "special" } ],
-            ["flaky", { runner: beefierRunner, context: "special" } ],
+            ["slow", { context: "special" } ],
+            ["flaky", { context: "special" } ],
             ["mongo", { context: "qa-database" } ],
           ];
 

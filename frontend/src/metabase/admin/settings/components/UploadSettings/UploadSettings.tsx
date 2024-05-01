@@ -12,6 +12,7 @@ import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import { useDispatch } from "metabase/lib/redux";
@@ -71,7 +72,7 @@ const Header = () => (
       display_name: t`Allow people to upload data to Collections`,
       description: jt`People will be able to upload CSV files that will be stored in the ${(
         <Link
-          className="link"
+          className={CS.link}
           key="db-link"
           to="/admin/databases"
         >{t`database`}</Link>

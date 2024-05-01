@@ -45,10 +45,12 @@
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
   all of them.)"
   []
-  (set
-   (filter
-    #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
-    (descendants driver/hierarchy :sql-jdbc))))
+  (conj (set
+         (filter
+          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          (descendants driver/hierarchy :sql-jdbc)))
+        ;; redshift wraps the default implementation, but additionally filters tables according to the database name
+        :redshift))
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
@@ -156,7 +158,8 @@
 (deftest database-schema-filtering-test
   ;; BigQuery is tested separately in `metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test`, because
   ;; otherwise this test takes too long and flakes intermittently
-  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk)
+  ;; Redshift is also tested separately because it flakes.
+  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk :redshift)
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)
           filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))

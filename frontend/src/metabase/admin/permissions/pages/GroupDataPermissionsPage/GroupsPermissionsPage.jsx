@@ -7,7 +7,9 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { useSelector, useDispatch } from "metabase/lib/redux";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
 
@@ -141,6 +143,10 @@ function GroupsPermissionsPage({
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
+  const showLegacyNoSelfServiceWarning =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+    !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
+
   return (
     <Fragment>
       <PermissionsSidebar
@@ -171,6 +177,13 @@ function GroupsPermissionsPage({
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
+          warnings={() => (
+            <>
+              {showLegacyNoSelfServiceWarning && (
+                <PermissionsEditorLegacyNoSelfServiceWarning />
+              )}
+            </>
+          )}
         />
       )}
 

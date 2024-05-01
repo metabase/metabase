@@ -11,7 +11,7 @@
    [metabase.automagic-dashboards.names :as names]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.util :as magic.util]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]

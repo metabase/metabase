@@ -235,9 +235,9 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
 
-  cy.get(".DashboardGrid").within(() => {
-    cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
-  });
+  cy.findByTestId("dashboard-grid")
+    .icon("badge")
+    .should(expectBadge ? "exist" : "not.exist");
 }
 
 function openCollection(collectionName) {

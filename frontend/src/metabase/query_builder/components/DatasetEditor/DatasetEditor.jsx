@@ -111,6 +111,7 @@ function getSidebar(
     focusedFieldIndex,
     focusFirstField,
     onFieldMetadataChange,
+    onMappedDatabaseColumnChange,
   },
 ) {
   const {
@@ -142,6 +143,7 @@ function getSidebar(
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
         onFieldMetadataChange={onFieldMetadataChange}
+        onMappedDatabaseColumnChange={onMappedDatabaseColumnChange}
         modelIndexes={modelIndexes}
       />
     );
@@ -287,10 +289,15 @@ function DatasetEditor(props) {
   );
 
   const onFieldMetadataChange = useCallback(
-    _changes => {
-      const changes = _changes.id
-        ? inheritMappedFieldProperties(_changes)
-        : _changes;
+    values => {
+      setFieldMetadata({ field_ref: focusedFieldRef, changes: values });
+    },
+    [focusedFieldRef, setFieldMetadata],
+  );
+
+  const onMappedDatabaseColumnChange = useCallback(
+    value => {
+      const changes = inheritMappedFieldProperties({ id: value });
       setFieldMetadata({ field_ref: focusedFieldRef, changes });
     },
     [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
@@ -419,18 +426,18 @@ function DatasetEditor(props) {
   );
 
   const { isNative } = Lib.queryDisplayInfo(dataset.query());
-  const isEmpty = !isNative
-    ? Lib.databaseID(dataset.query()) == null
-    : dataset.legacyQuery().isEmpty();
 
   const canSaveChanges =
-    !isEmpty &&
     isDirty &&
     (!isNative || !isResultDirty) &&
-    fields.every(field => field.display_name);
+    fields.every(field => field.display_name) &&
+    Lib.canSave(dataset.query());
 
   const saveButtonTooltipLabel =
-    !isEmpty && isDirty && isNative && isResultDirty
+    isDirty &&
+    isNative &&
+    isResultDirty &&
+    Lib.rawNativeQuery(dataset.query()).length > 0
       ? t`You must run the query before you can save this model`
       : undefined;
 
@@ -443,6 +450,7 @@ function DatasetEditor(props) {
       focusedFieldIndex,
       focusFirstField,
       onFieldMetadataChange,
+      onMappedDatabaseColumnChange,
     },
   );
 
@@ -515,7 +523,7 @@ function DatasetEditor(props) {
             )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled>
+            <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
                 className={CS.spread}

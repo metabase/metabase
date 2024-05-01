@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
@@ -11,6 +12,7 @@ import type {
 import Confirm from "metabase/components/Confirm";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
 import { Icon } from "metabase/ui";
 
@@ -141,7 +143,7 @@ const MappingRow = ({
           />
         </td>
         <td className={AdminS.TableActions}>
-          <div className="float-right mr1">
+          <div className={cx(CS.floatRight, CS.mr1)}>
             {shouldUseDeleteMappingModal ? (
               <DeleteButton onDelete={onDelete} />
             ) : (

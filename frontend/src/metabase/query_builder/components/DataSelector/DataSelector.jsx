@@ -11,6 +11,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
@@ -44,8 +45,6 @@ import {
 } from "./TriggerComponents";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
-
-import "./DataSelector.module.css";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -785,7 +784,9 @@ export class UnconnectedDataSelector extends Component {
 
   getTriggerClasses() {
     const { readOnly, triggerClasses } = this.props;
-    return cx(triggerClasses ?? "flex align-center", { disabled: readOnly });
+    return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
+      disabled: readOnly,
+    });
   }
 
   handleSavedEntityPickerClose = () => {
@@ -1059,7 +1060,7 @@ const DataSelector = _.compose(
     // we want to display a slightly different data picker view
     // (see DATA_BUCKET step)
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     loadingAndErrorWrapper: false,

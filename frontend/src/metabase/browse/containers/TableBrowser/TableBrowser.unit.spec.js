@@ -7,13 +7,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
-import { RELOAD_INTERVAL } from "../../constants";
+// import { RELOAD_INTERVAL } from "../../constants";
 
 import TableBrowser from "./TableBrowser";
 
 describe("TableBrowser", () => {
   it("should poll until tables have completed initial sync", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
     // initially, initial_sync_status='incomplete'
     fetchMock.get("path:/api/database/1/schema/public", [
       { id: 123, name: "foo", initial_sync_status: "incomplete" },
@@ -36,11 +35,14 @@ describe("TableBrowser", () => {
       [{ id: 123, name: "foo", initial_sync_status: "complete" }],
       { overwriteRoutes: true },
     );
-    // advance the timer
-    jest.advanceTimersByTime(RELOAD_INTERVAL);
-    // wait for the response
-    const calls2 = fetchMock.calls(/\/api\/database\/1\/schema\/public/);
-    expect(calls2.length).toBe(2);
+    await waitFor(
+      () => {
+        expect(
+          fetchMock.calls(/\/api\/database\/1\/schema\/public/).length,
+        ).toBe(2);
+      },
+      { timeout: 3000 },
+    );
     await waitForLoaderToBeRemoved();
   });
 });

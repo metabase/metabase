@@ -4,7 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -20,7 +20,7 @@
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [e]
-                  (log/warn e (trs "Exception in API call"))
+                  (log/warn e "Exception in API call")
                   (if (= 404 (:status-code (ex-data e)))
                     (respond {:status 404, :body (deferred-tru "Not found.")})
                     (respond {:status 400, :body (deferred-tru "An error occurred.")})))]
@@ -40,7 +40,7 @@
       (try
         (handler request respond raise)
         (catch Throwable e
-          (log/error e (trs "Exception in API call"))
+          (log/error e "Exception in API call")
           (raise e))))))
 
 (defmulti api-exception-response
@@ -85,7 +85,7 @@
 
 (defmethod api-exception-response EofException
   [_e]
-  (log/info (trs "Request canceled before finishing."))
+  (log/info "Request canceled before finishing.")
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
 (defn catch-api-exceptions

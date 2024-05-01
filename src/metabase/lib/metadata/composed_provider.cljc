@@ -12,6 +12,10 @@
   (filter #(satisfies? metadata.protocols/CachedMetadataProvider %)
           providers))
 
+(defn- invocation-tracker-providers [providers]
+  (filter #(satisfies? metadata.protocols/InvocationTracker %)
+          providers))
+
 (defn- object-for-id [f id metadata-providers]
   (some (fn [provider]
           (f provider id))
@@ -24,8 +28,6 @@
                    (f provider table-id)))
          (m/distinct-by :id))
         metadata-providers))
-
-
 
 (defn- bulk-metadata [providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
@@ -46,17 +48,17 @@
 
 (deftype ComposedMetadataProvider [metadata-providers]
   metadata.protocols/MetadataProvider
-  (database [_this]              (some metadata.protocols/database metadata-providers))
-  (table    [_this table-id]     (object-for-id metadata.protocols/table   table-id     metadata-providers))
-  (field    [_this field-id]     (object-for-id metadata.protocols/field   field-id     metadata-providers))
-  (card     [_this card-id]      (object-for-id metadata.protocols/card    card-id      metadata-providers))
-  (metric   [_this metric-id]    (object-for-id metadata.protocols/metric  metric-id    metadata-providers))
-  (segment  [_this segment-id]   (object-for-id metadata.protocols/segment segment-id   metadata-providers))
-  (setting  [_this setting-name] (object-for-id metadata.protocols/setting setting-name metadata-providers))
-  (tables   [_this]              (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
-  (fields   [_this table-id]     (objects-for-table-id metadata.protocols/fields   table-id metadata-providers))
-  (metrics  [_this table-id]     (objects-for-table-id metadata.protocols/metrics  table-id metadata-providers))
-  (segments [_this table-id]     (objects-for-table-id metadata.protocols/segments table-id metadata-providers))
+  (database       [_this]              (some metadata.protocols/database metadata-providers))
+  (table          [_this table-id]     (object-for-id metadata.protocols/table         table-id     metadata-providers))
+  (field          [_this field-id]     (object-for-id metadata.protocols/field         field-id     metadata-providers))
+  (card           [_this card-id]      (object-for-id metadata.protocols/card          card-id      metadata-providers))
+  (legacy-metric  [_this metric-id]    (object-for-id metadata.protocols/legacy-metric metric-id    metadata-providers))
+  (segment        [_this segment-id]   (object-for-id metadata.protocols/segment       segment-id   metadata-providers))
+  (setting        [_this setting-name] (object-for-id metadata.protocols/setting       setting-name metadata-providers))
+  (tables         [_this]              (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
+  (fields         [_this table-id]     (objects-for-table-id metadata.protocols/fields         table-id metadata-providers))
+  (legacy-metrics [_this table-id]     (objects-for-table-id metadata.protocols/legacy-metrics table-id metadata-providers))
+  (segments       [_this table-id]     (objects-for-table-id metadata.protocols/segments       table-id metadata-providers))
 
   metadata.protocols/CachedMetadataProvider
   (cached-database [_this]
@@ -75,6 +77,11 @@
   metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
     (bulk-metadata metadata-providers metadata-type ids))
+
+  metadata.protocols/InvocationTracker
+  (invoked-ids [_this metadata-type]
+    (when-first [provider (invocation-tracker-providers metadata-providers)]
+      (metadata.protocols/invoked-ids provider metadata-type)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

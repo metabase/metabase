@@ -1,11 +1,12 @@
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
+import type { ButtonHTMLAttributes, ReactNode, ElementType, Ref } from "react";
 import { forwardRef } from "react";
 import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/spacing.module.css";
+import CS from "metabase/css/core/index.css";
+import SpacingS from "metabase/css/core/spacing.module.css";
 import { isNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -32,7 +33,9 @@ const BUTTON_VARIANTS = [
   "fullWidth",
 ] as const;
 
-const VARIANT_TO_CLASS_MAP: { [key: string]: string } = {
+const VARIANT_TO_CLASS_MAP: {
+  [key: string]: string;
+} = {
   small: ButtonsS.ButtonSmall,
   medium: ButtonsS.ButtonMedium,
   large: ButtonsS.ButtonLarge,
@@ -60,7 +63,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconColor?: string;
   iconRight?: IconName;
   iconVertical?: boolean;
-  labelBreakpoint?: string;
+  labelBreakpoint?: "sm";
   children?: ReactNode;
 
   small?: boolean;
@@ -109,7 +112,7 @@ const BaseButton = forwardRef(function BaseButton(
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx(ButtonsS.Button, className, variantClasses, {
-        [CS.p1]: !children,
+        [SpacingS.p1]: !children,
       })}
       purple={props.purple}
     >
@@ -128,9 +131,9 @@ const BaseButton = forwardRef(function BaseButton(
             hasIcon={!!icon}
             hasRightIcon={!!iconRight}
             iconVertical={iconVertical}
-            className={cx({
-              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
-            })}
+            className={
+              labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined
+            }
           >
             {children}
           </ButtonTextContainer>

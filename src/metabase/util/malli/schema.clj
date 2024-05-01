@@ -6,9 +6,9 @@
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -21,38 +21,41 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
-(defn InstanceOf
+(def ^{:arglists '([model])} InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
     (ms/defn my-fn
       [user :- (ms/InstanceOf User)]
       ...)"
-  [model]
-  (mu/with-api-error-message
-    [:fn
-     {:error/message (format "value must be an instance of %s" (name model))}
-     #(models.dispatch/instance-of? model %)]
-    (deferred-tru "value must be an instance of {0}" (name model))))
+  (memoize
+    (fn [model]
+      (mu/with-api-error-message
+        [:fn
+         {:error/message (format "value must be an instance of %s" (name model))}
+         #(models.dispatch/instance-of? model %)]
+        (deferred-tru "value must be an instance of {0}" (name model))))))
 
-(defn InstanceOfClass
+(def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
-  [^Class klass]
-  [:fn
-   {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
-   (partial instance? klass)])
+  (memoize
+    (fn [^Class klass]
+      [:fn
+       {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+       (partial instance? klass)])))
 
-(defn maps-with-unique-key
+(def ^{:arglists '([maps-schema k])} maps-with-unique-key
   "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
-  [maps-schema k]
-  (mu/with-api-error-message
-    [:and
-     [:fn (fn [maps]
-            (= (count maps)
-               (-> (map #(get % k) maps)
-                   distinct
-                   count)))]
-     maps-schema]
-    (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))
+  (memoize
+    (fn [maps-schema k]
+      (mu/with-api-error-message
+        [:and
+         [:fn (fn [maps]
+                (= (count maps)
+                   (-> (map #(get % k) maps)
+                       distinct
+                       count)))]
+         maps-schema]
+        (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
@@ -227,13 +230,6 @@
      [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
     (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
-(def BooleanString
-  "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Defendpoint uses this to coerce the value for this schema to a boolean."
-  (mu/with-api-error-message
-    [:enum "true" "false" "TRUE" "FALSE"]
-    (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
-
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message
@@ -318,7 +314,7 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  We're not using [metabase.legacy-mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message

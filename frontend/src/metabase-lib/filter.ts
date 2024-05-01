@@ -8,7 +8,7 @@ import {
   isTime,
   isDate,
   isCoordinate,
-  isString,
+  isStringOrStringLike,
   isNumeric,
 } from "./column_types";
 import {
@@ -136,7 +136,7 @@ export function stringFilterParts(
   const [column, ...values] = args;
   if (
     !isColumnMetadata(column) ||
-    !isString(column) ||
+    !isStringOrStringLike(column) ||
     !isStringLiteralArray(values)
   ) {
     return null;
@@ -679,7 +679,7 @@ function isExcludeDateBucket(
   return buckets.includes(bucketName);
 }
 
-const DATE_FORMAT = "yyyy-MM-DD";
+const DATE_FORMAT = "YYYY-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:ss.SSS";

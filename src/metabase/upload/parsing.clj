@@ -183,45 +183,45 @@
   (fn [upload-type _]
     upload-type))
 
-(defmethod upload-type->parser :metabase.upload/varchar-255
+(defmethod upload-type->parser :metabase.upload.types/varchar-255
   [_ _]
   identity)
 
-(defmethod upload-type->parser :metabase.upload/text
+(defmethod upload-type->parser :metabase.upload.types/text
   [_ _]
   identity)
 
-(defmethod upload-type->parser :metabase.upload/int
+(defmethod upload-type->parser :metabase.upload.types/int
   [_ {:keys [number-separators]}]
   (partial parse-as-biginteger number-separators))
 
-(defmethod upload-type->parser :metabase.upload/float
+(defmethod upload-type->parser :metabase.upload.types/float
   [_ {:keys [number-separators]}]
   (partial parse-number number-separators))
 
-(defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
+(defmethod upload-type->parser :metabase.upload.types/auto-incrementing-int-pk
   [_ {:keys [number-separators]}]
   (partial parse-as-biginteger number-separators))
 
-(defmethod upload-type->parser :metabase.upload/boolean
+(defmethod upload-type->parser :metabase.upload.types/boolean
   [_ _]
   (comp
    parse-bool
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/date
+(defmethod upload-type->parser :metabase.upload.types/date
   [_ _]
   (comp
    parse-local-date
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/datetime
+(defmethod upload-type->parser :metabase.upload.types/datetime
   [_ _]
   (comp
    parse-as-datetime
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/offset-datetime
+(defmethod upload-type->parser :metabase.upload.types/offset-datetime
   [_ _]
   (comp
    parse-offset-datetime

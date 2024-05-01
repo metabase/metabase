@@ -35,6 +35,12 @@ interface MetadataOpts {
   settings?: Settings;
 }
 
+/**
+ * @deprecated The class shouldn't be used for anything but to create a MetadataProvider instance from MBQL lib.
+ *
+ *   For finding a database/table/field/card by id, use the corresponding RTK query endpoints.
+ *   Do not rely on data being implicitly loaded in some other place.
+ */
 class Metadata {
   databases: Record<string, Database> = {};
   schemas: Record<string, Schema> = {};
@@ -50,8 +56,7 @@ class Metadata {
   }
 
   /**
-   * @deprecated this won't be sorted or filtered in a meaningful way
-   * @returns {Database[]}
+   * @deprecated load data via RTK Query - useListDatabasesQuery
    */
   databasesList({ savedQuestions = true } = {}): Database[] {
     return _.chain(this.databases)
@@ -62,53 +67,78 @@ class Metadata {
   }
 
   /**
-   * @deprecated this won't be sorted or filtered in a meaningful way
-   * @returns {Table[]}
+   * @deprecated load data via RTK Query - useListDatabaseSchemaTablesQuery
    */
   tablesList(): Table[] {
     return Object.values(this.tables);
   }
 
+  /**
+   * @deprecated load data via RTK Query - useListFieldsQuery
+   */
   fieldsList(): Field[] {
     return Object.values(this.fields);
   }
 
   /**
-   * @deprecated this won't be sorted or filtered in a meaningful way
-   * @returns {Metric[]}
+   * @deprecated load data via RTK Query - useListMetricsQuery
    */
   metricsList(): Metric[] {
     return Object.values(this.metrics);
   }
 
+  /**
+   * @deprecated load data via RTK Query - useListSegmentsQuery
+   */
   segmentsList(): Segment[] {
     return Object.values(this.segments);
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetSegmentQuery
+   */
   segment(segmentId: SegmentId | undefined | null): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetMetricQuery
+   */
   metric(metricId: MetricId | undefined | null): Metric | null {
     return (metricId != null && this.metrics[metricId]) || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetDatabaseQuery
+   */
   database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useListDatabasesQuery({ saved: true })
+   */
   savedQuestionsDatabase() {
     return this.databases[SAVED_QUESTIONS_VIRTUAL_DB_ID];
   }
 
+  /**
+   * @deprecated load data via RTK Query - useListSchemasQuery or useListDatabaseSchemaTablesQuery
+   */
   schema(schemaId: SchemaId | undefined | null): Schema | null {
     return (schemaId != null && this.schemas[schemaId]) || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetTableQuery or useGetTableMetadataQuery
+   */
   table(tableId: TableId | undefined | null): Table | null {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetFieldQuery
+   */
   field(
     fieldId: FieldId | FieldReference | string | undefined | null,
     tableId?: TableId | undefined | null,
@@ -126,6 +156,9 @@ class Metadata {
     return this.fields[uniqueId] || null;
   }
 
+  /**
+   * @deprecated load data via RTK Query - useGetCardQuery
+   */
   question(cardId: CardId | undefined | null): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
   }

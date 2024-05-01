@@ -74,8 +74,8 @@
     ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
-  [driver query chans respond]
-  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
+  [driver query context respond]
+  (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
@@ -147,6 +147,15 @@
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/truncate! :sql-jdbc
+  [driver db-id table-name]
+  (let [table-name (keyword table-name)
+        sql        (sql/format {:truncate table-name}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]

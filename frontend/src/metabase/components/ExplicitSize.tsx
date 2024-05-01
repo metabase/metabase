@@ -5,6 +5,7 @@ import { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 import resizeObserver from "metabase/lib/resize-observer";
 
@@ -192,7 +193,7 @@ function ExplicitSize<T extends BaseInnerProps>({
           const { className, style = {}, ...props } = this.props;
           const { width, height } = this.state;
           return (
-            <div className={cx(className, "relative")} style={style}>
+            <div className={cx(className, CS.relative)} style={style}>
               <ComposedComponent
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
                 {...(props as T)}

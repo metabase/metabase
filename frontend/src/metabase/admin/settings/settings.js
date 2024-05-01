@@ -17,7 +17,7 @@ import {
 // ACTION TYPES AND ACTION CREATORS
 
 export const reloadSettings = () => async (dispatch, getState) => {
-  await Promise.all([
+  return await Promise.all([
     dispatch(refreshSettingsList()),
     dispatch(refreshSiteSettings()),
   ]);
@@ -116,8 +116,11 @@ export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function () {
 export const CLEAR_EMAIL_SETTINGS =
   "metabase/admin/settings/CLEAR_EMAIL_SETTINGS";
 
-export const clearEmailSettings = createAction(CLEAR_EMAIL_SETTINGS, () =>
-  EmailApi.clear(),
+export const clearEmailSettings = createThunkAction(
+  CLEAR_EMAIL_SETTINGS,
+  () => async dispatch => {
+    await EmailApi.clear(), await dispatch(reloadSettings());
+  },
 );
 
 export const UPDATE_SLACK_SETTINGS =

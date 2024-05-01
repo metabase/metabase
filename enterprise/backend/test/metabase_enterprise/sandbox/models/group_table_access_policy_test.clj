@@ -132,15 +132,13 @@
       (testing "Sandbox definitions in the DB are automatically added to the permissions graph"
         (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
                                                      :group_id (u/the-id (perms-group/all-users))}]
-          (is (= {(u/the-id (perms-group/all-users))
-                  {(mt/id)
-                   {:data
-                    {:schemas
-                     {"PUBLIC"
-                      {(mt/id :venues)
-                       {:query :segmented
-                        :read :all}}}}}}}
-                 (sandboxes/add-sandboxes-to-permissions-graph {})))))
+          (is (partial=
+               {(u/the-id (perms-group/all-users))
+                {(mt/id)
+                 {:view-data
+                  {"PUBLIC"
+                   {(mt/id :venues) :sandboxed}}}}}
+               (sandboxes/add-sandboxes-to-permissions-graph {})))))
 
       (testing "When perms are set at the DB level, incorporating a sandbox breaks them out to table-level"
         (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
@@ -148,16 +146,12 @@
           (is (partial=
                {(u/the-id (perms-group/all-users))
                 {(mt/id)
-                 {:data
-                  {:schemas
-                   {"PUBLIC"
-                    {(mt/id :venues)   {:query :segmented
-                                        :read :all}
-                     (mt/id :products) :all}}}}}}
+                 {:view-data {"PUBLIC"
+                              {(mt/id :venues) :sandboxed}}}}}
                (sandboxes/add-sandboxes-to-permissions-graph
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
-                  {:data {:schemas :all}}}})))))
+                  {:view-data :unrestricted}}})))))
 
       (testing "When perms are set at the schema level, incorporating a sandbox breaks them out to table-level"
         (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
@@ -165,13 +159,10 @@
           (is (partial=
                {(u/the-id (perms-group/all-users))
                 {(mt/id)
-                 {:data
-                  {:schemas
-                   {"PUBLIC"
-                    {(mt/id :venues)   {:query :segmented
-                                        :read :all}
-                     (mt/id :products) :all}}}}}}
+                 {:view-data
+                  {"PUBLIC"
+                   {(mt/id :venues) :sandboxed}}}}}
                (sandboxes/add-sandboxes-to-permissions-graph
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
-                  {:data {:schemas {"PUBLIC" :all}}}}}))))))))
+                  {:view-data :unrestricted}}}))))))))

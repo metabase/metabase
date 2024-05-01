@@ -1,0 +1,377 @@
+[
+  {
+    "card": {
+      "original_card_id": 180,
+      "model": "card",
+      "table_name": null,
+      "initial_sync_status": null,
+      "scores": [
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "pinned"
+        },
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "bookmarked"
+        },
+        {
+          "weight": 1.5,
+          "score": 1,
+          "name": "recency"
+        },
+        {
+          "weight": 1,
+          "score": 0.02,
+          "name": "dashboard"
+        },
+        {
+          "weight": 0.5,
+          "score": 0.5,
+          "name": "model"
+        },
+        {
+          "score": 0.5,
+          "name": "text-exact-match",
+          "weight": 4,
+          "match": "waterfall quarter bucket native",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@1310237b",
+          "column": "name"
+        },
+        {
+          "score": 0.5,
+          "name": "text-consecutivity",
+          "weight": 2,
+          "match": "waterfall quarter bucket native",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@4b65a3ce",
+          "column": "name"
+        },
+        {
+          "score": 0.5,
+          "name": "text-total-occurrences",
+          "weight": 2,
+          "match": "waterfall quarter bucket native",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@794e8bd7",
+          "column": "name"
+        },
+        {
+          "score": 0.25,
+          "name": "text-fullness",
+          "weight": 1,
+          "match": "waterfall quarter bucket native",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@4a0c822f",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-prefix",
+          "weight": 1,
+          "match": "waterfall quarter bucket native",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@58957bee",
+          "column": "name"
+        }
+      ],
+      "context": null,
+      "dashboardcard_count": 1,
+      "table_description": null,
+      "last_edited_at": "2024-01-19T00:21:28.0882-03:00",
+      "model_name": null,
+      "last_editor_id": 1,
+      "model_id": null,
+      "model_index_id": null,
+      "moderated_status": null,
+      "collection_authority_level": null,
+      "table_schema": null,
+      "pk_ref": null,
+      "bookmark": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-01-19T00:21:28.084158-03:00",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (c3a4e77)",
+      "collection": {
+        "id": null,
+        "name": null,
+        "authority_level": null,
+        "type": null
+      },
+      "visualization_settings": {
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "graph.metrics": [
+          "sum"
+        ]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "timestamp": "2024-01-19T00:21:28.0882-03:00"
+      },
+      "collection_preview": true,
+      "entity_id": "dwitJ39UqqbHtsTH782gy",
+      "display": "waterfall",
+      "parameter_mappings": [],
+      "id": 180,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "collection": "ORDERS",
+          "query": "SELECT\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") AS \"CREATED_AT\",\n  SUM(\"source\".\"Total with negative\") AS \"sum\"\nFROM\n  (\n    SELECT\n      \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\",\n      \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\",\n      CASE\n        WHEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" > 74 THEN \"PUBLIC\".\"ORDERS\".\"TOTAL\"\n        ELSE 0 - (2.5 * \"PUBLIC\".\"ORDERS\".\"TOTAL\")\n      END AS \"Total with negative\"\n    FROM\n      \"PUBLIC\".\"ORDERS\"\n   \nWHERE\n      (\n        \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp with time zone '2022-10-01 00:00:00.000-03:00'\n      )\n     \n   AND (\n        \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp with time zone '2025-05-01 00:00:00.000-03:00'\n      )\n  ) AS \"source\"\nGROUP BY\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\")\nORDER BY\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") ASC"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-01-19T00:21:56.500293-03:00",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "waterfall quarter bucket native",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": null,
+      "can_write": true,
+      "creator": {
+        "last_login": "2024-01-18T02:24:36.311748-03:00",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "date_joined": "2024-01-02T13:56:05.318674-03:00"
+      },
+      "result_metadata": [
+        {
+          "display_name": "CREATED_AT",
+          "field_ref": [
+            "field",
+            "CREATED_AT",
+            {
+              "base-type": "type/DateTime"
+            }
+          ],
+          "name": "CREATED_AT",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 11,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-10-01T00:00:00-03:00",
+                "latest": "2025-04-01T00:00:00-03:00"
+              }
+            }
+          }
+        },
+        {
+          "display_name": "sum",
+          "field_ref": [
+            "field",
+            "sum",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 11,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -55228.120421444764,
+                "q1": -37590.65998280716,
+                "q3": 2893.926948425143,
+                "max": 23281.363700965732,
+                "sd": 27169.73172278659,
+                "avg": -14867.863923388502
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [
+          "2022-10-01T00:00:00-03:00",
+          -21968.572846717416
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          -38304.752578906264
+        ],
+        [
+          "2023-04-01T00:00:00-03:00",
+          -35448.382194509846
+        ],
+        [
+          "2023-07-01T00:00:00-03:00",
+          -52219.83774984469
+        ],
+        [
+          "2023-10-01T00:00:00-03:00",
+          -55228.120421444764
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          -2577.2394117016815
+        ],
+        [
+          "2024-04-01T00:00:00-03:00",
+          510.4029183836134
+        ],
+        [
+          "2024-07-01T00:00:00-03:00",
+          -1560.1659209171219
+        ],
+        [
+          "2024-10-01T00:00:00-03:00",
+          23281.363700965732
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          16280.366388979945
+        ],
+        [
+          "2025-04-01T00:00:00-03:00",
+          3688.434958438986
+        ]
+      ],
+      "cols": [
+        {
+          "display_name": "CREATED_AT",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "CREATED_AT",
+            {
+              "base-type": "type/DateTime"
+            }
+          ],
+          "name": "CREATED_AT",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime"
+        },
+        {
+          "display_name": "sum",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "sum",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "collection": "ORDERS",
+        "query": "SELECT\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") AS \"CREATED_AT\",\n  SUM(\"source\".\"Total with negative\") AS \"sum\"\nFROM\n  (\n    SELECT\n      \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\",\n      \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\",\n      CASE\n        WHEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" > 74 THEN \"PUBLIC\".\"ORDERS\".\"TOTAL\"\n        ELSE 0 - (2.5 * \"PUBLIC\".\"ORDERS\".\"TOTAL\")\n      END AS \"Total with negative\"\n    FROM\n      \"PUBLIC\".\"ORDERS\"\n   \nWHERE\n      (\n        \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp with time zone '2022-10-01 00:00:00.000-03:00'\n      )\n     \n   AND (\n        \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp with time zone '2025-05-01 00:00:00.000-03:00'\n      )\n  ) AS \"source\"\nGROUP BY\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\")\nORDER BY\n  DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "CREATED_AT",
+            "field_ref": [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime"
+              }
+            ],
+            "name": "CREATED_AT",
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "semantic_type": "type/CreationTimestamp",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 11,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-10-01T00:00:00-03:00",
+                  "latest": "2025-04-01T00:00:00-03:00"
+                }
+              }
+            }
+          },
+          {
+            "display_name": "sum",
+            "field_ref": [
+              "field",
+              "sum",
+              {
+                "base-type": "type/Float"
+              }
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 11,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -55228.120421444764,
+                  "q1": -37590.65998280716,
+                  "q3": 2893.926948425143,
+                  "max": 23281.363700965732,
+                  "sd": 27169.73172278659,
+                  "avg": -14867.863923388502
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 16280.366388979945,
+          "unit": "quarter",
+          "offset": -1350232.6853565923,
+          "last-change": -0.7734427548918273,
+          "col": "sum",
+          "slope": 67.70678794984909,
+          "last-value": 3688.434958438986,
+          "best-fit": [
+            "+",
+            -1350232.6853565923,
+            [
+              "*",
+              67.70678794984909,
+              "x"
+            ]
+          ]
+        }
+      ]
+    }
+  }
+]

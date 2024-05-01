@@ -1,5 +1,5 @@
 .queryButton {
-  composes: text-brand py1 from "style";
+  composes: textBrand py1 from "style";
   text-decoration: none;
   align-items: center;
   display: flex;

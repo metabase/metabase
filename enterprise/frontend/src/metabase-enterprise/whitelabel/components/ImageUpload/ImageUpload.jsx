@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
 import { SettingInput } from "metabase/admin/settings/components/widgets/SettingInput";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
 import { FileInput } from "./ImageUpload.styled";
@@ -10,10 +13,16 @@ export const ImageUpload = ({ id, setting, onChange, ...props }) => {
   return (
     <div>
       {imageSource && (
-        <div className="mb1">
+        <div className={CS.mb1}>
           {/* Preview of icon as it will appear in the nav bar */}
           <span
-            className="mb1 p1 rounded flex layout-centered"
+            className={cx(
+              CS.mb1,
+              CS.p1,
+              CS.rounded,
+              CS.flex,
+              CS.layoutCentered,
+            )}
             style={{ backgroundColor: color("nav") }}
           >
             <img src={imageSource} height={32} />

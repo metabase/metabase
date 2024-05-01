@@ -13,8 +13,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -24,9 +24,13 @@
 
 ;;; "legacy macro" as used below means EITHER a legacy Metric or a legacy Segment.
 (mr/def ::legacy-macro
-  [:or
-   ::lib.schema.metadata/metric
-   ::lib.schema.metadata/segment])
+  [:and
+   [:map
+    [:lib/type [:enum :metadata/segment :metadata/legacy-metric]]]
+   [:multi
+    {:dispatch :lib/type}
+    [:metadata/segment       ::lib.schema.metadata/segment]
+    [:metadata/legacy-metric ::lib.schema.metadata/legacy-metric]]])
 
 (mr/def ::macro-type
   [:enum :metric :segment])
@@ -42,7 +46,7 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (mbql.u/match stage
+       (lib.util.match/match stage
          [macro-type _opts (id :guard pos-int?)]
          (conj! ids id))))
     (not-empty (persistent! ids))))
@@ -51,18 +55,21 @@
 ;;;
 ;;; a legacy Segment has one or more filter clauses.
 
-(defn- legacy-macro-definition->pMBQL
+(mu/defn ^:private legacy-macro-definition->pMBQL :- ::lib.schema/stage.mbql
   "Get the definition of a legacy Metric as a pMBQL stage."
-  [definition]
+  [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
+   {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
   (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
-  (u/prog1 (-> (lib.convert/->pMBQL {:type  :query
-                                     :query definition})
+  (u/prog1 (-> (lib.convert/->pMBQL {:type     :query
+                                     :query    (merge {:source-table table-id}
+                                                      definition)
+                                     :database (u/the-id (lib.metadata/database metadata-providerable))})
                (lib.util/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
 (mu/defn ^:private legacy-metric-aggregation :- ::lib.schema.aggregation/aggregation
   "Get the aggregation associated with a legacy Metric."
-  [legacy-metric :- ::lib.schema.metadata/metric]
+  [legacy-metric :- ::lib.schema.metadata/legacy-metric]
   (-> (or (first (get-in legacy-metric [:definition :aggregation]))
           (throw (ex-info (tru "Invalid legacy Metric: missing aggregation")
                           {:type qp.error-type/invalid-query, :legacy-metric legacy-metric})))
@@ -87,11 +94,11 @@
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    legacy-macro-ids      :- [:maybe [:set {:min 1} pos-int?]]]
   (let [metadata-type     (case macro-type
-                            :metric  :metadata/metric
+                            :metric  :metadata/legacy-metric
                             :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
-                                    (update legacy-macro :definition legacy-macro-definition->pMBQL))))
+                                    (assoc legacy-macro :definition (legacy-macro-definition->pMBQL metadata-providerable legacy-macro)))))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]
@@ -110,7 +117,7 @@
    stage             :- ::lib.schema/stage
    id->legacy-metric :- ::id->legacy-macro]
   (let [new-filters (atom [])
-        stage'      (mbql.u/replace-in stage [:aggregation]
+        stage'      (lib.util.match/replace-in stage [:aggregation]
                       [:metric opts-from-ref (id :guard pos-int?)]
                       (let [legacy-metric  (get id->legacy-metric id)
                             aggregation    (-> (legacy-metric-aggregation legacy-metric)
@@ -135,7 +142,7 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (mbql.u/replace stage
+  (-> (lib.util.match/replace stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
@@ -190,5 +197,5 @@
      (if-not (= query' query)
        (recur query' (inc recursion-depth))
        (do
-         (log/tracef "No more legacy Metrics/Segments to expand.")
+         (log/trace "No more legacy Metrics/Segments to expand.")
          query')))))

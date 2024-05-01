@@ -20,31 +20,31 @@ const ReferenceHeader = ({
   headerLink,
 }) => (
   <div className={CS.wrapper}>
-    <div className={cx("relative", L.header)}>
+    <div className={cx(CS.relative, L.header)}>
       {headerIcon && (
-        <div className="flex align-center mr2">
-          <Icon className="text-light" name={headerIcon} size={21} />
+        <div className={cx(CS.flex, CS.alignCenter, CS.mr2)}>
+          <Icon className={CS.textLight} name={headerIcon} size={21} />
         </div>
       )}
       <div className={S.headerBody}>
         <Ellipsified
           key="1"
-          className={!headerLink && "flex-full"}
+          className={!headerLink && CS.flexFull}
           tooltipMaxWidth="100%"
         >
           {name}
         </Ellipsified>
 
         {headerLink && (
-          /* TODO: there is only L.headerButton, so either change to
-          L.headerButton or remove */
-          <div key="2" className={cx("flex-full", S.headerButton)}>
+          <div key="2" className={cx(CS.flexFull)}>
             <Link
               to={headerLink}
               className={cx(ButtonsS.Button, ButtonsS.ButtonBorderless, CS.ml3)}
             >
-              <div className="flex align-center relative">
-                <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
+              <div className={cx(CS.flex, CS.alignCenter, CS.relative)}>
+                <span
+                  className={cx(CS.mr1, CS.flexNoShrink)}
+                >{t`See this ${type}`}</span>
                 <Icon name="chevronright" size={16} />
               </div>
             </Link>

@@ -8,14 +8,15 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -60,7 +61,7 @@
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
-;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
+;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
@@ -100,7 +101,7 @@
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query :- :map]
+  [query :- [:maybe :map]]
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
@@ -110,7 +111,7 @@
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- :map]
+  ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
                 (cond-> query
@@ -142,7 +143,7 @@
   [[tyype identifier]]
   [tyype identifier])
 
-(def field-options-for-identification
+(def ^:private field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias :base-type})
 
@@ -193,3 +194,31 @@
                              (get by-key (field-ref->key field_ref)))]
         (merge col (select-keys existing preserved-keys))
         col))))
+
+(def ^:dynamic *execute-async?*
+  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  true)
+
+(defn do-with-execute-async
+  "Impl of `with-execute-async`"
+  [thunk]
+  (if *execute-async?*
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
+    (thunk)))
+
+(defmacro with-execute-async
+  "Execute body asynchronously in a pooled executor.
+
+  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  [thunk]
+  `(do-with-execute-async ~thunk))
+
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
+
+(mu/defn internal-query? :- :boolean
+  "Returns `true` if query is an internal query."
+  [{query-type :type} :- ::qp.schema/qp]
+  (= :internal (keyword query-type)))

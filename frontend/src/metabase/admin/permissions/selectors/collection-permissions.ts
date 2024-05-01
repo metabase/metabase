@@ -33,6 +33,7 @@ import type {
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 
@@ -245,7 +246,7 @@ export const getCollectionsPermissionEditor = createSelector(
         collection.id,
       );
 
-      const confirmations = (newValue: string) => [
+      const confirmations = (newValue: DataPermissionValue) => [
         getPermissionWarningModal(
           newValue,
           defaultGroupPermission,

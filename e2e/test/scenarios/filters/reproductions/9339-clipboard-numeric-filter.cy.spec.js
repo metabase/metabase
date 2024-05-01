@@ -1,4 +1,8 @@
-import { openOrdersTable, restore } from "e2e/support/helpers";
+import {
+  openOrdersTable,
+  restore,
+  selectFilterOperator,
+} from "e2e/support/helpers";
 
 describe("issue 9339", () => {
   beforeEach(() => {
@@ -13,10 +17,7 @@ describe("issue 9339", () => {
     cy.findByText("Total").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-
+    selectFilterOperator("Greater than");
     cy.findByPlaceholderText("Enter a number").type("9339,1234").blur();
     cy.findByDisplayValue("9339").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

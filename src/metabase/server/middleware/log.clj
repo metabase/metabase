@@ -150,7 +150,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error e (trs "Error logging API request")))))
+      (log/error e "Error logging API request"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

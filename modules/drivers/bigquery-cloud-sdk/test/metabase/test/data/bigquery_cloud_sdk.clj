@@ -16,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
                               BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
@@ -27,7 +28,15 @@
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
-(defonce ^:private ns-load-time (System/currentTimeMillis))
+(defonce ^:private ^{:arglists '(^java.lang.Long [])} ^{:doc "Timestamp to use for unique dataset identifiers. Initially
+  this is the UNIX timestamp in milliseconds of when this namespace was loaded; it refreshes every two hours thereafter.
+  Datasets with a timestamp older than two hours will get automatically cleaned up."} dataset-timestamp
+  (let [timestamp* (atom (System/currentTimeMillis))]
+    (fn []
+      (when (t/before? (t/instant ^Long @timestamp*)
+                       (t/minus (t/instant) (t/hours 2)))
+        (reset! timestamp* (System/currentTimeMillis)))
+      @timestamp*)))
 
 ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
 ;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
@@ -50,14 +59,21 @@
   [identifier]
   (str/replace (name identifier) "-" "_"))
 
-(defn test-dataset-id
-  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
-   this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
-   reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
-  up outdated, transient datasets via the `transient-dataset-outdated?` mechanism."
-  [database-name]
+(mr/def ::dataset-id
+  [:and
+   [:string {:min 1, :max 1024}]
+   [:re
+    {:error/message "Dataset IDs must be alphanumeric (plus underscores)"}
+    #"^[\w_]+$"]])
+
+(mu/defn test-dataset-id :- ::dataset-id
+  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when this
+  namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no reasonable
+  hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
+  transient datasets via the [[transient-dataset-outdated?]] mechanism."
+  ^String [database-name :- :string]
   (let [s (normalize-name database-name)]
-    (str "v4_" s "__transient_" ns-load-time)))
+    (str "v4_" s "__transient_" (dataset-timestamp))))
 
 (defn- test-db-details []
   (reduce
@@ -94,8 +110,7 @@
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(defn- create-dataset! [^String dataset-id]
-  {:pre [(seq dataset-id)]}
+(mu/defn ^:private create-dataset! [^String dataset-id :- ::dataset-id]
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
   (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
@@ -315,8 +330,8 @@
   suffix, so we can just look for that here."
   [dataset-id]
   (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-id)]
-    ;; millis to hours
-    (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
+    (t/before? (t/instant (parse-long ds-timestamp-str))
+               (t/minus (t/instant) (t/hours 2)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}

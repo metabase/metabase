@@ -54,7 +54,7 @@ describe("scenarios > dashboard > filters > number", () => {
         addWidgetNumberFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.findByText(representativeResult);
         });
 
@@ -74,7 +74,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("37.65");
     });
 
@@ -84,13 +84,13 @@ describe("scenarios > dashboard > filters > number", () => {
 
     addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("101.04");
     });
   });
 
   it("should support being required", () => {
-    setFilter("Number", "Equal to");
+    setFilter("Number", "Equal to", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
 
     // Can't save without a default value

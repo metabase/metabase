@@ -35,8 +35,14 @@ export const pivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
   );
 
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+  const DrillPopover = ({ onClick, onClose }: ClickActionPopoverProps) => {
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [

@@ -65,7 +65,11 @@ const CategoricalDonutChart = ({
   const shouldShowTotal = settings?.show_total ?? true;
 
   return (
-    <svg width={layout.width} height={layout.height}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+    >
       <Group top={centerY} left={centerX}>
         <Pie
           data={data}

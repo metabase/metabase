@@ -27,7 +27,7 @@
 /.lein-repl-history
 /.sqlite.db
 /backend-checksums.txt
-/backend-docs/uberdoc.html
+/backend-docs
 /build.xml
 /checkouts
 /classes
@@ -51,6 +51,7 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/embedding-sdk
 /resources/i18n/*.edn
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
@@ -107,3 +108,6 @@ modules/drivers/*/.lsp/*
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+# airgap
+/resources/airgap/

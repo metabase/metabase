@@ -1,16 +1,20 @@
 import { combineReducers } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { handleActions } from "redux-actions";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { alertApi } from "metabase/api";
+import CS from "metabase/css/core/index.css";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { RestfulRequest } from "metabase/lib/request";
 import { addUndo } from "metabase/redux/undo";
-import { AlertApi } from "metabase/services";
 import { Icon } from "metabase/ui";
 
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({
-  endpoint: AlertApi.list,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.listAlerts),
   actionPrefix: FETCH_ALL_ALERTS,
   storeAsDictionary: true,
 });
@@ -26,7 +30,8 @@ export const FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS =
 export const FETCH_ALERTS_FOR_QUESTION =
   "metabase/alerts/FETCH_ALERTS_FOR_QUESTION";
 const fetchAlertsForQuestionRequest = new RestfulRequest({
-  endpoint: AlertApi.list_for_question,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.listCardAlerts),
   actionPrefix: FETCH_ALERTS_FOR_QUESTION,
   storeAsDictionary: true,
 });
@@ -36,14 +41,15 @@ export const fetchAlertsForQuestion = questionId => {
       payload: questionId,
       type: FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS,
     });
-    await dispatch(fetchAlertsForQuestionRequest.trigger({ questionId }));
+    await dispatch(fetchAlertsForQuestionRequest.trigger({ id: questionId }));
     dispatch({ type: FETCH_ALERTS_FOR_QUESTION });
   };
 };
 
 export const CREATE_ALERT = "metabase/alerts/CREATE_ALERT";
 const createAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.create,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.createAlert),
   actionPrefix: CREATE_ALERT,
   storeAsDictionary: true,
 });
@@ -57,8 +63,12 @@ export const createAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert is all set up.`}
           </div>
         ),
@@ -86,7 +96,8 @@ function cleanAlert(alert) {
 
 export const UPDATE_ALERT = "metabase/alerts/UPDATE_ALERT";
 const updateAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.update,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.updateAlert),
   actionPrefix: UPDATE_ALERT,
   storeAsDictionary: true,
 });
@@ -97,8 +108,12 @@ export const updateAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert was updated.`}
           </div>
         ),
@@ -113,13 +128,18 @@ export const UNSUBSCRIBE_FROM_ALERT = "metabase/alerts/UNSUBSCRIBE_FROM_ALERT";
 export const UNSUBSCRIBE_FROM_ALERT_CLEANUP =
   "metabase/alerts/UNSUBSCRIBE_FROM_ALERT_CLEANUP";
 const unsubscribeFromAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.unsubscribe,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(
+      params,
+      dispatch,
+      alertApi.endpoints.deleteAlertSubscription,
+    ),
   actionPrefix: UNSUBSCRIBE_FROM_ALERT,
   storeAsDictionary: true,
 });
 export const unsubscribeFromAlert = alert => {
   return async (dispatch, getState) => {
-    await dispatch(unsubscribeFromAlertRequest.trigger(alert));
+    await dispatch(unsubscribeFromAlertRequest.trigger(alert.id));
     dispatch({ type: UNSUBSCRIBE_FROM_ALERT });
 
     // This delay lets us to show "You're unsubscribed" text in place of an
@@ -134,7 +154,8 @@ export const unsubscribeFromAlert = alert => {
 
 export const DELETE_ALERT = "metabase/alerts/DELETE_ALERT";
 const deleteAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.update,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.updateAlert),
   actionPrefix: DELETE_ALERT,
   storeAsDictionary: true,
 });
@@ -145,8 +166,12 @@ export const deleteAlert = alertId => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`The alert was successfully deleted.`}
           </div>
         ),

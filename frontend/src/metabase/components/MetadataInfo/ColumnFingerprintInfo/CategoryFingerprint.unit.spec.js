@@ -53,4 +53,11 @@ describe("CategoryFingerprint", () => {
       expect(await screen.findByText("4 distinct values")).toBeInTheDocument();
     });
   });
+
+  it("should not throw an error when the field cannot be found", () => {
+    setup({ field: { id: 99942 } });
+    expect(
+      screen.queryByText("Getting distinct values..."),
+    ).not.toBeInTheDocument();
+  });
 });

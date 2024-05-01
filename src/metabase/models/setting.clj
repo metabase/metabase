@@ -729,9 +729,9 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn (deferred-tru "Error inserting a new Setting:") "\n"
-                   (.getMessage e) "\n"
-                   (deferred-tru "Assuming Setting already exists in DB and updating existing value."))
+         (log/warn "Error inserting a new Setting:\n"
+                   (ex-message e) "\n"
+                   "Assuming Setting already exists in DB and updating existing value.")
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -766,16 +766,15 @@
         setting-name                      (setting-name setting)]
     ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!` function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
-      (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
+      (log/infof "Attempted to set Setting %s to obfuscated value. Ignoring change." setting-name)
       (do
         (when (and deprecated (not (nil? new-value)))
-          (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
-                         setting-name
-                         deprecated)))
+          (log/warnf "Setting %s is deprecated as of Metabase %s and may be removed in a future version."
+                     setting-name deprecated))
         (when (and
                (= :only (:user-local setting))
                (not (should-set-user-local-value? setting)))
-          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*." setting-name)))
+          (log/warnf "Setting %s can only be set in a user-local way, but there are no *user-local-values*." setting-name))
         (if (should-set-user-local-value? setting)
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
@@ -1336,7 +1335,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e (trs "Error fetching value of Setting"))))
+                         (log/error e "Error fetching value of Setting")))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))

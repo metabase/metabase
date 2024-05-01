@@ -101,13 +101,13 @@
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
-                        (log/warn (trs "Login request is missing device ID information")))
+                        (log/warn "Login request is missing device ID information"))
         description (or user-agent
-                        (log/warn (trs "Login request is missing user-agent information")))
+                        (log/warn "Login request is missing user-agent information"))
         ip-address  (or (ip-address request)
-                        (log/warn (trs "Unable to determine login request IP address")))]
+                        (log/warn "Unable to determine login request IP address"))]
     (when-not (and id description ip-address)
-      (log/warn (tru "Error determining login history for request")))
+      (log/warn "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown"))
      :ip_address         (or ip-address (trs "unknown"))}))
@@ -168,7 +168,7 @@
                                                     "Unknown location")
                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
          (catch Throwable e
-           (log/error e (trs "Error geocoding IP addresses") {:url url})
+           (log/error e "Error geocoding IP addresses" {:url url})
            nil))))))
 
 (def response-unauthentic

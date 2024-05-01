@@ -54,7 +54,7 @@ export const MetricQuestions = ({ style, table, metric, metadata }) => {
   });
 
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${metric.name}`}
         type="questions"

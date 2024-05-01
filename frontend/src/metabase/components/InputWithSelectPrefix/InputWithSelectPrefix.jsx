@@ -72,17 +72,17 @@ export default class InputWithSelectPrefix extends Component {
       <div
         className={cx(
           CS.flex,
-          "align-stretch",
+          CS.alignStretch,
           AdminS.SettingsInput,
           FormS.FormInput,
           CS.p0,
         )}
       >
         <Select
-          className="border-right"
+          className={CS.borderRight}
           value={prefix || defaultPrefix}
           onChange={e => this.setState({ prefix: e.target.value })}
-          buttonProps={{ className: "borderless" }}
+          buttonProps={{ className: CS.borderless }}
         >
           {prefixes.map(p => (
             <Option key={p} value={p}>
@@ -92,7 +92,7 @@ export default class InputWithSelectPrefix extends Component {
         </Select>
         <SelectPrefixInput
           type="text"
-          className="flex-full"
+          className={CS.flexFull}
           value={rest}
           placeholder={this.props.placeholder}
           onBlurChange={e => this.setState({ rest: e.target.value })}

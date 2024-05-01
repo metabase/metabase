@@ -63,7 +63,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     // the native SQL filter is not mapped to the dashcard filter
     // the results should show the default value was applied
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("Gizmo");
       cy.contains("Widget").should("not.exist");
     });
@@ -91,7 +91,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     clearFilterWidget();
 
     // the results should show that the field filter was not applied
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("Doohickey");
     });
   });
@@ -118,7 +118,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     // Default dashboard filter
     cy.location("search").should("eq", "?category=Widget");
 
-    cy.get(".Card").as("dashboardCard").contains("Widget");
+    cy.findByTestId("dashcard").as("dashboardCard").contains("Widget");
 
     filterWidget().contains("Widget");
 
@@ -127,7 +127,9 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.location("search").should("eq", "?category=");
 
     // The default shouldn't apply, so we should get an error
-    cy.get(".Card").contains("There was a problem displaying this chart.");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // The empty filter widget
     filterWidget().contains("Category");
@@ -136,7 +138,9 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?category=");
-    cy.get(".Card").contains("There was a problem displaying this chart.");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");

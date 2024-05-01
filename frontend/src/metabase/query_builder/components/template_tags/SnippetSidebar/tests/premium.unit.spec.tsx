@@ -28,7 +28,7 @@ describe("SnippetSidebar (EE with token feature)", () => {
 
   it("should display the `New snippet` and the `New folder` option", async () => {
     await setup();
-    userEvent.click(getIcon("add"));
+    await userEvent.click(getIcon("add"));
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
     expect(screen.getByText("New folder")).toBeInTheDocument();

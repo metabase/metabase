@@ -12,8 +12,8 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
@@ -165,7 +165,7 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (mbql.u/replace m
+  (lib.util.match/replace m
     (_ :guard (every-pred map? :source-metadata))
     (remove-metadata (dissoc &match :source-metadata))))
 
@@ -185,7 +185,9 @@
                    :query {:source-query {:source-table                  $$checkins
                                           :fields                        [$id !default.$date $user_id $venue_id]
                                           :filter                        [:and
-                                                                          [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
+                                                                          [:> !default.date [:absolute-datetime
+                                                                                             #t "2014-01-01"
+                                                                                             :default]]
                                                                           [:=
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer
@@ -219,8 +221,9 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/data-access {(mt/id :checkins) :unrestricted
-                                                                                           (mt/id :venues) :unrestricted}}}})
+                   ::query-perms/perms                        {:gtaps {:perms/view-data :unrestricted
+                                                                       :perms/create-queries {(mt/id :checkins) :query-builder
+                                                                                              (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -249,7 +252,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/native-query-editing :yes}}})
+                   ::query-perms/perms                        {:gtaps {:perms/create-queries :query-builder-and-native}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
@@ -375,7 +378,8 @@
                        Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
             (mt/with-no-data-perms-for-all-users!
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (perms/grant-collection-read-permissions! group collection)
               (mt/with-test-user :rasta
                 (binding [qp.perms/*card-id* (u/the-id card)]
@@ -736,7 +740,7 @@
                                          :cache-strategy {:type             :ttl
                                                           :multiplier       60
                                                           :avg-execution-ms 10
-                                                          :min-duration     0})))]
+                                                          :min-duration-ms  0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -774,7 +778,8 @@
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                          :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
             (is (=? {:status :completed}
@@ -899,7 +904,8 @@
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                          :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (data-perms/set-table-permission! &group (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -1013,7 +1019,8 @@
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
                          :attributes {:user_id 1, :user_cat "Widget"}}
-          (data-perms/set-table-permission! &group (mt/id :people) :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]
@@ -1051,7 +1058,7 @@
                           (let [results (qp/process-query (assoc query :cache-strategy {:type             :ttl
                                                                                         :multiplier       60
                                                                                         :avg-execution-ms 10
-                                                                                        :min-duration     0}))]
+                                                                                        :min-duration-ms  0}))]
                             {:cached?  (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
           (mt/with-temporary-setting-values [enable-query-caching true]

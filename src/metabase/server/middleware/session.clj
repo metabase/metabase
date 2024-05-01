@@ -37,7 +37,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
@@ -197,9 +197,9 @@
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
     (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
       (log/warn
-       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
-            " "
-            "https://www.chromestatus.com/feature/5633521622188032")))
+       (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
+            " Some browsers will reject cookies under these conditions."
+            " https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         wrap-body-if-needed
         (cond-> (= session-type :full-app-embed)
@@ -497,15 +497,15 @@
              (let [value (setting/get-value-of-type :json :session-timeout)]
                (if-let [error-key (check-session-timeout value)]
                  (do (log/warn (case error-key
-                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
                      nil)
                  value)))
   :setter  (fn [new-value]
              (when-let [error-key (check-session-timeout new-value)]
                (throw (ex-info (case error-key
-                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
              (setting/set-value-of-type! :json :session-timeout new-value)))
 

@@ -9,6 +9,9 @@ import {
   visitDashboard,
   cypressWaitAll,
   moveDnDKitElement,
+  chartPathWithFillColor,
+  echartsContainer,
+  getValueLabels,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -81,7 +84,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -112,7 +115,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
+      echartsContainer()
+        .get("text")
+        .should("contain", "19")
+        .and("contain", "20.0M");
     });
   });
 
@@ -164,9 +170,13 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.get(".enable-dots").should("have.length", 3);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
         });
 
       getDraggableElements()
@@ -179,9 +189,14 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.get(".enable-dots").should("have.length", 4);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
+          chartPathWithFillColor("#A989C5").should("be.visible");
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
@@ -268,7 +283,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("Average of Total").should("be.visible");
+        cy.get("text").contains("Min of Total").should("be.visible");
+      });
     });
 
     it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
@@ -293,7 +311,7 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.get("g.axis.yr").should("not.exist");
     });
 
-    it("should not split the y-axis on native queries with two numeric columns", () => {
+    it("should split the y-axis on native queries with two numeric columns", () => {
       visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
@@ -313,7 +331,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("m1").should("exist");
+        cy.get("text").contains("m2").should("exist");
+      });
     });
   });
 
@@ -518,22 +539,25 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        // Verify this axis tick exists twice which verifies there are two y-axes
+        echartsContainer().findAllByText("3,000").should("have.length", 2);
       });
 
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Multi Series")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        echartsContainer().findByText("Average Total by Month");
+        echartsContainer().findByText("Sum Total by Month");
       });
 
     cy.log("Should not produce a split axis graph (#34618)");
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should not Split")
       .within(() => {
-        cy.get(".value-labels").should("contain", "6");
-        cy.get(".value-labels").should("contain", "13");
-        cy.get(".value-labels").should("contain", "19");
+        getValueLabels()
+          .should("contain", "6")
+          .and("contain", "13")
+          .and("contain", "19");
         cy.get(".axis.yr").should("not.exist");
       });
   });

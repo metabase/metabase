@@ -20,6 +20,9 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   getNotebookStep,
   queryBuilderMain,
+  selectFilterOperator,
+  expressionEditorWidget,
+  cartesianChartCircleWithColors,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -105,7 +108,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12872");
     cy.log("At the moment of unfixed issue, it's showing '0'");
-    cy.get(".ScalarValue").contains("1");
+    cy.findByTestId("scalar-value").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -273,7 +276,7 @@ describe("scenarios > question > filter", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".cellData").contains("Widget");
+    cy.get("[data-testid=cell-data]").contains("Widget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -406,9 +409,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -437,9 +438,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -633,7 +632,7 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.get(".cellData").contains("Count").click();
+    cy.get("[data-testid=cell-data]").contains("Count").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     cy.findByPlaceholderText("Enter a number").type("42");
@@ -731,14 +730,16 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    cy.get(".ace_text-input").type("Ta");
+    cy.get(".ace_text-input").type("Disc");
+
+    // the text here is split up so we try and find the suffix
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax");
+    cy.findByText("ount");
 
     // Esc closes the suggestion popover
     cy.realPress("{esc}");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax").should("not.exist");
+    cy.findByText("ount").should("not.exist");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
@@ -761,7 +762,7 @@ describe("scenarios > question > filter", () => {
       },
     });
 
-    cy.get(".ScalarValue").contains("5.41");
+    cy.findByTestId("scalar-value").contains("5.41");
     filter();
 
     filterField("Category").findByText("Gizmo").click();
@@ -824,7 +825,7 @@ describe("scenarios > question > filter", () => {
     });
 
     assertOnLegendLabels();
-    cy.get(".line").should("have.length", 3);
+    cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
@@ -832,7 +833,8 @@ describe("scenarios > question > filter", () => {
     });
     cy.button("Not now").click();
     assertOnLegendLabels();
-    cy.get(".line").should("have.length", 3);
+
+    cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
 
     function assertOnLegendLabels() {
       cy.findAllByTestId("legend-item")
@@ -892,8 +894,9 @@ describe("scenarios > question > filter", () => {
       openOrdersTable({ mode: "notebook" });
 
       filter({ mode: "notebook" });
+      popover().findByText("Total").click();
+      selectFilterOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Total").click();
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();
       });
@@ -972,7 +975,7 @@ describe("scenarios > question > filter", () => {
         filter({ mode: "notebook" });
 
         popover().contains("Custom Expression").click();
-        popover().within(() => {
+        expressionEditorWidget().within(() => {
           enterCustomColumnDetails({ formula: `boolean = ${condition}` });
           cy.get("@formula").blur();
 
@@ -995,7 +998,10 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
-        cy.get(".cellData").should("contain", integerAssociatedWithCondition);
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          integerAssociatedWithCondition,
+        );
       }
     });
   });
@@ -1018,7 +1024,7 @@ describe("scenarios > question > filter", () => {
       filter({ mode: "notebook" });
 
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({ formula: "boolean = true" });
         cy.get("@formula").blur();
 
@@ -1035,7 +1041,7 @@ describe("scenarios > question > filter", () => {
       cy.icon("notebook").click();
       summarize({ mode: "notebook" });
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({
           formula: "CountIf(boolean)",
           name: "count if boolean is true",
@@ -1056,7 +1062,7 @@ describe("scenarios > question > filter", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "floor" });

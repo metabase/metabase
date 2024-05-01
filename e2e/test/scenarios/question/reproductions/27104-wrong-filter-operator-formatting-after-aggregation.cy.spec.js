@@ -5,6 +5,8 @@ import {
   popover,
   visitQuestionAdhoc,
   visualize,
+  selectFilterOperator,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -33,13 +35,10 @@ describe("issue 27104", () => {
   it("should correctly format the filter operator after the aggregation (metabase#27104)", () => {
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
     popover().findByText("Count").click();
-    popover().within(() => {
-      // The following line is the main assertion.
-      cy.button("Back").should("have.text", "Count");
-      // The rest of the test is not really needed for this reproduction.
-      cy.findByDisplayValue("Equal to").click();
-    });
-    cy.findByRole("listbox").findByText("Greater than").click();
+    // The following line is the main assertion.
+    popover().button("Back").should("have.text", "Count");
+    // The rest of the test is not really needed for this reproduction.
+    selectFilterOperator("Greater than");
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();
@@ -48,6 +47,7 @@ describe("issue 27104", () => {
     visualize();
 
     cy.findByTestId("qb-filters-panel").findByText("Count is greater than 0");
-    cy.get(".bar").should("have.length", 5);
+    // Check bars count
+    chartPathWithFillColor("#509EE3").should("have.length", 5);
   });
 });

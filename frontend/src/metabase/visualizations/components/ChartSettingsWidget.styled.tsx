@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import AdminS from "metabase/css/admin.module.css";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -61,7 +60,7 @@ export const Root = styled.div<{
       border-bottom: 1px solid ${color("border")};
     `}
 
-  input, ${AdminS.AdminSelect} {
+  input {
     transition: border 0.3s;
 
     &:hover {

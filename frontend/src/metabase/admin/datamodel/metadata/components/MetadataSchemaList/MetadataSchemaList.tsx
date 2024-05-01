@@ -80,7 +80,7 @@ const MetadataSchemaList = ({
   return (
     <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
       <div className={AdminS.AdminListSearch}>
-        <Icon name="search" size={16} />
+        <Icon className={AdminS.Icon} name="search" size={16} />
         <input
           className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
           type="text"
@@ -125,7 +125,7 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "text-wrap",
+          CS.textWrap,
           AdminS.AdminListItem,
           { [AdminS.selected]: isSelected },
           CS.flex,

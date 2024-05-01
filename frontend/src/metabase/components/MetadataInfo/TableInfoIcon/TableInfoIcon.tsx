@@ -11,7 +11,7 @@ type TableInfoIconProps = TableInfoPopoverProps & {
 
 export function TableInfoIcon({
   className,
-  delay = [0, 150],
+  delay,
   table,
   ...props
 }: TableInfoIconProps) {

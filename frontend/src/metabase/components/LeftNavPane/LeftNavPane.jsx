@@ -18,7 +18,7 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             CS.flex,
             CS.alignCenter,
             CS.noDecoration,
-            "justify-between",
+            CS.justifyBetween,
           )}
           activeClassName={AdminS.selected}
           data-selected={isSelected}
@@ -33,7 +33,7 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             CS.flex,
             CS.alignCenter,
             CS.noDecoration,
-            "justify-between",
+            CS.justifyBetween,
           )}
           activeClassName={AdminS.selected}
           data-selected={isSelected}
@@ -54,9 +54,9 @@ export function LeftNavPaneItemBack({ path }) {
           AdminS.AdminListItem,
           CS.flex,
           CS.alignCenter,
-          CS.noDecoration,
           CS.textBold,
-          "justify-between link",
+          CS.justifyBetween,
+          CS.link,
         )}
       >
         &lt; {t`Back`}

@@ -4,11 +4,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.middleware.parameters :as parameters]
@@ -268,8 +268,7 @@
                                  "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                                 "FROM \"PUBLIC\".\"VENUES\" "
-                                 "LIMIT 1048575")]
+                                 "FROM \"PUBLIC\".\"VENUES\"")]
         (is (= (native-query
                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params

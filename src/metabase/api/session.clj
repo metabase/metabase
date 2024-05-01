@@ -21,7 +21,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -124,7 +124,7 @@
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
-        (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
+        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
 (mu/defn ^:private email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -273,11 +273,17 @@
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
+(def reset-password-throttler
+  "Throttler for password_reset. There's no good field to mark so use password as a default."
+  (throttle/make-throttler :password :attempts-threshold 10))
+
 (api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    ms/NonBlankString
    password ms/ValidPassword}
+  (let [request-source (req.util/ip-address request)]
+    (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
           (user/set-password! user-id password)
@@ -335,7 +341,7 @@
     (try
       (handler request respond raise)
       (catch Throwable e
-        (log/error e (trs "Authentication endpoint error"))
+        (log/error e "Authentication endpoint error")
         (throw e)))))
 
 ;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------

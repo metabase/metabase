@@ -20,3 +20,8 @@ export const RadioLabelButton = styled(IconButtonWrapper)`
     color: ${color("brand")};
   }
 `;
+
+export const ClickAreaExpander = styled.span`
+  display: inline-block;
+  padding: 0 5px;
+`;

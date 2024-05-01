@@ -122,6 +122,7 @@
      metabase.test.data.impl/copy-db-tables-and-fields!
      metabase.test.data.impl/get-or-create-database!
      metabase.test.data.impl/get-or-create-default-dataset!
+     metabase.test.data.impl.get-or-create/set-test-db-permissions!
      metabase.test.data.interface/create-db!
      metabase.test.data.interface/destroy-db!
      metabase.test.data.oracle/create-user!

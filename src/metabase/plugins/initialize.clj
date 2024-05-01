@@ -10,7 +10,6 @@
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -36,8 +35,8 @@
     ;; getting it again
     (let [plugins-ready-to-init (deps/update-unsatisfied-deps! (swap! initialized-plugin-names conj plugin-name))]
       (when (seq plugins-ready-to-init)
-        (log/debug (u/format-color 'yellow (trs "Dependencies satisfied; these plugins will now be loaded: {0}"
-                                                (mapv (comp :name :info) plugins-ready-to-init)))))
+        (log/debug (u/format-color 'yellow (format "Dependencies satisfied; these plugins will now be loaded: %s"
+                                                   (mapv (comp :name :info) plugins-ready-to-init)))))
       (doseq [plugin-info plugins-ready-to-init]
         (init! plugin-info)))
     :ok))

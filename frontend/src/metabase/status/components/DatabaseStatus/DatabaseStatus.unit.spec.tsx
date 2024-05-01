@@ -33,7 +33,7 @@ const setup = ({ user, databases }: SetupOpts = {}) => {
 };
 
 describe("DatabaseStatus", () => {
-  it("should toggle between small and large versions", () => {
+  it("should toggle between small and large versions", async () => {
     setup({
       user: createMockUser({ id: 1 }),
       databases: [
@@ -46,10 +46,10 @@ describe("DatabaseStatus", () => {
 
     expect(screen.getByText("Syncing…")).toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("chevrondown icon"));
+    await userEvent.click(screen.getByLabelText("chevrondown icon"));
     expect(screen.getByLabelText("Syncing database…")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("status"));
+    await userEvent.click(screen.getByRole("status"));
     expect(screen.getByText("Syncing…")).toBeInTheDocument();
   });
 

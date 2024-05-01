@@ -11,6 +11,8 @@ import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { DateSingleWidget } from "metabase/components/DateSingleWidget";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { TextWidget } from "metabase/components/TextWidget";
+import { Sortable } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -60,6 +62,7 @@ class ParameterValueWidget extends Component {
     // Don't use in settings sidebars.
     enableRequiredBehavior: PropTypes.bool,
     mimicMantine: PropTypes.bool,
+    isSortable: PropTypes.bool,
   };
 
   state = { isFocused: false };
@@ -132,7 +135,12 @@ class ParameterValueWidget extends Component {
     }
 
     if (!hasNoPopover(this.props.parameter)) {
-      return <WidgetStatusIcon name="chevrondown" />;
+      return (
+        <WidgetStatusIcon
+          name="chevrondown"
+          size={this.props.mimicMantine ? 16 : undefined}
+        />
+      );
     }
   }
 
@@ -154,6 +162,21 @@ class ParameterValueWidget extends Component {
     }
   }
 
+  wrapSortable(children) {
+    const { isSortable = false, parameter } = this.props;
+
+    return (
+      <Sortable
+        id={parameter.id}
+        draggingStyle={{ opacity: 0.5 }}
+        disabled={!isSortable}
+        role="listitem"
+      >
+        {children}
+      </Sortable>
+    );
+  }
+
   render() {
     const {
       parameter,
@@ -170,7 +193,7 @@ class ParameterValueWidget extends Component {
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
     if (noPopover) {
-      return (
+      return this.wrapSortable(
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
           hasValue={hasValue}
@@ -178,7 +201,7 @@ class ParameterValueWidget extends Component {
           {showTypeIcon && (
             <Icon
               name={parameterTypeIcon}
-              className="flex-align-left mr1 flex-no-shrink"
+              className={cx(CS.mr1, CS.flexNoShrink)}
               size={16}
             />
           )}
@@ -189,7 +212,7 @@ class ParameterValueWidget extends Component {
             onPopoverClose={this.onPopoverClose}
           />
           {this.getActionIcon()}
-        </ParameterValueWidgetTrigger>
+        </ParameterValueWidgetTrigger>,
       );
     }
 
@@ -203,7 +226,7 @@ class ParameterValueWidget extends Component {
       <PopoverWithTrigger
         ref={this.valuePopover}
         targetOffsetX={16}
-        triggerElement={
+        triggerElement={this.wrapSortable(
           <ParameterValueWidgetTrigger
             ref={this.trigger}
             hasValue={hasValue}
@@ -214,11 +237,11 @@ class ParameterValueWidget extends Component {
             {showTypeIcon && (
               <Icon
                 name={parameterTypeIcon}
-                className="flex-align-left mr1 flex-no-shrink"
+                className={cx(CS.mr1, CS.flexNoShrink)}
                 size={16}
               />
             )}
-            <div className="mr1 text-nowrap">
+            <div className={cx(CS.mr1, CS.textNoWrap)}>
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}
@@ -226,8 +249,8 @@ class ParameterValueWidget extends Component {
               />
             </div>
             {this.getActionIcon()}
-          </ParameterValueWidgetTrigger>
-        }
+          </ParameterValueWidgetTrigger>,
+        )}
         target={this.getTargetRef}
         // make sure the full date picker will expand to fit the dual calendars
         autoWidth={parameter.type === "date/all-options"}

@@ -1,5 +1,6 @@
 import type { LocationDescriptorObject } from "history";
-import type { MouseEvent } from "react";
+import { useKBar } from "kbar";
+import type { ChangeEvent, MouseEvent } from "react";
 import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -9,7 +10,7 @@ import { t } from "ttag";
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
@@ -23,6 +24,7 @@ import {
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 
+import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -81,7 +83,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     setActive();
   }, [setActive]);
 
-  const onTextChange = useCallback(e => {
+  const onTextChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
   }, []);
 
@@ -157,7 +159,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
-    e => {
+    (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && hasSearchText) {
         goToSearchApp();
       }
@@ -172,6 +174,14 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     },
     [setInactive],
   );
+
+  const { query } = useKBar();
+
+  const handleCommandPaletteTriggerClick = (e: React.MouseEvent) => {
+    query.toggle();
+    setInactive();
+    e.stopPropagation();
+  };
 
   return (
     <SearchBarRoot ref={container}>
@@ -190,6 +200,9 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
           </CloseSearchButton>
+        )}
+        {!isSmallScreen() && !isWithinIframe() && isActive && (
+          <CommandPaletteTrigger onClick={handleCommandPaletteTriggerClick} />
         )}
       </SearchInputContainer>
       {isActive && isTypeaheadEnabled && (

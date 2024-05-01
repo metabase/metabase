@@ -36,7 +36,7 @@ describe("scenarios > question > snippets", () => {
 
     // Run the query and check the value
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.get(".ScalarValue").contains("stuff");
+    cy.findByTestId("scalar-value").contains("stuff");
   });
 
   it("should let you edit snippet", () => {
@@ -77,7 +77,7 @@ describe("scenarios > question > snippets", () => {
 
     // Run the query and check the new value
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.get(".ScalarValue").contains("2");
+    cy.findByTestId("scalar-value").contains("2");
   });
 
   it("should update the snippet and apply it to the current query (metabase#15387)", () => {
@@ -116,7 +116,9 @@ describe("scenarios > question > snippets", () => {
       );
     });
 
-    cy.get(".Visualization").as("results").findByText("37.65");
+    cy.findByTestId("query-visualization-root")
+      .as("results")
+      .findByText("37.65");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly

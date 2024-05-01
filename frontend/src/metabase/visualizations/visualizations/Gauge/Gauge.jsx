@@ -244,7 +244,7 @@ export default class Gauge extends Component {
     return (
       <div className={cx(className, CS.relative)}>
         <div
-          className={cx(CS.absolute, "overflow-hidden")}
+          className={cx(CS.absolute, CS.overflowHidden)}
           style={{
             width: svgWidth * expandWidthFactor,
             height: svgHeight,
@@ -455,9 +455,9 @@ class HideIfOverlowingSVG extends React.Component {
         elementRect.top >= svgRect.top &&
         elementRect.bottom <= svgRect.bottom
       ) {
-        element.classList.remove("hidden");
+        element.classList.remove(CS.hidden);
       } else {
-        element.classList.add("hidden");
+        element.classList.add(CS.hidden);
       }
     }
   }

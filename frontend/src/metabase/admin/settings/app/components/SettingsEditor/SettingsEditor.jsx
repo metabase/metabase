@@ -223,7 +223,7 @@ class SettingsEditor extends Component {
           CS.flex,
           CS.alignCenter,
           CS.noDecoration,
-          "justify-between",
+          CS.justifyBetween,
           { [AdminS.selected]: slug === sectionNamePrefix },
         );
 

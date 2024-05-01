@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db :as mdb]
    [metabase.models.database :refer [Database]]
@@ -18,9 +17,18 @@
    [toucan2.core :as t2])
   (:import
    (java.util.jar JarEntry JarFile)
-   (sun.nio.fs UnixPath)))
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+(defsetting last-analytics-checksum
+  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
+  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
+  :type       :integer
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)
 
 (defn- running-from-jar?
   "Returns true iff we are running from a jar.
@@ -83,25 +91,30 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(defn entity-id->object
+(def ^{:arglists '([checksum model entity-id])
+       :private  true} memoized-select-audit-entity*
+  (mdb/memoize-for-application-db
+   (fn [checksum model entity-id]
+     (when checksum
+       (t2/select-one model :entity_id entity-id)))))
+
+(defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  ((mdb/memoize-for-application-db
-    (fn [entity-id]
-      (t2/select-one model :entity_id entity-id))) entity-id))
+  (memoized-select-audit-entity* (last-analytics-checksum) model entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-custom-reports-entity-id))
+  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defenterprise default-audit-collection
   "Default audit collection (instance analytics) collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-audit-collection-entity-id))
+  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -137,7 +150,7 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:lower :name]}))
-    (log/infof "Adjusted Audit DB for loading Analytics Content")))
+    (log/info "Adjusted Audit DB for loading Analytics Content")))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine]}]
@@ -203,23 +216,13 @@
   analytics data."
   -1)
 
-(defsetting last-analytics-checksum
-  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
-  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
-  :type       :integer
-  :default    0
-  :visibility :internal
-  :audit      :never
-  :doc        false
-  :export?    false)
-
 (defn- should-skip-checksum? [last-checksum]
   (= SKIP_CHECKSUM_FLAG last-checksum))
 
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (->> ^UnixPath (instance-analytics-plugin-dir (plugins/plugins-dir))
+  (->> ^Path (instance-analytics-plugin-dir (plugins/plugins-dir))
        (.toFile)
        file-seq
        (remove fs/directory?)
@@ -244,7 +247,6 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (ee.internal-user/ensure-internal-user-exists!)
     (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
@@ -289,4 +291,5 @@
    (let [audit-db (t2/select-one :model/Database :is_audit true)]
        ;; prevent sync while loading
      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-        (fn [] (maybe-load-analytics-content! audit-db)))))))
+        (fn []
+          (maybe-load-analytics-content! audit-db)))))))

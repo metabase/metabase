@@ -2,6 +2,7 @@ import { t, jt } from "ttag";
 
 import { BoldCode } from "metabase/components/Code";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -61,7 +62,7 @@ export const ImpersonationWarning = ({
     <ImpersonationAlert icon="warning" variant="warning">
       {isEmpty(databaseUser) ? emptyText : warningText}{" "}
       <Link
-        className="link"
+        className={CS.link}
         to={Urls.editDatabase(database.id) + (databaseUser ? "#user" : "")}
       >{t`Edit settings`}</Link>
     </ImpersonationAlert>

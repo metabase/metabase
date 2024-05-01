@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
-    [metabase.lib.core :as lib]
-    [metabase.lib.metadata :as lib.metadata]
-    [metabase.lib.util :as lib.util]
-    [metabase.lib.walk :as lib.walk]
-    [metabase.mbql.util :as mbql.u]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]))
 
 (defn- expression-with-name-from-source
   [query [_ {:lib/keys [expression-name]} :as expression]]
@@ -33,7 +33,7 @@
         (let [source-metric-card (lib.metadata/card query source-metric)
               source-query (expand (lib/query query (:dataset-query source-metric-card)))
               source-aggregations (lib/aggregations source-query)
-              new-aggregations (->> (mbql.u/replace aggregation
+              new-aggregations (->> (lib.util.match/replace aggregation
                                       [:metric {} source-metric] (first source-aggregations))
                                     lib.util/fresh-uuids)]
           (as-> source-query $q

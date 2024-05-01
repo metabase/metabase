@@ -9,13 +9,14 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -40,9 +41,9 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.util.i18n :refer [trs]]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -185,11 +186,11 @@
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
-
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at])
+  [:id :created_at :updated_at :last_used_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   :initially_published_at :cache_invalidated_at :view_count])
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
@@ -213,22 +214,26 @@
 
 (defn populate-query-fields
   "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
-  [{{query-type :type, :as outer-query} :dataset_query, :as card}]
+  [{query :dataset_query, :as card}]
   (merge
    card
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when-not mi/*deserializing?*
-     (when-let [{:keys [database-id table-id]} (and query-type
-                                                    (query/query->database-and-table-ids outer-query))]
-       (merge
-        {:query_type (keyword query-type)}
-        (when database-id
-          {:database_id database-id})
-        (when table-id
-          {:table_id table-id}))))))
+   (when (and (map? query)
+              (not mi/*deserializing?*))
+     (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+       ;; TODO -- not sure `query_type` is actually used for anything important anyway
+       (let [query-type (if (query/query-is-native? query)
+                          :native
+                          :query)]
+         (merge
+          {:query_type (keyword query-type)}
+          (when database-id
+            {:database_id database-id})
+          (when table-id
+            {:table_id table-id})))))))
 
 (defn- populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -297,7 +302,7 @@
 
 (defn- maybe-normalize-query [card]
   (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
+    (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
 
 ;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
 ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -543,11 +548,13 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
-      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
-      ;; It's at the end for now so that all the before-update validations have a chance to run
-      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
-      (u/prog1 (query-analyzer/update-query-fields-for-card! <>))
       (dissoc :id)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (when (contains? (t2/changes card) :dataset_query)
+      (query-analyzer/update-query-fields-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -562,6 +569,10 @@
 (defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
+
+(defmethod mi/exclude-internal-content-hsql :model/Card
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
@@ -638,20 +649,17 @@ saved later when it is ready."
           id              (:id card)]
       (cond (= port timeoutc)
             (do (a/close! result-metadata-chan)
-                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
-                               (long (/ metadata-async-timeout-ms 1000 60)))))
+                (log/infof "Metadata not ready in %s minutes, abandoning" (long (/ metadata-async-timeout-ms 1000 60))))
 
             (not (seq metadata))
-            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
-                           id))
+            (log/infof "Not updating metadata asynchronously for card %s because no metadata" id)
             :else
             (future
               (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
                   (do (t2/update! Card id {:result_metadata metadata})
-                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
-                                 id)))))))))
+                      (log/infof "Metadata updated asynchronously for card %s" id))
+                  (log/infof "Not updating metadata asynchronously for card %s because query has changed" id))))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -690,7 +698,7 @@ saved later when it is ready."
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when timed-out?
-       (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
+       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 card
@@ -857,13 +865,21 @@ saved later when it is ready."
       (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
     card))
 
+(methodical/defmethod mi/to-json :model/Card
+  [card json-generator]
+  ;; we're doing update + dissoc instead of [[medley.core/dissoc-in]] because we don't want it to remove the
+  ;; `:dataset_query` key entirely if it is empty, as it is in a lot of tests.
+  (let [card (cond-> card
+               (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
+    (next-method card json-generator)))
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
   (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [card metadata]
-  (when (and metadata (model? card))
+(defn- export-result-metadata [metadata]
+  (when metadata
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
@@ -902,7 +918,8 @@ saved later when it is ready."
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card)))
+        (update :result_metadata        export-result-metadata)
+        (dissoc :cache_invalidated_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

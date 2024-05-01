@@ -192,11 +192,17 @@ export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-smtp-host": string | null;
+  "email-smtp-port": number | null;
+  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-username": string | null;
+  "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
+  "example-dashboard-id": number | null;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
@@ -228,6 +234,14 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "embedding-homepage":
+    | "visible"
+    | "hidden"
+    | "dismissed-done"
+    | "dismissed-run-into-issues"
+    | "dismissed-not-interested-now";
+  "setup-embedding-autoenabled": boolean;
+  "setup-license-active-at-setup": boolean;
 }
 
 interface SettingsManagerSettings {
@@ -274,6 +288,8 @@ interface PublicSettings {
   "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-port": number;
+  "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -283,7 +299,6 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
-  "show-lighthouse-illustration": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;
@@ -300,6 +315,8 @@ export interface UserSettings {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
+  "notebook-native-preview-shown"?: boolean;
+  "notebook-native-preview-sidebar-width"?: number | null;
 }
 
 export type Settings = InstanceSettings &

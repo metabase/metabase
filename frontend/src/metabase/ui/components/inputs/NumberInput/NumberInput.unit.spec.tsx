@@ -40,40 +40,40 @@ describe("NumberInput", () => {
     expect(input).toHaveValue("20.123");
   });
 
-  it("should allow to enter an integer value", () => {
+  it("should allow to enter an integer value", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Number");
-    userEvent.type(input, "51");
+    await userEvent.type(input, "51");
 
     expect(onChange).toHaveBeenCalledWith(51);
   });
 
-  it("should allow to enter a fractional value", () => {
+  it("should allow to enter a fractional value", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Number");
-    userEvent.type(input, "15.16");
+    await userEvent.type(input, "15.16");
 
     expect(onChange).toHaveBeenCalledWith(15.16);
   });
 
-  it("should reset to the correct value on blur", () => {
+  it("should reset to the correct value on blur", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Number");
-    userEvent.type(input, "12abc");
-    userEvent.tab();
+    await userEvent.type(input, "12abc");
+    await userEvent.tab();
 
     expect(onChange).toHaveBeenCalledWith(12);
   });
 
-  it("should reset to an empty string on blur for invalid values", () => {
+  it("should reset to an empty string on blur for invalid values", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Number");
-    userEvent.type(input, "abc");
-    userEvent.tab();
+    await userEvent.type(input, "abc");
+    await userEvent.tab();
 
     expect(onChange).toHaveBeenCalledWith("");
   });

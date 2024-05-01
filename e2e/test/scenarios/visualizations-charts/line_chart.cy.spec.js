@@ -8,12 +8,16 @@ import {
   openSeriesSettings,
   queryBuilderMain,
   addOrUpdateDashboardCard,
+  modal,
+  echartsContainer,
+  getXYTransform,
+  cartesianChartCircleWithColor,
+  cartesianChartCircle,
+  trendLine,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-const Y_AXIS_RIGHT_SELECTOR = ".axis.yr";
 
 const testQuery = {
   type: "query",
@@ -39,9 +43,25 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
+
+    echartsContainer()
+      .findByText("Count")
+      .then(label => {
+        const { x, y } = getXYTransform(label);
+        cy.wrap({ x, y }).as("leftAxisLabelPosition");
+      });
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
-    cy.get(Y_AXIS_RIGHT_SELECTOR);
+    echartsContainer()
+      .findByText("Count")
+      .then(label => {
+        const { x: xRight, y: yRight } = getXYTransform(label);
+        cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+          expect(yRight).to.be.eq(yLeft);
+          expect(xRight).to.be.greaterThan(xLeft);
+        });
+      });
   });
 
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
@@ -73,7 +93,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".value-labels").contains("39.75%");
+    echartsContainer().get("text").contains("39.75%");
   });
 
   it("should display an error message when there are more series than the chart supports", () => {
@@ -128,11 +148,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".Visualization .enable-dots")
-      .last()
-      .find(".dot")
-      .eq(3)
-      .trigger("mousemove", { force: true });
+    cartesianChartCircleWithColor("#509EE3").eq(3).realHover();
     popover().within(() => {
       testPairedTooltipValues("Product → Rating", "2.7");
       testPairedTooltipValues("Count", "191");
@@ -201,7 +217,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(".sub._0").find("circle").should("have.length", 2);
+    cartesianChartCircle().should("have.length", 2);
   });
 
   it("should show the trend line", () => {
@@ -231,7 +247,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+    trendLine().should("be.visible");
   });
 
   it("should show label for empty value series breakout (metabase#32107)", () => {
@@ -309,10 +325,13 @@ describe("scenarios > visualizations > line chart", () => {
         display: "line",
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.findByText("Average of Latitude").should("be.visible");
+        cy.findByText("Average of Longitude").should("be.visible");
+      });
     });
 
-    it("should split the y-six when columns are of the same semantic_type but have far values", () => {
+    it("should split the y-axis when columns are of the same semantic_type but have far values", () => {
       visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -331,7 +350,10 @@ describe("scenarios > visualizations > line chart", () => {
         display: "line",
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.findByText("Sum of Total").should("be.visible");
+        cy.findByText("Min of Total").should("be.visible");
+      });
     });
 
     it("should not split the y-axis when the setting is disabled", () => {
@@ -402,13 +424,13 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnLegendItemsValues();
             assertOnYAxisValues();
 
-            showTooltipForFirstCircleInSeries(0);
+            showTooltipForFirstCircleInSeries("#88BF4D");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
-            showTooltipForFirstCircleInSeries(1);
+            showTooltipForFirstCircleInSeries("#98D9D9");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
@@ -451,13 +473,13 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnLegendItemsValues();
             assertOnYAxisValues();
 
-            showTooltipForFirstCircleInSeries(0);
+            showTooltipForFirstCircleInSeries("#88BF4D");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
-            showTooltipForFirstCircleInSeries(1);
+            showTooltipForFirstCircleInSeries("#509EE3");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
@@ -510,7 +532,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     function renameSeries(series) {
       cy.icon("pencil").click();
-      cy.get(".Card").realHover();
+      cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
       series.forEach(serie => {
         const [old_name, new_name] = serie;
@@ -518,7 +540,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByDisplayValue(old_name).clear().type(new_name);
       });
 
-      cy.get(".Modal")
+      modal()
         .as("modal")
         .within(() => {
           cy.button("Done").click();
@@ -534,7 +556,8 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function assertOnYAxisValues() {
-      cy.get(".y-axis-label")
+      echartsContainer()
+        .get("text")
         .should("contain", RENAMED_FIRST_SERIES)
         .and("contain", RENAMED_SECOND_SERIES);
     }
@@ -572,8 +595,14 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     it("should display correct axis labels (metabase#12782)", () => {
-      cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
-      cy.get(".y-axis-label").invoke("text").should("eq", "Average of Price");
+      echartsContainer()
+        .get("text")
+        .contains("Created At")
+        .should("be.visible");
+      echartsContainer()
+        .get("text")
+        .contains("Average of Price")
+        .should("be.visible");
     });
   });
 
@@ -595,7 +624,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(".Visualization")
+    cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
       .trigger("mouseup", 220, 200);
@@ -607,8 +636,8 @@ describe("scenarios > visualizations > line chart", () => {
       "Quantity is between",
     );
     const X_AXIS_VALUE = 8;
-    cy.get(".CardVisualization").within(() => {
-      cy.get(".x-axis-label").should("have.text", "Quantity");
+    echartsContainer().within(() => {
+      cy.get("text").contains("Quantity").should("be.visible");
       cy.findByText(X_AXIS_VALUE);
     });
   });
@@ -618,10 +647,6 @@ function testPairedTooltipValues(val1, val2) {
   cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
-function showTooltipForFirstCircleInSeries(series_index) {
-  cy.get(`.sub._${series_index}`)
-    .as("firstSeries")
-    .find("circle")
-    .first()
-    .trigger("mousemove", { force: true });
+function showTooltipForFirstCircleInSeries(seriesColor) {
+  cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");
 }

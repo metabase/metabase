@@ -2,12 +2,12 @@ import cx from "classnames";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/index.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -64,8 +64,8 @@ function ApiKeysTable({
         </thead>
         <tbody>
           {apiKeys?.map(apiKey => (
-            <tr key={apiKey.id} className="border-bottom">
-              <td className="text-bold" style={{ maxWidth: 400 }}>
+            <tr key={apiKey.id} className={CS.borderBottom}>
+              <td className={CS.textBold} style={{ maxWidth: 400 }}>
                 <Ellipsified>{apiKey.name}</Ellipsified>
               </td>
               <td>{apiKey.group.name}</td>
@@ -80,7 +80,7 @@ function ApiKeysTable({
                 <Group spacing="md">
                   <Icon
                     name="pencil"
-                    className="cursor-pointer"
+                    className={CS.cursorPointer}
                     onClick={() => {
                       setActiveApiKey(apiKey);
                       setModal("edit");
@@ -88,7 +88,7 @@ function ApiKeysTable({
                   />
                   <Icon
                     name="trash"
-                    className="cursor-pointer"
+                    className={CS.cursorPointer}
                     onClick={() => {
                       setActiveApiKey(apiKey);
                       setModal("delete");
@@ -113,7 +113,7 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
+  const { data: apiKeys, error, isLoading } = useListApiKeysQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {

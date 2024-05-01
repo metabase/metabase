@@ -2,11 +2,10 @@
   --default-border-radius: 8px;
 }
 
-:global(.rounded),
 .rounded {
   border-radius: var(--default-border-radius);
 }
 
-:global(.circular) {
+.circular {
   border-radius: 99px !important;
 }

@@ -23,8 +23,8 @@ describe("Static Embed Setup phase", () => {
     },
   ])("$resourceType", ({ resourceType }) => {
     describe("EmbedModalContentStatusBar", () => {
-      it(`should render actions banner for non-published ${resourceType}`, () => {
-        const { onUpdateEnableEmbedding } = setup({
+      it(`should render actions banner for non-published ${resourceType}`, async () => {
+        const { onUpdateEnableEmbedding } = await setup({
           props: {
             resourceType,
           },
@@ -41,13 +41,13 @@ describe("Static Embed Setup phase", () => {
         });
         expect(button).toBeVisible();
 
-        userEvent.click(button);
+        await userEvent.click(button);
 
         expect(onUpdateEnableEmbedding).toHaveBeenLastCalledWith(true);
       });
 
-      it(`should render actions banner for published ${resourceType}`, () => {
-        const { onUpdateEnableEmbedding } = setup({
+      it(`should render actions banner for published ${resourceType}`, async () => {
+        const { onUpdateEnableEmbedding } = await setup({
           props: {
             resource: getMockResource(resourceType, true),
             resourceType,
@@ -65,15 +65,15 @@ describe("Static Embed Setup phase", () => {
         });
         expect(button).toBeVisible();
 
-        userEvent.click(button);
+        await userEvent.click(button);
 
         expect(onUpdateEnableEmbedding).toHaveBeenLastCalledWith(false);
       });
     });
 
     describe("Overview tab", () => {
-      it("should render content", () => {
-        setup({
+      it("should render content", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -111,8 +111,8 @@ describe("Static Embed Setup phase", () => {
       });
 
       if (resourceType === "dashboard") {
-        it("should render dashboard-specific content", () => {
-          setup({
+        it("should render dashboard-specific content", async () => {
+          await setup({
             props: {
               resourceType,
             },
@@ -128,7 +128,7 @@ describe("Static Embed Setup phase", () => {
       }
 
       it("should select proper client code language on server code option change", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -148,8 +148,8 @@ describe("Static Embed Setup phase", () => {
     });
 
     describe("Parameters tab", () => {
-      it("should render Code preview mode by default", () => {
-        setup({
+      it("should render Code preview mode by default", async () => {
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -164,8 +164,8 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should render preview iframe in Preview mode", () => {
-        setup({
+      it("should render preview iframe in Preview mode", async () => {
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -173,13 +173,13 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Parameters",
         });
 
-        userEvent.click(screen.getByText("Preview"));
+        await userEvent.click(screen.getByText("Preview"));
 
         expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
       });
 
-      it("should render message if there are no parameters", () => {
-        setup({
+      it("should render message if there are no parameters", async () => {
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -195,8 +195,8 @@ describe("Static Embed Setup phase", () => {
       });
 
       if (resourceType === "dashboard") {
-        it("should render unsaved parameters", () => {
-          setup({
+        it("should render unsaved parameters", async () => {
+          await setup({
             props: {
               resourceParameters: [
                 {
@@ -216,8 +216,8 @@ describe("Static Embed Setup phase", () => {
           );
         });
 
-        it("should render saved parameters", () => {
-          setup({
+        it("should render saved parameters", async () => {
+          await setup({
             props: {
               resource: {
                 ...createMockDashboard(),
@@ -248,8 +248,8 @@ describe("Static Embed Setup phase", () => {
           ).toHaveTextContent("Locked");
         });
 
-        it("should only render valid parameters", () => {
-          setup({
+        it("should only render valid parameters", async () => {
+          await setup({
             props: {
               resource: {
                 ...createMockDashboard(),
@@ -276,7 +276,7 @@ describe("Static Embed Setup phase", () => {
         });
 
         it("should update a card with only valid parameters", async () => {
-          const { onUpdateEmbeddingParams } = setup({
+          const { onUpdateEmbeddingParams } = await setup({
             props: {
               resource: {
                 ...createMockDashboard(),
@@ -302,11 +302,11 @@ describe("Static Embed Setup phase", () => {
             "Disabled",
           );
 
-          userEvent.click(screen.getByLabelText("My param"));
+          await userEvent.click(screen.getByLabelText("My param"));
 
-          userEvent.click(screen.getByText("Locked"));
+          await userEvent.click(screen.getByText("Locked"));
 
-          userEvent.click(
+          await userEvent.click(
             screen.getByRole("button", { name: "Publish changes" }),
           );
 
@@ -317,8 +317,8 @@ describe("Static Embed Setup phase", () => {
           );
         });
 
-        it("should highlight changed code on parameters change", () => {
-          setup({
+        it("should highlight changed code on parameters change", async () => {
+          await setup({
             props: {
               resourceType,
               resource: getMockResource(resourceType),
@@ -327,9 +327,11 @@ describe("Static Embed Setup phase", () => {
             activeTab: "Parameters",
           });
 
-          userEvent.click(screen.getByLabelText(DATE_PARAMETER_MOCK.name));
+          await userEvent.click(
+            screen.getByLabelText(DATE_PARAMETER_MOCK.name),
+          );
 
-          userEvent.click(screen.getByText("Locked"));
+          await userEvent.click(screen.getByText("Locked"));
 
           expect(
             screen.getByText(
@@ -342,8 +344,8 @@ describe("Static Embed Setup phase", () => {
           );
         });
 
-        it("should highlight changed code on locked parameter value change", () => {
-          setup({
+        it("should highlight changed code on locked parameter value change", async () => {
+          await setup({
             props: {
               resourceType,
               resource: {
@@ -357,15 +359,15 @@ describe("Static Embed Setup phase", () => {
             activeTab: "Parameters",
           });
 
-          userEvent.click(
+          await userEvent.click(
             within(
               screen.getByLabelText("Previewing locked parameters"),
             ).getByRole("button", { name: DATE_PARAMETER_MOCK.name }),
           );
 
-          userEvent.click(screen.getByText("February"));
+          await userEvent.click(screen.getByText("February"));
 
-          userEvent.click(screen.getByText("Code"));
+          await userEvent.click(screen.getByText("Code"));
 
           expect(
             screen.getByTestId("text-editor-mock-highlighted-code"),
@@ -379,8 +381,8 @@ describe("Static Embed Setup phase", () => {
     });
 
     describe("Appearance tab", () => {
-      it("should render link to documentation", () => {
-        setup({
+      it("should render link to documentation", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -401,9 +403,9 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should render Code mode by default", () => {
+      it("should render Code mode by default", async () => {
         const resource = getMockResource(resourceType);
-        setup({
+        await setup({
           props: {
             resourceType,
             resource,
@@ -418,28 +420,28 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should render preview iframe in Preview mode", () => {
-        setup({
+      it("should render preview iframe in Preview mode", async () => {
+        await setup({
           props: {
             resourceType,
           },
           activeTab: "Appearance",
         });
 
-        userEvent.click(screen.getByText("Preview"));
+        await userEvent.click(screen.getByText("Preview"));
 
         expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
       });
 
-      it("should highlight changed code on settings change", () => {
-        setup({
+      it("should highlight changed code on settings change", async () => {
+        await setup({
           props: {
             resourceType,
           },
           activeTab: "Appearance",
         });
 
-        userEvent.click(screen.getByText("Transparent"));
+        await userEvent.click(screen.getByText("Transparent"));
 
         expect(
           screen.getByText("Here’s the code you’ll need to alter:"),
@@ -449,7 +451,7 @@ describe("Static Embed Setup phase", () => {
           `"#theme=transparent&bordered=true&titled=true"`,
         );
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByText(
             resourceType === "dashboard" ? "Dashboard title" : "Question title",
           ),
@@ -460,8 +462,8 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should not render Font selector", () => {
-        setup({
+      it("should not render Font selector", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -486,8 +488,8 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it('should render "Powered by Metabase" banner caption', () => {
-        setup({
+      it('should render "Powered by Metabase" banner caption', async () => {
+        await setup({
           props: {},
           activeTab: "Appearance",
         });
@@ -518,15 +520,15 @@ describe("Static Embed Setup phase", () => {
     });
   });
 
-  it("should preserve selected preview mode selection on tabs navigation", () => {
-    setup({
+  it("should preserve selected preview mode selection on tabs navigation", async () => {
+    await setup({
       props: {},
       activeTab: "Parameters",
     });
 
-    userEvent.click(screen.getByText("Preview"));
+    await userEvent.click(screen.getByText("Preview"));
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Appearance",
       }),
@@ -538,7 +540,7 @@ describe("Static Embed Setup phase", () => {
 
     expect(screen.getByLabelText("Preview")).toBeChecked();
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Parameters",
       }),
@@ -554,7 +556,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve selected code language selection on tabs navigation", async () => {
-    setup({
+    await setup({
       props: {},
       activeTab: "Overview",
     });
@@ -563,7 +565,7 @@ describe("Static Embed Setup phase", () => {
       newLanguage: "Python",
     });
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Parameters",
       }),
@@ -573,7 +575,7 @@ describe("Static Embed Setup phase", () => {
       "Python",
     );
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Appearance",
       }),
@@ -585,7 +587,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve highlighted code on tabs navigation", async () => {
-    setup({
+    await setup({
       props: {
         resource: createMockDashboard(),
         resourceParameters: [DATE_PARAMETER_MOCK],
@@ -593,9 +595,9 @@ describe("Static Embed Setup phase", () => {
       activeTab: "Parameters",
     });
 
-    userEvent.click(screen.getByLabelText(DATE_PARAMETER_MOCK.name));
+    await userEvent.click(screen.getByLabelText(DATE_PARAMETER_MOCK.name));
 
-    userEvent.click(screen.getByText("Locked"));
+    await userEvent.click(screen.getByText("Locked"));
 
     const parametersChangedCode = `params: { "${DATE_PARAMETER_MOCK.slug}": null }`;
 
@@ -603,7 +605,7 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(parametersChangedCode);
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Appearance",
       }),
@@ -613,7 +615,7 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
 
-    userEvent.click(screen.getByText("Transparent"));
+    await userEvent.click(screen.getByText("Transparent"));
 
     const appearanceChangedCode = `"#theme=transparent&bordered=true&titled=true"`;
 
@@ -621,7 +623,7 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`${parametersChangedCode},${appearanceChangedCode}`);
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("tab", {
         name: "Overview",
       }),
@@ -635,7 +637,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should not display changes after parameters reset to initial values", async () => {
-    setup({
+    await setup({
       props: {
         resource: {
           ...createMockDashboard({
@@ -667,11 +669,11 @@ describe("Static Embed Setup phase", () => {
       "Configuring parameters",
     );
 
-    userEvent.click(
+    await userEvent.click(
       within(parametersTypeSection).getByLabelText("My other param"),
     );
 
-    userEvent.click(
+    await userEvent.click(
       within(await screen.findByRole("grid")).getByText("Locked"),
     );
 
@@ -681,11 +683,11 @@ describe("Static Embed Setup phase", () => {
       }),
     ).toBeVisible();
 
-    userEvent.click(
+    await userEvent.click(
       within(parametersTypeSection).getByLabelText("My other param"),
     );
 
-    userEvent.click(
+    await userEvent.click(
       within(await screen.findByRole("grid")).getByText("Disabled"),
     );
 
@@ -704,9 +706,9 @@ async function selectServerCodeLanguage({
   currentLanguage?: string;
   newLanguage: string;
 }) {
-  userEvent.click(screen.getByText(currentLanguage));
+  await userEvent.click(screen.getByText(currentLanguage));
 
-  userEvent.click(
+  await userEvent.click(
     within(await screen.findByRole("grid")).getByText(newLanguage),
   );
 }

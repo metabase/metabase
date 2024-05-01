@@ -50,7 +50,14 @@ These three charting types have very similar options, which are broken up into t
 
 ### Data
 
-Here's where you can choose the columns you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the **Add another series** link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the **Add a series breakout** link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
+In the **Data** tab, you can choose which columns you want to plot on your x and y axes, which is handy when your results have more than one column (like in a series breakout).
+
+You can also:
+
+- **Add another series** to add another time series to the chart.
+- **Add a series breakout** to view your current metric by another dimension (though you can't add an additional series breakout if you have more than one metric/series).
+
+To reorder series and breakouts, drag and drop the sidebar cards to rearrange them. On line charts and unstacked area charts, reordering will change the order of series in the legend. On bar charts and stacked area charts, reordering series or breakouts will also reorder the bars or areas.
 
 ### Display
 

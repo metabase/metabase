@@ -12,6 +12,8 @@ import {
   openOrdersTable,
   getNotebookStep,
   rightSidebar,
+  chartPathWithFillColor,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -177,7 +179,7 @@ describe("binning related reproductions", () => {
     );
 
     visualize();
-    cy.get("circle");
+    cartesianChartCircle();
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
@@ -243,7 +245,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").findByText("Count");
+    cy.findByTestId("query-visualization-root").findByText("Count");
 
     cy.findByTestId("sidebar-right")
       .findAllByText("Created At")
@@ -251,8 +253,8 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
-      // ALl of these are implicit assertions and will fail if there's more than one string
+    cy.findByTestId("query-visualization-root").within(() => {
+      // All of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
       cy.findByText("June 2022");
@@ -283,7 +285,7 @@ describe("binning related reproductions", () => {
         toBinning: "10 bins",
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for notebook mode", () => {
@@ -304,7 +306,7 @@ describe("binning related reproductions", () => {
 
       visualize();
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 

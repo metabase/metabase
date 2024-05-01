@@ -40,7 +40,7 @@
   []
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.events.")]
-    (log/info (i18n/trs "Loading events namespace:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
+    (log/info "Loading events namespace:" (u/format-color :blue ns-symb) (u/emoji "👂"))
     (classloader/require ns-symb)))
 
 (defn- initialize-events!

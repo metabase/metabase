@@ -91,7 +91,7 @@
         (log/debugf e "Not caching results: results are larger than %s KB" (public-settings/query-caching-max-kb))
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
-(defn- save-results-xform [start-time metadata query-hash strategy rf]
+(defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]
     (add-object-to-cache! (assoc metadata
                                  :cache-version cache-version
@@ -103,13 +103,14 @@
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
-       (let [duration-ms  (- (System/currentTimeMillis) start-time)
-             min-duration (:min-duration strategy 0)
-             eligible?    (and @has-rows?
-                               (> duration-ms min-duration))]
-         (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
+       (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
+             min-duration-ms (:min-duration-ms strategy 0)
+             eligible?       (and @has-rows?
+                                  (> duration-ms min-duration-ms))]
+         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
+                    (i/short-hex-hash query-hash)
                     (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration)
+                    (u/format-milliseconds min-duration-ms)
                     (if eligible? "eligible" "not eligible"))
          (when eligible?
            (cache-results! query-hash))
@@ -169,9 +170,9 @@
                             (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
-                  (log/tracef "Reducing cached rows...")
+                  (log/trace "Reducing cached rows...")
                   (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
-                    (log/tracef "All cached rows reduced")
+                    (log/trace "All cached rows reduced")
                     [::ok result])))
               (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))
         [::miss nil])
@@ -203,7 +204,7 @@
       ::canceled
 
       ::miss
-      (let [start-time-ms (System/currentTimeMillis)
+      (let [start-time-ns (System/nanoTime)
             orig-reduce   qp.pipeline/*reduce*]
         (log/trace "Running query and saving cached results (if eligible)...")
         (binding [qp.pipeline/*reduce* (fn reduce'
@@ -216,11 +217,10 @@
                                               (orig-reduce rff metadata rows)))))]
           (qp query
               (fn [metadata]
-                (save-results-xform start-time-ms metadata query-hash cache-strategy (rff metadata)))))))))
+                (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
-  (and (public-settings/enable-query-caching)
-       cache-strategy))
+  (some? cache-strategy))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.

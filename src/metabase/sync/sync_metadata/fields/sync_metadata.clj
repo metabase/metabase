@@ -73,13 +73,13 @@
         updates
         (merge
          (when new-db-type?
-           (log/infof "Database type of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Database type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-type
                       new-database-type)
            {:database_type new-database-type})
          (when new-base-type?
-           (log/infof "Base type of %s has changed from ''%s'' to ''%s''. This field will be refingerprinted and analyzed."
+           (log/infof "Base type of %s has changed from '%s' to '%s'. This field will be refingerprinted and analyzed."
                      (common/field-metadata-name-for-logging table metabase-field)
                      old-base-type
                      new-base-type)
@@ -92,7 +92,7 @@
             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
          (when new-semantic-type?
-           (log/infof "Semantic type of {0} has changed from ''%s'' to ''%s''."
+           (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-semantic-type
                       new-semantic-type)
@@ -102,38 +102,38 @@
                       (common/field-metadata-name-for-logging table metabase-field))
            {:description new-field-comment})
          (when new-database-position?
-           (log/infof "Database position of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Database position of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-position
                       new-database-position)
            {:database_position new-database-position})
          (when (and (= (:field_order table) :database)
                     (not= old-position new-database-position))
-           (log/infof "Position of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Position of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-position
                       new-database-position)
            {:position new-database-position})
          (when new-name?
-           (log/infof "Name of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Name of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-name
                       new-database-name)
            {:name new-database-name})
          (when new-db-auto-incremented?
-           (log/infof "Database auto incremented of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Database auto incremented of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
          (when new-db-partitioned?
-           (log/infof "Database partitioned of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Database partitioned of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-partitioned
                       new-db-partitioned)
            {:database_partitioned new-db-partitioned})
          (when new-db-required?
-           (log/infof "Database required of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Database required of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-required
                       new-db-required)

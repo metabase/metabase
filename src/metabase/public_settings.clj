@@ -170,7 +170,7 @@
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
+                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]
@@ -307,7 +307,7 @@
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
   :type    :integer
-  :default 1000
+  :default 2000
   :audit   :getter
   :setter  (fn [new-value]
              (when (and new-value
@@ -325,24 +325,7 @@
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double
-  :default (* 60.0 60.0 24.0 100.0) ; 100 days
-  :audit   :getter)
-
-;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
-(defsetting query-caching-min-ttl
-  (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
-                 (application-name-for-setting-descriptions))
-  :type    :double
-  :default 60.0
-  :audit   :getter)
-
-(defsetting query-caching-ttl-ratio
-  (deferred-tru
-   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
-        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
-        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
-  :type    :integer
-  :default 10
+  :default (* 60.0 60.0 24.0 35.0) ; 35 days
   :audit   :getter)
 
 (defsetting notification-link-base-url
@@ -435,14 +418,73 @@
   :feature    :whitelabel
   :default    true)
 
-(defsetting show-lighthouse-illustration
-  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+(defsetting login-page-illustration
+  (deferred-tru "Options for displaying the illustration on the login page.")
   :visibility :public
   :export?    true
-  :type       :boolean
+  :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    true)
+  :default    "default")
+
+(defsetting login-page-illustration-custom
+  (deferred-tru "The custom illustration for the login page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting landing-page-illustration
+  (deferred-tru "Options for displaying the illustration on the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting landing-page-illustration-custom
+  (deferred-tru "The custom illustration for the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-data-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-data-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-object-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-object-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
 
 (def ^:private help-link-options
   #{:metabase :hidden :custom})
@@ -787,3 +829,23 @@
                   (if-not (pos-int? value)
                     20
                     value))))
+
+;; This is used by the embedding homepage
+(defsetting example-dashboard-id
+  (deferred-tru "The ID of the example dashboard.")
+  :visibility :authenticated
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
+                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                    id)))
+  :doc        false)
+
+(defsetting sql-parsing-enabled
+  (deferred-tru "SQL Parsing is disabled")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)

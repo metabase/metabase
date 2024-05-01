@@ -97,10 +97,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Add filter",
-      });
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Start typing to filter…")
+        .click();
+      popover().findByText("Gadget").click();
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -349,7 +349,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
     setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
@@ -361,7 +361,10 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 

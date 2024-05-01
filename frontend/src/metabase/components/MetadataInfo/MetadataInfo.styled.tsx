@@ -47,11 +47,12 @@ export const LabelContainer = styled.div`
   align-items: center;
   column-gap: 0.3em;
   font-size: 1em;
+  font-weight: normal;
   color: ${({ color: _color = "brand" }) => color(_color)};
+  margin-bottom: 0.5rem;
 `;
 
 export const Label = styled.span`
-  font-weight: bold;
   font-size: 1em;
   line-height: 1em;
 `;

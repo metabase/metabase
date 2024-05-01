@@ -2,10 +2,17 @@ import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
+import {
+  useDiscardDatabaseFieldValuesMutation,
+  useRescanDatabaseFieldValuesMutation,
+  useSyncDatabaseSchemaMutation,
+} from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
@@ -26,10 +33,7 @@ interface DatabaseEditAppSidebarProps {
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -40,33 +44,29 @@ const DatabaseEditAppSidebar = ({
   database,
   updateDatabase,
   deleteDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   isAdmin,
   isModelPersistenceEnabled,
 }: DatabaseEditAppSidebarProps) => {
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
-
   const isEditingDatabase = !!database.id;
-
   const isSynced = isSyncCompleted(database);
   const hasModelActionsSection =
     isEditingDatabase && database.supportsActions();
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
-  const handleSyncDatabaseSchema = useCallback(
-    () => syncDatabaseSchema(database.id),
-    [database.id, syncDatabaseSchema],
-  );
+  const dispatch = useDispatch();
+  const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
+  const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
+  const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
 
-  const handleReScanFieldValues = useCallback(
-    () => rescanDatabaseFields(database.id),
-    [database.id, rescanDatabaseFields],
-  );
+  const handleSyncDatabaseSchema = async () => {
+    await syncDatabaseSchema(database.id);
+    // FIXME remove when MetadataEditor uses RTK query directly to load tables
+    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+  };
 
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
@@ -80,11 +80,6 @@ const DatabaseEditAppSidebar = ({
         settings: { "database-enable-actions": nextValue },
       }),
     [database.id, updateDatabase],
-  );
-
-  const handleDiscardSavedFieldValues = useCallback(
-    () => discardSavedFieldValues(database.id),
-    [database.id, discardSavedFieldValues],
   );
 
   const handleDeleteDatabase = useCallback(
@@ -121,7 +116,7 @@ const DatabaseEditAppSidebar = ({
             </SidebarGroup.ListItem>
             <SidebarGroup.ListItem>
               <ActionButton
-                actionFn={handleReScanFieldValues}
+                actionFn={() => rescanDatabaseFieldValues(database.id)}
                 normalText={t`Re-scan field values now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to start scan`}
@@ -160,7 +155,7 @@ const DatabaseEditAppSidebar = ({
                   <ConfirmContent
                     title={t`Discard saved field values`}
                     onClose={handleSavedFieldsModalClose}
-                    onAction={handleDiscardSavedFieldValues}
+                    onAction={() => discardDatabaseFieldValues(database.id)}
                   />
                 </ModalWithTrigger>
               </SidebarGroup.ListItem>
