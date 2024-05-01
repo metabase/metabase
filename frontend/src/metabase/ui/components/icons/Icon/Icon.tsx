@@ -43,8 +43,11 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
 });
 
+const widthToString = (width: number | string) =>
+  typeof width === "number" ? `${width}px` : width;
+
 /** An icon that does not shrink when its container is too narrow **/
-export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
-  min-width: ${({ size }) => size ?? 16}px;
-  min-height: ${({ size }) => size ?? 16}px;
+export const FixedSizeIcon = styled(Icon)`
+  min-width: ${({ size }) => widthToString(size || 16)};
+  min-height: ${({ size }) => widthToString(size || 16)};
 `;

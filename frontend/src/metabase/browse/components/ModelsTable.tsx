@@ -1,3 +1,4 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -14,12 +15,14 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { color } from "metabase/lib/colors";
+import { useDispatch } from "metabase/lib/redux";
 import type { CollectionItem } from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
+import { ModelTableRow } from "./ModelsTable.styled";
 import { getModelDescription } from "./utils";
 
 export interface ModelsTableProps {
@@ -94,9 +97,20 @@ const TBodyRow = ({ item }: { item: CollectionItem }) => {
   }
 
   const containerName = `collections-path-for-${item.id}`;
+  const dispatch = useDispatch();
+  const stopClickPropagation = {
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
 
   return (
-    <tr>
+    <ModelTableRow
+      onClick={() => {
+        // TODO: Support control-click to open in new tab
+        dispatch(push(item.getUrl()));
+      }}
+      tabIndex={0}
+      key={item.id}
+    >
       {/* Type */}
       <Columns.Type.Cell icon={icon} />
 
@@ -123,12 +137,15 @@ const TBodyRow = ({ item }: { item: CollectionItem }) => {
           <CollectionBreadcrumbsWithTooltip
             containerName={containerName}
             collection={item.collection}
+            // To avoid propagating the click event to the ModelTableRow
+            breadcrumbGroupProps={stopClickPropagation}
+            collectionsIconProps={stopClickPropagation}
           />
         )}
       </ItemCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
-    </tr>
+    </ModelTableRow>
   );
 };
