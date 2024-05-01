@@ -226,23 +226,28 @@
 
 (defmethod sql.qp/->honeysql [:vertica java.time.LocalDate]
   [_driver t]
-  [:raw (format "date '%s'" (u.date/format t))])
+  (-> [:raw (format "date '%s'" (u.date/format t))]
+      (h2x/with-database-type-info "date")))
 
 (defmethod sql.qp/->honeysql [:vertica java.time.LocalTime]
   [_driver t]
-  [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t))])
+  (-> [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "time")))
 
 (defmethod sql.qp/->honeysql [:vertica java.time.OffsetTime]
   [_driver t]
-  [:raw (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t))])
+  (-> [:raw (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timetz")))
 
 (defmethod sql.qp/->honeysql [:vertica java.time.LocalDateTime]
   [_driver t]
-  [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))])
+  (-> [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "timestamp")))
 
 (defmethod sql.qp/->honeysql [:vertica java.time.OffsetDateTime]
   [_driver t]
-  [:raw (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t))])
+  (-> [:raw (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timestamptz")))
 
 (defmethod sql.qp/->honeysql [:vertica java.time.ZonedDateTime]
   [driver t]

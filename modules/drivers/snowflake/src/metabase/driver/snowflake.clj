@@ -454,11 +454,13 @@
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDate]
   [_driver t]
-  [:raw (format "'%s'::date" (u.date/format t))])
+  (-> [:raw (format "'%s'::date" (u.date/format t))]
+      (h2x/with-database-type-info "date")))
 
 (defmethod sql.qp/->honeysql [:snowflake LocalTime]
   [_driver t]
-  [:raw (format "'%s'::time" (u.date/format "HH:mm:ss.SSS" t))])
+  (-> [:raw (format "'%s'::time" (u.date/format "HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "time")))
 
 ;;; Snowflake doesn't have `timetz`, so just convert to an equivalent local time.
 (defmethod sql.qp/->honeysql [:snowflake OffsetTime]
@@ -466,12 +468,14 @@
   (sql.qp/->honeysql driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDateTime]
-  [_driver t]
-  [:raw (format "'%s'::timestamp_ntz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))])
+ [_driver t]
+ (-> [:raw (format "'%s'::timestamp_ntz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+     (h2x/with-database-type-info "timestampntz")))
 
 (defmethod sql.qp/->honeysql [:snowflake OffsetDateTime]
   [_driver t]
-  [:raw (format "'%s'::timestamp_tz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xx" t))])
+  (-> [:raw (format "'%s'::timestamp_tz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xx" t))]
+      (h2x/with-database-type-info "timestamptz")))
 
 (defmethod sql.qp/->honeysql [:snowflake ZonedDateTime]
   [driver t]
