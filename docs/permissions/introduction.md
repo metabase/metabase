@@ -25,9 +25,12 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Data permissions
 
-- [Databases connected to Metabase](./data.md)
-- [Tables and schemas][table-permissions] in those databases
-- [Rows and columns][data-sandboxing], a.k.a. data sandboxing (available on paid plans)
+[Data permissions](./data.md) allow you to set permissions on database and their schemas and tables.
+
+- [View data](./data.md#view-data-permissions)
+- [Create queries](./data.md#create-queries-permissions)
+- [Download results](./data.md#download-results-permissions)
+- [Manage database](./data.md#manage-database-permissions)
 
 ### Collection permissions
 
