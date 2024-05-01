@@ -66,15 +66,9 @@ export const ModelsTable = ({
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           />
+          <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
           <SortableColumnHeader
-            name="description"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-            {...descriptionProps}
-          >
-            {t`Description`}
-          </SortableColumnHeader>
-          <SortableColumnHeader
+            name="collection"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
             {...collectionProps}

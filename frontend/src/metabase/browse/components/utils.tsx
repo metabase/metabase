@@ -1,9 +1,15 @@
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/collections/utils";
-import type { CollectionItem, Collection } from "metabase-types/api";
+import type {
+  CollectionItem,
+  Collection,
+  CollectionEssentials,
+} from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
+
+import { pathSeparatorChar } from "./constants";
 
 export const getBreadcrumbMaxWidths = (
   collections: Collection["effective_ancestors"],
@@ -42,4 +48,12 @@ export const getModelDescription = (item: CollectionItem) => {
   } else {
     return item.description;
   }
+};
+
+export const getCollectionPathString = (collection: CollectionEssentials) => {
+  const collections = (collection.effective_ancestors || []).concat(collection);
+  const pathString = collections
+    .map(coll => getCollectionName(coll))
+    .join(` ${pathSeparatorChar} `);
+  return pathString;
 };

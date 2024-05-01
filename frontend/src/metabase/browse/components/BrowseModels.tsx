@@ -11,7 +11,11 @@ import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
+import type {
+  CollectionEssentials,
+  type SearchRequest,
+} from "metabase-types/api";
+import { SortDirection } from "metabase-types/api";
 
 import { filterModels, type ActualModelFilters } from "../utils";
 
@@ -24,6 +28,7 @@ import {
 } from "./BrowseApp.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
+import { getCollectionPathString } from "./utils";
 
 const { availableModelFilters, useModelFilterSettings } =
   PLUGIN_CONTENT_VERIFICATION;
@@ -73,20 +78,19 @@ export const BrowseModelsBody = ({
   const dispatch = useDispatch();
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>({
     sort_column: "name",
-    sort_direction: "asc",
+    sort_direction: SortDirection.Asc,
   });
 
   const query: SearchRequest = {
     models: ["dataset"], // 'model' in the sense of 'type of thing'
     model_ancestors: true,
     filter_items_in_personal_collection: "exclude",
-    ...sortingOptions,
   };
 
   const { data, error, isLoading } = useSearchQuery(query);
-  const unfilteredModels = data?.data;
+  const unfilteredModels = useMemo(() => data?.data, [data]);
 
-  const models = useMemo(
+  const filteredModels = useMemo(
     () =>
       filterModels(
         unfilteredModels || [],
@@ -96,7 +100,30 @@ export const BrowseModelsBody = ({
     [unfilteredModels, actualModelFilters],
   );
 
-  const wrappedModels = models.map(model => Search.wrapEntity(model, dispatch));
+  const sortedModels = useMemo(() => {
+    const { sort_column, sort_direction } = sortingOptions;
+    const sorted = _.sortBy(filteredModels, model => {
+      if (sort_column === "collection") {
+        const collection: CollectionEssentials = model.collection;
+        return getCollectionPathString(collection);
+      }
+      if (sort_column in model) {
+        return model[sort_column as keyof typeof model];
+      } else {
+        console.error("Invalid sort column", sort_column);
+        return null;
+      }
+    });
+    if (sort_direction === SortDirection.Desc) {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [filteredModels, sortingOptions]);
+
+  const wrappedModels = useMemo(
+    () => sortedModels.map(model => Search.wrapEntity(model, dispatch)),
+    [sortedModels, dispatch],
+  );
 
   if (error || isLoading) {
     return (
@@ -108,7 +135,7 @@ export const BrowseModelsBody = ({
     );
   }
 
-  if (models.length) {
+  if (filteredModels.length) {
     return (
       <Stack spacing="md" mb="lg">
         <ModelExplanationBanner />

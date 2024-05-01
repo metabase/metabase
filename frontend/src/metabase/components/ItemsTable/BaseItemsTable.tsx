@@ -2,6 +2,7 @@ import {
   useCallback,
   type HTMLAttributes,
   type PropsWithChildren,
+  useMemo,
 } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
@@ -34,7 +35,7 @@ import type { ResponsiveProps } from "./utils";
 
 export type SortingOptions = {
   sort_column: string;
-  sort_direction: "asc" | "desc";
+  sort_direction: SortDirection;
 };
 
 export type SortableColumnHeaderProps = {
@@ -44,31 +45,37 @@ export type SortableColumnHeaderProps = {
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
 export const SortableColumnHeader = ({
-  name = "",
-  sortingOptions = {
-    sort_column: "",
-    sort_direction: SortDirection.Asc,
-  },
+  name,
+  sortingOptions,
   onSortingOptionsChange,
   children,
   hideAtContainerBreakpoint,
   containerName,
   ...props
 }: SortableColumnHeaderProps & ResponsiveProps) => {
-  const isSortable = !!onSortingOptionsChange;
-  const isSortingThisColumn = sortingOptions.sort_column === name;
+  const isSortable = !!onSortingOptionsChange && !!name;
+  const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
-    ? sortingOptions.sort_direction
+    ? sortingOptions?.sort_direction
     : SortDirection.Desc;
 
-  const onSortingControlClick = () => {
-    const nextDirection =
-      direction === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
-    onSortingOptionsChange?.({
-      sort_column: name,
-      sort_direction: nextDirection,
-    });
-  };
+  const onSortingControlClick = useMemo(() => {
+    if (!isSortable) {
+      return undefined;
+    }
+    const handler = () => {
+      const nextDirection =
+        direction === SortDirection.Asc
+          ? SortDirection.Desc
+          : SortDirection.Asc;
+      const newSortingOptions = {
+        sort_column: name,
+        sort_direction: nextDirection,
+      };
+      onSortingOptionsChange?.(newSortingOptions);
+    };
+    return handler;
+  }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
     <ColumnHeader

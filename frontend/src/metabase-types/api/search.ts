@@ -72,7 +72,8 @@ export type SearchResponse<
 export type CollectionEssentials = Pick<
   Collection,
   "id" | "name" | "authority_level" | "type"
->;
+> &
+  Partial<Collection>;
 
 export type SearchResultId =
   | CollectionId

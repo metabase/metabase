@@ -1,28 +1,25 @@
 import classNames from "classnames";
 import type { FC } from "react";
 import { forwardRef, useLayoutEffect, useRef, useState } from "react";
-import { c } from "ttag";
 
+import type { Collection } from "metabase-types/api";
 import { ResponsiveContainer } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
 import resizeObserver from "metabase/lib/resize-observer";
 import * as Urls from "metabase/lib/urls";
 import type { FlexProps } from "metabase/ui";
 import { FixedSizeIcon, Flex, Group, Text, Tooltip } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
 
+import { c } from "ttag";
 import {
   Breadcrumb,
-  CollectionBreadcrumbsWrapper,
+  CollectionBreadcrumbsWrapper
 } from "./CollectionBreadcrumbsWithTooltip.styled";
+import { pathSeparatorChar } from "./constants";
 import type { RefProp } from "./types";
-import { getBreadcrumbMaxWidths } from "./utils";
-
-const separatorCharacter = c(
-  "Character that separates the names of collections in a path, as in Europe / Belgium / Antwerp",
-).t`/`;
+import { getBreadcrumbMaxWidths, getCollectionPathString } from "./utils";
 
 export const CollectionBreadcrumbsWithTooltip = ({
   collection,
@@ -32,9 +29,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
   containerName: string;
 }) => {
   const collections = (collection.effective_ancestors || []).concat(collection);
-  const pathString = collections
-    .map(coll => getCollectionName(coll))
-    .join(` ${separatorCharacter} `);
+  const pathString = getCollectionPathString(collection);
   const ellipsifyPath = collections.length > 2;
   const shownCollections = ellipsifyPath
     ? [collections[0], collections[collections.length - 1]]
@@ -149,6 +144,6 @@ Ellipsis.displayName = "Ellipsis";
 
 const PathSeparator = () => (
   <Text color="text-light" mx="xs" py={1}>
-    {separatorCharacter}
+    {pathSeparatorChar}
   </Text>
 );

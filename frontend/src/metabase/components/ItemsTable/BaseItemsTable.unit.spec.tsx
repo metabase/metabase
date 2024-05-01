@@ -9,7 +9,7 @@ import {
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
 import type { IconName } from "metabase/ui";
-import type { CollectionItem } from "metabase-types/api";
+import { SortDirection, type CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
@@ -64,7 +64,10 @@ describe("BaseItemsTable", () => {
         component={() => (
           <BaseItemsTable
             items={items}
-            sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+            sortingOptions={{
+              sort_column: "name",
+              sort_direction: SortDirection.Asc,
+            }}
             onSortingOptionsChange={jest.fn()}
             {...props}
           />
