@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { expressionParts } from "./expression";
 import type { ColumnExtraction, Query, DrillThru } from "./types";
 
 export function extract(
@@ -57,6 +58,12 @@ const extractions = {
 /**
  * Return the functions used by a specific column extraction.
  */
-export function functionsUsedByExtraction(tag: ColumnExtractionTag): string[] {
-  return extractions[tag]?.functions ?? [];
+export function functionsUsedByExtraction(
+  query: Query,
+  stageIndex: number,
+  extraction: ColumnExtraction,
+): string[] {
+  const expression = extractionExpression(query, stageIndex, extraction);
+  const parts = expressionParts(query, stageIndex, expression);
+  return [parts.operator];
 }

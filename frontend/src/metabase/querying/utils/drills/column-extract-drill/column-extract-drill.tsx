@@ -5,10 +5,11 @@ import type {
   Drill,
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   query,
+  stageIndex,
   question,
   drill,
   drillInfo,
@@ -16,8 +17,10 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   applyDrill,
 }) => {
   const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
+    const extractions = Lib.extractionsForDrill(drill);
+
     const actions: RegularClickAction[] = drillInfo.extractions.map(
-      extraction => ({
+      (extraction, index) => ({
         name: `extract.${extraction.displayName}`,
         title: extraction.displayName,
         subTitle: getExample(extraction),
@@ -25,18 +28,18 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         buttonType: "horizontal",
         question: () => applyDrill(drill, extraction.tag),
         extra: () => ({
-          tag: extraction.tag,
+          extraction: extractions[index],
           settingsSyncOptions: { column: clicked.column },
         }),
       }),
     );
 
     function handleClick(action: RegularClickAction) {
-      const { tag } = action.extra?.() as {
-        tag: Lib.ColumnExtractionTag;
+      const { extraction } = action.extra?.() as {
+        extraction: Lib.ColumnExtraction;
       };
 
-      trackColumnExtractViaHeader(query, tag, question);
+      trackColumnExtractViaHeader(query, stageIndex, extraction, question);
       onClick(action);
     }
 
