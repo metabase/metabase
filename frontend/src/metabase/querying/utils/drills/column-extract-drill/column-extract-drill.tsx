@@ -33,7 +33,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
 
     function handleClick(action: RegularClickAction) {
       const { tag } = action.extra?.() as {
-        tag: string;
+        tag: Lib.ColumnExtractionTag;
       };
 
       trackColumnExtractViaHeader(query, tag, question);

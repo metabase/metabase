@@ -4,7 +4,7 @@ import type Question from "metabase-lib/v1/Question";
 
 export const trackColumnExtractViaHeader = (
   query: Lib.Query,
-  tag: string,
+  tag: Lib.ColumnExtractionTag,
   question?: Question,
 ) => {
   trackSchemaEvent("question", "1-0-4", {
