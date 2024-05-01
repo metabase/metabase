@@ -154,23 +154,28 @@
         (dissoc :source-table))
     stage))
 
+(defn do-with-aggregation-list
+  "Impl for [[with-aggregation-list]]."
+  [aggregations thunk]
+  (println "aggregations:" aggregations) ; NOCOMMIT
+  (let [legacy->pMBQL (into {}
+                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                           [idx ag-uuid]))
+                            aggregations)
+        pMBQL->legacy (into {}
+                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                           [ag-uuid idx]))
+                            aggregations)]
+    (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL
+              *pMBQL-uuid->legacy-index* pMBQL->legacy]
+      (thunk))))
+
 #?(:clj
    (defmacro with-aggregation-list
      "Macro for capturing the context of a query stage's `:aggregation` list, so any legacy `[:aggregation 0]` indexed
      refs can be converted correctly to UUID-based pMBQL refs."
      [aggregations & body]
-     `(let [aggregations#  ~aggregations
-            legacy->pMBQL# (into {}
-                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
-                                                [~'idx ~'ag-uuid]))
-                                 aggregations#)
-            pMBQL->legacy# (into {}
-                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
-                                                [~'ag-uuid ~'idx]))
-                                 aggregations#)]
-        (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL#
-                  *pMBQL-uuid->legacy-index* pMBQL->legacy#]
-          ~@body))))
+     `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
