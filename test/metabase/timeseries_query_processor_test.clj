@@ -4,11 +4,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]))
-
-;; TODO: Should those tests really run parallel?
 
 (deftest ^:parallel limit-test
   (tqpt/test-timeseries-drivers
@@ -539,8 +538,6 @@
       (is (= t "00:00:00Z")))
     d))
 
-;; TODO: Resolve commented cases. I've yet found no way of setting start of the week for Druid JDBC, thus the result
-;;       differences
 (deftest ^:parallel date-bucketing-test
   (tqpt/test-timeseries-drivers
    (doseq [[unit expected-rows format-fns]
@@ -560,7 +557,7 @@
              [[0 1000]]
              [int int]]
 
-            #_[:week
+            [:week
              [["2012-12-30" 1]
               ["2013-01-06" 1]
               ["2013-01-13" 1]
@@ -576,7 +573,7 @@
               ["2013-01-23T00:00:00Z" 1]]
              [iso8601 int]]
 
-            #_[:day-of-week
+            [:day-of-week
              [[1 135]
               [2 143]
               [3 153]
@@ -600,7 +597,7 @@
               [7 2]]
              [int int]]
 
-            #_[:week-of-year
+            [:week-of-year
                [[1  8]
                 [2  7]
                 [3  8]
@@ -643,7 +640,10 @@
              [["2013-01-01" 235]
               ["2014-01-01" 498]
               ["2015-01-01" 267]]
-             [iso8601-date-part int]]]]
+             [iso8601-date-part int]]]
+             ;; TODO: Find a way how to make those work with Druid JDBC.
+             :when (not (and (= driver/*driver* :druid-jdbc)
+                             (#{:week-of-year :day-of-week :week} unit)))]
      (testing unit
        (testing "topN query"
          (let [{:keys [columns rows]} (mt/formatted-rows+column-names
@@ -656,8 +656,8 @@
                   columns))
            (is (= expected-rows
                   rows))))
-          ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
-          ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
+       ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
+       ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
        (testing "group timeseries query"
          (let [{:keys [columns rows]} (mt/formatted-rows+column-names
                                        format-fns

@@ -149,7 +149,6 @@
            {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest describe-fields-or-table-test
   (testing "test `describe-fields` or `describe-table` returns some basic metadata"
     (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
@@ -173,7 +172,6 @@
                     :json-unfolding    false}]
                   (describe-fields-for-table (mt/db) table))))))))
 
-;;TODO: Consider enabling for Druid JDBC.
 (deftest database-types-fallback-test
   (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
     (let [org-result-set-seq jdbc/result-set-seq]
@@ -194,7 +192,6 @@
                                          base-type)}))
                     set)))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest calculated-semantic-type-test
   (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]

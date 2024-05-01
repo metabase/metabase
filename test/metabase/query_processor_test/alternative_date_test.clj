@@ -193,7 +193,6 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"

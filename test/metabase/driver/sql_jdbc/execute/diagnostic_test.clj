@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-;; DONE: Consider enabling the test for Duid JDBC. -- Updated the query and also tx/default-dataset comes into play.
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "DW connection pool diagnostic info should be captured correctly"

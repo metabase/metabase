@@ -10,7 +10,7 @@
 
 #_:clj-kondo/ignore
 (defn druid-id-fn
-  "tmp"
+  "I have a strong feeling this should be handled differently! Let's discuss that during review!"
   [& args]
   (if (and (> (count args) 1)
            (= :druid-jdbc @(requiring-resolve 'metabase.driver/*driver*))
@@ -177,7 +177,7 @@
     inner-query
     (assoc inner-query :source-table (list *id-fn-symb* (keyword table)))))
 
-;; TODO: Enable on [[druid-id-fn]] removal.
+;; TODO: Enable on [[druid-id-fn]] removal. Ie. after discussing alternative approach to druid-id-fn.
 #_(deftest parse-tokens-test
   (is (= '[:field
            (metabase.test.data/id :categories :name)

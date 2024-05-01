@@ -32,9 +32,6 @@
                               :expression-aggregations true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
-;; TODO: Verify we do not need `;transparent_reconnection=true` parameter! If parameter is left out it seems
-;;       connections can not be acquired!
-;; TODO: Add source for report-timezone usage!
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
   [_driver {:keys [host port] :as _db-details}]
   (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
@@ -43,7 +40,6 @@
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)})))
 
-;; TODO: Add source!
 (defmethod driver/db-default-timezone :druid-jdbc
   [_driver _database]
   "UTC")
@@ -52,7 +48,6 @@
   [_]
   :monday)
 
-;; TODO: Implement COMPLEX type handling!
 (defmethod sql-jdbc.sync/database-type->base-type :druid-jdbc
   [_ database-type]
   ({:TIMESTAMP            :type/DateTime
@@ -62,7 +57,8 @@
     :REAL                 :type/Float
     :DOUBLE               :type/Float
     :BIGINT               :type/BigInteger
-    :COMPLEX<json>        :type/JSON}
+    :COMPLEX<json>        :type/JSON
+    :COMPLEX<hyperUnique> :type/DruidHyperUnique}
    database-type
    :type/*))
 
@@ -70,13 +66,9 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rs _ ^long i]
   (fn []
-    (t/local-date-time (.getObject rs i))))
+    (t/instant (.getObject rs i))))
 
-;; TODO: 1111, the OTHER, type should be handled more robustly. There should be more specific type info available
-;;       _somewhere_, sync gets the COMPLEX<...> type value. It would make sense to use it here to decide on type
-;;       handling.
-;;       ...
-;;      COMPLEX<...> is gathered from `DatabaseMetaData`, that's not available here.
+;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc 1111]
   [_ ^ResultSet rs _ ^long i]
   (fn []
@@ -84,7 +76,6 @@
       (cond-> o
         (string? o) (str/replace  #"^\"|\"$" "")))))
 
-;; TODO: Verify literal use if fine here.
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
 (defmethod sql.qp/date [:druid-jdbc :default] [_ _ expr] expr)
@@ -96,7 +87,6 @@
 (defmethod sql.qp/date [:druid-jdbc :quarter] [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:druid-jdbc :year] [_ _ expr] (date-trunc :year expr))
 
-;; TODO: Verify literal use if fine here.
 (defn- time-extract [unit expr] [:time_extract expr (h2x/literal unit)])
 
 (defmethod sql.qp/date [:druid-jdbc :minute-of-hour] [_ _ expr] (time-extract :minute expr))
@@ -112,12 +102,11 @@
   [_]
   [:raw "CURRENT_TIMESTAMP"])
 
-;; `identifier` is used here because for reasons unknown timestampadd requires "unit" quoting isntead of single quote.
 (defmethod sql.qp/add-interval-honeysql-form :druid-jdbc
   [_ hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
 
-;; TODO: Instead of this, use varchar typing when doing group by
+;; Query used for field values computation is not compatible with COMPLEX<...> types.
 (defmethod driver/field-values-compatible? :druid-jdbc
   [_driver {:keys [database_type] :as _field}]
   (not (re-find #"COMPLEX<" (str database_type))))
@@ -125,7 +114,7 @@
 (defmethod sql-jdbc.conn/data-source-name :druid-jdbc
   [_driver {:keys [host port] :as _details}]
   (format "druid-%s-%s"
-          ;; remove protocol if present
+          ;; remove protocol
           (or (re-find #"(?<=\w://).*" host)
               host)
           port))
@@ -138,7 +127,6 @@
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t)))
 
-;; TODO: Cleanup! + filtering on json as filter
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
@@ -150,7 +138,7 @@
                    ::json_query
                    ::json_value)]
     ;; TODO: Is there a way to avoid using :raw? If I do literal would that be correct?
-    [operator parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]]))
+    [operator parent-identifier [:raw "'" (str/join "." (into ["$"] (rest nfc-path))) "'"]]))
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
@@ -174,13 +162,11 @@
     "COMPLEX<json>" :type/SerializedJSON
     nil))
 
-;; TODO: Make this dependent on database features only, not the application state.
+;; TODO: Make this dependent on database features only, not the application state. Issue #41216 tracks that.
 (defmethod driver/database-supports? [:druid-jdbc :nested-field-columns]
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-;; TODO: Consider creating common namespace with client from original Druid driver and use that instead.
-;; TODO: Does it make sense to take only maj min as jdbc does?
 (defmethod driver/dbms-version :druid-jdbc
   [_driver database]
   (let [{:keys [host port]} (:details database)]

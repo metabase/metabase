@@ -129,7 +129,6 @@
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))
 
-;; DONE: Consider enabling the test for Duid JDBC. -- Solved by tx/desfault-dataset.
 (deftest dont-leak-resultsets-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
     (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
@@ -186,7 +185,6 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
 
-;; DONE: Consider enabling the test for Duid JDBC. -- Changed table to checkins, that's contained in the dataset.
 (deftest have-select-privilege?-test
   (testing "cheking select privilege works with and without auto commit (#36040)"
     (let [default-have-slect-privilege?

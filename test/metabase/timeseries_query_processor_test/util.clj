@@ -48,14 +48,3 @@
 
 (defmacro test-timeseries-drivers {:style/indent 0} [& body]
   `(do-test-timeseries-drivers (fn [] ~@body)))
-
-;; TODO: Remove later -- development only.
-(defn do-test-timeseries-driver [thunk]
-  (binding [data/*run-post-process-fn* adjust-result-cols]
-    (mt/test-driver :druid-jdbc
-      (with-flattened-dbdef
-        (thunk)))))
-
-;; TODO: Remove later -- development only.
-(defmacro test-timeseries-driver {:style/indent 0} [& body]
-  `(do-test-timeseries-driver (fn [] ~@body)))

@@ -720,7 +720,6 @@
              (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
-;; TODO: Verify that different line ordering is ok.
 (deftest search-values-test
   (testing "make sure `search-values` works on with our various drivers"
     (mt/test-drivers (mt/normal-drivers)

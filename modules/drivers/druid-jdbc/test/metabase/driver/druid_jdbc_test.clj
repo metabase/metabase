@@ -1,24 +1,31 @@
 (ns metabase.driver.druid-jdbc-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Field Table Database]]
    [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO: There are sync differences between jdbc and non-jdbc implementation. Verify it's ok!
-;; TODO: This should probably not be parallel.
 (deftest ^:synchronized sync-test
   (mt/test-driver
    :druid-jdbc
    (tqpt/with-flattened-dbdef
      (testing "describe-database"
-       (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}}}
+       (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}
+                         {:schema "druid", :name "json" :description nil}
+                         {:schema "druid", :name "big_json" :description nil}}}
               (driver/describe-database :druid-jdbc (mt/db)))))
      (testing "describe-table"
        (is (=? {:schema "druid"
@@ -48,8 +55,7 @@
                            :database-type "COMPLEX<hyperUnique>",
                            :database-required false,
                            :database-is-auto-increment false,
-                          ;; TODO: Adjust the base type for complex types!
-                           :base-type :type/*,
+                           :base-type :type/DruidHyperUnique,
                            :database-position 11,
                            :json-unfolding false}
                           {:name "user_last_login",
@@ -109,34 +115,42 @@
                            :database-position 9,
                            :json-unfolding false}}}
                (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"}))))
-               ;; TODO: What's idiomatic way of expressing that we also want to print the exception on failure?
                (testing "Full sync does not throw an exception"
                  (is (=? [::success some?]
                          (try (let [result (sync/sync-database! (mt/db))]
-                                #_(throw (ex-info "hello" {:wrong 1}))
                                 [::success result])
                               (catch Throwable t
                                 [::failure t]))))))))
 
-;; TODO: Find a way how to get database version using jdbc driver.
+(defn- db-dbms-version [db-or-id]
+  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
+
+(defn- check-dbms-version [dbms-version]
+  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
+
 (deftest dbms-version-test
   (mt/test-driver
    :druid-jdbc
-   (is (= 1 1))))
+   (testing (str "This tests populating the dbms_version field for a given database."
+                 " The sync happens automatically, so this test removes it first"
+                 " to ensure that it gets set when missing.")
+     (tqpt/with-flattened-dbdef
+       (let [db                   (mt/db)
+             version-on-load      (db-dbms-version db)
+             _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
+             db                   (t2/select-one Database :id (u/the-id db))
+             version-after-update (db-dbms-version db)
+             _                    (sync-dbms-ver/sync-dbms-version! db)]
+         (testing "On startup is the dbms-version specified?"
+           (is (nil? (check-dbms-version version-on-load))))
+         (testing "Check to make sure the test removed the timezone"
+           (is (nil? version-after-update)))
+         (testing "Check that the value was set again after sync"
+           (is (nil? (check-dbms-version (db-dbms-version db))))))))))
 
 ;;
 ;; Ported from [[druid/test/metabase/query_processor_test.clj]]
 ;;
-
-;; TODO: week start does not work yet correctly for Druid JDBC. Enable this test while resolving that.
-#_(deftest start-of-week-test
-  (mt/test-driver :druid-jdbc
-    (testing (str "Count the number of events in the given week. ")
-      (is (= [["2015-10-04" 9]]
-             (druid-query-returning-rows
-               {:filter      [:between !day.timestamp "2015-10-04" "2015-10-10"]
-                :aggregation [[:count $id]]
-                :breakout    [!week.timestamp]}))))))
 
 (deftest sum-aggregation-test
   (tqpt/test-timeseries-drivers
@@ -453,3 +467,33 @@
               (or (when (instance? java.net.ConnectException e)
                     (throw e))
                   (some-> (.getCause e) recur)))))))))
+
+(defn- table-rows-sample []
+  (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
+                                           [(t2/select-one Field :id (mt/id :checkins :id))
+                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
+                                            (t2/select-one Field :id (mt/id :checkins :__time #_:timestamp))]
+                                           (constantly conj))
+       (sort-by first)
+       (take 5)))
+
+;; TODO: Find out why timezones do not work correctly
+(deftest table-rows-sample-test
+  (mt/test-driver
+   :druid-jdbc
+   (tqpt/with-flattened-dbdef
+     (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
+       (let [expected [[1 "The Misfit Restaurant + Bar" (t/instant "2014-04-07T00:00:00Z")]
+                       [2 "Bludso's BBQ"                (t/instant "2014-09-18T00:00:00Z")]
+                       [3 "Philippe the Original"       (t/instant "2014-09-15T00:00:00Z")]
+                       [4 "Wurstküche"                  (t/instant "2014-03-11T00:00:00Z")]
+                       [5 "Hotel Biron"                 (t/instant "2013-05-05T00:00:00Z")]]]
+         (testing "UTC timezone"
+           (is (= expected
+                  (table-rows-sample))))
+         #_(mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+           (is (= expected
+                  @(def xixi (table-rows-sample)))))
+         #_(mt/with-system-timezone-id! "America/Chicago"
+           (is (= expected
+                  (table-rows-sample)))))))))
