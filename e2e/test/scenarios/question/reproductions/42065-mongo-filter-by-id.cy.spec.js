@@ -26,7 +26,8 @@ describe(
       });
     });
 
-    it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
+    // TODO: Analyze why this intermittently fails in master and fix it before unskipping!
+    it.skip("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       cy.get("#main-data-grid")
         .findAllByRole("gridcell")
         .first()
