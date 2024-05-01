@@ -10,8 +10,12 @@ export function extract(
   return ML.extract(query, stageIndex, extraction);
 }
 
-export function extractionExpression(extraction: ColumnExtraction) {
-  return ML.extraction_expression(extraction);
+export function extractionExpression(
+  query: Query,
+  stageIndex: number,
+  extraction: ColumnExtraction,
+) {
+  return ML.extraction_expression(query, stageIndex, extraction);
 }
 
 export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
