@@ -53,15 +53,6 @@
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
-(defn- candidates-for-filtering
-  [fieldset cards]
-  (->> cards
-       (mapcat magic.util/collect-field-references)
-       (map magic.util/field-reference->id)
-       distinct
-       (map fieldset)
-       interesting-fields))
-
 (defn- build-fk-map
   [fks field]
   (if (:id field)
@@ -107,46 +98,34 @@
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
 (defn add-filters
-  "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional
-   argument `dimensions` which is a list of fields for which to create filters, else
-   it tries to infer by which fields it would be useful to filter."
-  ([dashboard max-filters]
-   (->> dashboard
-        :orderd_cards
-        (candidates-for-filtering (->> dashboard
-                                       :context
-                                       :tables
-                                       (mapcat :fields)
-                                       (map (fn [field]
-                                              [((some-fn :id :name) field) field]))
-                                       (into {})))
-        (add-filters dashboard max-filters)))
-  ([dashboard dimensions max-filters]
-   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
-                                                        (:dashcards dashboard))))]
-               (->> (t2/select Field :fk_target_field_id [:not= nil]
-                               :table_id [:in table-ids])
-                    field/with-targets))]
-     (->> dimensions
-          remove-unqualified
-          sort-by-interestingness
-          (take max-filters)
-          (reduce
-           (fn [dashboard candidate]
-             (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
-                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
-                   dashcards     (:dashcards dashboard)
-                   dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
-               ;; Only add filters that apply to all cards.
-               (if (= (count dashcards) (count dashcards-new))
-                 (-> dashboard
-                     (assoc :dashcards dashcards-new)
-                     (update :parameters conj {:id   filter-id
-                                               :type (filter-type candidate)
-                                               :name (:display_name candidate)
-                                               :slug (:name candidate)}))
-                 dashboard)))
-           dashboard)))))
+  "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional argument `dimensions` which is a list of
+  fields for which to create filters, else it tries to infer by which fields it would be useful to filter."
+  [dashboard dimensions max-filters]
+  (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
+                                                       (:dashcards dashboard))))]
+              (field/with-targets (t2/select Field
+                                             :fk_target_field_id [:not= nil]
+                                             :table_id [:in table-ids])))]
+    (->> dimensions
+         remove-unqualified
+         sort-by-interestingness
+         (take max-filters)
+         (reduce
+          (fn [dashboard candidate]
+            (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
+                  candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
+                  dashcards     (:dashcards dashboard)
+                  dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
+              ;; Only add filters that apply to all cards.
+              (if (= (count dashcards) (count dashcards-new))
+                (-> dashboard
+                    (assoc :dashcards dashcards-new)
+                    (update :parameters conj {:id   filter-id
+                                              :type (filter-type candidate)
+                                              :name (:display_name candidate)
+                                              :slug (:name candidate)}))
+                dashboard)))
+          dashboard))))
 
 (defn- flatten-filter-clause
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
