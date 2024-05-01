@@ -1,16 +1,23 @@
 .button {
-  border-radius: 8px;
-  text-align: start;
+  .inner {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
 
-  .content {
-    font-family: var(--mb-default-font-family);
-    line-height: 1rem;
+  .example {
+    font-weight: normal;
+  }
+
+  .content,
+  .example {
+    font-family: var(--mb-default-font-family) !important;
   }
 
   &:hover {
     background: var(--mb-color-brand);
 
-    .content {
+    .content,
+    .example {
       color: var(--color-white);
     }
   }
