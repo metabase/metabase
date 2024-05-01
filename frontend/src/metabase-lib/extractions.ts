@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import type { ColumnExtraction, Query } from "./types";
+import type { ColumnExtraction, Query, DrillThru } from "./types";
 
 export function extract(
   query: Query,
@@ -12,6 +12,10 @@ export function extract(
 
 export function extractionExpression(extraction: ColumnExtraction) {
   return ML.extraction_expression(extraction);
+}
+
+export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
+  return ML.column_extract_drill_extractions(drill);
 }
 
 export type ColumnExtractionTag = keyof typeof extractions;
