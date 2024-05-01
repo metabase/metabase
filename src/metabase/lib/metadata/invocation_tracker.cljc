@@ -69,10 +69,9 @@
   (bulk-metadata [_this metadata-type ids] (lib.metadata.protocols/bulk-metadata metadata-provider metadata-type ids))
 
   #?(:clj Object :cljs IEquiv)
-  (#?(:clj equals :cljs -equiv) [this another]
+  (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? InvocationTracker another)
-         (= (lib.metadata.protocols/database this)
-            (lib.metadata.protocols/database another)))))
+         (= metadata-provider (.metadata-provider ^InvocationTracker another)))))
 
 (defn invocation-tracker-provider
   "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."
