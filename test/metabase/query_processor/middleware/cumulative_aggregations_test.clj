@@ -121,27 +121,49 @@
                           :aggregation  [[:+ [:cum-count] 1]]}}))))))
 
 (deftest ^:parallel multiple-breakouts-reset-counts-test
-  (testing "Multiple breakouts: reset counts after breakouts other than last get new values (#2862)"
-    (let [rows [["Long Beach"    #t "2016-04-01" 2]
-                ["Long Beach"    #t "2016-04-03" 4]   ; 2 + 4 = 6
-                ["Long Beach"    #t "2016-04-03" 6]   ; 6 + 6 = 12
-                ["Long Beach"    #t "2016-04-06" 8]   ; 12 + 8 = 20
-                ["San Francisco" #t "2016-04-01" 10]  ; RESET VALUES HERE!
-                ["San Francisco" #t "2016-04-01" 20]  ; 10 + 20 = 30
-                ["San Francisco" #t "2016-04-02" 30]  ; 30 + 30 = 60
-                ["San Francisco" #t "2016-04-04" 40]] ; 60 + 40 = 100
+  (testing "Multiple breakouts: reset counts after breakouts other than first get new values (#2862, #42003)"
+    (let [rows [[#t "2016-04-01" "Long Beach"    2]   ; [LB] 0 + 2 => 2
+                [#t "2016-04-01" "San Francisco" 10]  ; [SF] 0 + 10 => 10
+                [#t "2016-04-02" "San Francisco" 30]  ; [SF] 10 + 30 => 40
+                [#t "2016-04-03" "Long Beach"    4]   ; [LB] 2 + 4 => 6
+                [#t "2016-04-04" "San Francisco" 40]  ; [SF] 40 + 40 => 80
+                [#t "2016-04-06" "Long Beach"    8]]  ; [LB] 6 + 8 => 14
           rff (qp.cumulative-aggregations/sum-cumulative-aggregation-columns
                {::qp.cumulative-aggregations/replaced-indexes #{2}
                 :query                                        {:breakout [:a :b]}}
                (fn [_metadata]
                  conj))
           rf (rff nil)]
-      (is (= [["Long Beach"    #t "2016-04-01" 2]
-              ["Long Beach"    #t "2016-04-03" 6]
-              ["Long Beach"    #t "2016-04-03" 12]
-              ["Long Beach"    #t "2016-04-06" 20]
-              ["San Francisco" #t "2016-04-01" 10]
-              ["San Francisco" #t "2016-04-01" 30]
-              ["San Francisco" #t "2016-04-02" 60]
-              ["San Francisco" #t "2016-04-04" 100]]
+      (is (= [[#t "2016-04-01" "Long Beach"    2]   ; [LB] 0 + 2 => 2
+              [#t "2016-04-01" "San Francisco" 10]  ; [SF] 0 + 10 => 10
+              [#t "2016-04-02" "San Francisco" 40]  ; [SF] 10 + 30 => 40
+              [#t "2016-04-03" "Long Beach"    6]   ; [LB] 2 + 4 => 6
+              [#t "2016-04-04" "San Francisco" 80]  ; [SF] 40 + 40 => 80
+              [#t "2016-04-06" "Long Beach"    14]] ; [LB] 6 + 8 => 14
+             (reduce rf [] rows))))))
+
+(deftest ^:parallel multiple-breakouts-reset-counts-test-2
+  (testing "3 breakouts: reset counts after breakouts other than first get new values (#2862, #42003)"
+    (let [rows [[#t "2016-04-01" "Long Beach"    "LB"  2]  ; [LB] 0 + 2 => 2
+                [#t "2016-04-01" "San Francisco" "SF"  10] ; [SF] 0 + 10 => 10
+                [#t "2016-04-02" "San Francisco" "SF"  30] ; [SF] 10 + 30 => 40
+                [#t "2016-04-03" "Long Beach"    "LB"  4]  ; [LB] 2 + 4 => 6
+                [#t "2016-04-03" "Long Beach"    "LBC" 4]  ; [LBC] 0 + 4 => 4
+                [#t "2016-04-04" "San Francisco" "SF"  40] ; [SF] 40 + 40 => 80
+                [#t "2016-04-06" "Long Beach"    "LB"  8]  ; [LB] 6 + 8 => 14
+                [#t "2016-04-06" "Long Beach"    "LBC" 8]] ; [LBC] 4 + 8 => 12
+          rff (qp.cumulative-aggregations/sum-cumulative-aggregation-columns
+               {::qp.cumulative-aggregations/replaced-indexes #{3}
+                :query                                        {:breakout [:a :b :c]}}
+               (fn [_metadata]
+                 conj))
+          rf (rff nil)]
+      (is (= [[#t "2016-04-01" "Long Beach"    "LB"  2]   ; [LB] 0 + 2 => 2
+              [#t "2016-04-01" "San Francisco" "SF"  10]  ; [SF] 0 + 10 => 10
+              [#t "2016-04-02" "San Francisco" "SF"  40]  ; [SF] 10 + 30 => 40
+              [#t "2016-04-03" "Long Beach"    "LB"  6]   ; [LB] 2 + 4 => 6
+              [#t "2016-04-03" "Long Beach"    "LBC" 4]   ; [LBC] 0 + 4 => 4
+              [#t "2016-04-04" "San Francisco" "SF"  80]  ; [SF] 40 + 40 => 80
+              [#t "2016-04-06" "Long Beach"    "LB"  14]  ; [LB] 6 + 8 => 14
+              [#t "2016-04-06" "Long Beach"    "LBC" 12]] ; [LBC] 4 + 8 => 12
              (reduce rf [] rows))))))

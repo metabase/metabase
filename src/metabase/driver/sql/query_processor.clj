@@ -690,12 +690,15 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defn- window-aggregation-over-expr-for-query-with-breakouts [driver inner-query]
+(defn- window-aggregation-over-expr-for-query-with-breakouts
+  "Order by the first breakout, then partition by all the other ones. See #42003 and
+  https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
+  [driver inner-query]
   (let [num-breakouts   (count (:breakout inner-query))
         group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         partition-exprs (when ((fnil > 0) num-breakouts 1)
-                          (butlast group-bys))
-        order-expr      (last group-bys)]
+                          (rest group-bys))
+        order-expr      (first group-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
