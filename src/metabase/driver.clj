@@ -597,8 +597,10 @@
   DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
   {:added "0.32.0", :arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    ;; only make sure unqualified keywords are explicitly defined in [[driver-features]].
+    (when (simple-keyword? feature)
+      (when-not (driver-features feature)
+        (throw (Exception. (tru "Invalid driver feature: {0}" feature)))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
@@ -624,8 +626,11 @@
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature _database]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    ;; only make sure unqualified keywords are explicitly defined in [[driver-features]].
+    (when (simple-keyword? feature)
+      (when-not (driver-features feature)
+        (throw (ex-info (tru "Invalid driver feature: {0}" feature)
+                        {:feature feature}))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 

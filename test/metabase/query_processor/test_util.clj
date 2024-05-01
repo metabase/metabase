@@ -377,11 +377,11 @@
   "Returns true if `driver` is affected by the bug originally observed in
   Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
   applied correctly, but the date operations that we use aren't using that timezone. This function is used to
-  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
-  also have this issue."
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift also has this
+  issue."
   [driver]
   ;; TIMEZONE FIXME — remove this and fix the drivers
-  (contains? #{:snowflake :oracle :redshift} driver))
+  (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
   "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."

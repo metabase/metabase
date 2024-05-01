@@ -18,9 +18,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
-   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -58,7 +56,8 @@
 (defn- honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (sql.qp/format-honeysql driver x)]
+  (let [honeysql         (sql.qp/->honeysql driver x)
+        [snippet & args] (sql.qp/format-honeysql driver honeysql)]
     (make-stmt-subs snippet args)))
 
 (mu/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -71,7 +70,7 @@
 
 (mu/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
+  (honeysql->prepared-stmt-subs driver num))
 
 (mu/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -81,14 +80,13 @@
   [driver kwd]
   (honeysql->prepared-stmt-subs driver kwd))
 
-;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (mu/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
   [_driver date]
   (make-stmt-subs "?" [date]))
 
 (mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
-  [_driver t]
-  (make-stmt-subs "?" [t]))
+  [driver t]
+  (honeysql->prepared-stmt-subs driver t))
 
 (defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
@@ -182,9 +180,10 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(defn- maybe-parse-temporal-literal [x]
+(defn- maybe-parse-temporal-literal
+  [x]
   (condp instance? x
-    String   (u.date/parse x (qp.timezone/report-timezone-id-if-supported))
+    String   (u.date/parse x)
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
              {:type      qp.error-type/invalid-parameter
