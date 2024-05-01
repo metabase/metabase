@@ -10,6 +10,8 @@ export function extract(
   return ML.extract(query, stageIndex, extraction);
 }
 
+export type ColumnExtractionTag = keyof typeof extractions;
+
 const extractions = {
   "hour-of-day": {
     functions: ["hour"],
@@ -43,6 +45,6 @@ const extractions = {
 /**
  * Return the functions used by a specific column extraction.
  */
-export function functionsUsedByExtraction(tag: string): string[] {
-  return extractions[tag as keyof typeof extractions]?.functions ?? [];
+export function functionsUsedByExtraction(tag: ColumnExtractionTag): string[] {
+  return extractions[tag]?.functions ?? [];
 }
