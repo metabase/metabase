@@ -90,14 +90,14 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-       (catch Exception _
-         (ex-data
-          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-            (log/warn
-             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
-                             (u/pprint-to-str schema)
-                             (u/add-period route-str)))))
-         "")))
+    (catch Exception _
+      (ex-data
+       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+         (log/warn
+          (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                          (u/pprint-to-str schema)
+                          (u/add-period route-str)))))
+      "")))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -210,17 +210,16 @@
        (map keyword)))
 
 (defn- ->matching-regex
-  "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
+  "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema-type (try (mc/type schema)
-                         (catch clojure.lang.ExceptionInfo _
-                           (mc/type #_:clj-kondo/ignore (eval schema))))]
+  (let [schema      (if (symbol? schema)
+                      #_:clj-kondo/ignore @(requiring-resolve schema)
+                      schema)
+        schema-type (mc/type schema)]
     [schema-type
      (condp = schema-type
        ;; can use any regex directly
-       :re (first (try (mc/children schema)
-                       (catch clojure.lang.ExceptionInfo _
-                         (mc/children #_:clj-kondo/ignore (eval schema)))))
+       :re (first (mc/children schema))
        :keyword #"[\S]+"
        'pos-int? #"[0-9]+"
        :int #"-?[0-9]+"
