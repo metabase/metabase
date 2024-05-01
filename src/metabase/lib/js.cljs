@@ -2199,6 +2199,15 @@
   [a-query]
   (to-array (map clj->js (lib.core/dependent-metadata a-query))))
 
+(defn ^:export table-or-card-dependent-metadata
+  "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
+
+  Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
+
+  > **Code health:** Healthy"
+  [metadata-providerable table-id]
+  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
+
 (defn ^:export can-run
   "Returns true if the query is runnable.
   `card-type` is optional and defaults to \"question\".

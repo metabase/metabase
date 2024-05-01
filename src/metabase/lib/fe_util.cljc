@@ -12,6 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -211,3 +212,12 @@
   for the FE to function properly."
   [query :- ::lib.schema/query]
   (into [] (distinct) (query-dependents query query)))
+
+(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
+  "Return a JS array of entities which are needed upfront to create a new query based on a table/card."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id :- [:or ::lib.schema.id/table :string]]
+  (concat
+    [{:type :table, :id table-id}]
+    (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+      [{:type :card, :id card-id}])))
