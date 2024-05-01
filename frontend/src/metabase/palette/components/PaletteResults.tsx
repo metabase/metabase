@@ -1,10 +1,9 @@
-import { useKBar, useMatches, KBarResults } from "kbar";
-import { useState, useMemo } from "react";
-import { useDebounce, useKeyPressEvent } from "react-use";
+import { useKBar, useMatches } from "kbar";
+import { useMemo } from "react";
+import { useKeyPressEvent } from "react-use";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
@@ -12,6 +11,7 @@ import type { PaletteAction } from "../types";
 import { processResults, findClosesestActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
+import { PaletteResultList } from "./PaletteResultsList";
 
 const PAGE_SIZE = 4;
 
@@ -23,11 +23,7 @@ export const PaletteResults = () => {
 
   const { results } = useMatches();
 
-  const processedResults = useMemo(() => {
-    console.log("processing results");
-    const r = processResults(results);
-    return r;
-  }, [results]);
+  const processedResults = useMemo(() => processResults(results), [results]);
 
   useKeyPressEvent("End", () => {
     const lastIndex = processedResults.length - 1;
@@ -52,7 +48,7 @@ export const PaletteResults = () => {
 
   return (
     <Flex align="stretch" direction="column" p="0.75rem 0">
-      <KBarResults
+      <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
         onRender={({

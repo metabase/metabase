@@ -1,19 +1,15 @@
 import { useRegisterActions, useKBar } from "kbar";
 import { useMemo, useState } from "react";
-import { useDebounce } from "react-use";
 import { push } from "react-router-redux";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import {
-  useListRecentItemsQuery,
-  skipToken,
-  useSearchQuery,
-} from "metabase/api";
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Search from "metabase/entities/search";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -25,11 +21,8 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { SearchResult } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
-
-export type PalettePageId = "root" | "admin_settings";
 
 export const useCommandPalette = () => {
   const dispatch = useDispatch();
@@ -49,7 +42,7 @@ export const useCommandPalette = () => {
     () => {
       setDebouncedSearchText(trimmedQuery);
     },
-    200,
+    SEARCH_DEBOUNCE_DURATION,
     [trimmedQuery],
   );
 
@@ -57,7 +50,7 @@ export const useCommandPalette = () => {
 
   const {
     currentData: searchResults,
-    isLoading: isSearchLoading,
+    isFetching: isSearchLoading,
     error: searchError,
   } = useSearchQuery(
     {
@@ -82,7 +75,6 @@ export const useCommandPalette = () => {
   );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
-    console.log("computing docs action");
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
@@ -112,13 +104,12 @@ export const useCommandPalette = () => {
   ]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
-    console.log("computing search");
     if (isSearchLoading) {
       return [
         {
           id: "search-is-loading",
           name: "Loading...",
-          keywords: debouncedSearchText,
+          keywords: searchQuery,
           section: "search",
         },
       ];
@@ -140,7 +131,7 @@ export const useCommandPalette = () => {
             icon: wrappedResult.getIcon().name,
             section: "search",
             keywords: debouncedSearchText,
-            subtitle: result.description,
+            subtitle: result.description || "",
             perform: () => {
               dispatch(closeModal());
               dispatch(push(wrappedResult.getUrl()));
@@ -167,6 +158,7 @@ export const useCommandPalette = () => {
   }, [
     dispatch,
     debouncedSearchText,
+    searchQuery,
     isSearchLoading,
     searchError,
     searchResults,
@@ -175,7 +167,6 @@ export const useCommandPalette = () => {
   useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
-    console.log("computing recent items");
     return (
       recentItems?.map(item => ({
         id: `recent-item-${getName(item.model_object)}`,
@@ -207,7 +198,6 @@ export const useCommandPalette = () => {
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
-    console.log("computing admin");
     return adminPaths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
@@ -218,7 +208,6 @@ export const useCommandPalette = () => {
   }, [adminPaths, dispatch]);
 
   const adminSettingsActions = useMemo<PaletteAction[]>(() => {
-    console.log("computing settings");
     return Object.entries(settingsSections)
       .filter(([slug, section]) => {
         if (section.getHidden?.(settingValues)) {

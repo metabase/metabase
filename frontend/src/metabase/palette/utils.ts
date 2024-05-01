@@ -1,12 +1,13 @@
-import type { ActionImpl } from "kbar";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { PaletteActionImpl } from "./types";
+
 export const processResults = (
-  results: (string | ActionImpl)[],
-): (string | ActionImpl)[] => {
+  results: (string | PaletteActionImpl)[],
+): (string | PaletteActionImpl)[] => {
   const groupedResults = _.groupBy(
-    results.filter((r): r is ActionImpl => !(typeof r === "string")),
+    results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
     "section",
   );
 
@@ -19,7 +20,10 @@ export const processResults = (
   return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
 };
 
-export const processSection = (sectionName: string, items?: ActionImpl[]) => {
+export const processSection = (
+  sectionName: string,
+  items?: PaletteActionImpl[],
+) => {
   if (items && items.length > 0) {
     return [sectionName, ...items];
   } else {
@@ -28,7 +32,7 @@ export const processSection = (sectionName: string, items?: ActionImpl[]) => {
 };
 
 export const findClosesestActionIndex = (
-  actions: (string | ActionImpl)[],
+  actions: (string | PaletteActionImpl)[],
   index: number,
   diff: number,
 ): number => {
