@@ -705,9 +705,13 @@
           dash-updates (cond-> dash-updates
                          ;; changing `archived` also means changing the `collection_id` and `trashed_from_collection_id`
                          (api/column-will-change? :archived current-dash dash-updates)
-                         (assoc :collection_id (if (:archived dash-updates)
-                                                 collection/trash-collection-id
-                                                 (:trashed_from_collection_id current-dash))
+                         (assoc :collection_id (cond
+                                                 (:archived dash-updates) collection/trash-collection-id
+
+                                                 (api/column-will-change? :collection_id current-dash dash-updates)
+                                                 (:collection_id dash-updates)
+
+                                                 :else (:trashed_from_collection_id current-dash))
                                 :trashed_from_collection_id (when (:archived dash-updates)
                                                               (:collection_id current-dash))))]
       (collection/check-allowed-to-change-collection current-dash dash-updates)

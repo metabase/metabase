@@ -501,8 +501,13 @@
                                            [:moderation_reviews :moderator_details])
         card-updates           (cond-> card-updates
                                  (api/column-will-change? :archived card-before-update card-updates)
-                                 (assoc :collection_id (if (:archived card-updates)
-                                                         collection/trash-collection-id
+                                 (assoc :collection_id (cond
+                                                         (:archived card-updates) collection/trash-collection-id
+
+                                                         (api/column-will-change? :collection_id card-before-update card-updates)
+                                                         (:collection_id card-updates)
+
+                                                         :else
                                                          (:trashed_from_collection_id card-before-update))
                                         :trashed_from_collection_id (when (:archived card-updates)
                                                                       (:collection_id card-before-update)))
