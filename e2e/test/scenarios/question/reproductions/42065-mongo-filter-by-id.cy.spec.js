@@ -13,7 +13,7 @@ describe(
   { tags: "@mongo" },
   () => {
     beforeEach(() => {
-      restore("mongo-5");
+      restore("mongo-4");
       cy.signInAsAdmin();
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
