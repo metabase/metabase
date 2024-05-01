@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input/Input";
 import { isNotNull } from "metabase/lib/types";
 import { Button } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
@@ -24,6 +24,7 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
+import { ExtractColumn } from "./ExtractColumn";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -83,6 +84,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   const [error, setError] = useState<string | null>(null);
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
+  const [isExtractingColumn, setIsExtractingColumn] = useState(false);
+
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
   const isValidExpressionClause = isNotNull(clause);
@@ -125,11 +128,14 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
-
-      setIsCombiningColumns(false);
-      setClause(clause);
+      const expression = Lib.legacyExpressionForExpressionClause(
+        query,
+        stageIndex,
+        clause,
+      );
+      handleExpressionChange(expression, clause);
       setName(name);
-      setError(null);
+      setIsCombiningColumns(false);
     };
 
     const handleCancel = () => {
@@ -145,6 +151,30 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+        />
+      </Container>
+    );
+  }
+
+  if (isExtractingColumn) {
+    const handleSubmit = (clause: Lib.ExpressionClause, name: string) => {
+      const expression = Lib.legacyExpressionForExpressionClause(
+        query,
+        stageIndex,
+        clause,
+      );
+      handleExpressionChange(expression, clause);
+      setName(name);
+      setIsExtractingColumn(false);
+    };
+
+    return (
+      <Container data-testid="expression-editor">
+        <ExtractColumn
+          query={query}
+          stageIndex={stageIndex}
+          onCancel={() => setIsExtractingColumn(false)}
           onSubmit={handleSubmit}
         />
       </Container>
@@ -179,6 +209,13 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
               action: () => setIsCombiningColumns(true),
               group: "shortcuts",
               icon: "combine",
+            },
+            !startRule && {
+              shortcut: true,
+              name: t`Extract columns`,
+              icon: "split",
+              group: "shortcuts",
+              action: () => setIsExtractingColumn(true),
             },
           ].filter(Boolean)}
         />
