@@ -10,6 +10,10 @@ export function extract(
   return ML.extract(query, stageIndex, extraction);
 }
 
+export function extractionExpression(extraction: ColumnExtraction) {
+  return ML.extraction_expression(extraction);
+}
+
 export type ColumnExtractionTag = keyof typeof extractions;
 
 const extractions = {
