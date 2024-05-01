@@ -1,7 +1,6 @@
 import classNames from "classnames";
 import type { FC } from "react";
 import { forwardRef, useLayoutEffect, useRef, useState } from "react";
-import { c } from "ttag";
 
 import { ResponsiveContainer } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
@@ -17,12 +16,9 @@ import {
   Breadcrumb,
   CollectionBreadcrumbsWrapper,
 } from "./CollectionBreadcrumbsWithTooltip.styled";
+import { pathSeparatorChar } from "./constants";
 import type { RefProp } from "./types";
-import { getBreadcrumbMaxWidths } from "./utils";
-
-const separatorCharacter = c(
-  "Character that separates the names of collections in a path, as in 'Europe / Belgium / Antwerp' or 'Products / Prototypes / Alice's Prototypes'",
-).t`/`;
+import { getBreadcrumbMaxWidths, getCollectionPathString } from "./utils";
 
 export const CollectionBreadcrumbsWithTooltip = ({
   collection,
@@ -32,9 +28,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
   containerName: string;
 }) => {
   const collections = (collection.effective_ancestors || []).concat(collection);
-  const pathString = collections
-    .map(coll => getCollectionName(coll))
-    .join(` ${separatorCharacter} `);
+  const pathString = getCollectionPathString(collection);
   const ellipsifyPath = collections.length > 2;
   const shownCollections = ellipsifyPath
     ? [collections[0], collections[collections.length - 1]]
@@ -149,6 +143,6 @@ Ellipsis.displayName = "Ellipsis";
 
 const PathSeparator = () => (
   <Text color="text-light" mx="xs" py={1}>
-    {separatorCharacter}
+    {pathSeparatorChar}
   </Text>
 );
