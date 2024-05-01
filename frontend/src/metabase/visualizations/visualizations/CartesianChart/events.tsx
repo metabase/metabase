@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
@@ -52,6 +51,8 @@ import type {
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
+
+import { DATETIME_ABSOLUTE_UNIT_COMPARISON } from "./constants";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -221,7 +222,9 @@ const getTooltipFooterData = (
 
   return [
     {
-      key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
+      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[
+        chartModel.xAxisModel.interval.unit
+      ],
       col: seriesModel.column,
       value: formatChangeWithSign(change),
     },
