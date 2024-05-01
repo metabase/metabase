@@ -64,6 +64,18 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
   },
+  offset: {
+    displayName: `Offset`,
+    type: "aggregation",
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator: function (_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
+  },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
   median: {
     displayName: `Median`,
@@ -147,6 +159,21 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "string",
     args: ["string"],
     requiresFeature: "regex",
+  },
+  "month-name": {
+    displayName: `monthName`,
+    type: "string",
+    args: ["number"],
+  },
+  "quarter-name": {
+    displayName: `quarterName`,
+    type: "string",
+    args: ["number"],
+  },
+  "day-name": {
+    displayName: `dayName`,
+    type: "string",
+    args: ["number"],
   },
   // numeric functions
   abs: {
@@ -457,6 +484,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "cum-sum",
   "distinct",
   "stddev",
+  "offset",
   "avg",
   "median",
   "min",
@@ -481,6 +509,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "domain",
   "subdomain",
   "host",
+  "month-name",
+  "quarter-name",
+  "day-name",
   // number
   "abs",
   "floor",

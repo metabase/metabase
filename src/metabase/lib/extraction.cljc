@@ -1,17 +1,16 @@
 (ns metabase.lib.extraction
   (:require
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]))
 
 (defn- column-extract-temporal-units [column]
@@ -79,22 +78,18 @@
   [_query _stage-number extraction]
   (dissoc extraction :lib/type :column))
 
-(defn- case-expression
-  "Creates a case expression with a condition for each value of the unit."
-  [expression-fn unit n]
-  (lib.expression/case
-    (for [raw-value (range 1 (inc n))]
-      [(lib.filter/= (expression-fn) raw-value) (shared.ut/format-unit raw-value unit)])
-    ""))
-
-(defn- extraction-expression [column tag]
+(mu/defn extraction-expression :- ::lib.schema.expression/expression
+  "Given an `extraction` as returned by [[column-extractions]], return the expression clause that should be added to a
+  query."
+  [{:keys [column tag] :as _expression} :- ::lib.schema.extraction/extraction
+   ]
   (case tag
     ;; Temporal extractions
     :hour-of-day     (lib.expression/get-hour column)
     :day-of-month    (lib.expression/get-day column)
-    :day-of-week     (case-expression #(lib.expression/get-day-of-week column) tag 7)
-    :month-of-year   (case-expression #(lib.expression/get-month column) tag 12)
-    :quarter-of-year (case-expression #(lib.expression/get-quarter column) tag 4)
+    :day-of-week     (lib.expression/day-name (lib.expression/get-day-of-week column))
+    :month-of-year   (lib.expression/month-name (lib.expression/get-month column))
+    :quarter-of-year (lib.expression/quarter-name (lib.expression/get-quarter column))
     :year            (lib.expression/get-year column)
     ;; URLs and emails
     :domain          (lib.expression/domain column)
@@ -103,9 +98,9 @@
 
 (mu/defn extract :- ::lib.schema/query
   "Given a query, stage and extraction as returned by [[column-extractions]], apply that extraction to the query."
-  [query                :- ::lib.schema/query
-   stage-number         :- :int
-   {:keys [column display-name tag]} :- ::lib.schema.extraction/extraction]
+  [query                                 :- ::lib.schema/query
+   stage-number                          :- :int
+   {:keys [display-name] :as extraction} :- ::lib.schema.extraction/extraction]
   ;; Currently this is very simple: use the `:tag` as an expression function and the column as the only argument.
   (let [unique-name-fn (->> (lib.util/query-stage query stage-number)
                             (lib.metadata.calculation/returned-columns query stage-number)
@@ -115,4 +110,4 @@
       query
       stage-number
       (unique-name-fn display-name)
-      (extraction-expression column tag))))
+      (extraction-expression extraction))))

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import EntityForm from "./EntityForm";
 import EntityLink from "./EntityLink";
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
@@ -44,25 +43,4 @@ export function addEntityContainers(entity) {
     <EntityLink entityType={entity.name} entityId={id} {...props} />
   );
   entity.Link.displayName = `${ObjectName}.Link`;
-
-  // Entity.Form component
-  entity.Form = ({ object, ...props }) => (
-    <EntityForm
-      entityType={entity.name}
-      entityObject={object || props[entity.nameOne]}
-      {...props}
-    />
-  );
-  entity.Form.displayName = `${ObjectName}.Form`;
-
-  // Entity.ModalForm component
-  entity.ModalForm = ({ object, ...props }) => (
-    <EntityForm
-      modal
-      entityType={entity.name}
-      entityObject={object || props[entity.nameOne]}
-      {...props}
-    />
-  );
-  entity.ModalForm.displayName = `${ObjectName}.ModalForm`;
 }

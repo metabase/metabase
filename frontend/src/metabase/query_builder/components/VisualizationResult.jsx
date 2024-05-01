@@ -57,6 +57,7 @@ export default class VisualizationResult extends Component {
       rawSeries,
       timelineEvents,
       selectedTimelineEventIds,
+      onNavigateBack,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -89,7 +90,9 @@ export default class VisualizationResult extends Component {
                 )}
                 <button
                   className={ButtonsS.Button}
-                  onClick={() => window.history.back()}
+                  onClick={() =>
+                    onNavigateBack ? onNavigateBack() : window.history.back()
+                  }
                 >
                   {t`Back to previous results`}
                 </button>

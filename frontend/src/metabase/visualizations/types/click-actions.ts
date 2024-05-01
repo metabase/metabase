@@ -45,6 +45,7 @@ export type ClickActionSectionDirection = "row" | "column";
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
+  subTitle?: React.ReactNode;
   section: ClickActionSection;
   sectionTitle?: string;
   sectionDirection?: ClickActionSectionDirection;

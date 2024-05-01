@@ -14,6 +14,8 @@ import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { sdkReducers } from "embedding-sdk/store";
+import type { SdkStoreState } from "embedding-sdk/store/types";
+import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
@@ -72,7 +74,10 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   } else if (mode === "sdk") {
     const sdkReducerNames = Object.keys(sdkReducers);
-    initialState = _.pick(initialState, ...sdkReducerNames) as State;
+    initialState = _.pick(
+      { sdk: createMockSdkState(), ...initialState },
+      ...sdkReducerNames,
+    ) as SdkStoreState;
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -271,6 +276,18 @@ export const waitForLoaderToBeRemoved = async () => {
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
+};
+
+/**
+ * jsdom doesn't have offsetHeight and offsetWidth, so we need to mock it
+ */
+export const mockOffsetHeightAndWidth = (value = 50) => {
+  jest
+    .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+    .mockReturnValue(value);
+  jest
+    .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+    .mockReturnValue(value);
 };
 
 /**
