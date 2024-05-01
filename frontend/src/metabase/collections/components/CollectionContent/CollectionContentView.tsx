@@ -18,10 +18,7 @@ import type {
 } from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
-import {
-  Sort,
-  type SortingOptions,
-} from "metabase/components/ItemsTable/BaseItemsTable";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -32,11 +29,12 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
+import {
+  SortDirection,
+  type Bookmark,
+  type Collection,
+  type CollectionId,
+  type CollectionItem,
 } from "metabase-types/api";
 
 import type { CollectionOrTableIdProps } from "../ModelUploadModal";
@@ -97,7 +95,7 @@ export const CollectionContentView = ({
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
       sort_column: "name",
-      sort_direction: Sort.Asc,
+      sort_direction: SortDirection.Asc,
     });
 
   const [

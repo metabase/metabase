@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
+import {
+  SortableColumnHeader,
+  type SortingOptions,
+} from "metabase/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemCell,
@@ -58,17 +61,26 @@ export const ModelsTable = ({
       </colgroup>
       <thead>
         <tr>
-          <Columns.Type.Header
-            title=""
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          />
+          <Columns.Type.Header title="" />
           <Columns.Name.Header
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           />
-          <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
-          <ColumnHeader {...collectionProps}>{t`Collection`}</ColumnHeader>
+          <SortableColumnHeader
+            name="description"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+            {...descriptionProps}
+          >
+            {t`Description`}
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+            {...collectionProps}
+          >
+            {t`Collection`}
+          </SortableColumnHeader>
           <Columns.RightEdge.Header />
         </tr>
       </thead>
