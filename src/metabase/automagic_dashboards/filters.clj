@@ -36,7 +36,7 @@
   [fields]
   (->> fields
        (map #(assoc % :interestingness (interestingness %)))
-       (sort-by interestingness >)
+       (sort-by :interestingness >)
        (partition-by :interestingness)
        (mapcat (fn [fields]
                  (->> fields
@@ -98,8 +98,8 @@
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
 (defn add-filters
-  "Add up to `max-filters` filters to dashboard `dashboard`. Takes an optional argument `dimensions` which is a list of
-  fields for which to create filters, else it tries to infer by which fields it would be useful to filter."
+  "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
+  create filters."
   [dashboard dimensions max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
