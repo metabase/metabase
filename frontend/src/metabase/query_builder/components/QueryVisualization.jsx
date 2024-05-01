@@ -31,7 +31,7 @@ export default function QueryVisualization(props) {
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
-  const canRun = Lib.canRun(question.query());
+  const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState([]);
 
   return (
