@@ -519,7 +519,7 @@ const pristineParameters = handleActions(
   {
     [fetchDashboard.fulfilled]: {
       next: (_state, { payload }) => {
-        const parameters = payload.dashboard.parameters;
+        const parameters = payload.dashboard.parameters ?? [];
 
         const parametersById = Object.fromEntries(
           parameters.map(parameter => [parameter.id, parameter]),
