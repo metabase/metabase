@@ -30,12 +30,12 @@ Metabase offers several options for single sign-on (SSO) authentication.
 
 > If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
-### SSO for Metabase Open Source Edition
+### SSO for Metabase Open Source and Starter plans
 
 - [Google Sign-in][google-sign-in]
 - [LDAP][ldap]
 
-### SSO for Metabase paid plans
+### SSO for Metabase Pro and Enterprise plans
 
 With some paid plans, you have more options to help orchestrate lots of people and groups.
 
