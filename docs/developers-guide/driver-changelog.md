@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.0
+
+- `metabase.driver/field-values-compatible?` was added to enable drivers to opt out from field values computations
+  for specific fields. Changed was motivated by the Druid JDBC's inability to execute field value queries from its
+  `COMPLEX<...>` type columns.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

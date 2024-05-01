@@ -93,7 +93,6 @@
                        (map #(select-keys % [:name :pk?]))
                        fk-metadata))))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
@@ -108,7 +107,6 @@
                 (sort-by first)
                 (take 5))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel table-rows-seq-test
   (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
@@ -207,7 +205,6 @@
          :type     :native
          :native   spliced})))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
     (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)

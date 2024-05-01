@@ -753,7 +753,6 @@
                                   (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))
 
-;; TODO: Remove if there's a way of creating _more similar_ test-data for Druid.
 (defmulti default-dataset
   "Enable drivers to define default dataset in tests (when not specified by [[metabase.test/dataset]]).
 
@@ -776,11 +775,8 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-;; TODO: Resolve to resolve definition face palm. Requiring [metabase.test.data.impl :as data.impl] makes cyclic
-;;       dependency.
 (defmethod default-dataset ::test-extensions
   [_]
+  ;; Following cyclic dependency by that requiring resolve.
   ((requiring-resolve 'metabase.test.data.impl/resolve-dataset-definition)
-   'metabase.test.data.dataset-definitions 'test-data)
-  #_(data.impl/resolve-dataset-definition 'metabase.test.data.dataset-definitions 'test-data)
-  #_@(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))
+   'metabase.test.data.dataset-definitions 'test-data))

@@ -28,7 +28,6 @@
 (driver/register! :druid-jdbc :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:set-timezone            true
-                              ;; TODO: Verify that :expression-aggregations are tested.
                               :expression-aggregations true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
@@ -62,7 +61,6 @@
    database-type
    :type/*))
 
-;; TODO: Verify that use of local-date-time is correct here.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rs _ ^long i]
   (fn []

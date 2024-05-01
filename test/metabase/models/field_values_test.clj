@@ -23,8 +23,6 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (clojure.lang ExceptionInfo)))
 
-;; TODO: Find proper solution instead of with-redefs use here. Hand in hand with refactoring db round trips in
-;;       [[metabase.models.field-values/field-should-have-field-values?]]
 (deftest ^:synchronized field-should-have-field-values?-test
   (with-redefs [driver/field-values-compatible? (fn [& _] true)]
     (doseq [[group input->expected] {"Text and Category Fields"

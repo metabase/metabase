@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field Table Database]]
+   [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
@@ -356,14 +357,14 @@
                  {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
                   :breakout    [$venue_price]})))))))
 
-;; TODO: There is a failure!
 (deftest distinct-count-of-two-dimensions-test
   (tqpt/test-timeseries-drivers
-    (is (= {:rows    [[98]]
-            :columns ["count"]}
-           (mt/rows+column-names
-             @(def xix (mt/run-mbql-query checkins
-                                          {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]})))))))
+   (is (= {:rows    [[731]]
+           :columns ["count"]}
+          (mt/rows+column-names
+           (qp/process-query
+            (mt/mbql-query checkins
+                           {:aggregation [[:distinct [:+ $id $venue_price]]]})))))))
 
 (deftest metrics-inside-aggregation-clauses-test
   (tqpt/test-timeseries-drivers
