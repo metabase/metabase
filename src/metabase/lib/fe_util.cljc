@@ -1,6 +1,7 @@
 (ns metabase.lib.fe-util
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
@@ -181,13 +182,15 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)
-             definition (:dataset-query card-metadata)]
-         (list* {:type :table, :id (str "card__" card-id)}
-                {:type :card, :id card-id}
-                (when (and (= (:type card-metadata) :metric) definition)
-                  (query-dependents metadata-providerable
-                                    (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
+       (let [card (lib.metadata/card metadata-providerable card-id)
+             definition (:dataset-query card)]
+         (concat [{:type :table, :id (str "card__" card-id)}
+                  {:type :card, :id card-id}]
+                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                   (query-dependents-foreign-keys metadata-providerable card-columns))
+                 (when (and (= (:type card) :metric) definition)
+                   (query-dependents metadata-providerable
+                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
