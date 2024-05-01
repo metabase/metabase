@@ -39,7 +39,6 @@ export const useIsTruncated = <E extends Element>({
 };
 
 const getIsTruncated = (element: Element, tolerance: number): boolean => {
-  tolerance = 0;
   return (
     element.scrollHeight > element.clientHeight + tolerance ||
     element.scrollWidth > element.clientWidth + tolerance
@@ -51,7 +50,7 @@ export const useAreAnyTruncated = <E extends Element>({
   tolerance = 0,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef(new Map<string, E>());
-  const [truncatedStatuses, setTruncatedStatuses] = useState<
+  const [truncationStatusByKey, setTruncationStatusByKey] = useState<
     Map<string, boolean>
   >(new Map());
 
@@ -66,7 +65,7 @@ export const useAreAnyTruncated = <E extends Element>({
     [...elementsMap.entries()].forEach(([elementKey, element]) => {
       const handleResize = () => {
         const isTruncated = getIsTruncated(element, tolerance);
-        setTruncatedStatuses(statuses => {
+        setTruncationStatusByKey(statuses => {
           const newStatuses = new Map(statuses);
           newStatuses.set(elementKey, isTruncated);
           return newStatuses;
@@ -84,6 +83,6 @@ export const useAreAnyTruncated = <E extends Element>({
     };
   }, [disabled, tolerance]);
 
-  const areAnyTruncated = [...truncatedStatuses.values()].some(Boolean);
+  const areAnyTruncated = [...truncationStatusByKey.values()].some(Boolean);
   return { areAnyTruncated, ref };
 };
