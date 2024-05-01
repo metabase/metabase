@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
+import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
+import { formatChangeWithSign, formatValue } from "metabase/lib/formatting";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -16,6 +17,8 @@ import {
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+
+import { computeChange } from "../lib/numeric";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -83,6 +86,8 @@ export default class FunnelNormal extends Component {
     let remaining = sortedRows[0][metricIndex];
 
     sortedRows.map((row, rowIndex) => {
+      const prevRow = sortedRows[rowIndex - 1];
+
       remaining -= infos[rowIndex].value - row[metricIndex];
 
       infos[rowIndex + 1] = {
@@ -113,6 +118,18 @@ export default class FunnelNormal extends Component {
               value: formatPercent(row[metricIndex] / infos[0].value),
             },
           ],
+          footerData:
+            prevRow != null
+              ? [
+                  {
+                    key: t`Change`,
+                    value: formatChangeWithSign(
+                      computeChange(prevRow[metricIndex], row[metricIndex]),
+                      { minimumFractionDigits: 2 },
+                    ),
+                  },
+                ]
+              : [],
         },
 
         clicked: {

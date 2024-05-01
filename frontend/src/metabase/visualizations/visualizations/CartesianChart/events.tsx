@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatChangeWithSign } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
@@ -191,7 +191,6 @@ const getTooltipFooterData = (
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
-  // TODO funnel
   if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
     return [];
   }
@@ -224,9 +223,7 @@ const getTooltipFooterData = (
     {
       key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
       col: seriesModel.column,
-      value: formatNumber(change, {
-        number_style: "percent",
-      }),
+      value: formatChangeWithSign(change),
     },
   ];
 };
