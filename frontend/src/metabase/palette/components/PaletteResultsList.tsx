@@ -20,7 +20,7 @@ interface RenderParams<T = PaletteActionImpl | string> {
 }
 
 interface PaletteResultListProps {
-  items: PaletteActionImpl[];
+  items: (PaletteActionImpl | string)[];
   onRender: (params: RenderParams) => React.ReactElement;
   maxHeight?: number;
 }
