@@ -577,13 +577,20 @@
   (into [filter-name (canonicalize-implicit-field-id first-arg)]
         (map canonicalize-mbql-clause other-args)))
 
-(doseq [clause-name [:starts-with :ends-with :contains :does-not-contain
-                     := :!= :< :<= :> :>=
+(doseq [clause-name [:= :!= :< :<= :> :>=
                      :is-empty :not-empty :is-null :not-null
                      :between]]
   (defmethod canonicalize-mbql-clause clause-name
     [clause]
     (canonicalize-simple-filter-clause clause)))
+
+;; These clauses have pMBQL-style options in index 1, when they have multiple arguments.
+(doseq [tag [:starts-with :ends-with :contains :does-not-contain]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_tag opts & args :as clause]]
+    (if (> (count args) 2)
+      (into [tag (or opts {})] (map canonicalize-mbql-clause args))
+      (canonicalize-simple-filter-clause clause))))
 
 ;;; aggregations/expression subclauses
 
