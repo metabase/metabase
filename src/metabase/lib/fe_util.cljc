@@ -186,11 +186,11 @@
              definition (:dataset-query card)]
          (concat [{:type :table, :id (str "card__" card-id)}
                   {:type :card, :id card-id}]
+                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                   (query-dependents-foreign-keys metadata-providerable card-columns))
                  (when (and (= (:type card) :metric) definition)
                    (query-dependents metadata-providerable
-                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL)))
-                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
-                   (query-dependents-foreign-keys metadata-providerable card-columns)))))
+                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable

@@ -171,7 +171,8 @@
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
-                      {:type :card,     :id 1}]
+                      {:type :card,     :id 1}
+                      {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card
       (lib/append-stage lib.tu/query-with-source-card)))
@@ -179,7 +180,8 @@
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
-                      {:type :card,     :id 1}]
+                      {:type :card,     :id 1}
+                      {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card-with-result-metadata
       (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
@@ -188,7 +190,8 @@
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
-                        {:type :card,     :id 1}]
+                        {:type :card,     :id 1}
+                        {:type :table,    :id (meta/id :users)}]
                        (lib/dependent-metadata query nil :question))
         query
         (lib/append-stage query))))
@@ -198,8 +201,8 @@
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
                         {:type :card,     :id 1}
-                        {:type :table,    :id (meta/id :checkins)}
                         {:type :table,    :id (meta/id :users)}
+                        {:type :table,    :id (meta/id :checkins)}
                         {:type :table,    :id (meta/id :venues)}]
                        (lib/dependent-metadata query nil :question))
         query
