@@ -3,16 +3,16 @@
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.test :as mt]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel track-card-calls-test
   (let [card-1 {:id            1
                 :name          "Card 1"
-                :database-id   (mt/id)}
+                :database-id   (meta/id)}
         card-2 {:id            2
                 :name          "Card 2"
-                :database-id   (mt/id)}
+                :database-id   (meta/id)}
         mp     (lib.metadata.invocation-tracker/invocation-tracker-provider
                 (lib.tu/mock-metadata-provider
                  {:cards [card-1 card-2]}))]
