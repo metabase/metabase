@@ -171,7 +171,7 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 <iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
 ```
 
-## Custom destinations on embedded dashboards
+## Custom destinations on dashboards in static embeds
 
 You can only use the **URL** option for [custom destinations](..//dashboards/interactive.md#custom-destinations) on dashboards with static embedding. External URLs will open in a new tab or window.
 
