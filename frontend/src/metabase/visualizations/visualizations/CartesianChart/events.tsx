@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatNumber } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
@@ -201,27 +200,13 @@ const getTooltipFooterData = (
       chartModel.dataset[dataIndex - 1][seriesModel.dataKey];
     const change = computeChange(previousValue, currentValue);
 
-    let textColor: string | undefined;
-    if (change > 0) {
-      textColor = "success";
-    } else if (change < 0) {
-      textColor = "danger";
-    }
-
     return [
       {
         key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
         col: seriesModel.column,
-        // TODO fix type error
-        value: (
-          <span
-            style={textColor !== undefined ? { color: color(textColor) } : {}}
-          >
-            {formatNumber(change, {
-              number_style: "percent",
-            })}
-          </span>
-        ),
+        value: formatNumber(change, {
+          number_style: "percent",
+        }),
       },
     ];
   }
