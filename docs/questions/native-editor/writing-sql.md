@@ -81,7 +81,7 @@ For more help, see [Troubleshooting SQL error messages](../../troubleshooting-gu
 
 On saved SQL questions without [parameters](./sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
 
-![explore restuls button](../images/explore-results.png)
+![Explore results button](../images/explore-results.png)
 
 ## To enable drill-through, turn a SQL question into a model and set the data types
 
