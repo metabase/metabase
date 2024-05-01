@@ -424,7 +424,7 @@
 (prefer-method
  sql-jdbc.execute/set-parameter
  [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set java.time.OffsetTime]
- [:postgres OffsetTime])
+ [:postgres java.time.OffsetTime])
 
 (defn- field->parameter-value
   "Map fields used in parameters to parameter `:value`s."
