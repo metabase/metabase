@@ -291,58 +291,55 @@
                   random-schema
                   temp-username)
         (try
-          (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-            (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (sql-jdbc.execute/do-with-connection-with-options
-               :redshift
-               db
-               nil
-               (fn [^java.sql.Connection conn]
-                 (let [schemas (reduce conj
-                                       #{}
-                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                                conn
-                                                                                (.getMetaData conn)
-                                                                                nil
-                                                                                nil))]
-                   (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                     (is (contains? schemas random-schema)))
-                   (testing "should not contain the current session-schema name (since that was never granted)"
-                     (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
-          (finally
-            (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                           "DROP USER IF EXISTS %s;%n"
-                           "DROP SCHEMA IF EXISTS %s;%n")
-                      random-schema
-                      temp-username
-                      temp-username
-                      random-schema)))))
+         (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+           (sql-jdbc.execute/do-with-connection-with-options
+            :redshift
+            db
+            nil
+            (fn [^java.sql.Connection conn]
+              (let [schemas (reduce conj
+                                    #{}
+                                    (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                             conn
+                                                                             (.getMetaData conn)
+                                                                             nil
+                                                                             nil))]
+                (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                  (is (contains? schemas random-schema)))
+                (testing "should not contain the current session-schema name (since that was never granted)"
+                  (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+         (finally
+           (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                          "DROP USER IF EXISTS %s;%n"
+                          "DROP SCHEMA IF EXISTS %s;%n")
+                     random-schema
+                     temp-username
+                     temp-username
+                     random-schema)))))
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-          ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
-          (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                                 (fn [metadata]
-                                                                   (eduction
-                                                                    cat
-                                                                    [(orig metadata) [fake-schema-name]])))]
-            (sql-jdbc.execute/do-with-connection-with-options
-             :redshift
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (letfn [(schemas []
-                         (reduce
-                          conj
-                          #{}
-                          (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
-                 (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                     reducible)]
-                     (is (contains? (schemas) fake-schema-name))))
-                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                   (is (not (contains? (schemas) fake-schema-name)))))))))))))
+        (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+                                                               (fn [metadata]
+                                                                 (eduction
+                                                                  cat
+                                                                  [(orig metadata) [fake-schema-name]])))]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :redshift
+           (mt/db)
+           nil
+           (fn [^java.sql.Connection conn]
+             (letfn [(schemas []
+                       (reduce
+                        conj
+                        #{}
+                        (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+               (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                 (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                   reducible)]
+                   (is (contains? (schemas) fake-schema-name))))
+               (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                 (is (not (contains? (schemas) fake-schema-name))))))))))))
 
 (deftest sync-materialized-views-test
   (mt/test-driver :redshift
