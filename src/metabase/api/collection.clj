@@ -198,11 +198,12 @@
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
-  (let [collections (select-collections {:exclude-other-user-collections exclude-other-user-collections
+  (let [archived    (if exclude-archived false nil)
+        collections (select-collections {:archived                       archived
+                                         :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
-                                         :archived                       (if exclude-archived false nil)
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -212,7 +213,7 @@
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
-                                                                    :where [:= :archived false]}))
+                                                                    :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -247,6 +248,7 @@
 
 (def ^:private CollectionChildrenOptions
   [:map
+   [:archived?                     :boolean]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
@@ -326,7 +328,7 @@
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
-                         [:= :p.archived (boolean archived?)]
+                         [:= :p.archived           (boolean archived?)]
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
@@ -354,7 +356,7 @@
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [pinned-state archived?]}]
+  [_ collection {:keys [archived? pinned-state]}]
   {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
@@ -527,7 +529,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [collection-namespace pinned-state archived?]}]
+  [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
               (if archived?
@@ -573,12 +575,14 @@
                 (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                             :from            [:report_card]
                                             :where           [:and
+                                                              [:= :archived false]
                                                               [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
                         :from :report_dashboard
                         :where [:and
+                                [:= :archived false]
                                 [:in :collection_id descendant-collection-ids]]})
              (map :collection_id)
              (into #{}))
