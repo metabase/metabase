@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import styled from "@emotion/styled";
 import cx from "classnames";
 import { t } from "ttag";
