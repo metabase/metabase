@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -193,11 +194,27 @@ const getTooltipFooterData = (
   const datum = chartModel.dataset[dataIndex];
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
-  if (isTimeSeriesAxis(chartModel.xAxisModel) && dataIndex > 0) {
-    // TODO handle series breakout
+  if (isTimeSeriesAxis(chartModel.xAxisModel)) {
+    // TODO funnel
     const currentValue = datum[seriesModel.dataKey];
+    const currentDate = dayjs(String(datum[X_AXIS_DATA_KEY]));
     const previousValue =
-      chartModel.dataset[dataIndex - 1][seriesModel.dataKey];
+      chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+
+    if (previousValue == null) {
+      return [];
+    }
+    const previousDate = dayjs(
+      String(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
+    );
+
+    if (
+      currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) !==
+      chartModel.xAxisModel.interval.count
+    ) {
+      return [];
+    }
+
     const change = computeChange(previousValue, currentValue);
 
     return [
