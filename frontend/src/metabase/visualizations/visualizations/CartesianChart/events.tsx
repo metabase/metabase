@@ -191,44 +191,44 @@ const getTooltipFooterData = (
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
+  // TODO funnel
+  if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
+    return [];
+  }
+
   const datum = chartModel.dataset[dataIndex];
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
-  if (isTimeSeriesAxis(chartModel.xAxisModel)) {
-    // TODO funnel
-    const currentValue = datum[seriesModel.dataKey];
-    const currentDate = dayjs(String(datum[X_AXIS_DATA_KEY]));
-    const previousValue =
-      chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+  const currentValue = datum[seriesModel.dataKey];
+  const currentDate = dayjs(String(datum[X_AXIS_DATA_KEY]));
+  const previousValue =
+    chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
-    if (previousValue == null) {
-      return [];
-    }
-    const previousDate = dayjs(
-      String(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
-    );
+  if (previousValue == null) {
+    return [];
+  }
+  const previousDate = dayjs(
+    String(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
+  );
 
-    if (
-      currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) !==
-      chartModel.xAxisModel.interval.count
-    ) {
-      return [];
-    }
-
-    const change = computeChange(previousValue, currentValue);
-
-    return [
-      {
-        key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
-        col: seriesModel.column,
-        value: formatNumber(change, {
-          number_style: "percent",
-        }),
-      },
-    ];
+  const isOneIntervalAgo =
+    currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) ===
+    chartModel.xAxisModel.interval.count;
+  if (!isOneIntervalAgo) {
+    return [];
   }
 
-  return [];
+  const change = computeChange(previousValue, currentValue);
+
+  return [
+    {
+      key: t`Percent change from last ${chartModel.xAxisModel.interval.unit}`, // TODO translate unit value
+      col: seriesModel.column,
+      value: formatNumber(change, {
+        number_style: "percent",
+      }),
+    },
+  ];
 };
 
 const getStackedTooltipModel = (
