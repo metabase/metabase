@@ -383,7 +383,8 @@
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.trashed_from_collection_id
-                     :archived
+                     ;; sigh. mariadb returns `c.archived` as 0 or 1 because it's a tinyint. This converts it to a boolean.
+                     [[:= :c.archived true] :archived]
                      :c.dataset_query
                      [(h2x/literal (if dataset? "dataset" "card")) :model]
                      [:u.id :last_edit_user]
