@@ -6,4 +6,4 @@
   "Generates a new SCIM API key and deletes any that already exist."
   []
   (t2/with-transaction [_conn]
-    (t2/delete :model/ApiKey :scope :scim)))
+    (t2/delete! :model/ApiKey :scope :scim)))
