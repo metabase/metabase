@@ -97,7 +97,6 @@ export default class FunnelNormal extends Component {
           key: "Retained",
           value: formatNumber(row[metricIndex] / infos[0].value, {
             number_style: "percent",
-            minimumFractionDigits: 2,
           }),
         },
       ];
@@ -108,7 +107,6 @@ export default class FunnelNormal extends Component {
           key: t`Compared to previous`,
           value: formatChangeWithSign(
             computeChange(prevRow[metricIndex], row[metricIndex]),
-            { minimumFractionDigits: 2 },
           ),
         });
       }

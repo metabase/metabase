@@ -149,14 +149,13 @@ export function formatNumber(
 
 export function formatChangeWithSign(
   change: number,
-  { maximumFractionDigits = 2, minimumFractionDigits = 0 } = {},
+  { maximumFractionDigits = 2 } = {},
 ): string {
   return change === Infinity
     ? "∞%"
     : formatNumber(change, {
         number_style: "percent",
         maximumFractionDigits,
-        minimumFractionDigits,
       });
 }
 
