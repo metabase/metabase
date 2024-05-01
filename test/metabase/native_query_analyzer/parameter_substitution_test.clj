@@ -22,6 +22,10 @@
      "created"       {:type         :date
                       :display-name "Genesis"
                       :name         "created"}
+     ;; Time granularity
+     "time_unit"     {:type         :temporal-unit
+                      :display-name "Unit"
+                      :name         "time_unit"}
      ;; Field Filters: Dates
      "created_range" {:type         :dimension,
                       :name         "created_range"
@@ -207,6 +211,8 @@
                     :id
                     :category
                     :boolean
+                    ;; no valid default for temporal-unit
+                    :temporal-unit
                     ;; no longer in use
                     :location/city
                     :location/state
