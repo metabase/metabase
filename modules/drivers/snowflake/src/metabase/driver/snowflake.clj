@@ -258,7 +258,6 @@
 (defmethod sql.qp/date [:snowflake :minute-of-hour]  [_ _ expr] (extract :minute expr))
 (defmethod sql.qp/date [:snowflake :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:snowflake :hour-of-day]     [_ _ expr] (extract :hour expr))
-(defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (date-trunc :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-month]    [_ _ expr] (extract :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-year]     [_ _ expr] (extract :dayofyear expr))
 (defmethod sql.qp/date [:snowflake :month]           [_ _ expr] (date-trunc :month expr))
@@ -267,6 +266,14 @@
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:snowflake :year-of-era]     [_ _ expr] (extract :year expr))
+
+(defmethod sql.qp/date [:snowflake :day]
+  [_driver _unit expr]
+  (if (= (h2x/database-type expr) "date")
+    expr
+    (date-trunc :day expr))
+  (-> [:to_date (date-trunc :day expr)]
+      (h2x/with-database-type-info "date")))
 
 ;; these don't need to be adjusted for start of week, since we're Setting the WEEK_START connection parameter
 (defmethod sql.qp/date [:snowflake :week]
