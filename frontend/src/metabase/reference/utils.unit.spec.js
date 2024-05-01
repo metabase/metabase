@@ -223,12 +223,10 @@ describe("Reference utils.js", () => {
       );
     });
 
-    // FIXME metrics v2
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for metric raw data", () => {
+    it("should generate correct question for metric raw data", () => {
       const question = getQuestion({
         dbId,
-        tableId,
+        tableId: `card__${metricId}`,
         metricId,
         metadata,
       });
@@ -240,12 +238,10 @@ describe("Reference utils.js", () => {
       );
     });
 
-    // FIXME metrics v2
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for metric group by fields", () => {
+    it("should generate correct question for metric group by fields", () => {
       const question = getQuestion({
         dbId,
-        tableId,
+        tableId: `card__${metricId}`,
         fieldId,
         metricId,
         metadata,
