@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemCell,
@@ -20,6 +21,8 @@ import { getModelDescription } from "./utils";
 
 export interface ModelsTableProps {
   items: CollectionItem[];
+  sortingOptions?: SortingOptions;
+  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
 }
 
 const descriptionProps: ResponsiveProps = {
@@ -32,7 +35,11 @@ const collectionProps: ResponsiveProps = {
   containerName: "ItemsTableContainer",
 };
 
-export const ModelsTable = ({ items }: ModelsTableProps) => {
+export const ModelsTable = ({
+  items,
+  sortingOptions,
+  onSortingOptionsChange,
+}: ModelsTableProps) => {
   return (
     <Table>
       <colgroup>
@@ -51,8 +58,15 @@ export const ModelsTable = ({ items }: ModelsTableProps) => {
       </colgroup>
       <thead>
         <tr>
-          <Columns.Type.Header title="" />
-          <Columns.Name.Header />
+          <Columns.Type.Header
+            title=""
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          />
+          <Columns.Name.Header
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          />
           <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
           <ColumnHeader {...collectionProps}>{t`Collection`}</ColumnHeader>
           <Columns.RightEdge.Header />

@@ -4,12 +4,14 @@ import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Search from "metabase/entities/search";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
 
 import { filterModels, type ActualModelFilters } from "../utils";
 
@@ -69,11 +71,19 @@ export const BrowseModelsBody = ({
   actualModelFilters: ActualModelFilters;
 }) => {
   const dispatch = useDispatch();
-  const { data, error, isLoading } = useSearchQuery({
-    models: ["dataset"],
+  const [sortingOptions, setSortingOptions] = useState<SortingOptions>({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
+
+  const query: SearchRequest = {
+    models: ["dataset"], // 'model' in the sense of 'type of thing'
     model_ancestors: true,
     filter_items_in_personal_collection: "exclude",
-  });
+    ...sortingOptions,
+  };
+
+  const { data, error, isLoading } = useSearchQuery(query);
   const unfilteredModels = data?.data;
 
   const models = useMemo(
@@ -102,7 +112,11 @@ export const BrowseModelsBody = ({
     return (
       <Stack spacing="md" mb="lg">
         <ModelExplanationBanner />
-        <ModelsTable items={wrappedModels} />
+        <ModelsTable
+          items={wrappedModels}
+          sortingOptions={sortingOptions}
+          onSortingOptionsChange={setSortingOptions}
+        />
       </Stack>
     );
   }

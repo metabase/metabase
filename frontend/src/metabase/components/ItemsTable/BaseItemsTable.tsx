@@ -15,7 +15,12 @@ import type {
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import {
+  SortDirection,
+  type Bookmark,
+  type Collection,
+  type CollectionItem,
+} from "metabase-types/api";
 
 import {
   ColumnHeader,
@@ -38,16 +43,11 @@ export type SortableColumnHeaderProps = {
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
-export enum Sort {
-  Asc = "asc",
-  Desc = "desc",
-}
-
 export const SortableColumnHeader = ({
   name = "",
   sortingOptions = {
     sort_column: "",
-    sort_direction: Sort.Asc,
+    sort_direction: SortDirection.Asc,
   },
   onSortingOptionsChange,
   children,
@@ -59,10 +59,11 @@ export const SortableColumnHeader = ({
   const isSortingThisColumn = sortingOptions.sort_column === name;
   const direction = isSortingThisColumn
     ? sortingOptions.sort_direction
-    : Sort.Desc;
+    : SortDirection.Desc;
 
   const onSortingControlClick = () => {
-    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
+    const nextDirection =
+      direction === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
     onSortingOptionsChange?.({
       sort_column: name,
       sort_direction: nextDirection,
@@ -84,7 +85,7 @@ export const SortableColumnHeader = ({
         {children}
         {isSortable && (
           <SortingIcon
-            name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
+            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
           />
         )}
       </SortingControlContainer>
