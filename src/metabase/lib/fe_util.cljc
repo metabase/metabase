@@ -224,7 +224,7 @@
            (query-dependents query (lib.query/query query card))))))))
 
 (mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
-  "Return a JS array of entities which are needed upfront to create a new query based on a table/card."
+  "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- [:or ::lib.schema.id/table :string]]
   (concat
