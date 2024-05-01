@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -8,15 +10,28 @@ import type { PaletteActionImpl } from "../types";
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
   active: boolean;
+  togglePalette: () => void;
 }
 
-export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
+export const PaletteResultItem = ({
+  item,
+  active,
+  togglePalette,
+}: PaletteResultItemProps) => {
   const iconColor = active ? color("brand-light") : color("text-light");
 
   const parentName =
     item.extra?.parentCollection || item.extra?.database || null;
 
-  return (
+  const handleLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      togglePalette();
+    },
+    [togglePalette],
+  );
+
+  const content = (
     <Flex
       p=".75rem"
       mx="1.5rem"
@@ -115,4 +130,19 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       )}
     </Flex>
   );
+
+  if (item.extra?.href) {
+    return (
+      <Box
+        component={Link}
+        to={item.extra.href}
+        onClick={handleLinkClick}
+        w="100%"
+      >
+        {content}
+      </Box>
+    );
+  } else {
+    return content;
+  }
 };

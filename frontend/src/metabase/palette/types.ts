@@ -7,6 +7,7 @@ interface PaletteActionExtras {
     parentCollection?: string | null;
     isVerified?: boolean;
     database?: string | null;
+    href?: string | null;
   };
 }
 
