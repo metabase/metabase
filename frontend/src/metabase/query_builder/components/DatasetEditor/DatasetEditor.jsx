@@ -428,6 +428,7 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
+  const isMetric = question.type() === "metric";
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const canSaveChanges =
@@ -436,13 +437,20 @@ function DatasetEditor(props) {
     fields.every(field => field.display_name) &&
     Lib.canSave(question.query(), question.type());
 
-  const saveButtonTooltipLabel =
-    isDirty &&
-    isNative &&
-    isResultDirty &&
-    Lib.rawNativeQuery(question.query()).length > 0
-      ? t`You must run the query before you can save this model`
-      : undefined;
+  const saveButtonTooltipLabel = useMemo(() => {
+    if (
+      isNative &&
+      isDirty &&
+      isResultDirty &&
+      Lib.rawNativeQuery(question.query()).length > 0
+    ) {
+      return t`You must run the query before you can save this model`;
+    }
+
+    if (isMetric && Lib.aggregations(question.query(), -1).length === 0) {
+      return t`You must define how the measure is calculated to save this metric`;
+    }
+  }, [isNative, isMetric, isDirty, isResultDirty, question]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -466,7 +474,7 @@ function DatasetEditor(props) {
           // Metadata tab is temporarily disabled for metrics.
           // It should be enabled in #37993
           // @see https://github.com/metabase/metabase/issues/37993
-          question.type() === "metric" ? null : (
+          isMetric ? null : (
             <EditorTabs
               currentTab={datasetEditorTab}
               onChange={onChangeEditorTab}

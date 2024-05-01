@@ -1,6 +1,7 @@
 (ns metabase.lib.fe-util
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
@@ -8,10 +9,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -179,13 +182,15 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)
-             definition (:dataset-query card-metadata)]
-         (list* {:type :table, :id (str "card__" card-id)}
-                {:type :card, :id card-id}
-                (when (and (= (:type card-metadata) :metric) definition)
-                  (query-dependents metadata-providerable
-                                    (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
+       (let [card (lib.metadata/card metadata-providerable card-id)
+             definition (:dataset-query card)]
+         (concat [{:type :table, :id (str "card__" card-id)}
+                  {:type :card, :id card-id}]
+                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                   (query-dependents-foreign-keys metadata-providerable card-columns))
+                 (when (and (= (:type card) :metric) definition)
+                   (query-dependents metadata-providerable
+                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
@@ -209,5 +214,24 @@
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
   for the FE to function properly."
-  [query :- ::lib.schema/query]
-  (into [] (distinct) (query-dependents query query)))
+  [query     :- ::lib.schema/query
+   card-id   :- [:maybe ::lib.schema.id/card]
+   card-type :- ::lib.schema.metadata/card.type]
+  (into []
+        (distinct)
+        (concat
+         (query-dependents query query)
+         (when (and (some? card-id)
+                    (#{:model :metric} card-type))
+           (cons {:type :table, :id (str "card__" card-id)}
+                 (when-let [card (lib.metadata/card query card-id)]
+                   (query-dependents query (lib.query/query query card))))))))
+
+
+(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
+  "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
+  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id               :- [:or ::lib.schema.id/table :string]]
+  (cons {:type :table, :id table-id}
+        (when-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+          [{:type :card, :id card-id}])))
