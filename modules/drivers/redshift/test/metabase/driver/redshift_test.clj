@@ -319,7 +319,7 @@
                                :schema-filters-type "inclusion"
                                :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
             (mt/with-temp [:model/Card _      {:name          "model"
-                                               :type          :model
+                                               :dataset       true
                                                :dataset_query (mt/mbql-query users)
                                                :database_id   (mt/id)}
                            :model/Database db {:engine :redshift, :details details}]
