@@ -28,37 +28,16 @@ export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
   return ML.column_extract_drill_extractions(drill);
 }
 
-export type ColumnExtractionTag = keyof typeof extractions;
-
-const extractions = {
-  "hour-of-day": {
-    functions: ["hour"],
-  },
-  "day-of-month": {
-    functions: ["day"],
-  },
-  "day-of-week": {
-    functions: ["weekday"],
-  },
-  "month-of-year": {
-    functions: ["month"],
-  },
-  "quarter-of-year": {
-    functions: ["quarter"],
-  },
-  year: {
-    functions: ["year"],
-  },
-  domain: {
-    functions: ["domain"],
-  },
-  host: {
-    functions: ["host"],
-  },
-  subdomain: {
-    functions: ["subdomain"],
-  },
-};
+export type ColumnExtractionTag =
+  | "hour-of-day"
+  | "day-of-month"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "year"
+  | "domain"
+  | "host"
+  | "subdomain";
 
 /**
  * Return the functions used by a specific column extraction.
