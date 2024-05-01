@@ -845,6 +845,79 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .contains("[Revenue]");
     });
   });
+
+  it("should be possible to sort by metric (metabase#8283)", () => {
+    cy.createQuestion(
+      {
+        name: "Revenue",
+        description: "Sum of orders subtotal",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "metricId",
+      },
+    );
+
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${metricId}`,
+          aggregation: ["metric", metricId],
+        },
+      };
+
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      openNotebook();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Pick a column to group by").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Created At").click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Sort").click();
+
+      // Sorts ascending by default
+      // Revenue appears twice, but it's the only integer column to order by
+      popover().icon("int").click();
+
+      // Let's make sure it's possible to sort descending as well
+      cy.icon("arrow_up").click();
+
+      cy.icon("arrow_down").parent().contains("Revenue");
+
+      visualize();
+      // Visualization will render line chart by default. Switch to the table.
+      cy.icon("table2").click();
+
+      cy.findAllByRole("grid").as("table");
+      cy.get("@table")
+        .first()
+        .as("tableHeader")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "Revenue");
+        });
+
+      cy.get("@table")
+        .last()
+        .as("tableBody")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "50,072.98");
+        });
+    });
+  });
 });
 
 function assertTableRowCount(expectedCount) {

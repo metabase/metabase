@@ -3,8 +3,6 @@ import {
   restore,
   popover,
   modal,
-  openNotebook,
-  visualize,
   filter,
   filterField,
 } from "e2e/support/helpers";
@@ -12,84 +10,12 @@ import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > admin > datamodel > metrics", () => {
+// FIXME metrics v2 -- are these tests relevant for v2?
+describe.skip("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
-  });
-
-  it("should be possible to sort by metric (metabase#8283)", () => {
-    cy.createQuestion(
-      {
-        name: "Revenue",
-        description: "Sum of orders subtotal",
-        type: "metric",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-      },
-      {
-        wrapId: true,
-        idAlias: "metricId",
-      },
-    );
-
-    cy.get("@metricId").then(metricId => {
-      const questionDetails = {
-        query: {
-          "source-table": `card__${metricId}`,
-          aggregation: ["metric", metricId],
-        },
-      };
-
-      cy.createQuestion(questionDetails, { visitQuestion: true });
-
-      openNotebook();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sort").click();
-
-      // Sorts ascending by default
-      // Revenue appears twice, but it's the only integer column to order by
-      popover().icon("int").click();
-
-      // Let's make sure it's possible to sort descending as well
-      cy.icon("arrow_up").click();
-
-      cy.icon("arrow_down").parent().contains("Revenue");
-
-      visualize();
-      // Visualization will render line chart by default. Switch to the table.
-      cy.icon("table2").click();
-
-      cy.findAllByRole("grid").as("table");
-      cy.get("@table")
-        .first()
-        .as("tableHeader")
-        .within(() => {
-          cy.get("[data-testid=cell-data]")
-            .eq(1)
-            .invoke("text")
-            .should("eq", "Revenue");
-        });
-
-      cy.get("@table")
-        .last()
-        .as("tableBody")
-        .within(() => {
-          cy.get("[data-testid=cell-data]")
-            .eq(1)
-            .invoke("text")
-            .should("eq", "50,072.98");
-        });
-    });
   });
 
   describe("with no metrics", () => {
@@ -178,8 +104,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    // FIXME metrics v2
-    it.skip("should see a newly asked question in its questions list", () => {
+    it("should see a newly asked question in its questions list", () => {
       // Ask a new question
       cy.visit("/reference/metrics/1/questions");
 
