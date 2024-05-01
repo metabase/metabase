@@ -26,7 +26,7 @@ describe(
       });
     });
 
-    it("should be possible to filter by Mongo _id column (metabase#42010)", () => {
+    it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       cy.get("#main-data-grid")
         .findAllByRole("gridcell")
         .first()
@@ -56,7 +56,7 @@ describe(
           removeFilter();
 
           cy.log(
-            "Scenario 2 - Make sure the simple mode filter is working correctly",
+            "Scenario 2 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           filter();
 
@@ -72,7 +72,7 @@ describe(
           removeFilter();
 
           cy.log(
-            "Scenario 3 - Make sure filter is working in the notebook editor",
+            "Scenario 3 - Make sure filter is working in the notebook editor (metabase#42010)",
           );
           openNotebook();
           filter({ mode: "notebook" });
