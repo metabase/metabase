@@ -49,6 +49,7 @@ import {
   getIsAutoApplyFilters,
   getParameters,
   getParameterValues,
+  getPristineParameters,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -284,13 +285,32 @@ export const setParameterType = createThunkAction(
 
       if (parameter.sectionId !== sectionId) {
         // reset all mappings if type has changed,
-        // but do not reset when only operator has changed
+        // operator change resets mappings in some cases as well
         dispatch(resetParameterMapping(parameterId));
       }
 
-      updateParameter(dispatch, getState, parameterId, parameter =>
-        setParamType(parameter, type, sectionId),
-      );
+      let useSavedParameterValue = false;
+
+      // parameter type has changed
+      if (parameter.sectionId !== sectionId) {
+        // check here if the parameter type is pristine and if so, change operator to the saved and not to default
+        const pristineParameters = getPristineParameters(getState());
+        const pristineParameter = pristineParameters[parameterId];
+
+        if (pristineParameter && sectionId === pristineParameter.sectionId) {
+          useSavedParameterValue = true;
+
+          updateParameter(dispatch, getState, parameterId, () =>
+            setParamType(pristineParameter, pristineParameter.type, sectionId),
+          );
+        }
+      }
+
+      if (!useSavedParameterValue) {
+        updateParameter(dispatch, getState, parameterId, parameter =>
+          setParamType(parameter, type, sectionId),
+        );
+      }
 
       return { id: parameterId, type };
     },

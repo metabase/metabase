@@ -38,6 +38,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     toastId: null,
     toastDashboardId: null,
   },
+  pristineParameters: {},
   tabDeletions: {},
 };
 

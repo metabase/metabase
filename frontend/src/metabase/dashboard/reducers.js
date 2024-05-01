@@ -502,7 +502,7 @@ const missingActionParameters = handleActions(
   INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
-export const autoApplyFilters = handleActions(
+const autoApplyFilters = handleActions(
   {
     [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
       next: (state, { payload: { toastId, dashboardId } }) => ({
@@ -513,6 +513,24 @@ export const autoApplyFilters = handleActions(
     },
   },
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
+);
+
+const pristineParameters = handleActions(
+  {
+    [fetchDashboard.fulfilled]: {
+      next: (_state, { payload }) => {
+        const parameters = payload.dashboard.parameters;
+
+        const parametersById = Object.fromEntries(
+          parameters.map(parameter => [parameter.id, parameter]),
+        );
+
+        return parametersById;
+      },
+    },
+    [RESET]: () => INITIAL_DASHBOARD_STATE.pristineParameters,
+  },
+  INITIAL_DASHBOARD_STATE.pristineParameters,
 );
 
 export const dashboardReducers = reduceReducers(
@@ -533,6 +551,7 @@ export const dashboardReducers = reduceReducers(
     sidebar,
     missingActionParameters,
     autoApplyFilters,
+    pristineParameters,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

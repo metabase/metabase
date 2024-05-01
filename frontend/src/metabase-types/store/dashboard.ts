@@ -8,6 +8,7 @@ import type {
   DashboardTab,
   DashboardTabId,
   DashboardCard,
+  Parameter,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -111,5 +112,6 @@ export interface DashboardState {
     toastId: number | null;
     toastDashboardId: number | null;
   };
+  pristineParameters: Record<ParameterId, Parameter>;
   tabDeletions: Record<TabDeletionId, TabDeletion>;
 }
