@@ -213,7 +213,10 @@
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
-  for the FE to function properly."
+  for the FE to function properly.  `card-id` is provided
+  when editing the card with that ID and in this case `a-query` is its
+  definition (i.e., the dataset-query). `card-type` specifies the type
+  of the card being created or edited."
   [query     :- ::lib.schema/query
    card-id   :- [:maybe ::lib.schema.id/card]
    card-type :- ::lib.schema.metadata/card.type]
