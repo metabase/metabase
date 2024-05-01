@@ -215,9 +215,17 @@ export const updateQuestion = (
     }
 
     const currentDependencies = currentQuestion
-      ? Lib.dependentMetadata(currentQuestion.query())
+      ? Lib.dependentMetadata(
+          currentQuestion.query(),
+          currentQuestion.id(),
+          currentQuestion.type(),
+        )
       : [];
-    const nextDependencies = Lib.dependentMetadata(newQuestion.query());
+    const nextDependencies = Lib.dependentMetadata(
+      newQuestion.query(),
+      newQuestion.id(),
+      newQuestion.type(),
+    );
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));

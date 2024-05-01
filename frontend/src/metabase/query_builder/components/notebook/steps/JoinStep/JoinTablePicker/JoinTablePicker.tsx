@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
-import Tables from "metabase/entities/tables";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../../NotebookCell";
 
@@ -40,6 +41,7 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
+  const queryRef = useLatest(query);
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -60,9 +62,12 @@ export function JoinTablePicker({
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
   const isDisabled = isReadOnly;
 
-  const handleTableChange = async (tableId: TableId) => {
-    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-    onChange?.(Lib.tableOrCardMetadata(query, tableId));
+  const handleTableChange = async (
+    tableId: TableId,
+    databaseId: DatabaseId,
+  ) => {
+    await dispatch(loadMetadataForTable(databaseId, tableId));
+    onChange?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
   };
 
   return (
