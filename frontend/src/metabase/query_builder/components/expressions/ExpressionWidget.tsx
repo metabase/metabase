@@ -9,7 +9,10 @@ import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
-import { trackColumnCombineViaShortcut } from "../../analytics";
+import {
+  trackColumnCombineViaShortcut,
+  trackColumnExtractViaShortcut,
+} from "../../analytics";
 
 import { CombineColumns } from "./CombineColumns/CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
@@ -158,7 +161,12 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   }
 
   if (isExtractingColumn) {
-    const handleSubmit = (clause: Lib.ExpressionClause, name: string) => {
+    const handleSubmit = (
+      clause: Lib.ExpressionClause,
+      name: string,
+      tag: Lib.ColumnExtractionTag,
+    ) => {
+      trackColumnExtractViaShortcut(query, tag);
       const expression = Lib.legacyExpressionForExpressionClause(
         query,
         stageIndex,

@@ -13,7 +13,11 @@ import { getExample, getName } from "./util";
 type Props = {
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: (clause: Lib.ExpressionClause, name: string) => void;
+  onSubmit: (
+    clause: Lib.ExpressionClause,
+    name: string,
+    tag: Lib.ColumnExtractionTag,
+  ) => void;
   onCancel: () => void;
 };
 
@@ -51,7 +55,7 @@ export function ExtractColumn({
     const name = getName(query, stageIndex, info);
     const lastExpression = expressions.at(-1);
     if (lastExpression) {
-      onSubmit(lastExpression, name);
+      onSubmit(lastExpression, name, info.tag);
     }
   }
 
