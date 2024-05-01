@@ -14,6 +14,7 @@ import {
   getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -43,7 +44,7 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
-    cy.get(".dot").eq(5).click({ force: true });
+    cartesianChartCircle().eq(5).click();
     popover()
       .findByText(/Automatic Insights/i)
       .click();
@@ -336,9 +337,7 @@ describe("scenarios > question > custom column", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
-    cy.findByTestId("query-visualization-root")
-      .get(".dot")
-      .should("have.length.of.at.least", 8);
+    cartesianChartCircle().should("have.length.of.at.least", 8);
   });
 
   it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {

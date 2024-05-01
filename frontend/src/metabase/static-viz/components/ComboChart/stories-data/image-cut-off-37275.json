@@ -1,0 +1,391 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "month",
+          "semantic_type": null,
+          "field_ref": [
+            "field",
+            "month",
+            { "base-type": "type/Date", "temporal-unit": "month" }
+          ],
+          "name": "month",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "unit": "month",
+          "fingerprint": {
+            "global": { "distinct-count": 50, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2019-11-01T00:00:00-07:00",
+                "latest": "2023-12-01T00:00:00-08:00"
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Rate",
+          "field_ref": ["aggregation", 0],
+          "name": "Rate",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": "type/Share",
+          "fingerprint": {
+            "global": { "distinct-count": 30, "nil%": 0.02857142857142857 },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 0,
+                "q3": 0.007450343039518198,
+                "max": 0.046703296703296704,
+                "sd": 0.009301205858168706,
+                "avg": 0.0054524176445563234
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "person@metabase.com",
+        "first_name": "Cool",
+        "last_login": "2024-04-01T17:53:16.283783Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 140,
+        "last_name": "Person",
+        "date_joined": "2022-09-19T23:07:35.223541Z",
+        "common_name": "Cool Person"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 26,
+      "enable_embedding": false,
+      "collection_id": 1319,
+      "query_type": "query",
+      "name": "Some rate",
+      "last_query_start": "2024-04-05T16:46:07.935223Z",
+      "dashboard_count": 1,
+      "type": "question",
+      "average_query_time": 2329.2886792452830189,
+      "creator_id": 140,
+      "moderation_reviews": [],
+      "updated_at": "2023-12-05T10:45:11.528676Z",
+      "made_public_by_id": 140,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 26,
+        "type": "query",
+        "query": {
+          "expressions": {
+            "arr": [
+              "*",
+              -1,
+              [
+                "case",
+                [
+                  [
+                    [
+                      "=",
+                      ["field", "change_type", { "base-type": "type/Text" }],
+                      "some_field"
+                    ],
+                    [
+                      "field",
+                      "product_arr_change",
+                      { "base-type": "type/Decimal" }
+                    ]
+                  ]
+                ],
+                { "default": 0 }
+              ]
+            ]
+          },
+          "aggregation": [
+            [
+              "aggregation-options",
+              [
+                "/",
+                ["sum", ["expression", "arr"]],
+                [
+                  "sum",
+                  [
+                    "field",
+                    "last_month_product_arr",
+                    { "base-type": "type/Decimal" }
+                  ]
+                ]
+              ],
+              { "name": "Rate", "display-name": "Rate" }
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "month",
+              { "base-type": "type/Date", "temporal-unit": "month" }
+            ]
+          ],
+          "source-table": "card__14583",
+          "filter": [
+            "=",
+            ["field", "some_field", { "base-type": "type/Text" }],
+            "some_value"
+          ]
+        }
+      },
+      "id": 13529,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "Ew96sP2z7jrBbQI5PX5rJ",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 162,
+        "email": "another_person@metabase.com",
+        "first_name": "Another",
+        "last_name": "Person",
+        "timestamp": "2023-12-05T10:45:11.573841Z"
+      },
+      "visualization_settings": {
+        "table.cell_column": "beginning_arr",
+        "table.pivot_column": "contraction_arr",
+        "table.pivot": false,
+        "graph.dimensions": ["month"],
+        "series_settings": { "Rate": { "color": "#88BF4D" } },
+        "graph.y_axis.title_text": "Monthly Rate",
+        "column_settings": {
+          "[\"ref\",[\"expression\",\"Monthly rate\"]]": {
+            "number_style": "percent"
+          },
+          "[\"name\",\"Rate\"]": { "number_style": "percent" }
+        },
+        "graph.metrics": ["Rate"]
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "bizops_sales_dashboard",
+        "name": "Bizops Sales Dashboard",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 1319,
+        "entity_id": "mc8IqB7lNRW1GKIS4togA",
+        "location": "/393/645/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-09-27T22:51:00.321929Z"
+      },
+      "metabase_version": null,
+      "parameters": [],
+      "created_at": "2023-10-03T22:54:06.07771Z",
+      "parameter_usage_count": 0,
+      "public_uuid": "47ec5dc3-f806-4f21-8163-f7d7b7d31f7c"
+    },
+    "data": {
+      "rows": [
+        ["2018-03-01T00:00:00-08:00", null],
+        ["2018-04-01T00:00:00-07:00", 0],
+        ["2018-05-01T00:00:00-07:00", 0],
+        ["2018-06-01T00:00:00-07:00", 0],
+        ["2018-07-01T00:00:00-07:00", 0],
+        ["2018-08-01T00:00:00-07:00", 0],
+        ["2018-09-01T00:00:00-07:00", 0],
+        ["2018-10-01T00:00:00-07:00", 0],
+        ["2018-11-01T00:00:00-07:00", 0],
+        ["2018-12-01T00:00:00-08:00", 0],
+        ["2019-01-01T00:00:00-08:00", 0],
+        ["2019-02-01T00:00:00-08:00", 0],
+        ["2019-03-01T00:00:00-08:00", 0],
+        ["2019-04-01T00:00:00-07:00", 0],
+        ["2019-05-01T00:00:00-07:00", 0],
+        ["2019-06-01T00:00:00-07:00", 0],
+        ["2019-07-01T00:00:00-07:00", 0],
+        ["2019-08-01T00:00:00-07:00", 0],
+        ["2019-09-01T00:00:00-07:00", 0],
+        ["2019-10-01T00:00:00-07:00", 0.046703296703296704],
+        ["2019-11-01T00:00:00-07:00", 0],
+        ["2019-12-01T00:00:00-08:00", 0],
+        ["2020-01-01T00:00:00-08:00", 0],
+        ["2020-02-01T00:00:00-08:00", 0],
+        ["2020-03-01T00:00:00-08:00", 0],
+        ["2020-04-01T00:00:00-07:00", 0],
+        ["2020-05-01T00:00:00-07:00", 0.026281208935611037],
+        ["2020-06-01T00:00:00-07:00", 0],
+        ["2020-07-01T00:00:00-07:00", 0.033003300330033],
+        ["2020-08-01T00:00:00-07:00", 0],
+        ["2020-09-01T00:00:00-07:00", 0.007398583911039427],
+        ["2020-10-01T00:00:00-07:00", 0],
+        ["2020-11-01T00:00:00-07:00", 0],
+        ["2020-12-01T00:00:00-08:00", 0],
+        ["2021-01-01T00:00:00-08:00", 0.005482576372288866],
+        ["2021-02-01T00:00:00-08:00", 0],
+        ["2021-03-01T00:00:00-08:00", 0.005026110644799735],
+        ["2021-04-01T00:00:00-07:00", 0],
+        ["2021-05-01T00:00:00-07:00", 0.004575716671623693],
+        ["2021-06-01T00:00:00-07:00", 0.004375123050335791],
+        ["2021-07-01T00:00:00-07:00", 0],
+        ["2021-08-01T00:00:00-07:00", 0],
+        ["2021-09-01T00:00:00-07:00", 0],
+        ["2021-10-01T00:00:00-07:00", 0],
+        ["2021-11-01T00:00:00-07:00", 0.007002531415106561],
+        ["2021-12-01T00:00:00-08:00", 0],
+        ["2022-01-01T00:00:00-08:00", 0.008679712144471866],
+        ["2022-02-01T00:00:00-08:00", 0],
+        ["2022-03-01T00:00:00-08:00", 0.009553438012884894],
+        ["2022-04-01T00:00:00-07:00", 0.016651556920572075],
+        ["2022-05-01T00:00:00-07:00", 0],
+        ["2022-06-01T00:00:00-07:00", 0.020564586020194422],
+        ["2022-07-01T00:00:00-07:00", 0.01390365463262665],
+        ["2022-08-01T00:00:00-07:00", 0.025956388563903275],
+        ["2022-09-01T00:00:00-07:00", 0],
+        ["2022-10-01T00:00:00-07:00", 0.004308561974355439],
+        ["2022-11-01T00:00:00-07:00", 0],
+        ["2022-12-01T00:00:00-08:00", 0.01575543070001941],
+        ["2023-01-01T00:00:00-08:00", 0.00556199820347458],
+        ["2023-02-01T00:00:00-08:00", 0.005504224358597545],
+        ["2023-03-01T00:00:00-08:00", 0.008506554246881258],
+        ["2023-04-01T00:00:00-07:00", 0.01768414180126762],
+        ["2023-05-01T00:00:00-07:00", 0.007201756844576378],
+        ["2023-06-01T00:00:00-07:00", 0.007502102167996969],
+        ["2023-07-01T00:00:00-07:00", 0.0025786785778236943],
+        ["2023-08-01T00:00:00-07:00", 0.02632681316053088],
+        ["2023-09-01T00:00:00-07:00", 0.010763635430286158],
+        ["2023-10-01T00:00:00-07:00", 0.012727099175920329],
+        ["2023-11-01T00:00:00-07:00", 0.011249251924747005],
+        ["2023-12-01T00:00:00-08:00", 0.004992802874656183],
+        ["2024-01-01T00:00:00-08:00", 0.002890656578917574],
+        ["2024-02-01T00:00:00-08:00", 0.009268394351831072],
+        ["2024-03-01T00:00:00-08:00", 0.00345938502097356],
+        ["2024-04-01T00:00:00-07:00", null]
+      ],
+      "results_timezone": "US/Pacific",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "month",
+            "field_ref": [
+              "field",
+              "month",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "month"
+              }
+            ],
+            "name": "month",
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "unit": "month",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 51,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2019-11-01T00:00:00-07:00",
+                  "latest": "2024-01-01T00:00:00-08:00"
+                }
+              }
+            },
+            "semantic_type": null
+          },
+          {
+            "display_name": "Rate",
+            "field_ref": ["aggregation", 0],
+            "name": "Rate",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": "type/Share",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 34,
+                "nil%": 0.02702702702702703
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0,
+                  "q3": 0.007450343039518198,
+                  "max": 0.046703296703296704,
+                  "sd": 0.009055813600117625,
+                  "avg": 0.005436656551689495
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "format-rows?": true,
+      "cols": [
+        {
+          "display_name": "month",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "month",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "month"
+            }
+          ],
+          "name": "month",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 51,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2019-11-01T00:00:00-07:00",
+                "latest": "2024-01-01T00:00:00-08:00"
+              }
+            }
+          },
+          "unit": "month"
+        },
+        {
+          "base_type": "type/Float",
+          "name": "Rate",
+          "display_name": "Rate",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": [
+        {
+          "previous-value": 0.009268394351831072,
+          "unit": "month",
+          "offset": -0.07787920547617495,
+          "last-change": -0.6267546578561236,
+          "col": "Rate",
+          "slope": 0.000004454619492754706,
+          "last-value": 0.00345938502097356,
+          "best-fit": [
+            "+",
+            -0.8150448468216921,
+            ["*", 0.08341719335931119, ["log", "x"]]
+          ]
+        }
+      ],
+      "model": true
+    }
+  }
+]

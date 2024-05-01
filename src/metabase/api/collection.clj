@@ -16,6 +16,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -634,6 +635,7 @@
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (map #(assoc % :collection_id (:id collection)))
        (map remove-unwanted-keys)
        (group-by :model)
        (into []
@@ -860,13 +862,15 @@
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
-  (let [model-kwds (set (map keyword (u/one-or-many models)))]
-    (collection-children (api/read-check Collection id)
-                         {:models       model-kwds
-                          :archived?    archived
-                          :pinned-state (keyword pinned_state)
-                          :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                                         (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+  (let [model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check Collection id)]
+    (u/prog1 (collection-children collection
+                                  {:models       model-kwds
+                                   :archived?    archived
+                                   :pinned-state (keyword pinned_state)
+                                   :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                                                  (or (some-> sort_direction normalize-sort-choice) :asc)]})
+      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------

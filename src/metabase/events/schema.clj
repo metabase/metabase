@@ -4,6 +4,14 @@
    [malli.util :as mut]
    [toucan2.core :as t2]))
 
+;; collection events
+(let [default-schema (mc/schema
+                      [:map {:closed true}
+                       [:user-id  pos-int?]
+                       [:object   [:fn #(t2/instance-of? :model/Collection %)]]])]
+  (def ^:private collection-events-schemas
+    {:event/collection-read default-schema}))
+
 ;; dashboard events
 
 (let [default-schema (mc/schema
@@ -28,7 +36,7 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:user-id  pos-int?]
+                       [:user-id  [:maybe pos-int?]]
                        [:object   [:fn #(t2/instance-of? :model/Card %)]]])]
   (def ^:private card-events-schemas
     {:event/card-create default-schema
@@ -131,13 +139,14 @@
 
 (def topic->schema
   "Returns the schema for an event topic."
-  (merge dashboard-events-schemas
+  (merge alert-schema
          card-events-schemas
-         user-events-schema
-         metric-related-schema
-         segment-related-schema
+         collection-events-schemas
+         dashboard-events-schemas
          database-events
-         alert-schema
+         metric-related-schema
+         permission-failure-events
          pulse-schemas
          table-events
-         permission-failure-events))
+         user-events-schema
+         segment-related-schema))

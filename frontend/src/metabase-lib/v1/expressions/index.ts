@@ -358,3 +358,7 @@ export function isSegment(expr: unknown): boolean {
 export function isCase(expr: unknown): boolean {
   return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
 }
+
+export function isOffset(expr: unknown): boolean {
+  return Array.isArray(expr) && expr[0] === "offset";
+}

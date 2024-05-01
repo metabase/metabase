@@ -6580,12 +6580,181 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
-      id: v50.2024-04-25T17:04:04
+      id: v50.2024-04-25T01:04:04
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:01
+      author: noahmoss
+      comment: Add entity_id to core_user
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: core_user
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:02
+      author: noahmoss
+      comment: Add entity_id to permissions_group
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: permissions_group
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:31
+      author: calherries
+      comment: Add report_card.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:32
+      author: calherries
+      comment: Populate report_card.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_card c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_card c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'card'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:33
+      author: calherries
+      comment: Add report_dashboard.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of dashboard views
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:34
+      author: calherries
+      comment: Populate report_dashboard.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_dashboard c
+              SET c.view_count = (
+                  SELECT COUNT(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE report_dashboard c
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'dashboard'
+                  AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-26T09:19:00
+      author: adam-james
+      comment: Added 0.50.0 - Per-user Dashboard Parameter values table
+      changes:
+        - createTable:
+            tableName: user_parameter_value
+            remarks: Table holding last set value of a parameter per user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who has set the parameter value'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_user_parameter_value_user_id
+                    deleteCascade: true
+              - column:
+                  name: parameter_id
+                  type: varchar(36)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: Value of the parameter
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-26T09:25:00
+      author: adam-james
+      comment: Index user_parameter_value.user_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id
+            columns:
+              column:
+                name: user_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

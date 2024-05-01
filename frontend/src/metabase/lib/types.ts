@@ -27,3 +27,10 @@ export const isNullOrUndefined = (value: any): value is null | undefined =>
 
 export const removeNullAndUndefinedValues = (obj: any) =>
   _.pick(obj, val => !isNullOrUndefined(val));
+
+export const checkNumber = (value: any) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    throw new TypeError(`value ${value} is not a non-NaN number`);
+  }
+  return value;
+};

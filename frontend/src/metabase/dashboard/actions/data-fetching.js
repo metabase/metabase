@@ -622,9 +622,15 @@ function getDatasetQueryParams(datasetQuery = {}) {
     type,
     query,
     native,
-    parameters: parameters.map(parameter => ({
-      ...parameter,
-      value: parameter.value ?? null,
-    })),
+    parameters: parameters
+      .map(parameter => ({
+        ...parameter,
+        value: parameter.value ?? null,
+      }))
+      .sort(sortById),
   };
+}
+
+function sortById(a, b) {
+  return a.id.localeCompare(b.id);
 }
