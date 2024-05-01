@@ -5,8 +5,6 @@ on:
     branches:
       - 'master'
       - 'release-**'
-      # TODO: Remove when done with Druid JDBC initial development phases.
-      - 'druid-jdbc'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -116,18 +114,17 @@ jobs:
       with:
         junit-name: 'be-tests-druid-ee'
         test-args: ":exclude-tags '[:mb/once]'"
-    # TODO: Enable result uploading when JDBC driver work is done
-    # - name: Upload Test Results
-    #   uses: ./.github/actions/upload-test-results
-    #   if: always()
-    #   with:
-    #     input-path: ./target/junit/
-    #     output-name: ${{ github.job }}
-    #     bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-    #     aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ vars.AWS_REGION }}
-    #     trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-jdbc-ee:
     needs: files-changed
@@ -151,18 +148,17 @@ jobs:
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
         test-args: ":exclude-tags '[:mb/once]'"
-    # TODO: Enable result uploading when JDBC driver work is done
-    # - name: Upload Test Results
-    #   uses: ./.github/actions/upload-test-results
-    #   if: always()
-    #   with:
-    #     input-path: ./target/junit/
-    #     output-name: ${{ github.job }}
-    #     bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-    #     aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ vars.AWS_REGION }}
-    #     trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-googleanalytics-ee:
     needs: files-changed
