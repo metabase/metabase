@@ -119,6 +119,11 @@ export interface SearchResult<
   can_write: boolean | null;
 }
 
+export enum SortDirection {
+  Asc = "asc",
+  Desc = "desc",
+}
+
 export type SearchRequest = {
   q?: string;
   archived?: boolean;
@@ -133,6 +138,9 @@ export type SearchRequest = {
   search_native_query?: boolean | null;
   verified?: boolean | null;
   model_ancestors?: boolean | null;
+  // TODO: Support these in the BE
+  sort_column?: string;
+  sort_direction?: SortDirection;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

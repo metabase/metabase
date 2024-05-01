@@ -6,10 +6,10 @@ import { provideSearchItemListTags } from "./tags";
 export const searchApi = Api.injectEndpoints({
   endpoints: builder => ({
     search: builder.query<SearchResponse, SearchRequest>({
-      query: ({ limit, offset, ...body }) => ({
+      query: ({ limit, offset, sort_column, sort_direction, ...body }) => ({
         method: "GET",
         url: "/api/search",
-        params: { limit, offset },
+        params: { limit, offset, sort_column, sort_direction },
         body,
       }),
       providesTags: (response, error, { models }) =>
