@@ -17,30 +17,17 @@ const PAGE_SIZE = 4;
 
 export const PaletteResults = () => {
   // Used for finding actions within the list
-  const { searchQuery, query } = useKBar(state => ({
-    searchQuery: state.searchQuery,
-  }));
-  const trimmedQuery = searchQuery.trim();
+  const { query } = useKBar();
 
-  // Used for finding objects across the Metabase instance
-  const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
-
-  useDebounce(
-    () => {
-      setDebouncedSearchText(trimmedQuery);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
-  );
-
-  useCommandPalette({
-    query: trimmedQuery,
-    debouncedSearchText,
-  });
+  useCommandPalette();
 
   const { results } = useMatches();
 
-  const processedResults = useMemo(() => processResults(results), [results]);
+  const processedResults = useMemo(() => {
+    console.log("processing results");
+    const r = processResults(results);
+    return r;
+  }, [results]);
 
   useKeyPressEvent("End", () => {
     const lastIndex = processedResults.length - 1;
