@@ -1,11 +1,11 @@
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { useDispatch, useStore } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -25,11 +25,11 @@ export const DataStep = ({
   const { stageIndex } = step;
 
   const question = step.question;
+  const questionRef = useLatest(question);
   const collectionId = question.collectionId();
   const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
-  const store = useStore();
   const dispatch = useDispatch();
 
   const pickerLabel = table
@@ -50,7 +50,7 @@ export const DataStep = ({
     databaseId: DatabaseId,
   ) => {
     await dispatch(loadMetadataForTable(databaseId, tableId));
-    const metadata = getMetadata(store.getState());
+    const metadata = questionRef.current.metadata();
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));

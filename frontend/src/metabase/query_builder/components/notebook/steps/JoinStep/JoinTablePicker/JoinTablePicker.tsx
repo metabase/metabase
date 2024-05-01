@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
@@ -40,6 +41,7 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
+  const queryRef = useLatest(query);
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -65,7 +67,7 @@ export function JoinTablePicker({
     databaseId: DatabaseId,
   ) => {
     await dispatch(loadMetadataForTable(databaseId, tableId));
-    onChange?.(Lib.tableOrCardMetadata(query, tableId));
+    onChange?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
   };
 
   return (
