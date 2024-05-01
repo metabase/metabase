@@ -48,6 +48,7 @@
      (fn [card]
        {:lib/type    :metadata/card
         :id          (:id card)
+        :name        (format "Card #%d" (:id card))
         :database-id (:database_id card)})
      [:model/Card :id :database_id]
      :id [:in (set ids)])))

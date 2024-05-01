@@ -227,7 +227,7 @@
    :metric])
 
 (mr/def ::card
-  " Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
   pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
   massaged into a sequence of [[::column]] metadata just yet. See [[metabase.lib.card/card-metadata-columns]] that
