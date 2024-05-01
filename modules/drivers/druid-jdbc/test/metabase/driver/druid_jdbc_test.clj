@@ -478,7 +478,7 @@
        (sort-by first)
        (take 5)))
 
-;; TODO: Find out why timezones do not work correctly
+;; TODO: Find out why timezones behave differently, seemingly correctly, with JDBC driver.
 (deftest table-rows-sample-test
   (mt/test-driver
    :druid-jdbc
