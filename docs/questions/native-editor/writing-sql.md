@@ -83,7 +83,7 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 ![explore restuls button](../images/explore-results.png)
 
-## Turn a SQL question into a model to enable drill-through
+## To enable drill-through, turn a SQL question into a model and set the data types
 
 Visualizations created with SQL do not have [drill-through][drill-through] capability. To enable drill-through on a SQL question, you can turn it into a model:
 
