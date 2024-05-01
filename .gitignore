@@ -82,6 +82,7 @@ dev/src/dev/nocommit/
 /frontend/src/cljs_release
 .shadow-cljs
 .clerk
+*.rej
 
 # lsp: ignore all but the config file
 .lsp/*
