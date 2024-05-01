@@ -6833,6 +6833,22 @@ databaseChangeLog:
               column:
                 name: user_id
 
+  - changeSet:
+      id: v50.2024-04-30T23:57:23
+      author: noahmoss
+      comment: Add `scope` column to api_key to support SCIM authentication
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: scope
+                  type: varchar(64)
+                  remarks: The scope of the API key, if applicable
+                  constraints:
+                    nullable: true
+            tableName: api_key
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
