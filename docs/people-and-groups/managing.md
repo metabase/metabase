@@ -6,7 +6,13 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
+To start managing people:
+
+Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click on the **People** settings result.
+
+Or
+
+Click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
