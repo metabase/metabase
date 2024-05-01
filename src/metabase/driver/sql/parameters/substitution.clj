@@ -23,6 +23,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
@@ -180,10 +181,10 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(mu/defn ^:private maybe-parse-date-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
+(mu/defn ^:private maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
   [x]
   (condp instance? x
-    String   (qp.wrap-value-literals/parse-temporal-string-literal-to-class x java.time.LocalDate)
+    String   (u.date/parse x)
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
              {:type      qp.error-type/invalid-parameter
@@ -191,10 +192,10 @@
 
 (defmethod ->replacement-snippet-info [:sql Date]
   [driver {:keys [s]}]
-  (create-replacement-snippet driver (maybe-parse-date-literal s)))
+  (create-replacement-snippet driver (maybe-parse-temporal-literal s)))
 
 (defn- prepared-ts-subs [driver operator date-str]
-  (let [{:keys [sql-string param-values]} (->prepared-substitution driver (maybe-parse-date-literal date-str))]
+  (let [{:keys [sql-string param-values]} (->prepared-substitution driver (maybe-parse-temporal-literal date-str))]
     {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
@@ -214,7 +215,7 @@
     ;; TIMEZONE FIXME - this is WRONG WRONG WRONG because date ranges should be inclusive for start and *exclusive*
     ;; for end
     (let [[start end] (map (fn [s]
-                             (->prepared-substitution driver (maybe-parse-date-literal s)))
+                             (->prepared-substitution driver (maybe-parse-temporal-literal s)))
                            [start end])]
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))

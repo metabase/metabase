@@ -178,9 +178,7 @@
 (defmethod coerce-temporal [OffsetDateTime ZonedDateTime] [t _target-class]  t) ; OffsetDateTime is perfectly fine.
 (defmethod coerce-temporal [ZonedDateTime  ZonedDateTime] [t _target-class]  t)
 
-(defn parse-temporal-string-literal-to-class
-  "Parse a temporal string `s` to a java.time `target-class`."
-  [s target-class]
+(defn- parse-temporal-string-literal-to-class [s target-class]
   (coerce-temporal (u.date/parse s) target-class))
 
 (defmulti ^:private parse-temporal-string-literal
