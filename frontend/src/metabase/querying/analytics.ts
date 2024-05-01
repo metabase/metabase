@@ -9,32 +9,8 @@ export const trackColumnExtractViaHeader = (
 ) => {
   trackSchemaEvent("question", "1-0-4", {
     event: "column_extract_via_column_header",
-    custom_expressions_used: expressionsUsedBy(tag),
+    custom_expressions_used: Lib.functionsUsedByExtraction(tag),
     database_id: Lib.databaseID(query),
     question_id: question?.id() ?? 0,
   });
 };
-
-function expressionsUsedBy(tag: string) {
-  switch (tag) {
-    case "hour-of-day":
-      return ["hour"];
-    case "day-of-month":
-      return ["day"];
-    case "day-of-week":
-      return ["weekday"];
-    case "month-of-year":
-      return ["month"];
-    case "quarter-of-year":
-      return ["quarter"];
-    case "year":
-      return ["year"];
-    case "domain":
-      return ["domain"];
-    case "host":
-      return ["host"];
-    case "subdomain":
-      return ["subdomain"];
-  }
-  return [];
-}
