@@ -98,14 +98,16 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
+        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric),
         ),
-        icon: "star",
+        icon: "metric",
       });
     } else if (operators.length > 0) {
       sections.push({
         key: "operators",
+        name: t`Basic metrics`,
         items: operators.map(operator =>
           getOperatorListItem(query, stageIndex, operator),
         ),
