@@ -108,10 +108,10 @@
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
           query             (-> (lib/query metadata-provider orders)
-                                ;; 1. year
-                                (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
-                                ;; 2. month
+                                ;; 1. month
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                ;; 2. year
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 ;; 3. sum(total)
                                 (lib/aggregate (lib/sum orders-total))
                                 ;; 4. monthly growth %
@@ -123,18 +123,18 @@
                                 (assoc-in [:middleware :format-rows?] false))]
       (mt/with-native-query-testing-context query
         ;;       1               2               3        4
-        (is (= [[#t "2016-01-01" #t "2016-04-01" 52.76    nil]
-                [#t "2016-01-01" #t "2016-05-01" 1265.73  2299.03]
-                [#t "2016-01-01" #t "2016-06-01" 2072.92  63.77]
-                [#t "2016-01-01" #t "2016-07-01" 3734.72  80.17]
-                [#t "2016-01-01" #t "2016-08-01" 4960.65  32.83]
-                [#t "2016-01-01" #t "2016-09-01" 5372.09  8.29]
-                [#t "2016-01-01" #t "2016-10-01" 7702.93  43.39]
-                [#t "2016-01-01" #t "2016-11-01" 7926.69  2.9]
-                [#t "2016-01-01" #t "2016-12-01" 9068.45  14.4]
-                [#t "2017-01-01" #t "2017-01-01" 11094.77 nil] ; <- should reset here because breakout 1 changed values
-                [#t "2017-01-01" #t "2017-02-01" 11243.66 1.34]
-                [#t "2017-01-01" #t "2017-03-01" 14115.68 25.54]]
+        (is (= [[#t "2016-04-01" #t "2016-01-01" 52.76    nil]
+                [#t "2016-05-01" #t "2016-01-01" 1265.73  2299.03]
+                [#t "2016-06-01" #t "2016-01-01" 2072.92  63.77]
+                [#t "2016-07-01" #t "2016-01-01" 3734.72  80.17]
+                [#t "2016-08-01" #t "2016-01-01" 4960.65  32.83]
+                [#t "2016-09-01" #t "2016-01-01" 5372.09  8.29]
+                [#t "2016-10-01" #t "2016-01-01" 7702.93  43.39]
+                [#t "2016-11-01" #t "2016-01-01" 7926.69  2.9]
+                [#t "2016-12-01" #t "2016-01-01" 9068.45  14.4]
+                [#t "2017-01-01" #t "2017-01-01" 11094.77 nil] ; <- should reset here because breakout 2 changed values
+                [#t "2017-02-01" #t "2017-01-01" 11243.66 1.34]
+                [#t "2017-03-01" #t "2017-01-01" 14115.68 25.54]]
                (mt/formatted-rows [->local-date ->local-date 2.0 2.0]
                                   (qp/process-query query))))))))
 
