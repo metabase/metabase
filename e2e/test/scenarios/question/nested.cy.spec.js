@@ -12,6 +12,7 @@ import {
   filter,
   filterField,
   chartPathWithFillColor,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -189,7 +190,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      cy.get("[data-testid=cell-data]").contains(metric.name);
+      assertQueryBuilderRowCount(5);
     });
   });
 

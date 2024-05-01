@@ -753,7 +753,6 @@
                                    (remove #(false? (:is_upload %)))
                                    (keep :table_id)
                                    set)
-        mbql?                 (fn [model] (= "query" (name (or (:query_type model) "query"))))
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
