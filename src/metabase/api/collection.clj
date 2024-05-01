@@ -86,10 +86,14 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when-not archived
-                         [:and
-                          [:not= :id collection/trash-collection-id]
-                          [:not :archived]])
+                       (case archived
+                         nil nil
+                         false [:and
+                                [:not= :id collection/trash-collection-id]
+                                [:not :archived]]
+                         true [:or
+                               [:= :id collection/trash-collection-id]
+                               :archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -188,8 +192,8 @@
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
-  [archived exclude-other-user-collections namespace shallow collection-id]
-  {archived                       [:maybe :boolean]
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
+  {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
@@ -198,7 +202,7 @@
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
-                                         :archived                       (boolean archived)
+                                         :archived                       (if exclude-archived false nil)
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -208,7 +212,7 @@
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
-                                                                    :where [:= :archived archived]}))
+                                                                    :where [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -312,7 +316,7 @@
   rows)
 
 (defmethod collection-children-query :pulse
-  [_ collection {:keys [pinned-state archived?]}]
+  [_ collection {:keys [archived? pinned-state]}]
   (-> {:select-distinct [:p.id
                          :p.name
                          :p.entity_id
@@ -322,9 +326,9 @@
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
+                         [:= :p.archived (boolean archived?)]
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
-                         [:= :archived archived?]
                          ;; exclude dashboard subscriptions
                          [:= :p.dashboard_id nil]]}
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
@@ -343,7 +347,7 @@
   [_ {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived archived?]})
+   :where  [:= :archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
   [_ collection options]
@@ -355,8 +359,8 @@
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :archived archived?]
-            [:= :collection_id (:id collection)]]})
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
 
 (defmethod post-process-collection-children :timeline
   [_ _collection rows]
@@ -373,7 +377,7 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [pinned-state archived?]}]
+(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.trashed_from_collection_id
@@ -406,7 +410,7 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
-                   [:= :archived archived?]
+                   [:= :archived (boolean archived?)]
                    [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
@@ -481,7 +485,7 @@
   [_ _ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [pinned-state archived?]}]
+(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    :d.trashed_from_collection_id
                    [(h2x/literal "dashboard") :model]
@@ -498,8 +502,8 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :archived archived?]
-                   [:= :collection_id (:id collection)]]}
+                   [:= :collection_id (:id collection)]
+                   [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -523,9 +527,12 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [collection-namespace pinned-state exclude-trash? archived?]}]
+  [collection {:keys [collection-namespace pinned-state archived?]}]
   (-> (assoc (collection/effective-children-query
               collection
+              (if archived?
+                [:or [:= :archived true] [:= :id collection/trash-collection-id]]
+                [:and [:= :archived false] [:not= :id collection/trash-collection-id]])
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
@@ -541,9 +548,7 @@
                       [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
-      (sql.helpers/where (pinned-state->clause pinned-state nil))
-      (sql.helpers/where [:= :archived archived?])
-      (sql.helpers/where (when exclude-trash? [:not= :id collection/trash-collection-id]))))
+      (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
 (defmethod collection-children-query :collection
   [_ collection options]
@@ -884,7 +889,7 @@
   [id models archived pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
-   archived       ms/BooleanValue
+   archived       [:maybe ms/BooleanValue]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
@@ -938,10 +943,9 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models exclude_trash archived namespace pinned_state sort_column sort_direction]
+  [models archived namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
-   archived       ms/MaybeBooleanValue
-   exclude_trash  ms/MaybeBooleanValue
+   archived       [:maybe ms/BooleanValue]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
@@ -955,7 +959,6 @@
      root-collection
      {:archived?      (if (nil? archived) false archived)
       :models         model-kwds
-      :exclude-trash? (if (nil? exclude_trash) true (boolean exclude_trash))
       :pinned-state   (keyword pinned_state)
       :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
                           (or (some-> sort_direction normalize-sort-choice) :asc)]})))

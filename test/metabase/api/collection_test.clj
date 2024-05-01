@@ -2110,12 +2110,12 @@
   (testing "We can optionally request to include the Trash"
     (is (= [{:name "Trash"
              :id collection/trash-collection-id}]
-           (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :exclude_trash false))
+           (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :archived true))
                 (filter #(= (:id %) collection/trash-collection-id))
                 (map #(select-keys % [:name :id])))))))
 
 (deftest collection-tree-includes-trash-if-requested
-  (testing "Trash collection is included if requested"
-    (is (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree" :archived "true"))))
-  (testing "Trash collection is NOT included by default"
-    (is (not (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree"))))))
+  (testing "Trash collection is included by default"
+    (is (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
+  (testing "Trash collection is NOT included if `exclude-archived` is passed"
+    (is (not (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))
