@@ -214,20 +214,21 @@
   [query     :- ::lib.schema/query
    card-id   :- [:maybe ::lib.schema.id/card]
    card-type :- ::lib.schema.metadata/card.type]
-  (into [] (distinct)
-    (concat
-     (query-dependents query query)
-     (when (and (some? card-id) (or (= card-type :model) (= card-type :metric)))
-       (concat
-         [{:type :table, :id (str "card__" card-id)}]
-         (when-let [card (lib.metadata/card query card-id)]
-           (query-dependents query (lib.query/query query card))))))))
+  (into []
+        (distinct)
+        (concat
+         (query-dependents query query)
+         (when (and (some? card-id)
+                    (#{:model :metric} card-type))
+           (cons {:type :table, :id (str "card__" card-id)}
+                 (when-let [card (lib.metadata/card query card-id)]
+                   (query-dependents query (lib.query/query query card))))))))
+
 
 (mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   table-id              :- [:or ::lib.schema.id/table :string]]
-  (concat
-    [{:type :table, :id table-id}]
-    (when-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
-      [{:type :card, :id card-id}])))
+  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id               :- [:or ::lib.schema.id/table :string]]
+  (cons {:type :table, :id table-id}
+        (when-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+          [{:type :card, :id card-id}])))
