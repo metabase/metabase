@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
@@ -6,6 +7,10 @@ import {
   openOrdersTable,
   expressionEditorWidget,
   openTable,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -155,3 +160,35 @@ function selectExtractColumn() {
     cy.findByText("Extract columns").click();
   });
 }
+
+describeWithSnowplow(
+  "scenarios > question > custom column > expression shortcuts > extract",
+  () => {
+    beforeEach(() => {
+      restore();
+      resetSnowplow();
+      cy.signInAsNormalUser();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
+    it("should track column extraction via shortcut", () => {
+      openTable({ mode: "notebook", limit: 1, table: ORDERS_ID });
+      addCustomColumn();
+      selectExtractColumn();
+
+      cy.findAllByTestId("dimension-list-item").contains("Created At").click();
+
+      popover().findAllByRole("button").contains("Hour of day").click();
+
+      expectGoodSnowplowEvent({
+        event: "column_extract_via_shortcut",
+        custom_expressions_used: ["hour"],
+        database_id: SAMPLE_DB_ID,
+        question_id: 0,
+      });
+    });
+  },
+);
