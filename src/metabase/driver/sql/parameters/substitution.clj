@@ -180,7 +180,7 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(mu/defn ^:private maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
+(defn- maybe-parse-temporal-literal
   [x]
   (condp instance? x
     String   (u.date/parse x)

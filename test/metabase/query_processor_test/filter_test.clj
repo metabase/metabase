@@ -762,7 +762,7 @@
                                     (lib/filter (lib/= orders-created-at "2019-02-11"))
                                     (lib/order-by orders-id)
                                     (lib/with-fields [orders-id orders-created-at]))
-              preprocessed      (qp.preprocess/preprocess query)]
+              preprocessed      (qp/preprocess query)]
           ;; only bother testing this on databases that have an actual `:type/DateTimeWithTZ` type e.g. `timestamp with
           ;; time zone`, we're not testing anything interesting in things like SQLite that just create regular datetime
           ;; columns here.
