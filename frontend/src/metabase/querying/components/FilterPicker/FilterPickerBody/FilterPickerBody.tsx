@@ -60,7 +60,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isNumeric(column)) {
     return NumberFilterPicker;
   }
-  if (Lib.isString(column) || Lib.isStringLike(column)) {
+  if (Lib.isStringOrStringLike(column) {
     return StringFilterPicker;
   }
   return null;
