@@ -1,10 +1,9 @@
 import classNames from "classnames";
-import type { FocusEvent, MouseEvent, KeyboardEvent, ReactNode } from "react";
-import { useRef, useState, useMemo, useEffect } from "react";
+import type { MouseEvent, KeyboardEvent, FocusEvent } from "react";
+import { useRef, useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { color } from "metabase/lib/colors";
 import {
   Button,
@@ -74,17 +73,15 @@ export function ColumnPicker({
 
   const dropdown = (
     <FocusTrap active={open}>
-      <Dropdown onBlur={handleBlur}>
-        <QueryColumnPicker
-          query={query}
-          stageIndex={stageIndex}
-          columnGroups={columnGroups}
-          onSelect={onChange}
-          onClose={handleClose}
-          checkIsColumnSelected={item => item.column === value}
-          width="100%"
-        />
-      </Dropdown>
+      <QueryColumnPicker
+        query={query}
+        stageIndex={stageIndex}
+        columnGroups={columnGroups}
+        onSelect={onChange}
+        onClose={handleClose}
+        checkIsColumnSelected={item => item.column === value}
+        width="100%"
+      />
     </FocusTrap>
   );
 
@@ -132,28 +129,10 @@ export function ColumnPicker({
             {text}
           </Button>
         </Popover.Target>
-        <Popover.Dropdown>{dropdown}</Popover.Dropdown>
+        <Popover.Dropdown setupSequencedCloseHandler onBlur={handleBlur}>
+          {dropdown}
+        </Popover.Dropdown>
       </Popover>
     </Input.Wrapper>
   );
-}
-
-// Hack to prevent parent TippyPopover from closing when selecting an item
-// TODO: remove when TippyPopover is no longer used
-function Dropdown({
-  children,
-  onBlur,
-}: {
-  children: ReactNode;
-  onBlur: (evt: FocusEvent<HTMLDivElement>) => void;
-}) {
-  const { setupCloseHandler, removeCloseHandler } =
-    useSequencedContentCloseHandler();
-
-  useEffect(() => {
-    setupCloseHandler(document.body, () => undefined);
-    return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler]);
-
-  return <div onBlur={onBlur}>{children}</div>;
 }
