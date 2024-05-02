@@ -5,7 +5,6 @@ import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Field, FieldDimension, FieldId } from "./field";
-import type { Metric, MetricId } from "./metric";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { ForeignKey, Schema, SchemaId, Table, TableId } from "./table";
@@ -39,7 +38,6 @@ export interface NormalizedTable
   fields?: FieldId[];
   fks?: NormalizedForeignKey[];
   segments?: SegmentId[];
-  metrics?: MetricId[];
   schema?: SchemaId;
   schema_name?: string;
 }
@@ -65,10 +63,6 @@ export interface NormalizedField
 }
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {
-  table?: TableId;
-}
-
-export interface NormalizedMetric extends Omit<Metric, "table"> {
   table?: TableId;
 }
 
