@@ -1,5 +1,6 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
+import Color from "color";
 
 import { getThemeOverrides } from "metabase/ui/theme";
 
@@ -19,6 +20,11 @@ describe("ThemeProvider", () => {
 
     const textCss = window.getComputedStyle(screen.getByText("Text"));
     expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
+
+    const defaultColor = OVERRIDES.colors?.["text-dark"]?.[0];
+    expect(textCss.getPropertyValue("color")).toBe(
+      Color(defaultColor).rgb().string(),
+    );
   });
 
   it("merges the theme overrides when the theme prop is provided", () => {
