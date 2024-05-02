@@ -51,3 +51,7 @@
       (#'cloud-migration/migrate! migration)
       (is (= (:progress (t2/select-one CloudMigration :id (:id migration))) 0))
       (is (not (cloud-migration/read-only-mode))))))
+
+(deftest read-only-login-test
+  (cloud-migration/read-only-mode! true)
+  (mt/client :post 200 "session" (mt/user->credentials :rasta)))
