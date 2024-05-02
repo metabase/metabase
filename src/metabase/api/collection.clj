@@ -1061,7 +1061,7 @@
   archive the collection (archiving means 'moving to the trash' so it makes sense to deal with them together), do the
   appropriate permissions checks and changes."
   [collection-before-update collection-updates]
-  (condp #(contains? %2 %1) collection-updates
+  (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
     ;; note that archiving includes a move. So if they include `archived` (with or without `parent_id`), that's an
     ;; archive/unarchive. If they only include `parent_id`, that's a move.
     :archived (archive-collection! collection-before-update collection-updates)
