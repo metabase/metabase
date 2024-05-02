@@ -19,6 +19,7 @@ import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
 import type {
+  GroupName,
   SuggestArgs,
   Suggestion,
 } from "metabase-lib/v1/expressions/suggest";
@@ -56,7 +57,7 @@ export type SuggestionShortcut = {
   shortcut: true;
   name: string;
   icon: IconName;
-  group: string;
+  group: GroupName;
   action: () => void;
 };
 
@@ -165,7 +166,7 @@ function transformPropsToState(
     metadata,
     reportTimezone,
     showMetabaseLinks,
-    shortcuts,
+    shortcuts = [],
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -616,7 +617,7 @@ class ExpressionEditorTextfield extends React.Component<
       expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
-      shortcuts,
+      shortcuts = [],
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggestWithExtras({

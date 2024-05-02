@@ -7,13 +7,12 @@ import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitleContainer,
@@ -42,7 +41,7 @@ type MetricListItem = Lib.MetricDisplayInfo & {
 type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
-  name: string;
+  name?: string;
   key: string;
   items: ListItem[];
   icon?: string;
@@ -95,25 +94,24 @@ export function AggregationPicker({
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
 
+    if (metrics.length > 0) {
+      sections.push({
+        key: "metrics",
+        items: metrics.map(metric =>
+          getMetricListItem(query, stageIndex, metric),
+        ),
+        icon: "metric",
+      });
+    }
+
     if (operators.length > 0) {
       sections.push({
-        key: "basic-metrics",
+        key: "operators",
         name: t`Basic Metrics`,
         items: operators.map(operator =>
           getOperatorListItem(query, stageIndex, operator),
         ),
         icon: "table2",
-      });
-    }
-
-    if (metrics.length > 0) {
-      sections.push({
-        key: "common-metrics",
-        name: t`Common Metrics`,
-        items: metrics.map(metric =>
-          getMetricListItem(query, stageIndex, metric),
-        ),
-        icon: "star",
       });
     }
 
@@ -243,10 +241,9 @@ export function AggregationPicker({
   }
 
   return (
-    <Root className={className} color="summarize">
+    <Box className={className} c="summarize">
       <AccordionList
         sections={sections}
-        alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
         itemIsSelected={checkIsItemSelected}
@@ -257,7 +254,7 @@ export function AggregationPicker({
         maxHeight={Infinity}
         withBorders
       />
-    </Root>
+    </Box>
   );
 }
 

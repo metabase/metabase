@@ -41,8 +41,10 @@ export interface QueryColumnPickerProps {
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
   "data-testid"?: string;
-  width?: number | string;
+  width?: string;
   hasInitialFocus?: boolean;
+  alwaysExpanded?: boolean;
+  disableSearch?: boolean;
 }
 
 type Sections = {
@@ -64,9 +66,11 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
-  "data-testid": dataTestId,
   width,
+  "data-testid": dataTestId,
   hasInitialFocus = true,
+  alwaysExpanded,
+  disableSearch,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -190,7 +194,7 @@ export function QueryColumnPicker({
       <StyledAccordionList
         className={className}
         sections={sections}
-        alwaysExpanded={false}
+        alwaysExpanded={alwaysExpanded}
         onChange={handleSelectColumn}
         itemIsSelected={checkIsColumnSelected}
         renderItemWrapper={renderItemWrapper}
@@ -206,10 +210,11 @@ export function QueryColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        globalSearch
         withBorders
         hasInitialFocus={hasInitialFocus}
         width={width}
+        globalSearch={!disableSearch}
+        searchable={!disableSearch}
       />
     </DelayGroup>
   );

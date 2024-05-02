@@ -2,7 +2,6 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   createMockDatabase,
   createMockField,
-  createMockMetric,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -66,16 +65,6 @@ describe("Metadata", () => {
 
       const tables = metadata.tablesList();
       expect(tables).toEqual([metadata.table(1), metadata.table(2)]);
-    });
-  });
-  describe("metricsList (deprecated)", () => {
-    it("should return a list of metric objects found on the instance", () => {
-      const metadata = createMockMetadata({
-        metrics: [createMockMetric({ id: 1 }), createMockMetric({ id: 2 })],
-      });
-
-      const metrics = metadata.metricsList();
-      expect(metrics).toEqual([metadata.metric(1), metadata.metric(2)]);
     });
   });
   describe("segmentsList (deprecated)", () => {

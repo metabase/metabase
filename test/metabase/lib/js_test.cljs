@@ -250,6 +250,33 @@
       (is (=? [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} price-id] 3] expr))
       (is (= ["<" ["field" price-id {"base-type" "Integer"}] 3] (js->clj legacy-expr))))))
 
+(deftest ^:parallel string-filter-clauses-test
+  (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
+          opts                         [{} {:case-sensitive false}]
+          :let [field    [:field {} (meta/id :venues :name)]
+                js-field #js ["field" (meta/id :venues :name) #js {"base-type" "type/Text"}]]
+          [label legacy-expr exp-form] [["binary"
+                                         (apply array (name tag) js-field "hotel"
+                                                (when (seq opts) [(clj->js opts)]))
+                                         [tag opts field "hotel"]]
+                                        ["varargs"
+                                         #js [(name tag) (clj->js opts) js-field "hotel" "motel"]
+                                         [tag opts field "hotel" "motel"]]]]
+    (testing (str (str tag) " in " label " form with" (when (empty? opts) "out") " options")
+      (let [legacy-query      #js {:type  "query"
+                                   :query #js {:source_table (meta/id :venues)
+                                               :filter       legacy-expr}}
+            query             (lib.js/query (meta/id) meta/metadata-provider legacy-query)
+            returned          (lib.js/legacy-query query)]
+        (is (=? {:lib/type :mbql/query
+                 :stages [{:lib/type     :mbql.stage/mbql
+                           :filters      [exp-form]
+                           :source-table (meta/id :venues)}]}
+                query))
+        ;; TODO: Use =? JS support once it exists (metabase/hawk #24)
+        (is (=? (js->clj legacy-expr)
+                (-> returned js->clj (get "query") (get "filter"))))))))
+
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
     (testing "returns directly for most values"

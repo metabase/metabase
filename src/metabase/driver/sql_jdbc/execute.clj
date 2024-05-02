@@ -720,12 +720,16 @@
                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
-               (finally (try (.cancel stmt)
-                             (catch SQLFeatureNotSupportedException _
-                               (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                          (name driver)))
-                             (catch Throwable _
-                               (log/warn "Statement cancelation failed.")))))))))))
+               (finally
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;;       It should be removed afterwards!
+                 (when-not (= :vertica driver)
+                   (try (.cancel stmt)
+                        (catch SQLFeatureNotSupportedException _
+                          (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                     (name driver)))
+                        (catch Throwable _
+                          (log/warn "Statement cancelation failed."))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

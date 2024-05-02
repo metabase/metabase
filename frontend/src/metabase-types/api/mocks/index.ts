@@ -10,7 +10,6 @@ export * from "./database";
 export * from "./dataset";
 export * from "./field";
 export * from "./group";
-export * from "./metric";
 export * from "./models";
 export * from "./modelIndexes";
 export * from "./parameters";
