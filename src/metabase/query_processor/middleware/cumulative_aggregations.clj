@@ -95,8 +95,6 @@
   [num-breakouts indexes-to-sum]
   (let [partition->last-row (volatile! nil)]
     (fn [row]
-      (println "(pr-str row):" (pr-str row)) ; NOCOMMIT
-      (println "(pr-str @partition->last-row):" (pr-str @partition->last-row)) ; NOCOMMIT
       (let [k        (partition-key num-breakouts row)
             last-row (get @partition->last-row k)
             row'     (if last-row
@@ -105,7 +103,6 @@
                                (vec row)
                                indexes-to-sum)
                        row)]
-        (println "(pr-str row'):" (pr-str row')) ; NOCOMMIT
         ;; save the updated row for this partition key.
         (vswap! partition->last-row assoc k row')
         ;; now return the updated new row.

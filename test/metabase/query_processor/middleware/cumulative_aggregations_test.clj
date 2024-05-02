@@ -6,23 +6,34 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.store :as qp.store]))
 
-(deftest ^:parallel add-values-from-last-row-test
-  (are [expected indecies] (= expected
-                              (#'qp.cumulative-aggregations/add-values-from-last-row 0 indecies [1 2 3] [1 2 3]))
+(deftest ^:parallel add-values-from-last-partition-test
+  (are [expected indexes] (= expected
+                             (let [f (#'qp.cumulative-aggregations/add-values-from-last-partition-fn 0 indexes)]
+                               (f [1 2 3])
+                               (f [1 2 3])))
     [1 2 3] #{}
     [2 2 3] #{0}
     [2 4 3] #{0 1}
-    [1 4 6] #{1 2})
+    [1 4 6] #{1 2}))
 
-  (is (thrown?
-       IndexOutOfBoundsException
-       (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{4} [1 2 3] [1 2 3]))
-      "should throw an Exception if index is out of bounds")
+(deftest ^:parallel add-values-from-last-partition-out-of-bounds-test
+  (let [f (#'qp.cumulative-aggregations/add-values-from-last-partition-fn 0 #{4})]
+    (is (thrown?
+         IndexOutOfBoundsException
+         (do
+           (f [1 2 3])
+           (f [1 2 3])))
+        "should throw an Exception if index is out of bounds")))
 
+(deftest ^:parallel add-values-from-last-partition-nils-test
   (testing "Do we handle nils correctly"
-    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [nil] [1])))
-    (is (= [0] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [nil] [nil])))
-    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [1] [nil])))))
+    (are [row-1 row-2 expected] (= expected
+                                   (let [f (#'qp.cumulative-aggregations/add-values-from-last-partition-fn 0 #{0})]
+                                     (f row-1)
+                                     (f row-2)))
+      [nil] [1]   [1]
+      [nil] [nil] [0]
+      [1]   [nil] [1])))
 
 (deftest ^:parallel diff-indicies-test
   (testing "collections are the same"
@@ -42,17 +53,17 @@
 (deftest ^:parallel transduce-results-test
   (testing "Transducing result rows"
     (let [rows [[0] [1] [2] [3] [4] [5] [6] [7] [8] [9]]]
-      (testing "0/1 indecies"
+      (testing "0/1 indexes"
         (is (= rows
                (sum-rows #{} rows))))
-      (testing "1/1 indecies"
+      (testing "1/1 indexes"
         (is (= [[0] [1] [3] [6] [10] [15] [21] [28] [36] [45]]
                (sum-rows #{0} rows)))))
     (let [rows [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5] [6 6] [7 7] [8 8] [9 9]]]
-      (testing "1/2 indecies"
+      (testing "1/2 indexes"
         (is (= [[0 0] [1 1] [3 2] [6 3] [10 4] [15 5] [21 6] [28 7] [36 8] [45 9]]
                (sum-rows #{0} rows))))
-      (testing "2/2 indecies"
+      (testing "2/2 indexes"
         (is (= [[0 0] [1 1] [3 3] [6 6] [10 10] [15 15] [21 21] [28 28] [36 36] [45 45]]
                (sum-rows #{0 1} rows)))))
     (testing "sum-rows should still work if rows are lists"
