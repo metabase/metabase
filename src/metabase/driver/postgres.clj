@@ -61,7 +61,6 @@
                               :datetime-diff            true
                               :now                      true
                               :persist-models           true
-                              :table-privileges         true
                               :schemas                  true
                               :uploads                  true
                               :connection-impersonation true}]
@@ -74,6 +73,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :table-privileges
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
