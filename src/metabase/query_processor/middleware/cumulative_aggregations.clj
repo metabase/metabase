@@ -78,9 +78,7 @@
   for [[metabase.query-processor.middleware.cumulative-aggregations]] for more info."
   [num-breakouts row]
   ;; breakouts are always the first results returned. Return all breakouts except the first.
-  (mapv (fn [i]
-          (nth row i))
-        (range 1 num-breakouts)))
+  (subvec (vec row) 1 num-breakouts))
 
 (defn- add-values-from-last-partition-fn
   "Create a stateful function that can add values from the previous row for each partition for a set of specified

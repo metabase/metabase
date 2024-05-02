@@ -696,7 +696,7 @@
   [driver inner-query]
   (let [num-breakouts   (count (:breakout inner-query))
         group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when ((fnil > 0) num-breakouts 1)
+        partition-exprs (when (> num-breakouts 1)
                           (rest group-bys))
         order-expr      (first group-bys)]
     (merge
