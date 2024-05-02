@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { ColorPalette } from "metabase/lib/colors/types";
 
-import { useMantineTheme } from "../ui";
+import { useMantineTheme, type MantineColor } from "../ui";
 
 /**
  * Gets a color palette from the current Mantine theme.
@@ -13,11 +13,13 @@ export function usePalette(): ColorPalette {
   const theme = useMantineTheme();
 
   return useMemo(() => {
+    const color = (name: MantineColor) => theme.colors[name]?.[0];
+
     return {
-      white: theme.colors["white"]?.[0],
-      border: theme.colors["border"]?.[0],
-      "text-dark": theme.colors["text-dark"]?.[0],
-      "text-white": theme.colors["text-white"]?.[0],
+      white: color("white"),
+      border: color("border"),
+      "text-dark": color("text-dark"),
+      "text-white": color("text-white"),
     };
   }, [theme.colors]);
 }
