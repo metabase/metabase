@@ -141,7 +141,6 @@ function StringValueInput({
           data={[]}
           placeholder={t`Enter some text`}
           autoFocus
-          shouldCreate={() => true}
           w="100%"
           aria-label={t`Filter value`}
           onChange={onChange}
