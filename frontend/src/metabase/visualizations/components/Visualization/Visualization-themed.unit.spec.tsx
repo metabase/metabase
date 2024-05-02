@@ -9,7 +9,7 @@ import Visualization from ".";
 registerVisualizations();
 
 describe("Themed Visualization", () => {
-  it("inherits the chart labels from the theme", async () => {
+  it("inherits the chart label color from the theme", async () => {
     const TEST_COLOR = "rgb(44, 55, 66)";
 
     const series = [
