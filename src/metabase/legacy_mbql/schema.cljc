@@ -798,13 +798,38 @@
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
-(defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause contains,    field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (mr/def clause-keyword
+    [:or
+     ;; Binary form
+     (helpers/clause (keyword (name clause-keyword))
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "options" [:optional StringFilterOptions])
+     ;; Multi-arg form
+     (helpers/clause (keyword (name clause-keyword))
+                     "options" StringFilterOptions
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "second-string-or-field" StringExpressionArg
+                     "more-strings-or-fields" [:rest StringExpressionArg])]))
+
+(def ^{:clause-name :starts-with} starts-with
+  "Schema for a valid :starts-with clause."
+  [:ref ::starts-with])
+(def ^{:clause-name :ends-with} ends-with
+  "Schema for a valid :ends-with clause."
+  [:ref ::ends-with])
+(def ^{:clause-name :contains} contains
+  "Schema for a valid :contains clause."
+  [:ref ::contains])
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(defclause ^:sugar does-not-contain
-  field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(def ^{:sugar       true
+       :clause-name :does-not-contain}
+  does-not-contain
+  "Schema for a valid :does-not-contain clause."
+  [:ref ::does-not-contain])
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to

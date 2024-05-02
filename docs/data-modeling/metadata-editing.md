@@ -85,7 +85,6 @@ To add a description, click into the box below the column name. Descriptions are
 
 **Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
 
-
 ### Column order
 
 Metabase defaults to the column order defined in your database schema. To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
@@ -110,6 +109,8 @@ If you want Metabase to treat a text or number column as a datetime column:
 3. Click on the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cast to a specific data type**
 5. Select a casting option.
+
+> Metabase currently supports only casting to a datetime type in **Cast to a specific data type**. If you need to cast to a different type (like float), you can [create a SQL question](../questions/native-editor/writing-sql.md#starting-a-new-sql-query) that casts the data and [save it as a model](./models.md#create-a-model-from-a-saved-question), or create a view directly in your database.
 
 **Text to datetime casting options**:
 

@@ -1,6 +1,5 @@
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { Field, FieldDimensionOption, FieldId } from "./field";
-import type { Metric } from "./metric";
 import type { Segment } from "./segment";
 
 export type ConcreteTableId = number;
@@ -34,7 +33,6 @@ export interface Table {
 
   fks?: ForeignKey[];
   fields?: Field[];
-  metrics?: Metric[];
   segments?: Segment[];
   dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;

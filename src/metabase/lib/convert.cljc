@@ -292,6 +292,19 @@
   {:pre [(= (count clause) 4)]}
   [tag opts (->pMBQL expr) n])
 
+;; These four expressions have a different form depending on the number of arguments.
+(doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
+  (lib.hierarchy/derive tag ::string-comparison))
+
+(defmethod ->pMBQL ::string-comparison
+  [[tag opts & args :as clause]]
+  (if (> (count args) 2)
+    ;; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    (lib.options/ensure-uuid (into [tag opts] (map ->pMBQL args)))
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [[tag x y opts] clause]
+      (lib.options/ensure-uuid [tag (or opts {}) (->pMBQL x) (->pMBQL y)]))))
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -476,6 +489,15 @@
   [[tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
   [tag opts (->legacy-MBQL expr) n])
+
+(defmethod ->legacy-MBQL ::string-comparison
+  [[tag opts & args]]
+  (if (> (count args) 2)
+    (into [tag (disqualify opts)] (map ->legacy-MBQL args)) ; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [opts (disqualify opts)]
+      (cond-> (into [tag] (map ->legacy-MBQL args))
+        (seq opts) (conj opts)))))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

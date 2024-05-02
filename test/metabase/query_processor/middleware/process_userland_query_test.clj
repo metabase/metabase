@@ -181,9 +181,9 @@
                                                   :name     "very_interesting_field"}
                      :model/Card card            {:dataset_query (mt/mbql-query products
                                                                                 {:filter [:> [:field field-id nil] 1]})}]
-        (binding [process-userland-query/*save-execution-metadata-async* false
-                  qp.pipeline/*execute*                                  (fn [_driver _query respond]
-                                                                           (respond {} []))]
+        (binding [qp.util/*execute-async?* false
+                  qp.pipeline/*execute*    (fn [_driver _query respond]
+                                             (respond {} []))]
           (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
           (is (=? [{:filter_op                  :>
                     :breakout_temporal_unit     nil

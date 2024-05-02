@@ -219,6 +219,38 @@
                                              :effective-type :type/Integer}
                                             ag-uuid]]}]}))))))
 
+(deftest ^:parallel multi-argument-string-comparison-test
+  (doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
+    (testing (str tag)
+      (testing "with two arguments (legacy style)"
+        (testing "->pMBQL"
+          (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC"]
+                  (lib.convert/->pMBQL [tag [:field 12 nil] "ABC"])))
+          (is (=? [tag {:lib/uuid string?, :case-sensitive false} [:field {} 12] "ABC"]
+                  (lib.convert/->pMBQL [tag [:field 12 nil] "ABC" {:case-sensitive false}]))))
+        (testing "->legacy-MBQL"
+          (is (=? [tag [:field 12 nil] "ABC"]
+                  (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC"])))
+          (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
+                  (lib.convert/->legacy-MBQL
+                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
+
+      (testing "with multiple arguments (pMBQL style)"
+        (testing "->pMBQL"
+          (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->pMBQL [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"])))
+          (is (=? [tag {:lib/uuid string?, :case-sensitive false}
+                   [:field {} 12] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->pMBQL [tag {:case-sensitive false}
+                                        [:field 12 nil] "ABC" "HJK" "XYZ"]))))
+
+        (testing "->legacy-MBQL"
+          (is (=? [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
+          (is (=? [tag {:case-sensitive false} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  (lib.convert/->legacy-MBQL
+                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
+
 (deftest ^:parallel source-card-test
   (let [original {:database 1
                   :type     :query
@@ -294,6 +326,16 @@
 
     ;; (#29950)
     [:starts-with [:field 133751 nil] "CHE" {:case-sensitive true}]
+
+    ;; (#41958)
+    [:starts-with      {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:ends-with        {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:contains         {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:does-not-contain {}                      [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:starts-with      {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:ends-with        {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:contains         {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
+    [:does-not-contain {:case-sensitive false} [:field 133751 nil] "ABC" "HJK" "XYZ"]
 
     ;; (#29938)
     {"First int"  [:case [[[:= [:field 133751 nil] 1] 1]]    {:default 0}]
