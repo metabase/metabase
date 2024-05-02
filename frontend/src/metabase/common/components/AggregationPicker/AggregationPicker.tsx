@@ -102,7 +102,9 @@ export function AggregationPicker({
         ),
         icon: "metric",
       });
-    } else if (operators.length > 0) {
+    }
+
+    if (operators.length > 0) {
       sections.push({
         key: "operators",
         name: t`Basic Metrics`,
