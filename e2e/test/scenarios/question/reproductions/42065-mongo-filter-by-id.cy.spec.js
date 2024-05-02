@@ -16,6 +16,7 @@ describe(
       restore("mongo-5");
       cy.signInAsAdmin();
 
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
         const tableId = body.find(table => table.name === "orders").id;
         openTable({
@@ -24,10 +25,10 @@ describe(
           limit: 2,
         });
       });
+      cy.wait("@dataset");
     });
 
-    // TODO: Analyze why this intermittently fails in master and fix it before unskipping!
-    it.skip("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
+    it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       cy.get("#main-data-grid")
         .findAllByRole("gridcell")
         .first()
