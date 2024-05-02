@@ -434,6 +434,10 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export const PLUGIN_UPLOAD_MANAGEMENT = {
+  UploadManagementTable: PluginPlaceholder,
+};
+
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
 };
