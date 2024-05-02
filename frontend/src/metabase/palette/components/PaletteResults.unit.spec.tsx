@@ -10,10 +10,9 @@ import {
 import {
   renderWithProviders,
   screen,
-  mockGetBoundingClientRect,
   within,
   waitFor,
-  mockOffsetHeightAndWidth,
+  mockScrollTo,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
@@ -74,6 +73,7 @@ const dashboard = createMockCollectionItem({
   model: "dashboard",
   name: "Bar Dashboard",
   collection: collection_1,
+  description: "Such Bar. Much Wow.",
 });
 
 const recents_1 = createMockRecentItem({
@@ -93,8 +93,7 @@ const recents_2 = createMockRecentItem({
   }),
 });
 
-mockGetBoundingClientRect();
-mockOffsetHeightAndWidth(10); // This is absurdley small, but it allows all the items to render in the "virtual list"
+mockScrollTo();
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
@@ -165,6 +164,10 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
       await screen.findByText('Search documentation for "Bar"'),
     ).toBeInTheDocument();
