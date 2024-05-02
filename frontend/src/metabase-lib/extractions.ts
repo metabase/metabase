@@ -3,6 +3,7 @@ import * as ML from "cljs/metabase.lib.js";
 import { expressionParts } from "./expression";
 import type {
   ColumnExtraction,
+  ColumnMetadata,
   Query,
   DrillThru,
   ExpressionParts,
@@ -26,6 +27,13 @@ export function extractionExpression(
 
 export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
   return ML.column_extract_drill_extractions(drill);
+}
+
+export function columnExtractions(
+  query: Query,
+  column: ColumnMetadata,
+): ColumnExtraction[] {
+  return ML.column_extractions(query, column);
 }
 
 export type ColumnExtractionTag =

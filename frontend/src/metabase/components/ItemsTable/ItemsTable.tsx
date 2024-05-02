@@ -3,7 +3,7 @@ import CS from "metabase/css/core/index.css";
 import type { CollectionItem } from "metabase-types/api";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
-import BaseItemsTable from "./BaseItemsTable";
+import { BaseItemsTable } from "./BaseItemsTable";
 import type { BaseTableItemProps } from "./BaseTableItem";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
@@ -22,7 +22,7 @@ const Item = ({
   );
 };
 
-const ItemsTable = ({
+export const ItemsTable = ({
   items,
   ...props
 }: { items: CollectionItem[] } & BaseItemsTableProps) => {
@@ -41,6 +41,3 @@ const ItemsTable = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export
-export default ItemsTable;

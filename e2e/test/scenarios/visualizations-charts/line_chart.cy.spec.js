@@ -96,6 +96,43 @@ describe("scenarios > visualizations > line chart", () => {
     echartsContainer().get("text").contains("39.75%");
   });
 
+  it("should let unpin y-axis from zero", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["avg"],
+      },
+    });
+
+    // The chart is pinned to zero by default: 0 tick should exist
+    echartsContainer().findByText("0");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findByText("Axes").click();
+      cy.findByText("Unpin from zero").click();
+    });
+
+    // Ensure unpinned chart does not have 0 tick
+    echartsContainer().findByText("0").should("not.exist");
+
+    cy.findByTestId("chartsettings-sidebar")
+      .findByText("Unpin from zero")
+      .click();
+
+    echartsContainer().findByText("0");
+  });
+
   it("should display an error message when there are more series than the chart supports", () => {
     visitQuestionAdhoc({
       display: "line",

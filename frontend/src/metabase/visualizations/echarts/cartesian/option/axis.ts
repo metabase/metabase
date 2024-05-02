@@ -374,7 +374,7 @@ export const buildMetricAxis = (
 
   return {
     show: !isBlurred,
-    scale: !settings["graph.y_axis.auto_range_include_zero"],
+    scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
     ...range,
     ...getAxisNameDefaultOption(
