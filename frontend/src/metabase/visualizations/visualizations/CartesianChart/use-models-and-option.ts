@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
@@ -32,6 +33,8 @@ export function useModelsAndOption({
   onRender,
   hovered,
 }: VisualizationProps) {
+  const palette = usePalette();
+
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
@@ -49,12 +52,12 @@ export function useModelsAndOption({
 
   const renderingContext: RenderingContext = useMemo(
     () => ({
-      getColor: color,
+      getColor: name => color(name, palette),
       formatValue: (value, options) => String(formatValue(value, options)),
       measureText: measureTextWidth,
       fontFamily,
     }),
-    [fontFamily],
+    [fontFamily, palette],
   );
 
   const hasTimelineEvents = timelineEvents
