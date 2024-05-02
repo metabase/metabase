@@ -13,6 +13,137 @@ import {
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const SUM_OF_TOTAL = {
+  name: "Q1",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+  },
+  display: "line",
+};
+
+function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
+  tooltipSelector("#88BF4D");
+  testTooltipText([
+    ["Created At", "2022"],
+    ["Sum of Total", "42,156.87"],
+  ]);
+  testTooltipExcludesText("Compared to preivous year");
+
+  tooltipSelector("#88BF4D");
+  testTooltipText([
+    ["Created At", "2023"],
+    ["Sum of Total", "205,256.02"],
+    ["Compared to previous year", "386.89%"],
+  ]);
+}
+
+const AVG_OF_TOTAL = {
+  name: "Q2",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+  },
+  display: "line",
+};
+
+function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
+  tooltipSelector("#A989C5");
+  testTooltipText([
+    ["Created At", "2022"],
+    ["Average of Total", "56.66"],
+  ]);
+  testTooltipExcludesText("Compared to preivous year");
+
+  tooltipSelector("#A989C5");
+  testTooltipText([
+    ["Created At", "2023"],
+    ["Average of Total", "56.86"],
+    ["Compared to previous year", "0.34%"],
+  ]);
+}
+
+const AVG_OF_TOTAL_CUM_SUM_QUANTITY = {
+  name: "Q1",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [
+      ["avg", ["field", ORDERS.TOTAL, null]],
+      ["cum-sum", ["field", ORDERS.QUANTITY, null]],
+    ],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+  },
+  display: "line",
+};
+
+function testCumSumChange(testFirstTooltip = true) {
+  // In the multi series question with added question spec, this first circle
+  // ends up hidden behind another circle, so we'll just skip it in that
+  // specific spec
+  if (testFirstTooltip) {
+    showTooltipForCircleInSeries("#88BF4D");
+    testTooltipText([
+      ["Created At", "2022"],
+      ["Cumulative sum of Quantity", "3,236"],
+    ]);
+    testTooltipExcludesText("Compared to preivous year");
+  }
+
+  showTooltipForCircleInSeries("#88BF4D", testFirstTooltip ? 0 : 1);
+  testTooltipText([
+    ["Created At", "2023"],
+    ["Cumulative sum of Quantity", "17,587"],
+    ["Compared to previous year", "443.48%"],
+  ]);
+}
+
+const AVG_DISCOUNT_SUM_DISCOUNT = {
+  name: "Q2",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [
+      ["avg", ["field", ORDERS.DISCOUNT, null]],
+      ["sum", ["field", ORDERS.DISCOUNT, null]],
+    ],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+  },
+  display: "line",
+};
+
+function testAvgDiscountChange() {
+  showTooltipForCircleInSeries("#509EE3");
+  testTooltipText([
+    ["Created At", "2022"],
+    ["Average of Discount", "5.03"],
+  ]);
+  testTooltipExcludesText("Compared to preivous year");
+
+  showTooltipForCircleInSeries("#509EE3");
+  testTooltipText([
+    ["Created At", "2023"],
+    ["Average of Discount", "5.41"],
+    ["Compared to previous year", "7.54%"],
+  ]);
+}
+
+function testSumDiscountChange() {
+  showTooltipForCircleInSeries("#98D9D9");
+  testTooltipText([
+    ["Created At", "2022"],
+    ["Sum of Discount", "342.09"],
+  ]);
+  testTooltipExcludesText("Compared to preivous year");
+
+  showTooltipForCircleInSeries("#98D9D9");
+  testTooltipText([
+    ["Created At", "2023"],
+    ["Sum of Discount", "1,953.08"],
+    ["Compared to previous year", "470.93%"],
+  ]);
+}
+
 describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   beforeEach(() => {
     restore();
@@ -22,17 +153,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   describe("> single series question on dashboard", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
+        question: SUM_OF_TOTAL,
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -61,33 +182,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testSumTotalChange();
+    });
   });
 
   describe("> single series question on dashboard with added series", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
-        addedSeriesQuestion: {
-          name: "Q2",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
+        question: SUM_OF_TOTAL,
+        addedSeriesQuestion: AVG_OF_TOTAL,
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -131,25 +236,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       showTooltipForCircleInSeries("#A989C5");
       testTooltipText(updatedAddedSeriesTooltipText);
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testSumTotalChange();
+      testAvgTotalChange();
+    });
   });
 
   describe("> multi series question on dashboard", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["avg", ["field", ORDERS.TOTAL, null]],
-              ["cum-sum", ["field", ORDERS.QUANTITY, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
+        question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -181,39 +278,18 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testAvgTotalChange();
+      testCumSumChange();
+    });
   });
 
   describe("> multi series question on dashboard with added question", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["avg", ["field", ORDERS.TOTAL, null]],
-              ["cum-sum", ["field", ORDERS.QUANTITY, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
-        addedSeriesQuestion: {
-          name: "Q2",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["avg", ["field", ORDERS.DISCOUNT, null]],
-              ["sum", ["field", ORDERS.DISCOUNT, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        },
+        question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
+        addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -287,22 +363,19 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         testTooltipText(updatedAddedSeriesTooltipText);
       });
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testAvgTotalChange();
+      testCumSumChange(false);
+      testAvgDiscountChange();
+      testSumDiscountChange();
+    });
   });
 
   describe("> bar chart question on dashboard", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "bar",
-        },
+        question: { ...SUM_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -331,33 +404,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testSumTotalChange(showTooltipForBarInSeries);
+    });
   });
 
   describe("> bar chart question on dashboard with added series", () => {
     beforeEach(() => {
       setup({
-        question: {
-          name: "Q1",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "bar",
-        },
-        addedSeriesQuestion: {
-          name: "Q2",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "bar",
-        },
+        question: { ...SUM_OF_TOTAL, display: "bar" },
+        addedSeriesQuestion: { ...AVG_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -403,6 +460,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       showTooltipForFirstBarInSeries(addedSeriesColor);
       testTooltipText(updatedAddedSeriesTooltipText);
     });
+
+    it("should show percent change in tooltip for timeseries axis", () => {
+      testSumTotalChange(showTooltipForBarInSeries);
+      testAvgTotalChange(showTooltipForBarInSeries);
+    });
   });
 });
 
@@ -444,6 +506,10 @@ function showTooltipForFirstBarInSeries(seriesColor) {
   chartPathWithFillColor(seriesColor).realHover();
 }
 
+function showTooltipForBarInSeries(seriesColor, index = 0) {
+  chartPathWithFillColor(seriesColor).eq(index).realHover();
+}
+
 function testPairedTooltipValues(val1, val2) {
   cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
@@ -453,6 +519,12 @@ function testTooltipText(rowPairs = []) {
     rowPairs.forEach(([label, value]) => {
       testPairedTooltipValues(label, value);
     });
+  });
+}
+
+function testTooltipExcludesText(text) {
+  popover().within(() => {
+    cy.contains(text).should("not.exist");
   });
 }
 
