@@ -40,7 +40,8 @@ export function columnFilterForParameter(parameter) {
     case "number":
       return column => Lib.isNumber(column) && !Lib.isLocation(column);
     case "string":
-      return column => Lib.isString(column) && !Lib.isLocation(column);
+      return column =>
+        Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
   }
 
   return () => false;
