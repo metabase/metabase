@@ -83,7 +83,7 @@
           query (lib/query meta/metadata-provider query)]
       (is (=? {:stages [{:expressions [[:+
                                         {:lib/expression-name "price"}
-                                        [:field {} 17503]
+                                        [:field {} (meta/id :products :price)]
                                         2]]
                          :fields [[:field {} (meta/id :products :id)]
                                   [:field {} (meta/id :products :price)]

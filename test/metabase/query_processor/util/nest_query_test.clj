@@ -575,8 +575,8 @@
                                                                      ::add/source-alias  "DISCOUNT"
                                                                      ::add/desired-alias "DISCOUNT"}]]}
                    :source-query/model? true
-                   :fields              [[:field %id        {}]
-                                         [:field %subtotal  {}]
+                   :fields              [[:field "ID"       {}]
+                                         [:field "SUBTOTAL" {}]
                                          [:field "DISCOUNT" {:base-type :type/Float
                                                              ::add/source-alias "DISCOUNT"
                                                              ::add/desired-alias "DISCOUNT"}]]})
