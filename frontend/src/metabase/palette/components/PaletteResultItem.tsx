@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Flex, Text, Icon, Box, type IconName } from "metabase/ui";
+import { Flex, Text, Icon, Box } from "metabase/ui";
 
-import type { PaletteAction } from "../types";
+import type { PaletteActionImpl } from "../types";
 
 interface PaletteResultItemProps {
-  item: PaletteAction;
+  item: PaletteActionImpl;
   active: boolean;
 }
 
@@ -39,7 +39,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       {item.icon && (
         <Icon
           aria-hidden
-          name={(item.icon as IconName) || "click"}
+          name={item.icon || "click"}
           color={iconColor}
           style={{
             flexBasis: "16px",

@@ -7,8 +7,8 @@ import { color } from "metabase/lib/colors";
 import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
-import type { PaletteAction } from "../types";
-import { processResults, findClosesestActionIndex } from "../utils";
+import type { PaletteActionImpl } from "../types";
+import { processResults, findClosestActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
@@ -23,7 +23,10 @@ export const PaletteResults = () => {
 
   const { results } = useMatches();
 
-  const processedResults = useMemo(() => processResults(results), [results]);
+  const processedResults = useMemo(
+    () => processResults(results as (PaletteActionImpl | string)[]),
+    [results],
+  );
 
   useKeyPressEvent("End", () => {
     const lastIndex = processedResults.length - 1;
@@ -36,13 +39,13 @@ export const PaletteResults = () => {
 
   useKeyPressEvent("PageDown", () => {
     query.setActiveIndex(i =>
-      findClosesestActionIndex(processedResults, i, PAGE_SIZE),
+      findClosestActionIndex(processedResults, i, PAGE_SIZE),
     );
   });
 
   useKeyPressEvent("PageUp", () => {
     query.setActiveIndex(i =>
-      findClosesestActionIndex(processedResults, i, -PAGE_SIZE),
+      findClosestActionIndex(processedResults, i, -PAGE_SIZE),
     );
   });
 
@@ -55,7 +58,7 @@ export const PaletteResults = () => {
           item,
           active,
         }: {
-          item: string | PaletteAction;
+          item: string | PaletteActionImpl;
           active: boolean;
         }) => {
           const isFirst = processedResults[0] === item;
