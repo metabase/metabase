@@ -7,6 +7,7 @@ import type {
   Query,
   DrillThru,
   ExpressionParts,
+  ExpressionArg,
 } from "./types";
 
 export function extract(
@@ -63,12 +64,15 @@ export function functionsUsedByExtraction(
 function walk(parts: ExpressionParts): string[] {
   const res: string[] = [parts.operator];
   parts.args.forEach(arg => {
-    if (!arg || !(typeof arg === "object")) {
-      return;
-    }
-    if ("operator" in arg) {
+    if (isExpressionParts(arg)) {
       res.push(...walk(arg));
     }
   });
   return res;
+}
+
+export function isExpressionParts(
+  arg: ExpressionParts | ExpressionArg,
+): arg is ExpressionParts {
+  return arg != null && typeof arg === "object" && "operator" in arg;
 }
