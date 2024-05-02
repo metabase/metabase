@@ -7,7 +7,12 @@ redirect_from:
 # Email
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
-You can adjust the email settings by going to *Settings* > *Admin Settings* > *Email*
+
+You can adjust the email settings by:
+
+1. Clicking on the **gear** icon in the upper right.
+2. Select **Admin Settings*.
+3. From the default **Settings** tab, click on **Email** in the left sidebar.
 
 ## Metabase Cloud
 
