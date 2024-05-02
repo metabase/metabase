@@ -719,6 +719,10 @@
       @api/*current-user-permissions-set*
       (perms-for-moving collection new-parent)))
 
+    (api/check-400
+     ;; we can never move a collection to a trashed collection. (the Trash itself isn't archived)
+     (and (some? new-parent) (not (:archived new-parent))))
+
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location              new-location
@@ -1144,7 +1148,10 @@
     ;; check that we're allowed to modify the old Collection
     (check-write-perms-for-collection (:collection_id object-before-update))
     ;; check that we're allowed to modify the new Collection
-    (check-write-perms-for-collection (:collection_id object-updates))))
+    (check-write-perms-for-collection (:collection_id object-updates))
+    ;; check that the new location is not archived. the root can't be archived.
+    (when-let [collection-id (:collection_id object-updates)]
+      (api/check-400 (t2/exists? :model/Collection :id collection-id :archived false)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
