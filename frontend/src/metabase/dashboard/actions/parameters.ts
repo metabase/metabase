@@ -42,6 +42,7 @@ import {
 import {
   getAutoApplyFiltersToastId,
   getDashboard,
+  getDashboardBeforeEditing,
   getDashboardId,
   getDashCardById,
   getDashcards,
@@ -50,7 +51,6 @@ import {
   getParameters,
   getParameterValues,
   getPristineParameterMappings,
-  getPristineParameters,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -319,8 +319,16 @@ function restoreParameterMappingsIfNeeded(
 ): boolean {
   // check here if the parameter type is pristine and if so, change operator to
   // the saved and not to default
-  const pristineParameters = getPristineParameters(getState());
-  const pristineParameter = pristineParameters[parameterId];
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const pristineParameter = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
 
   if (!pristineParameter) {
     return false;

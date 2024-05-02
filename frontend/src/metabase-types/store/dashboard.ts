@@ -8,7 +8,6 @@ import type {
   DashboardTab,
   DashboardTabId,
   DashboardCard,
-  Parameter,
   ParameterTarget,
   CardId,
 } from "metabase-types/api";
@@ -114,7 +113,6 @@ export interface DashboardState {
     toastId: number | null;
     toastDashboardId: number | null;
   };
-  pristineParameters: Record<ParameterId, Parameter>;
   pristineParameterMappings: Record<
     ParameterId,
     Record<

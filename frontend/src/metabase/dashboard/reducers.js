@@ -515,24 +515,6 @@ const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-const pristineParameters = handleActions(
-  {
-    [fetchDashboard.fulfilled]: {
-      next: (_state, { payload }) => {
-        const parameters = payload.dashboard.parameters ?? [];
-
-        const parametersById = Object.fromEntries(
-          parameters.map(parameter => [parameter.id, parameter]),
-        );
-
-        return parametersById;
-      },
-    },
-    [RESET]: () => INITIAL_DASHBOARD_STATE.pristineParameters,
-  },
-  INITIAL_DASHBOARD_STATE.pristineParameters,
-);
-
 const pristineParameterMappings = handleActions(
   {
     [fetchDashboard.fulfilled]: {
@@ -583,7 +565,6 @@ export const dashboardReducers = reduceReducers(
     sidebar,
     missingActionParameters,
     autoApplyFilters,
-    pristineParameters,
     pristineParameterMappings,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
