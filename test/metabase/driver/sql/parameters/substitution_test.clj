@@ -2,6 +2,7 @@
   "Most of the code in [[metabase.driver.sql.parameters.substitution]] is actually tested by
   [[metabase.driver.sql.parameters.substitute-test]]."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
@@ -83,13 +84,13 @@
 
 (defmethod sql.params.substitution/align-temporal-unit-with-param-type-and-value ::temporal-unit-alignment-override
   [_driver _field _param-type _value]
-  nil)
+  :day)
 
-(defmethod sql.qp/date [::temporal-unit-alignment-original :minute]
+(defmethod sql.qp/date [::temporal-unit-alignment-override :minute]
   [_driver _unit expr]
   (h2x/minute expr))
 
-(defmethod sql.qp/date [::temporal-unit-alignment-original :day]
+(defmethod sql.qp/date [::temporal-unit-alignment-override :day]
   [_driver _unit expr]
   (h2x/day expr))
 
@@ -105,14 +106,13 @@
           (testing "default implementation"
             (driver/with-driver ::temporal-unit-alignment-original
               (is (= {:prepared-statement-args expected-args
-                      ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
-                      :replacement-snippet "DAY(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
+                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
           (testing "override"
             (driver/with-driver ::temporal-unit-alignment-override
               (is (= {:prepared-statement-args expected-args
                       ;; no extra `sql.qp/date` calls due to `nil` returned from the override
-                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
+                      :replacement-snippet "DAY(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter)))))))
       (testing "datetime"
         (let [field-filter (params/map->FieldFilter
@@ -123,12 +123,11 @@
           (testing "default implementation"
             (driver/with-driver ::temporal-unit-alignment-original
               (is (= {:prepared-statement-args expected-args
-                      ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
-                      :replacement-snippet "MINUTE(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
+                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
           (testing "override"
             (driver/with-driver ::temporal-unit-alignment-override
               (is (= {:prepared-statement-args expected-args
                       ;; no extra `sql.qp/date` calls due to `nil` returned from the override
-                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
+                      :replacement-snippet "DAY(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter))))))))))

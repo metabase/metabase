@@ -21,6 +21,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -1420,3 +1421,62 @@
                (do-test :schema-pattern "private" :schemas ["private"]))
              (testing "filter by table name"
                (do-test :table-pattern "table" :tables ["table"])))))))))
+
+(defn- compile-native-date-field-filter
+  [base-type database-type parameter]
+  (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields   [{:id             (meta/id :users :last-login)
+                                        :base-type      base-type
+                                        :effective-type base-type
+                                        :database-type  database-type}]
+                            :database {:settings {:report-timezone "US/Pacific"}}})]
+    (qp.compile/compile
+     (lib/query
+      metadata-provider
+      {:database   (meta/id)
+       :type       :native
+       :native     {:query         "SELECT * FROM users WHERE {{login}};"
+                    :template-tags {:login {:name         "login"
+                                            :display_name "Last Login Date"
+                                            :type         "dimension"
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field (meta/id :users :last-login) nil]}}}
+       :parameters [parameter]}))))
+
+(deftest ^:parallel native-date-field-filter-date-column-single-date-test
+  (mt/test-driver :postgres
+    (is (= {:query  "SELECT * FROM users WHERE \"PUBLIC\".\"USERS\".\"LAST_LOGIN\" = ?;"
+            :params [#t "2014-08-02"]}
+           (compile-native-date-field-filter :type/Date "date" {:type   :date/single
+                                                                :target [:dimension [:template-tag "login"]]
+                                                                :value  "2014-08-02"})))))
+
+(deftest ^:parallel native-date-field-filter-timestamp-column-single-date-test
+  (mt/test-driver :postgres
+    (doseq [[base-type database-type] {:type/DateTime       "timestamp"
+                                       :type/DateTimeWithTZ "timestamptz"}]
+      (testing base-type
+        (is (= {:query  "SELECT * FROM users WHERE CAST(\"PUBLIC\".\"USERS\".\"LAST_LOGIN\" AS date) = ?;"
+                ;; TODO -- I think it would be more correct if params were parsed to values appropriate for the database
+                ;; type, especially `OffsetDateTime` (using report timezone) for `timestamptz`; we do this in MBQL
+                ;; queries
+                ;; with [[metabase.query-processor.middleware.wrap-value-literals/parse-temporal-string-literal]], and
+                ;; it's weird we're not doing it for native query parameters, right?
+                :params [#t "2014-08-02"]}
+               (compile-native-date-field-filter base-type database-type {:type   :date/single
+                                                                          :target [:dimension [:template-tag "login"]]
+                                                                          :value  "2014-08-02"})))))))
+
+(deftest ^:parallel native-date-field-filter-date-range-test
+  (testing "Don't add unnecessary casts to DATE() for :between filters (#21133)"
+    (mt/test-driver :postgres
+      (doseq [[base-type database-type] {:type/Date           "date"
+                                         :type/DateTime       "timestamp"
+                                         :type/DateTimeWithTZ "timestamptz"}]
+        (testing base-type
+          (is (= {:query  "SELECT * FROM users WHERE \"PUBLIC\".\"USERS\".\"LAST_LOGIN\" BETWEEN ? AND ?;"
+                  :params [#t "2014-08-02" #t "2014-08-03"]}
+                 (compile-native-date-field-filter base-type database-type {:type   :date/range
+                                                                            :target [:dimension [:template-tag "login"]]
+                                                                            :value  "2014-08-02~2014-08-03"}))))))))

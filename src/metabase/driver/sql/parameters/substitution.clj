@@ -7,6 +7,7 @@
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require
+   [better-cond.core :as b]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
@@ -117,15 +118,20 @@
 (defmethod align-temporal-unit-with-param-type-and-value :default
   [_driver _field param-type value]
   (when (params.dates/date-type? param-type)
-    (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
+    (b/cond
+      :let [exclusion-type (params.dates/exclusion-date-type param-type value)]
       exclusion-type
-      (let [value* (if (params.dates/not-single-date-type? param-type)
-                     (let [param-range (params.dates/date-string->range value)]
-                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
-                     value)]
-        (if (re-matches shared.ut/local-date-regex value*)
-          :day
-          :minute)))))
+      exclusion-type
+
+      (params.dates/not-single-date-type? param-type)
+      :default
+
+      (and (string? value)
+           (str/includes? value "T"))
+      :minute
+
+      :else
+      :day)))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
