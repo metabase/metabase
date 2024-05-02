@@ -334,18 +334,24 @@ describe("scenarios > collections > trash", () => {
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
     popover().findByText("Delete permanently").click();
+    modal().findByText("Delete Collection A permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Collection A").should("not.exist");
     });
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Delete permanently").click();
+    modal().findByText("Delete Dashboard A permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Dashboard A").should("not.exist");
     });
 
     toggleEllipsisMenuFor("Question A");
     popover().findByText("Delete permanently").click();
+    modal().findByText("Delete Question A permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Question A").should("not.exist");
     });
@@ -355,6 +361,8 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Collection B").click();
     });
     archiveBanner().findByText("Delete permanently").click();
+    modal().findByText("Delete Collection B permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Collection B").should("not.exist");
     });
@@ -363,6 +371,8 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Dashboard B").click();
     });
     archiveBanner().findByText("Delete permanently").click();
+    modal().findByText("Delete Dashboard B permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Dashboard B").should("not.exist");
     });
@@ -371,6 +381,8 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Question B").click();
     });
     archiveBanner().findByText("Delete permanently").click();
+    modal().findByText("Delete Question B permanently?").should("exist");
+    modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
       cy.findByText("Question B").should("not.exist");
     });

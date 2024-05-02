@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DeleteConfirmModal } from "metabase/archive/components/DeleteConfirmModal";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import type {
   CreateBookmark,
@@ -89,6 +90,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const dispatch = useDispatch();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const database = databases?.find(({ id }) => id === item.database_id);
 
@@ -145,6 +147,10 @@ function ActionMenu({
     );
   }, [item, dispatch]);
 
+  const handleStartDeletePermanently = useCallback(() => {
+    setShowDeleteModal(true);
+  }, []);
+
   const handleDeletePermanently = useCallback(() => {
     dispatch(Search.actions.delete(item));
     dispatch(addUndo({ message: t`Item has been permanently deleted.` }));
@@ -154,21 +160,32 @@ function ActionMenu({
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
     <EventSandbox preventDefault>
-      <EntityItemMenu
-        className={className}
-        item={item}
-        isBookmarked={isBookmarked}
-        isXrayEnabled={!item.archived && isXrayEnabled}
-        canUseMetabot={canUseMetabot}
-        onPin={canPin ? handlePin : undefined}
-        onMove={canMove ? handleMove : undefined}
-        onCopy={canCopy ? handleCopy : undefined}
-        onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
-        onTogglePreview={canPreview ? handleTogglePreview : undefined}
-        onUnarchive={canUnarchive ? handleUnarchive : undefined}
-        onDeletePermanently={canDelete ? handleDeletePermanently : undefined}
-      />
+      <>
+        <EntityItemMenu
+          className={className}
+          item={item}
+          isBookmarked={isBookmarked}
+          isXrayEnabled={!item.archived && isXrayEnabled}
+          canUseMetabot={canUseMetabot}
+          onPin={canPin ? handlePin : undefined}
+          onMove={canMove ? handleMove : undefined}
+          onCopy={canCopy ? handleCopy : undefined}
+          onArchive={canArchive ? handleArchive : undefined}
+          onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
+          onTogglePreview={canPreview ? handleTogglePreview : undefined}
+          onUnarchive={canUnarchive ? handleUnarchive : undefined}
+          onDeletePermanently={
+            canDelete ? handleStartDeletePermanently : undefined
+          }
+        />
+        {showDeleteModal && (
+          <DeleteConfirmModal
+            name={item.name}
+            onCloseModal={() => setShowDeleteModal(false)}
+            onDelete={handleDeletePermanently}
+          />
+        )}
+      </>
     </EventSandbox>
   );
 }

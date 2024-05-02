@@ -2,6 +2,7 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
+import { undoSetArchived } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import Collections, {
   getCollectionType,
@@ -62,7 +63,7 @@ const Questions = createEntity({
       Questions.actions.update(
         { id: card.id },
         { archived },
-        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
+        undoSetArchived(card.name, archived, opts),
       ),
 
     setCollection: (card, collection, opts) => {

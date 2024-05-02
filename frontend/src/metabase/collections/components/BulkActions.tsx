@@ -2,6 +2,7 @@ import { useMemo, memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { BulkDeleteConfirmModal } from "metabase/archive/components/BulkDeleteConfirmModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import {
   isTrashedCollection,
@@ -11,7 +12,6 @@ import {
   canMoveItem,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
 import { color } from "metabase/lib/colors";
@@ -229,22 +229,11 @@ const BulkActions = ({
       )}
 
       {hasSelectedItems && selectedAction === "delete" && (
-        <Modal onClose={handleCloseModal}>
-          <ConfirmContent
-            cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Delete permanently`}
-            data-testid="leave-confirmation"
-            message={t`This can't be undone.`}
-            title={
-              selectedItemCount > 1
-                ? t`Delete ${selectedItemCount} items permanently?`
-                : t`Delete item permanently?`
-            }
-            onAction={handleBulkDeletePermanently}
-            onCancel={handleCloseModal}
-            onClose={handleCloseModal}
-          />
-        </Modal>
+        <BulkDeleteConfirmModal
+          selectedItemCount={selectedItemCount}
+          onCloseModal={handleCloseModal}
+          onBulkDeletePermanently={handleBulkDeletePermanently}
+        />
       )}
     </>
   );

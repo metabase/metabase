@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
-import { t } from "ttag";
 import _ from "underscore";
 
+import { getTrashUndoMessage } from "metabase/archive/utils";
 import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -242,7 +242,7 @@ export const updateQuestion = (
 export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
 export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
-  function (question, archived = true) {
+  function (question, archived = true, undoing = false) {
     return async function (dispatch) {
       await dispatch(
         Questions.actions.update({ id: question.card().id }, { archived }),
@@ -255,13 +255,15 @@ export const setArchivedQuestion = createThunkAction(
         }),
       );
 
-      dispatch(
-        addUndo({
-          subject: question.card().type === "question" ? t`question` : t`model`,
-          verb: archived ? t`trashed` : t`restored`,
-          action: () => dispatch(setArchivedQuestion(question, !archived)),
-        }),
-      );
+      if (!undoing) {
+        dispatch(
+          addUndo({
+            message: getTrashUndoMessage(question.card().name, archived),
+            action: () =>
+              dispatch(setArchivedQuestion(question, !archived, true)),
+          }),
+        );
+      }
     };
   },
 );

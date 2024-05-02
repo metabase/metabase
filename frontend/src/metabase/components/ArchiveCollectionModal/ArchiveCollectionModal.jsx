@@ -17,9 +17,8 @@ const mapDispatchToProps = {
 
 class ArchiveCollectionModalInner extends Component {
   archive = async () => {
-    const { setCollectionArchived, params } = this.props;
-    const id = Urls.extractCollectionId(params.slug);
-    await setCollectionArchived({ id }, true);
+    const { collection, setCollectionArchived } = this.props;
+    await setCollectionArchived(collection, true);
   };
 
   render() {

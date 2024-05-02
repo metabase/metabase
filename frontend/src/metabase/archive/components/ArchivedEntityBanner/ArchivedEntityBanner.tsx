@@ -5,6 +5,8 @@ import { CollectionPickerModal } from "metabase/common/components/CollectionPick
 import { Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { DeleteConfirmModal } from "../DeleteConfirmModal";
+
 type ArchivedEntityBannerProps = {
   name: string;
   entityType: string;
@@ -24,7 +26,7 @@ export const ArchivedEntityBanner = ({
   onMove,
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
-  const [showMovemodal, setShowMoveModal] = useState(false);
+  const [modal, setModal] = useState<"move" | "delete" | null>(null);
 
   return (
     <>
@@ -71,7 +73,7 @@ export const ArchivedEntityBanner = ({
                 compact
                 variant="outline"
                 color="white"
-                onClick={() => setShowMoveModal(true)}
+                onClick={() => setModal("move")}
               >
                 <Flex align="center">
                   <Icon
@@ -86,7 +88,7 @@ export const ArchivedEntityBanner = ({
                 compact
                 variant="outline"
                 color="white"
-                onClick={onDeletePermanently}
+                onClick={() => setModal("delete")}
               >
                 <Flex align="center">
                   <Icon
@@ -101,7 +103,7 @@ export const ArchivedEntityBanner = ({
           )}
         </Flex>
       </Paper>
-      {showMovemodal && (
+      {modal === "move" && (
         <CollectionPickerModal
           title={`Move ${name}`}
           value={{ id: "root", model: "collection" }}
@@ -113,7 +115,14 @@ export const ArchivedEntityBanner = ({
             showPersonalCollections: true,
             confirmButtonText: t`Move`,
           }}
-          onClose={() => setShowMoveModal(false)}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === "delete" && (
+        <DeleteConfirmModal
+          name={name}
+          onCloseModal={() => setModal(null)}
+          onDelete={onDeletePermanently}
         />
       )}
     </>

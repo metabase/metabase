@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
@@ -14,21 +15,25 @@ export const SET_ARCHIVED_DASHBOARD =
   "metabase/dashboard/SET_ARCHIVED_DASHBOARD";
 export const setArchivedDashboard = createThunkAction(
   SET_ARCHIVED_DASHBOARD,
-  function (archived = true) {
+  function (archived = true, undoing = false) {
     return async function (dispatch, getState) {
-      const { dashboardId } = getState().dashboard;
+      const { dashboardId, dashboards } = getState().dashboard;
+      const dashboard = dashboardId
+        ? dashboards[dashboardId]
+        : { name: "Dashboard" };
 
       await dispatch(
         Dashboards.actions.update({ id: dashboardId }, { archived }),
       );
 
-      dispatch(
-        addUndo({
-          subject: t`dashboard`,
-          verb: archived ? t`trashed` : t`restored`,
-          action: () => dispatch(setArchivedDashboard(!archived)),
-        }),
-      );
+      if (!undoing) {
+        dispatch(
+          addUndo({
+            message: getTrashUndoMessage(dashboard.name, archived),
+            action: () => dispatch(setArchivedDashboard(!archived, true)),
+          }),
+        );
+      }
 
       dispatch(
         // @ts-expect-error rtk typings are wrong - function expects an arguement but TS errors saying it shouldn't have one
@@ -48,7 +53,7 @@ export const MOVE_DASHBOARD_TO_COLLECTION =
   "metabase/dashboard/MOVE_DASHBOARD_TO_COLLECTION";
 export const moveDashboardToCollection = createThunkAction(
   MOVE_DASHBOARD_TO_COLLECTION,
-  function (collection, forceArchive = undefined) {
+  function (collection, forceArchive = undefined, undoing = false) {
     return async function (dispatch, getState) {
       const dashboardView = getState().dashboard;
       const dashboard = dashboardView.dashboardId
@@ -74,19 +79,22 @@ export const moveDashboardToCollection = createThunkAction(
         ),
       );
 
-      dispatch(
-        addUndo({
-          subject: t`dashboard`,
-          verb: t`moved`,
-          action: () =>
-            dispatch(
-              moveDashboardToCollection(
-                { id: current_collection_id },
-                archived,
+      if (!undoing) {
+        dispatch(
+          addUndo({
+            subject: t`dashboard`,
+            verb: t`moved`,
+            action: () =>
+              dispatch(
+                moveDashboardToCollection(
+                  { id: current_collection_id },
+                  archived,
+                  true,
+                ),
               ),
-            ),
-        }),
-      );
+          }),
+        );
+      }
 
       dispatch(
         // @ts-expect-error rtk typings are wrong - function expects an arguement but TS errors saying it shouldn't have one

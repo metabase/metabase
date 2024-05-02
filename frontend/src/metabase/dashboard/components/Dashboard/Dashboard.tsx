@@ -143,7 +143,6 @@ interface DashboardProps {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
-  archiveDashboard: (id: DashboardId) => Promise<void>;
 
   onRefreshPeriodChange: (period: number | null) => void;
   setEditingDashboard: (dashboard: IDashboard | null) => void;

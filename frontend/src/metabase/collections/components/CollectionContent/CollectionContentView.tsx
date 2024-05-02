@@ -274,9 +274,10 @@ export const CollectionContentView = ({
                 entityType="collection"
                 canWrite={collection.can_write}
                 canRestore={canRestore}
-                onUnarchive={() =>
-                  dispatch(Collections.actions.setArchived(actionId, false))
-                }
+                onUnarchive={() => {
+                  const input = { ...actionId, name: collection.name };
+                  dispatch(Collections.actions.setArchived(input, false));
+                }}
                 onMove={id =>
                   dispatch(Collections.actions.setCollection(actionId, { id }))
                 }

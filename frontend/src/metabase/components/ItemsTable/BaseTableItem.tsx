@@ -157,7 +157,9 @@ export const BaseTableItem = ({
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && <ModelDetailLink model={item} />}
+            {item.model === "dataset" && !item.archived && (
+              <ModelDetailLink model={item} />
+            )}
           </RowActionsContainer>
         </ItemCell>
       </tr>
