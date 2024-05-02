@@ -241,12 +241,7 @@ export function AggregationPicker({
   }
 
   return (
-    <Box
-      className={className}
-      c="summarize"
-      pt="sm"
-      pb={sections.length === 1 ? "sm" : undefined}
-    >
+    <Box className={className} c="summarize">
       <AccordionList
         sections={sections}
         onChange={handleChange}
