@@ -618,6 +618,13 @@ LineUnpinFromZero.args = {
   renderingContext,
 };
 
+export const LineSettings = Template.bind({});
+LineSettings.args = {
+  rawSeries: data.lineSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
