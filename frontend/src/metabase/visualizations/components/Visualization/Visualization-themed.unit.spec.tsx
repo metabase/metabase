@@ -9,20 +9,10 @@ import Visualization from ".";
 registerVisualizations();
 
 describe("Themed Visualization", () => {
-  const TEST_COLOR = "rgb(44, 55, 66)";
-
-  const renderViz = async (series: any) => {
-    renderWithProviders(<Visualization rawSeries={series} />, {
-      theme: { colors: { "text-dark": [TEST_COLOR] } },
-    });
-
-    // The chart isn't rendered until the next tick. This is due to ExplicitSize
-    // not setting the dimensions until after mounting.
-    await delay(0);
-  };
-
   it("inherits the chart labels from the theme", async () => {
-    await renderViz([
+    const TEST_COLOR = "rgb(44, 55, 66)";
+
+    const series = [
       {
         card: createMockCard({ name: "Card", display: "bar" }),
         data: {
@@ -30,8 +20,13 @@ describe("Themed Visualization", () => {
           rows: [["Baz", 1]],
         },
       },
-    ]);
+    ];
 
+    renderWithProviders(<Visualization rawSeries={series} />, {
+      theme: { colors: { "text-dark": [TEST_COLOR] } },
+    });
+
+    await delay(0);
     expect(screen.getByText("Foo")).toHaveAttribute("fill", TEST_COLOR);
     expect(screen.getByText("Baz")).toHaveAttribute("fill", TEST_COLOR);
   });
