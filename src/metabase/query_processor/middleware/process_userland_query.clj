@@ -137,11 +137,12 @@
     query-type                                                                                      :type
     :as                                                                                             query}]
   {:pre [(bytes? query-hash)]}
-  (let [json-query (or (-> (read-string original-query)
-                           (dissoc :info)
-                           (assoc :was-pivot true))
-                       (cond-> (dissoc query :info)
-                         (empty? (:parameters query)) (dissoc :parameters)))]
+  (let [json-query (if original-query
+                     (-> (read-string original-query)
+                         (dissoc :info)
+                         (assoc :was-pivot true))
+                     (cond-> (dissoc query :info)
+                       (empty? (:parameters query)) (dissoc :parameters)))]
     {:database_id       database-id
      :executor_id       executed-by
      :action_id         action-id

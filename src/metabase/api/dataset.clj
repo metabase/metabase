@@ -52,7 +52,7 @@
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
-      {:name "run-query-async"}
+    {:name "run-query-async"}
     (when (and (not= (:type query) "internal")
                (not= database lib.schema.id/saved-questions-virtual-database-id))
       (when-not database
