@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { OperatorCategory } from "metabase/querying/hooks/use-string-filter";
+import type { OperatorType } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -29,8 +29,8 @@ export function StringFilterPicker({
   );
 
   const {
+    type,
     operator,
-    operatorCategory,
     availableOptions,
     values,
     options,
@@ -85,11 +85,11 @@ export function StringFilterPicker({
           stageIndex={stageIndex}
           column={column}
           values={values}
-          operatorCategory={operatorCategory}
+          type={type}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
-          {operatorCategory === "partial" && (
+          {type === "partial" && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
               onChange={newValue => setOptions({ "case-sensitive": newValue })}
@@ -106,7 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  operatorCategory: OperatorCategory;
+  type: OperatorType;
   onChange: (values: string[]) => void;
 }
 
@@ -115,10 +115,10 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  operatorCategory,
+  type,
   onChange,
 }: StringValueInputProps) {
-  if (operatorCategory === "exact") {
+  if (type === "exact") {
     return (
       <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
@@ -133,7 +133,7 @@ function StringValueInput({
     );
   }
 
-  if (operatorCategory === "partial") {
+  if (type === "partial") {
     return (
       <Flex p="md">
         <MultiAutocomplete
@@ -141,6 +141,7 @@ function StringValueInput({
           data={[]}
           placeholder={t`Enter some text`}
           autoFocus
+          shouldCreate={() => true}
           w="100%"
           aria-label={t`Filter value`}
           onChange={onChange}

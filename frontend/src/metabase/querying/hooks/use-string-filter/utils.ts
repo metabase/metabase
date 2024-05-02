@@ -42,8 +42,8 @@ export function getDefaultValues(
   operator: Lib.StringFilterOperatorName,
   values: string[],
 ): string[] {
-  const { category } = OPERATOR_OPTIONS[operator];
-  return category !== "empty" ? values.filter(isNotEmpty) : [];
+  const { type } = OPERATOR_OPTIONS[operator];
+  return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
 export function isValidFilter(
@@ -71,8 +71,8 @@ function getFilterParts(
   values: string[],
   options: Lib.StringFilterOptions,
 ): Lib.StringFilterParts | undefined {
-  const { category } = OPERATOR_OPTIONS[operator];
-  if (values.length === 0 && category !== "empty") {
+  const { type } = OPERATOR_OPTIONS[operator];
+  if (values.length === 0 && type !== "empty") {
     return undefined;
   }
 

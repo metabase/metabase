@@ -46,12 +46,12 @@ export function useStringFilter({
     filterParts ? filterParts.options : {},
   );
 
-  const { category: operatorCategory } = getOptionByOperator(operator);
+  const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
   return {
+    type,
     operator,
-    operatorCategory,
     availableOptions,
     values,
     options,

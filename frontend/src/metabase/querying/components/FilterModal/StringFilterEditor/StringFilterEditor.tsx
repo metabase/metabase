@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { OperatorCategory } from "metabase/querying/hooks/use-string-filter";
+import type { OperatorType } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import { Grid, MultiAutocomplete } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -25,8 +25,8 @@ export function StringFilterEditor({
   const [isFocused, setIsFocused] = useState(false);
 
   const {
+    type,
     operator,
-    operatorCategory,
     availableOptions,
     values,
     options,
@@ -90,7 +90,7 @@ export function StringFilterEditor({
             stageIndex={stageIndex}
             column={column}
             values={values}
-            operatorCategory={operatorCategory}
+            type={type}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
@@ -106,7 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  operatorCategory: OperatorCategory;
+  type: OperatorType;
   onChange: (values: string[]) => void;
   onFocus: () => void;
   onBlur: () => void;
@@ -117,12 +117,12 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  operatorCategory,
+  type,
   onChange,
   onFocus,
   onBlur,
 }: StringValueInputProps) {
-  if (operatorCategory === "exact") {
+  if (type === "exact") {
     return (
       <StringFilterValuePicker
         query={query}
@@ -137,13 +137,14 @@ function StringValueInput({
     );
   }
 
-  if (operatorCategory === "partial") {
+  if (type === "partial") {
     return (
       <MultiAutocomplete
         data={[]}
         value={values}
         placeholder={t`Enter some text`}
         aria-label={t`Filter value`}
+        shouldCreate={() => true}
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
