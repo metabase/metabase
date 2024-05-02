@@ -77,6 +77,20 @@ Make sure your SQL dialect matches the database you've selected. Common errors:
 
 For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
+## Explore SQL question results using the Query Builder
+
+On saved SQL questions without [parameters](./sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
+
+![Explore results button](../images/explore-results.png)
+
+## To enable drill-through, turn a SQL question into a model and set the data types
+
+Visualizations created with SQL do not have [drill-through][drill-through] capability. To enable drill-through on a SQL question, you can turn it into a model:
+
+1. Save the SQL question and [turn it into a model](../../data-modeling/models.md#create-a-model-from-a-saved-question).
+2. [Edit the column metadata](../../data-modeling/metadata-editing.md#column-field-settings) in the model's settings. Make sure to set the data types for all the columns.
+3. [Create a Query Builder question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) based on the model. You should be able to use drill-through on this question, if you configured the metadata correctly.
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
@@ -89,3 +103,4 @@ For more help, see [Troubleshooting SQL error messages](../../troubleshooting-gu
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
+[drill-through]: https://www.metabase.com/learn/questions/drill-through
