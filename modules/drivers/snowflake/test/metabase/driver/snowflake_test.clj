@@ -35,7 +35,8 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [mb.hawk.parallel :as hawk.parallel]))
 
 (set! *warn-on-reflection* true)
 
@@ -577,10 +578,10 @@
 (mt/defdataset dst-change
   [["dst_tz_test" [{:field-name "dtz"
                     :base-type :type/DateTimeWithTZ}]
-    [["2023-09-30 23:59:59 +1000"]      ; September
-     ["2023-10-01 00:00:00 +1000"]      ; October before DST starts
-     ["2023-10-01 05:00:00 +1100"]      ; October after DST starts
-     ["2023-11-01 05:00:00 +1100"]]]])  ; November
+    [["2023-09-30 23:59:59 +1000"]     ; September
+     ["2023-10-01 00:00:00 +1000"]     ; October before DST starts
+     ["2023-10-01 05:00:00 +1100"]     ; October after DST starts
+     ["2023-11-01 05:00:00 +1100"]]]]) ; November
 
 (deftest date-bucketing-test
   (testing "#37065"
@@ -593,8 +594,8 @@
                              (lib/breakout dtz)
                              (lib/aggregate (lib/count)))]
           (mt/with-native-query-testing-context query
-            (is (= [["2023-09-30T00:00:00+10:00" 1]
-                    ["2023-10-01T00:00:00+10:00" 2]
-                    ["2023-11-01T00:00:00+11:00" 1]]
-                   (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
+            (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
+              (is (= [["2023-09-30T00:00:00+10:00" 1]
+                      ["2023-10-01T00:00:00+10:00" 2]
+                      ["2023-11-01T00:00:00+11:00" 1]]
                      (mt/rows (qp/process-query query)))))))))))

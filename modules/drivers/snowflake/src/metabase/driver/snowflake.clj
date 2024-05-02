@@ -53,7 +53,8 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :now                                    true}]
+                              :now                                    true
+                              :set-timezone                           true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake

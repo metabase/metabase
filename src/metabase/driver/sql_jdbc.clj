@@ -78,8 +78,8 @@
   (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
-  [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! database))
+  [_driver database]
+  (sql-jdbc.conn/invalidate-pool-for-db-if-needed! database))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]

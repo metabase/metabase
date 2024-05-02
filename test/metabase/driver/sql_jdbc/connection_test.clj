@@ -135,7 +135,7 @@
                                        (swap! hash-change-called-times inc)
                                        nil)]
         (try
-          (sql-jdbc.conn/invalidate-pool-for-db! db)
+          (#'sql-jdbc.conn/invalidate-pool-for-db! db)
           ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
