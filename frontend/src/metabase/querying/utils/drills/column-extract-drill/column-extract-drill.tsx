@@ -65,9 +65,9 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
     case "year":
       return "2023, 2024";
     case "domain":
-      return "example.com, online.com";
-    case "host":
       return "example, online";
+    case "host":
+      return "example.com, online.com";
     case "subdomain":
       return "www, maps";
   }
