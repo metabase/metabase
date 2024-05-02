@@ -226,10 +226,8 @@
    :model
    :metric])
 
-(mr/def ::metadata-types
-  [:enum
-   :metadata/database :metadata/table :metadata/column
-   :metadata/card :metadata/legacy-metric :metadata/segment])
+(mr/def ::type
+  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/segment])
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as

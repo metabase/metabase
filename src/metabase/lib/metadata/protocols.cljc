@@ -80,17 +80,19 @@
    {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
    #'metadata-providerable?])
 
-(mr/def ::metadata-type
+(mr/def ::metadata-type-excluding-database
+  "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
+  other non-Database methods."
   [:enum :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/segment])
 
 (mr/def ::metadata
   [:map
-   [:lib/type ::metadata-type]
+   [:lib/type ::metadata-type-excluding-database]
    [:id       pos-int?]])
 
 (mu/defn ^:private metadata :- [:maybe ::metadata]
   [metadata-provider :- ::metadata-provider
-   metadata-type     :- ::metadata-type
+   metadata-type     :- ::metadata-type-excluding-database
    metadata-id       :- pos-int?]
   (m/find-first (fn [object]
                   (= (:id object) metadata-id))
@@ -185,11 +187,32 @@
 (mu/defn cached-metadata :- [:maybe ::metadata]
   "Get cached metadata of a specific type, e.g. `:metadata/table`."
   [cached-metadata-provider :- ::cached-metadata-provider
-   metadata-type            :- ::metadata-type
+   metadata-type            :- ::metadata-type-excluding-database
    id                       :- pos-int?]
   (m/find-first (fn [object]
                   (= (:id object) id))
                 (cached-metadatas cached-metadata-provider metadata-type [id])))
+
+;;; this is done for side-effects, but it's thread-safe and safe inside STM transactions, you can call it a hundred
+;;; times with no ill effects.
+;;;
+;;; TODO -- we don't really use metadata providers across threads but I'm wondering whether the cached metadata
+;;; provider should have some sort of internal lock so 100 simultaneous calls to fetch an object only results in a
+;;; single call to the underlying ApplicationDatabaseMetadataProvider... Fetch stuff already present in the cache
+;;; without needing a lock, but if we need to fetch something from the parent provider wait for a lock to do it.
+;;; -- Cam
+(mu/defn warm-cache
+  "Convenience for warming a `CachedMetadataProvider` for side-effects. Checks whether the provider is a cached
+  metadata provider, and, if it is, calls [[metadatas]] to fetch the objects in question and warm the cache."
+  [metadata-provider :- ::metadata-provider
+   metadata-type     :- ::metadata-type-excluding-database
+   object-ids        :- [:maybe
+                         [:or
+                          [:set pos-int?]
+                          [:sequential pos-int?]]]]
+  (when (and (cached-metadata-provider? metadata-provider)
+             (seq object-ids))
+    (metadatas metadata-provider metadata-type object-ids)))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) InvocationTracker
   "Optional. A protocol for a MetadataProvider that records the arguments of method invocations during query execution.

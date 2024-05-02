@@ -172,7 +172,7 @@
 
   This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- ::lib.schema.metadata/metadata-types
+   metadata-type         :- ::lib.schema.metadata/type
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (when-let [ids (not-empty (cond-> ids
                               (not (set? ids)) distinct))] ; remove duplicates but preserve order.
@@ -197,7 +197,7 @@
                                                          [:id pos-int?]]]]
   "Like [[bulk-metadata]], but verifies that all the requested objects were returned; throws an Exception otherwise."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- ::lib.schema.metadata/metadata-types
+   metadata-type         :- ::lib.schema.metadata/type
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (let [results     (bulk-metadata metadata-providerable metadata-type ids)
         fetched-ids (into #{} (keep :id) results)]
@@ -210,5 +210,5 @@
 (mu/defn invoked-ids :- [:maybe [:sequential :any]]
   "Get all invoked ids of a metadata type."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- ::lib.schema.metadata/metadata-types]
+   metadata-type         :- ::lib.schema.metadata/type]
   (lib.metadata.protocols/invoked-ids metadata-providerable metadata-type))

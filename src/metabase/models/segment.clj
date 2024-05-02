@@ -100,8 +100,7 @@
                                 [(map :table-id fields)
                                  (map :table_id segments)])]
     ;; this is done for side effects
-    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-      (lib.metadata.protocols/metadatas metadata-provider :metadata/table table-ids))
+    (lib.metadata.protocols/warm-cache metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (mu/defn ^:private segments->table-id->warmed-metadata-provider :- fn?

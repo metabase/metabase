@@ -23,7 +23,7 @@
 
 (mu/defn ^:private store-metadata!
   [cache
-   metadata-type :- ::lib.schema.metadata/metadata-types
+   metadata-type :- ::lib.schema.metadata/type
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}

@@ -113,8 +113,7 @@
                                  (map :table-id segments)
                                  (map :table_id metrics)])]
     ;; this is done for side-effects
-    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-      (lib.metadata.protocols/metadatas metadata-provider :metadata/table table-ids))
+    (lib.metadata.protocols/warm-cache metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
