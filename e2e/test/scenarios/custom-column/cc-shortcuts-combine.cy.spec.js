@@ -11,7 +11,7 @@ import {
   resetSnowplow,
 } from "e2e/support/helpers";
 
-describe("scenarios > question > custom column > expression shortcuts", () => {
+describe("scenarios > question > custom column > expression shortcuts > combine", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
