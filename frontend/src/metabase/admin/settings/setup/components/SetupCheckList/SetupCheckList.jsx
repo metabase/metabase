@@ -82,7 +82,9 @@ const Task = ({ title, description, completed, link }) => (
         title={title}
         titleClassName={completed ? CS.textSuccess : CS.textBrand}
       />
-      {!completed ? <TaskDescription description={description} /> : null}
+      {!completed && description ? (
+        <TaskDescription description={description} />
+      ) : null}
     </div>
   </TaskLink>
 );
