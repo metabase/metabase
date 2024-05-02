@@ -48,7 +48,7 @@ export const MOVE_DASHBOARD_TO_COLLECTION =
   "metabase/dashboard/MOVE_DASHBOARD_TO_COLLECTION";
 export const moveDashboardToCollection = createThunkAction(
   MOVE_DASHBOARD_TO_COLLECTION,
-  function (collection, forceArchive) {
+  function (collection, forceArchive = undefined) {
     return async function (dispatch, getState) {
       const dashboardView = getState().dashboard;
       const dashboard = dashboardView.dashboardId
