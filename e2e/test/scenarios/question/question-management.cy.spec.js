@@ -348,8 +348,7 @@ describe(
                 visitQuestion(ORDERS_QUESTION_ID);
               });
 
-              // TODO: need backend changes to do this sanely
-              it.skip("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 

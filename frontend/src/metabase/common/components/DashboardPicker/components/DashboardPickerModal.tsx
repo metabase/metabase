@@ -42,6 +42,12 @@ const canSelectItem = (
   return item?.model === "dashboard";
 };
 
+const searchFilter = (
+  searchResults: DashboardPickerItem[],
+): DashboardPickerItem[] => {
+  return searchResults.filter(result => result.can_write);
+};
+
 const defaultOptions: DashboardPickerOptions = {
   ...defaultEntityPickerOptions,
   ...defaultDashboardPickerOptions,
@@ -135,7 +141,7 @@ export const DashboardPickerModal = ({
         initialValue={value}
         tabs={tabs}
         options={options}
-        searchResultFilter={results => results}
+        searchResultFilter={searchFilter}
         actionButtons={modalActions}
         searchParams={
           options.showRootCollection === false
