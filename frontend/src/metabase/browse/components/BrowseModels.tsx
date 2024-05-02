@@ -11,7 +11,7 @@ import {
   BrowseContainer,
   BrowseHeader,
   BrowseMain,
-  BrowseSection
+  BrowseSection,
 } from "./BrowseApp.styled";
 import { BrowseModelsBody } from "./BrowseModelsBody";
 

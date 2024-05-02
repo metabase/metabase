@@ -8,17 +8,11 @@ import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
 
-import { BrowseGrid } from "./BrowseApp.styled";
-
-export const ModelCardLink = styled(Link)`
-  margin: 0.5rem 0;
-`;
-
-export const ModelCard = styled(Card)`
+export const ModelCardBody = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
 
-  height: 9rem;
+  height: 7.5rem;
   display: flex;
   flex-flow: column nowrap;
   justify-content: flex-start;
@@ -26,14 +20,12 @@ export const ModelCard = styled(Card)`
 
   border: 1px solid ${color("border")};
 
-  box-shadow: none;
+  box-shadow: 0px 1px 4px 0px #0000000f;
   &:hover {
     h1 {
       color: ${color("brand")};
     }
   }
-  transition: box-shadow 0.15s;
-
   h1 {
     transition: color 0.15s;
   }
@@ -46,7 +38,7 @@ export const MultilineEllipsified = styled(Ellipsified)`
   width: 100%;
 
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
 
   // Without the following rule, the useIsTruncated hook,
@@ -54,8 +46,6 @@ export const MultilineEllipsified = styled(Ellipsified)`
   // is truncated when it is not
   padding-bottom: 1px;
 `;
-
-export const ModelGrid = styled(BrowseGrid)``;
 
 export const CollectionHeaderContainer = styled.button`
   grid-column: 1 / -1;

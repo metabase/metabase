@@ -1,23 +1,24 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
-import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
 import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
-import type { CollectionEssentials, SearchRequest } from "metabase-types/api";
+import { Stack } from "metabase/ui";
+import type {
+  CollectionEssentials,
+  CollectionItem,
+  SearchRequest,
+} from "metabase-types/api";
 import { SortDirection } from "metabase-types/api";
 
 import { filterModels, type ActualModelFilters } from "../utils";
 
-import { CenteredEmptyState } from "./BrowseApp.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
+import { RecentlyViewedModels } from "./RecentlyViewedModels";
 import { getCollectionPathString } from "./utils";
 
 const { availableModelFilters } = PLUGIN_CONTENT_VERIFICATION;
@@ -44,15 +45,20 @@ export const BrowseModelsBody = ({
 
   const filteredModels = useMemo(
     () =>
-      filterModels(
-        unfilteredModels || [],
-        actualModelFilters,
-        availableModelFilters,
-      ),
+      unfilteredModels
+        ? filterModels(
+            unfilteredModels,
+            actualModelFilters,
+            availableModelFilters,
+          )
+        : undefined,
     [unfilteredModels, actualModelFilters],
   );
 
   const sortedModels = useMemo(() => {
+    if (!filteredModels) {
+      return undefined;
+    }
     const { sort_column, sort_direction } = sortingOptions;
     const sorted = _.sortBy(filteredModels, model => {
       if (sort_column === "collection") {
@@ -72,45 +78,23 @@ export const BrowseModelsBody = ({
     return sorted;
   }, [filteredModels, sortingOptions]);
 
-  const wrappedModels = useMemo(
-    () => sortedModels.map(model => Search.wrapEntity(model, dispatch)),
-    [sortedModels, dispatch],
-  );
-
-  if (error || isLoading) {
-    return (
-      <LoadingAndErrorWrapper
-        error={error}
-        loading={isLoading}
-        style={{ display: "flex", flex: 1 }}
-      />
+  const wrappedModels = useMemo(() => {
+    return sortedModels?.map(
+      model => Search.wrapEntity(model, dispatch) as CollectionItem,
     );
-  }
-
-  if (filteredModels.length) {
-    return (
-      <Stack spacing="md" mb="lg">
-        <ModelExplanationBanner />
-        <ModelsTable
-          items={wrappedModels}
-          sortingOptions={sortingOptions}
-          onSortingOptionsChange={setSortingOptions}
-        />
-      </Stack>
-    );
-  }
+  }, [sortedModels, dispatch]);
 
   return (
-    <CenteredEmptyState
-      title={<Box mb=".5rem">{t`No models here yet`}</Box>}
-      message={
-        <Box maw="24rem">{t`Models help curate data to make it easier to find answers to questions all in one place.`}</Box>
-      }
-      illustrationElement={
-        <Box mb=".5rem">
-          <img src={NoResults} />
-        </Box>
-      }
-    />
+    <Stack spacing="md" mb="lg">
+      <ModelExplanationBanner />
+      <RecentlyViewedModels />
+      <ModelsTable
+        items={wrappedModels}
+        sortingOptions={sortingOptions}
+        onSortingOptionsChange={setSortingOptions}
+        error={error}
+        isLoading={isLoading}
+      />
+    </Stack>
   );
 };

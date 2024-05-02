@@ -8,3 +8,9 @@ export const ModelTableRow = styled.tr`
     outline: 2px solid ${color("brand")};
   }
 `;
+
+export const LoadingAndErrorWrapperTableRow = styled.tr`
+  :hover {
+    background-color: inherit !important;
+  }
+`;
