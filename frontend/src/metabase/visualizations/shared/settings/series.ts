@@ -42,6 +42,14 @@ export const getSeriesDefaultLinearInterpolate = (
   settings: ComputedVisualizationSettings,
 ) => settings["line.interpolate"] ?? "linear";
 
+export const getSeriesDefaultLineStyle = (
+  settings: ComputedVisualizationSettings,
+) => settings["line.style"] ?? "solid";
+
+export const getSeriesDefaultLineSize = (
+  settings: ComputedVisualizationSettings,
+) => settings["line.size"] ?? 2;
+
 export const getSeriesDefaultLineMarker = (
   settings: ComputedVisualizationSettings,
 ) =>

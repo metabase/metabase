@@ -4,10 +4,6 @@ import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
-  DEFAULT_LINE_STYLE,
-  DEFAULT_LINE_WIDTH,
-} from "metabase/visualizations/echarts/cartesian/constants/style";
-import {
   SERIES_COLORS_SETTING_KEY,
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
@@ -16,6 +12,8 @@ import {
   getSeriesDefaultDisplay,
   SERIES_SETTING_KEY,
   getSeriesDefaultShowSeriesValues,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineSize,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
@@ -112,7 +110,7 @@ export function seriesSetting({
           { name: t`Dotted`, value: "dotted" },
         ],
       },
-      default: DEFAULT_LINE_STYLE,
+      getDefault: (series, settings) => getSeriesDefaultLineStyle(settings),
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
@@ -127,7 +125,7 @@ export function seriesSetting({
           { name: "L", value: 3 },
         ],
       },
-      default: DEFAULT_LINE_WIDTH,
+      getDefault: (series, settings) => getSeriesDefaultLineSize(settings),
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
