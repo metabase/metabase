@@ -19,7 +19,7 @@ The core assumption in this guide:
 - You will use environment variables to configure your Metabase instance
 - You have `sudo` access on your server
 
-## Create an unprivileged user to run Metabase and give him access to app and logs
+## Create an unprivileged user to run Metabase and give the user access to app and logs
 
 For security reasons we want to have Metabase run as an unprivileged user. We will call the user simply `metabase`. Further we will create the files we will need later for logging and configuration of Metabase, and apply the correct security settings for our unprivileged user.
 
