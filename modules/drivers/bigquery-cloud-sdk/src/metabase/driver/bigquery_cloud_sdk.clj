@@ -219,17 +219,17 @@
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  (let [table                  (get-table database dataset-id table-name)
-        ^TableDefinition       tabledef (.getDefinition table)
-        is-partitioned?        (table-is-partitioned? tabledef)
+  (let [table                     (get-table database dataset-id table-name)
+        ^TableDefinition tabledef (.getDefinition table)
+        is-partitioned?           (table-is-partitioned? tabledef)
         ;; a table can only have one partitioned field
-        partitioned-field-name (when is-partitioned?
-                                 (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
-                                     (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
-        fields                 (set
-                                (map
-                                 #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
-                                 (table-schema->metabase-field-info (. tabledef getSchema))))]
+        partitioned-field-name    (when is-partitioned?
+                                   (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
+                                       (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
+        fields                    (set
+                                   (map
+                                    #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
+                                    (table-schema->metabase-field-info (. tabledef getSchema))))]
     {:schema dataset-id
      :name   table-name
      :fields (cond-> fields
