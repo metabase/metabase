@@ -149,10 +149,7 @@
                 ;; other SESSION parameters
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-                :timezone                                   "UTC"
-                ;; tell Snowflake to use the same start of week that we have set for the
-                ;; [[metabase.public-settings/start-of-week]] Setting.
-                :week_start                                 (start-of-week-setting->snowflake-offset)}
+                :timezone                                   "UTC"}
                (-> details
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
                    ;; of `db`. If we run across `dbname`, correct our behavior
@@ -613,13 +610,27 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
-(defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
+(defmethod sql-jdbc.execute/do-with-connection-with-options :snowflake
+  [driver db-or-id-or-spec {:keys [session-timezone], :as options} f]
+  (let [parent-method (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)]
+    (parent-method
+     driver
+     db-or-id-or-spec
+     options
+     (fn [^Connection conn]
+       (let [session-timezone (or session-timezone "UTC")]
+         (with-open [stmt (.createStatement conn)]
+           (.addBatch stmt (format "ALTER SESSION SET TIMEZONE = '%s';" session-timezone))
+           (.addBatch stmt (format "ALTER SESSION SET WEEK_START = %d;" (start-of-week-setting->snowflake-offset)))
+           (.executeBatch stmt)))
+       (f conn)))))
 
 (defmethod driver/db-default-timezone :snowflake
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
+     ;; is this actually the SYSTEM default timezone? Not SESSION? I thought Snowflake's default was US/Pacific.
      (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE' in user;")
                  rset (.executeQuery stmt)]
        (when (.next rset)

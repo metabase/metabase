@@ -181,7 +181,7 @@
     ;; default method for Postgres not covered by any [driver jdbc-type] methods
     (defmethod read-column-thunk :postgres
       ...)"
-  {:added "0.35.0", :arglists '([driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta i])}
+  {:added "0.35.0", :arglists '([driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Long i])}
   (fn [driver _rs ^ResultSetMetaData rsmeta ^Long col-idx]
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
   :hierarchy #'driver/hierarchy)
@@ -571,14 +571,14 @@
       (execute-prepared-statement! driver st))))
 
 (defmethod read-column-thunk :default
-  [driver ^ResultSet rs rsmeta ^long i]
+  [driver ^ResultSet rs rsmeta ^Long i]
   (let [driver-default-method (get-method read-column-thunk driver)]
     (if-not (= driver-default-method (get-method read-column-thunk :default))
       ^{:name (format "(read-column-thunk %s)" driver)} (driver-default-method driver rs rsmeta i)
       ^{:name (format "(.getObject rs %d)" i)} (fn []
                                                  (.getObject rs i)))))
 
-(defn- get-object-of-class-thunk [^ResultSet rs, ^long i, ^Class klass]
+(defn- get-object-of-class-thunk [^ResultSet rs ^Long i ^Class klass]
   ^{:name (format "(.getObject rs %d %s)" i (.getCanonicalName klass))}
   (fn []
     (.getObject rs i klass)))
