@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase.task.send-pulses-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.pulse :refer [Pulse]]
@@ -9,7 +10,11 @@
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
+   [metabase.test.util :as mt.util]
+   [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest clear-pulse-channels-test
   (testing "Removes empty PulseChannel"
@@ -153,3 +158,31 @@
       (testing "we have a send pulse job for each PulseChannel"
         (is (= #{(pulse-channel-test/pulse->trigger-info (:id pulse) daily-at-6pm [(:id channel)])}
                 (pulse-channel-test/send-pulse-triggers)))))))
+
+(deftest send-pulses-exceed-thread-pool-test
+  (testing "test that if we have more send-pulse triggers than the number of available threads, all channels will still be sent"
+    (pulse-channel-test/with-send-pulse-setup!
+      (mt/with-model-cleanup [:model/Pulse]
+        (let [sent-channel-ids (atom #{})]
+          (with-redefs [;; run the job every 2 seconds
+                        u.cron/schedule-map->cron-string (constantly "0/2 0/1 * 1/1 * ? *")
+                        task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
+                                                           (Thread/sleep 100)
+                                                           (swap! sent-channel-ids set/union channel-ids))]
+            (let [pc-count  (+ 2 mt.util/in-memory-scheduler-thread-count)
+                  pulse-ids (t2/insert-returning-pks! :model/Pulse
+                                                      (repeat pc-count {:creator_id (mt/user->id :rasta)
+                                                                        :name       (mt/random-name)}))
+                  pc-ids    (t2/insert-returning-pks! :model/PulseChannel
+                                                      (for [pulse-id pulse-ids]
+                                                        (merge {:pulse_id       pulse-id
+                                                                :channel_type   :slack
+                                                                :details        {:channel "#random"}}
+                                                               daily-at-6pm)))]
+              (testing "sanity check that we have the correct number triggers and no channel has been sent yet"
+                (is (= pc-count (count (pulse-channel-test/send-pulse-triggers))))
+                (is (= #{} @sent-channel-ids)))
+              ;; job run every 2 seconds, so wait a bit so the job can run
+              (Thread/sleep 3000)
+              (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
+                (is (= (set pc-ids) @sent-channel-ids))))))))))
