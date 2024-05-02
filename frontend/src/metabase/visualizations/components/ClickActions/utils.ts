@@ -19,6 +19,8 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   standalone_filter: {},
   summarize: {},
   sum: {},
+  combine: {},
+  "combine-popover": {},
   extract: {},
   "extract-popover": {},
   auto: {},

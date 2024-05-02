@@ -6570,6 +6570,29 @@ databaseChangeLog:
       rollback: # no rollback necessary, we're not removing the columns yet
 
   - changeSet:
+      id: v50.2024-04-15T16:30:35
+      author: qnkhuat
+      comment: Add report_card.last_used_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the card is last used
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-18T14:33:19
+      author: piranha
+      comment: Backfill query_field
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
+  - changeSet:
       id: v50.2024-04-19T17:04:04
       author: noahmoss
       comment: Clean up deprecated view-data and native-query-editing permissions (again)

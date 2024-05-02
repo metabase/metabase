@@ -46,7 +46,7 @@
 
   (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
-    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
+    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]].")
 
   ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
   ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.
@@ -98,7 +98,7 @@
   (cached-database [cached-metadata-provider]
     "Get cached metadata for the query's Database.")
   (cached-metadata [cached-metadata-provider metadata-type id]
-    "Get cached metadata of a specific type, e.g. `:metadata/table`.")
+   "Get cached metadata of a specific type, e.g. `:metadata/table`.")
   (store-database! [cached-metadata-provider database-metadata]
     "Store metadata for the query's Database.")
   (store-metadata! [cached-metadata-provider metadata-type id metadata]
@@ -109,6 +109,14 @@
   useful for MetadataProviders e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]."
   (bulk-metadata [bulk-metadata-provider metadata-type ids]
     "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
+
+(#?(:clj p/defprotocol+ :cljs defprotocol) InvocationTracker
+  "Optional. A protocol for a MetadataProvider that records the arguments of method invocations during query execution.
+
+  This is useful for tracking which metdata ids were used during a query execution. The main purpose of this is to power
+  updating card.last_used_at during query execution. see [[metabase.query-processor.middleware.update-used-cards/update-used-cards!]]"
+  (invoked-ids [this metadata-type]
+    "Get all invoked ids of a metadata type thus far."))
 
 (defn store-metadatas!
   "Convenience. Store several metadata maps at once."
