@@ -560,7 +560,7 @@ const pristineParameterMappings = handleActions(
         return map;
       },
     },
-    [RESET]: () => INITIAL_DASHBOARD_STATE.pristine,
+    [RESET]: () => INITIAL_DASHBOARD_STATE.pristineParameterMappings,
   },
   INITIAL_DASHBOARD_STATE.pristineParameterMappings,
 );
