@@ -1,3 +1,4 @@
+import type { MantineThemeOverride } from "@mantine/core";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
@@ -45,6 +46,7 @@ export interface RenderWithProvidersOptions {
   withUndos?: boolean;
   customReducers?: ReducerObject;
   sdkConfig?: SDKConfig | null;
+  theme?: MantineThemeOverride;
 }
 
 /**
@@ -63,6 +65,7 @@ export function renderWithProviders(
     withUndos = false,
     customReducers,
     sdkConfig = null,
+    theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
@@ -119,7 +122,9 @@ export function renderWithProviders(
 
   const wrapper = (props: any) => {
     if (mode === "sdk") {
-      return <SdkWrapper {...props} config={sdkConfig} store={store} />;
+      return (
+        <SdkWrapper {...props} config={sdkConfig} store={store} theme={theme} />
+      );
     }
 
     return (
@@ -130,6 +135,7 @@ export function renderWithProviders(
         withRouter={withRouter}
         withDND={withDND}
         withUndos={withUndos}
+        theme={theme}
       />
     );
   };
@@ -153,6 +159,7 @@ function Wrapper({
   withRouter,
   withDND,
   withUndos,
+  theme,
 }: {
   children: React.ReactElement;
   store: any;
@@ -160,11 +167,12 @@ function Wrapper({
   withRouter: boolean;
   withDND: boolean;
   withUndos?: boolean;
+  theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider>
+        <ThemeProvider theme={theme}>
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
