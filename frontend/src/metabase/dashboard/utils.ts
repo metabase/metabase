@@ -118,6 +118,10 @@ export function isHeadingDashCard(
   return getVirtualCardType(dashcard) === "heading";
 }
 
+export function getDashCardOwnParameters(dashcard: VirtualDashboardCard) {
+  return dashcard?.visualization_settings?.parameter_ids || [];
+}
+
 export function isLinkDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {

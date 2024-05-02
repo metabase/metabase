@@ -15,6 +15,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import { getDashCardOwnParameters } from "metabase/dashboard/utils";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
@@ -41,6 +42,7 @@ import type {
   ValuesQueryType,
   ValuesSourceType,
   ValuesSourceConfig,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -260,20 +262,30 @@ function DashboardInner(props: DashboardProps) {
   }, [dashboard, selectedTabId]);
 
   const hiddenParameterSlugs = useMemo(() => {
+    const headingParameterIds = (dashboard?.dashcards || [])
+      .filter(
+        dc => getDashCardOwnParameters(dc as VirtualDashboardCard).length > 0,
+      )
+      .flatMap(dc => getDashCardOwnParameters(dc as VirtualDashboardCard));
+
     if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
+      return parameters
+        .filter(parameter => headingParameterIds.includes(parameter.id))
+        .map(p => p.slug)
+        .join(",");
     }
 
     const currentTabParameterIds = currentTabDashcards.flatMap(
       dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
     );
     const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
+      parameter =>
+        !currentTabParameterIds.includes(parameter.id) ||
+        headingParameterIds.includes(parameter.id),
     );
 
     return hiddenParameters.map(p => p.slug).join(",");
-  }, [parameters, currentTabDashcards, isEditing]);
+  }, [dashboard?.dashcards, parameters, currentTabDashcards, isEditing]);
 
   const visibleParameters = useMemo(
     () => getVisibleParameters(parameters, hiddenParameterSlugs),

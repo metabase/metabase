@@ -2,14 +2,24 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  setEditingParameter,
+  setParameterIndex,
+  setParameterValue,
+  setParameterValueToDefault,
+} from "metabase/dashboard/actions";
+import { getEditingParameter } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import ParametersList from "metabase/parameters/components/ParametersList";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
-  QuestionDashboardCard,
   ParameterValueOrArray,
   VisualizationSettings,
+  VirtualDashboardCard,
+  ParameterId,
 } from "metabase-types/api";
 
 import {
@@ -20,22 +30,30 @@ import {
 } from "./Heading.styled";
 
 interface HeadingProps {
-  isEditing: boolean;
-  onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: QuestionDashboardCard;
-  settings: VisualizationSettings;
+  dashcard: VirtualDashboardCard;
   dashboard: Dashboard;
+  settings: VisualizationSettings;
   parameterValues: { [id: string]: ParameterValueOrArray };
+  isEditing: boolean;
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
 }
 
 export function Heading({
-  settings,
-  isEditing,
-  onUpdateVisualizationSettings,
   dashcard,
   dashboard,
+  settings,
   parameterValues,
+  isEditing,
+  isFullscreen,
+  isNightMode,
+  onUpdateVisualizationSettings,
 }: HeadingProps) {
+  const dispatch = useDispatch();
+
+  const editingParameter = useSelector(getEditingParameter);
+
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
@@ -62,8 +80,36 @@ export function Heading({
     [dashcard, dashboard, parameterValues, settings.text],
   );
 
+  const parameters = dashboard.parameters
+    ?.filter(parameter =>
+      dashcard.visualization_settings.parameter_ids?.includes(parameter.id),
+    )
+    .map(parameter => ({
+      ...parameter,
+      value: parameterValues[parameter.id],
+    }));
+
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`Heading`;
+
+  const handleParameterValueChange = (parameterId: ParameterId, value: any) => {
+    dispatch(setParameterValue(parameterId, value));
+  };
+
+  const handleParameterIndexChange = (
+    parameterId: ParameterId,
+    index: number,
+  ) => {
+    dispatch(setParameterIndex(parameterId, index));
+  };
+
+  const handleChangeEditingParameter = (parameterId: ParameterId) => {
+    dispatch(setEditingParameter(parameterId));
+  };
+
+  const handleSetParameterValueToDefault = (parameterId: ParameterId) => {
+    dispatch(setParameterValueToDefault(parameterId));
+  };
 
   if (isEditing) {
     return (
@@ -73,32 +119,53 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
-        {isPreviewing ? (
-          <HeadingContent
-            data-testid="editing-dashboard-heading-preview"
-            isEditing={isEditing}
-            onMouseDown={preventDragging}
-          >
-            {hasContent ? settings.text : placeholder}
-          </HeadingContent>
-        ) : (
-          <TextInput
-            name="heading"
-            data-testid="editing-dashboard-heading-input"
-            placeholder={placeholder}
-            value={textValue}
-            autoFocus={justAdded || isFocused}
-            onChange={e => setTextValue(e.target.value)}
-            onMouseDown={preventDragging}
-            onBlur={() => {
-              toggleFocusOff();
+        <div>
+          {isPreviewing ? (
+            <HeadingContent
+              data-testid="editing-dashboard-heading-preview"
+              isEditing={isEditing}
+              onMouseDown={preventDragging}
+            >
+              {hasContent ? settings.text : placeholder}
+            </HeadingContent>
+          ) : (
+            <TextInput
+              name="heading"
+              data-testid="editing-dashboard-heading-input"
+              placeholder={placeholder}
+              value={textValue}
+              autoFocus={justAdded || isFocused}
+              onChange={e => setTextValue(e.target.value)}
+              onMouseDown={preventDragging}
+              onBlur={() => {
+                toggleFocusOff();
 
-              if (settings.text !== textValue) {
-                onUpdateVisualizationSettings({ text: textValue });
-              }
-            }}
+                if (settings.text !== textValue) {
+                  onUpdateVisualizationSettings({ text: textValue });
+                }
+              }}
+            />
+          )}
+        </div>
+        <div
+          style={{ zIndex: 999 }}
+          onClick={e => e.stopPropagation()}
+          onDragStart={e => e.stopPropagation()}
+        >
+          <ParametersList
+            parameters={parameters}
+            dashboard={dashboard}
+            editingParameter={editingParameter}
+            isFullscreen={isFullscreen}
+            isNightMode={isNightMode}
+            isEditing={isEditing}
+            setParameterIndex={handleParameterIndexChange}
+            setParameterValue={handleParameterValueChange}
+            setEditingParameter={handleChangeEditingParameter}
+            setParameterValueToDefault={handleSetParameterValueToDefault}
+            enableParameterRequiredBehavior
           />
-        )}
+        </div>
       </InputContainer>
     );
   }
@@ -108,6 +175,25 @@ export function Heading({
       <HeadingContent data-testid="saved-dashboard-heading-content">
         {content}
       </HeadingContent>
+      <div
+        style={{ zIndex: 999 }}
+        onClick={e => e.stopPropagation()}
+        onDragStart={e => e.stopPropagation()}
+      >
+        <ParametersList
+          parameters={parameters}
+          dashboard={dashboard}
+          editingParameter={editingParameter}
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          isEditing={isEditing}
+          setParameterIndex={handleParameterIndexChange}
+          setParameterValue={handleParameterValueChange}
+          setEditingParameter={handleChangeEditingParameter}
+          setParameterValueToDefault={handleSetParameterValueToDefault}
+          enableParameterRequiredBehavior
+        />
+      </div>
     </HeadingContainer>
   );
 }

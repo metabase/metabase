@@ -18,7 +18,7 @@ import type {
   QuestionDashboardCard,
 } from "metabase-types/api";
 
-const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];
+const VIZ_WITH_CUSTOM_MAPPING_UI = ["heading", "placeholder", "link"];
 
 export function shouldShowParameterMapper({
   dashcard,

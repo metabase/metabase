@@ -31,6 +31,7 @@ import type {
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
+  VirtualDashboardCard,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -116,26 +117,47 @@ export const setEditingParameter =
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (option: ParameterMappingOptions) => (dispatch, getState) => {
-    let newId: undefined | ParameterId = undefined;
+  (option: ParameterMappingOptions, dc?: VirtualDashboardCard) =>
+    (dispatch, getState) => {
+      let newId: undefined | ParameterId = undefined;
 
-    updateParameters(dispatch, getState, parameters => {
-      const parameter = createParameter(option, parameters);
-      newId = parameter.id;
-      return [...parameters, parameter];
-    });
+      updateParameters(dispatch, getState, parameters => {
+        const parameter = createParameter(option, parameters);
+        newId = parameter.id;
 
-    if (newId) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId: newId,
-          },
-        }),
-      );
-    }
-  },
+        // TODO Refactor, maybe split into separate actions
+        if (dc) {
+          const nextVisualizationSettings = {
+            ...dc?.visualization_settings,
+            parameter_ids: [
+              ...(dc?.visualization_settings?.parameter_ids || []),
+              newId,
+            ],
+          };
+          dispatch(
+            setDashCardAttributes({
+              id: dc.id,
+              attributes: {
+                visualization_settings: nextVisualizationSettings,
+              },
+            }),
+          );
+        }
+
+        return [...parameters, parameter];
+      });
+
+      if (newId) {
+        dispatch(
+          setSidebar({
+            name: SIDEBAR_NAME.editParameter,
+            props: {
+              parameterId: newId,
+            },
+          }),
+        );
+      }
+    },
 );
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";

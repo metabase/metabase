@@ -113,7 +113,10 @@ interface DashboardGridProps {
   }) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
 
-  addParameter: (option: ParameterMappingOptions) => void;
+  addParameter: (
+    option: ParameterMappingOptions,
+    dc?: BaseDashboardCard,
+  ) => void;
 
   setDashCardAttributes: (options: DashboardChangeItem) => void;
   setMultipleDashCardAttributes: (changes: {
@@ -485,7 +488,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   onDashCardAddParameter(dc: BaseDashboardCard, opt: ParameterMappingOptions) {
-    this.props.addParameter(opt);
+    this.props.addParameter(opt, dc);
   }
 
   onReplaceCard = (dashcard: BaseDashboardCard) => {
