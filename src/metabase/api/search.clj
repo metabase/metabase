@@ -110,7 +110,8 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
-   collection-id-column
+   ;; `[:vector :keyword]` allows for `[:coalesce :col1 :col2]`
+   collection-id-column                          :- [:or :keyword [:vector :keyword]]
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
@@ -216,12 +217,10 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(defn collection-id-for-table
-  "What column should we use to a) join to the `collection` table? and b) filter collections to the set the user is
-  allowed to see?
-
-  When we're not looking for collections, use `{my-table}.collection_id` or `{my-table}.trashed_from_collection_id`,
-  depending on if we're looking for archived items."
+(defn- collection-id-for-table
+  "What should we use to represent the 'collection id' for a row in `table`? Generally, the `collection_id`, but if a
+  `trashed_from_collection_id` is present, we should use that instead - this is a trashed collection, and the relevant
+  collection is not the Trash but whatever collection it was trashed from."
   [table-name]
   [:coalesce
    (keyword (format "%s.trashed_from_collection_id" (name table-name)))
