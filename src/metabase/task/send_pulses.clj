@@ -13,6 +13,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -76,8 +77,9 @@
 
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
-  [{:keys [pulse-id channel-ids]}]
-  (send-pulse! pulse-id channel-ids))
+  [context]
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
+    (send-pulse! pulse-id channel-ids)))
 
 ;;; --------------------------------------------- Job: RePrioritizeSendPulses -------------------------------------------
 
