@@ -157,7 +157,6 @@
 (defn do-with-aggregation-list
   "Impl for [[with-aggregation-list]]."
   [aggregations thunk]
-  (println "aggregations:" aggregations) ; NOCOMMIT
   (let [legacy->pMBQL (into {}
                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                            [idx ag-uuid]))
