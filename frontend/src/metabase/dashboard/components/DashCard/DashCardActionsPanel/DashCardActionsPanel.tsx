@@ -3,7 +3,11 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isHeadingDashCard,
+  isLinkDashCard,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
@@ -81,6 +85,19 @@ export function DashCardActionsPanel({
         onClose={() => setIsDashCardTabMenuOpen(false)}
         onOpen={() => setIsDashCardTabMenuOpen(true)}
       />,
+    );
+  }
+
+  if (dashcard && isHeadingDashCard(dashcard)) {
+    buttons.push(
+      <DashCardActionButton
+        key="filter"
+        tooltip={t`Add a filter`}
+        aria-label={t`Add a filter`}
+        analyticsEvent="Dashboard;Add Filter"
+      >
+        <DashCardActionButton.Icon name="filter" />
+      </DashCardActionButton>,
     );
   }
 
