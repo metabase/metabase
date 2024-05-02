@@ -383,8 +383,7 @@
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.trashed_from_collection_id
-                     ;; sigh. mariadb returns `c.archived` as 0 or 1 because it's a tinyint. This converts it to a boolean.
-                     [[:= :c.archived true] :archived]
+                     :c.archived
                      :c.dataset_query
                      [(h2x/literal (if dataset? "dataset" "card")) :model]
                      [:u.id :last_edit_user]
@@ -482,6 +481,7 @@
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
+      (update :archived api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -515,10 +515,12 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ _ rows]
-  (map #(dissoc %
-                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query :table_id :query_type :is_upload)
-       rows))
+  (->> rows
+       (map #(update % :archived api/bit->boolean))
+       (map #(dissoc %
+                     :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+                     :dataset_query :table_id :query_type :is_upload)))
+  )
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -622,6 +624,7 @@
       (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
+          (update :archived api/bit->boolean)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
