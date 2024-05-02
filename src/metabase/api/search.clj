@@ -302,14 +302,16 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
+            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
+
             collection-perm-clause
             [:or
-             (when has-root-access? [:= :model.collection_id nil])
+             (when has-root-access? [:= collection-id nil])
              [:and
-              [:not= :model.collection_id nil]
+              [:not= collection-id nil]
               [:or
-               (has-perm-clause "/collection/" :model.collection_id "/")
-               (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
+               (has-perm-clause "/collection/" collection-id "/")
+               (has-perm-clause "/collection/" collection-id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))
