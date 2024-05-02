@@ -2,8 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { OperatorCategory } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Box, Checkbox, Flex } from "metabase/ui";
+import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -29,10 +30,9 @@ export function StringFilterPicker({
 
   const {
     operator,
+    operatorCategory,
     availableOptions,
     values,
-    hasValues,
-    hasCaseSensitiveOption,
     options,
     isValid,
     getDefaultValues,
@@ -85,11 +85,11 @@ export function StringFilterPicker({
           stageIndex={stageIndex}
           column={column}
           values={values}
-          hasValues={hasValues}
+          operatorCategory={operatorCategory}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
-          {hasCaseSensitiveOption && (
+          {operatorCategory === "partial" && (
             <CaseSensitiveOption
               value={options["case-sensitive"] ?? false}
               onChange={newValue => setOptions({ "case-sensitive": newValue })}
@@ -106,7 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  hasValues: boolean;
+  operatorCategory: OperatorCategory;
   onChange: (values: string[]) => void;
 }
 
@@ -115,10 +115,10 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  hasValues,
+  operatorCategory,
   onChange,
 }: StringValueInputProps) {
-  if (hasValues) {
+  if (operatorCategory === "exact") {
     return (
       <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
@@ -130,6 +130,22 @@ function StringValueInput({
           onChange={onChange}
         />
       </Box>
+    );
+  }
+
+  if (operatorCategory === "partial") {
+    return (
+      <Flex p="md">
+        <MultiAutocomplete
+          value={values}
+          data={[]}
+          placeholder={t`Enter some text`}
+          autoFocus
+          w="100%"
+          aria-label={t`Filter value`}
+          onChange={onChange}
+        />
+      </Flex>
     );
   }
 

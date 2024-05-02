@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import type { OperatorCategory } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Grid } from "metabase/ui";
+import { Grid, MultiAutocomplete } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -24,9 +26,9 @@ export function StringFilterEditor({
 
   const {
     operator,
+    operatorCategory,
     availableOptions,
     values,
-    hasValues,
     options,
     getDefaultValues,
     getFilterClause,
@@ -88,7 +90,7 @@ export function StringFilterEditor({
             stageIndex={stageIndex}
             column={column}
             values={values}
-            hasValues={hasValues}
+            operatorCategory={operatorCategory}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
@@ -104,7 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  hasValues: boolean;
+  operatorCategory: OperatorCategory;
   onChange: (values: string[]) => void;
   onFocus: () => void;
   onBlur: () => void;
@@ -115,12 +117,12 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  hasValues,
+  operatorCategory,
   onChange,
   onFocus,
   onBlur,
 }: StringValueInputProps) {
-  if (hasValues) {
+  if (operatorCategory === "exact") {
     return (
       <StringFilterValuePicker
         query={query}
@@ -128,6 +130,20 @@ function StringValueInput({
         column={column}
         values={values}
         compact
+        onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />
+    );
+  }
+
+  if (operatorCategory === "partial") {
+    return (
+      <MultiAutocomplete
+        data={[]}
+        value={values}
+        placeholder={t`Enter some text`}
+        aria-label={t`Filter value`}
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
