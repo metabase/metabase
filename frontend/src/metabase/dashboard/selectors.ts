@@ -20,6 +20,8 @@ import type {
   DashboardId,
   DashCardId,
   DashboardCard,
+  DashboardParameterMapping,
+  ParameterId,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -428,5 +430,37 @@ export const getSelectedTabId = createSelector(
   },
 );
 
-export const getPristineParameterMappings = (state: State) =>
-  state.dashboard.pristineParameterMappings;
+export const getParameterMappingsBeforeEditing = createSelector(
+  [getDashboardBeforeEditing],
+  editingDashboard => {
+    if (!editingDashboard) {
+      return {};
+    }
+
+    const dashcards = editingDashboard.dashcards;
+    const map: Record<
+      ParameterId,
+      Record<DashCardId, DashboardParameterMapping>
+    > = {};
+
+    // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
+    for (const dashcard of dashcards) {
+      if (!dashcard.parameter_mappings) {
+        continue;
+      }
+
+      for (const parameterMapping of dashcard.parameter_mappings) {
+        const parameterId = parameterMapping.parameter_id;
+
+        if (!map[parameterId]) {
+          map[parameterId] = {};
+        }
+
+        map[parameterId][dashcard.id] =
+          parameterMapping as DashboardParameterMapping;
+      }
+    }
+
+    return map;
+  },
+);

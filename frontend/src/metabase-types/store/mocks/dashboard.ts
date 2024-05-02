@@ -30,6 +30,5 @@ export const createMockDashboardState = (
     toastDashboardId: null,
   },
   tabDeletions: {},
-  pristineParameterMappings: {},
   ...opts,
 });

@@ -48,7 +48,6 @@ describe("dashboard reducers", () => {
         toastDashboardId: null,
       },
       tabDeletions: {},
-      pristineParameterMappings: {},
     });
   });
 

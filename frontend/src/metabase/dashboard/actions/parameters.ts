@@ -50,7 +50,7 @@ import {
   getIsAutoApplyFilters,
   getParameters,
   getParameterValues,
-  getPristineParameterMappings,
+  getParameterMappingsBeforeEditing,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -326,40 +326,40 @@ function restoreParameterMappingsIfNeeded(
   }
 
   const parametersBeforeEditing = dashboardBeforeEditing.parameters;
-  const pristineParameter = parametersBeforeEditing?.find(
+  const parameterToRestore = parametersBeforeEditing?.find(
     ({ id }) => id === parameterId,
   );
 
-  if (!pristineParameter) {
+  if (!parameterToRestore) {
     return false;
   }
 
-  if (sectionId !== pristineParameter.sectionId) {
+  if (sectionId !== parameterToRestore.sectionId) {
     return false;
   }
 
   // restore parameter state
   updateParameter(dispatch, getState, parameterId, () =>
-    setParamType(pristineParameter, pristineParameter.type, sectionId),
+    setParamType(parameterToRestore, parameterToRestore.type, sectionId),
   );
 
-  const pristineParameterMappings = getPristineParameterMappings(getState());
-  const pristineMappingsForParameter = pristineParameterMappings[parameterId];
+  const parameterMappingsBeforeEditing = getParameterMappingsBeforeEditing(
+    getState(),
+  );
+  const parameterMappings = parameterMappingsBeforeEditing[parameterId];
 
-  if (!pristineMappingsForParameter) {
+  if (!parameterMappings) {
     return false;
   }
 
   // restore parameter mappings
-  Object.entries(pristineMappingsForParameter).forEach(
-    ([dashcardId, mappings]) => {
-      const { card_id, target } = mappings;
+  Object.entries(parameterMappings).forEach(([dashcardId, mappings]) => {
+    const { card_id, target } = mappings;
 
-      dispatch(
-        setParameterMapping(parameterId, Number(dashcardId), card_id, target),
-      );
-    },
-  );
+    dispatch(
+      setParameterMapping(parameterId, Number(dashcardId), card_id, target),
+    );
+  });
 
   return true;
 }
