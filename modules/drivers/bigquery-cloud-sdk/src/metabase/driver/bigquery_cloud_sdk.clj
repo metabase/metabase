@@ -123,7 +123,7 @@
 
 (defn- tabledef->range-partition
   [^TableDefinition tabledef]
-  (case (.getType tabledef)
+  (condp = (.getType tabledef)
     TableDefinition$Type/TABLE
     (.getRangePartitioning ^StandardTableDefinition tabledef)
     TableDefinition$Type/MATERIALIZED_VIEW
@@ -132,7 +132,7 @@
 
 (defn- tabledef->time-partition
   [^TableDefinition tabledef]
-  (case (.getType tabledef)
+  (condp = (.getType tabledef)
     TableDefinition$Type/TABLE
     (.getTimePartitioning ^StandardTableDefinition tabledef)
     TableDefinition$Type/MATERIALIZED_VIEW
