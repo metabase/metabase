@@ -4,6 +4,10 @@ import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
+  DEFAULT_LINE_STYLE,
+  DEFAULT_LINE_WIDTH,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
   SERIES_COLORS_SETTING_KEY,
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
@@ -108,7 +112,7 @@ export function seriesSetting({
           { name: t`Dotted`, value: "dotted" },
         ],
       },
-      default: "solid",
+      default: DEFAULT_LINE_STYLE,
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
@@ -123,7 +127,7 @@ export function seriesSetting({
           { name: "L", value: 3 },
         ],
       },
-      default: 2,
+      default: DEFAULT_LINE_WIDTH,
       getHidden: (single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
