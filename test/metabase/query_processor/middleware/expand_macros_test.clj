@@ -450,6 +450,9 @@
               :name       "Metric 1"
               :table-id   (meta/id :venues)
               :definition {:source-table (meta/id :venues)
+                           ;; note that `:aggregation` here is a single aggregation rather than a sequence of
+                           ;; aggregations, which is how we did things in MBQL 1 and 2. Also `:field` clauses are don't
+                           ;; have options map or `nil` which wasn't added until MBQL 4
                            :aggregation  [:sum-where
-                                          [:field (meta/id :venues :price) nil]
-                                          [:< [:field (meta/id :venues :price) nil] 4]]}})))))
+                                          [:field (meta/id :venues :price)]
+                                          [:< [:field (meta/id :venues :price)] 4]]}})))))
