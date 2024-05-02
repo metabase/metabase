@@ -1,7 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 
-import { Button } from "../..";
+import { Text } from "../..";
 
 import { ThemeProvider } from "./ThemeProvider";
 
@@ -15,13 +15,16 @@ describe("ThemeProvider", () => {
 
     render(
       <ThemeProvider theme={theme}>
-        <Button color="brand">Demo</Button>
+        <Text size="lg">Text</Text>
       </ThemeProvider>,
     );
 
-    const buttonLabel = screen.getByText("Demo");
-    const css = window.getComputedStyle(buttonLabel);
+    const textCss = window.getComputedStyle(screen.getByText("Text"));
 
-    expect(css.getPropertyValue("color")).toBe("rgb(12, 34, 56)");
+    // Metabase theme overrides must be preserved.
+    expect(textCss.getPropertyValue("line-height")).toBe("1.5rem");
+
+    // Theme override from the user must be applied.
+    expect(textCss.getPropertyValue("color")).toBe("rgb(12, 34, 56)");
   });
 });
