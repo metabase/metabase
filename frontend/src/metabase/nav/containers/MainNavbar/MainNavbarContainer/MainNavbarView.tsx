@@ -119,7 +119,7 @@ function MainNavbarView({
             iconPosition="right"
             iconSize={8}
             headerClass={CS.mb1}
-            onToggle={_.debounce(setExpandBrowse, debounceTimeout)}
+            onToggle={setExpandBrowse}
           >
             <PaddedSidebarLink
               icon="model"
