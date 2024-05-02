@@ -110,6 +110,7 @@ export function UploadManagementTable() {
         {t`Uploaded Tables`}
       </Text>
       <StyledTable
+        data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
         rowRenderer={row => renderRow(row as Table)}
