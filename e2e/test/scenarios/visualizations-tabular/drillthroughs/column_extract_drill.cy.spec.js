@@ -279,7 +279,7 @@ describe("extract action", () => {
   });
 
   describe("email columns", () => {
-    beforeEach(function () {
+    beforeEach(() => {
       restore();
       cy.signInAsAdmin();
     });
