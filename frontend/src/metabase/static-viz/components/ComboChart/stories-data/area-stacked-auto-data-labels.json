@@ -1,0 +1,773 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-04-05T22:06:33.03346Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (04238f7)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.show_values": true,
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "column_settings": {
+          "[\"name\",\"count\"]": {
+            "prefix": "!!!!!!!!!!!",
+            "suffix": "!!!!!!!!!!!"
+          }
+        },
+        "graph.metrics": ["count"]
+      },
+      "collection_preview": true,
+      "entity_id": "WHg5OH8QMs7SYw_FvZrIE",
+      "display": "area",
+      "parameter_mappings": [],
+      "id": 130,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "week"
+              }
+            ],
+            [
+              "field",
+              58,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ]
+          ],
+          "filter": [
+            "between",
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "week"
+              }
+            ],
+            "2024-01-28T00:00Z",
+            "2025-11-23T00:00Z"
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-04-05T22:06:33.03346Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "Orders, Count, Grouped by Created At: Week and Product → Category, Filtered by Created At is Jan 28, 2024, 12:00 AM – Nov 23, 2025, 12:00 AM",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "week"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 58,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 37,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 12,
+                "q1": 25.180652708018286,
+                "q3": 34.22184933674955,
+                "max": 53,
+                "sd": 6.851781050022049,
+                "avg": 29.8359375
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2024-01-28T00:00:00-03:00", "Doohickey", 29],
+        ["2024-01-28T00:00:00-03:00", "Gadget", 26],
+        ["2024-01-28T00:00:00-03:00", "Gizmo", 29],
+        ["2024-01-28T00:00:00-03:00", "Widget", 29],
+        ["2024-02-04T00:00:00-03:00", "Doohickey", 30],
+        ["2024-02-04T00:00:00-03:00", "Gadget", 27],
+        ["2024-02-04T00:00:00-03:00", "Gizmo", 17],
+        ["2024-02-04T00:00:00-03:00", "Widget", 28],
+        ["2024-02-11T00:00:00-03:00", "Doohickey", 23],
+        ["2024-02-11T00:00:00-03:00", "Gadget", 36],
+        ["2024-02-11T00:00:00-03:00", "Gizmo", 35],
+        ["2024-02-11T00:00:00-03:00", "Widget", 25],
+        ["2024-02-18T00:00:00-03:00", "Doohickey", 18],
+        ["2024-02-18T00:00:00-03:00", "Gadget", 26],
+        ["2024-02-18T00:00:00-03:00", "Gizmo", 19],
+        ["2024-02-18T00:00:00-03:00", "Widget", 18],
+        ["2024-02-25T00:00:00-03:00", "Doohickey", 14],
+        ["2024-02-25T00:00:00-03:00", "Gadget", 23],
+        ["2024-02-25T00:00:00-03:00", "Gizmo", 26],
+        ["2024-02-25T00:00:00-03:00", "Widget", 27],
+        ["2024-03-03T00:00:00-03:00", "Doohickey", 21],
+        ["2024-03-03T00:00:00-03:00", "Gadget", 20],
+        ["2024-03-03T00:00:00-03:00", "Gizmo", 27],
+        ["2024-03-03T00:00:00-03:00", "Widget", 22],
+        ["2024-03-10T00:00:00-03:00", "Doohickey", 29],
+        ["2024-03-10T00:00:00-03:00", "Gadget", 24],
+        ["2024-03-10T00:00:00-03:00", "Gizmo", 26],
+        ["2024-03-10T00:00:00-03:00", "Widget", 20],
+        ["2024-03-17T00:00:00-03:00", "Doohickey", 19],
+        ["2024-03-17T00:00:00-03:00", "Gadget", 24],
+        ["2024-03-17T00:00:00-03:00", "Gizmo", 30],
+        ["2024-03-17T00:00:00-03:00", "Widget", 29],
+        ["2024-03-24T00:00:00-03:00", "Doohickey", 26],
+        ["2024-03-24T00:00:00-03:00", "Gadget", 25],
+        ["2024-03-24T00:00:00-03:00", "Gizmo", 24],
+        ["2024-03-24T00:00:00-03:00", "Widget", 27],
+        ["2024-03-31T00:00:00-03:00", "Doohickey", 25],
+        ["2024-03-31T00:00:00-03:00", "Gadget", 26],
+        ["2024-03-31T00:00:00-03:00", "Gizmo", 30],
+        ["2024-03-31T00:00:00-03:00", "Widget", 24],
+        ["2024-04-07T00:00:00-03:00", "Doohickey", 20],
+        ["2024-04-07T00:00:00-03:00", "Gadget", 18],
+        ["2024-04-07T00:00:00-03:00", "Gizmo", 33],
+        ["2024-04-07T00:00:00-03:00", "Widget", 31],
+        ["2024-04-14T00:00:00-03:00", "Doohickey", 15],
+        ["2024-04-14T00:00:00-03:00", "Gadget", 20],
+        ["2024-04-14T00:00:00-03:00", "Gizmo", 23],
+        ["2024-04-14T00:00:00-03:00", "Widget", 28],
+        ["2024-04-21T00:00:00-03:00", "Doohickey", 17],
+        ["2024-04-21T00:00:00-03:00", "Gadget", 33],
+        ["2024-04-21T00:00:00-03:00", "Gizmo", 31],
+        ["2024-04-21T00:00:00-03:00", "Widget", 22],
+        ["2024-04-28T00:00:00-03:00", "Doohickey", 21],
+        ["2024-04-28T00:00:00-03:00", "Gadget", 28],
+        ["2024-04-28T00:00:00-03:00", "Gizmo", 47],
+        ["2024-04-28T00:00:00-03:00", "Widget", 32],
+        ["2024-05-05T00:00:00-03:00", "Doohickey", 21],
+        ["2024-05-05T00:00:00-03:00", "Gadget", 26],
+        ["2024-05-05T00:00:00-03:00", "Gizmo", 29],
+        ["2024-05-05T00:00:00-03:00", "Widget", 28],
+        ["2024-05-12T00:00:00-03:00", "Doohickey", 22],
+        ["2024-05-12T00:00:00-03:00", "Gadget", 37],
+        ["2024-05-12T00:00:00-03:00", "Gizmo", 33],
+        ["2024-05-12T00:00:00-03:00", "Widget", 45],
+        ["2024-05-19T00:00:00-03:00", "Doohickey", 15],
+        ["2024-05-19T00:00:00-03:00", "Gadget", 25],
+        ["2024-05-19T00:00:00-03:00", "Gizmo", 40],
+        ["2024-05-19T00:00:00-03:00", "Widget", 33],
+        ["2024-05-26T00:00:00-03:00", "Doohickey", 20],
+        ["2024-05-26T00:00:00-03:00", "Gadget", 37],
+        ["2024-05-26T00:00:00-03:00", "Gizmo", 34],
+        ["2024-05-26T00:00:00-03:00", "Widget", 25],
+        ["2024-06-02T00:00:00-03:00", "Doohickey", 16],
+        ["2024-06-02T00:00:00-03:00", "Gadget", 29],
+        ["2024-06-02T00:00:00-03:00", "Gizmo", 21],
+        ["2024-06-02T00:00:00-03:00", "Widget", 25],
+        ["2024-06-09T00:00:00-03:00", "Doohickey", 12],
+        ["2024-06-09T00:00:00-03:00", "Gadget", 29],
+        ["2024-06-09T00:00:00-03:00", "Gizmo", 28],
+        ["2024-06-09T00:00:00-03:00", "Widget", 31],
+        ["2024-06-16T00:00:00-03:00", "Doohickey", 25],
+        ["2024-06-16T00:00:00-03:00", "Gadget", 39],
+        ["2024-06-16T00:00:00-03:00", "Gizmo", 27],
+        ["2024-06-16T00:00:00-03:00", "Widget", 40],
+        ["2024-06-23T00:00:00-03:00", "Doohickey", 18],
+        ["2024-06-23T00:00:00-03:00", "Gadget", 25],
+        ["2024-06-23T00:00:00-03:00", "Gizmo", 36],
+        ["2024-06-23T00:00:00-03:00", "Widget", 26],
+        ["2024-06-30T00:00:00-03:00", "Doohickey", 26],
+        ["2024-06-30T00:00:00-03:00", "Gadget", 25],
+        ["2024-06-30T00:00:00-03:00", "Gizmo", 31],
+        ["2024-06-30T00:00:00-03:00", "Widget", 28],
+        ["2024-07-07T00:00:00-03:00", "Doohickey", 26],
+        ["2024-07-07T00:00:00-03:00", "Gadget", 24],
+        ["2024-07-07T00:00:00-03:00", "Gizmo", 32],
+        ["2024-07-07T00:00:00-03:00", "Widget", 30],
+        ["2024-07-14T00:00:00-03:00", "Doohickey", 18],
+        ["2024-07-14T00:00:00-03:00", "Gadget", 35],
+        ["2024-07-14T00:00:00-03:00", "Gizmo", 32],
+        ["2024-07-14T00:00:00-03:00", "Widget", 35],
+        ["2024-07-21T00:00:00-03:00", "Doohickey", 28],
+        ["2024-07-21T00:00:00-03:00", "Gadget", 32],
+        ["2024-07-21T00:00:00-03:00", "Gizmo", 22],
+        ["2024-07-21T00:00:00-03:00", "Widget", 29],
+        ["2024-07-28T00:00:00-03:00", "Doohickey", 27],
+        ["2024-07-28T00:00:00-03:00", "Gadget", 27],
+        ["2024-07-28T00:00:00-03:00", "Gizmo", 35],
+        ["2024-07-28T00:00:00-03:00", "Widget", 32],
+        ["2024-08-04T00:00:00-03:00", "Doohickey", 23],
+        ["2024-08-04T00:00:00-03:00", "Gadget", 37],
+        ["2024-08-04T00:00:00-03:00", "Gizmo", 35],
+        ["2024-08-04T00:00:00-03:00", "Widget", 29],
+        ["2024-08-11T00:00:00-03:00", "Doohickey", 21],
+        ["2024-08-11T00:00:00-03:00", "Gadget", 35],
+        ["2024-08-11T00:00:00-03:00", "Gizmo", 31],
+        ["2024-08-11T00:00:00-03:00", "Widget", 32],
+        ["2024-08-18T00:00:00-03:00", "Doohickey", 23],
+        ["2024-08-18T00:00:00-03:00", "Gadget", 26],
+        ["2024-08-18T00:00:00-03:00", "Gizmo", 25],
+        ["2024-08-18T00:00:00-03:00", "Widget", 33],
+        ["2024-08-25T00:00:00-03:00", "Doohickey", 25],
+        ["2024-08-25T00:00:00-03:00", "Gadget", 31],
+        ["2024-08-25T00:00:00-03:00", "Gizmo", 20],
+        ["2024-08-25T00:00:00-03:00", "Widget", 32],
+        ["2024-09-01T00:00:00-03:00", "Doohickey", 21],
+        ["2024-09-01T00:00:00-03:00", "Gadget", 25],
+        ["2024-09-01T00:00:00-03:00", "Gizmo", 41],
+        ["2024-09-01T00:00:00-03:00", "Widget", 29],
+        ["2024-09-08T00:00:00-03:00", "Doohickey", 27],
+        ["2024-09-08T00:00:00-03:00", "Gadget", 26],
+        ["2024-09-08T00:00:00-03:00", "Gizmo", 14],
+        ["2024-09-08T00:00:00-03:00", "Widget", 32],
+        ["2024-09-15T00:00:00-03:00", "Doohickey", 25],
+        ["2024-09-15T00:00:00-03:00", "Gadget", 31],
+        ["2024-09-15T00:00:00-03:00", "Gizmo", 36],
+        ["2024-09-15T00:00:00-03:00", "Widget", 32],
+        ["2024-09-22T00:00:00-03:00", "Doohickey", 28],
+        ["2024-09-22T00:00:00-03:00", "Gadget", 32],
+        ["2024-09-22T00:00:00-03:00", "Gizmo", 30],
+        ["2024-09-22T00:00:00-03:00", "Widget", 31],
+        ["2024-09-29T00:00:00-03:00", "Doohickey", 25],
+        ["2024-09-29T00:00:00-03:00", "Gadget", 19],
+        ["2024-09-29T00:00:00-03:00", "Gizmo", 42],
+        ["2024-09-29T00:00:00-03:00", "Widget", 28],
+        ["2024-10-06T00:00:00-03:00", "Doohickey", 22],
+        ["2024-10-06T00:00:00-03:00", "Gadget", 21],
+        ["2024-10-06T00:00:00-03:00", "Gizmo", 31],
+        ["2024-10-06T00:00:00-03:00", "Widget", 34],
+        ["2024-10-13T00:00:00-03:00", "Doohickey", 22],
+        ["2024-10-13T00:00:00-03:00", "Gadget", 30],
+        ["2024-10-13T00:00:00-03:00", "Gizmo", 36],
+        ["2024-10-13T00:00:00-03:00", "Widget", 37],
+        ["2024-10-20T00:00:00-03:00", "Doohickey", 21],
+        ["2024-10-20T00:00:00-03:00", "Gadget", 44],
+        ["2024-10-20T00:00:00-03:00", "Gizmo", 38],
+        ["2024-10-20T00:00:00-03:00", "Widget", 24],
+        ["2024-10-27T00:00:00-03:00", "Doohickey", 23],
+        ["2024-10-27T00:00:00-03:00", "Gadget", 40],
+        ["2024-10-27T00:00:00-03:00", "Gizmo", 34],
+        ["2024-10-27T00:00:00-03:00", "Widget", 38],
+        ["2024-11-03T00:00:00-03:00", "Doohickey", 23],
+        ["2024-11-03T00:00:00-03:00", "Gadget", 23],
+        ["2024-11-03T00:00:00-03:00", "Gizmo", 26],
+        ["2024-11-03T00:00:00-03:00", "Widget", 42],
+        ["2024-11-10T00:00:00-03:00", "Doohickey", 33],
+        ["2024-11-10T00:00:00-03:00", "Gadget", 42],
+        ["2024-11-10T00:00:00-03:00", "Gizmo", 35],
+        ["2024-11-10T00:00:00-03:00", "Widget", 23],
+        ["2024-11-17T00:00:00-03:00", "Doohickey", 25],
+        ["2024-11-17T00:00:00-03:00", "Gadget", 29],
+        ["2024-11-17T00:00:00-03:00", "Gizmo", 30],
+        ["2024-11-17T00:00:00-03:00", "Widget", 20],
+        ["2024-11-24T00:00:00-03:00", "Doohickey", 34],
+        ["2024-11-24T00:00:00-03:00", "Gadget", 29],
+        ["2024-11-24T00:00:00-03:00", "Gizmo", 38],
+        ["2024-11-24T00:00:00-03:00", "Widget", 30],
+        ["2024-12-01T00:00:00-03:00", "Doohickey", 29],
+        ["2024-12-01T00:00:00-03:00", "Gadget", 30],
+        ["2024-12-01T00:00:00-03:00", "Gizmo", 31],
+        ["2024-12-01T00:00:00-03:00", "Widget", 19],
+        ["2024-12-08T00:00:00-03:00", "Doohickey", 20],
+        ["2024-12-08T00:00:00-03:00", "Gadget", 23],
+        ["2024-12-08T00:00:00-03:00", "Gizmo", 38],
+        ["2024-12-08T00:00:00-03:00", "Widget", 40],
+        ["2024-12-15T00:00:00-03:00", "Doohickey", 25],
+        ["2024-12-15T00:00:00-03:00", "Gadget", 37],
+        ["2024-12-15T00:00:00-03:00", "Gizmo", 39],
+        ["2024-12-15T00:00:00-03:00", "Widget", 32],
+        ["2024-12-22T00:00:00-03:00", "Doohickey", 26],
+        ["2024-12-22T00:00:00-03:00", "Gadget", 42],
+        ["2024-12-22T00:00:00-03:00", "Gizmo", 26],
+        ["2024-12-22T00:00:00-03:00", "Widget", 30],
+        ["2024-12-29T00:00:00-03:00", "Doohickey", 24],
+        ["2024-12-29T00:00:00-03:00", "Gadget", 26],
+        ["2024-12-29T00:00:00-03:00", "Gizmo", 35],
+        ["2024-12-29T00:00:00-03:00", "Widget", 31],
+        ["2025-01-05T00:00:00-03:00", "Doohickey", 30],
+        ["2025-01-05T00:00:00-03:00", "Gadget", 37],
+        ["2025-01-05T00:00:00-03:00", "Gizmo", 35],
+        ["2025-01-05T00:00:00-03:00", "Widget", 26],
+        ["2025-01-12T00:00:00-03:00", "Doohickey", 34],
+        ["2025-01-12T00:00:00-03:00", "Gadget", 29],
+        ["2025-01-12T00:00:00-03:00", "Gizmo", 29],
+        ["2025-01-12T00:00:00-03:00", "Widget", 39],
+        ["2025-01-19T00:00:00-03:00", "Doohickey", 29],
+        ["2025-01-19T00:00:00-03:00", "Gadget", 35],
+        ["2025-01-19T00:00:00-03:00", "Gizmo", 35],
+        ["2025-01-19T00:00:00-03:00", "Widget", 47],
+        ["2025-01-26T00:00:00-03:00", "Doohickey", 26],
+        ["2025-01-26T00:00:00-03:00", "Gadget", 28],
+        ["2025-01-26T00:00:00-03:00", "Gizmo", 45],
+        ["2025-01-26T00:00:00-03:00", "Widget", 36],
+        ["2025-02-02T00:00:00-03:00", "Doohickey", 32],
+        ["2025-02-02T00:00:00-03:00", "Gadget", 32],
+        ["2025-02-02T00:00:00-03:00", "Gizmo", 35],
+        ["2025-02-02T00:00:00-03:00", "Widget", 44],
+        ["2025-02-09T00:00:00-03:00", "Doohickey", 29],
+        ["2025-02-09T00:00:00-03:00", "Gadget", 41],
+        ["2025-02-09T00:00:00-03:00", "Gizmo", 26],
+        ["2025-02-09T00:00:00-03:00", "Widget", 42],
+        ["2025-02-16T00:00:00-03:00", "Doohickey", 19],
+        ["2025-02-16T00:00:00-03:00", "Gadget", 45],
+        ["2025-02-16T00:00:00-03:00", "Gizmo", 27],
+        ["2025-02-16T00:00:00-03:00", "Widget", 26],
+        ["2025-02-23T00:00:00-03:00", "Doohickey", 26],
+        ["2025-02-23T00:00:00-03:00", "Gadget", 31],
+        ["2025-02-23T00:00:00-03:00", "Gizmo", 27],
+        ["2025-02-23T00:00:00-03:00", "Widget", 42],
+        ["2025-03-02T00:00:00-03:00", "Doohickey", 28],
+        ["2025-03-02T00:00:00-03:00", "Gadget", 36],
+        ["2025-03-02T00:00:00-03:00", "Gizmo", 29],
+        ["2025-03-02T00:00:00-03:00", "Widget", 46],
+        ["2025-03-09T00:00:00-03:00", "Doohickey", 18],
+        ["2025-03-09T00:00:00-03:00", "Gadget", 29],
+        ["2025-03-09T00:00:00-03:00", "Gizmo", 35],
+        ["2025-03-09T00:00:00-03:00", "Widget", 26],
+        ["2025-03-16T00:00:00-03:00", "Doohickey", 29],
+        ["2025-03-16T00:00:00-03:00", "Gadget", 44],
+        ["2025-03-16T00:00:00-03:00", "Gizmo", 32],
+        ["2025-03-16T00:00:00-03:00", "Widget", 33],
+        ["2025-03-23T00:00:00-03:00", "Doohickey", 30],
+        ["2025-03-23T00:00:00-03:00", "Gadget", 43],
+        ["2025-03-23T00:00:00-03:00", "Gizmo", 34],
+        ["2025-03-23T00:00:00-03:00", "Widget", 26],
+        ["2025-03-30T00:00:00-03:00", "Doohickey", 28],
+        ["2025-03-30T00:00:00-03:00", "Gadget", 31],
+        ["2025-03-30T00:00:00-03:00", "Gizmo", 33],
+        ["2025-03-30T00:00:00-03:00", "Widget", 33],
+        ["2025-04-06T00:00:00-03:00", "Doohickey", 21],
+        ["2025-04-06T00:00:00-03:00", "Gadget", 35],
+        ["2025-04-06T00:00:00-03:00", "Gizmo", 33],
+        ["2025-04-06T00:00:00-03:00", "Widget", 44],
+        ["2025-04-13T00:00:00-03:00", "Doohickey", 32],
+        ["2025-04-13T00:00:00-03:00", "Gadget", 29],
+        ["2025-04-13T00:00:00-03:00", "Gizmo", 31],
+        ["2025-04-13T00:00:00-03:00", "Widget", 31],
+        ["2025-04-20T00:00:00-03:00", "Doohickey", 23],
+        ["2025-04-20T00:00:00-03:00", "Gadget", 34],
+        ["2025-04-20T00:00:00-03:00", "Gizmo", 35],
+        ["2025-04-20T00:00:00-03:00", "Widget", 34],
+        ["2025-04-27T00:00:00-03:00", "Doohickey", 23],
+        ["2025-04-27T00:00:00-03:00", "Gadget", 31],
+        ["2025-04-27T00:00:00-03:00", "Gizmo", 34],
+        ["2025-04-27T00:00:00-03:00", "Widget", 31],
+        ["2025-05-04T00:00:00-03:00", "Doohickey", 25],
+        ["2025-05-04T00:00:00-03:00", "Gadget", 32],
+        ["2025-05-04T00:00:00-03:00", "Gizmo", 29],
+        ["2025-05-04T00:00:00-03:00", "Widget", 35],
+        ["2025-05-11T00:00:00-03:00", "Doohickey", 33],
+        ["2025-05-11T00:00:00-03:00", "Gadget", 35],
+        ["2025-05-11T00:00:00-03:00", "Gizmo", 29],
+        ["2025-05-11T00:00:00-03:00", "Widget", 30],
+        ["2025-05-18T00:00:00-03:00", "Doohickey", 21],
+        ["2025-05-18T00:00:00-03:00", "Gadget", 41],
+        ["2025-05-18T00:00:00-03:00", "Gizmo", 41],
+        ["2025-05-18T00:00:00-03:00", "Widget", 32],
+        ["2025-05-25T00:00:00-03:00", "Doohickey", 16],
+        ["2025-05-25T00:00:00-03:00", "Gadget", 36],
+        ["2025-05-25T00:00:00-03:00", "Gizmo", 28],
+        ["2025-05-25T00:00:00-03:00", "Widget", 49],
+        ["2025-06-01T00:00:00-03:00", "Doohickey", 22],
+        ["2025-06-01T00:00:00-03:00", "Gadget", 25],
+        ["2025-06-01T00:00:00-03:00", "Gizmo", 35],
+        ["2025-06-01T00:00:00-03:00", "Widget", 25],
+        ["2025-06-08T00:00:00-03:00", "Doohickey", 30],
+        ["2025-06-08T00:00:00-03:00", "Gadget", 24],
+        ["2025-06-08T00:00:00-03:00", "Gizmo", 24],
+        ["2025-06-08T00:00:00-03:00", "Widget", 38],
+        ["2025-06-15T00:00:00-03:00", "Doohickey", 29],
+        ["2025-06-15T00:00:00-03:00", "Gadget", 27],
+        ["2025-06-15T00:00:00-03:00", "Gizmo", 40],
+        ["2025-06-15T00:00:00-03:00", "Widget", 30],
+        ["2025-06-22T00:00:00-03:00", "Doohickey", 31],
+        ["2025-06-22T00:00:00-03:00", "Gadget", 36],
+        ["2025-06-22T00:00:00-03:00", "Gizmo", 36],
+        ["2025-06-22T00:00:00-03:00", "Widget", 34],
+        ["2025-06-29T00:00:00-03:00", "Doohickey", 22],
+        ["2025-06-29T00:00:00-03:00", "Gadget", 37],
+        ["2025-06-29T00:00:00-03:00", "Gizmo", 32],
+        ["2025-06-29T00:00:00-03:00", "Widget", 33],
+        ["2025-07-06T00:00:00-03:00", "Doohickey", 22],
+        ["2025-07-06T00:00:00-03:00", "Gadget", 31],
+        ["2025-07-06T00:00:00-03:00", "Gizmo", 32],
+        ["2025-07-06T00:00:00-03:00", "Widget", 37],
+        ["2025-07-13T00:00:00-03:00", "Doohickey", 35],
+        ["2025-07-13T00:00:00-03:00", "Gadget", 24],
+        ["2025-07-13T00:00:00-03:00", "Gizmo", 31],
+        ["2025-07-13T00:00:00-03:00", "Widget", 29],
+        ["2025-07-20T00:00:00-03:00", "Doohickey", 28],
+        ["2025-07-20T00:00:00-03:00", "Gadget", 35],
+        ["2025-07-20T00:00:00-03:00", "Gizmo", 32],
+        ["2025-07-20T00:00:00-03:00", "Widget", 28],
+        ["2025-07-27T00:00:00-03:00", "Doohickey", 32],
+        ["2025-07-27T00:00:00-03:00", "Gadget", 38],
+        ["2025-07-27T00:00:00-03:00", "Gizmo", 37],
+        ["2025-07-27T00:00:00-03:00", "Widget", 34],
+        ["2025-08-03T00:00:00-03:00", "Doohickey", 16],
+        ["2025-08-03T00:00:00-03:00", "Gadget", 33],
+        ["2025-08-03T00:00:00-03:00", "Gizmo", 27],
+        ["2025-08-03T00:00:00-03:00", "Widget", 40],
+        ["2025-08-10T00:00:00-03:00", "Doohickey", 29],
+        ["2025-08-10T00:00:00-03:00", "Gadget", 33],
+        ["2025-08-10T00:00:00-03:00", "Gizmo", 28],
+        ["2025-08-10T00:00:00-03:00", "Widget", 35],
+        ["2025-08-17T00:00:00-03:00", "Doohickey", 24],
+        ["2025-08-17T00:00:00-03:00", "Gadget", 41],
+        ["2025-08-17T00:00:00-03:00", "Gizmo", 28],
+        ["2025-08-17T00:00:00-03:00", "Widget", 37],
+        ["2025-08-24T00:00:00-03:00", "Doohickey", 25],
+        ["2025-08-24T00:00:00-03:00", "Gadget", 46],
+        ["2025-08-24T00:00:00-03:00", "Gizmo", 38],
+        ["2025-08-24T00:00:00-03:00", "Widget", 32],
+        ["2025-08-31T00:00:00-03:00", "Doohickey", 18],
+        ["2025-08-31T00:00:00-03:00", "Gadget", 25],
+        ["2025-08-31T00:00:00-03:00", "Gizmo", 26],
+        ["2025-08-31T00:00:00-03:00", "Widget", 30],
+        ["2025-09-07T00:00:00-03:00", "Doohickey", 31],
+        ["2025-09-07T00:00:00-03:00", "Gadget", 25],
+        ["2025-09-07T00:00:00-03:00", "Gizmo", 25],
+        ["2025-09-07T00:00:00-03:00", "Widget", 32],
+        ["2025-09-14T00:00:00-03:00", "Doohickey", 31],
+        ["2025-09-14T00:00:00-03:00", "Gadget", 25],
+        ["2025-09-14T00:00:00-03:00", "Gizmo", 34],
+        ["2025-09-14T00:00:00-03:00", "Widget", 32],
+        ["2025-09-21T00:00:00-03:00", "Doohickey", 33],
+        ["2025-09-21T00:00:00-03:00", "Gadget", 53],
+        ["2025-09-21T00:00:00-03:00", "Gizmo", 27],
+        ["2025-09-21T00:00:00-03:00", "Widget", 31],
+        ["2025-09-28T00:00:00-03:00", "Doohickey", 20],
+        ["2025-09-28T00:00:00-03:00", "Gadget", 34],
+        ["2025-09-28T00:00:00-03:00", "Gizmo", 43],
+        ["2025-09-28T00:00:00-03:00", "Widget", 33],
+        ["2025-10-05T00:00:00-03:00", "Doohickey", 22],
+        ["2025-10-05T00:00:00-03:00", "Gadget", 33],
+        ["2025-10-05T00:00:00-03:00", "Gizmo", 33],
+        ["2025-10-05T00:00:00-03:00", "Widget", 25],
+        ["2025-10-12T00:00:00-03:00", "Doohickey", 29],
+        ["2025-10-12T00:00:00-03:00", "Gadget", 22],
+        ["2025-10-12T00:00:00-03:00", "Gizmo", 35],
+        ["2025-10-12T00:00:00-03:00", "Widget", 42],
+        ["2025-10-19T00:00:00-03:00", "Doohickey", 17],
+        ["2025-10-19T00:00:00-03:00", "Gadget", 37],
+        ["2025-10-19T00:00:00-03:00", "Gizmo", 24],
+        ["2025-10-19T00:00:00-03:00", "Widget", 40],
+        ["2025-10-26T00:00:00-03:00", "Doohickey", 27],
+        ["2025-10-26T00:00:00-03:00", "Gadget", 28],
+        ["2025-10-26T00:00:00-03:00", "Gizmo", 38],
+        ["2025-10-26T00:00:00-03:00", "Widget", 32],
+        ["2025-11-02T00:00:00-03:00", "Doohickey", 31],
+        ["2025-11-02T00:00:00-03:00", "Gadget", 39],
+        ["2025-11-02T00:00:00-03:00", "Gizmo", 30],
+        ["2025-11-02T00:00:00-03:00", "Widget", 34],
+        ["2025-11-09T00:00:00-03:00", "Doohickey", 31],
+        ["2025-11-09T00:00:00-03:00", "Gadget", 34],
+        ["2025-11-09T00:00:00-03:00", "Gizmo", 38],
+        ["2025-11-09T00:00:00-03:00", "Widget", 29],
+        ["2025-11-16T00:00:00-03:00", "Doohickey", 22],
+        ["2025-11-16T00:00:00-03:00", "Gadget", 41],
+        ["2025-11-16T00:00:00-03:00", "Gizmo", 28],
+        ["2025-11-16T00:00:00-03:00", "Widget", 27],
+        ["2025-11-23T00:00:00-03:00", "Doohickey", 23],
+        ["2025-11-23T00:00:00-03:00", "Gadget", 40],
+        ["2025-11-23T00:00:00-03:00", "Gizmo", 29],
+        ["2025-11-23T00:00:00-03:00", "Widget", 37]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "week"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 8,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 40,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 58,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PRODUCTS__via__PRODUCT_ID"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATEADD('day', CAST(1 - CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END AS long), CAST(CAST(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS date) AS datetime)) AS \"CREATED_AT\", \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"PRODUCTS__via__PRODUCT_ID\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"PRODUCTS__via__PRODUCT_ID\".\"ID\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp '2024-01-28 00:00:00.000') AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp '2025-11-30 00:00:00.000') GROUP BY DATEADD('day', CAST(1 - CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END AS long), CAST(CAST(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS date) AS datetime)), \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ORDER BY DATEADD('day', CAST(1 - CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END AS long), CAST(CAST(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS date) AS datetime)) ASC, \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "week",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "week"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              58,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 58,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 37,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 12,
+                  "q1": 25.180652708018286,
+                  "q3": 34.22184933674955,
+                  "max": 53,
+                  "sd": 6.851781050022049,
+                  "avg": 29.8359375
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

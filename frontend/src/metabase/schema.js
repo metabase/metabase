@@ -140,7 +140,3 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
-
-export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
-  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
-});

@@ -286,6 +286,25 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->pMBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->pMBQL expr) n])
+
+;; These four expressions have a different form depending on the number of arguments.
+(doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
+  (lib.hierarchy/derive tag ::string-comparison))
+
+(defmethod ->pMBQL ::string-comparison
+  [[tag opts & args :as clause]]
+  (if (> (count args) 2)
+    ;; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    (lib.options/ensure-uuid (into [tag opts] (map ->pMBQL args)))
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [[tag x y opts] clause]
+      (lib.options/ensure-uuid [tag (or opts {}) (->pMBQL x) (->pMBQL y)]))))
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -331,7 +350,13 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
+(defmulti ^:private aggregation->legacy-MBQL
+  {:arglists '([aggregation-clause])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod aggregation->legacy-MBQL :default
+  [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
@@ -341,6 +366,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :offset
+  [clause]
+  (->legacy-MBQL clause))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
@@ -454,6 +483,21 @@
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
     [:value value opts]))
+
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->legacy-MBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->legacy-MBQL expr) n])
+
+(defmethod ->legacy-MBQL ::string-comparison
+  [[tag opts & args]]
+  (if (> (count args) 2)
+    (into [tag (disqualify opts)] (map ->legacy-MBQL args)) ; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [opts (disqualify opts)]
+      (cond-> (into [tag] (map ->legacy-MBQL args))
+        (seq opts) (conj opts)))))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

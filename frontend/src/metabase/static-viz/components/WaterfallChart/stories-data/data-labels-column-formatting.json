@@ -1,0 +1,237 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 161,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "stage",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1544, null],
+          "effective_type": "type/Text",
+          "id": 1544,
+          "visibility_type": "normal",
+          "display_name": "Stage",
+          "fingerprint": {
+            "global": { "distinct-count": 1, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 8
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": { "distinct-count": 5, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 225,
+                "q1": 393.75,
+                "q3": 6250,
+                "max": 10000,
+                "sd": 4138.447776642832,
+                "avg": 3435
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Ordinal Data Labels Column Formatting - User Flow",
+      "creator_id": 1,
+      "updated_at": "2023-12-21T20:20:17.638032Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [["field", "stage", { "base-type": "type/Text" }]],
+          "source-table": "card__157"
+        }
+      },
+      "id": 195,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "qRk1iHf1xHkd6F3CUu-BA",
+      "collection_preview": true,
+      "visualization_settings": {
+        "waterfall.show_total": true,
+        "graph.dimensions": ["stage"],
+        "graph.show_values": true,
+        "column_settings": {
+          "[\"name\",\"count\"]": {
+            "number_style": "currency",
+            "currency": "AED",
+            "number_separators": ".",
+            "decimals": 5,
+            "scale": 1.235,
+            "prefix": "$",
+            "suffix": " units"
+          }
+        },
+        "graph.metrics": ["count"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-21T20:20:17.638032Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "stage",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1544, null],
+            "effective_type": "type/Text",
+            "id": 1544,
+            "visibility_type": "normal",
+            "display_name": "Stage",
+            "fingerprint": {
+              "global": { "distinct-count": 1, "nil%": 0 },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 8
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": { "distinct-count": 5, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 225,
+                  "q1": 393.75,
+                  "q3": 6250,
+                  "max": 10000,
+                  "sd": 4138.447776642832,
+                  "avg": 3435
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        ["cart", 1500],
+        ["checkout", 450],
+        ["homepage", 10000],
+        ["product_page", 5000],
+        ["purchase", 225]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 161,
+          "coercion_strategy": null,
+          "name": "stage",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1544, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1544,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Stage",
+          "fingerprint": {
+            "global": { "distinct-count": 1, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 8
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "waterfall.show_total": true,
+        "graph.dimensions": ["stage"],
+        "graph.show_values": true,
+        "graph.metrics": ["count"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/column-name \"count\"}": {
+            "metabase.shared.models.visualization-settings/number-style": "currency",
+            "metabase.shared.models.visualization-settings/currency": "AED",
+            "metabase.shared.models.visualization-settings/number-separators": ".",
+            "metabase.shared.models.visualization-settings/decimals": 5,
+            "metabase.shared.models.visualization-settings/scale": 1.235,
+            "metabase.shared.models.visualization-settings/prefix": "$",
+            "metabase.shared.models.visualization-settings/suffix": " units"
+          }
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"stage\" AS \"stage\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"user_id\" AS \"user_id\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"stage\" AS \"stage\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"conversion\" AS \"conversion\" FROM \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\") AS \"source\" GROUP BY \"source\".\"stage\" ORDER BY \"source\".\"stage\" ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

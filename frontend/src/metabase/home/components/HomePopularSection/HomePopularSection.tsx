@@ -1,9 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { usePopularItemListQuery } from "metabase/common/hooks";
+import { useListPopularItemsQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getIcon, getName } from "metabase/entities/popular-items";
+import { getIcon } from "metabase/lib/icon";
+import { getName } from "metabase/lib/name";
 import * as Urls from "metabase/lib/urls";
 import type { PopularItem } from "metabase-types/api";
 
@@ -18,7 +19,7 @@ export const HomePopularSection = (): JSX.Element => {
     data: popularItems = [],
     isLoading,
     error,
-  } = usePopularItemListQuery();
+  } = useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -31,8 +32,11 @@ export const HomePopularSection = (): JSX.Element => {
         {popularItems.map((item, index) => (
           <HomeModelCard
             key={index}
-            title={getName(item)}
-            icon={getIcon(item)}
+            title={getName(item.model_object)}
+            icon={getIcon(
+              { ...item.model_object, model: item.model },
+              { variant: "secondary" },
+            )}
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}

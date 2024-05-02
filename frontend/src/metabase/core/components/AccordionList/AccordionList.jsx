@@ -649,7 +649,8 @@ export default class AccordionList extends Component {
               onChangeSearchText={this.handleChangeSearchText}
               sectionIsExpanded={this.isSectionExpanded}
               alwaysExpanded={
-                this.props.globalSearch && this.state.searchText.length > 0
+                this.props.alwaysExpanded ||
+                (this.props.globalSearch && this.state.searchText.length > 0)
               }
               canToggleSections={this.canToggleSections()}
               toggleSection={this.toggleSection}

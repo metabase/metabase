@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
+import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
@@ -16,7 +16,6 @@ export const SdkContentWrapper = styled.div<{ font: string; baseUrl?: string }>`
   ${aceEditorStyles}
   ${saveDomImageStyles}
   ${({ theme }) => getRootStyle(theme)}
-  :where(${baseStyle})
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
 

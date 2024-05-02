@@ -3,10 +3,16 @@ import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import {} from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
-import { setPlugins } from "embedding-sdk/store/reducer";
+import {
+  setErrorComponent,
+  setLoaderComponent,
+  setPlugins,
+} from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
@@ -17,21 +23,31 @@ interface MetabaseProviderProps {
   children: ReactNode;
   config: SDKConfig;
   pluginsConfig?: SdkPluginsConfig;
+  theme?: MetabaseTheme;
 }
 
 const MetabaseProviderInternal = ({
   children,
   config,
   pluginsConfig,
+  theme,
 }: MetabaseProviderProps): JSX.Element => {
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
 
+  useEffect(() => {
+    store.dispatch(setLoaderComponent(config.loaderComponent ?? null));
+  }, [config.loaderComponent]);
+
+  useEffect(() => {
+    store.dispatch(setErrorComponent(config.errorComponent ?? null));
+  }, [config.errorComponent]);
+
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <ThemeProvider theme={theme}>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
