@@ -542,6 +542,10 @@ const pristineParameterMappings = handleActions(
 
         // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
         for (const dashcard of dashcards) {
+          if (!dashcard.parameter_mappings) {
+            continue;
+          }
+
           for (const parameterMapping of dashcard.parameter_mappings) {
             const parameterId = parameterMapping.parameter_id;
 
