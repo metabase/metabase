@@ -1,8 +1,9 @@
 (ns metabase.lib.drill-thru.column-extract-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
-   [clojure.test :refer [deftest testing]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
@@ -338,3 +339,14 @@
          :query-type     :unaggregated
          :column-name    "EMAIL"
          :custom-query   query-no-regex}))))
+
+(deftest ^:parallel extractions-for-drill-test
+  (let [drill (lib.drill-thru.tu/test-returns-drill
+                {:click-type     :header
+                 :query-type     :unaggregated
+                 :column-name    "CREATED_AT"
+                 :drill-type     :drill-thru/column-extract
+                 :expected       {:type         :drill-thru/column-extract
+                                  :extractions  datetime-extraction-units}})]
+    (is (=? datetime-extraction-units
+            (lib.drill-thru.column-extract/extractions-for-drill drill)))))
