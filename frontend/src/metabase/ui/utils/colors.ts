@@ -37,6 +37,7 @@ const CUSTOM_COLORS = [
   "success",
   "error",
   "white",
+  "summarize",
   "accent5",
 ];
 
