@@ -12,6 +12,7 @@ import {
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
@@ -22,12 +23,14 @@ interface MetabaseProviderProps {
   children: ReactNode;
   config: SDKConfig;
   pluginsConfig?: SdkPluginsConfig;
+  theme?: MetabaseTheme;
 }
 
 const MetabaseProviderInternal = ({
   children,
   config,
   pluginsConfig,
+  theme,
 }: MetabaseProviderProps): JSX.Element => {
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
@@ -44,7 +47,7 @@ const MetabaseProviderInternal = ({
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <ThemeProvider theme={theme}>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
