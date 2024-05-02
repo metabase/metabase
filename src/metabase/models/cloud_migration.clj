@@ -54,6 +54,7 @@
     (t2/table-name :model/Setting)
 
     ;; Users need to login, make queries, and we need need to audit them.
+    (t2/table-name :model/User)
     (t2/table-name :model/Session)
     (t2/table-name :model/LoginHistory)
     (t2/table-name :model/AuditLog)
