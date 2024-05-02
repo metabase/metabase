@@ -3,8 +3,10 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 
-export const Root = styled.div<{ color: ColorName }>`
+export const Root = styled.div<{ color: ColorName; hasBottomPadding: boolean }>`
   color: ${props => color(props.color)};
+  padding-top: 0.5rem;
+  padding-bottom: ${props => (props.hasBottomPadding ? "0.5rem" : "")};
 `;
 
 export const ColumnPickerContainer = styled.div`

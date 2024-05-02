@@ -98,7 +98,6 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric),
         ),
@@ -241,7 +240,11 @@ export function AggregationPicker({
   }
 
   return (
-    <Root className={className} color="summarize">
+    <Root
+      className={className}
+      color="summarize"
+      hasBottomPadding={sections.length === 1}
+    >
       <AccordionList
         sections={sections}
         onChange={handleChange}
