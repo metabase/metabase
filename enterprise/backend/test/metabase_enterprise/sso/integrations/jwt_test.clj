@@ -120,6 +120,33 @@
               redirect-url (get-in result [:headers "Location"])]
           (is (str/includes? redirect-url "&return_to=")))))))
 
+(deftest jwt-saml-both-enabled-test
+  (with-jwt-default-setup
+    (saml-test/with-saml-default-setup
+      (testing "with SAML and JWT configured, a GET request with JWT params should sign in correctly"
+        (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                                                       :first_name "Rasta"
+                                                                       :last_name  "Toucan"
+                                                                       :extra      "keypairs"
+                                                                       :are        "also present"}
+                                                                      default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+          (testing "redirect URI"
+            (is (= default-redirect-uri
+                   (get-in response [:headers "Location"]))))
+          (testing "login attributes"
+            (is (= {"extra" "keypairs", "are" "also present"}
+                   (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))
+
+      (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
+        (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri)]
+          (is (not (saml-test/successful-login? response))))))))
+
 (deftest happy-path-test
   (testing (str "Happy path login, valid JWT, checks to ensure the user was logged in successfully and the redirect to "
                 "the right location")

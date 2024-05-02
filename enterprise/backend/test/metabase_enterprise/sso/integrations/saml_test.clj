@@ -403,6 +403,21 @@
             (is (= (some-saml-attributes "rasta")
                    (saml-login-attributes "rasta@metabase.com")))))))))
 
+(deftest jwt-saml-both-enabled-saml-success-test
+  (mt/with-additional-premium-features #{:sso-jwt}
+    (testing "with SAML and JWT configured, a GET request without JWT params successfully logins with SAML."
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+         (fn []
+           (let [req-options (saml-post-request-options (saml-test-response)
+                                                        (saml/str->base64 default-redirect-uri))
+                 response    (client-full-response :post 302 "/auth/sso" req-options)]
+             (is (successful-login? response))
+             (is (= default-redirect-uri
+                    (get-in response [:headers "Location"])))
+             (is (= (some-saml-attributes "rasta")
+                    (saml-login-attributes "rasta@metabase.com"))))))))))
+
 (deftest login-invalid-relay-state-test
   (testing (str "if the RelayState is not set or is invalid, you are redirected back to the home page rather than "
                 "failing the entire login")
