@@ -122,7 +122,7 @@ export const useCommandPalette = () => {
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data?.length) {
-        return searchResults.data.map(result => {
+        return searchResults.data.map<PaletteAction>(result => {
           const wrappedResult = Search.wrapEntity(result, dispatch);
           return {
             id: `search-result-${result.model}-${result.id}`,
