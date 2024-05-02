@@ -1,5 +1,8 @@
 import { USERS } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   openCommandPalette,
@@ -22,6 +25,11 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
+    //Add a description for a check
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      description: "The best question",
+    });
+
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.visit("/");
@@ -56,10 +64,9 @@ describe("command palette", () => {
       cy.log("Should search entities and docs");
       commandPaletteSearch().type("Orders, Count");
 
-      cy.findByRole("option", { name: "Orders, Count" }).should(
-        "contain.text",
-        "Our analytics",
-      );
+      cy.findByRole("option", { name: "Orders, Count" })
+        .should("contain.text", "Our analytics")
+        .should("contain.text", "The best question");
 
       cy.findByText('Search documentation for "Orders, Count"').should("exist");
 

@@ -24,7 +24,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { Card, MetricId, SegmentId } from "metabase-types/api";
+import type { Card, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -46,7 +46,6 @@ type BlankQueryOptions = {
   db?: string;
   table?: string;
   segment?: string;
-  metric?: string;
 };
 
 type QueryParams = BlankQueryOptions & {
@@ -77,17 +76,12 @@ function getCardForBlankQuestion(
   const databaseId = options.db ? parseInt(options.db) : undefined;
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
-  const metricId = options.metric ? parseInt(options.metric) : undefined;
 
   let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
       question = filterBySegmentId(question, segmentId);
-    }
-
-    if (typeof metricId === "number") {
-      question = aggregateByMetricId(question, metricId);
     }
   }
 
@@ -104,19 +98,6 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   }
 
   const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
-  return question.setQuery(newQuery);
-}
-
-function aggregateByMetricId(question: Question, metricId: MetricId) {
-  const stageIndex = -1;
-  const query = question.query();
-  const metricMetadata = Lib.metricMetadata(query, metricId);
-
-  if (!metricMetadata) {
-    return question;
-  }
-
-  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
   return question.setQuery(newQuery);
 }
 
@@ -318,10 +299,6 @@ async function handleQBInit(
       originalCard,
       dispatch,
     });
-  }
-
-  if (!hasCard && options.metric) {
-    uiControls.isShowingSummarySidebar = true;
   }
 
   MetabaseAnalytics.trackStructEvent(

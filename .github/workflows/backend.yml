@@ -80,8 +80,9 @@ jobs:
       - name: Collect the test coverage
         run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
           flags: back-end
 
