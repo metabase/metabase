@@ -26,7 +26,7 @@ class ArchiveCollectionModalInner extends Component {
     return (
       <ArchiveModal
         title={t`Move this collection to trash?`}
-        message={t`The dashboards, collections, and alerts in this collection will also be moved to trash.`}
+        message={t`The dashboards, collections, and alerts in this collection will also be moved to the trash.`}
         onClose={this.props.onClose}
         onArchive={this.archive}
       />

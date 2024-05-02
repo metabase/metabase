@@ -556,9 +556,8 @@ function DashboardInner(props: DashboardProps) {
                 dispatch(moveDashboardToCollection({ id: newParentId }))
               }
               onDeletePermanently={() => {
-                const deleteAction = Dashboards.actions.delete({
-                  id: dashboard.id,
-                });
+                const { id } = dashboard;
+                const deleteAction = Dashboards.actions.delete({ id });
                 dispatch(deletePermanently(deleteAction));
               }}
             />

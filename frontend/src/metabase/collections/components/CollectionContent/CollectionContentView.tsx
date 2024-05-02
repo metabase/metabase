@@ -71,8 +71,6 @@ const ALL_MODELS = [
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
-// TODO: check if the collection is archived, if so, show a different bulk actions modal...
-
 export const CollectionContentView = ({
   databases,
   bookmarks,
