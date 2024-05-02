@@ -1093,7 +1093,7 @@
    parent_id       [:maybe ms/PositiveInt]
    authority_level [:maybe collection/AuthorityLevel]}
   ;; do we have perms to edit this Collection?
-  (let [collection-before-update (api/write-check Collection id)]
+  (let [collection-before-update (t2/hydrate (api/write-check Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
