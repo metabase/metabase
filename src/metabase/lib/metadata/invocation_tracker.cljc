@@ -10,63 +10,50 @@
   Making this dynamic for testing purposes."
   #{:metadata/card})
 
-(defn- update-tracker-and-call-next-provider!
-  [tracker metadata-provider metadata-type id]
+(defn- track-ids! [tracker metadata-type ids]
   ;; we only have usage for metadata/card for now, so we only track it to save some overhead
-  (when (*to-track-metadata-types* metadata-type)
+  (when (contains? *to-track-metadata-types* metadata-type)
     (swap! tracker update metadata-type (fn [item-ids]
-                                          (if (seq item-ids)
-                                            (conj item-ids id)
-                                            [id]))))
-  ((case metadata-type
-     :metadata/database
-     lib.metadata.protocols/database
-     :metadata/table
-     lib.metadata.protocols/table
-     :metadata/column
-     lib.metadata.protocols/field
-     :metadata/card
-     lib.metadata.protocols/card
-     :metadata/legacy-metric
-     lib.metadata.protocols/legacy-metric
-     :metadata/legacy-metrics
-     lib.metadata.protocols/legacy-metrics
-     :metadata/segment
-     lib.metadata.protocols/segment
-     :metadata/fields
-     lib.metadata.protocols/fields
-     :metadata/setting
-     lib.metadata.protocols/setting)
-   metadata-provider
-   id))
+                                          (into (vec item-ids) ids)))))
+
+(defn- metadatas [tracker metadata-provider metadata-type ids]
+  (track-ids! tracker metadata-type ids)
+  (lib.metadata.protocols/metadatas metadata-provider metadata-type ids))
+
+(defn- metadatas-for-table [tracker metadata-provider metadata-type table-id]
+  (let [tracking-type (case metadata-type
+                        :metadata/field         ::table-fields
+                        :metadata/legacy-metric ::table-legacy-metrics
+                        :metadata/segment       ::table-segments)]
+    (track-ids! tracker tracking-type [table-id]))
+  (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id))
+
+(defn- setting [tracker metadata-provider setting-key]
+  (track-ids! tracker ::setting [setting-key])
+  (lib.metadata.protocols/setting metadata-provider setting-key))
 
 (deftype InvocationTracker [tracker metadata-provider]
- lib.metadata.protocols/InvocationTracker
+  lib.metadata.protocols/InvocationTracker
   (invoked-ids [_this metadata-type]
     (get @tracker metadata-type))
 
   lib.metadata.protocols/MetadataProvider
-  (database       [_this]              (lib.metadata.protocols/database metadata-provider))
-  (table          [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/table table-id))
-  (field          [_this field-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/column field-id))
-  (card           [_this card-id]      (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/card card-id))
-
-  (legacy-metric  [_this metric-id]    (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/legacy-metric metric-id))
-  (segment        [_this segment-id]   (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/segment segment-id))
-  (tables         [_this]              (lib.metadata.protocols/tables metadata-provider))
-  (fields         [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/fields table-id))
-  (legacy-metrics [_this table-id]     (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/legacy-metrics table-id))
-  (setting        [_this setting-name] (update-tracker-and-call-next-provider! tracker metadata-provider :metadata/setting setting-name))
+  (database [_this]
+    (lib.metadata.protocols/database metadata-provider))
+  (metadatas [_this metadata-type ids]
+    (metadatas tracker metadata-provider metadata-type ids))
+  (tables [_this]
+    (lib.metadata.protocols/tables metadata-provider))
+  (metadatas-for-table [_this metadata-type table-id]
+    (metadatas-for-table tracker metadata-provider metadata-type table-id))
+  (setting [_this setting-key]
+    (setting tracker metadata-provider setting-key))
 
   lib.metadata.protocols/CachedMetadataProvider
-  (cached-database [_this]                           (lib.metadata.protocols/cached-database metadata-provider))
-  (cached-metadata [_this metadata-type id]          (lib.metadata.protocols/cached-metadata metadata-provider metadata-type id))
-  (store-database! [_this database-metadata]         (lib.metadata.protocols/store-database! metadata-provider database-metadata))
-  (store-metadata! [_this metadata-type id metadata] (lib.metadata.protocols/store-metadata! metadata-provider metadata-type id metadata))
-
-
-  lib.metadata.protocols/BulkMetadataProvider
-  (bulk-metadata [_this metadata-type ids] (lib.metadata.protocols/bulk-metadata metadata-provider metadata-type ids))
+  (cached-metadatas [_this metadata-type ids]
+    (lib.metadata.protocols/cached-metadatas metadata-provider metadata-type ids))
+  (store-metadata! [_this object]
+    (lib.metadata.protocols/store-metadata! metadata-provider object))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
