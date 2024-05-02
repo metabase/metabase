@@ -89,7 +89,7 @@ Restart the syslog service to load the new config.
 sudo systemctl restart rsyslog.service
 ```
 
-## Environment Vvariables for Metabase
+## Environment variables for Metabase
 
 [Environment variables](../configuring-metabase/environment-variables.md) provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
 
@@ -118,7 +118,7 @@ MB_EMOJI_IN_LOGS=<true|false>
 # any other env vars you want available to Metabase
 ```
 
-## Final Steps
+## Final steps
 
 The best part of setting up Metabase as a service on a Debian-based system is to be confident it will start up at every system boot. We only have a few more quick steps to finish registering our service and having Metabase up and running.
 
@@ -161,7 +161,7 @@ Once we are ok here, enable the service to startup during boot.
 sudo systemctl enable metabase.service
 ```
 
-## Start, Stop, or Restart Metabase
+## Start, stop, or restart Metabase
 
 Now, whenever you need to start, stop, or restart Metabase, all you need to do is:
 
