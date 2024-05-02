@@ -16,8 +16,11 @@ export const ChunkyListItem = styled.button<{
     isSelected ? color("white") : color("text-dark")};
 
   &:hover {
-    background-color: ${color("brand-lighter")};
-    color: ${color("text-dark")};
+    ${({ isSelected }) =>
+      !isSelected
+        ? `background-color: ${color("brand-lighter")};
+      color: ${color("text-dark")};`
+        : ""}
   }
 
   ${({ isLast }) =>
@@ -32,7 +35,7 @@ export const ChunkyListItem = styled.button<{
 
 export const ChunkyList = styled.div`
   border: 1px solid ${color("border")};
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   display: flex;
   flex-direction: column;
   overflow: hidden;

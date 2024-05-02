@@ -92,12 +92,12 @@ export const EntityPickerSearchResults = <
   }
 
   return (
-    <Box h="100%">
+    <Box h="100%" bg="bg-light">
       {searchResults.length > 0 ? (
         <Stack h="100%">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
-              <Box p="lg" {...props}>
+              <Box p="xl" {...props}>
                 <ChunkyList>{children}</ChunkyList>
               </Box>
             )}
