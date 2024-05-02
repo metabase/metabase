@@ -30,7 +30,8 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
-  getYAxisAutoRangeIncludeZero,
+  getYAxisUnpinFromZeroDefault,
+  isYAxisUnpinFromZeroValid,
   isStackingValueValid,
   isXAxisScaleValid,
   getDefaultLegendIsReversed,
@@ -47,6 +48,10 @@ import {
   isNumeric,
   isAny,
 } from "metabase-lib/v1/types/utils/isa";
+
+export const getSeriesDisplays = (transformedSeries, settings) => {
+  return transformedSeries.map(single => settings.series(single).display);
+};
 
 export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
@@ -265,9 +270,7 @@ export const STACKABLE_SETTINGS = {
       ],
     },
     isValid: (series, settings) => {
-      const seriesDisplays = series.map(
-        single => settings.series(single).display,
-      );
+      const seriesDisplays = getSeriesDisplays(series, settings);
 
       return isStackingValueValid(
         series[0].card.display,
@@ -468,7 +471,7 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.y_axis.scale": {
     section: t`Axes`,
     title: t`Scale`,
-    index: 7,
+    index: 8,
     group: t`Y-axis`,
     widget: "select",
     default: "linear",
@@ -500,7 +503,7 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.y_axis.axis_enabled": {
     section: t`Axes`,
     title: t`Show lines and marks`,
-    index: 8,
+    index: 9,
     group: t`Y-axis`,
     widget: "select",
     props: {
@@ -511,11 +514,25 @@ export const GRAPH_AXIS_SETTINGS = {
     },
     default: true,
   },
-  "graph.y_axis.auto_range_include_zero": {
-    hidden: true,
-    getDefault: series => {
-      return getYAxisAutoRangeIncludeZero(series[0].card.display);
+  "graph.y_axis.unpin_from_zero": {
+    section: t`Axes`,
+    group: t`Y-axis`,
+    title: t`Unpin from zero`,
+    widget: "toggle",
+    index: 5,
+    inline: true,
+    isValid: (series, settings) => {
+      const seriesDisplays = getSeriesDisplays(series, settings);
+      return isYAxisUnpinFromZeroValid(seriesDisplays, settings);
     },
+    getHidden: (series, settings) => {
+      const seriesDisplays = getSeriesDisplays(series, settings);
+      return !isYAxisUnpinFromZeroValid(seriesDisplays, settings);
+    },
+    getDefault: series => {
+      return getYAxisUnpinFromZeroDefault(series[0].card.display);
+    },
+    readDependencies: ["series", "graph.y_axis.auto_range"],
   },
   "graph.y_axis.auto_range": {
     section: t`Axes`,
@@ -529,7 +546,7 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.y_axis.min": {
     section: t`Axes`,
     group: t`Y-axis`,
-    index: 5,
+    index: 6,
     title: t`Min`,
     widget: "number",
     default: 0,
@@ -539,7 +556,7 @@ export const GRAPH_AXIS_SETTINGS = {
   "graph.y_axis.max": {
     section: t`Axes`,
     group: t`Y-axis`,
-    index: 6,
+    index: 7,
     title: t`Max`,
     widget: "number",
     default: 100,
