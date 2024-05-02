@@ -1918,6 +1918,15 @@
        "stageIndex" stage-number
        "value"      (if (= value :null) nil value)})
 
+(defn ^:export column-extract-drill-extractions
+  "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
+
+  The extractions are opaque values of the same type as are returned by [[column-extractions]].
+
+  > **Code health:** Single use. This is only here to support UI for column extract drills, and should not be reused."
+  [column-extract-drill]
+  (to-array (lib.core/extractions-for-drill column-extract-drill)))
+
 (defn ^:export pivot-types
   "Returns a JS array of pivot types that are available in `a-drill-thru`, which must be a `pivot` drill-thru.
 

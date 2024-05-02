@@ -1,13 +1,18 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  describeWithSnowplow,
   enterCustomColumnDetails,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getNotebookStep,
   openNotebook,
   openOrdersTable,
   popover,
+  resetSnowplow,
   restore,
   visitQuestion,
   visualize,
@@ -65,7 +70,7 @@ const DATE_QUESTION = {
   },
 };
 
-describe("extract action", () => {
+describeWithSnowplow("extract action", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -266,3 +271,33 @@ function extractColumnAndCheck({
 function checkColumnIndex({ column, columnIndex }) {
   cy.findAllByRole("columnheader").eq(columnIndex).should("have.text", column);
 }
+
+describeWithSnowplow("extract action", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should create a snowplow event for the column extraction action", () => {
+    openOrdersTable({ limit: 1 });
+
+    cy.wait(1);
+
+    extractColumnAndCheck({
+      column: "Created At",
+      option: "Year",
+      value: "2,025",
+    });
+
+    expectGoodSnowplowEvent({
+      event: "column_extract_via_column_header",
+      custom_expressions_used: ["get-year"],
+      database_id: SAMPLE_DB_ID,
+    });
+  });
+});
