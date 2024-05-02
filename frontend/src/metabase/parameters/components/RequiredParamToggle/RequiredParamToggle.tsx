@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import { Icon, HoverCard, Stack, Flex, Text } from "metabase/ui";
 
-import { SettingRequiredLabel } from "./RequierParamToggle.styled";
+import { SettingRequiredLabel } from "./RequiredParamToggle.styled";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;
