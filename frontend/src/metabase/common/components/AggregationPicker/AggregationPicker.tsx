@@ -7,13 +7,12 @@ import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitleContainer,
@@ -240,10 +239,11 @@ export function AggregationPicker({
   }
 
   return (
-    <Root
+    <Box
       className={className}
-      color="summarize"
-      hasBottomPadding={sections.length === 1}
+      c="summarize"
+      pt="sm"
+      pb={sections.length === 1 ? "sm" : undefined}
     >
       <AccordionList
         sections={sections}
@@ -257,7 +257,7 @@ export function AggregationPicker({
         maxHeight={Infinity}
         withBorders
       />
-    </Root>
+    </Box>
   );
 }
 
