@@ -28,6 +28,7 @@ import type {
   DashboardCard,
   DashCardId,
   ParameterId,
+  ParameterMappingOptions,
   ParameterValueOrArray,
   VisualizationSettings,
   DashCardDataMap,
@@ -71,6 +72,7 @@ export interface DashCardProps {
 
   headerIcon?: IconProps;
 
+  onAddParameter: (option: ParameterMappingOptions) => void;
   onAddSeries: () => void;
   onReplaceCard: () => void;
   onRemove: () => void;
@@ -103,6 +105,7 @@ function DashCardInner({
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
+  onAddParameter,
   onAddSeries,
   onReplaceCard,
   onRemove,
@@ -287,6 +290,7 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
+            onAddParameter={onAddParameter}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}

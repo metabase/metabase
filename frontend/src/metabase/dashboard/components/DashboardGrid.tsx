@@ -50,6 +50,7 @@ import type {
   ParameterValueOrArray,
   VisualizationSettings,
   DashboardCard,
+  ParameterMappingOptions,
 } from "metabase-types/api";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
@@ -111,6 +112,8 @@ interface DashboardGridProps {
     nextCardId: CardId;
   }) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
+
+  addParameter: (option: ParameterMappingOptions) => void;
 
   setDashCardAttributes: (options: DashboardChangeItem) => void;
   setMultipleDashCardAttributes: (changes: {
@@ -481,6 +484,10 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ addSeriesModalDashCard: dc });
   }
 
+  onDashCardAddParameter(dc: BaseDashboardCard, opt: ParameterMappingOptions) {
+    this.props.addParameter(opt);
+  }
+
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
@@ -540,6 +547,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isPublic={this.props.isPublic}
         isXray={this.props.isXray}
         onRemove={this.onDashCardRemove.bind(this, dc)}
+        onAddParameter={this.onDashCardAddParameter.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onReplaceCard={() => this.onReplaceCard(dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(

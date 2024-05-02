@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
   isHeadingDashCard,
   isLinkDashCard,
@@ -13,9 +14,12 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   Dashboard,
   DashboardCard,
+  ParameterMappingOptions,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { ParametersPopover } from "../../ParametersPopover";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
@@ -37,6 +41,7 @@ interface Props {
   isPreviewing: boolean;
   hasError: boolean;
   onRemove: () => void;
+  onAddParameter: (option: ParameterMappingOptions) => void;
   onAddSeries: () => void;
   onReplaceCard: () => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
@@ -57,6 +62,7 @@ export function DashCardActionsPanel({
   isPreviewing,
   hasError,
   onRemove,
+  onAddParameter,
   onAddSeries,
   onReplaceCard,
   onReplaceAllVisualizationSettings,
@@ -75,6 +81,9 @@ export function DashCardActionsPanel({
 
   const buttons = [];
 
+  // TODO Use mantine popover or at least TippyPopoverWithTrigger?
+  const [isParameterPopoverOpen, setIsParameterPopoverOpen] = useState(false);
+
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
   if (dashcard) {
@@ -90,14 +99,30 @@ export function DashCardActionsPanel({
 
   if (dashcard && isHeadingDashCard(dashcard)) {
     buttons.push(
-      <DashCardActionButton
-        key="filter"
-        tooltip={t`Add a filter`}
-        aria-label={t`Add a filter`}
-        analyticsEvent="Dashboard;Add Filter"
-      >
-        <DashCardActionButton.Icon name="filter" />
-      </DashCardActionButton>,
+      <span key="add-filter">
+        <TippyPopover
+          placement="bottom-start"
+          visible={isParameterPopoverOpen}
+          onClose={() => setIsParameterPopoverOpen(false)}
+          content={
+            <ParametersPopover
+              onAddParameter={onAddParameter}
+              onClose={() => setIsParameterPopoverOpen(false)}
+            />
+          }
+        >
+          <div>
+            <DashCardActionButton
+              tooltip={t`Add a filter`}
+              aria-label={t`Add a filter`}
+              onClick={() => setIsParameterPopoverOpen(true)}
+              analyticsEvent="Dashboard;Add Filter"
+            >
+              <DashCardActionButton.Icon name="filter" />
+            </DashCardActionButton>
+          </div>
+        </TippyPopover>
+      </span>,
     );
   }
 
