@@ -105,7 +105,7 @@ export function AggregationPicker({
     } else if (operators.length > 0) {
       sections.push({
         key: "operators",
-        name: t`Basic metrics`,
+        name: t`Basic Metrics`,
         items: operators.map(operator =>
           getOperatorListItem(query, stageIndex, operator),
         ),
