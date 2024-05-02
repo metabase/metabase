@@ -37,6 +37,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -97,10 +98,7 @@
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
     ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
-    ;;
-    ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
-    ;; deduplication instead.
-    (let [name-generator (mbql.u/unique-name-generator)
+    (let [name-generator (lib.util/unique-name-generator (qp.store/metadata-provider))
           unique-name    (fn [field-id]
                            (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                            (let [field (lib.metadata/field (qp.store/metadata-provider) field-id)]
