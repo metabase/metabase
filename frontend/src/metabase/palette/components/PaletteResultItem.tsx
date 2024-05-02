@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Flex, Text, Icon, Box, type IconName } from "metabase/ui";
+import { Flex, Text, Icon, Box } from "metabase/ui";
 
-import type { PaletteAction } from "../types";
+import type { PaletteActionImpl } from "../types";
 
 interface PaletteResultItemProps {
-  item: PaletteAction;
+  item: PaletteActionImpl;
   active: boolean;
 }
 
@@ -35,22 +35,29 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       c={active ? color("white") : color("text-dark")}
       aria-label={item.name}
     >
-      <Flex gap=".5rem" style={{ minWidth: 0 }}>
-        {item.icon && (
-          <Icon
-            aria-hidden
-            name={(item.icon as IconName) || "click"}
-            color={iconColor}
-            style={{
-              flexBasis: "16px",
-            }}
-          />
-        )}
+      {/** Icon Container */}
+      {item.icon && (
+        <Icon
+          aria-hidden
+          name={item.icon || "click"}
+          color={iconColor}
+          style={{
+            flexBasis: "16px",
+          }}
+        />
+      )}
+      {/**Text container */}
+      <Flex
+        direction="column"
+        style={{
+          flexGrow: 1,
+          flexBasis: 0,
+          overflowX: "hidden",
+        }}
+      >
         <Box
           component="span"
           style={{
-            flexGrow: 1,
-            flexBasis: 0,
             textOverflow: "ellipsis",
             overflow: "hidden",
             whiteSpace: "nowrap",
@@ -80,7 +87,20 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             >{`— ${parentName}`}</Text>
           )}
         </Box>
+        <Text
+          component="span"
+          color={active ? "white" : "text-light"}
+          fw="normal"
+          style={{
+            textOverflow: "ellipsis",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {item.subtitle}
+        </Text>
       </Flex>
+      {/** Active container */}
       {active && (
         <Flex
           aria-hidden
