@@ -20,6 +20,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -46,6 +47,11 @@
               :type     :drill-thru/column-extract}
              (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                query stage-number column column-ref :expression)))))
+
+(mu/defn extractions-for-drill :- [:sequential ::lib.schema.extraction/extraction]
+  "Returns the extractions from a given drill."
+  [drill :- ::lib.schema.drill-thru/drill-thru.column-extract]
+  (:extractions drill))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
   [query stage-number drill]
