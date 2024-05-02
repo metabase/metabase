@@ -126,15 +126,9 @@ function formatLegacyDimension(
 }
 
 function formatMetric([, metricId]: FieldReference, options: Options) {
-  const { legacyQuery, query, stageIndex } = options;
+  const { query, stageIndex } = options;
 
   if (!query) {
-    // fallback to legacyQuery
-    if (legacyQuery) {
-      // StructuredQuery -> formatExpression
-      return formatLegacyMetric(metricId, options);
-    }
-
     throw new Error("`query` is a required parameter to format expressions");
   }
 

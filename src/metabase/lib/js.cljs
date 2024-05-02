@@ -1704,19 +1704,6 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-;; # Metrics
-;; Metrics are reusable aggregations.
-(defn ^:export metric-metadata
-  "Return the opaque metadata value for the legacy Metric with `metric-id`, if it can be found.
-
-  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
-  will be a query.
-
-  > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
-  when they are."
-  [metadata-providerable metric-id]
-  (lib.metadata/metric metadata-providerable metric-id))
-
 (defn ^:export available-metrics
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.

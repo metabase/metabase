@@ -12,7 +12,6 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     visibility_type: null,
     field_order: "database",
     initial_sync_status: "complete",
-    metrics: [],
     segments: [],
     ...opts,
   };
