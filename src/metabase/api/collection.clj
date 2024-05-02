@@ -962,11 +962,11 @@
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
      root-collection
-     {:archived?      (if (nil? archived) false archived)
+     {:archived?      (boolean archived)
       :models         model-kwds
       :pinned-state   (keyword pinned_state)
       :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
-                          (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+                       (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -1020,7 +1020,6 @@
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
-
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do

@@ -671,7 +671,6 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-archiving collection))))
 
-
 (mu/defn ^:private collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set Collection
@@ -780,7 +779,7 @@
     (:personal_owner_id collection)
 
     ;; Try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`. Then see if
-    ;; the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root Collection.)
+    ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
     ;; Note that if the collection is archived, we check this against the `trashed_from_location`.
     (t2/exists? Collection
                 :id                (first (location-path->ids (if (:archived collection)
