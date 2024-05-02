@@ -46,10 +46,6 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
-import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
-import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -251,20 +247,6 @@ export const getRoutes = store => {
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>
             <IndexRedirect to="/reference/databases" />
-            <Route path="metrics" component={MetricListContainer} />
-            <Route path="metrics/:metricId" component={MetricDetailContainer} />
-            <Route
-              path="metrics/:metricId/edit"
-              component={MetricDetailContainer}
-            />
-            <Route
-              path="metrics/:metricId/questions"
-              component={MetricQuestionsContainer}
-            />
-            <Route
-              path="metrics/:metricId/revisions"
-              component={MetricRevisionsContainer}
-            />
             <Route path="segments" component={SegmentListContainer} />
             <Route
               path="segments/:segmentId"

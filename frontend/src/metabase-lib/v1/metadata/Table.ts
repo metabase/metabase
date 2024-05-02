@@ -14,21 +14,19 @@ import type Database from "./Database";
 import type Field from "./Field";
 import type ForeignKey from "./ForeignKey";
 import type Metadata from "./Metadata";
-import type Metric from "./Metric";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 
 interface Table
   extends Omit<
     NormalizedTable,
-    "db" | "schema" | "fields" | "fks" | "segments" | "metrics"
+    "db" | "schema" | "fields" | "fks" | "segments"
   > {
   db?: Database;
   schema?: Schema;
   fields?: Field[];
   fks?: ForeignKey[];
   segments?: Segment[];
-  metrics?: Metric[];
   metadata?: Metadata;
 }
 
@@ -54,10 +52,6 @@ class Table {
 
   getFields() {
     return this.fields ?? [];
-  }
-
-  getMetrics() {
-    return this.metrics ?? [];
   }
 
   isVirtualCard() {

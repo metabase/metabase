@@ -10,7 +10,6 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockMetric,
 } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -36,18 +35,6 @@ import {
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
-  metrics: [
-    createMockMetric({
-      id: 2,
-      table_id: ORDERS_ID,
-      name: "Total Order Value",
-      definition: {
-        filter: [">", ORDERS.TOTAL, 20],
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        "source-table": ORDERS_ID,
-      },
-    }),
-  ],
 });
 
 const metadata_without_order_pk = createMockMetadata({
