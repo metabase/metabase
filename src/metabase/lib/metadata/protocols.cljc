@@ -154,7 +154,6 @@
   (metadatas-for-table metadata-provider :metadata/segment table-id))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
-
   "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
   MetadataProviders that can hit some sort of relatively expensive external service,
   e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
