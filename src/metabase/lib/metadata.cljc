@@ -108,7 +108,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (or (card metadata-providerable card-id)
-      (throw (ex-info (i18n/tru "Card {0} does not exist, or belongs to a different Database." (pr-str card-id) )
+      (throw (ex-info (i18n/tru "Card {0} does not exist, or belongs to a different Database." (pr-str card-id))
                       {:card-id card-id}))))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
@@ -172,7 +172,7 @@
 
   This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
+   metadata-type         :- ::lib.schema.metadata/metadata-types
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (when-let [ids (not-empty (cond-> ids
                               (not (set? ids)) distinct))] ; remove duplicates but preserve order.
@@ -197,7 +197,7 @@
                                                          [:id pos-int?]]]]
   "Like [[bulk-metadata]], but verifies that all the requested objects were returned; throws an Exception otherwise."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
+   metadata-type         :- ::lib.schema.metadata/metadata-types
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (let [results     (bulk-metadata metadata-providerable metadata-type ids)
         fetched-ids (into #{} (keep :id) results)]
@@ -205,3 +205,10 @@
       (when-not (contains? fetched-ids id)
         (throw (missing-bulk-metadata-error metadata-type id))))
     results))
+
+;; Invocation tracker provider
+(mu/defn invoked-ids :- [:maybe [:sequential :any]]
+  "Get all invoked ids of a metadata type."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- ::lib.schema.metadata/metadata-types]
+  (lib.metadata.protocols/invoked-ids metadata-providerable metadata-type))

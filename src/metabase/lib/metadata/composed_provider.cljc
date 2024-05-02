@@ -10,6 +10,10 @@
 (defn- cached-providers [providers]
   (filter metadata.protocols/cached-metadata-provider? providers))
 
+(defn- invocation-tracker-providers [providers]
+  (filter #(satisfies? metadata.protocols/InvocationTracker %)
+          providers))
+
 (defn- metadatas-for-f [f providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
     (cond
@@ -74,6 +78,11 @@
     (cached-metadatas metadata-providers metadata-type metadata-ids))
   (store-metadata! [_this metadata]
     (store-metadata! metadata-providers metadata))
+
+  metadata.protocols/InvocationTracker
+  (invoked-ids [_this metadata-type]
+    (when-first [provider (invocation-tracker-providers metadata-providers)]
+      (metadata.protocols/invoked-ids provider metadata-type)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
