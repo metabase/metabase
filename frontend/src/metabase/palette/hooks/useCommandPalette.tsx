@@ -78,7 +78,7 @@ export const useCommandPalette = () => {
       {
         id: "search_docs",
         name: debouncedSearchText
-          ? `Search documentation for "${debouncedSearchText}"`
+          ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
@@ -107,7 +107,7 @@ export const useCommandPalette = () => {
       return [
         {
           id: "search-is-loading",
-          name: "Loading...",
+          name: t`Loading...`,
           keywords: searchQuery,
           section: "search",
         },
@@ -125,10 +125,10 @@ export const useCommandPalette = () => {
         return [
           {
             id: `search-results-metadata`,
-            name: `View and filter all ${searchResults?.total} results`,
+            name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link",
+            icon: "link" as const,
             perform: () => {
               dispatch(
                 push({
@@ -140,6 +140,14 @@ export const useCommandPalette = () => {
               );
             },
             priority: Priority.HIGH,
+            extra: {
+              href: {
+                pathname: "search",
+                query: {
+                  q: debouncedSearchText,
+                },
+              },
+            },
           },
         ].concat(
           searchResults.data.map(result => {
