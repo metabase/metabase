@@ -1,7 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 
 export type MetabaseTheme = MantineThemeOverride & {
-  other: MetabaseThemeOptions;
+  other?: MetabaseThemeOptions;
 };
 
 /**
