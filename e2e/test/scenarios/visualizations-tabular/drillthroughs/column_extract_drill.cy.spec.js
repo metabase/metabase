@@ -14,7 +14,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -54,6 +54,24 @@ const EMAIL_CASES = [
     option: "Domain",
     value: "yahoo",
     example: "example, online",
+  },
+  {
+    option: "Host",
+    value: "yahoo.com",
+    example: "example.com, online.com",
+  },
+];
+
+const URL_CASES = [
+  {
+    option: "Domain",
+    value: "yahoo",
+    example: "example, online",
+  },
+  {
+    option: "Subdomain",
+    value: "",
+    example: "www, maps",
   },
   {
     option: "Host",
@@ -275,6 +293,32 @@ describe("extract action", () => {
           value,
           example,
           extraction: "Extract domain, host…",
+        });
+      });
+    });
+  });
+
+  describe("url columns", () => {
+    beforeEach(function () {
+      restore();
+      cy.signInAsAdmin();
+
+      // Make the Email column a URL column for these tests, to avoid having to create a new model
+      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+        semantic_type: "type/URL",
+      });
+    });
+
+    URL_CASES.forEach(({ option, value, example }) => {
+      it(option, () => {
+        openPeopleTable({ limit: 1 });
+
+        extractColumnAndCheck({
+          column: "Email",
+          option,
+          value,
+          example,
+          extraction: "Extract domain, subdomain…",
         });
       });
     });
