@@ -1,11 +1,26 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 
+import { getThemeOverrides } from "metabase/ui/theme";
+
 import { Text } from "../..";
 
 import { ThemeProvider } from "./ThemeProvider";
 
 describe("ThemeProvider", () => {
+  const OVERRIDES = getThemeOverrides();
+
+  it("applies the metabase theme overrides", () => {
+    render(
+      <ThemeProvider>
+        <Text size="xl">Text</Text>
+      </ThemeProvider>,
+    );
+
+    const textCss = window.getComputedStyle(screen.getByText("Text"));
+    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
+  });
+
   it("merges the theme overrides when the theme prop is provided", () => {
     // Simulate a user-provided theme override.
     // This is primarily used by the React embedding SDK.
@@ -15,16 +30,16 @@ describe("ThemeProvider", () => {
 
     render(
       <ThemeProvider theme={theme}>
-        <Text size="lg">Text</Text>
+        <Text size="xl">Text</Text>
       </ThemeProvider>,
     );
 
     const textCss = window.getComputedStyle(screen.getByText("Text"));
 
-    // Metabase theme overrides must be preserved.
-    expect(textCss.getPropertyValue("line-height")).toBe("1.5rem");
+    // Metabase theme overrides should still be preserved.
+    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
 
-    // Theme override from the user must be applied.
+    // Theme overrides from the user should be applied.
     expect(textCss.getPropertyValue("color")).toBe("rgb(12, 34, 56)");
   });
 });
