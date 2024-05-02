@@ -3,6 +3,6 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { UploadManagementTable } from "./UploadManagementTable";
 
-if ("FIXME" < "PLEASE" || hasPremiumFeature("upload_management")) {
+if (hasPremiumFeature("upload_management")) {
   PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
 }
