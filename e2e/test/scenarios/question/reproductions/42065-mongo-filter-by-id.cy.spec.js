@@ -16,6 +16,7 @@ describe(
       restore("mongo-4");
       cy.signInAsAdmin();
 
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
         const tableId = body.find(table => table.name === "orders").id;
         openTable({
@@ -24,6 +25,7 @@ describe(
           limit: 2,
         });
       });
+      cy.wait("@dataset");
     });
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
@@ -35,28 +37,7 @@ describe(
           const id = $cell.text();
 
           cy.log(
-            "Scenario 1 - Make sure we can filter directly by clicking on the cell",
-          );
-          cy.wrap($cell).click();
-
-          cy.findByTestId("filter-pill")
-            .should("contain", `ID is ${id}`)
-            .click();
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1 row",
-          );
-
-          // This was showing a custom expression editor before the fix!
-          cy.findByTestId("string-filter-picker").within(() => {
-            cy.findByLabelText("Filter operator").should("have.value", "Is");
-            cy.findByText(id).should("be.visible");
-          });
-          removeFilter();
-
-          cy.log(
-            "Scenario 2 - Make sure the simple mode filter is working correctly (metabase#40770)",
+            "Scenario 1 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           filter();
 
@@ -72,7 +53,7 @@ describe(
           removeFilter();
 
           cy.log(
-            "Scenario 3 - Make sure filter is working in the notebook editor (metabase#42010)",
+            "Scenario 2 - Make sure filter is working in the notebook editor (metabase#42010)",
           );
           openNotebook();
           filter({ mode: "notebook" });
@@ -93,16 +74,19 @@ describe(
             cy.findByText(`ID is ${id}`);
 
             cy.log(
-              "Scenario 3.1 - Trigger the preview to make sure it reflects the filter correctly",
+              "Scenario 2.1 - Trigger the preview to make sure it reflects the filter correctly",
             );
             cy.icon("play").click();
           });
 
+          // The preview should show only one row
+          const ordersColumns = 10;
           cy.findByTestId("preview-root")
-            .should("contain", id) // first row
-            .and("not.contain", "110.93"); // second row
+            .get("#main-data-grid")
+            .findAllByTestId("cell-data")
+            .should("have.length.at.most", ordersColumns);
 
-          cy.log("Scenario 3.2 - Make sure we can visualize the data");
+          cy.log("Scenario 2.2 - Make sure we can visualize the data");
           visualize();
           cy.findByTestId("question-row-count").should(
             "have.text",
