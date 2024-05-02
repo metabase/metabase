@@ -49,6 +49,7 @@ describe("dashboard reducers", () => {
       },
       tabDeletions: {},
       pristineParameters: {},
+      pristineParameterMappings: {},
     });
   });
 

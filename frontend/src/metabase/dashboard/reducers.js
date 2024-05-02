@@ -533,6 +533,34 @@ const pristineParameters = handleActions(
   INITIAL_DASHBOARD_STATE.pristineParameters,
 );
 
+const pristineParameterMappings = handleActions(
+  {
+    [fetchDashboard.fulfilled]: {
+      next: (_state, { payload }) => {
+        const dashcards = payload.dashboard.dashcards;
+        const map = {};
+
+        // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
+        for (const dashcard of dashcards) {
+          for (const parameterMapping of dashcard.parameter_mappings) {
+            const parameterId = parameterMapping.parameter_id;
+
+            if (!map[parameterId]) {
+              map[parameterId] = {};
+            }
+
+            map[parameterId][dashcard.id] = parameterMapping;
+          }
+        }
+
+        return map;
+      },
+    },
+    [RESET]: () => INITIAL_DASHBOARD_STATE.pristine,
+  },
+  INITIAL_DASHBOARD_STATE.pristineParameterMappings,
+);
+
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -552,6 +580,7 @@ export const dashboardReducers = reduceReducers(
     missingActionParameters,
     autoApplyFilters,
     pristineParameters,
+    pristineParameterMappings,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

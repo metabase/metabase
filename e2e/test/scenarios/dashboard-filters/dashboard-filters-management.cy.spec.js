@@ -237,6 +237,65 @@ describe("scenarios > dashboard > filters > management", () => {
         cy.findByDisplayValue("Text Text").should("exist");
       });
     });
+
+    it("should restore parameter mappings when user switches back to the saved parameter type", () => {
+      const textFilter = createMockParameter({
+        name: "Text Text",
+        slug: "string",
+        id: "5aefc726",
+        type: "string/does-not-contain",
+        sectionId: "string",
+      });
+
+      const peopleQuestionDetails = {
+        query: { "source-table": PEOPLE_ID, limit: 5 },
+      };
+
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [peopleQuestionDetails],
+      }).then(({ dashboard, questions: cards }) => {
+        const [peopleCard] = cards;
+
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: peopleCard.id,
+              parameter_mappings: [
+                {
+                  parameter_id: textFilter.id,
+                  card_id: peopleCard.id,
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        visitDashboard(dashboard.id);
+      });
+
+      editDashboard();
+
+      selectFilter("Text Text");
+
+      sidebar().findByDisplayValue("Does not contain").should("exist");
+
+      getDashboardCard().should("contain", "Person.Name");
+
+      changeFilterType("Number");
+
+      cy.log("verify that mapping is cleared");
+      getDashboardCard().should("not.contain", "Person.Name");
+
+      changeFilterType("Text or Category");
+
+      cy.log("verify that mapping is restored");
+      getDashboardCard().should("contain", "Person.Name");
+    });
   });
 
   describe("change parameter operator", () => {

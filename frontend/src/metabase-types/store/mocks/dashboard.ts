@@ -31,5 +31,6 @@ export const createMockDashboardState = (
   },
   tabDeletions: {},
   pristineParameters: {},
+  pristineParameterMappings: {},
   ...opts,
 });

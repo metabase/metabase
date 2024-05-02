@@ -49,6 +49,7 @@ import {
   getIsAutoApplyFilters,
   getParameters,
   getParameterValues,
+  getPristineParameterMappings,
   getPristineParameters,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
@@ -283,30 +284,24 @@ export const setParameterType = createThunkAction(
         return;
       }
 
+      let haveRestoredParameterMappingsToPristine = false;
+
       if (parameter.sectionId !== sectionId) {
         // reset all mappings if type has changed,
         // operator change resets mappings in some cases as well
         dispatch(resetParameterMapping(parameterId));
-      }
 
-      let useSavedParameterValue = false;
-
-      // parameter type has changed
-      if (parameter.sectionId !== sectionId) {
-        // check here if the parameter type is pristine and if so, change operator to the saved and not to default
-        const pristineParameters = getPristineParameters(getState());
-        const pristineParameter = pristineParameters[parameterId];
-
-        if (pristineParameter && sectionId === pristineParameter.sectionId) {
-          useSavedParameterValue = true;
-
-          updateParameter(dispatch, getState, parameterId, () =>
-            setParamType(pristineParameter, pristineParameter.type, sectionId),
+        haveRestoredParameterMappingsToPristine =
+          restoreParameterMappingsIfNeeded(
+            getState,
+            dispatch,
+            parameterId,
+            sectionId,
           );
-        }
       }
 
-      if (!useSavedParameterValue) {
+      if (!haveRestoredParameterMappingsToPristine) {
+        // update to default
         updateParameter(dispatch, getState, parameterId, parameter =>
           setParamType(parameter, type, sectionId),
         );
@@ -315,6 +310,51 @@ export const setParameterType = createThunkAction(
       return { id: parameterId, type };
     },
 );
+
+function restoreParameterMappingsIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  // check here if the parameter type is pristine and if so, change operator to
+  // the saved and not to default
+  const pristineParameters = getPristineParameters(getState());
+  const pristineParameter = pristineParameters[parameterId];
+
+  if (!pristineParameter) {
+    return false;
+  }
+
+  if (sectionId !== pristineParameter.sectionId) {
+    return false;
+  }
+
+  // restore parameter state
+  updateParameter(dispatch, getState, parameterId, () =>
+    setParamType(pristineParameter, pristineParameter.type, sectionId),
+  );
+
+  const pristineParameterMappings = getPristineParameterMappings(getState());
+  const pristineMappingsForParameter = pristineParameterMappings[parameterId];
+
+  if (!pristineMappingsForParameter) {
+    return false;
+  }
+
+  // restore parameter mappings
+  Object.entries(pristineMappingsForParameter).forEach(
+    ([dashcardId, mappings]) => {
+      const { card_id, target } = mappings;
+
+      dispatch(
+        setParameterMapping(parameterId, Number(dashcardId), card_id, target),
+      );
+    },
+  );
+
+  return true;
+}
 
 export const setParameterFilteringParameters = createThunkAction(
   SET_PARAMETER_NAME,

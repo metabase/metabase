@@ -430,3 +430,5 @@ export const getSelectedTabId = createSelector(
 
 export const getPristineParameters = (state: State) =>
   state.dashboard.pristineParameters;
+export const getPristineParameterMappings = (state: State) =>
+  state.dashboard.pristineParameterMappings;
