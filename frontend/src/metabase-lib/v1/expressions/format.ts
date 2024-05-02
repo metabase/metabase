@@ -147,22 +147,6 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
   return formatMetricName(displayInfo.displayName, options);
 }
 
-function formatLegacyMetric(
-  metricId: number | string,
-  options: { legacyQuery: StructuredQuery },
-) {
-  const { legacyQuery } = options;
-  const metric = _.findWhere(checkNotNull(legacyQuery.table()).metrics ?? [], {
-    id: metricId,
-  });
-
-  if (!metric) {
-    throw new Error(`metric with ID: "${metricId}" does not exist`);
-  }
-
-  return formatMetricName(metric.name, options);
-}
-
 function formatSegment([, segmentId]: FieldReference, options: Options) {
   const { legacyQuery, stageIndex, query } = options;
 
