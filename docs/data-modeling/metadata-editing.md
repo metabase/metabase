@@ -146,11 +146,11 @@ To change a column's [filter widget](../dashboards/filters.md):
 
 The default behavior for the `Is` filter for the field.
 
-- **Search box**: Metabase will display a search box and suggest autocompletions for values in that column that match the search term(s).
-- **A list of all values**: Display a search box, as well as a list of checkboxes for values in a dropdown menu that people can select.
+- **Search box**: Display a search box and suggest autocompletions for values in that column that match the search term(s).
+- **A list of all values**: Display a search box, as well as a list of checkboxes for values in a dropdown menu that people can select as search terms.
 - **Plain input box**: Display a search box, but do NOT suggest autocompletions.
 
- For the `Is` filter option, Metabase will accept multiple search terms. The `Is` filter will return results that match any of the terms (e.g., "term 1" OR "term 2").
+For the `Is` filter option, Metabase will accept multiple search terms. The `Is` filter will return results that match any of the terms (e.g., "term 1" OR "term 2").
 
 ### Changing a search box filter to a dropdown filter
 
