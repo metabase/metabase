@@ -5,6 +5,7 @@ import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
+import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
@@ -42,6 +43,8 @@ export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
+  /** Renders children wrapped with kbar provider */
+  withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
@@ -61,6 +64,7 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
+    withKBar = false,
     withDND = false,
     withUndos = false,
     customReducers,
@@ -136,6 +140,7 @@ export function renderWithProviders(
         withDND={withDND}
         withUndos={withUndos}
         theme={theme}
+        withKBar={withKBar}
       />
     );
   };
@@ -157,6 +162,7 @@ function Wrapper({
   store,
   history,
   withRouter,
+  withKBar,
   withDND,
   withUndos,
   theme,
@@ -165,6 +171,7 @@ function Wrapper({
   store: any;
   history?: History;
   withRouter: boolean;
+  withKBar: boolean;
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
@@ -173,9 +180,11 @@ function Wrapper({
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={theme}>
-          <MaybeRouter hasRouter={withRouter} history={history}>
-            {children}
-          </MaybeRouter>
+          <MaybeKBar hasKBar={withKBar}>
+            <MaybeRouter hasRouter={withRouter} history={history}>
+              {children}
+            </MaybeRouter>
+          </MaybeKBar>
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
@@ -221,6 +230,19 @@ function MaybeRouter({
     return children;
   }
   return <Router history={history}>{children}</Router>;
+}
+
+function MaybeKBar({
+  children,
+  hasKBar,
+}: {
+  children: React.ReactElement;
+  hasKBar: boolean;
+}): JSX.Element {
+  if (!hasKBar) {
+    return children;
+  }
+  return <KBarProvider>{children}</KBarProvider>;
 }
 
 function MaybeDNDProvider({

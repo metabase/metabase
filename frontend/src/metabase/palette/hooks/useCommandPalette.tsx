@@ -14,7 +14,6 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
 import {
   getDocsSearchUrl,
   getDocsUrl,
@@ -123,7 +122,7 @@ export const useCommandPalette = () => {
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data?.length) {
-        return searchResults.data.map(result => {
+        return searchResults.data.map<PaletteAction>(result => {
           const wrappedResult = Search.wrapEntity(result, dispatch);
           return {
             id: `search-result-${result.model}-${result.id}`,
@@ -133,13 +132,14 @@ export const useCommandPalette = () => {
             keywords: debouncedSearchText,
             subtitle: result.description || "",
             perform: () => {
-              dispatch(closeModal());
+              // Need to keep this logic here for when user selects via keyboard
               dispatch(push(wrappedResult.getUrl()));
             },
             extra: {
               parentCollection: wrappedResult.getCollection().name,
               isVerified: result.moderated_status === "verified",
               database: result.database_name,
+              href: wrappedResult.getUrl(),
             },
           };
         });
@@ -174,12 +174,17 @@ export const useCommandPalette = () => {
         icon: getIcon(item).name,
         section: "recent",
         perform: () => {
-          dispatch(push(Urls.modelToUrl(item) ?? ""));
+          // Need to keep this logic here for when user selects via keyboard
+          const href = Urls.modelToUrl(item);
+          if (href) {
+            dispatch(push(href));
+          }
         },
         extra:
           item.model === "table"
             ? {
                 database: item.model_object.database_name,
+                href: Urls.modelToUrl(item),
               }
             : {
                 parentCollection:
@@ -187,6 +192,7 @@ export const useCommandPalette = () => {
                     ? ROOT_COLLECTION.name
                     : item.model_object.collection_name,
                 isVerified: item.model_object.moderated_status === "verified",
+                href: Urls.modelToUrl(item),
               },
       })) || []
     );
