@@ -343,7 +343,7 @@
       (mt/with-model-cleanup [:model/Table]
         (let [table-names  ["partition_by_range" "partition_by_time" "partition_by_datetime"
                             "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]
-              mv-names     ["mv_partition_by_datetime"]]
+              mv-names     ["mv_partition_by_datetime" "mv_partition_by_range"]]
           (try
            (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
                                 PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
@@ -351,6 +351,10 @@
                                 (fmt-table-name "partition_by_range"))
                         (format "INSERT INTO %s (customer_id)
                                 VALUES (1), (2), (3);"
+                                (fmt-table-name "partition_by_range"))
+                        (format "CREATE MATERIALIZED VIEW %s AS
+                                SELECT customer_id + 41 as vip_customer FROM %s WHERE customer_id = 1;"
+                                (fmt-table-name "mv_partition_by_range")
                                 (fmt-table-name "partition_by_range"))
                         (format "CREATE TABLE %s (company STRING, founded DATETIME)
                                 PARTITION BY DATE(founded)
@@ -395,6 +399,7 @@
                (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
              (testing "Field values are correctly synced"
                (is (= {"customer_id"   #{1 2 3}
+                       "vip_customer"  #{42}
                        "name"          #{"Khuat" "Quang" "Ngoc"}
                        "company"       #{"Metabase" "Tesla" "Apple"}
                        "ev_company"    #{"Tesla"}
@@ -404,7 +409,7 @@
                                       :from   [[:metabase_field :field]]
                                       :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                       :where  [:and [:in :field.table_id table-ids]
-                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
+                                               [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
                            (map #(update % :values (comp set json/parse-string)))
                            (map (juxt :field-name :values))
                            (into {}))))))
