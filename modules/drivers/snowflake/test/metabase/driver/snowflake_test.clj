@@ -101,10 +101,10 @@
         false "v3_sample-dataset"))
     (testing "Subname is replaced if hostname is provided (#22133)"
       (are [use-hostname alternative-host expected-subname] (=? expected-subname
-                                                             (:subname (let [details (-> details
-                                                                                         (assoc :host alternative-host)
-                                                                                         (assoc :use-hostname use-hostname))]
-                                                                        (sql-jdbc.conn/connection-details->spec :snowflake details))))
+                                                                (:subname (let [details (-> details
+                                                                                            (assoc :host alternative-host)
+                                                                                            (assoc :use-hostname use-hostname))]
+                                                                            (sql-jdbc.conn/connection-details->spec :snowflake details))))
         true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
