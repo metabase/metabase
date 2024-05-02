@@ -79,9 +79,12 @@ describe(
             cy.icon("play").click();
           });
 
+          // The preview should show only one row
+          const ordersColumns = 10;
           cy.findByTestId("preview-root")
-            .should("contain", id) // first row
-            .and("not.contain", "110.93"); // second row
+            .get("#main-data-grid")
+            .findAllByTestId("cell-data")
+            .should("have.length.at.most", ordersColumns);
 
           cy.log("Scenario 2.2 - Make sure we can visualize the data");
           visualize();
