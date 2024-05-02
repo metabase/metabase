@@ -10,7 +10,7 @@ export const uploadManagementApi = Api.injectEndpoints({
     listUploadTables: builder.query<UploadManagementResponse, void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/upload-management/tables/",
+        url: "/api/ee/upload-management/tables",
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
     }),
