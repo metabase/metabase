@@ -240,6 +240,8 @@ export type ItemRendererProps = {
   collection?: Collection;
   draggable?: boolean;
   testIdPrefix?: string;
+  databases?: Database[];
+  bookmarks?: Bookmark[];
 } & ActionMenuProps;
 
 const DefaultItemRenderer = ({
@@ -252,6 +254,8 @@ const DefaultItemRenderer = ({
   onMove,
   createBookmark,
   deleteBookmark,
+  databases,
+  bookmarks,
   testIdPrefix = "item",
 }: ItemRendererProps) => {
   const canSelect =
@@ -288,6 +292,8 @@ const DefaultItemRenderer = ({
       <Columns.ActionMenu.Cell
         item={item}
         collection={collection}
+        databases={databases}
+        bookmarks={bookmarks}
         onCopy={onCopy}
         onMove={onMove}
         createBookmark={createBookmark}
