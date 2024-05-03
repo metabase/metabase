@@ -35,8 +35,7 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [mb.hawk.parallel :as hawk.parallel]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
