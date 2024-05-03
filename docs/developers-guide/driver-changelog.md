@@ -63,8 +63,8 @@ title: Driver interface changelog
   that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
   developers have a way to out of field values computation for fields that are incompatible with the query used for
   computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
-  of `sql-jdbc.sync/database-type->base-type` and further type derivations in the `metabase.driver.druid-jdbc`
-  namespace for an example.
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
 
 ## Metabase 0.49.1
 

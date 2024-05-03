@@ -62,11 +62,6 @@
    database-type
    :type/*))
 
-(derive :type/DruidJSON :type/JSON)
-(derive :type/DruidJSON :type/field-values-unsupported)
-
-(derive :type/DruidHyperUnique :type/field-values-unsupported)
-
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rs _ ^long i]
   (fn []
