@@ -32,6 +32,7 @@ function _CartesianChart(props: VisualizationProps) {
     headerIcon,
     actionButtons,
     isQueryBuilder,
+    isEmbeddingSdk,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -88,7 +89,10 @@ function _CartesianChart(props: VisualizationProps) {
   const canSelectTitle = !!onChangeCardAndRun;
 
   return (
-    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
+    <CartesianChartRoot
+      isQueryBuilder={isQueryBuilder}
+      isEmbeddingSdk={isEmbeddingSdk}
+    >
       {hasTitle && (
         <LegendCaption
           title={title}

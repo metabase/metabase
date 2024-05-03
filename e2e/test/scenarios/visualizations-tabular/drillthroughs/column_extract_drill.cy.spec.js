@@ -11,6 +11,7 @@ import {
   getNotebookStep,
   openNotebook,
   openOrdersTable,
+  openPeopleTable,
   popover,
   resetSnowplow,
   restore,
@@ -18,7 +19,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -50,6 +51,37 @@ const DATE_CASES = [
     option: "Year",
     value: "2,025",
     example: "2023, 2024",
+  },
+];
+
+const EMAIL_CASES = [
+  {
+    option: "Domain",
+    value: "yahoo",
+    example: "example, online",
+  },
+  {
+    option: "Host",
+    value: "yahoo.com",
+    example: "example.com, online.com",
+  },
+];
+
+const URL_CASES = [
+  {
+    option: "Domain",
+    value: "yahoo",
+    example: "example, online",
+  },
+  {
+    option: "Subdomain",
+    value: "",
+    example: "www, maps",
+  },
+  {
+    option: "Host",
+    value: "yahoo.com",
+    example: "example.com, online.com",
   },
 ];
 
@@ -86,6 +118,7 @@ describeWithSnowplow("extract action", () => {
             option,
             value,
             example,
+            extraction: "Extract day, month…",
           });
         });
       });
@@ -97,6 +130,7 @@ describeWithSnowplow("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
+          extraction: "Extract day, month…",
         });
         const columnIndex = 7;
         checkColumnIndex({
@@ -114,6 +148,7 @@ describeWithSnowplow("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
+          extraction: "Extract day, month…",
         });
         const columnIndex = 7;
         checkColumnIndex({
@@ -168,6 +203,7 @@ describeWithSnowplow("extract action", () => {
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
+          extraction: "Extract day, month…",
         });
         const columnIndex = 1;
         checkColumnIndex({
@@ -187,6 +223,7 @@ describeWithSnowplow("extract action", () => {
         column: "Created At: Month",
         option: "Month of year",
         value: "Apr",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -196,6 +233,7 @@ describeWithSnowplow("extract action", () => {
         column: "Min of Created At: Default",
         option: "Year",
         value: "2,022",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -205,11 +243,13 @@ describeWithSnowplow("extract action", () => {
         column: "Created At",
         option: "Hour of day",
         newColumn: "Hour of day",
+        extraction: "Extract day, month…",
       });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
         newColumn: "Hour of day_2",
+        extraction: "Extract day, month…",
       });
     });
 
@@ -219,6 +259,7 @@ describeWithSnowplow("extract action", () => {
         column: "Created At",
         option: "Year",
         value: "2,025",
+        extraction: "Extract day, month…",
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
@@ -237,6 +278,53 @@ describeWithSnowplow("extract action", () => {
         column: "Created At",
         option: "Tag der Woche",
         value: "Dienstag",
+        extraction: "Extract day, month…",
+      });
+    });
+  });
+
+  describe("email columns", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    EMAIL_CASES.forEach(({ option, value, example }) => {
+      it(option, () => {
+        openPeopleTable({ limit: 1 });
+        extractColumnAndCheck({
+          column: "Email",
+          option,
+          value,
+          example,
+          extraction: "Extract domain, host…",
+        });
+      });
+    });
+  });
+
+  describe("url columns", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      // Make the Email column a URL column for these tests, to avoid having to create a new model
+      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+        semantic_type: "type/URL",
+      });
+    });
+
+    URL_CASES.forEach(({ option, value, example }) => {
+      it(option, () => {
+        openPeopleTable({ limit: 1 });
+
+        extractColumnAndCheck({
+          column: "Email",
+          option,
+          value,
+          example,
+          extraction: "Extract domain, subdomain…",
+        });
       });
     });
   });
@@ -246,13 +334,14 @@ function extractColumnAndCheck({
   column,
   option,
   newColumn = option,
+  extraction,
   value,
   example,
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByRole("columnheader", { name: column }).click();
-  popover().findByText("Extract day, month…").click();
+  popover().findByText(extraction).click();
   cy.wait(1);
 
   if (example) {
@@ -292,6 +381,7 @@ describeWithSnowplow("extract action", () => {
       column: "Created At",
       option: "Year",
       value: "2,025",
+      extraction: "Extract day, month…",
     });
 
     expectGoodSnowplowEvent({
