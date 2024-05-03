@@ -1,6 +1,7 @@
 import { useKBar, useMatches } from "kbar";
 import { useMemo, useEffect } from "react";
 import { useKeyPressEvent } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
@@ -29,7 +30,7 @@ export const PaletteResults = () => {
   );
 
   useEffect(() => {
-    if (processedResults[0] === "Search results") {
+    if (processedResults[0] === t`Search results`) {
       query.setActiveIndex(2);
     }
   }, [processedResults, query]);
