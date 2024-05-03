@@ -2,7 +2,7 @@
   "Tests for /api/cloud-migration. "
   (:require
    [clojure.test :refer :all]
-   [metabase.models.cloud-migration :as cloud-migration :refer [CloudMigration]]
+   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.cloud-migration-test :as cloud-migration-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -28,7 +28,7 @@
 
 (deftest concurrency-test
   ;; The Gods of Concurrency with terror and slaughter return
-  (run! (partial t2/insert-returning-instance! CloudMigration)
+  (run! (partial t2/insert-returning-instance! :model/CloudMigration)
         [{:external_id 1 :upload_url "" :state :dump}
          {:external_id 2 :upload_url "" :state :cancelled}
          {:external_id 3 :upload_url "" :state :error}
