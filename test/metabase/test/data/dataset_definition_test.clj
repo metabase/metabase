@@ -30,7 +30,7 @@
                    :fk_target_field_id nil
                    :semantic_type      :type/PK}]
                  user-fields)))
-        (when-not (#{:sqlite} driver/*driver*) ;; our implement does not support adding fk for custom dataset yet
+        (when-not (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
           (testing "user_custom_id is a FK non user.custom_id"
             (is (= #{{:name               (format-name "user_custom_id")
                       :fk_target_field_id (mt/id :user :custom_id)
