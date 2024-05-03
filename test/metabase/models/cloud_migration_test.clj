@@ -2,7 +2,7 @@
   (:require
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
-   [metabase.models.cloud-migration :as cloud-migration :refer [CloudMigration]]
+   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -16,6 +16,9 @@
   `(with-redefs [cloud-migration/get-store-migration (constantly {:external_id 1 :upload_url "https://up.loady"})
                  cloud-migration/migrate! identity]
      ~@body))
+
+(deftest cluster?-test
+  (is (boolean? (cloud-migration/cluster?))))
 
 (deftest migrate!-test
   (testing "works"
@@ -36,7 +39,7 @@
                (slurp body)
                (is (= request-method :put))
                {:status 200})
-             (str (cloud-migration/metabase-store-migration-url) "/" (:id migration) "/uploaded")
+             (str (cloud-migration/metabase-store-migration-url) "/" (:external_id migration) "/uploaded")
              (constantly {:status 201})}
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))
@@ -49,7 +52,7 @@
     (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
       (#'cloud-migration/migrate! migration)
-      (is (= (:progress (t2/select-one CloudMigration :id (:id migration))) 0))
+      (is (= (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 0))
       (is (not (cloud-migration/read-only-mode))))))
 
 (deftest read-only-login-test

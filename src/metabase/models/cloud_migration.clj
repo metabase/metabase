@@ -6,6 +6,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
+   [metabase.db :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.setting.cache :as setting.cache]
@@ -18,8 +19,6 @@
    [java.io File InputStream]))
 
 (set! *warn-on-reflection* true)
-
-(def CloudMigration "Cloud Migration" :model/CloudMigration)
 
 (doto :model/CloudMigration
   (derive :metabase/model)
@@ -85,9 +84,15 @@
   "Cloud migration states that are terminal."
   #{:done :error :cancelled})
 
-(defn- cluster?
+(defn cluster?
+  "EXPERIMENTAL Returns true if this metabase instance is part of a cluster.
+  Works by checking how many Quartz nodes there are.
+  See https://github.com/quartz-scheduler/quartz/issues/733"
   []
-  (>= (t2/count 'QRTZ_SCHEDULER_STATE) 2))
+  (>= (t2/count (if (= (mdb/db-type) :postgres)
+                  'qrtz_scheduler_state
+                  'QRTZ_SCHEDULER_STATE))
+      2))
 
 (defn- progress-file-input-stream
   "File input stream that calls on-percent-progress with current read progress as int from 0 to 100.
@@ -98,17 +103,17 @@
         *bytes                   (atom 0)
         on-percent-progress-memo (memoize on-percent-progress) ;; memoize so we don't repeat calls
         add-bytes                #(on-percent-progress-memo (int (* 100 (/ (swap! *bytes + %) length))))
-        f                        (fn [ret]
+        f                        (fn [ret & single?]
                                    (cond
                                      ;; -1 is end of stream
                                      (= -1 ret)  (on-percent-progress-memo 100)
-                                     (char? ret) (add-bytes 1)
+                                     single?     (add-bytes 1)
                                      (int? ret)  (add-bytes ret))
                                    ret)]
     (proxy [InputStream] []
       (read
        ([]
-        (f (.read input-stream)))
+        (f (.read input-stream) true))
         ([^bytes b]
          (f (.read input-stream b)))
         ([^bytes b off len]
@@ -121,14 +126,15 @@
   This is the main cluster coordination mechanism for migrations, since any instance
   can cancel the migration, not just the one that initiated it."
   [id state progress]
-  (when (= 0 (t2/update! CloudMigration :id id :state [:not-in terminal-states]
+  (when (= 0 (t2/update! :model/CloudMigration :id id :state [:not-in terminal-states]
                          {:state state :progress progress}))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 (defn migrate!
   "Migrate this instance to Metabase Cloud.
-  Will exit early if migration has been cancelled in any cluster instance."
-  [{:keys [id upload_url]} & {:keys [retry?]}]
+  Will exit early if migration has been cancelled in any cluster instance.
+  Should run in a separate thread since it can take a long time to complete."
+  [{:keys [id external_id upload_url]} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
   ;; in the same process.
   (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))
@@ -137,7 +143,7 @@
         on-upload-progress #(set-progress id :upload (int (+ 50 (* 50 (/ % 100)))))]
     (try
       (when retry?
-        (t2/update! CloudMigration :id id {:state :init}))
+        (t2/update! :model/CloudMigration :id id {:state :init}))
 
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
@@ -160,7 +166,7 @@
                                       dump-file on-upload-progress)})
 
       (log/info "Notifying store that upload is done")
-      (http/put (str (metabase-store-migration-url) "/" id "/uploaded"))
+      (http/put (str (metabase-store-migration-url) "/" external_id "/uploaded"))
 
       (log/info "Migration finished")
       (set-progress id :done 100)
@@ -169,7 +175,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interruped due to terminal state")
           (do
-            (t2/update! CloudMigration id {:state :error})
+            (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {:error e})))))
       (finally
@@ -195,13 +201,13 @@
   (metabase-store-migration-url! "https://store-api.staging.metabase.com/api/v2/migration")
 
   ;; make sure to use a version that store supports.
-  (get-store-migration "v0.45.0")
+  (get-store-migration "v0.49.7")
 
   ;; add new
-  (t2/insert-returning-instance! CloudMigration (get-store-migration "v0.45.0"))
+  (t2/insert-returning-instance! :model/CloudMigration (get-store-migration "v0.49.7"))
 
   ;; get latest
-  @(def latest (t2/select-one CloudMigration {:order-by [[:created_at :desc]]}))
+  @(def latest (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
   ;; migrate latest
   (migrate! latest)
@@ -210,4 +216,4 @@
   (migrate! latest :retry? true)
 
   ;; cancel all
-  (t2/update! CloudMigration {:state [:not-in terminal-states]} {:state :cancelled}))
+  (t2/update! :model/CloudMigration {:state [:not-in terminal-states]} {:state :cancelled}))
