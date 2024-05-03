@@ -156,4 +156,29 @@
         (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" card-id))
                           csv/read-csv)]
           result))))
+
+  ;; since the json export doesn't do any post processing, you can use that to see what the raw pivot rows look like:
+  (defn explore-raw-pivot
+    []
+    (mt/dataset pivot-base-data
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field "CAT C" {:base-type :type/Text}]
+                                                          [:field "CAT D" {:base-type :type/Text}]]
+                                                :columns [[:field "CAT A" {:base-type :type/Text}]
+                                                          [:field "CAT B" {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:aggregation  [[:sum [:field (mt/id :pivot-base :measure) {:base-type :type/Integer}]]]
+                                                :breakout
+                                                [[:field (mt/id :pivot-base "CAT A") {:base-type :type/Text}]
+                                                 [:field (mt/id :pivot-base "CAT B") {:base-type :type/Text}]
+                                                 [:field (mt/id :pivot-base "CAT C") {:base-type :type/Text}]
+                                                 [:field (mt/id :pivot-base "CAT D") {:base-type :type/Text}]]
+                                                :source-table (mt/id :pivot-base)}}}]
+        (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json?format_rows=false" card-id))]
+          (take 20 result)))))
   )
