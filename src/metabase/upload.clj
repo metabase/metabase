@@ -28,8 +28,6 @@
    [metabase.upload.internal :as upload.internal]
    [potemkin :as p]))
 
-(set! *warn-on-reflection* true)
-
 (p/import-vars
  [upload.internal
   auto-pk-column-name
