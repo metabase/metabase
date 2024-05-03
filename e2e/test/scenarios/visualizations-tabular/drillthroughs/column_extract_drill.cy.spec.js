@@ -304,7 +304,7 @@ describeWithSnowplow("extract action", () => {
   });
 
   describe("url columns", () => {
-    beforeEach(function () {
+    beforeEach(() => {
       restore();
       cy.signInAsAdmin();
 
@@ -381,6 +381,7 @@ describeWithSnowplow("extract action", () => {
       column: "Created At",
       option: "Year",
       value: "2,025",
+      extraction: "Extract day, month…",
     });
 
     expectGoodSnowplowEvent({
