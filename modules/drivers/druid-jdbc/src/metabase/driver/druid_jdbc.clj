@@ -49,7 +49,7 @@
   :monday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :druid-jdbc
-  [_ database-type]
+  [_driver database-type]
   ({:TIMESTAMP            :type/DateTime
     :VARCHAR              :type/Text
     :DECIMAL              :type/Decimal
@@ -63,13 +63,13 @@
    :type/*))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
-  [_ ^ResultSet rs _ ^long i]
+  [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn []
     (t/instant (.getObject rs i))))
 
 ;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
-(defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc 1111]
-  [_ ^ResultSet rs _ ^long i]
+(defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/OTHER]
+  [_driver ^ResultSet rs _ ^Long i]
   (fn []
     (let [o (.getObject rs i)]
       (cond-> o
