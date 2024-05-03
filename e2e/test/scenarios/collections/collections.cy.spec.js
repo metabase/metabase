@@ -231,7 +231,7 @@ describe("scenarios > collection defaults", () => {
                 id: 1,
                 last_name: null,
                 first_name: null,
-                email: "admin@metabase.test",
+                email: "me@email.com",
                 timestamp: "2022-07-05T07:31:09.054-07:00",
               }),
             );
@@ -240,7 +240,7 @@ describe("scenarios > collection defaults", () => {
       );
       visitRootCollection();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("admin@metabase.test").trigger("mouseenter");
+      cy.findByText("me@email.com").trigger("mouseenter");
       cy.findByRole("tooltip").should("not.exist");
     });
 
