@@ -1042,18 +1042,3 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmulti field-values-compatible?
-  "Checks whether some field is eligible for field values scan.
-
-   Problem is that some databases are unable to handle our field value scan query for some fields. Eg. Druid JDBC
-   is unable to handle group by on complex type, which scan attemps.
-
-   This method gives driver implementer ability to opt-out from scanning of some fields."
-  {:added "0.50.0" :changelog-test/ignore true :arglists '([driver field])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod field-values-compatible? :default
-  [_driver _field]
-  true)

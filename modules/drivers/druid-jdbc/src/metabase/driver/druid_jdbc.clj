@@ -61,6 +61,11 @@
    database-type
    :type/*))
 
+(derive :type/DruidJSON :type/JSON)
+(derive :type/DruidJSON :type/field-values-unsupported)
+
+(derive :type/DruidHyperUnique :type/field-values-unsupported)
+
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rs _ ^long i]
   (fn []
@@ -103,11 +108,6 @@
 (defmethod sql.qp/add-interval-honeysql-form :druid-jdbc
   [_ hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
-
-;; Query used for field values computation is not compatible with COMPLEX<...> types.
-(defmethod driver/field-values-compatible? :druid-jdbc
-  [_driver {:keys [database_type] :as _field}]
-  (not (re-find #"COMPLEX<" (str database_type))))
 
 (defmethod sql-jdbc.conn/data-source-name :druid-jdbc
   [_driver {:keys [host port] :as _details}]

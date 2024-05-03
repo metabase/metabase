@@ -247,6 +247,10 @@
 (derive :type/Boolean :type/*)
 (derive :type/DruidHyperUnique :type/*)
 
+;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
+;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
+(derive :type/field-values-unsupported :type/*)
+
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 

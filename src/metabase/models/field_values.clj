@@ -29,7 +29,6 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -235,17 +234,15 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one 'Field :id field-id)
+      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
            visibility-type  :visibility_type
-           has-field-values :has_field_values} field-or-field-id
-          table (t2/select-one 'Table :id (:table_id field-or-field-id))
-          engine (:engine (t2/select-one 'Database :id (:db_id table)))]
+           has-field-values :has_field_values} field-or-field-id]
       (boolean
        (and
-        (driver/field-values-compatible? engine field-or-field-id)
+        (not (isa? base-type :type/field-values-unsupported))
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
         (not (isa? (keyword base-type) :type/Temporal))
         (#{:list :auto-list} (keyword has-field-values)))))))

@@ -116,7 +116,7 @@
                            :database-position 9,
                            :json-unfolding false}}}
                (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"}))))
-               (testing "Full sync does not throw an exception"
+               (testing "Full sync does not throw an exception (field values are calculated only for eligible fields)"
                  (is (=? [::success some?]
                          (try (let [result (sync/sync-database! (mt/db))]
                                 [::success result])

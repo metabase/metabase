@@ -58,9 +58,13 @@ title: Driver interface changelog
   clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
   drivers. Other drivers should add an implementation for this clause and enable the feature flag.
 
-- `metabase.driver/field-values-compatible?` multimethod was added to enable drivers to opt out from field values
-  computations for specific fields. Changed was motivated by the Druid JDBC's inability to execute field value queries
-  from its `COMPLEX<...>` type columns.
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` and further type derivations in the `metabase.driver.druid-jdbc`
+  namespace for an example.
 
 ## Metabase 0.49.1
 
