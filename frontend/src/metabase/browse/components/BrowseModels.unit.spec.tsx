@@ -1,23 +1,15 @@
-import {
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import userEvent from "@testing-library/user-event";
-
-import userEvent from "@testing-library/user-event";
-
-import {
-  setupSearchEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockModelResult,
+  createMockModelResult
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
+import {
+  setupSearchEndpoints,
+  setupSettingsEndpoints
+} from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { BrowseModels } from "./BrowseModels";
 
