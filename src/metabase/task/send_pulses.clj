@@ -74,18 +74,32 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))))
 
+; Clearing pulse channels is not done synchronously in order to support undoing feature.
+(defn- clear-pulse-channels!
+  [pulse-id]
+  (when-let [ids-to-delete (seq
+                            (for [channel (t2/select [:model/PulseChannel :id :details]
+                                                     :pulse_id pulse-id
+                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
+                                                                   :from     :pulse_channel_recipient
+                                                                   :group-by [:pulse_channel_id]
+                                                                   :having   [:>= :%count.* [:raw 1]]}])]
+                              (when (and (empty? (get-in channel [:details :emails]))
+                                         (not (get-in channel [:details :channel])))
+                                (:id channel))))]
+    (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
+    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
+
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse! pulse-id channel-ids)))
+    (send-pulse! pulse-id channel-ids)
+    (clear-pulse-channels! pulse-id)))
 
-;;; --------------------------------------------- Job: RePrioritizeSendPulses -------------------------------------------
+;;; --------------------------------------------- Helpers -------------------------------------------
 
-(def ^:private reprioritize-send-pulse-job-key (jobs/key "metabase.task.send-pulses.reprioritize.job"))
-
-(def ^:private reprioritize-send-pulse-trigger-key (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
-
+;; called by PulseChannel hooks
 (defn update-send-pulse-trigger-if-needed!
   "Update send pulse trigger of a pulse for a specific schedule map with new pulse channel ids.
 
@@ -135,62 +149,31 @@
       (task/delete-trigger! trigger-key)
       (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids))))))
 
-(defn- clear-pulse-channels!
-  []
-  (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [:model/PulseChannel :id :details]
-                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
-                                                                   :from     :pulse_channel_recipient
-                                                                   :group-by [:pulse_channel_id]
-                                                                   :having   [:>= :%count.* [:raw 1]]}])]
-                              (when (and (empty? (get-in channel [:details :emails]))
-                                         (not (get-in channel [:details :channel])))
-                                (:id channel))))]
-    (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
-
-(defn- reprioritize-send-pulses!
+(defn- init-send-pulse-triggers!
   "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
 
-  Also remove PulseChannels that don't have any recipients."
+  This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
+
+  Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
+  hour.
+  Since that's inefficient and we want to be able to send pulses in parallel, we changed it so that each PulseChannel
+  of the same schedule will have its own SendPulse trigger.
+  During this transition, we need have a cold start problem to schedule all the SendPulse triggers for existing PulseChannels.
+  To do that, we called `init-send-pulse-triggers!` in [[task/init!]], since this function is idempotent it's fine to call it mulitple times."
   []
-  (log/info "Reprioritizing send pulses")
-  (clear-pulse-channels!)
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
                                (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                                (update-vals results #(map :id %)))]
-    ;; TODO: use info from task-history to set priority of each pulses of the same time slot
     (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
       (update-send-pulse-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))))
-
-(jobs/defjob ^{:doc "Reprioritizes SendPulse jobs based on the PulseChannels that are scheduled to run at the same time."}
-  RePrioritizeSendPulses
-  [_job-context]
-  (reprioritize-send-pulses!))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 
 (defmethod task/init! ::SendPulses [_]
-  (let [send-pulse-job       (jobs/build
-                              (jobs/with-identity send-pulse-job-key)
-                              (jobs/with-description "Send Pulse")
-                              (jobs/of-type SendPulse)
-                              (jobs/store-durably))
-        re-prioritize-job    (jobs/build
-                              (jobs/with-identity reprioritize-send-pulse-job-key)
-                              (jobs/with-description  "Update SendPulses Pjiority")
-                              (jobs/of-type RePrioritizeSendPulses)
-                              (jobs/store-durably))
-        re-proritize-trigger (triggers/build
-                              (triggers/with-identity reprioritize-send-pulse-trigger-key)
-                              (triggers/for-job reprioritize-send-pulse-job-key)
-                              (triggers/start-now)
-                              (triggers/with-schedule
-                                (cron/schedule
-                                 (cron/cron-schedule "0 0 1 ? * 7 *") ; at 1am on Saturday every week
-                                 (cron/with-misfire-handling-instruction-fire-and-proceed))))]
+  (let [send-pulse-job (jobs/build
+                        (jobs/with-identity send-pulse-job-key)
+                        (jobs/with-description "Send Pulse")
+                        (jobs/of-type SendPulse)
+                        (jobs/store-durably))]
     (task/add-job! send-pulse-job)
-    (task/add-job! re-prioritize-job)
-    (task/schedule-task! re-prioritize-job re-proritize-trigger)
-    ;; this function is idempotent, so we can call it multiple times
-    (reprioritize-send-pulses!)))
+    (init-send-pulse-triggers!)))
