@@ -18,25 +18,25 @@ const specificDate = dayjs("2009-07-21").toISOString();
 const sampleTables = [
   createMockTable({
     id: 1,
-    display_name: "Uploaded Table 1",
+    name: "Uploaded Table 1",
     schema: "My schema name",
     is_upload: true,
   }),
   createMockTable({
     id: 2,
-    display_name: "Uploaded Table 2",
+    name: "Uploaded Table 2",
     is_upload: true,
     created_at: threeDaysAgo,
   }),
   createMockTable({
     id: 3,
-    display_name: "Uploaded Table 3",
+    name: "Uploaded Table 3",
     is_upload: true,
     created_at: threeWeeksAgo,
   }),
   createMockTable({
     id: 99,
-    display_name: "Uploaded Table 99",
+    name: "Uploaded Table 99",
     is_upload: true,
     created_at: specificDate,
   }),
@@ -52,10 +52,10 @@ const setup = async () => {
 };
 
 describe("uploadManagementTable", () => {
-  it("should render a table with display_names", async () => {
+  it("should render a table with names", async () => {
     await setup();
     sampleTables.forEach(table => {
-      expect(screen.getByText(table.display_name)).toBeInTheDocument();
+      expect(screen.getByText(table.name)).toBeInTheDocument();
     });
   });
 

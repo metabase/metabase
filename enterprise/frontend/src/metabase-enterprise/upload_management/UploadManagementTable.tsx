@@ -22,7 +22,7 @@ import { getDateDisplay } from "./utils";
 
 const columns = [
   { key: "checkbox", name: "" },
-  { key: "display_name", name: t`Table name` },
+  { key: "name", name: t`Table name` },
   { key: "created_at", name: t`Created at` },
   { key: "schema", name: t`Schema` },
   { key: "actions", name: "" },
@@ -36,8 +36,11 @@ export function UploadManagementTable() {
   const { data: uploadTables, error, isLoading } = useListUploadTablesQuery();
 
   const deleteTable = useCallback(
-    async (table: Table) => {
-      await deleteTableRequest({ tableId: table.id });
+    async (table: Table, sendToTrash: boolean) => {
+      await deleteTableRequest({
+        tableId: table.id,
+        "archive-cards": sendToTrash,
+      });
     },
     [deleteTableRequest],
   );
@@ -79,8 +82,10 @@ export function UploadManagementTable() {
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
-        onConfirm={async () => {
-          await Promise.all(selectedItems.map(deleteTable));
+        onConfirm={async sendToTrash => {
+          await Promise.all(
+            selectedItems.map(table => deleteTable(table, sendToTrash)),
+          );
           setShowDeleteConfirmModal(false);
           setSelectedItems([]);
         }}
@@ -148,7 +153,7 @@ const UploadTableRow = ({
           to={Urls.modelToUrl({ model_object: item, model: "table" }) ?? "/"}
           variant="brand"
         >
-          {item.display_name}
+          {item.name}
         </Link>
       </td>
       <td>{createdAtString}</td>

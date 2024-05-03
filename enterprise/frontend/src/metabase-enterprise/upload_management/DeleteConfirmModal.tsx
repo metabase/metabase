@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { c, t } from "ttag";
 
-import { Box, Flex, Text, Button, Modal } from "metabase/ui";
+import { Box, Flex, Text, Button, Modal, Switch } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 export function DeleteConfirmModal({
@@ -11,26 +12,40 @@ export function DeleteConfirmModal({
 }: {
   opened: boolean;
   tables: Table[];
-  onConfirm: () => void;
+  onConfirm: (sendToTrash: boolean) => void;
   onClose: () => void;
 }) {
+  const [sendToTrash, setSendToTrash] = useState(true);
   const title =
     tables.length === 1
       ? c("{0} is the name of a database table to be deleted")
           .t`Delete ${tables[0].display_name}?`
       : c("{0} is the number of database tables to be deleted")
           .t`Delete ${tables.length} tables?`;
+
   return (
-    <Modal opened={opened} title={title} onClose={onClose}>
+    <Modal opened={opened} title={title} onClose={onClose} size="md">
       <Box>
-        <Text color="text-medium" my="lg">
+        <Text my="lg">
           {t`This may impact the models and questions that use the table(s) as their data source. This can't be undone.`}
         </Text>
+      </Box>
+      <Box mb="lg">
+        <Switch
+          size="sm"
+          checked={sendToTrash}
+          label={
+            tables.length === 1
+              ? t`Also send all models and questions based on this table to the trash`
+              : t`Also send all models and questions based on these tables to the trash`
+          }
+          onChange={e => setSendToTrash(e.target.checked)}
+        />
       </Box>
       <Flex gap="sm" justify="flex-end">
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
-          onClick={onConfirm}
+          onClick={() => onConfirm(sendToTrash)}
           color="error"
           variant="filled"
         >{t`Delete`}</Button>

@@ -127,5 +127,5 @@ export type UploadManagementResponse = Table[];
 
 export interface DeleteUploadTableRequest {
   tableId: TableId;
-  archiveCards?: boolean;
+  "archive-cards"?: boolean;
 }
