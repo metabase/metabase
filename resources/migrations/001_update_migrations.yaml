@@ -6904,6 +6904,142 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v50.2024-04-29T14:07:18
+      author: johnswanson
+      comment: Drop foreign key constraint fk_snippet_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:24
+      author: johnswanson
+      comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:33
+      author: johnswanson
+      comment: Drop foreign key constraint fk_pulse_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:37
+      author: johnswanson
+      comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:40
+      author: johnswanson
+      comment: Drop foreign key constraint fk_card_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:47
+      author: johnswanson
+      comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:49
+      author: johnswanson
+      comment: Drop foreign key constraint fk_dashboard_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+
+  - changeSet:
+      id: v50.2024-04-29T14:07:53
+      author: johnswanson
+      comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: CASCADE
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
