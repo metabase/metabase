@@ -408,13 +408,6 @@ ComboHistogram.args = {
   renderingContext,
 };
 
-export const ComboBarsBecomeStackedInStaticViz38827 = Template.bind({});
-ComboBarsBecomeStackedInStaticViz38827.args = {
-  rawSeries: data.comboBarsBecomeStackedInStaticViz38827 as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
 export const CombinedBarTimeSeriesDifferentGranularityWithBreakout =
   Template.bind({});
 CombinedBarTimeSeriesDifferentGranularityWithBreakout.args = {

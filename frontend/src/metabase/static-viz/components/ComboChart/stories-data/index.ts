@@ -33,7 +33,6 @@ import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
-import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
 import comboHistogram from "./combo-histogram.json";
 import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
 import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
@@ -140,7 +139,6 @@ export const data = {
   trendComboPower,
   trendComboLog,
   comboHistogram,
-  comboBarsBecomeStackedInStaticViz38827,
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
   compactXAxisDoesNotWork38917,
