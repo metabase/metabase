@@ -159,8 +159,11 @@ export function SummarizeSidebar({
 
 function getQuery(query: Lib.Query, isDefaultAggregationRemoved: boolean) {
   const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
+
   const shouldAddDefaultAggregation =
-    !hasAggregations && !isDefaultAggregationRemoved;
+    !hasAggregations &&
+    !Lib.isMetricBased(query, STAGE_INDEX) &&
+    !isDefaultAggregationRemoved;
 
   if (!shouldAddDefaultAggregation) {
     return query;
