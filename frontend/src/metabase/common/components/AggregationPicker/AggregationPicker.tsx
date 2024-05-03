@@ -22,8 +22,9 @@ import {
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
-  clause?: Lib.AggregationClause;
   stageIndex: number;
+  clause?: Lib.AggregationClause;
+  clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   onSelect: (operator: Lib.Aggregable) => void;
@@ -36,6 +37,7 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
 
 type MetricListItem = Lib.MetricDisplayInfo & {
   metric: Lib.MetricMetadata;
+  selected: boolean;
 };
 
 type ListItem = OperatorListItem | MetricListItem;
@@ -55,8 +57,9 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
-  clause,
   stageIndex,
+  clause,
+  clauseIndex,
   operators,
   hasExpressionInput = true,
   onSelect,
@@ -98,7 +101,7 @@ export function AggregationPicker({
       sections.push({
         key: "metrics",
         items: metrics.map(metric =>
-          getMetricListItem(query, stageIndex, metric),
+          getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
       });
@@ -126,7 +129,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [metadata, query, stageIndex, operators, hasExpressionInput]);
+  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -305,7 +308,7 @@ function isExpressionEditorInitiallyOpen(
       Lib.isMetricBased(query, stageIndex) &&
       Lib.availableMetrics(query, stageIndex)
         .map(metric => Lib.displayInfo(query, stageIndex, metric))
-        .every(metricInfo => metricInfo.selected)
+        .every(metricInfo => metricInfo.aggregationPosition != null)
     );
   }
 
@@ -333,11 +336,14 @@ function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
   metric: Lib.MetricMetadata,
+  clauseIndex?: number,
 ): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
     metric,
+    selected:
+      clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
   };
 }
 
