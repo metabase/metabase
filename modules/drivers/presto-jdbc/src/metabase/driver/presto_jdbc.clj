@@ -269,8 +269,12 @@
 (defmethod sql.qp/datetime-diff [:presto-jdbc :second]  [_driver _unit x y] (date-diff :second x y))
 
 (defmethod driver/db-default-timezone :presto-jdbc
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
+  [_driver _database]
+  ;; harcoded to UTC for now. I don't know how to get the SYSTEM timezone for Presto (or if it even has one for that
+  ;; matter) and neither does Windows Copilot. The commented-out code below returns the session timezone. Maybe if we
+  ;; can figure out how to get the actual system timezone we can update it and use it.
+  "UTC"
+  #_(sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
      ;; TODO -- this is the session timezone, right? As opposed to the default timezone? Ick. Not sure how to get the
