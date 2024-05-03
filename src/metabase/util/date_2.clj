@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [java-time.core :as t.core]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n :refer [tru]]
