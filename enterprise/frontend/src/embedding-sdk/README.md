@@ -41,16 +41,6 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0
 java -jar metabase.jar
 ```
 
-### 3. Start a local build of Metabase from master
-
-1. Check out the code from the metabase repo
-```git clone git@github.com:metabase/metabase.git```
-1. Move into the repo and start it
-```cd metabase && yarn dev-ee```
-1. Metabase will be running at http://localhost:3000/
-1. Go through the setup process
-1. Make sure to activate your license. You can do this during the setup process or after, from the admin settings
-
 ## Configure Metabase
 
 1. Go to Admin settings > Authentication > JWT
