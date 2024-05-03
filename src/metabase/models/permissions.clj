@@ -325,7 +325,6 @@
                    :read  collection-read-path
                    :write collection-readwrite-path)
          collection-id (if (and (contains? this :trashed_from_collection_id)
-                                (contains? this :archived)
                                 (:archived this))
                          (:trashed_from_collection_id this)
                          (:collection_id this))]

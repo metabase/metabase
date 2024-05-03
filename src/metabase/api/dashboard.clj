@@ -684,22 +684,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
-(defn- move-on-archive-or-unarchive
-  "Given the current dashboard and the set of dash-updates, return a possibly modified version of dash-updates
-  reflecting the fact that archiving (or unarchiving) also moves the dashboard to/from the Trash."
-  [current-dash dash-updates]
-  (cond-> dash-updates
-    (api/column-will-change? :archived current-dash dash-updates)
-    (assoc :collection_id (cond
-                            (:archived dash-updates) collection/trash-collection-id
-
-                            (api/column-will-change? :collection_id current-dash dash-updates)
-                            (:collection_id dash-updates)
-
-                            :else (:trashed_from_collection_id current-dash))
-           :trashed_from_collection_id (when (:archived dash-updates)
-                                         (:collection_id current-dash)))))
-
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -718,7 +702,7 @@
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
-          dash-updates                       (move-on-archive-or-unarchive current-dash dash-updates)]
+          dash-updates                       (api/move-on-archive-or-unarchive current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
       (api/check-500

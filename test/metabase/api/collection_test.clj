@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
+   [metabase.config :as config]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ModerationReview
             NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
@@ -797,16 +798,16 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
         (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
-                      (get-items :crowberto collection/trash-collection-id)))
+                      (get-items :crowberto config/trash-collection-id)))
         (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
                       (get-items :crowberto collection)))))
     (testing "I can untrash something by marking it as not archived"
       (t2.with-temp/with-temp [Collection collection {:name "A"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id "/items"))))))
+        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" config/trash-collection-id "/items"))))))
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
-        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id "/items"))))))))
+        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" config/trash-collection-id "/items"))))))))
     (testing "I can untrash something to a specific location if desired"
       (t2.with-temp/with-temp [Collection collection-a {:name "A"}
                                Collection collection-b {:name "B" :location (collection/children-location collection-a)}
@@ -815,7 +816,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
         (perms/grant-collection-read-permissions! (perms-group/all-users) destination)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
-        (is (= #{"A"} (set-of-item-names :crowberto collection/trash-collection-id)))
+        (is (= #{"A"} (set-of-item-names :crowberto config/trash-collection-id)))
         (is (= #{} (set-of-item-names :crowberto destination)))
         ;; both A and B are marked as `archived`
         (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-b)))))
@@ -825,7 +826,7 @@
 
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-b)) {:archived false :parent_id (u/the-id destination)})
         ;; collection A is still here!
-        (is (= #{"A"} (set-of-item-names :crowberto collection/trash-collection-id)))
+        (is (= #{"A"} (set-of-item-names :crowberto config/trash-collection-id)))
         ;; collection B got moved correctly
         (is (= #{"B"} (set-of-item-names :crowberto destination)))
 
@@ -877,7 +878,7 @@
                  "sub-C"
                  "sub-B"
                  ;; can see the dashboard in Collection C, because Rasta has read/write permissions on Collection C
-                 "dashboard-C"} (set-of-item-names collection/trash-collection-id))))
+                 "dashboard-C"} (set-of-item-names config/trash-collection-id))))
       (testing "if the collections themselves are trashed, subcollection checks still work the same way"
         (doseq [coll [collection-a collection-b collection-c]]
           (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
@@ -886,7 +887,7 @@
                  "sub-C"
                  "C"
                  "dashboard-C"}
-               (set-of-item-names collection/trash-collection-id))))
+               (set-of-item-names config/trash-collection-id))))
       (testing "after hard deletion of a collection, only admins can see things trashed from them"
         (doseq [coll [collection-a collection-b collection-c]]
           (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id coll))))
@@ -894,10 +895,10 @@
         ;; - Collection C because it's deleted
         ;; - dashboard C because permissions records are deleted along with the collection
         (is (= #{"sub-A" "sub-B" "sub-C"}
-               (set-of-item-names collection/trash-collection-id)))
+               (set-of-item-names config/trash-collection-id)))
         ;; Crowberto can see all of the still-existent things.
         (is (= #{"sub-A" "sub-B" "sub-C" "dashboard-A" "dashboard-B" "dashboard-C"}
-               (->> (get-items :crowberto collection/trash-collection-id)
+               (->> (get-items :crowberto config/trash-collection-id)
                     (map :name)
                     set)))))))
 
@@ -2109,13 +2110,13 @@
                    (filter #(= (:name %) "Trash"))))))
   (testing "We can optionally request to include the Trash"
     (is (= [{:name "Trash"
-             :id collection/trash-collection-id}]
+             :id config/trash-collection-id}]
            (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :archived true))
-                (filter #(= (:id %) collection/trash-collection-id))
+                (filter #(= (:id %) config/trash-collection-id))
                 (map #(select-keys % [:name :id])))))))
 
 (deftest collection-tree-includes-trash-if-requested
   (testing "Trash collection is included by default"
-    (is (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
+    (is (some #(= (:id %) config/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
   (testing "Trash collection is NOT included if `exclude-archived` is passed"
-    (is (not (some #(= (:id %) collection/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))
+    (is (not (some #(= (:id %) config/trash-collection-id) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))

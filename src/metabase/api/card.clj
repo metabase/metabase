@@ -499,20 +499,7 @@
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (cond-> card-updates
-                                 (api/column-will-change? :archived card-before-update card-updates)
-                                 (assoc :collection_id (cond
-                                                         (:archived card-updates) collection/trash-collection-id
-
-                                                         (api/column-will-change? :collection_id card-before-update card-updates)
-                                                         (:collection_id card-updates)
-
-                                                         :else
-                                                         (:trashed_from_collection_id card-before-update))
-                                        :trashed_from_collection_id (when (:archived card-updates)
-                                                                      (:collection_id card-before-update)))
-
-                                 (:type card-updates) (update :type keyword))
+        card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates)
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]

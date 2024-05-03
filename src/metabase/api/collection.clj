@@ -12,6 +12,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -22,13 +23,11 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline :as timeline]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -89,10 +88,10 @@
                        (case archived
                          nil nil
                          false [:and
-                                [:not= :id collection/trash-collection-id]
+                                [:not= :id config/trash-collection-id]
                                 [:not :archived]]
                          true [:or
-                               [:= :id collection/trash-collection-id]
+                               [:= :id config/trash-collection-id]
                                :archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
@@ -536,8 +535,8 @@
   (-> (assoc (collection/effective-children-query
               collection
               (if archived?
-                [:or [:= :archived true] [:= :id collection/trash-collection-id]]
-                [:and [:= :archived false] [:not= :id collection/trash-collection-id]])
+                [:or [:= :archived true] [:= :id config/trash-collection-id]]
+                [:and [:= :archived false] [:not= :id config/trash-collection-id]])
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
@@ -649,13 +648,13 @@
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
-    :collection Collection
-    :card       Card
-    :dataset    Card
-    :dashboard  Dashboard
-    :pulse      Pulse
-    :snippet    NativeQuerySnippet
-    :timeline   Timeline))
+    :collection :model/Collection
+    :card       :model/Card
+    :dataset    :model/Card
+    :dashboard  :model/Dashboard
+    :pulse      :model/Pulse
+    :snippet    :model/NativeQuerySnippet
+    :timeline   :model/Timeline))
 
 (defn- can-read-in-trash? [collection row]
   (mi/can-write?

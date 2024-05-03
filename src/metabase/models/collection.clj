@@ -10,6 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.config :refer [trash-collection-id]]
    [metabase.db :as mdb]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -44,10 +45,6 @@
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
   510)
-
-(def ^:const trash-collection-id
-  "The fixed ID of the trash collection."
-  13371339)
 
 (defn- trash-collection*
   "Gets the Trash collection from the database."
@@ -343,7 +340,7 @@
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- [:or [:vector :keyword] :keyword] ;; `[:vector :keyword]` allows `[:coalesce :option-1 :option-2]`
+  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword] ;; `[:vector :keyword]` allows `[:coalesce :option-1 :option-2]`
     collection-ids      :- VisibleCollections]
    (if (= collection-ids :all)
      true
@@ -750,7 +747,7 @@
         will-be-trashed? (str/starts-with? new-location trash-path)]
     (when will-be-trashed?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
-                      {})))
+                      {:collection collection :new-location new-location})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
