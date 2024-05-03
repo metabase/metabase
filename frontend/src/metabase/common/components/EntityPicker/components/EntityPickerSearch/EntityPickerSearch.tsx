@@ -6,7 +6,6 @@ import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
-import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
@@ -15,6 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
+import { DelayedLoadingSpinner } from "../LoadingSpinner";
 import { ResultItem, ChunkyList } from "../ResultItem";
 
 import { getSearchTabText } from "./utils";
@@ -88,7 +88,7 @@ export const EntityPickerSearchResults = <
   selectedItem: Item | null;
 }) => {
   if (!searchResults) {
-    return <SearchLoadingSpinner />;
+    return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
 
   return (
