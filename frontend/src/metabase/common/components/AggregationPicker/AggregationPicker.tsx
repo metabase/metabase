@@ -106,7 +106,7 @@ export function AggregationPicker({
       });
     }
 
-    if (operators.length > 0 && !(metrics.length > 0 && isMetricBased)) {
+    if (operators.length > 0 && !isMetricBased) {
       sections.push({
         key: "operators",
         name: t`Basic Metrics`,
