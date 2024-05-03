@@ -2,7 +2,10 @@ import d3 from "d3";
 import type { RegisteredSeriesOption } from "echarts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
 
 import { CHART_STYLE } from "../constants/style";
 import type { DataKey, Datum, Extent, SeriesModel } from "../model/types";
@@ -21,11 +24,16 @@ const MAX_BUBBLE_DIAMETER = 75;
 function getBubbleDiameterScale(
   bubbleSizeDomain: Extent | null,
   bubbleSizeDataKey: DataKey | undefined,
+  minDiameterSetting: number | undefined,
+  maxDiameterSetting: number | undefined,
 ) {
+  const minDiameter = minDiameterSetting ?? MIN_BUBBLE_DIAMETER;
+  const maxDiameter = maxDiameterSetting ?? MAX_BUBBLE_DIAMETER;
+
   if (!bubbleSizeDataKey || !bubbleSizeDomain) {
-    return MIN_BUBBLE_DIAMETER;
+    return minDiameter;
   }
-  const areaRange = [MIN_BUBBLE_DIAMETER, MAX_BUBBLE_DIAMETER].map(
+  const areaRange = [minDiameter, maxDiameter].map(
     diameter => Math.PI * (diameter / 2) ** 2,
   );
   // Domain is [0, 1] since the `t` parameteter of the interpolate function below
@@ -41,7 +49,7 @@ function getBubbleDiameterScale(
     // if area = π × (diameter ÷ 2)², then diameter = (2 × √area) ÷ π
     .interpolate((_, _2) => t => (2 * Math.sqrt(areaScale(t))) / Math.PI)
     // Finally, D3 linearly maps that value into our defined min/max range.
-    .range([MIN_BUBBLE_DIAMETER, MAX_BUBBLE_DIAMETER]);
+    .range([minDiameter, maxDiameter]);
 
   return (datum: Datum) => scale(Number(datum[bubbleSizeDataKey]));
 }
@@ -50,6 +58,7 @@ export function buildEChartsScatterSeries(
   seriesModel: SeriesModel,
   bubbleSizeDomain: Extent | null,
   yAxisIndex: number,
+  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["scatter"] {
   const bubbleSizeDataKey =
@@ -60,7 +69,12 @@ export function buildEChartsScatterSeries(
     id: seriesModel.dataKey,
     type: "scatter",
     yAxisIndex,
-    symbolSize: getBubbleDiameterScale(bubbleSizeDomain, bubbleSizeDataKey),
+    symbolSize: getBubbleDiameterScale(
+      bubbleSizeDomain,
+      bubbleSizeDataKey,
+      settings["scatter.bubble.min_diameter"],
+      settings["scatter.bubble.max_diameter"],
+    ),
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,

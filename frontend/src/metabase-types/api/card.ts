@@ -177,6 +177,8 @@ export type VisualizationSettings = {
 
   // Scatter plot settings
   "scatter.bubble"?: string; // col name
+  "scatter.bubble.min_diameter"?: number;
+  "scatter.bubble.max_diameter"?: number;
 
   // Waterfall settings
   "waterfall.increase_color"?: string;

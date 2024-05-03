@@ -707,6 +707,7 @@ export const buildEChartsSeries = (
             seriesModel,
             chartModel.bubbleSizeDomain,
             yAxisIndex,
+            settings,
             renderingContext,
           );
       }

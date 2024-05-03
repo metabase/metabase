@@ -242,6 +242,24 @@ export const GRAPH_BUBBLE_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
+  "scatter.bubble.min_diameter": {
+    section: t`Data`,
+    title: t`Min bubble diameter`,
+    widget: "number",
+    default: 15, // TODO to func
+    // getHidden: (_series, vizSettings) => {
+    //   vizSettings["scatter.bubble"] == null;
+    // }, // TODO fix this
+  },
+  "scatter.bubble.max_diameter": {
+    section: t`Data`,
+    title: t`Max bubble diameter`,
+    widget: "number",
+    default: 75, // TODO to func
+    // getHidden: (_series, vizSettings) => {
+    //   vizSettings["scatter.bubble"] == null;
+    // }, // TODO fix this
+  },
 };
 
 export const LINE_SETTINGS = {
