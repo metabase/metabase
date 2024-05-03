@@ -12,7 +12,8 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n])
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
@@ -118,3 +119,16 @@
               value)
        (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
        value)))
+
+(core/defn map-schema-assoc
+  [map-schema & kvs]
+  "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
+   If kvs are provided, they are also associated with the schema."
+  (if kvs
+    (if (next kvs)
+      (let [key (first kvs)
+            val (first (next kvs))
+            ret (mut/assoc map-schema key val)]
+        (recur ret (nnext kvs)))
+      (throw (IllegalArgumentException. "map-schema-assoc expects even number of arguments after schema-map, found odd number")))
+    map-schema))

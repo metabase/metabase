@@ -50,3 +50,14 @@
           (recent-views/update-users-recent-views! user-id model card-id)))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
+
+(derive ::collection-touch-event :metabase/event)
+(derive :event/collection-touch ::collection-touch-event)
+
+(m/defmethod events/publish-event! ::collection-touch-event
+  "Handle processing for a single collection touch event."
+  [topic {:keys [collection-id user-id] :as _event}]
+  (try
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id)
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))
