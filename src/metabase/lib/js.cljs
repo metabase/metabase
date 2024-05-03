@@ -1712,6 +1712,14 @@
   [a-query stage-number]
   (to-array (lib.core/available-metrics a-query stage-number)))
 
+(defn ^:export metric-based?
+  "Given `a-query`, returns true if it is based on metrics. That means the main data source is a metric and so are all
+  joins (if any).
+
+  > **Code health:** Healthy."
+  [a-query stage-number]
+  (lib.core/metric-based? a-query stage-number))
+
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
 (defn ^:export joinable-columns

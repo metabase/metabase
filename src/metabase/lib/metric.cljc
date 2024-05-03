@@ -8,7 +8,9 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metric.basics :as lib.metric.basics]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -89,18 +91,29 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(defn- source-metric
+(defn- metrics-for-all-joins
   [query stage-number]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (some->> (:source-card stage) (lib.metadata/metric query))))
+  (for [join (lib.join/joins query stage-number)]
+    (lib.metric.basics/join-metric query join)))
 
 (defn- joined-metrics
   [query stage-number]
-  (->> (lib.join/joins query stage-number)
-       (keep (fn [join]
-               (when-let [card-id (-> join :stages peek :source-card)]
-                 (when-let [card (lib.metadata/metric query card-id)]
-                   (assoc card ::lib.join/join-alias (:alias join))))))))
+  (->> (metrics-for-all-joins query stage-number)
+       (filter identity)))
+
+(mu/defn metric-based? :- :boolean
+  "Returns true if this MBQL `query` is based on metrics.
+
+  This is always false for stages other than 0, but accepting the parameter means consumers of the API don't need to
+  know about that.
+
+  Being \"based on metrics\" means the source is a metric, and so are the sources of all the joins in stage 0."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (and (zero? (lib.util/canonical-stage-index query stage-number))
+       (not (lib.query/native? query))
+       (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))
+       (every? identity (metrics-for-all-joins query 0))))
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
@@ -115,7 +128,7 @@
                                                        (:join-alias (lib.options/options aggregation-clause))]
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
-         s-metric (source-metric query stage-number)
+         s-metric (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))
          metrics (cond->> (joined-metrics query stage-number)
                    s-metric (cons s-metric))]
      (when (seq metrics)
