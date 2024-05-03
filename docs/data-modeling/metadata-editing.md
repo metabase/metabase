@@ -150,8 +150,6 @@ The default behavior for the `Is` filter for the field.
 - **A list of all values**: Display a search box, as well as a list of checkboxes for values in a dropdown menu that people can select as search terms.
 - **Plain input box**: Display a search box, but do NOT suggest autocompletions.
 
-For the `Is` filter option, Metabase will accept multiple search terms. The `Is` filter will return results that match any of the terms (e.g., "term 1" OR "term 2").
-
 ### Changing a search box filter to a dropdown filter
 
 The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
