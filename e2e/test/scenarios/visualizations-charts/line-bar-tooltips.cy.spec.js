@@ -39,6 +39,51 @@ function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   ]);
 }
 
+const SUM_OF_TOTAL_MONTH = {
+  name: "Q1",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
+  display: "line",
+};
+
+const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
+  ...SUM_OF_TOTAL_MONTH,
+  query: {
+    filter: [
+      "!=",
+      [
+        "field",
+        "CREATED_AT",
+        {
+          "base-type": "type/DateTime",
+          "temporal-unit": "month-of-year",
+        },
+      ],
+      "2024-05-02",
+      "2024-08-02",
+    ],
+    "source-query": {
+      "source-table": 5,
+      aggregation: [["sum", ["field", 40, { "base-type": "type/Float" }]]],
+      breakout: [
+        [
+          "field",
+          39,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  },
+};
+
+const SUM_OF_TOTAL_MONTH_ORDINAL = {
+  ...SUM_OF_TOTAL_MONTH,
+  visualization_settings: { "graph.x_axis.scale": "ordinal" },
+};
+
 const AVG_OF_TOTAL = {
   name: "Q2",
   query: {
@@ -464,6 +509,88 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should show percent change in tooltip for timeseries axis", () => {
       testSumTotalChange(showTooltipForBarInSeries);
       testAvgTotalChange(showTooltipForBarInSeries);
+    });
+  });
+
+  describe("> single series question grouped by month on dashboard", () => {
+    it("should show percent change in tooltip for timeseries axis", () => {
+      setup({
+        question: SUM_OF_TOTAL_MONTH,
+      }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "April 2022"],
+        ["Sum of Total", "52.76"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "May 2022"],
+        ["Sum of Total", "1,265.72"],
+        ["Compared to previous month", "2,299.19%"],
+      ]);
+    });
+
+    it("should not show percent change when previous month is missing from result data", () => {
+      setup({
+        question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
+      }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "April 2022"],
+        ["Sum of Total", "52.76"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "June 2022"],
+        ["Sum of Total", "2,072.94"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "July 2022"],
+        ["Sum of Total", "3,734.69"],
+        ["Compared to previous month", "80.16%"],
+      ]);
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "September 2022"],
+        ["Sum of Total", "5,372.08"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
+    });
+
+    it("should not show if x-axis is not timeseries", () => {
+      setup({
+        question: SUM_OF_TOTAL_MONTH_ORDINAL,
+      }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "April 2022"],
+        ["Sum of Total", "52.76"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
+
+      showTooltipForCircleInSeries("#88BF4D");
+      testTooltipText([
+        ["Created At", "May 2022"],
+        ["Sum of Total", "1,265.72"],
+      ]);
+      testTooltipExcludesText("Compared to preivous month");
     });
   });
 });
