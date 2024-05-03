@@ -28,7 +28,7 @@ describe("issue 42244", () => {
       .click();
     popover().within(() => {
       cy.findByText(COLUMN_NAME).realHover();
-      cy.findByText("by month").click();
+      cy.findByText("by month").should("be.visible").click();
     });
     popover().last().findByText("Year").click();
     getNotebookStep("summarize")
