@@ -363,7 +363,7 @@ Type: Boolean.
 
 Default: `false`.
 
-To include database connection details, like the database user name and password:
+To include database connection details, like the database username and password:
 
 ```html
 database_secrets=true
