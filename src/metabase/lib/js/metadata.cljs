@@ -501,7 +501,7 @@
   (let [k (case metadata-type
             :metadata/column        :fields
             :metadata/legacy-metric :metrics
-            :metadtaa/segment       :segments)]
+            :metadata/segment       :segments)]
     (into []
           (keep (fn [[_id dlay]]
                   (when-let [object (some-> dlay deref)]
@@ -509,10 +509,10 @@
                       object))))
           (some-> metadata k deref))))
 
-(defn- setting [setting-key ^js unparsed-metadata]
+(defn- setting [^js unparsed-metadata setting-key]
   (-> unparsed-metadata
-    (object-get "settings")
-    (object-get (name setting-key))))
+      (object-get "settings")
+      (object-get (name setting-key))))
 
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
@@ -529,7 +529,7 @@
       (metadatas-for-table [_this metadata-type table-id]
         (metadatas-for-table metadata metadata-type table-id))
       (setting [_this setting-key]
-        (setting setting-key unparsed-metadata))
+        (setting unparsed-metadata setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
