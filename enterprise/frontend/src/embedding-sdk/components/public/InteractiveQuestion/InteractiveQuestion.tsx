@@ -38,6 +38,7 @@ interface InteractiveQuestionProps {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
+  height?: string | number;
 }
 
 export const _InteractiveQuestion = ({
@@ -46,6 +47,7 @@ export const _InteractiveQuestion = ({
   withTitle = false,
   customTitle,
   plugins: componentPlugins,
+  height,
 }: InteractiveQuestionProps): JSX.Element | null => {
   const globalPlugins = useSdkSelector(getPlugins);
 
@@ -109,7 +111,7 @@ export const _InteractiveQuestion = ({
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}>
+    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)} mih={height}>
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&

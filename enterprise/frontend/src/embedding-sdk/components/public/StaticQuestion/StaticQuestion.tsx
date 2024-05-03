@@ -28,6 +28,8 @@ import type { Card, CardId, Dataset } from "metabase-types/api";
 export type QueryVisualizationProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
+
+  height?: string | number;
 };
 
 type State = {
@@ -40,6 +42,7 @@ type State = {
 const _StaticQuestion = ({
   questionId,
   showVisualizationSelector,
+  height,
 }: QueryVisualizationProps): JSX.Element | null => {
   const metadata = useSelector(getMetadata);
 
@@ -115,7 +118,7 @@ const _StaticQuestion = ({
   });
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth)}>
+    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)} mih={height}>
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (
           <Box w="355px">
