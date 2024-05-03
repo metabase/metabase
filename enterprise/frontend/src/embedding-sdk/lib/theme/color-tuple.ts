@@ -11,15 +11,5 @@ type ColorTuple = [
   string,
 ];
 
-export const colorTuple = (value: string): ColorTuple => [
-  value,
-  value,
-  value,
-  value,
-  value,
-  value,
-  value,
-  value,
-  value,
-  value,
-];
+export const colorTuple = (value: string): ColorTuple =>
+  [...Array(10)].fill(value) as ColorTuple;
