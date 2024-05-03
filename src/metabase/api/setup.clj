@@ -216,6 +216,7 @@
     :triggered   :always}
    {:title       (tru "Setup embedding")
     :group       (tru "Get connected")
+    :description (tru "Get customizable, flexible, and scalable customer-facing analytics in no time")
     :link        "/admin/settings/embedding-in-other-applications"
     :completed   (or (embedding :done?)
                      (and (configured :sso) (embedding :app-origin))
