@@ -104,7 +104,6 @@
                       {:status-code 403}))))
   resolved-query)
 
-
 ;; Helpers
 
 (defn- migration-action-url [external-id path]
@@ -140,8 +139,8 @@
                                    ret)]
     (proxy [InputStream] []
       (read
-       ([]
-        (f (.read input-stream) true))
+        ([]
+         (f (.read input-stream) true))
         ([^bytes b]
          (f (.read input-stream b)))
         ([^bytes b off len]
