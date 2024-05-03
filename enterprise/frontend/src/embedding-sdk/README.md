@@ -146,12 +146,17 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-  font: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+}
+
+// Theme Options
+const theme = {
+  fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+  colors: { brand: "#9b59b6" }
 }
 
 export default function App() {
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} theme={theme}>
       Hello World!
     </MetabaseProvider>
   );
