@@ -131,8 +131,7 @@
         operator (if (isa? (:base-type nfc-field) :type/Array)
                    ::json_query
                    ::json_value)]
-    ;; TODO: Is there a way to avoid using :raw? If I do literal would that be correct?
-    [operator parent-identifier [:raw "'" (str/join "." (into ["$"] (rest nfc-path))) "'"]]))
+    [operator parent-identifier (h2x/literal (str/join "." (cons "$" (rest nfc-path))))]))
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
