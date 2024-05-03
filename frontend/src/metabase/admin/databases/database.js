@@ -120,7 +120,7 @@ export const initializeDatabase = function (databaseId) {
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: getDefaultEngine(),
+        engine: getDefaultEngine(getState),
         details: {},
         created: false,
       };

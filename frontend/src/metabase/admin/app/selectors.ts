@@ -17,8 +17,9 @@ export const isNoticeEnabled = (state: State): boolean => {
 
 export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
   return (
-    props.databases?.some(d => !d.is_sample && isDeprecatedEngine(d.engine)) ??
-    false
+    props.databases?.some(
+      d => !d.is_sample && isDeprecatedEngine(d.engine, state),
+    ) ?? false
   );
 };
 

@@ -1,9 +1,9 @@
+import { getEngines } from "metabase/databases/selectors";
 import { formatSQL } from "metabase/lib/formatting";
-import Settings from "metabase/lib/settings";
 
-export function getDefaultEngine() {
-  const engines = Object.keys(Settings.get("engines"));
-  return engines.includes("postgres") ? "postgres" : engines[0];
+export function getDefaultEngine(state) {
+  const engines = getEngines(state);
+  return engines["postgres"] ? "postgres" : Object.keys(engines)[0];
 }
 
 export function getEngineNativeType(engine) {
@@ -69,7 +69,7 @@ export function formatNativeQuery(query, engine) {
     : formatSQL(query);
 }
 
-export function isDeprecatedEngine(engine) {
-  const engines = Settings.get("engines", {});
+export function isDeprecatedEngine(engine, state) {
+  const engines = getEngines(state) || {};
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
