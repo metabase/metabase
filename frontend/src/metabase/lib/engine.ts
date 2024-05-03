@@ -1,5 +1,4 @@
-import { getEngines } from "metabase/databases/selectors";
-import type { State } from "metabase-types/store";
+import type { Engine } from "metabase-types/api";
 
 export function getEngineNativeType(engine?: string) {
   switch (engine) {
@@ -15,7 +14,7 @@ export function getNativeQueryLanguage(engine: string) {
   return getEngineNativeType(engine).toUpperCase();
 }
 
-export function getEngineNativeAceMode(engine: string) {
+export function getEngineNativeAceMode(engine?: string) {
   switch (engine) {
     case "mongo":
     case "druid":
@@ -46,8 +45,10 @@ export function formatNativeQuery(query?: string | JSONQuery, engine?: string) {
   }
 }
 
-export function isDeprecatedEngine(engine: string, state: State) {
-  const engines = getEngines(state) || {};
+export function isDeprecatedEngine(
+  engines: Record<string, Engine> = {},
+  engine: string,
+) {
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
