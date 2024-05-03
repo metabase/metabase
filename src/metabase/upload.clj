@@ -1,7 +1,7 @@
 ;; # Upload Module Contract
 ;;
 ;; ## What you can use this module for:
-;; - creating, replacing, and appending to tables in the customer's database with CSV data.
+;; - Creating, replacing, and appending to tables in the customer's database with CSV data.
 ;;
 ;; ## Stable guarantees (what you can depend on):
 ;; - When an uploaded table is created, the uploaded data will be inserted into a new table in the customer database,
