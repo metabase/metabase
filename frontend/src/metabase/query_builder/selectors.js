@@ -352,18 +352,19 @@ export const getQuestion = createSelector(
     if (!question) {
       return;
     }
-    if (question.type() === "model" && queryBuilderMode === "dataset") {
-      return question.lockDisplay();
-    }
 
-    const type = question.type();
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
+      return isModel ? question.lockDisplay() : question;
+    }
 
     // When opening a model or a metric, we construct a question
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    return type !== "question" && isEditable
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return (isModel || isMetric) && isEditable
       ? question.composeQuestion()
       : question;
   },

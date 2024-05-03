@@ -8,3 +8,7 @@ export function availableMetrics(
 ): MetricMetadata[] {
   return ML.available_metrics(query, stageIndex);
 }
+
+export function isMetricBased(query: Query, stageIndex: number): boolean {
+  return ML.metric_based_QMARK_(query, stageIndex);
+}

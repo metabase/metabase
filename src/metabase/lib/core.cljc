@@ -240,7 +240,8 @@
   with-join-strategy
   with-join-conditions]
  [lib.metric
-  available-metrics]
+  available-metrics
+  metric-based?]
  [lib.limit
   current-limit
   limit]
