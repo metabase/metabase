@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { slugify } from "metabase/lib/formatting";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Tabs } from "metabase/ui";
+import { Tabs, Text } from "metabase/ui";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -181,40 +181,36 @@ export const ParameterSidebar = ({
       onRemove={handleRemove}
       data-testid="dashboard-parameter-sidebar"
     >
-      {/* here we override active tab style only for a case when there is a single tab available.
-        styles API is used because it's the only way to override default styles defined in emotion */}
-      <Tabs
-        radius={0}
-        value={tab}
-        onTabChange={handleTabChange}
-        styles={
-          tabs.length === 1
-            ? {
-                tab: {
-                  "&[data-active]": {
-                    color: "unset",
-                    borderBottom: 0,
-                  },
-                },
-              }
-            : {}
-        }
-      >
+      <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
         <Tabs.List grow>
-          {tabs.map(tab => {
-            return (
-              <Tabs.Tab
-                pl={0}
-                pr={0}
-                pt="md"
-                pb="md"
-                value={tab.value}
-                key={tab.value}
-              >
-                {tab.name}
-              </Tabs.Tab>
-            );
-          })}
+          {tabs.length > 1 &&
+            tabs.map(tab => {
+              return (
+                <Tabs.Tab
+                  pl={0}
+                  pr={0}
+                  pt="md"
+                  pb="md"
+                  value={tab.value}
+                  key={tab.value}
+                >
+                  {tab.name}
+                </Tabs.Tab>
+              );
+            })}
+          {tabs.length === 1 && (
+            <Text
+              lh="1rem"
+              pb="md"
+              pt="md"
+              fz="md"
+              fw="bold"
+              w="100%"
+              ta="center"
+            >
+              {tabs[0].name}
+            </Text>
+          )}
         </Tabs.List>
 
         <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
