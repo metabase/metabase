@@ -274,8 +274,8 @@ You can import and export serialized Metabase data via Metabase's API, which mak
 
 There are two endpoints:
 
-- `/api/ee/serialization/export`
-- `/api/ee/serialization/import`
+- `POST /api/ee/serialization/export`
+- `POST /api/ee/serialization/import`
 
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
@@ -327,7 +327,7 @@ Type: Boolean.
 
 Default: `true`.
 
-To exclude settings:
+To exclude the `settings.yaml` file that contains site-wide settings:
 
 ```html
 settings=false
@@ -339,7 +339,7 @@ Type: Boolean.
 
 Default: `true`.
 
-To exclude the data model:
+To exclude the [Table Metadata](../data-modeling/metadata-editing.md):
 
 ```
 data_model=false
@@ -351,7 +351,7 @@ Type: Boolean.
 
 Default: `false`.
 
-To include field values:
+To include the sample values for field values, which Metabase uses to present dropdown menus:
 
 ```
 field_values=true
@@ -363,7 +363,7 @@ Type: Boolean.
 
 Default: `false`.
 
-To include secrets:
+To include database connection details, like the database username and password:
 
 ```html
 database_secrets=true
