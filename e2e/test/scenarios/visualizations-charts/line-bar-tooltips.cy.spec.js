@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
-  popover,
   visitDashboard,
   saveDashboard,
   addOrUpdateDashboardCard,
@@ -9,6 +8,8 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   cartesianChartCircleWithColor,
+  testPairedTooltipValues,
+  testTooltipPairs,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -216,7 +217,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       cartesianChartCircle().first().trigger("mousemove");
-      testTooltipText(originalTooltipText);
+      testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -225,7 +226,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       cartesianChartCircle().first().trigger("mousemove");
-      testTooltipText(updatedTooltipText);
+      testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -263,10 +264,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       showTooltipForCircleInSeries("#88BF4D");
-      testTooltipText(originalSeriesTooltipText);
+      testTooltipPairs(originalSeriesTooltipText);
 
       showTooltipForCircleInSeries("#A989C5");
-      testTooltipText(addedSeriesTooltipText);
+      testTooltipPairs(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -276,10 +277,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForCircleInSeries("#88BF4D");
-      testTooltipText(updatedOriginalSeriesTooltipText);
+      testTooltipPairs(updatedOriginalSeriesTooltipText);
 
       showTooltipForCircleInSeries("#A989C5");
-      testTooltipText(updatedAddedSeriesTooltipText);
+      testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -311,7 +312,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       cartesianChartCircle().first().trigger("mousemove");
-      testTooltipText(originalTooltipText);
+      testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -321,7 +322,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       cartesianChartCircle().first().trigger("mousemove");
-      testTooltipText(updatedTooltipText);
+      testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -369,12 +370,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       originalSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipText(originalSeriesTooltipText);
+        testTooltipPairs(originalSeriesTooltipText);
       });
 
       addedSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipText(addedSeriesTooltipText);
+        testTooltipPairs(addedSeriesTooltipText);
       });
 
       openDashCardVisualizationOptions();
@@ -401,11 +402,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       originalSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipText(updatedOriginalSeriesTooltipText);
+        testTooltipPairs(updatedOriginalSeriesTooltipText);
       });
       addedSeriesColors.forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        testTooltipText(updatedAddedSeriesTooltipText);
+        testTooltipPairs(updatedAddedSeriesTooltipText);
       });
     });
 
@@ -438,7 +439,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
-      testTooltipText(originalTooltipText);
+      testTooltipPairs(originalTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -447,7 +448,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
-      testTooltipText(updatedTooltipText);
+      testTooltipPairs(updatedTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -487,10 +488,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ];
 
       showTooltipForFirstBarInSeries(originalSeriesColor);
-      testTooltipText(originalSeriesTooltipText);
+      testTooltipPairs(originalSeriesTooltipText);
 
       showTooltipForFirstBarInSeries(addedSeriesColor);
-      testTooltipText(addedSeriesTooltipText);
+      testTooltipPairs(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
 
@@ -500,10 +501,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForFirstBarInSeries(originalSeriesColor);
-      testTooltipText(updatedOriginalSeriesTooltipText);
+      testTooltipPairs(updatedOriginalSeriesTooltipText);
 
       showTooltipForFirstBarInSeries(addedSeriesColor);
-      testTooltipText(updatedAddedSeriesTooltipText);
+      testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
@@ -736,18 +737,6 @@ function showTooltipForFirstBarInSeries(seriesColor) {
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
   chartPathWithFillColor(seriesColor).eq(index).realHover();
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
-
-function testTooltipText(rowPairs = []) {
-  popover().within(() => {
-    rowPairs.forEach(([label, value]) => {
-      testPairedTooltipValues(label, value);
-    });
-  });
 }
 
 function testTooltipExcludesText(text) {
