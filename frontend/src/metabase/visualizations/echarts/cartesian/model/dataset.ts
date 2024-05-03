@@ -23,6 +23,7 @@ import type {
   NumericAxisScaleTransforms,
   ShowWarning,
   TimeSeriesXAxisModel,
+  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
@@ -237,22 +238,25 @@ export const computeTotal = (datum: Datum, keys: DataKey[]): number =>
   keys.reduce((total, key) => total + getNumberOrZero(datum[key]), 0);
 
 export const getNormalizedDatasetTransform = (
-  seriesDataKeys: DataKey[],
+  stackModels: StackModel[],
 ): TransformFn => {
   return datum => {
-    const total = computeTotal(datum, seriesDataKeys);
-
-    // Copy the dimension value
-    const normalizedDatum: Datum = {
+    const normalizedDatum = {
       ...datum,
     };
 
-    // Compute normalized values for metrics
-    return seriesDataKeys.reduce((acc, key) => {
-      const numericValue = getNumberOrZero(datum[key]);
-      acc[key] = numericValue / total;
-      return acc;
-    }, normalizedDatum);
+    stackModels.forEach(stackModel => {
+      const total = computeTotal(datum, stackModel.seriesKeys);
+
+      // Compute normalized values for metrics
+      return stackModel.seriesKeys.reduce((acc, key) => {
+        const numericValue = getNumberOrZero(datum[key]);
+        acc[key] = numericValue / total;
+        return acc;
+      }, normalizedDatum);
+    });
+
+    return normalizedDatum;
   };
 };
 
@@ -573,6 +577,7 @@ const interpolateTimeSeriesData = (
  */
 export const applyVisualizationSettingsDataTransformations = (
   dataset: ChartDataset,
+  stackModels: StackModel[],
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -605,7 +610,7 @@ export const applyVisualizationSettingsDataTransformations = (
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",
-      fn: getNormalizedDatasetTransform(seriesDataKeys),
+      fn: getNormalizedDatasetTransform(stackModels),
     },
     getKeyBasedDatasetTransform(seriesDataKeys, value =>
       yAxisScaleTransforms.toEChartsAxisValue(value),

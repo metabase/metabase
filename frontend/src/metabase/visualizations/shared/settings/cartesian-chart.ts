@@ -67,7 +67,7 @@ export function getDefaultMetrics(rawSeries: RawSeries) {
   return getDefaultColumns(rawSeries).metrics;
 }
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
 
 export const isStackingValueValid = (
   cardDisplay: CardDisplayType,

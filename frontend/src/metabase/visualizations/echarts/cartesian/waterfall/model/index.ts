@@ -89,6 +89,7 @@ export const getWaterfallChartModel = (
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
+    null,
     renderingContext,
   );
 

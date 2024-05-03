@@ -26,6 +26,7 @@ import type {
   TimeSeriesXAxisModel,
   NumericXAxisModel,
   NumericAxisScaleTransforms,
+  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -247,6 +248,7 @@ const buildEChartsBarSeries = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
   seriesModel: SeriesModel,
+  stackName: string | undefined,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
@@ -254,9 +256,6 @@ const buildEChartsBarSeries = (
   hasMultipleSeries: boolean,
   renderingContext: RenderingContext,
 ): BarSeriesOption => {
-  const stackName =
-    settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
-
   return {
     id: seriesModel.dataKey,
     emphasis: {
@@ -331,6 +330,7 @@ function getShowSymbol(
 
 const buildEChartsLineAreaSeries = (
   seriesModel: SeriesModel,
+  stackName: string | undefined,
   seriesSettings: SeriesSettings,
   dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -340,11 +340,6 @@ const buildEChartsLineAreaSeries = (
   chartWidth: number,
   renderingContext: RenderingContext,
 ): LineSeriesOption => {
-  const display = seriesSettings?.display ?? "line";
-
-  const stackName =
-    settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
-
   const showSeriesValues = seriesSettings?.["show_series_values"];
 
   const isSymbolVisible = getShowSymbol(
@@ -391,7 +386,9 @@ const buildEChartsLineAreaSeries = (
       seriesSettings["line.interpolate"] === "step-after" ? "end" : undefined,
     stack: stackName,
     areaStyle:
-      display === "area" ? { opacity: CHART_STYLE.opacity.area } : undefined,
+      seriesSettings.display === "area"
+        ? { opacity: CHART_STYLE.opacity.area }
+        : undefined,
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
@@ -596,6 +593,7 @@ export const getStackTotalsSeries = (
 
 const getDisplaySeriesSettingsByDataKey = (
   seriesModels: SeriesModel[],
+  stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) => {
   const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
@@ -605,11 +603,11 @@ const getDisplaySeriesSettingsByDataKey = (
     return acc;
   }, {} as Record<DataKey, SeriesSettings>);
 
-  if (settings["stackable.stack_type"] === "stacked") {
-    const stackDisplay = settings["stackable.stack_display"];
-
-    Object.keys(seriesSettingsByKey).forEach(dataKey => {
-      seriesSettingsByKey[dataKey].display = stackDisplay;
+  if (stackModels != null) {
+    stackModels.forEach(({ display, seriesKeys }) => {
+      seriesKeys.forEach(seriesKey => {
+        seriesSettingsByKey[seriesKey].display = display;
+      });
     });
   }
 
@@ -625,6 +623,7 @@ export const buildEChartsSeries = (
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     chartModel.seriesModels,
+    chartModel.stackModels,
     settings,
   );
 
@@ -668,12 +667,19 @@ export const buildEChartsSeries = (
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
+      const stackName =
+        chartModel.stackModels == null
+          ? undefined
+          : chartModel.stackModels.find(stackModel =>
+              stackModel.seriesKeys.includes(seriesModel.dataKey),
+            )?.display;
 
       switch (seriesSettings.display) {
         case "line":
         case "area":
           return buildEChartsLineAreaSeries(
             seriesModel,
+            stackName,
             seriesSettings,
             chartModel.transformedDataset,
             chartModel.yAxisScaleTransforms,
@@ -690,6 +696,7 @@ export const buildEChartsSeries = (
             chartModel.yAxisScaleTransforms,
             chartMeasurements,
             seriesModel,
+            stackName,
             settings,
             yAxisIndex,
             barSeriesCount,
