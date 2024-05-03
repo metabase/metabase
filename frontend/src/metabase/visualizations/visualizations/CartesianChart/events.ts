@@ -406,10 +406,6 @@ export const getSeriesHoverData = (
     dataIndex,
   );
 
-  // const isSeriesComparisonTooltipEnabled =
-  //   settings["graph.tooltip_type"] === "series_comparison";
-  // const isStackedSeries = chartModel.seriesModels[seriesIndex];
-
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
       ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
