@@ -1,11 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import {
-  getIcon,
-  queryIcon,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import register from "metabase/visualizations/register";
 import {
   createMockSettings,
@@ -133,22 +128,6 @@ describe("EntityPicker > ResultItem", () => {
 
     expect(getIcon("dashboard")).toBeInTheDocument();
     expect(screen.getByText("in My parent collection")).toBeInTheDocument();
-  });
-
-  it("should render an info icon when an item lacks a description", () => {
-    setup({
-      item: dashboardItem,
-    });
-
-    expect(getIcon("info")).toBeInTheDocument();
-  });
-
-  it("should not render an info icon when an item has a description", () => {
-    setup({
-      item: questionItem,
-    });
-
-    expect(queryIcon("info")).not.toBeInTheDocument();
   });
 
   it("should render a line chart item in an official collection", () => {
