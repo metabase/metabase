@@ -213,18 +213,30 @@ const getTooltipFooterData = (
     chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
   );
 
-  const isOneIntervalAgo =
+  const unit = isQuarterInterval(chartModel.xAxisModel.interval)
+    ? "quarter"
+    : chartModel.xAxisModel.interval.unit;
+
+  let isOneIntervalAgo =
     currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) ===
     chartModel.xAxisModel.interval.count;
+
+  // Comparing the 2nd and 1st quarter of the year needs to be checked
+  // specially, because there are fewer days in this period due to Feburary
+  // being shorter than a normal month (89 days in a normal year, 90 days in a
+  // leap year).
+  if (!isOneIntervalAgo && unit === "quarter") {
+    const diffInDays = currentDate.diff(previousDate, "day");
+    if (diffInDays === 89 || diffInDays === 90) {
+      isOneIntervalAgo = true;
+    }
+  }
+
   if (!isOneIntervalAgo) {
     return [];
   }
 
   const change = computeChange(previousValue, currentValue);
-
-  const unit = isQuarterInterval(chartModel.xAxisModel.interval)
-    ? "quarter"
-    : chartModel.xAxisModel.interval.unit;
 
   return [
     {
