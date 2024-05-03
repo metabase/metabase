@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
@@ -21,6 +22,7 @@ import type {
   XAxisModel,
   NumericAxisScaleTransforms,
   ShowWarning,
+  TimeSeriesXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
@@ -282,12 +284,13 @@ export const getNullReplacerTransform = (
     )
     .map(seriesModel => seriesModel.dataKey);
 
-  return getKeyBasedDatasetTransform(
-    replaceNullsWithZeroDataKeys,
-    (value: RowValue) => {
-      return value === null ? 0 : value;
-    },
-  );
+  return datum => {
+    const transformedDatum = { ...datum };
+    for (const key of replaceNullsWithZeroDataKeys) {
+      transformedDatum[key] = datum[key] != null ? datum[key] : 0;
+    }
+    return transformedDatum;
+  };
 };
 
 const hasInterpolatedSeries = (
@@ -518,6 +521,43 @@ function getHistogramDataset(
   return dataset;
 }
 
+const MAX_FILL_COUNT = 10000;
+
+const interpolateTimeSeriesData = (
+  dataset: ChartDataset,
+  axisModel: TimeSeriesXAxisModel,
+): ChartDataset => {
+  if (axisModel.intervalsCount > MAX_FILL_COUNT) {
+    return dataset;
+  }
+
+  const { count, unit } = axisModel.interval;
+  const result = [];
+
+  for (let i = 0; i < dataset.length; i++) {
+    const datum = dataset[i];
+    result.push(datum);
+
+    if (i === dataset.length - 1) {
+      break;
+    }
+
+    const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
+
+    let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
+    while (start.add(count, unit).isBefore(end)) {
+      const interpolatedValue = start.add(count, unit);
+      result.push({
+        [X_AXIS_DATA_KEY]: interpolatedValue.toISOString(),
+      });
+
+      start = interpolatedValue;
+    }
+  }
+
+  return result;
+};
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -539,8 +579,8 @@ export const applyVisualizationSettingsDataTransformations = (
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
-    xAxisModel.axisType === "value" ||
-    xAxisModel.axisType === "time" ||
+    isNumericAxis(xAxisModel) ||
+    isTimeSeriesAxis(xAxisModel) ||
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
@@ -550,8 +590,12 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = replaceZeroesForLogScale(dataset, seriesDataKeys);
   }
 
-  if (xAxisModel.axisType === "category" && xAxisModel.isHistogram) {
+  if (isCategoryAxis(xAxisModel) && xAxisModel.isHistogram) {
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
+  }
+
+  if (isTimeSeriesAxis(xAxisModel)) {
+    dataset = interpolateTimeSeriesData(dataset, xAxisModel);
   }
 
   return transformDataset(dataset, [

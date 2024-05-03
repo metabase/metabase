@@ -1,10 +1,14 @@
 (ns metabase.lib.metadata.invocation-tracker-test
   (:require
-   [clojure.test :refer :all]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.test :refer [deftest is]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
+
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel track-card-calls-test
   (let [card-1 {:id            1
