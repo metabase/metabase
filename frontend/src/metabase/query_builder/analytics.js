@@ -42,10 +42,19 @@ export const trackColumnCombineViaShortcut = (query, question) => {
   });
 };
 
-export const trackColumnExtractViaShortcut = (query, tag, question) => {
+export const trackColumnExtractViaShortcut = (
+  query,
+  stageIndex,
+  extraction,
+  question,
+) => {
   trackSchemaEvent("question", "1-0-4", {
     event: "column_extract_via_shortcut",
-    custom_expressions_used: Lib.functionsUsedByExtraction(tag),
+    custom_expressions_used: Lib.functionsUsedByExtraction(
+      query,
+      stageIndex,
+      extraction,
+    ),
     database_id: Lib.databaseID(query),
     question_id: question?.id() ?? 0,
   });

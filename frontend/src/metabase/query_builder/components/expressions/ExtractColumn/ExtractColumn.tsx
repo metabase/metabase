@@ -16,7 +16,7 @@ type Props = {
   onSubmit: (
     clause: Lib.ExpressionClause,
     name: string,
-    tag: Lib.ColumnExtractionTag,
+    extraction: Lib.ColumnExtraction,
   ) => void;
   onCancel: () => void;
 };
@@ -55,7 +55,7 @@ export function ExtractColumn({
     const name = getName(query, stageIndex, info);
     const lastExpression = expressions.at(-1);
     if (lastExpression) {
-      onSubmit(lastExpression, name, info.tag);
+      onSubmit(lastExpression, name, extraction);
     }
   }
 

@@ -164,9 +164,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     const handleSubmit = (
       clause: Lib.ExpressionClause,
       name: string,
-      tag: Lib.ColumnExtractionTag,
+      extraction: Lib.ColumnExtraction,
     ) => {
-      trackColumnExtractViaShortcut(query, tag);
+      trackColumnExtractViaShortcut(query, stageIndex, extraction);
       const expression = Lib.legacyExpressionForExpressionClause(
         query,
         stageIndex,

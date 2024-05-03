@@ -185,7 +185,7 @@ describeWithSnowplow(
 
       expectGoodSnowplowEvent({
         event: "column_extract_via_shortcut",
-        custom_expressions_used: ["hour"],
+        custom_expressions_used: ["get-hour"],
         database_id: SAMPLE_DB_ID,
         question_id: 0,
       });
