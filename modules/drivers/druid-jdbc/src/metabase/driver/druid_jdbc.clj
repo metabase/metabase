@@ -115,11 +115,11 @@
 
 (defmethod sql-jdbc.execute/set-parameter [:druid-jdbc ZonedDateTime]
   [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/format "yyyy-MM-dd HH:mm:ss" t)))
+  (sql-jdbc.execute/set-parameter driver ps i (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
   [_ t]
-  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t)))
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]
