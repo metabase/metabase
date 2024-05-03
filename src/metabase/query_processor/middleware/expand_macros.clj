@@ -4,6 +4,7 @@
   (`:metric` forms are expanded into aggregations and sometimes filter clauses, while `:segment` forms are expanded
   into filter clauses.)"
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -60,10 +61,12 @@
   [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
    {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
   (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
-  (u/prog1 (-> (lib.convert/->pMBQL {:type     :query
-                                     :query    (merge {:source-table table-id}
-                                                      definition)
-                                     :database (u/the-id (lib.metadata/database metadata-providerable))})
+  (u/prog1 (-> {:type     :query
+                :query    (merge {:source-table table-id}
+                                 definition)
+                :database (u/the-id (lib.metadata/database metadata-providerable))}
+               mbql.normalize/normalize
+               lib.convert/->pMBQL
                (lib.util/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
