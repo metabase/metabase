@@ -6,6 +6,10 @@ import type {
 
 import { colorTuple } from "./color-tuple";
 
+/**
+ * Transforms a public-facing Metabase theme configuration
+ * into a Mantine theme override for internal use.
+ */
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
 ): EmbeddingThemeOverride {
