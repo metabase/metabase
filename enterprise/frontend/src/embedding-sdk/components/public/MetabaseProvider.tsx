@@ -1,10 +1,11 @@
-import { type ReactNode, type JSX, useEffect } from "react";
+import { type ReactNode, type JSX, useEffect, useMemo } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import {} from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme/get-embedding-theme";
 import { store } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -32,6 +33,10 @@ const MetabaseProviderInternal = ({
   pluginsConfig,
   theme,
 }: MetabaseProviderProps): JSX.Element => {
+  const themeOverride = useMemo(() => {
+    return theme && getEmbeddingThemeOverride(theme);
+  }, [theme]);
+
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
@@ -47,8 +52,8 @@ const MetabaseProviderInternal = ({
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider theme={theme}>
-          <AppInitializeController config={config}>
+        <ThemeProvider theme={themeOverride}>
+          <AppInitializeController config={config} font={theme?.fontFamily}>
             {children}
           </AppInitializeController>
         </ThemeProvider>
