@@ -111,7 +111,8 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
-   collection-id-column                          :- keyword?
+   ;; `[:vector :keyword]` allows for `[:coalesce :col1 :col2]`
+   collection-id-column                          :- [:or :keyword [:vector :keyword]]
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
@@ -217,6 +218,15 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
+(defn- collection-id-for-table
+  "What should we use to represent the 'collection id' for a row in `table`? Generally, the `collection_id`, but if a
+  `trashed_from_collection_id` is present, we should use that instead - this is a trashed collection, and the relevant
+  collection is not the Trash but whatever collection it was trashed from."
+  [table-name]
+  [:coalesce
+   (keyword (format "%s.trashed_from_collection_id" (name table-name)))
+   (keyword (format "%s.collection_id" (name table-name)))])
+
 (mu/defn ^:private shared-card-impl
   [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
    search-ctx :- SearchContext]
@@ -226,7 +236,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-collection-join-and-where-clauses (collection-id-for-table :card) search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info model)
       (with-moderated-status model)))
@@ -238,7 +248,8 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses (collection-id-for-table :model)
+                                             search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -270,7 +281,7 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
+      (add-collection-join-and-where-clauses (collection-id-for-table :dashboard) search-ctx)
       (with-last-editing-info model)))
 
 (defmethod search-query-for-model "metric"
@@ -291,14 +302,16 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
+            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
+
             collection-perm-clause
             [:or
-             (when has-root-access? [:= :model.collection_id nil])
+             (when has-root-access? [:= collection-id nil])
              [:and
-              [:not= :model.collection_id nil]
+              [:not= collection-id nil]
               [:or
-               (has-perm-clause "/collection/" :model.collection_id "/")
-               (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
+               (has-perm-clause "/collection/" collection-id "/")
+               (has-perm-clause "/collection/" collection-id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))

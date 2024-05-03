@@ -22,6 +22,7 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
+   [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -274,10 +275,13 @@
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
+    (collection/ensure-trash-collection-created!)
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2", :archived true}
-                   :model/Card card-3 {:name "Card 3", :archived true}]
+                   :model/Card card-2 {:name "Card 2"}
+                   :model/Card card-3 {:name "Card 3"}]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-2)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-3)) {:archived true})
         (is (= #{"Card 2" "Card 3"}
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
