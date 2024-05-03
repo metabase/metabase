@@ -35,7 +35,7 @@ export const getStackModels = (
     .filter(display => display === "bar" || display === "area")
     .map(display => {
       return {
-        display,
+        display: display as "bar" | "area", // Ensured by filtering above
         seriesKeys: seriesModelsByDisplay[display].map(
           seriesModel => seriesModel.dataKey,
         ),
