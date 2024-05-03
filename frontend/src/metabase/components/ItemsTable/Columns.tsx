@@ -57,19 +57,19 @@ export const Columns = {
       </ColumnHeader>
     ),
     Cell: ({
-      testId,
+      testIdPrefix,
       icon,
       isPinned,
       isSelected,
       handleSelectionToggled,
     }: {
-      testId: string;
+      testIdPrefix: string;
       icon: IconProps;
       isPinned?: boolean;
       isSelected?: boolean;
       handleSelectionToggled: () => void;
     }) => (
-      <ItemCell data-testid={`${testId}-check`}>
+      <ItemCell data-testid={`${testIdPrefix}-check`}>
         <EntityIconCheckBox
           variant="list"
           icon={icon}
@@ -99,15 +99,15 @@ export const Columns = {
       </SortableColumnHeader>
     ),
     Cell: ({
-      testId = "table",
+      testIdPrefix = "table",
       icon,
       isPinned,
     }: {
-      testId?: string;
+      testIdPrefix?: string;
       icon: IconProps;
       isPinned?: boolean;
     }) => (
-      <ItemCell data-testid={`${testId}-type`}>
+      <ItemCell data-testid={`${testIdPrefix}-type`}>
         <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
       </ItemCell>
     ),
@@ -127,14 +127,14 @@ export const Columns = {
     ),
     Cell: ({
       item,
-      testId = "table",
+      testIdPrefix = "table",
       includeDescription = true,
     }: {
       item: CollectionItem;
-      testId?: string;
+      testIdPrefix?: string;
       includeDescription?: boolean;
     }) => (
-      <ItemNameCell data-testid={`${testId}-name`}>
+      <ItemNameCell data-testid={`${testIdPrefix}-name`}>
         <ItemLink to={item.getUrl()}>
           <EntityItem.Name name={item.name} variant="list" />
           <PLUGIN_MODERATION.ModerationStatusIcon
@@ -176,10 +176,10 @@ export const Columns = {
       </SortableColumnHeader>
     ),
     Cell: ({
-      testId = "table",
+      testIdPrefix = "table",
       item,
     }: {
-      testId?: string;
+      testIdPrefix?: string;
       item: CollectionItem;
     }) => {
       const lastEditInfo = item["last-edit-info"];
@@ -187,7 +187,7 @@ export const Columns = {
 
       return (
         <ItemCell
-          data-testid={`${testId}-last-edited-by`}
+          data-testid={`${testIdPrefix}-last-edited-by`}
           hideAtContainerBreakpoint="sm"
           containerName="ItemsTableContainer"
         >
@@ -215,11 +215,17 @@ export const Columns = {
         {t`Last edited at`}
       </SortableColumnHeader>
     ),
-    Cell: ({ testId, item }: { testId: string; item: CollectionItem }) => {
+    Cell: ({
+      testIdPrefix,
+      item,
+    }: {
+      testIdPrefix: string;
+      item: CollectionItem;
+    }) => {
       const lastEditInfo = item["last-edit-info"];
       return (
         <ItemCell
-          data-testid={`${testId}-last-edited-at`}
+          data-testid={`${testIdPrefix}-last-edited-at`}
           data-server-date
           hideAtContainerBreakpoint="md"
           containerName="ItemsTableContainer"

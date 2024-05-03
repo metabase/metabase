@@ -24,7 +24,6 @@ import {
   Table,
   TBody,
 } from "./BaseItemsTable.styled";
-import BaseTableItem from "./BaseTableItem";
 import { Columns } from "./Columns";
 import type { ResponsiveProps } from "./utils";
 
@@ -145,7 +144,6 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
-
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
@@ -198,7 +196,9 @@ export const BaseItemsTable = ({
       <TBody>
         {items.map((item: CollectionItem) => {
           const isSelected = getIsSelected(item);
-          const testId = `${isPinned ? "pinned-" : ""}collection-entry`;
+
+          const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
+          const key = `${item.model}-${item.id}`;
           return (
             <ItemDragSource
               item={item}
@@ -206,12 +206,11 @@ export const BaseItemsTable = ({
               isSelected={isSelected}
               selected={selectedItems}
               onDrop={onDrop}
-              key={`item-drag-source-${item.id}`}
+              key={`item-drag-source-${key}`}
             >
-              <tr key={item.id} data-testid={testId} style={{ height: 48 }}>
+              <tr data-testid={testIdPrefix} style={{ height: 48 }}>
                 <ItemComponent
-                  key={`${item.model}-${item.id}`}
-                  testId={testId}
+                  testIdPrefix={testIdPrefix}
                   item={item}
                   isSelected={isSelected}
                   databases={databases}
@@ -233,8 +232,6 @@ export const BaseItemsTable = ({
   );
 };
 
-BaseItemsTable.Item = BaseTableItem;
-
 export type ItemRendererProps = {
   item: CollectionItem;
   isSelected?: boolean;
@@ -242,7 +239,7 @@ export type ItemRendererProps = {
   onToggleSelected?: OnToggleSelectedWithItem;
   collection?: Collection;
   draggable?: boolean;
-  testId?: string;
+  testIdPrefix?: string;
 } & ActionMenuProps;
 
 const DefaultItemRenderer = ({
@@ -255,7 +252,7 @@ const DefaultItemRenderer = ({
   onMove,
   createBookmark,
   deleteBookmark,
-  testId = "item-renderer",
+  testIdPrefix = "item",
 }: ItemRendererProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
@@ -273,7 +270,7 @@ const DefaultItemRenderer = ({
     <>
       {canSelect && (
         <Columns.Select.Cell
-          testId={`${testId}-check`}
+          testIdPrefix={testIdPrefix}
           icon={icon}
           isPinned={isPinned}
           isSelected={isSelected}
@@ -281,19 +278,13 @@ const DefaultItemRenderer = ({
         />
       )}
       <Columns.Type.Cell
-        testId={`${testId}-type`}
+        testIdPrefix={testIdPrefix}
         icon={icon}
         isPinned={isPinned}
       />
-      <Columns.Name.Cell item={item} testId={`${testId}-name`} />
-      <Columns.LastEditedBy.Cell
-        item={item}
-        testId={`${testId}-last-edited-by`}
-      />
-      <Columns.LastEditedAt.Cell
-        item={item}
-        testId={`${testId}-last-edited-at`}
-      />
+      <Columns.Name.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
       <Columns.ActionMenu.Cell
         item={item}
         collection={collection}

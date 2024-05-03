@@ -4,7 +4,6 @@ import type { CollectionItem } from "metabase-types/api";
 
 import type { BaseItemsTableProps, ItemRendererProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
-import type { BaseTableItemProps } from "./BaseTableItem";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
 const Item = ({
@@ -12,7 +11,7 @@ const Item = ({
   ...props
 }: {
   item: CollectionItem;
-} & BaseTableItemProps) => {
+} & ItemRendererProps) => {
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
