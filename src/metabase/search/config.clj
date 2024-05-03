@@ -98,7 +98,7 @@
   (mc/schema
    [:map {:closed true}
     [:search-string                                        [:maybe ms/NonBlankString]]
-    [:archived?                                            :boolean]
+    [:archived?                                            [:maybe :boolean]]
     [:model-ancestors?                                     :boolean]
     [:current-user-perms                                   [:set perms.u/PathSchema]]
     [:models                                               [:set SearchableModel]]

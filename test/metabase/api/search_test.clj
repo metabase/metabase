@@ -131,7 +131,10 @@
 (defn- default-archived-results []
   (for [result (default-search-results)
         :when (false? (:archived result))]
-    (assoc result :archived true)))
+    (cond-> result
+      true (assoc :archived true)
+      (= (:model result) "collection") (assoc :location collection/trash-path
+                                              :effective_location collection/trash-path))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -701,6 +704,12 @@
               (is (= #{}
                      (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
+(defn- archived-collection [m]
+  (assoc m
+         :archived true
+         :trashed_from_location "/"
+         :location collection/trash-path))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
@@ -712,7 +721,7 @@
                      Card        _ (archived {:name "card test card 2"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
-                     Collection  _ (archived {:name "collection test collection 2"})
+                     Collection  _ (archived-collection {:name "collection test collection 2"})
                      LegacyMetric      _ (archived {:name     "metric test metric 2"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
@@ -733,7 +742,7 @@
                      Card        _ (archived {:name "card that will not appear in results"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
-                     Collection  _ (archived {:name "collection test collection"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
@@ -750,7 +759,7 @@
                      Card        _ (archived {:name "card test card"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
-                     Collection  _ (archived {:name "collection test collection"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
@@ -1647,7 +1656,8 @@
 
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. #33602"
-    (mt/with-temp [Collection  {collection-id :id} (archived {:name "collection test collection"})
+    ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
+    (mt/with-temp [Collection  {collection-id :id} {:name "collection test collection"}
                    Card        _ (archived {:name "card test card is returned"})
                    Card        _ (archived {:name "card test card"
                                             :collection_id collection-id})
@@ -1658,6 +1668,9 @@
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (mt/with-current-user (mt/user->id :crowberto)
+        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
+                                                     {:archived true}))
       (is (= ["card test card is returned"]
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
                   :data

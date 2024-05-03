@@ -284,13 +284,13 @@
 
 (deftest get-dashboards-test
   (mt/with-temp
-    [:model/Dashboard {rasta-dash-id     :id} {:creator_id    (mt/user->id :rasta)}
+    [:model/Dashboard {rasta-dash-id :id} {:creator_id (mt/user->id :rasta)}
      :model/Dashboard {crowberto-dash-id :id
-                       :as crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
-                                               :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
-     :model/Dashboard {archived-dash-id  :id} {:archived      true
-                                               :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                                               :creator_id    (mt/user->id :crowberto)}]
+                       :as               crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
+                                                             :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+     :model/Dashboard {archived-dash-id :id} {:archived                   true
+                                              :trashed_from_collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                              :creator_id                 (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
       (revision/push-revision!
        {:entity       :model/Dashboard
@@ -299,16 +299,16 @@
         :is-creation? true
         :object       crowberto-dash})
       (is (=? (merge crowberto-dash
-               {:creator        {:id          (mt/user->id :crowberto)
-                                 :email       "crowberto@metabase.com"
-                                 :first_name  "Crowberto"
-                                 :last_name   "Corv"
-                                 :common_name "Crowberto Corv"}}
-               {:last-edit-info {:id         (mt/user->id :crowberto)
-                                 :first_name "Crowberto"
-                                 :last_name  "Corv"
-                                 :email      "crowberto@metabase.com"
-                                 :timestamp  true}})
+                     {:creator {:id          (mt/user->id :crowberto)
+                                :email       "crowberto@metabase.com"
+                                :first_name  "Crowberto"
+                                :last_name   "Corv"
+                                :common_name "Crowberto Corv"}}
+                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                       :first_name "Crowberto"
+                                       :last_name  "Corv"
+                                       :email      "crowberto@metabase.com"
+                                       :timestamp  true}})
            (-> (m/find-first #(= (:id %) crowberto-dash-id)
                              (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                (update-in [:last-edit-info :timestamp] boolean)))))
