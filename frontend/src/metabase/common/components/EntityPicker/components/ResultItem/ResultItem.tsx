@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
-import { Icon, Flex, Tooltip } from "metabase/ui";
+import { Icon, Flex } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import { ChunkyListItem } from "./ResultItem.styled";
@@ -48,21 +48,6 @@ export const ResultItem = ({
           }}
         />
         <Ellipsified style={{ fontWeight: "bold" }}>{item.name}</Ellipsified>
-        {item.description && (
-          <Tooltip
-            maw="20rem"
-            multiline
-            label={item.description}
-            styles={{
-              tooltip: {
-                // required to get the tooltip to show up over the entity picker modal 😢
-                zIndex: "450 !important" as any,
-              },
-            }}
-          >
-            <Icon color="brand" name="info" />
-          </Tooltip>
-        )}
       </Flex>
 
       {item.model !== "collection" && ( // we don't hydrate parent info for collections right now
