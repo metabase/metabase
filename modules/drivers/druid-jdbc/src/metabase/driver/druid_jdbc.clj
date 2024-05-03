@@ -118,7 +118,7 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
-  [_ t]
+  [_driver t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod sql.qp/json-query :druid-jdbc
