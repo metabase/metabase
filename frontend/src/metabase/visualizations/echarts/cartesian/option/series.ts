@@ -16,7 +16,10 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  CHART_STYLE,
+  LINE_SIZE,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -380,7 +383,9 @@ const buildEChartsLineAreaSeries = (
     type: "line",
     lineStyle: {
       type: seriesSettings["line.style"],
-      width: seriesSettings["line.size"],
+      width: seriesSettings["line.size"]
+        ? LINE_SIZE[seriesSettings["line.size"]]
+        : LINE_SIZE.M,
     },
     yAxisIndex,
     showSymbol: true,

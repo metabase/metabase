@@ -120,9 +120,9 @@ export function seriesSetting({
       widget: "segmentedControl",
       props: {
         options: [
-          { name: "S", value: 1 },
-          { name: "M", value: 2 },
-          { name: "L", value: 3 },
+          { name: "S", value: "S" },
+          { name: "M", value: "M" },
+          { name: "L", value: "L" },
         ],
       },
       getDefault: (series, settings) => getSeriesDefaultLineSize(settings),

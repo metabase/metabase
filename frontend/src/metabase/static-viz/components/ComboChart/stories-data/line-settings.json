@@ -14,12 +14,12 @@
             "line.interpolate": "linear"
           },
           "max": {
-            "line.size": 3,
+            "line.size": "L",
             "line.style": "dotted",
             "line.interpolate": "cardinal"
           },
           "avg": {
-            "line.size": 1,
+            "line.size": "S",
             "line.style": "dashed",
             "line.marker_enabled": false
           }

@@ -48,7 +48,7 @@ export const getSeriesDefaultLineStyle = (
 
 export const getSeriesDefaultLineSize = (
   settings: ComputedVisualizationSettings,
-) => settings["line.size"] ?? 2;
+) => settings["line.size"] ?? "M";
 
 export const getSeriesDefaultLineMarker = (
   settings: ComputedVisualizationSettings,
