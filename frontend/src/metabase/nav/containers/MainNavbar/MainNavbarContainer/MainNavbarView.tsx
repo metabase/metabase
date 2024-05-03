@@ -88,10 +88,10 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const [expandBrowse, setExpandBrowse] = useUserSetting(
+  const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
   );
-  const [expandBookmarks, setExpandBookmarks] = useUserSetting(
+  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
   const debounceTimeout = 200;
