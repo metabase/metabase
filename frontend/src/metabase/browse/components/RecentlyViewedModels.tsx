@@ -10,12 +10,8 @@ import { RecentlyViewedModelsGrid } from "./RecentlyViewedModels.styled";
 
 // TODO:
 // Make 'A model' general
-// Why 'Recents' and not 'Recently viewed'?
-// Is the table clearly *not* under the 'Recents' header?
-// Do we want more than five recently viewed items? 5 is hard-coded but looks easy to change
 // Do we still want the model explanation banner? Maybe it could be an icon with a tooltip next to Models
 // Too many model icons?
-// It says 'Browse data' on the left but 'Databases' in the header - mismatch?
 
 export const RecentlyViewedModels = () => {
   const {
