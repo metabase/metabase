@@ -202,6 +202,7 @@ export const SMTPConnectionForm = ({
                       value={value}
                       label={name}
                       key={value}
+                      // eslint-disable-next-line react/forbid-component-props
                       styles={{
                         inner: { display: "none" },
                         label: {

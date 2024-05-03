@@ -158,6 +158,7 @@ const EditSandboxingModal = ({
               onClick={showModal}
               fullWidth
               rightIcon={<Icon name="ellipsis" />}
+              // eslint-disable-next-line react/forbid-component-props
               styles={{
                 inner: {
                   justifyContent: "space-between",

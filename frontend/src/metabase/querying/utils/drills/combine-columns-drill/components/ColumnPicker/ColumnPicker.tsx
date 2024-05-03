@@ -96,6 +96,7 @@ export function ColumnPicker({
   return (
     <Input.Wrapper
       label={label}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         root: { width: "100%" },
         label: {

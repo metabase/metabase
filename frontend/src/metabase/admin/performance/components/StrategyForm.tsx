@@ -373,6 +373,7 @@ export const PositiveNumberInput = ({
       type="number"
       name={props.name ?? ""}
       min={1}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         input: {
           // This is like `text-align: right` but it's RTL-friendly
@@ -428,6 +429,7 @@ const MultiplierFieldSubtitle = () => (
         touch: true,
       }}
       inline={true}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         tooltip: {
           whiteSpace: "normal",

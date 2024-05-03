@@ -114,6 +114,7 @@ export function ModelUploadModal({
     <Modal
       opened={opened}
       title={t`Select upload destination`}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         header: { padding: "2.5rem 2.5rem 1.5rem 2.5rem" },
         body: { padding: "0 2.5rem 2.5rem 2.5rem" },

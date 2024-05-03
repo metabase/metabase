@@ -27,6 +27,7 @@ export const CommandPaletteTrigger = ({
           borderRadius: "0.25rem",
           border: `1px solid ${color("border")}`,
         }}
+        // eslint-disable-next-line react/forbid-component-props
         styles={{
           root: {
             "&:active": { transform: "none" },

@@ -47,6 +47,7 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         content: {
           padding: "1rem",

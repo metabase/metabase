@@ -75,7 +75,7 @@ module.exports = {
     "react/no-unescaped-entities": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
-    "react/forbid-component-props": [2, { forbid: ["sx"] }],
+    "react/forbid-component-props": [2, { forbid: ["sx", "styles"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
       { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },

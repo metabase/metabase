@@ -99,6 +99,7 @@ export const StrategyFormLauncher = ({
           fw={forRoot || inheritsRootStrategy ? "normal" : "bold"}
           p="0.25rem .75rem"
           mah="3rem"
+          // eslint-disable-next-line react/forbid-component-props
           styles={{
             root: {
               borderRadius: "7rem",

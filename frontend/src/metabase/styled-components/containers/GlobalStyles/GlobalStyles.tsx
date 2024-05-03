@@ -47,5 +47,6 @@ export const GlobalStyles = (): JSX.Element => {
     ${baseStyle}
   `;
 
+  // eslint-disable-next-line react/forbid-component-props
   return <Global styles={styles} />;
 };

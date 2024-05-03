@@ -30,6 +30,7 @@ export const SecretKeyModal = ({
         value={secretKey}
         readOnly
         disabled
+        // eslint-disable-next-line react/forbid-component-props
         styles={{
           input: {
             color: `black !important`,

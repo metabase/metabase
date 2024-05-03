@@ -170,6 +170,7 @@ export const AutoWidthSelect = (props: SelectProps) => {
     <Select
       miw="5rem"
       maw={maxWidth}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         wrapper: {
           paddingRight: 0,

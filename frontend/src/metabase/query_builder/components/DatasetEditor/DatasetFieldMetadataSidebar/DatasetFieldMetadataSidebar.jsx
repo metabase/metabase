@@ -241,6 +241,7 @@ function DatasetFieldMetadataSidebar({
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   ref={displayNameInputRef}
                   mb="1.5rem"
+                  // eslint-disable-next-line react/forbid-component-props
                   styles={{
                     wrapper: {
                       position: "relative",
@@ -332,6 +333,7 @@ function DatasetFieldMetadataSidebar({
                           label={option.name}
                           mb="0.5rem"
                           fw="bold"
+                          // eslint-disable-next-line react/forbid-component-props
                           styles={{
                             label: {
                               fontSize: "0.875rem",

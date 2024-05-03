@@ -167,6 +167,7 @@ export function ComparisonPicker({
           px="1rem"
           fullWidth
           data-testid="comparisons-widget-button"
+          // eslint-disable-next-line react/forbid-component-props
           styles={{
             label: { flex: 1 },
             inner: { justifyContent: "space-between" },
