@@ -633,6 +633,20 @@ LineReplaceMissingValuesZero.args = {
   renderingContext,
 };
 
+export const ComboStackedBarsAreasNormalized = Template.bind({});
+ComboStackedBarsAreasNormalized.args = {
+  rawSeries: data.comboStackedBarsAreasNormalized as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboStackedBarsAreas = Template.bind({});
+ComboStackedBarsAreas.args = {
+  rawSeries: data.comboStackedBarsAreas as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

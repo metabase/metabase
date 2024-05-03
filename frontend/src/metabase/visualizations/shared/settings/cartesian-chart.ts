@@ -19,7 +19,7 @@ import type {
   SeriesOrderSetting,
 } from "metabase-types/api";
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
 
 export const isStackingValueValid = (
   cardDisplay: CardDisplayType,

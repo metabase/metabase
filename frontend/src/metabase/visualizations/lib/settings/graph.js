@@ -320,10 +320,12 @@ export const LEGEND_SETTINGS = {
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: (_series, settings) => {
+    getDefault: (series, settings) => {
+      const isComboChart = series[0].card.display === "combo";
+      // On combo charts there is no single stack_type for all series so we ignore it
       const shouldShowComparisonTooltip =
-        settings["stackable.stack_display"] != null &&
-        settings["stackable.stack_type"] != null;
+        settings["stackable.stack_type"] != null &&
+        (settings["stackable.stack_display"] != null || isComboChart);
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,

@@ -35,6 +35,8 @@ import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
 import comboHistogram from "./combo-histogram.json";
+import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
+import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
@@ -174,4 +176,6 @@ export const data = {
   lineUnpinFromZero,
   lineSettings,
   lineReplaceMissingValuesZero,
+  comboStackedBarsAreasNormalized,
+  comboStackedBarsAreas,
 };
