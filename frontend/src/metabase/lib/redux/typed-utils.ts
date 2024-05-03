@@ -18,6 +18,6 @@ export function createThunkAction<TArgs extends any[]>(
   thunkCreator: (
     ...args: TArgs
   ) => (dispatch: Dispatch, getState: GetState) => any,
-) {
+): (...args: TArgs) => any {
   return withAction(actionType)(thunkCreator);
 }
