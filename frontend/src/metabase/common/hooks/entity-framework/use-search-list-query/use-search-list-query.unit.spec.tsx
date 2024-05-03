@@ -10,7 +10,6 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { checkNotNull } from "metabase/lib/types";
 import {
-  createMockCollection,
   createMockCollectionItem,
   createMockSearchResult,
   createMockSearchResults,
@@ -19,13 +18,10 @@ import {
 import { useSearchListQuery } from "./use-search-list-query";
 
 const TEST_ITEM = createMockCollectionItem();
-const TEST_COLLECTION = createMockCollection();
 
 const TEST_TABLE_DB_ID = 1;
 const TEST_SEARCH_RESULTS = createMockSearchResults({
-  items: [
-    createMockSearchResult({ collection: { ...TEST_COLLECTION, type: null } }),
-  ],
+  items: [createMockSearchResult({ collection: { ...TEST_ITEM, type: null } })],
   options: { table_db_id: TEST_TABLE_DB_ID },
 });
 
