@@ -38,7 +38,7 @@ interface InteractiveQuestionProps {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
-  height?: string | number;
+  height: string | number;
 }
 
 export const _InteractiveQuestion = ({
@@ -111,7 +111,7 @@ export const _InteractiveQuestion = ({
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)} mih={height}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height}>
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&
@@ -139,7 +139,7 @@ export const _InteractiveQuestion = ({
         )}
         <Group h="100%" pos="relative" align="flex-start">
           <QueryVisualization
-            className={cx(CS.flexFull, CS.fullWidth)}
+            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
             question={question}
             rawSeries={[{ card, data: result && result.data }]}
             isRunning={isRunning}
