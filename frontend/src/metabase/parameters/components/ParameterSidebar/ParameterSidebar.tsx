@@ -181,7 +181,25 @@ export const ParameterSidebar = ({
       onRemove={handleRemove}
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
+      {/* here we override active tab style only for a case when there is a single tab available.
+        styles API is used because it's the only way to override default styles defined in emotion */}
+      <Tabs
+        radius={0}
+        value={tab}
+        onTabChange={handleTabChange}
+        styles={
+          tabs.length === 1
+            ? {
+                tab: {
+                  "&[data-active]": {
+                    color: "unset",
+                    borderBottom: 0,
+                  },
+                },
+              }
+            : {}
+        }
+      >
         <Tabs.List grow>
           {tabs.map(tab => {
             return (
