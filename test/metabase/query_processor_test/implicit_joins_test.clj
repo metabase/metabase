@@ -147,29 +147,31 @@
                     :breakout    [$sender_id->users.name]
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
-(deftest implicit-joins-with-expressions-test
+(deftest ^:parallel implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
-    (mt/with-temporary-setting-values [report-timezone "UTC"]
-      (testing "Should be able to run query with multiple implicit joins and breakouts"
-        (mt/dataset test-data
-          (let [query (mt/mbql-query orders
-                        {:aggregation [[:count]]
-                         :breakout    [$product_id->products.category
-                                       $user_id->people.source
-                                       !year.orders.created_at
-                                       [:expression "pivot-grouping"]]
-                         :filter      [:and
-                                       [:= $user_id->people.source "Facebook" "Google"]
-                                       [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                       [:time-interval $created_at (- 2020 (.getYear (time/now))) :year]]
-                         :expressions {:pivot-grouping [:abs 0]}
-                         :limit       5})]
-            (mt/with-native-query-testing-context query
-              (is (= [["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
-                      ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
-                      ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0 113]
-                      ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0 101]]
-                     (mt/formatted-rows [str str str int int] (qp/process-query query)))))))))))
+    (testing "Should be able to run query with multiple implicit joins and breakouts"
+      (let [query (lib/query
+                   (lib.tu/merged-mock-metadata-provider
+                    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    {:settings {:report-timezone "UTC"}})
+                   (mt/mbql-query orders
+                     {:aggregation [[:count]]
+                      :breakout    [$product_id->products.category
+                                    $user_id->people.source
+                                    !year.orders.created_at
+                                    [:expression "pivot-grouping"]]
+                      :filter      [:and
+                                    [:= $user_id->people.source "Facebook" "Google"]
+                                    [:= $product_id->products.category "Doohickey" "Gizmo"]
+                                    [:time-interval $created_at (- 2020 (.getYear (time/now))) :year]]
+                      :expressions {:pivot-grouping [:abs 0]}
+                      :limit       5}))]
+        (mt/with-native-query-testing-context query
+          (is (= [["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
+                  ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
+                  ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0 113]
+                  ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0 101]]
+                 (mt/formatted-rows [str str str int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel test-23293
   (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
