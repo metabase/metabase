@@ -857,7 +857,7 @@
                      (mt/run-mbql-query nil
                        {:source-table "card__1"}))))))))))
 
-(deftest ^:parllel bucketing-already-bucketed-year-test
+(deftest ^:parallel bucketing-already-bucketed-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)"
       ;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
