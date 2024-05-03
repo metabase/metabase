@@ -56,7 +56,9 @@ describe("issue 37914", () => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
     );
-    cy.intercept("GET", "/api/dashboard/**/params/**/values").as("values");
+    cy.intercept("GET", "/api/preview_embed/dashboard/**/params/**/values").as(
+      "previewValues",
+    );
 
     restore();
     cy.signInAsAdmin();
@@ -126,7 +128,7 @@ describe("issue 37914", () => {
           "Set filter 2 value, so filter 1 should be filtered by filter 2",
         );
         cy.button(filter2.name).click();
-        cy.wait("@values");
+        cy.wait("@previewValues");
         popover().within(() => {
           cy.findByText("Gadget").should("be.visible");
           cy.findByText("Gizmo").should("be.visible");
