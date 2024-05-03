@@ -1,24 +1,21 @@
-import _ from "underscore";
-
 import {
-  useCollectionQuery,
-  useCollectionListQuery,
-  useDatabaseListQuery,
   useBookmarkListQuery,
+  useCollectionListQuery,
+  useCollectionQuery,
+  useDatabaseListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type {
-  CollectionId,
   BookmarkId,
   BookmarkType,
+  CollectionId,
 } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
@@ -61,7 +58,6 @@ export function CollectionContent({
   );
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   const dispatch = useDispatch();
 
@@ -102,7 +98,6 @@ export function CollectionContent({
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}
       isAdmin={isAdmin}
-      isNavbarOpen={isNavbarOpen}
       uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
       canUploadToDb={canUploadToDb}

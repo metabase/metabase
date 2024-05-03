@@ -39,7 +39,6 @@ type BulkActionsProps = {
   onCloseModal: () => void;
   onMove: OnMoveWithOneItem;
   onCopy: OnCopyWithoutArguments;
-  isNavbarOpen: boolean;
 };
 
 const BulkActions = ({
@@ -52,7 +51,6 @@ const BulkActions = ({
   onCloseModal,
   onMove,
   onCopy,
-  isNavbarOpen,
 }: BulkActionsProps) => {
   const canMove = selected.every(item => canMoveItem(item, collection));
   const canArchive = selected.every(item => canArchiveItem(item, collection));
@@ -69,7 +67,7 @@ const BulkActions = ({
         timingFunction="ease"
       >
         {styles => (
-          <BulkActionsToast style={styles} isNavbarOpen={isNavbarOpen}>
+          <BulkActionsToast style={styles}>
             <ToastCard dark data-testid="toast-card">
               <CardSide>
                 {ngettext(

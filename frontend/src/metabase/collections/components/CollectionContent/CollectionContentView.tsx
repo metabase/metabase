@@ -73,7 +73,6 @@ export const CollectionContentView = ({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  isNavbarOpen,
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
@@ -86,7 +85,6 @@ export const CollectionContentView = ({
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
   isAdmin: boolean;
-  isNavbarOpen: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canUploadToDb: boolean;
@@ -399,7 +397,6 @@ export const CollectionContentView = ({
                           onCopy={clear}
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
-                          isNavbarOpen={isNavbarOpen}
                         />
                       </CollectionTable>
                     );
