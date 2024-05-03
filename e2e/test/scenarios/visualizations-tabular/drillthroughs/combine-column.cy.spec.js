@@ -45,11 +45,7 @@ describeWithSnowplow(
         cy.findByText("ID").click();
       });
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("Name").click();
-        });
+      popover().last().findByText("Name").click();
 
       popover().within(() => {
         cy.findByText("Separated by (empty)").click();
