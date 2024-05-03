@@ -19,7 +19,7 @@ Features planned:
 
 * You have an application using React 17 or higher
 * You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-* You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
+* You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
 
 # Getting started
 
