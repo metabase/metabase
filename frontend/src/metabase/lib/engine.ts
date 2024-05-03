@@ -10,7 +10,7 @@ export function getEngineNativeType(engine?: string) {
   }
 }
 
-export function getNativeQueryLanguage(engine: string) {
+export function getNativeQueryLanguage(engine?: string) {
   return getEngineNativeType(engine).toUpperCase();
 }
 
