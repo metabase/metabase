@@ -116,23 +116,10 @@
 (def ^:private card-runs-limit 8)
 
 (api/defendpoint GET "/recent_views"
-  "Get a list of 5 things the current user has been viewing most recently."
+  "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
+  recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  (let [views            (recent-views/user-recent-views api/*current-user-id* 10)
-        model->id->items (models-for-views views)]
-    (->> (for [{:keys [model model_id] :as view-log} views
-               :let
-               [model-object (-> (get-in model->id->items [model model_id])
-                                 (dissoc :dataset_query))]
-               :when
-               (and model-object
-                    (mi/can-read? model-object)
-                    ;; hidden tables, archived cards/dashboards
-                    (not (or (:archived model-object)
-                             (= (:visibility_type model-object) :hidden))))]
-           (cond-> (assoc view-log :model_object model-object)
-             (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
-         (take 5))))
+  {:recent-views (recent-views/get-views *current-user-id*)})
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards

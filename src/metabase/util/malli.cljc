@@ -12,8 +12,7 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
+   [metabase.shared.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
@@ -130,5 +129,5 @@
             val (first (next kvs))
             ret (mut/assoc map-schema key val)]
         (recur ret (nnext kvs)))
-      (throw (IllegalArgumentException. "map-schema-assoc expects even number of arguments after schema-map, found odd number")))
+      (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
