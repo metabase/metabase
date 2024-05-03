@@ -31,7 +31,7 @@
 
 (defn- report-timezone-id* []
   (or *report-timezone-id-override*
-      (driver/report-timezone)))
+      (lib.metadata/setting (qp.store/metadata-provider) :report-timezone)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

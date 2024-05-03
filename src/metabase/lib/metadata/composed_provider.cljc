@@ -102,4 +102,5 @@
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
   turn from left to right until one returns a truthy result."
   [& metadata-providers]
+  {:pre [(every? metadata.protocols/metadata-provider? metadata-providers)]}
   (->ComposedMetadataProvider metadata-providers))

@@ -26,7 +26,8 @@
    [:fields   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/field]]]]]
    [:cards    {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]]
    [:metrics  {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/legacy-metric]]]]]
-   [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
+   [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]
+   [:settings {:optional true} [:maybe [:map-of :keyword :any]]]])
 
 (mu/defn ^:private merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
   [parent-metadata-provider :- lib.metadata/MetadataProvider
@@ -40,7 +41,8 @@
                   :fields   (merge-metadatas parent-metadata-provider lib.metadata/field x)
                   :cards    (merge-metadatas parent-metadata-provider lib.metadata/card x)
                   :metrics  (merge-metadatas parent-metadata-provider lib.metadata/legacy-metric x)
-                  :segments (merge-metadatas parent-metadata-provider lib.metadata/segment x))]))
+                  :segments (merge-metadatas parent-metadata-provider lib.metadata/segment x)
+                  :settings x)]))
         properties))
 
 (mu/defn merged-mock-metadata-provider :- lib.metadata/MetadataProvider

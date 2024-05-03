@@ -9,7 +9,9 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -367,26 +369,29 @@
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them")))
 
-(deftest field-literals-date-time-fields-test
-  (mt/with-temporary-setting-values [start-of-week :sunday]
-    (is (= (honeysql->sql
-            {:select [[:source.ID :ID]
-                      [:source.NAME :NAME]
-                      [:source.CATEGORY_ID :CATEGORY_ID]
-                      [:source.LATITUDE :LATITUDE]
-                      [:source.LONGITUDE :LONGITUDE]
-                      [:source.PRICE :PRICE]]
-             :from   [[venues-source-honeysql :source]]
-             :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
-             :limit  [:inline 10]})
-           (qp.compile/compile
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues}
-               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-               :limit        10})))
-        "make sure that field-literals work as DateTimeFields")))
+(deftest ^:parallel field-literals-date-time-fields-test
+  (is (= (honeysql->sql
+          {:select [[:source.ID :ID]
+                    [:source.NAME :NAME]
+                    [:source.CATEGORY_ID :CATEGORY_ID]
+                    [:source.LATITUDE :LATITUDE]
+                    [:source.LONGITUDE :LONGITUDE]
+                    [:source.PRICE :PRICE]]
+           :from   [[venues-source-honeysql :source]]
+           :where  [:and
+                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
+           :limit  [:inline 10]})
+         (qp.compile/compile
+          (lib/query
+           (lib.tu/merged-mock-metadata-provider
+            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            {:settings {:start-of-week :sunday}})
+           (mt/mbql-query venues
+             {:source-query {:source-table $$venues}
+              :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+              :limit        10}))))
+      "make sure that field-literals work as DateTimeFields"))
 
 (deftest ^:parallel aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
@@ -676,8 +681,7 @@
                                               "Card 2"     card-2}]
                   (mt/with-test-user :rasta
                     (testing object-name
-                      (is (= false
-                             (mi/can-read? object)))))))
+                      (is (not (mi/can-read? object)))))))
 
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                 (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -818,14 +822,20 @@
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
               ["2014-03-01T00:00:00Z" 350 2362]]
-             (mt/formatted-rows [identity int int]
-               (mt/run-mbql-query checkins
-                 {:source-query
-                  {:source-table $$checkins
-                   :aggregation  [[:sum $user_id] [:sum $venue_id]]
-                   :breakout     [!month.date]}
-                  :filter [:> *sum/Float 300]
-                  :limit  2})))))))
+             (mt/formatted-rows
+              [identity int int]
+              (qp/process-query
+               (lib/query
+                (lib.tu/merged-mock-metadata-provider
+                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 {:settings {:report-timezone "UTC"}})
+                (mt/mbql-query checkins
+                  {:source-query
+                   {:source-table $$checkins
+                    :aggregation  [[:sum $user_id] [:sum $venue_id]]
+                    :breakout     [!month.date]}
+                   :filter [:> *sum/Float 300]
+                   :limit  2})))))))))
 
 (deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys :expressions)
@@ -847,7 +857,7 @@
                      (mt/run-mbql-query nil
                        {:source-table "card__1"}))))))))))
 
-(deftest ^:parallel bucketing-already-bucketed-year-test
+(deftest ^:parllel bucketing-already-bucketed-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)"
       ;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
@@ -856,12 +866,17 @@
       ;; `2016` rather than timestamps
       (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
              (mt/rows
-               (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :fields       [!year.date]
-                                 :order-by     [[:asc !year.date]]
-                                 :limit        1}
-                  :fields       [!year.*date]})))))))
+              (qp/process-query
+               (lib/query
+                (lib.tu/merged-mock-metadata-provider
+                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 {:settings {:report-timezone "UTC"}})
+                (mt/mbql-query checkins
+                  {:source-query {:source-table $$checkins
+                                  :fields       [!year.date]
+                                  :order-by     [[:asc !year.date]]
+                                  :limit        1}
+                   :fields       [!year.*date]})))))))))
 
 (deftest ^:parallel correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
@@ -1337,27 +1352,28 @@
                       :basic-aggregations
                       :expression-aggregations
                       :foreign-keys)
-      (mt/dataset test-data
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [(mt/mbql-query orders
-                                             {:filter      [:between $total 30 60]
-                                              :aggregation [[:aggregation-options
-                                                             [:count-where [:starts-with $product_id->products.category "G"]]
-                                                             {:name "G Monies", :display-name "G Monies"}]]
-                                              :breakout    [!month.created_at]
-                                              :limit       2})])
-          (let [query (mt/native-query
-                        {:query         "SELECT * FROM {{#1}} x"
-                         :template-tags {"#1"
-                                         {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                                          :name         "#1"
-                                          :display-name "#1"
-                                          :type         :card
-                                          :card-id      1}}})]
-            (is (= [["2016-04-01T00:00:00Z" 1]
-                    ["2016-05-01T00:00:00Z" 5]]
-                   (mt/formatted-rows [str int]
-                     (qp/process-query query))))))))))
+      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                        (qp.test-util/metadata-provider-with-cards-for-queries
+                                         [(mt/mbql-query orders
+                                            {:filter      [:between $total 30 60]
+                                             :aggregation [[:aggregation-options
+                                                            [:count-where [:starts-with $product_id->products.category "G"]]
+                                                            {:name "G Monies", :display-name "G Monies"}]]
+                                             :breakout    [!month.created_at]
+                                             :limit       2})])
+                                        {:settings {:report-timezone "UTC"}})
+        (let [query (mt/native-query
+                      {:query         "SELECT * FROM {{#1}} x"
+                       :template-tags {"#1"
+                                       {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                        :name         "#1"
+                                        :display-name "#1"
+                                        :type         :card
+                                        :card-id      1}}})]
+          (is (= [["2016-04-01T00:00:00Z" 1]
+                  ["2016-05-01T00:00:00Z" 5]]
+                 (mt/formatted-rows [str int]
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
@@ -1400,23 +1416,27 @@
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
-      (mt/dataset test-data
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (let [query (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :breakout     [!month.product_id->products.created_at]
-                                        :aggregation  [[:count]]}
-                         :filter       [:time-interval
-                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
-                                        -32
-                                        :year]
-                         :aggregation  [[:sum *count/Integer]]
-                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
-                         :limit        1})]
-            (mt/with-native-query-testing-context query
-              (is (= [["2016-04-01T00:00:00Z" 175]]
-                     (mt/formatted-rows [str int]
-                       (qp/process-query query)))))))))))
+      (mt/with-mock-fks-for-drivers-without-fk-constraints
+        (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
+          (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                            (qp.store/metadata-provider)
+                                            {:settings {:report-timezone "UTC"}})
+            (let [query (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :breakout     [!month.product_id->products.created_at]
+                                          :aggregation  [[:count]]}
+                           :filter       [:time-interval
+                                          [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                          -32
+                                          :year]
+                           :aggregation  [[:sum *count/Integer]]
+                           :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
+                           :limit        1})]
+              (mt/with-native-query-testing-context query
+                (is (= [["2016-04-01T00:00:00Z" 175]]
+                       (mt/formatted-rows
+                        [str int]
+                        (qp/process-query query))))))))))))
 
 (deftest ^:parallel really-really-long-identifiers-test
   (testing "Should correctly handle really really long table and column names (#20627)"

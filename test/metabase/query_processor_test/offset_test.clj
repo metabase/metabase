@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
@@ -17,7 +18,9 @@
 
 (deftest ^:parallel simple-offset-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             {:settings {:report-timezone "UTC"}})
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -77,7 +80,9 @@
 (deftest ^:parallel offset-aggregation-test
   (testing "yearly growth (this year sales vs last year sales) (#5606)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               {:settings {:report-timezone "UTC"}})
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -93,17 +98,20 @@
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;;       1               2       3
-          (is (= [[#t "2016-01-01"  42156.94 nil]    ; first year
-                  [#t "2017-01-01" 205256.40 3.87]   ; sales up 387% wow!
-                  [#t "2018-01-01" 510043.47 1.48]   ; 248% growth!
-                  [#t "2019-01-01" 577064.96 0.13]   ; 13% growth doesn't look like a hockey stick to me!
-                  [#t "2020-01-01" 176095.93 -0.69]] ; sales down by 69%, oops!
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+          (is (= [[#t "2016-01-01"  42156.94 nil]      ; first year
+                  [#t "2017-01-01" 205256.40 3.87]     ; sales up 387% wow!
+                  [#t "2018-01-01" 510043.47 1.48]     ; 248% growth!
+                  [#t "2019-01-01" 577064.96 0.13]     ; 13% growth doesn't look like a hockey stick to me!
+                  [#t "2020-01-01" 176095.93 -0.69]]   ; sales down by 69%, oops!
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel offset-aggregation-two-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             {:settings {:report-timezone "UTC"}})
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -135,13 +143,16 @@
                 [#t "2017-01-01" #t "2017-01-01" 11094.77 nil] ; <- should reset here because breakout 2 changed values
                 [#t "2017-02-01" #t "2017-01-01" 11243.66 1.34]
                 [#t "2017-03-01" #t "2017-01-01" 14115.68 25.54]]
-               (mt/formatted-rows [->local-date ->local-date 2.0 2.0]
-                                  (qp/process-query query))))))))
+               (mt/formatted-rows
+                [->local-date ->local-date 2.0 2.0]
+                (qp/process-query query))))))))
 
 (deftest ^:parallel rolling-window-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: rolling total of sales last 3 months (#8977)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               {:settings {:report-timezone "UTC"}})
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -163,13 +174,16 @@
                   [#t "2016-06-01" 2072.92 3391.41]   ; (+ 2072.92 1265.73 52.76)
                   [#t "2016-07-01" 3734.72 7073.37]   ; (+ 3734.72 2072.92 1265.73)
                   [#t "2016-08-01" 4960.65 10768.29]] ; (+ 4960.65 3734.72 2072.92)
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel lead-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: sales for current month and next month (LEAD instead of LAG)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               {:settings {:report-timezone "UTC"}})
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -189,5 +203,6 @@
                   [#t "2016-05-01" 1265.73 3338.65] ; (+ 1265.73 2072.92)
                   [#t "2016-06-01" 2072.92 5807.64]
                   [#t "2016-07-01" 3734.72 8695.37]]
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))

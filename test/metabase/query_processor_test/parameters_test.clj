@@ -7,7 +7,10 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.native :as lib-native]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -18,8 +21,14 @@
 
 (defn- run-count-query [query]
   (or (ffirst
-       (mt/formatted-rows [int]
-         (qp/process-query query)))
+       (mt/formatted-rows
+        [int]
+        (qp/process-query
+         (lib/query
+          (lib.tu/merged-mock-metadata-provider
+           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+           {:settings {:report-timezone "UTC"}})
+          query))))
       ;; HACK (!) Mongo returns `nil` count instead of 0 — (#5419) — workaround until this is fixed
       0))
 
@@ -169,14 +178,17 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
       (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
-        (let [query (assoc (mt/mbql-query nil
-                             {:source-table (format "card__%d" card-id)})
+        (let [query (assoc (lib/query
+                            (lib.tu/merged-mock-metadata-provider
+                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             {:settings {:report-timezone "UTC"}})
+                            (mt/mbql-query nil
+                              {:source-table (format "card__%d" card-id)}))
                            :parameters [{:type   :date/all-options
                                          :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
                                          :value  "2014-01-06"}])]
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                 (mt/formatted-rows :checkins
-                   (qp/process-query query)))))))))
+                 (mt/formatted-rows :checkins (qp/process-query query)))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
