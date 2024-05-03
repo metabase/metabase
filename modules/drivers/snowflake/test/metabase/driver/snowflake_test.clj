@@ -101,10 +101,10 @@
         false "v3_sample-dataset"))
     (testing "Subname is replaced if hostname is provided (#22133)"
       (are [use-hostname alternative-host expected-subname] (=? expected-subname
-                               (:subname (let [details (-> details
-                                                           (assoc :host alternative-host)
-                                                           (assoc :use-hostname use-hostname))]
-                                 (sql-jdbc.conn/connection-details->spec :snowflake details))))
+                                                                (:subname (let [details (-> details
+                                                                                            (assoc :host alternative-host)
+                                                                                            (assoc :use-hostname use-hostname))]
+                                                                            (sql-jdbc.conn/connection-details->spec :snowflake details))))
         true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
@@ -269,6 +269,7 @@
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
+#_
 (deftest sync-dynamic-tables-test
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake

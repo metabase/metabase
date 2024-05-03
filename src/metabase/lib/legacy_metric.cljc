@@ -11,6 +11,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -20,7 +21,7 @@
     (lib.metadata/legacy-metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [definition], :as _metric-metadata} :- lib.metadata/LegacyMetricMetadata]
+  [{:keys [definition], :as _metric-metadata} :- ::lib.schema.metadata/legacy-metric]
   (when definition
     (if (:mbql/type definition)
       definition
@@ -91,7 +92,7 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-legacy-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
+(mu/defn available-legacy-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/legacy-metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
   `table-id` as the `source-table` for this query will be suggested."
   ([query]

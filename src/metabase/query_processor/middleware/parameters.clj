@@ -108,7 +108,8 @@
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
-  well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
+  well as any prepared statement args needed. MBQL queries will have additional filter clauses added. (Or in a special
+  case, the temporal bucketing on a breakout altered by a `:temporal-unit` parameter.)"
   [query]
   (-> query
       hoist-database-for-snippet-tags

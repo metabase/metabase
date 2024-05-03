@@ -83,9 +83,7 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
-  // TODO [Oisin]: fix failing test in "Fix Interactive Question" PR
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should render when question is valid", async () => {
+  it("should render when question is valid", async () => {
     setup();
 
     await waitForLoaderToBeRemoved();
@@ -98,6 +96,15 @@ describe("InteractiveQuestion", () => {
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
+  });
+
+  it("should not render an error if a question isn't found before the question loaded", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
   });
 
   it("should render an error if a question isn't found", async () => {
