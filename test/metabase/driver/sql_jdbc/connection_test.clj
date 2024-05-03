@@ -21,6 +21,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
@@ -232,7 +233,8 @@
 
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :druid-jdbc :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
+  (mt/test-drivers (apply disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
+                          (tqpt/timeseries-drivers))
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

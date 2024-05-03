@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
@@ -15,8 +16,8 @@
                          :athena
                          ;; there is no PK in sparksql
                          :sparksql
-                         ;; Druid does currently support only testing with pre-loaded dataset
-                         :druid-jdbc)
+                         ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                         (tqpt/timeseries-drivers))
     (mt/dataset (mt/dataset-definition "custom-pk"
                   ["user"
                    [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
@@ -57,8 +58,8 @@
                          :athena
                          ;; there is no PK in sparksql
                          :sparksql
-                         ;; Druid does currently support only testing with pre-loaded dataset
-                         :druid-jdbc)
+                         ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                         (tqpt/timeseries-drivers))
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
         (testing "(artist_id, song_id) is a PK"

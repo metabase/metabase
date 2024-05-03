@@ -21,6 +21,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -148,7 +149,8 @@
                (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -168,7 +170,8 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
