@@ -64,7 +64,7 @@ export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
 }
 
-export function browse() {
+export function browseData() {
   return navigationSidebar().findByLabelText("Browse data");
 }
 

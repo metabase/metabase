@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  browse,
+  browseData,
   restore,
   openOrdersTable,
   openNavigationSidebar,
@@ -455,8 +455,8 @@ describe("scenarios > question > settings", () => {
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
-      browse().click();
-      cy.findByRole("tab", { name: "Databases" }).click();
+      browseData().click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
