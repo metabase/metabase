@@ -4,6 +4,7 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatChangeWithSign } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
@@ -201,7 +202,7 @@ const getTooltipFooterData = (
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const currentValue = datum[seriesModel.dataKey];
-  const currentDate = dayjs(String(datum[X_AXIS_DATA_KEY]));
+  const currentDate = dayjs(parseTimestamp(datum[X_AXIS_DATA_KEY]));
   const previousValue =
     chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
@@ -209,7 +210,7 @@ const getTooltipFooterData = (
     return [];
   }
   const previousDate = dayjs(
-    String(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
+    parseTimestamp(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
   );
 
   const isOneIntervalAgo =
