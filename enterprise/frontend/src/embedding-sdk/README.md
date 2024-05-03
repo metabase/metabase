@@ -23,7 +23,25 @@ Features planned:
 
 # Getting started
 
-## Start a local build of Metabase from master
+## Start Metabase
+
+You have a couple of options to start Metabase:
+
+### 1. Running on Docker
+Start the Metabase container:
+```bash
+docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.0
+```
+
+### 2. Running the Jar file
+1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.0/metabase.jar
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
+```bash
+java -jar metabase.jar
+```
+
+### 3. Start a local build of Metabase from master
 
 1. Check out the code from the metabase repo
 ```git clone git@github.com:metabase/metabase.git```
