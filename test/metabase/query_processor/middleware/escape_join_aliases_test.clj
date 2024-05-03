@@ -4,8 +4,11 @@
    [flatland.ordered.map :as ordered-map]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.escape-join-aliases :as escape]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (driver/register! ::custom-escape :abstract? true)
@@ -13,6 +16,14 @@
 (defmethod driver/escape-alias ::custom-escape
   [_driver s]
   (driver.impl/truncate-alias s 12))
+
+(defn- do-with-metadata-provider [thunk]
+  (if (qp.store/initialized?)
+    (thunk)
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      meta/metadata-provider
+                                      {:database {:lib/methods {:escape-alias #(driver/escape-alias driver/*driver* %)}}})
+      (thunk))))
 
 ;;; the tests below are tests for the individual sub-steps of the middleware.
 
@@ -37,10 +48,16 @@
                     {"Products" "Products", "Q2" "Q2"}}}))))
 
 (defn- add-escaped-aliases-h2 [query]
-  (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn :h2)))
+  (driver/with-driver :h2
+    (do-with-metadata-provider
+     (fn []
+       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn :h2))))))
 
 (defn- add-escaped-aliases-custom-escape [query]
-  (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn ::custom-escape)))
+  (driver/with-driver ::custom-escape
+    (do-with-metadata-provider
+     (fn []
+       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn ::custom-escape))))))
 
 ;;; the tests below test what a query should look like after each sub-step
 
@@ -466,6 +483,11 @@
 
 ;;; these are e2e tests
 
+(defn- escape-join-aliases [query]
+  (do-with-metadata-provider
+   (fn []
+     (escape/escape-join-aliases query))))
+
 (deftest ^:parallel deduplicate-alias-names-test
   (testing "Should ensure all join aliases are unique, ignoring case"
     ;; some Databases treat table/subquery aliases as case-insensitive and thus `Cat` and `cat` would be considered the
@@ -484,7 +506,7 @@
                                         [:field 4 {:join-alias "Cat"}]
                                         [:field 4 {:join-alias "cat_2"}]]}
               :info     {:alias/escaped->original {"cat_2" "cat"}}}
-             (escape/escape-join-aliases
+             (escape-join-aliases
               {:database 1
                :type     :query
                :query    {:source-table 1
@@ -496,7 +518,9 @@
                                           :condition    [:= [:field 3 nil] [:field 4 {:join-alias "cat"}]]}]
                           :fields       [[:field 3 nil]
                                          [:field 4 {:join-alias "Cat"}]
-                                         [:field 4 {:join-alias "cat"}]]}})))))
+                                         [:field 4 {:join-alias "cat"}]]}}))))))
+
+(deftest ^:parallel deduplicate-alias-names-test-2
   (testing "no need to include alias info if they have not changed"
     (driver/with-driver :h2
       (let [query {:database 1
@@ -510,7 +534,7 @@
                               :fields [[:field 3 nil]
                                        [:field 4 {:join-alias "Cat"}]
                                        [:field 4 {:join-alias "cat"}]]}}
-            q'    (escape/escape-join-aliases query)]
+            q'    (escape-join-aliases query)]
         (testing "No need for a map with identical mapping"
           (is (not (contains? (:info q') :alias/escaped->original))))
         (testing "aliases in the query remain the same"
@@ -541,7 +565,7 @@
               :info     {:alias/escaped->original {"가_50a93035"  "가나다라마"
                                                    "012_68c4f033" "0123456789abcdef"}}}
              (driver/with-driver ::custom-escape
-               (escape/escape-join-aliases
+               (escape-join-aliases
                 {:database 1
                  :type     :query
                  :query    {:source-table 1
@@ -585,7 +609,7 @@
                   :order-by     [[:asc [:field 6 {:join-alias "Products", :temporal-unit :month}]]]}
           :info  {:alias/escaped->original {"Products_2" "Products"}}}
          (driver/with-driver :h2
-           (escape/escape-join-aliases
+           (escape-join-aliases
             {:query {:source-query {:source-table 1
                                     :joins        [{:source-table 2
                                                     :alias        "Products"
@@ -635,7 +659,7 @@
                                                      [:field 6 {:join-alias "Q2", :temporal-unit :month}]]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
              (driver/with-driver :h2
-               (escape/escape-join-aliases
+               (escape-join-aliases
                 {:query {:source-query {:source-table 1
                                         :joins        [{:source-table 2
                                                         :alias        "Products"
@@ -668,7 +692,7 @@
                                                                      [:field 5 {:join-alias "Products_2"}]]}]}]}
               :info  {:alias/escaped->original {"Products_2" "Products"}}}
              (driver/with-driver :h2
-               (escape/escape-join-aliases
+               (escape-join-aliases
                 {:query {:source-query {:source-table 1
                                         :joins        [{:source-table 2
                                                         :alias        "Products"
@@ -693,7 +717,7 @@
                   :order-by     [[:asc [:field 6 {:join-alias "Pro_acce5f27", :temporal-unit :month}]]]}
           :info  {:alias/escaped->original {"Pro_acce5f27" "Products_Long_Identifier"}}}
          (driver/with-driver ::custom-escape
-           (escape/escape-join-aliases
+           (escape-join-aliases
             {:query {:source-query {:source-query {:source-table 1
                                                    :joins        [{:source-table 2
                                                                    :alias        "Products_Long_Identifier"

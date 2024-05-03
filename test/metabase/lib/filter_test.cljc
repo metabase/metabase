@@ -573,12 +573,17 @@
        {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
        {:clause [:contains nam "ABC"], :name "Name contains ABC"}
        {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+       {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
        {:clause [:is-empty nam], :name "Name is empty"}
        {:clause [:not-empty nam], :name "Name is not empty"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
        {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
-       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}])))
+       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
+       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
+       {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names

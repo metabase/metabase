@@ -611,6 +611,13 @@ HistogramTicks90Degrees.args = {
   renderingContext,
 };
 
+export const LineUnpinFromZero = Template.bind({});
+LineUnpinFromZero.args = {
+  rawSeries: data.lineUnpinFromZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

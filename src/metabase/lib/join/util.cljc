@@ -49,7 +49,8 @@
 
     MyJoin__my_field
 
-  You should pass the results thru a unique name function."
+  You should pass the results thru a unique name function e.g. one returned
+  by [[metabase.lib.util/unique-name-generator]]."
   [join-alias :- ::lib.schema.common/non-blank-string
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
@@ -59,7 +60,8 @@
 
     CATEGORIES__via__CATEGORY_ID
 
-  You should make sure this gets ran thru a unique-name fn."
+  You should make sure this gets ran thru a unique-name fn e.g. one returned
+  by [[metabase.lib.util/unique-name-generator]]."
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))

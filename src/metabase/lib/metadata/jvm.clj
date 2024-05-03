@@ -2,8 +2,11 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.string :as str]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -71,7 +74,8 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)]
+  (let [database (instance->metadata database :metadata/database)
+        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 
@@ -409,5 +413,6 @@
   and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
   operations to pre-warm the cache if you need to."
   [database-id :- ::lib.schema.id/database]
-  (lib.metadata.cached-provider/cached-metadata-provider
-   (->UncachedApplicationDatabaseMetadataProvider database-id)))
+  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
+      lib.metadata.cached-provider/cached-metadata-provider
+      lib.metadata.invocation-tracker/invocation-tracker-provider))
