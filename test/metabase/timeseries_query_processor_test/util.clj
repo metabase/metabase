@@ -41,7 +41,7 @@
       r)))
 
 (defn do-test-timeseries-drivers [thunk]
-  (binding [data/*run-post-process-fn* adjust-result-cols]
+  (binding [data/*post-process-fn* adjust-result-cols]
     (mt/test-drivers (timeseries-drivers)
       (with-flattened-dbdef
         (thunk)))))
