@@ -120,9 +120,9 @@
        value)))
 
 (core/defn map-schema-assoc
-  [map-schema & kvs]
   "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
    If kvs are provided, they are also associated with the schema."
+  [map-schema & kvs]
   (if kvs
     (if (next kvs)
       (let [key (first kvs)
