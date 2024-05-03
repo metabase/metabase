@@ -478,8 +478,7 @@
        (sort-by first)
        (take 5)))
 
-;; TODO: Find out why timezones behave differently, seemingly correctly, with JDBC driver.
-(deftest table-rows-sample-test
+(deftest ^:synchronized table-rows-sample-test
   (mt/test-driver
    :druid-jdbc
    (tqpt/with-flattened-dbdef
@@ -492,9 +491,6 @@
          (testing "UTC timezone"
            (is (= expected
                   (table-rows-sample))))
-         #_(mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-           (is (= expected
-                  @(def xixi (table-rows-sample)))))
-         #_(mt/with-system-timezone-id! "America/Chicago"
+         (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
            (is (= expected
                   (table-rows-sample)))))))))

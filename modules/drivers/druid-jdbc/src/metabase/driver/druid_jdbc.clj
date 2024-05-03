@@ -37,7 +37,8 @@
           :subprotocol "avatica:remote"
           :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when (some? (driver/report-timezone))
-           {:sqlTimeZone (driver/report-timezone)})))
+           {:sqlTimeZone (driver/report-timezone)
+            :timeZone (driver/report-timezone)})))
 
 (defmethod driver/db-default-timezone :druid-jdbc
   [_driver _database]
