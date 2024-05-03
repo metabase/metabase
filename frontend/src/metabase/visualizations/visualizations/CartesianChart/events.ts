@@ -12,6 +12,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   isBreakoutSeries,
+  isQuarterInterval,
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
@@ -222,11 +223,13 @@ const getTooltipFooterData = (
 
   const change = computeChange(previousValue, currentValue);
 
+  const unit = isQuarterInterval(chartModel.xAxisModel.interval)
+    ? "quarter"
+    : chartModel.xAxisModel.interval.unit;
+
   return [
     {
-      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[
-        chartModel.xAxisModel.interval.unit
-      ],
+      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[unit],
       col: seriesModel.column,
       value: formatChangeWithSign(change),
     },
