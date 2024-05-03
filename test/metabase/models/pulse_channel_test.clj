@@ -434,13 +434,6 @@
      (task/init! ::task.send-pulses/SendPulses)
      ~@body))
 
-(= #{{:key "metabase.task.send-pulse.trigger.89.0_0_18_*_*_?_*",
-      :schedule "0 0 18 * * ? *",
-      :data {"pulse-id" 89, "channel-ids" #{146}}}}
-   #{{:key "metabase.task.send-pulse.trigger.89.0_0_18_*_*_?_*",
-      :schedule "0 0 18 * * ? *",
-      :data {"pulse-id" 89, "channel-ids" #{146}}}})
-
 (deftest e2e-single-pc-trigger-test
   (with-send-pulse-setup!
     (mt/with-temp [:model/Pulse        {pulse-id :id} {}

@@ -58,22 +58,21 @@
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   [pulse-id     :- pos-int?
-   schedule-map :- map?
-   pc-ids       :- [:maybe [:set pos-int?]]]
-  (when (seq pc-ids)
-    (triggers/build
-     (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
-     (triggers/for-job send-pulse-job-key)
-     (triggers/using-job-data {"pulse-id"    pulse-id
-                               "channel-ids" (set pc-ids)})
-     (triggers/with-schedule
-       (cron/schedule
-        (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
-        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-        ;; Just wait until the next sync cycle.
-        ;;
-        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-        (cron/with-misfire-handling-instruction-ignore-misfires))))))
+   schedule-map :- u.cron/ScheduleMap
+   pc-ids       :- [:set pos-int?]]
+  (triggers/build
+   (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+   (triggers/for-job send-pulse-job-key)
+   (triggers/using-job-data {"pulse-id"    pulse-id
+                             "channel-ids" pc-ids})
+   (triggers/with-schedule
+     (cron/schedule
+      (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+      ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+      ;; Just wait until the next sync cycle.
+      ;;
+      ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+      (cron/with-misfire-handling-instruction-fire-and-proceed)))))
 
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
@@ -106,11 +105,11 @@
                                          %))
         trigger-key      (send-pulse-trigger-key pulse-id schedule-map)
         task-schedule    (u.cron/schedule-map->cron-string schedule-map)
-        ;; there should be one existing trigger
-        existing-trigger (some #(when (and (= (:key %) (.getName trigger-key))
-                                           (= (:schedule %) task-schedule))
-                                  %)
-                               (-> send-pulse-job-key task/job-info :triggers))
+        ;; there should be at most one existing trigger
+        existing-trigger (->> (-> send-pulse-job-key task/job-info :triggers)
+                              (filter #(and (= (:key %) (.getName trigger-key))
+                                        (= (:schedule %) task-schedule)))
+                              first)
         existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
         new-pc-ids      (if (some? existing-pc-ids)
                           (cond
@@ -177,7 +176,7 @@
                               (jobs/with-description "Send Pulse")
                               (jobs/of-type SendPulse)
                               (jobs/store-durably))
-        re-proritize-job     (jobs/build
+        re-prioritize-job    (jobs/build
                               (jobs/with-identity reprioritize-send-pulse-job-key)
                               (jobs/with-description  "Update SendPulses Pjiority")
                               (jobs/of-type RePrioritizeSendPulses)
@@ -189,9 +188,9 @@
                               (triggers/with-schedule
                                 (cron/schedule
                                  (cron/cron-schedule "0 0 1 ? * 7 *") ; at 1am on Saturday every week
-                                 (cron/with-misfire-handling-instruction-ignore-misfires))))]
+                                 (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/add-job! send-pulse-job)
-    (task/add-job! re-proritize-job)
-    (task/schedule-task! re-proritize-job re-proritize-trigger)
-    ;; this function is idempotence, so we can call it multiple times
+    (task/add-job! re-prioritize-job)
+    (task/schedule-task! re-prioritize-job re-proritize-trigger)
+    ;; this function is idempotent, so we can call it multiple times
     (reprioritize-send-pulses!)))
