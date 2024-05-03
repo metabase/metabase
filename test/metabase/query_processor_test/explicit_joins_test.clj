@@ -754,28 +754,28 @@
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
-(deftest ^:parallel join-against-same-table-as-source-query-source-table-test
+(deftest join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset test-data
-        (let [query (mt/mbql-query people
-                      {:source-query {:source-table $$people
-                                      :breakout     [!month.created_at]
-                                      :aggregation  [[:count]]}
-                       :joins        [{:source-query {:source-table $$people
-                                                      :breakout     [!month.birth_date]
-                                                      :aggregation  [[:count]]}
-                                       :alias        "Q2"
-                                       :condition    [:= !month.created_at !month.&Q2.birth_date]
-                                       :fields       :all}]
-                       :order-by     [[:asc !month.created_at]]
-                       :limit        3})]
-          (mt/with-native-query-testing-context query
-            (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
-                    ["2016-05-01T00:00:00Z" 77 nil nil]
-                    ["2016-06-01T00:00:00Z" 82 nil nil]]
-                   (mt/formatted-rows [str int str int]
-                     (qp/process-query query))))))))))
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (mt/dataset test-data
+          (let [query (mt/mbql-query people
+                        {:source-query {:source-table $$people
+                                        :breakout     [!month.created_at]
+                                        :aggregation  [[:count]]}
+                         :joins        [{:source-query {:source-table $$people
+                                                        :breakout     [!month.birth_date]
+                                                        :aggregation  [[:count]]}
+                                         :alias        "Q2"
+                                         :condition    [:= !month.created_at !month.&Q2.birth_date]
+                                         :fields       :all}]
+                         :order-by     [[:asc !month.created_at]]
+                         :limit        3})]
+            (mt/with-native-query-testing-context query
+              (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
+                      ["2016-05-01T00:00:00Z" 77 nil nil]
+                      ["2016-06-01T00:00:00Z" 82 nil nil]]
+                     (mt/formatted-rows [str int str int] (qp/process-query query)))))))))))
 
 (deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
@@ -812,52 +812,53 @@
                           ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                          (mt/formatted-rows [str int str 2.0 str 2.0] results))))))))))))
 
-(deftest ^:parallel use-correct-source-alias-for-fields-from-joins-test
+(deftest use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset test-data
-        (let [query (mt/mbql-query orders
-                      {:joins       [{:source-table $$products
-                                      :alias        "Products Renamed"
-                                      :condition    [:=
-                                                     $product_id
-                                                     [:field %products.id {:join-alias "Products Renamed"}]]
-                                      :fields       :all}]
-                       :expressions {"CC" [:+ 1 1]}
-                       :filter      [:=
-                                     [:field %products.category {:join-alias "Products Renamed"}]
-                                     "Doohickey"]
-                       :order-by    [[:asc $id]]
-                       :limit       2})]
-          (mt/with-native-query-testing-context query
-            (let [results (qp/process-query query)]
-              (when (#{:h2 :postgres} driver/*driver*)
-                (is (= ["ID"
-                        "User ID"
-                        "Product ID"
-                        "Subtotal"
-                        "Tax"
-                        "Total"
-                        "Discount"
-                        "Created At"
-                        "Quantity"
-                        "CC"
-                        "Products Renamed → ID"
-                        "Products Renamed → Ean"
-                        "Products Renamed → Title"
-                        "Products Renamed → Category"
-                        "Products Renamed → Vendor"
-                        "Products Renamed → Price"
-                        "Products Renamed → Rating"
-                        "Products Renamed → Created At"]
-                       (map :display_name (get-in results [:data :results_metadata :columns])))))
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
-                       60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
-                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
-                       6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int int
-                                         int str str str str 2.0 2.0 str]
-                       results))))))))))
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (mt/dataset test-data
+          (let [query (mt/mbql-query orders
+                        {:joins       [{:source-table $$products
+                                        :alias        "Products Renamed"
+                                        :condition    [:=
+                                                       $product_id
+                                                       [:field %products.id {:join-alias "Products Renamed"}]]
+                                        :fields       :all}]
+                         :expressions {"CC" [:+ 1 1]}
+                         :filter      [:=
+                                       [:field %products.category {:join-alias "Products Renamed"}]
+                                       "Doohickey"]
+                         :order-by    [[:asc $id]]
+                         :limit       2})]
+            (mt/with-native-query-testing-context query
+              (let [results (qp/process-query query)]
+                (when (#{:h2 :postgres} driver/*driver*)
+                  (is (= ["ID"
+                          "User ID"
+                          "Product ID"
+                          "Subtotal"
+                          "Tax"
+                          "Total"
+                          "Discount"
+                          "Created At"
+                          "Quantity"
+                          "CC"
+                          "Products Renamed → ID"
+                          "Products Renamed → Ean"
+                          "Products Renamed → Title"
+                          "Products Renamed → Category"
+                          "Products Renamed → Vendor"
+                          "Products Renamed → Price"
+                          "Products Renamed → Rating"
+                          "Products Renamed → Created At"]
+                         (map :display_name (get-in results [:data :results_metadata :columns])))))
+                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
+                         60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
+                        [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
+                         6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
+                       (mt/formatted-rows
+                        [int int int 2.0 2.0 2.0 2.0 str int int int str str str str 2.0 2.0 str]
+                        results)))))))))))
 
 (deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)

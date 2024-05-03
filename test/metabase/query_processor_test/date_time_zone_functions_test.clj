@@ -417,32 +417,31 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
-      (doseq [timezone [nil "America/Los_Angeles"]]
-        (mt/with-report-timezone-id! timezone
-          (is (= true
-                 (-> (mt/run-mbql-query venues
-                       {:expressions {"1" [:now]}
-                        :fields [[:expression "1"]]
-                        :limit  1})
-                     mt/rows
-                     ffirst
-                     u.date/parse
-                     (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30))))))))))
+      (doseq [timezone ["UTC" "America/Los_Angeles"]]
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (let [t (-> (mt/run-mbql-query venues
+                        {:expressions {"1" [:now]}
+                         :fields [[:expression "1"]]
+                         :limit  1})
+                      mt/rows
+                      ffirst
+                      u.date/parse
+                      (t/zoned-date-time (t/zone-id "UTC")))] ; needed for sqlite, which returns a local date time
+            (is (close? t (t/instant) (t/seconds 30)))))))))
 
-(deftest ^:parallel now-test-2
+(deftest now-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
-    (testing "should work as an argument to datetime-add and datetime-subtract"
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC"))
-                 (close? (t/instant) (t/seconds 30))))))))
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (testing "should work as an argument to datetime-add and datetime-subtract"
+        (let [t (-> (mt/run-mbql-query venues
+                      {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
+                       :fields [[:expression "1"]]
+                       :limit  1})
+                    mt/rows
+                    ffirst
+                    u.date/parse
+                    (t/zoned-date-time (t/zone-id "UTC")))]
+          (is (close? t (t/instant) (t/seconds 30))))))))
 
 (deftest ^:parallel now-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
