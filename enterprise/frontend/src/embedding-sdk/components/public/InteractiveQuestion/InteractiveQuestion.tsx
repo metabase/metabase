@@ -78,7 +78,7 @@ export const _InteractiveQuestion = ({
 
     const { location, params } = getQuestionParameters(questionId);
     try {
-      dispatch(initializeQBRaw(location, params));
+      await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
       setLoading(false);

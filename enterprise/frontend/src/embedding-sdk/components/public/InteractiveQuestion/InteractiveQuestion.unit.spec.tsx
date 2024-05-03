@@ -100,6 +100,15 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
   });
 
+  it("should not render an error if a question isn't found before the question loaded", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+  });
+
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
 
