@@ -21,6 +21,7 @@ export function getEmbeddingThemeOverride(
     // Apply color palette overrides
     for (const name in theme.colors) {
       const color = theme.colors[name as MetabaseColor];
+
       if (color) {
         override.colors[name] = colorTuple(color);
       }

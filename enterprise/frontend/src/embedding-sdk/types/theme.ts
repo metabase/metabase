@@ -1,14 +1,31 @@
 import type { MantineThemeOverride } from "@mantine/core";
 
-export type MetabaseColor = "brand" | "text-dark" | "text-light";
-export type MetabaseColors = Partial<Record<MetabaseColor, string>>;
-
 export interface MetabaseTheme {
+  /** Base font size */
   fontSize?: string;
-  lineHeight?: string;
+
+  /** Base line height */
+  lineHeight?: string | number;
+
+  /** Color palette */
   colors?: MetabaseColors;
+
+  /** Component theme options */
   components?: MetabaseComponentTheme;
 }
+
+export interface MetabaseColors {
+  /** Primary brand color */
+  brand?: string;
+
+  /** Text color on dark elements. Should be a lighter color for readability. */
+  "text-dark"?: string;
+
+  /** Text color on light elements. Should be a darker color for readability. */
+  "text-light"?: string;
+}
+
+export type MetabaseColor = keyof MetabaseColors;
 
 /**
  * Theme options for Metabase components and visualizations.
