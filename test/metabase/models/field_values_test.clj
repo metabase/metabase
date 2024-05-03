@@ -22,7 +22,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (clojure.lang ExceptionInfo)))
 
-(deftest ^:synchronized field-should-have-field-values?-test
+(deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
                                    {{:has_field_values :list
                                      :visibility_type  :normal
