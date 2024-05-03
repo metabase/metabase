@@ -7,6 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -26,9 +27,9 @@
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
 (def Field
-  "A field in a join, either [[lib.metadata/ColumnMetadata]] or a `:field` ref."
+  "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
   [:or
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:ref :mbql.clause/field]])
 
 (def FieldOrPartialJoin
@@ -84,7 +85,7 @@
 
   You should pass the results thru a unique name function."
   [query          :- ::lib.schema/query
-   field-metadata :- lib.metadata/ColumnMetadata]
+   field-metadata :- ::lib.schema.metadata/column]
   (if-let [join-alias (or (current-join-alias field-metadata)
                           (implicit-join-name query field-metadata))]
     (joined-field-desired-alias join-alias (:name field-metadata))

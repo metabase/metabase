@@ -604,6 +604,7 @@ HistogramTicks45Degrees.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
 export const HistogramTicks90Degrees = Template.bind({});
 HistogramTicks90Degrees.args = {
   rawSeries: data.histogramTicks90Degrees as any,
@@ -614,6 +615,13 @@ HistogramTicks90Degrees.args = {
 export const LineUnpinFromZero = Template.bind({});
 LineUnpinFromZero.args = {
   rawSeries: data.lineUnpinFromZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LineReplaceMissingValuesZero = Template.bind({});
+LineReplaceMissingValuesZero.args = {
+  rawSeries: data.lineReplaceMissingValuesZero as any,
   dashcardSettings: {},
   renderingContext,
 };
