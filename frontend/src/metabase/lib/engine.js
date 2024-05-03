@@ -1,11 +1,6 @@
 import { getEngines } from "metabase/databases/selectors";
 import { formatSQL } from "metabase/lib/formatting";
 
-export function getDefaultEngine(state) {
-  const engines = getEngines(state);
-  return engines["postgres"] ? "postgres" : Object.keys(engines)[0];
-}
-
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
