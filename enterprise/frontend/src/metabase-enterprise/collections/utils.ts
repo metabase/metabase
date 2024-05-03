@@ -52,7 +52,11 @@ export const getIcon = (item: ObjectWithModel): IconData => {
     };
   }
 
-  if (item.model === "collection" && item.authority_level === "official") {
+  if (
+    item.model === "collection" &&
+    (item.authority_level === "official" ||
+      item.collection_authority_level === "official")
+  ) {
     return {
       name: OFFICIAL_COLLECTION.icon,
       color: OFFICIAL_COLLECTION.color,

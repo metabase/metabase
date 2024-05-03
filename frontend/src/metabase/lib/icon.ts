@@ -10,6 +10,7 @@ import type {
 export type ObjectWithModel = {
   model: SearchModel;
   authority_level?: "official" | string | null;
+  collection_authority_level?: "official" | string | null;
   moderated_status?: "verified" | string | null;
   display?: CardDisplayType | null;
   type?: Collection["type"];

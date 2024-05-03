@@ -30,13 +30,7 @@ export const ResultItem = ({
   isSelected?: boolean;
   isLast?: boolean;
 }) => {
-  const icon = getIcon({
-    ...item,
-    authority_level:
-      item.model === "collection"
-        ? item?.collection_authority_level
-        : item.moderated_status,
-  });
+  const icon = getIcon(item);
 
   return (
     <ChunkyListItem
@@ -47,10 +41,9 @@ export const ResultItem = ({
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
         <Icon
-          color="brand"
+          color={color(icon.color ?? (isSelected ? "white" : "brand"))}
           name={icon.name}
           style={{
-            color: color(icon.color ?? (isSelected ? "white" : "brand")),
             flexShrink: 0,
           }}
         />
