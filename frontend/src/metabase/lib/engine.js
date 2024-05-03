@@ -1,5 +1,4 @@
 import { getEngines } from "metabase/databases/selectors";
-import { formatSQL } from "metabase/lib/formatting";
 
 export function getEngineNativeType(engine) {
   switch (engine) {
@@ -67,4 +66,19 @@ export function formatNativeQuery(query, engine) {
 export function isDeprecatedEngine(engine, state) {
   const engines = getEngines(state) || {};
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
+}
+
+function formatSQL(sql) {
+  if (typeof sql === "string") {
+    sql = sql.replace(/\sFROM/, "\nFROM");
+    sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
+    sql = sql.replace(/\sWHERE/, "\nWHERE");
+    sql = sql.replace(/\sGROUP BY/, "\nGROUP BY");
+    sql = sql.replace(/\sORDER BY/, "\nORDER BY");
+    sql = sql.replace(/\sLIMIT/, "\nLIMIT");
+    sql = sql.replace(/\sAND\s/, "\n   AND ");
+    sql = sql.replace(/\sOR\s/, "\n    OR ");
+
+    return sql;
+  }
 }
