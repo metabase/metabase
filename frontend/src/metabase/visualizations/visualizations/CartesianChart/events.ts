@@ -189,10 +189,11 @@ const getEventColumnsData = (
 
 const getTooltipFooterData = (
   chartModel: BaseCartesianChartModel,
+  display: string,
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
-  if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
+  if (display === "scatter" || !isTimeSeriesAxis(chartModel.xAxisModel)) {
     return [];
   }
 
@@ -336,6 +337,7 @@ const isValidDatumElement = (
 export const getSeriesHoverData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  display: string,
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
@@ -358,8 +360,12 @@ export const getSeriesHoverData = (
   }
 
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-
-  const footerData = getTooltipFooterData(chartModel, seriesIndex, dataIndex);
+  const footerData = getTooltipFooterData(
+    chartModel,
+    display,
+    seriesIndex,
+    dataIndex,
+  );
 
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
