@@ -718,6 +718,8 @@
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates)
+              (when (contains? updates :collection_id)
+                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
               ;; Handle broken subscriptions, if any, when parameters changed
               (when parameters
                 (handle-broken-subscriptions id original-params)))
