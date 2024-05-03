@@ -11,10 +11,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type {
-  CollectionEssentials,
-  type SearchRequest,
-} from "metabase-types/api";
+import type { CollectionEssentials, SearchRequest } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api";
 
 import { filterModels, type ActualModelFilters } from "../utils";
