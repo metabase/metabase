@@ -94,7 +94,7 @@ export default class FunnelNormal extends Component {
 
       const footerData = [
         {
-          key: "Retained",
+          key: t`Retained`,
           value: formatNumber(row[metricIndex] / infos[0].value, {
             number_style: "percent",
           }),
