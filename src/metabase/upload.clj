@@ -11,7 +11,7 @@
 ;;   be uniquely identified. This column is named `_mb_row_id`.
 ;; - The correct permissions and instance settings are checked before any changes are made.
 ;;
-;; ## Unstable internals (what you shouldn't depend on):
+;; ## Unstable internals (what you can't depend on):
 ;; The upload module hides the following implementation details which are subject to change:
 ;; - The set of permissions and instance settings that are required to upload data.
 ;; - CSV parsing and column type logic:
