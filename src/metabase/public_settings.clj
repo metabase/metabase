@@ -851,4 +851,5 @@ See [fonts](../configuring-metabase/fonts.md).")
                 (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
                   (if-not (pos-int? value)
                     20
-                    value))))
+                    value)))
+  :doc "Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use `MB_UNAGGREGATED_QUERY_ROW_LIMIT`.")

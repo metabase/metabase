@@ -65,6 +65,10 @@ The email address users should be referred to if they encounter a problem.
 
 Maximum number of rows to return for aggregated queries via the API.
 
+Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
@@ -199,6 +203,8 @@ This will replace the word "Metabase" wherever it appears.
 
 Maximum number of rows to render in an alert or subscription image.
 
+Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use `MB_UNAGGREGATED_QUERY_ROW_LIMIT`.
+
 ### `MB_BCC_ENABLED`
 
 - Type: boolean
@@ -281,6 +287,8 @@ ID of dashboard to use as a homepage.
 
 Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were not able to
   successfully connect after this many milliseconds. By default, this is 10 seconds.
+
+Timeout in milliseconds for connecting to databases, both Metabase application database and data connections. In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the connections via tunnels have more overhead than connections without.
 
 ### `MB_EMAIL_FROM_ADDRESS`
 
@@ -1360,6 +1368,10 @@ Enable or disable surveys.
 - [Configuration file name](./config-file.md): `unaggregated-query-row-limit`
 
 Maximum number of rows to return specifically on :rows type queries via the API.
+
+Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also MB_AGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_UPLOADS_DATABASE_ID`
 
