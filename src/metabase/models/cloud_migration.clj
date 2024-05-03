@@ -48,17 +48,16 @@
   :export?    false)
 
 (def ^:private read-only-mode-exceptions
-  #{;; Migrations need to update their own state
-    (t2/table-name :model/CloudMigration)
-    (t2/table-name :model/Setting)
-
-    ;; Users need to login, make queries, and we need need to audit them.
-    (t2/table-name :model/User)
-    (t2/table-name :model/Session)
-    (t2/table-name :model/LoginHistory)
-    (t2/table-name :model/AuditLog)
-    (t2/table-name :model/QueryExecution)
-    (t2/table-name :model/ViewLog)})
+  (->> #{ ;; Migrations need to update their own state
+         :model/CloudMigration :model/Setting
+         ;; Users need to login, make queries, and we need need to audit them.
+         :model/User :model/Session :model/LoginHistory
+         :model/QueryExecution :model/UserParameterValue
+         :model/AuditLog :model/ViewLog}
+       ;; These exceptions use table name instead of model name because you can actually bypass the model
+       ;; and write toucan2 functions that interact with table directly.
+       (map t2/table-name)
+       (into #{})))
 
 (def ^:private ^:dynamic
   *ignore-read-only-mode*
