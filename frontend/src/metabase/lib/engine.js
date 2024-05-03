@@ -62,7 +62,7 @@ export function getEngineLogo(engine) {
   }
 }
 
-export function formatJsonQuery(query, engine) {
+function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
   }
