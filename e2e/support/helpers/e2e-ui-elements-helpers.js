@@ -65,8 +65,7 @@ export function closeNavigationSidebar() {
 }
 
 export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return navigationSidebar().findByText("Browse data");
+  return navigationSidebar().findByLabelText("Browse data");
 }
 
 /**
