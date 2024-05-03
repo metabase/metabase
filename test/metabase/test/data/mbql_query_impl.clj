@@ -15,8 +15,8 @@
   (if (and (> (count args) 1)
            (= :druid-jdbc @(requiring-resolve 'metabase.driver/*driver*))
            (= "timestamp" (name (last args))))
-    (apply @(requiring-resolve 'metabase.test.data/id) (conj (vec (butlast args)) :__time))
-    (apply @(requiring-resolve 'metabase.test.data/id) args)))
+    (apply (requiring-resolve 'metabase.test.data/id) (conj (vec (butlast args)) :__time))
+    (apply (requiring-resolve 'metabase.test.data/id) args)))
 
 ;; TODO: druid-id-fn is just temporary until I figure out proper solution for rebinding that symb.
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
