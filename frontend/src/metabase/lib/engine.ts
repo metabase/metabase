@@ -1,6 +1,7 @@
 import { getEngines } from "metabase/databases/selectors";
+import type { State } from "metabase-types/store";
 
-export function getEngineNativeType(engine) {
+export function getEngineNativeType(engine?: string) {
   switch (engine) {
     case "mongo":
     case "druid":
@@ -10,11 +11,11 @@ export function getEngineNativeType(engine) {
   }
 }
 
-export function getNativeQueryLanguage(engine) {
+export function getNativeQueryLanguage(engine: string) {
   return getEngineNativeType(engine).toUpperCase();
 }
 
-export function getEngineNativeAceMode(engine) {
+export function getEngineNativeAceMode(engine: string) {
   switch (engine) {
     case "mongo":
     case "druid":
@@ -24,22 +25,33 @@ export function getEngineNativeAceMode(engine) {
   }
 }
 
-function formatJsonQuery(query) {
+type JSONQuery = Record<string, any> | Record<string, any>[];
+
+function formatJsonQuery(query: JSONQuery) {
   return JSON.stringify(query, null, 2);
 }
 
-export function formatNativeQuery(query, engine) {
-  return getEngineNativeType(engine) === "json"
-    ? formatJsonQuery(query, engine)
-    : formatSQL(query);
+export function formatNativeQuery(query?: string | JSONQuery, engine?: string) {
+  if (!query || !engine) {
+    return;
+  }
+
+  if (getEngineNativeType(engine) === "sql" && typeof query === "string") {
+    return formatSQL(query);
+  } else if (
+    getEngineNativeType(engine) === "json" &&
+    typeof query === "object"
+  ) {
+    return formatJsonQuery(query);
+  }
 }
 
-export function isDeprecatedEngine(engine, state) {
+export function isDeprecatedEngine(engine: string, state: State) {
   const engines = getEngines(state) || {};
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
-function formatSQL(sql) {
+function formatSQL(sql: string) {
   if (typeof sql === "string") {
     sql = sql.replace(/\sFROM/, "\nFROM");
     sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
