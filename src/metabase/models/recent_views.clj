@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -26,7 +25,7 @@
   (let [defaults {:timestamp :%now}]
     (merge defaults log-entry)))
 
-(def ^:private ^:dynamic *recent-views-stored-per-user-per-model*
+(def ^:dynamic *recent-views-stored-per-user-per-model*
   "The number of recently viewed items to keep per user per model. This is used to keep the most recent views of each
   model type in [[models-of-interest]]."
   20)
@@ -40,17 +39,22 @@
                                               "   (SELECT id, row_number()"
                                               "     OVER (PARTITION BY model, model_id ORDER BY timestamp desc) AS rn"
                                               "     FROM recent_views) ranked"
+                                              ;; rn 1 is the most recent view, so we want to exclude that from the set of
+                                              ;; duplicates to prune.
                                               "WHERE rn != 1"])]))
        (map :recent_views/id)
        set))
 
-(def ^:private models-of-interest
+(def models-of-interest
   "These are models for which we will retrieve recency."
-  [:card :model :dashboard :table :collection])
+  [:card :model ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
+                ;;       distinguish between them.
+   :dashboard :table :collection])
 
 (defn- ids-to-prune-for-user+model [user-id model]
-  (t2/select-fn-set :id :model/RecentViews
-                    {:select [:rv.id #_#_:rv.* [:rc.type :card_type]]
+  (t2/select-fn-set :id
+                    :model/RecentViews
+                    {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
                              [:= :rv.model (get {:model "card"} model (name model))]
@@ -65,12 +69,17 @@
                      :order-by [[:rv.timestamp :desc]]
                      :offset *recent-views-stored-per-user-per-model*}))
 
-(defn- ids-to-prune [user-id]
+(defn- empty-model-buckets [user-id]
+  (into #{} (mapcat #(ids-to-prune-for-user+model user-id %)) models-of-interest))
+
+(defn ids-to-prune
+  "Returns IDs to prune, which includes 2 things:
+  1. duplicated views for (user-id, model, model_id), this will return the IDs of the non-latest duplicates.
+  2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
+  [user-id]
   (set/union
    (duplicate-model-ids)
-   (->> models-of-interest
-        (map #(ids-to-prune-for-user+model user-id %))
-        (reduce into #{}))))
+   (empty-model-buckets user-id)))
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
@@ -122,55 +131,34 @@
           ;; Lower-case the model name, since that's what the FE expects
           (map #(update % :model u/lower-case-en))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; new stuff ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def RecentItem
+  "The shape of a recent view item, returned from `GET /recent_views`."
+  [:and {:registry {::pc [:map
+                          [:id [:or [:int {:min 1}] [:= "root"]]]
+                          [:name :string]
+                          [:authority_level [:enum "official" nil]]]}}
+   [:map
+    [:id [:int {:min 1}]]
+    [:name :string]
+    [:model [:enum :dataset :card :dashboard :collection :table]]
+    [:can_write :boolean]
+    [:timestamp :string]]
+   [:multi {:dispatch :model}
+    [:card [:map
+            [:parent_collection ::pc]
+            [:display :string]]]
+    [:dataset [:map
+               [:parent_collection ::pc]
+               [:moderated_status [:enum "verified" nil]]]]
+    [:dashboard [:map [:parent_collection ::pc]]]
+    [:table [:map [:database [:map
+                              [:id [:int {:min 1}]]
+                              [:name :string]]]]]
+    [:collection [:map
+                  [:parent_collection ::pc]
+                  [:authority_level [:enum "official" nil]]]]]])
 
-;;interface RecentItem {
-;;  id: number;
-;;  name: string;
-;;  model: string; // should differentiate between regular cards and "dataset" for models
-;;  can_write: boolean;
-;;  timestamp: string; // last touched
-;;  display: string; // for cards
-;;  parent_collection: { // for non-tables
-;;    id: number;
-;;    name: string;
-;;    authority_level: "official" | null; // for collections
-;;  } | null;
-;;  database: { // for tables
-;;    id: number;
-;;    name: string; // display name
-;;  } | null;
-;;  authority_level: "official" | null; // for collections
-;;  moderated_status: "verified" | null; // for models
-;;}
-
-(let [defaults [:map
-                [:id [:int {:min 1}]]
-                [:name :string]
-                [:model [:enum :dataset :card :dashboard :collection :table]] ;; what is this exactly?
-                [:can_write :boolean]
-                [:timestamp :string]]
-      defaults+ (fn [& kvs]
-                  (-> (apply mu/map-schema-assoc defaults kvs)
-                      (mut/assoc :parent_collection [:map
-                                                     [:id [:or [:int {:min 1}] [:= "root"]]]
-                                                     [:name :string]
-                                                     [:authority_level [:enum "official" nil]]])
-                      mut/closed-schema))]
-  (def RecentItem
-    [:multi {:dispatch :model}
-     [:card (defaults+ :display :string)]
-     [:dataset (defaults+ :moderated_status [:enum "verified" nil])]
-     [:dashboard (defaults+)]
-     [:table (-> (defaults+ :database [:map [:id [:int {:min 1}]] [:name {:note "display name"} :string]])
-                 (mut/dissoc :parent_collection))]
-     [:collection (defaults+ :authority_level [:enum "official" nil])]]))
-
-
-
-(defmulti ^:private fill-recent-view-info
+(defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object."
   (fn [{:keys [model #_model_id #_timestamp]}]
     (keyword (if (= model :model) "dataset" model))))
@@ -251,12 +239,13 @@
                                               [:= :rc.id :rv.model_id]]]
                                  :order-by [[:rv.timestamp :desc]]}))
 
-(defn ^:private post-process [x]
-  (-> x
+(defn- post-process [recent-view]
+  (-> recent-view
       fill-recent-view-info
-      (assoc :model (some-> (or (:card_type x) (:model x)) keyword))
       (dissoc :card_type)
       (update :model model->return-model)))
 
-(defn get-views [user-id]
+(mu/defn get-list :- [:sequential RecentItem]
+  "Gets all recent views for a given user. Returns a list of at most 20 `RecentItem` maps per [[models-of-interest]]."
+  [user-id]
   (into [] (map post-process) (do-query user-id)))

@@ -119,7 +119,7 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  {:recent-views (recent-views/get-views *current-user-id*)})
+  {:recent-views (recent-views/get-list *current-user-id*)})
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
