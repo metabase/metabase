@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
@@ -203,15 +202,15 @@ const getTooltipFooterData = (
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const currentValue = datum[seriesModel.dataKey];
-  const currentDate = dayjs(parseTimestamp(datum[X_AXIS_DATA_KEY]));
+  const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
   const previousValue =
     chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
   if (previousValue == null) {
     return [];
   }
-  const previousDate = dayjs(
-    parseTimestamp(chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY]),
+  const previousDate = parseTimestamp(
+    chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
   );
 
   const isOneIntervalAgo =
