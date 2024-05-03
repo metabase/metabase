@@ -25,7 +25,8 @@ Features planned:
 
 ## Start Metabase
 
-You have a couple of options to start Metabase:
+Currently, the SDK only works with specific versions of Metabase.
+You have the following options:
 
 ### 1. Running on Docker
 Start the Metabase container:
