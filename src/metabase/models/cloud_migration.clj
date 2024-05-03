@@ -5,6 +5,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
@@ -47,12 +48,15 @@
   :doc        false
   :export?    false)
 
+(def ^:private read-only-mode-inclusions
+  (->> copy/entities (map t2/table-name) (into #{})))
+
 (def ^:private read-only-mode-exceptions
   (->> #{ ;; Migrations need to update their own state
          :model/CloudMigration :model/Setting
          ;; Users need to login, make queries, and we need need to audit them.
          :model/User :model/Session :model/LoginHistory
-         :model/QueryExecution :model/UserParameterValue
+         :model/UserParameterValue
          :model/AuditLog :model/ViewLog}
        ;; These exceptions use table name instead of model name because you can actually bypass the model
        ;; and write toucan2 functions that interact with table directly.
@@ -69,11 +73,13 @@
                                                  #_model          :default
                                                  #_resolved-query :default]
   [_query-type model _parsed-args resolved-query]
-  (when (and (read-only-mode)
-             (not (read-only-mode-exceptions (t2/table-name model)))
-             (not *ignore-read-only-mode*))
-    (throw (ex-info (tru "Metabase is in read-only-mode mode!")
-                    {:status-code 403})))
+  (let [table-name (t2/table-name model)]
+    (when (and (read-only-mode)
+               (read-only-mode-inclusions table-name)
+               (not (read-only-mode-exceptions table-name))
+               (not *ignore-read-only-mode*))
+      (throw (ex-info (tru "Metabase is in read-only-mode mode!")
+                      {:status-code 403}))))
   resolved-query)
 
 
