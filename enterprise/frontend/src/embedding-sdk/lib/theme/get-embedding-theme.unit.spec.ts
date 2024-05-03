@@ -5,7 +5,7 @@ describe("Transform Embedding Theme Override", () => {
     const theme = getEmbeddingThemeOverride({
       lineHeight: 1.5,
       fontSize: "2rem",
-      fontFamily: "Inter",
+      fontFamily: "Roboto",
       colors: {
         brand: "hotpink",
         "text-dark": "yellow",
@@ -13,10 +13,15 @@ describe("Transform Embedding Theme Override", () => {
       },
     });
 
-    expect(theme.lineHeight).toBe(1.5);
-    expect(theme.fontFamily).toBe("Inter");
-    expect(theme.fontSizes?.md).toBe("2rem");
-    expect(theme.colors?.["brand"]?.[0]).toBe("hotpink");
-    expect(theme.colors?.["text-dark"]?.[0]).toBe("yellow");
+    expect(theme).toEqual({
+      lineHeight: 1.5,
+      fontFamily: "Roboto",
+      fontSizes: { md: "2rem" },
+      colors: {
+        brand: expect.arrayContaining(["hotpink"]),
+        "text-dark": expect.arrayContaining(["yellow"]),
+        "text-light": expect.arrayContaining(["green"]),
+      },
+    });
   });
 });

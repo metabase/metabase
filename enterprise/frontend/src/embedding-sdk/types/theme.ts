@@ -1,5 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 
+import type { MetabaseFontFamily } from "./fonts";
+
 /**
  * Theme configuration for embedded Metabase components.
  */
@@ -7,8 +9,11 @@ export interface MetabaseTheme {
   /** Base font size */
   fontSize?: string;
 
-  /** Base font family */
-  fontFamily?: string;
+  /**
+   * Base font family supported by Metabase.
+   * Custom fonts are not yet supported in this version.
+   **/
+  fontFamily?: MetabaseFontFamily;
 
   /** Base line height */
   lineHeight?: string | number;
