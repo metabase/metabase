@@ -12,6 +12,6 @@ export const deletePermanently = createThunkAction(
   (entityDeleteAction: any) => async dispatch => {
     await dispatch(entityDeleteAction);
     dispatch(push(Urls.collection(TRASH_COLLECTION)));
-    dispatch(addUndo({ message: t`Item has been permanently deleted.` }));
+    dispatch(addUndo({ message: t`This item has been permanently deleted.` }));
   },
 );

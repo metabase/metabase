@@ -153,7 +153,7 @@ function ActionMenu({
 
   const handleDeletePermanently = useCallback(() => {
     dispatch(Search.actions.delete(item));
-    dispatch(addUndo({ message: t`Item has been permanently deleted.` }));
+    dispatch(addUndo({ message: t`This is has been permanently deleted.` }));
   }, [item, dispatch]);
 
   return (

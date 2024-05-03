@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
@@ -21,11 +21,11 @@ export const BulkDeleteConfirmModal = ({
         confirmButtonText={t`Delete permanently`}
         data-testid="leave-confirmation"
         message={t`This can't be undone.`}
-        title={
-          selectedItemCount > 1
-            ? t`Delete ${selectedItemCount} items permanently?`
-            : t`Delete item permanently?`
-        }
+        title={ngettext(
+          msgid`Delete item permanently?`,
+          `Delete ${selectedItemCount} items permanently?`,
+          selectedItemCount,
+        )}
         onAction={onBulkDeletePermanently}
         onCancel={onCloseModal}
         onClose={onCloseModal}

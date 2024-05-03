@@ -36,7 +36,7 @@ export const setArchivedDashboard = createThunkAction(
       }
 
       dispatch(
-        // @ts-expect-error rtk typings are wrong - function expects an arguement but TS errors saying it shouldn't have one
+        // @ts-expect-error Expected 0 arguments, but got 1. - rtk usaging in .js file is assuming wrong typing for function
         fetchDashboard({
           dashId: dashboardId,
           queryParam: null,
@@ -97,7 +97,7 @@ export const moveDashboardToCollection = createThunkAction(
       }
 
       dispatch(
-        // @ts-expect-error rtk typings are wrong - function expects an arguement but TS errors saying it shouldn't have one
+        // @ts-expect-error Expected 0 arguments, but got 1. - rtk usaging in .js file is assuming wrong typing for function
         fetchDashboard({
           dashId: id,
           queryParam: null,

@@ -119,11 +119,11 @@ describe("collection permissions", () => {
 
               describe("archive", () => {
                 it("should be able to archive/unarchive question (metabase#15253)", () => {
-                  archiveUnarchive("Orders", "question");
+                  archiveUnarchive("Orders");
                 });
 
                 it("should be able to archive/unarchive dashboard", () => {
-                  archiveUnarchive("Orders in a dashboard", "dashboard");
+                  archiveUnarchive("Orders in a dashboard");
                 });
 
                 it("should be able to archive/unarchive model", () => {
@@ -135,7 +135,7 @@ describe("collection permissions", () => {
                       query: "SELECT * FROM ORDERS",
                     },
                   });
-                  archiveUnarchive("Model", "model");
+                  archiveUnarchive("Model");
                 });
 
                 describe("archive page", () => {
@@ -146,7 +146,7 @@ describe("collection permissions", () => {
                       cy.findByText("Move to trash").click();
                     });
                     cy.findByTestId("toast-undo").within(() => {
-                      cy.findByText("Trashed question");
+                      cy.findByText("Orders has been moved to the trash.");
                       cy.icon("close").click();
                     });
                     navigationSidebar().within(() => {
@@ -204,7 +204,9 @@ describe("collection permissions", () => {
 
                     // While we're here, we can test unarchiving the collection as well
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                    cy.findByText("Trashed collection");
+                    cy.findByText(
+                      "Third collection has been moved to the trash.",
+                    );
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Undo").click();
 
@@ -290,14 +292,14 @@ describe("collection permissions", () => {
                   });
                 });
 
-                function archiveUnarchive(item, expectedEntityName) {
+                function archiveUnarchive(item) {
                   cy.visit("/collection/root");
                   openCollectionItemMenu(item);
                   popover().within(() => {
                     cy.findByText("Move to trash").click();
                   });
                   cy.findByText(item).should("not.exist");
-                  cy.findByText(`Trashed ${expectedEntityName}`);
+                  cy.findByText(`${item} has been moved to the trash.`);
                   cy.findByText("Undo").click();
                   cy.findByText(
                     "Sorry, you don’t have permission to see that.",

@@ -127,10 +127,11 @@ const BulkActions = ({
     dispatch(
       addUndo({
         icon: "check",
-        message:
-          selected.length > 1
-            ? t`${selected.length} items have been permanently deleted.`
-            : t`Item has been permanently deleted.`,
+        message: ngettext(
+          msgid`${selected.length} item has been permanently deleted.`,
+          `${selected.length} items have been permanently deleted.`,
+          selected.length,
+        ),
         undo: false,
         canDismiss: true,
       }),

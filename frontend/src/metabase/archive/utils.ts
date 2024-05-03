@@ -1,5 +1,5 @@
 import { merge } from "icepick";
-import { t } from "ttag";
+import { c } from "ttag";
 import _ from "underscore";
 
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -18,8 +18,12 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
 
 export function getTrashUndoMessage(name: string, archived: boolean): string {
   return archived
-    ? t`${name} has been moved to the trash.`
-    : t`${name} has been restored.`;
+    ? c(
+        "{0} is the name of the entity being trashed, e.g. My Awesome Dashboard",
+      ).t`${name} has been moved to the trash.`
+    : c(
+        "{0} is the name of the entity being restored from the trash, e.g. My Awesome Dashboard",
+      ).t`${name} has been restored.`;
 }
 
 export function undoSetArchived(

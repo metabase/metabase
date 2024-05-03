@@ -277,7 +277,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.findByTestId("archive-banner").should("exist");
 
                 undoToast().within(() => {
-                  cy.findByText("Trashed dashboard");
+                  cy.findByText(
+                    `${dashboardName} has been moved to the trash.`,
+                  );
+
                   cy.button("Undo").click();
                   assertOnRequest("updateDashboard");
                 });

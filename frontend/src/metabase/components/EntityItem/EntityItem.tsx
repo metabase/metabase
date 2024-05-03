@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   OnArchive,
@@ -157,7 +157,7 @@ function EntityItemMenu({
 
     if (onToggleBookmark) {
       result.push({
-        title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+        title: isBookmarked ? t`Remove from bookmarks` : c("Verb").t`Bookmark`,
         icon: "bookmark",
         action: onToggleBookmark,
       });
@@ -195,7 +195,7 @@ function EntityItemMenu({
 
     if (onCopy) {
       result.push({
-        title: t`Duplicate`,
+        title: c("Verb").t`Duplicate`,
         icon: "clone",
         action: onCopy,
       });

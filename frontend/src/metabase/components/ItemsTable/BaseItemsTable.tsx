@@ -1,5 +1,5 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   CreateBookmark,
@@ -204,14 +204,18 @@ export const BaseItemsTable = ({
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isTrashed ? t`Deleted by` : t`Last edited by`}
+              {isTrashed
+                ? c("Precedes the name of a user").t`Deleted by`
+                : t`Last edited by`}
             </SortableColumnHeader>
             <SortableColumnHeader
               name="last_edited_at"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {isTrashed ? t`Deleted at` : t`Last edited at`}
+              {isTrashed
+                ? c("Precedes the name of a user").t`Deleted at`
+                : t`Last edited at`}
             </SortableColumnHeader>
             <th></th>
           </tr>

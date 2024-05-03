@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
-import { Button, Flex, Icon, Paper, Text } from "metabase/ui";
+import { Button, Flex, FixedSizeIcon, Paper, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { DeleteConfirmModal } from "../DeleteConfirmModal";
@@ -41,13 +41,15 @@ export const ArchivedEntityBanner = ({
       >
         <Flex justify="space-between">
           <Flex align="center">
-            <Icon
+            <FixedSizeIcon
               color="white"
               name="trash_filled"
               style={{ marginInlineEnd: "1rem" }}
             />
             <Text color="white" size="md" lh="1rem">
-              {t`This ${entityType} is in the trash. `}
+              {c(
+                "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
+              ).t`This ${entityType} is in the trash.`}
             </Text>
           </Flex>
           {canWrite && (
@@ -59,12 +61,8 @@ export const ArchivedEntityBanner = ({
                   color="white"
                   onClick={onUnarchive}
                 >
-                  <Flex align="center">
-                    <Icon
-                      size={12}
-                      name="revert"
-                      style={{ marginInlineEnd: ".25rem" }}
-                    />{" "}
+                  <Flex align="center" gap="sm">
+                    <FixedSizeIcon size={12} name="revert" />
                     {t`Restore`}
                   </Flex>
                 </Button>
@@ -75,12 +73,8 @@ export const ArchivedEntityBanner = ({
                 color="white"
                 onClick={() => setModal("move")}
               >
-                <Flex align="center">
-                  <Icon
-                    size={12}
-                    name="move"
-                    style={{ marginInlineEnd: ".25rem" }}
-                  />{" "}
+                <Flex align="center" gap="sm">
+                  <FixedSizeIcon size={12} name="move" />
                   {t`Move`}
                 </Flex>
               </Button>
@@ -90,12 +84,8 @@ export const ArchivedEntityBanner = ({
                 color="white"
                 onClick={() => setModal("delete")}
               >
-                <Flex align="center">
-                  <Icon
-                    size={12}
-                    name="trash"
-                    style={{ marginInlineEnd: ".25rem" }}
-                  />{" "}
+                <Flex align="center" gap="sm">
+                  <FixedSizeIcon size={12} name="trash" />
                   {t`Delete permanently`}
                 </Flex>
               </Button>
