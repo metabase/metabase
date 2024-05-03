@@ -1,15 +1,9 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`.
 
-  There are 2 main jobs here:
-
-  1. `SendPulse` - in which it'll send a pulse to all channels that are scheduled to run at the same time.
-    For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
-    and send the pulse to both channels.
-
-  2. `RePrioritizeSendPulses` - is the coordinator job that has 2 responsibilities:
-    - Update the priority of SendPulse jobs that are scheduled at the same time so that fast pulses are executed first.
-    - Delete PulseChannels that don't have any recipients."
+  `SendPulse` job will send a pulse to all channels that are scheduled to run at the same time.
+  For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
+  and send the pulse to both channels. "
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
