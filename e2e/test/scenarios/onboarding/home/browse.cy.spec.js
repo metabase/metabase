@@ -23,7 +23,7 @@ describeWithSnowplow("scenarios > browse data", () => {
 
   it("can browse to a model", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" });
+    cy.findByRole("listitem", { name: "Browse models" }).click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByTestId("browse-app").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
@@ -34,6 +34,7 @@ describeWithSnowplow("scenarios > browse data", () => {
       model_id: ORDERS_MODEL_ID,
     });
   });
+
   it("can browse to a table", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
@@ -62,7 +63,7 @@ describeWithSnowplow("scenarios > browse data", () => {
   });
   it("/browse/models has no switch for controlling the 'only show verified models' filter, on an open-source instance", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("listitem", { name: "Browse models" }).click();
     cy.findByRole("switch", { name: /Only show verified models/ }).should(
       "not.exist",
     );
@@ -82,7 +83,7 @@ describeWithSnowplowEE("scenarios > browse data (EE)", () => {
       cy.findByRole("switch", { name: /Only show verified models/ });
     setTokenFeatures("all");
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("listitem", { name: "Browse models" }).click();
     cy.findByRole("heading", { name: "Our analytics" }).should("not.exist");
     cy.findByRole("heading", { name: "Orders Model" }).should("not.exist");
     toggle().next("label").click();
