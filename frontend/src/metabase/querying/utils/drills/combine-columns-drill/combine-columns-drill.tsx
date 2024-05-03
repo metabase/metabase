@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 import type {
   ClickActionPopoverProps,
   Drill,
@@ -23,6 +24,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
 
   const DrillPopover = ({
     onChangeCardAndRun,
+    onUpdateVisualizationSettings,
     onClose,
   }: ClickActionPopoverProps) => (
     <CombineColumnsDrill
@@ -33,8 +35,34 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
         const nextQuestion = question.setQuery(newQuery);
         const nextCard = nextQuestion.card();
 
+        const columns = Lib.returnedColumns(query, stageIndex);
+        const newColumns = Lib.returnedColumns(newQuery, -1);
+        const newColumn = newColumns.find(column => !columns.includes(column))!;
+        const info = Lib.displayInfo(newQuery, -1, newColumn);
+
+        const isLink = Lib.isURL(column);
+        if (isLink) {
+          // Hack: Build a custom ref because getColumnKey doesn ot work for Lib.ColumnMetadata
+          const ref = JSON.stringify(["ref", ["expression", info.displayName]]);
+
+          // Merge the setting into settings
+          nextCard.visualization_settings = updateSettings(
+            nextCard.visualization_settings,
+            {
+              column_settings: {
+                [ref]: { view_as: "link" },
+              },
+            },
+          );
+        }
+
         trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
         onChangeCardAndRun({ nextCard });
+
+        // The above setting does not work so can we update it manually?
+        // This also seems to do nothing
+        onUpdateVisualizationSettings(nextCard.visualization_settings);
+
         onClose();
       }}
     />
