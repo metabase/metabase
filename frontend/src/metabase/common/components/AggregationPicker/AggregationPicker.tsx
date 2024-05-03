@@ -301,7 +301,15 @@ function isExpressionEditorInitiallyOpen(
   operators: Lib.AggregationOperator[],
 ): boolean {
   if (!clause) {
-    return false;
+    const metrics = Lib.availableMetrics(query, stageIndex);
+    const metricsInfo = metrics.map(metric =>
+      Lib.displayInfo(query, stageIndex, metric),
+    );
+    return (
+      Lib.isMetricBased(query, stageIndex) &&
+      metrics.length > 0 &&
+      metricsInfo.every(metricInfo => metricInfo.selected)
+    );
   }
 
   const initialOperator = getInitialOperator(query, stageIndex, operators);
