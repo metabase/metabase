@@ -25,6 +25,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.upload :as upload]
+   [metabase.upload.internal :as upload.internal]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
@@ -110,7 +111,7 @@
         table (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*auxiliary-sync-steps* :synchronous]
-      (#'upload/scan-and-sync-table! database table))
+      (#'upload.internal/scan-and-sync-table! database table))
     (t2/select-one :model/Table (:id table))))
 
 (defn csv-file-with
@@ -129,7 +130,7 @@
 
 (defn- with-ai-id
   [column-definitions]
-  {:generated-columns {@#'upload/auto-pk-column-keyword auto-pk-type}
+  {:generated-columns {@#'upload.internal/auto-pk-column-keyword auto-pk-type}
    :extant-columns    column-definitions})
 
 (defn- detect-schema-with-csv-rows
@@ -137,7 +138,7 @@
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
     (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
+      (#'upload.internal/detect-schema (upload-parsing/get-settings) header rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -264,12 +265,12 @@
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
-      (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
+      (is (=? #"my_file_name_\d+" (@#'upload.internal/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+      (is (nil? (re-find #";" (@#'upload.internal/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
     (testing "No collisions"
       (let [n 50
-            names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
+            names (repeatedly n (partial #'upload.internal/unique-table-name driver/*driver* ""))]
         (is (= 50 (count (distinct names))))))))
 
 (defn last-audit-event [topic]
@@ -291,7 +292,7 @@
   (let [schema (sql.tx/session-schema driver/*driver*)
         db     (t2/select-one :model/Database (mt/id))]
     (binding [upload/*auxiliary-sync-steps* auxiliary-sync-steps]
-      (:table (#'upload/create-from-csv-and-sync! {:db         db
+      (:table (#'upload.internal/create-from-csv-and-sync! {:db         db
                                                    :file       file
                                                    :schema     schema
                                                    :table-name table-name})))))
@@ -352,7 +353,7 @@
          (when (not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
            (driver/drop-table! driver/*driver*
                                (:db_id table)
-                               (#'upload/table-identifier table))))))
+                               (#'upload.internal/table-identifier table))))))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))
@@ -550,7 +551,7 @@
               ;; Ensure the name is unique as table names can collide when using redshift
               long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
               short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
-              table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
+              table-name   (u/upper-case-en (@#'upload.internal/unique-table-name driver/*driver* long-name))]
           (is (pos? length-limit) "driver/table-name-length-limit has been set")
           (with-upload-table!
             [table (create-from-csv-and-sync-with-defaults!
@@ -577,7 +578,7 @@
                                       "1,Serenity,Malcolm Reynolds"
                                       "2,Millennium Falcon, Han Solo"]))]
         (testing "Check the data was uploaded into the table correctly"
-          (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
+          (is (= [@#'upload.internal/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                  (column-names-for-table table))))))))
 
 (deftest create-from-csv-duplicate-names-test
@@ -591,7 +592,7 @@
                                         "2,Millennium Falcon, Han Solo,Blaster"]))]
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
-              (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
+              (is (= [@#'upload.internal/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                      (column-names-for-table table))))))))))
 
 (deftest create-from-csv-sanitize-to-duplicate-names-test
@@ -604,7 +605,7 @@
                                        "$123,12.3, 100"]))]
          (testing "Table and Fields exist after sync"
            (testing "Check the data was uploaded into the table correctly"
-             (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
+             (is (= [@#'upload.internal/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                     (column-names-for-table table))))))))))
 
 (deftest create-from-csv-bool-and-int-test
@@ -639,7 +640,7 @@
                                           "9000000000,Razor Crest,Din Djarin,Spear"])
                     :auxiliary-sync-steps :synchronous))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
+            (is (= [@#'upload.internal/auto-pk-column-name "id" "ship" "name" "weapon"]
                    (column-names-for-table table)))
             (is (=? {:name                       #"(?i)id"
                      :semantic_type              :type/PK
@@ -702,7 +703,7 @@
                                         "2"
                                         "  ,\n"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
+            (is (= [@#'upload.internal/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
                    (column-names-for-table table)))
             (is (= [[1 2 nil]
                     [2 nil nil]]
@@ -718,7 +719,7 @@
                                         "Serenity,Malcolm\tReynolds"
                                         "Millennium\tFalcon,Han\tSolo"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name "ship", "captain"]
+            (is (= [@#'upload.internal/auto-pk-column-name "ship", "captain"]
                    (column-names-for-table table)))
             (is (= [[1 "Serenity" "Malcolm\tReynolds"]
                     [2 "Millennium\tFalcon" "Han\tSolo"]]
@@ -734,7 +735,7 @@
                                         "Serenity,\"Malcolm\rReynolds\""
                                         "\"Millennium\rFalcon\",\"Han\rSolo\""]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
+            (is (= [@#'upload.internal/auto-pk-column-name, "ship", "captain"]
                    (column-names-for-table table)))
             (is (= [[1 "Serenity" "Malcolm\rReynolds"]
                     [2 "Millennium\rFalcon" "Han\rSolo"]]
@@ -752,7 +753,7 @@
                                        "star-wars"
                                        (partial bom/bom-writer "UTF-8")))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
+            (is (= [@#'upload.internal/auto-pk-column-name, "ship", "captain"]
                    (column-names-for-table table)))))))))
 
 (deftest create-from-csv-injection-test
@@ -766,7 +767,7 @@
                                         "2,;Millennium Falcon,Han Solo\""]
                                        "\"; -- Very rude filename"))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name "id_integer_____" "ship" "captain"]
+            (is (= [@#'upload.internal/auto-pk-column-name "id_integer_____" "ship" "captain"]
                    (column-names-for-table table)))
             (is (= [[1 1 "Serenity"           "--Malcolm Reynolds"]
                     [2 2 ";Millennium Falcon" "Han Solo\""]]
@@ -902,7 +903,7 @@
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
         (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-          (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+          (mt/with-dynamic-redefs [upload.internal/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
@@ -1014,9 +1015,9 @@
         db-id (mt/id)
         table-name (ddl.i/format-name driver table-name)
         schema-name (ddl.i/format-name driver schema-name)
-        schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
+        schema+table-name (#'upload.internal/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col-definitions (#'upload/column-definitions driver col->upload-type)]
+        col-definitions (#'upload.internal/column-definitions driver col->upload-type)]
     (driver/create-table! driver/*driver*
                           db-id
                           schema+table-name
@@ -1089,7 +1090,7 @@
                  (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
-                                       (#'upload/table-identifier new-table))))))))))
+                                       (#'upload.internal/table-identifier new-table))))))))))
 
 (deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1378,7 +1379,7 @@
                (io/delete-file file)))
 
            (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+             (mt/with-dynamic-redefs [upload.internal/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                      file     (csv-file-with csv-rows (mt/random-name))]
                  (try
