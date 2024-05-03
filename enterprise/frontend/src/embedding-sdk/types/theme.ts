@@ -7,6 +7,9 @@ export interface MetabaseTheme {
   /** Base font size */
   fontSize?: string;
 
+  /** Base font family */
+  fontFamily?: string;
+
   /** Base line height */
   lineHeight?: string | number;
 

@@ -17,6 +17,7 @@ export function getEmbeddingThemeOverride(
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
     ...(theme.components && { other: theme.components }),
     ...(theme.fontSize && { fontSizes: { md: theme.fontSize } }),
+    ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
   };
 
   if (theme.colors) {
