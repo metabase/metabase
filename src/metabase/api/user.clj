@@ -188,13 +188,13 @@
   {status              [:maybe :string]
    query               [:maybe :string]
    group_id            [:maybe ms/PositiveInt]
-   include_deactivated [:maybe ms/BooleanString]}
+   include_deactivated [:maybe ms/BooleanValue]}
   (or
    api/*is-superuser?*
    (if group_id
      (validation/check-manager-of-group group_id)
      (validation/check-group-manager)))
-  (let [include_deactivated (Boolean/parseBoolean include_deactivated)
+  (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select

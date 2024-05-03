@@ -42,6 +42,7 @@ import {
 import {
   getAutoApplyFiltersToastId,
   getDashboard,
+  getDashboardBeforeEditing,
   getDashboardId,
   getDashCardById,
   getDashcards,
@@ -49,6 +50,7 @@ import {
   getIsAutoApplyFilters,
   getParameters,
   getParameterValues,
+  getParameterMappingsBeforeEditing,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -196,7 +198,7 @@ export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameterId: ParameterId) => {
+  (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
 
@@ -206,9 +208,9 @@ export const resetParameterMapping = createThunkAction(
 
       const allDashcards = getDashcards(getState());
 
-      const dashcards = dashboard.dashcards.map(
-        dashcardId => allDashcards[dashcardId],
-      );
+      const dashcards = dashcardId
+        ? [allDashcards[dashcardId]]
+        : dashboard.dashcards.map(dashcardId => allDashcards[dashcardId]);
 
       for (const dashcard of dashcards) {
         if (!dashcard.parameter_mappings?.length) {
@@ -282,19 +284,85 @@ export const setParameterType = createThunkAction(
         return;
       }
 
+      let haveRestoredParameterMappingsToPristine = false;
+
       if (parameter.sectionId !== sectionId) {
         // reset all mappings if type has changed,
-        // but do not reset when only operator has changed
+        // operator change resets mappings in some cases as well
         dispatch(resetParameterMapping(parameterId));
+
+        haveRestoredParameterMappingsToPristine =
+          restoreParameterMappingsIfNeeded(
+            getState,
+            dispatch,
+            parameterId,
+            sectionId,
+          );
       }
 
-      updateParameter(dispatch, getState, parameterId, parameter =>
-        setParamType(parameter, type, sectionId),
-      );
+      if (!haveRestoredParameterMappingsToPristine) {
+        // update to default
+        updateParameter(dispatch, getState, parameterId, parameter =>
+          setParamType(parameter, type, sectionId),
+        );
+      }
 
       return { id: parameterId, type };
     },
 );
+
+function restoreParameterMappingsIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  // check here if the parameter type is pristine and if so, change operator to
+  // the saved and not to default
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const parameterToRestore = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
+
+  if (!parameterToRestore) {
+    return false;
+  }
+
+  if (sectionId !== parameterToRestore.sectionId) {
+    return false;
+  }
+
+  // restore parameter state
+  updateParameter(dispatch, getState, parameterId, () =>
+    setParamType(parameterToRestore, parameterToRestore.type, sectionId),
+  );
+
+  const parameterMappingsBeforeEditing = getParameterMappingsBeforeEditing(
+    getState(),
+  );
+  const parameterMappings = parameterMappingsBeforeEditing[parameterId];
+
+  if (!parameterMappings) {
+    return false;
+  }
+
+  // restore parameter mappings
+  Object.entries(parameterMappings).forEach(([dashcardId, mappings]) => {
+    const { card_id, target } = mappings;
+
+    dispatch(
+      setParameterMapping(parameterId, Number(dashcardId), card_id, target),
+    );
+  });
+
+  return true;
+}
 
 export const setParameterFilteringParameters = createThunkAction(
   SET_PARAMETER_NAME,

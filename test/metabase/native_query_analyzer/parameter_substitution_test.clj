@@ -22,6 +22,10 @@
      "created"       {:type         :date
                       :display-name "Genesis"
                       :name         "created"}
+     ;; Time granularity
+     "time_unit"     {:type         :temporal-unit
+                      :display-name "Unit"
+                      :name         "time_unit"}
      ;; Field Filters: Dates
      "created_range" {:type         :dimension,
                       :name         "created_range"
@@ -166,6 +170,11 @@
          (->sql (mt/native-query {:template-tags (tags "num_between")
                                   :query         "SELECT * FROM orders WHERE {{num_between}}"})))))
 
+(deftest optional-field-filter-test
+    (is (= "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"TOTAL\" BETWEEN 1 AND 2 AND (\"PUBLIC\".\"ORDERS\".\"TOTAL\" = 1)"
+         (->sql (mt/native-query {:template-tags (tags "num_between" "num_eq")
+                                  :query         "SELECT * FROM orders WHERE {{num_between}} [[AND {{num_eq}}]]"})))))
+
 (deftest field-filter-string-test
   (is (= "SELECT * FROM people WHERE ((\"PUBLIC\".\"PEOPLE\".\"NAME\" <> ?) OR (\"PUBLIC\".\"PEOPLE\".\"NAME\" IS NULL))"
          (->sql (mt/native-query {:template-tags (tags "str_not_eq")
@@ -202,6 +211,8 @@
                     :id
                     :category
                     :boolean
+                    ;; no valid default for temporal-unit
+                    :temporal-unit
                     ;; no longer in use
                     :location/city
                     :location/state

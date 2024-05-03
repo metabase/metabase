@@ -1,7 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure
-   :exclude
-   [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -9,7 +7,6 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -17,6 +14,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -28,7 +26,7 @@
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
-  [metadata :- lib.metadata/ColumnMetadata]
+  [metadata :- ::lib.schema.metadata/column]
   (let [options {:lib/uuid       (str (random-uuid))
                  :base-type      (:base-type metadata)
                  :effective-type ((some-fn :effective-type :base-type) metadata)}]
@@ -245,7 +243,7 @@
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
 ;; Kondo gets confused
-#_{:clj-kondo/ignore [:unresolved-namespace]}
+#_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
 (lib.common/defop case [x y & more])
 (lib.common/defop coalesce [x y & more])
@@ -285,8 +283,15 @@
 (lib.common/defop rtrim [s])
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
+(lib.common/defop host [s])
+(lib.common/defop domain [s])
+(lib.common/defop subdomain [s])
+(lib.common/defop month-name [n])
+(lib.common/defop quarter-name [n])
+(lib.common/defop day-name [n])
+(lib.common/defop offset [x n])
 
-(mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]
@@ -296,7 +301,7 @@
                :name         expression-name
                :display-name expression-name))))
 
-(mu/defn expressions-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
    (expressions-metadata query -1))
@@ -319,7 +324,7 @@
   [expression-clause]
   expression-clause)
 
-(mu/defn expressionable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn expressionable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be used expressions in
   the stage number `stage-number` of the query `query` and in expression index `expression-position`
   If `stage-number` is omitted, the last stage is used.

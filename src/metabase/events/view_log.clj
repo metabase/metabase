@@ -47,6 +47,19 @@
       (catch Throwable e
         (log/warnf e "Failed to process view_log event. %s" topic)))))
 
+(derive ::collection-read-event :metabase/event)
+(derive :event/collection-read ::collection-read-event)
+
+(m/defmethod events/publish-event! ::collection-read-event
+  "Handle processing for a generic read event notification"
+  [topic event]
+  (try
+    (-> event
+        generate-view
+        record-views!)
+    (catch Throwable e
+      (log/warnf e "Failed to process view_log event. %s" topic))))
+
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
 

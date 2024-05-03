@@ -14,6 +14,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import {
   extractRemappings,
@@ -55,6 +56,7 @@ const defaultProps = {
   isEditing: false,
   isSettings: false,
   isQueryBuilder: false,
+  isEmbeddingSdk: false,
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -65,6 +67,7 @@ const defaultProps = {
 const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
+  isEmbeddingSdk: getIsEmbeddingSdk(state),
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -223,10 +226,13 @@ class Visualization extends PureComponent {
       metadata,
       isRawTable,
       getExtraDataForClick = () => ({}),
+      rawSeries,
     } = this.props;
 
-    const seriesIndex = clicked.seriesIndex || 0;
-    const card = this.state.series[seriesIndex].card;
+    const card =
+      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries[0].card;
+
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
@@ -294,16 +300,12 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({
-    nextCard,
-    seriesIndex,
-    objectId,
-    settingsSyncOptions,
-  }) => {
-    const { series, clicked } = this.state;
+  handleOnChangeCardAndRun = ({ nextCard, objectId, settingsSyncOptions }) => {
+    const { rawSeries } = this.props;
 
-    const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-    const previousCard = series && series[index] && series[index].card;
+    const previousCard =
+      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries[0].card;
 
     this.props.onChangeCardAndRun({
       nextCard,

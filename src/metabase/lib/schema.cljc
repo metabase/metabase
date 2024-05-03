@@ -18,6 +18,7 @@
    [metabase.lib.schema.expression.conditional]
    [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.info :as info]
@@ -35,6 +36,7 @@
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
+         metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.native

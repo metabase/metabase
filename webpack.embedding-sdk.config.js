@@ -7,9 +7,9 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
+const { resolve } = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
@@ -64,7 +64,7 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(svg|png|eot|woff2?|ttf)$/,
+          test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
@@ -140,7 +140,7 @@ module.exports = env => {
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
         typescript: {
-          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
           mode: "write-dts",
           memoryLimit: 4096,
         },
@@ -161,7 +161,7 @@ module.exports = env => {
   };
 
   if (config.cache) {
-    config.cache.cacheDirectory = path.resolve(
+    config.cache.cacheDirectory = resolve(
       __dirname,
       "node_modules/.cache/",
       "webpack-ee",

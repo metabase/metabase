@@ -127,7 +127,7 @@ function DatabasesPermissionsPage({
 
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
-    permissionEditor.hasLegacyNoSelfServiceValueInPermissionGraph;
+    !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
 
   return (
     <Fragment>

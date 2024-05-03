@@ -230,13 +230,6 @@
      [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
     (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
-(def BooleanString
-  "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Defendpoint uses this to coerce the value for this schema to a boolean."
-  (mu/with-api-error-message
-    [:enum "true" "false" "TRUE" "FALSE"]
-    (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
-
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message

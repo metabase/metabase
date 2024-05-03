@@ -13,9 +13,11 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -119,6 +121,8 @@
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
+ [lib.drill-thru.column-extract
+  extractions-for-drill]
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
@@ -171,7 +175,12 @@
   ltrim
   rtrim
   upper
-  lower]
+  lower
+  offset]
+ [lib.extraction
+  column-extractions
+  extract
+  extraction-expression]
  [lib.fe-util
   dependent-metadata
   expression-clause
