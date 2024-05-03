@@ -45,7 +45,7 @@
   "UTC")
 
 (defmethod driver/db-start-of-week :druid-jdbc
-  [_]
+  [_driver]
   :monday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :druid-jdbc
@@ -69,7 +69,7 @@
 
 ;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/OTHER]
-  [_driver ^ResultSet rs _ ^Long i]
+  [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn []
     (let [o (.getObject rs i)]
       (cond-> o
@@ -98,11 +98,11 @@
 (defmethod sql.qp/date [:druid-jdbc :quarter-of-year] [_ _ expr] (time-extract :quarter expr))
 
 (defmethod sql.qp/current-datetime-honeysql-form :druid-jdbc
-  [_]
+  [_driver]
   [:raw "CURRENT_TIMESTAMP"])
 
 (defmethod sql.qp/add-interval-honeysql-form :druid-jdbc
-  [_ hsql-form amount unit]
+  [_driver hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
 
 (defmethod sql-jdbc.conn/data-source-name :druid-jdbc
