@@ -47,7 +47,7 @@ export const EmbedHomepage = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
-  const utmTags = `?utm_source=${plan}&utm_media=embedding-homepage`;
+  const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embedding-homepage`;
 
   const initialTab = useMemo(() => {
     // we want to show the interactive tab for EE builds
