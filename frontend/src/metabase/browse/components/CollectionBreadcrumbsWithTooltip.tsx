@@ -21,7 +21,7 @@ import type { RefProp } from "./types";
 import { getBreadcrumbMaxWidths } from "./utils";
 
 const separatorCharacter = c(
-  "Character that separates the names of collections in a path, as in 'Europe / Belgium / Antwerp' or 'Products / Prototypes / Alice's Prototypes'",
+  "Character that separates the names of collections in a path, as in Europe / Belgium / Antwerp",
 ).t`/`;
 
 export const CollectionBreadcrumbsWithTooltip = ({
