@@ -1,5 +1,8 @@
 import type { MantineThemeOverride } from "@mantine/core";
 
+/**
+ * Theme configuration for embedded Metabase components.
+ */
 export interface MetabaseTheme {
   /** Base font size */
   fontSize?: string;
@@ -28,9 +31,10 @@ export interface MetabaseColors {
 export type MetabaseColor = keyof MetabaseColors;
 
 /**
- * Theme options for Metabase components and visualizations.
+ * Theme options for customizing specific Metabase
+ * components and visualizations.
  */
-interface MetabaseComponentTheme {}
+export interface MetabaseComponentTheme {}
 
 /**
  * Mantine theme overrides with theme options specific to React embedding.
