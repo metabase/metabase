@@ -23,7 +23,12 @@ describeWithSnowplow("scenarios > browse data", () => {
 
   it("can browse to a model", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("listitem", { name: "Browse data" })
+      .click()
+      .then(null, () => {
+        cy.findByRole("heading", { name: "Browse" }).click();
+        cy.findByRole("listitem", { name: "Browse data" }).click();
+      });
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByTestId("browse-app").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
