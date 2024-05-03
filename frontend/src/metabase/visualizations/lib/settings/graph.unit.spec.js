@@ -6,7 +6,11 @@ import {
   createMockColumn,
 } from "metabase-types/api/mocks";
 
-import { STACKABLE_SETTINGS, getDefaultDimensionLabel } from "./graph";
+import {
+  STACKABLE_SETTINGS,
+  GRAPH_AXIS_SETTINGS,
+  getDefaultDimensionLabel,
+} from "./graph";
 
 describe("STACKABLE_SETTINGS", () => {
   describe("stackable.stack_type", () => {
@@ -88,5 +92,105 @@ describe("getDefaultDimensionLabel", () => {
       ),
     ]);
     expect(label).toBe("foo");
+  });
+});
+
+describe("GRAPH_AXIS_SETTINGS", () => {
+  describe("graph.y_axis.unpin_from_zero", () => {
+    it.each([
+      {
+        display: "scatter",
+        expectedHidden: false,
+      },
+      {
+        display: "line",
+        expectedHidden: false,
+      },
+      {
+        display: "area",
+        expectedHidden: true,
+      },
+      {
+        display: "bar",
+        expectedHidden: true,
+      },
+      {
+        display: "combo",
+        expectedHidden: false,
+      },
+      {
+        display: "waterfall",
+        expectedHidden: true,
+      },
+    ])(
+      "should be visible on all display types except waterfall",
+      ({ display, expectedHidden }) => {
+        const isHidden = GRAPH_AXIS_SETTINGS[
+          "graph.y_axis.unpin_from_zero"
+        ].getHidden([{ card: { display } }], {
+          "graph.metrics": ["foo"],
+          "graph.dimensions": ["bar"],
+          "graph.y_axis.auto_range": true,
+          series: () => ({ display }),
+        });
+        expect(isHidden).toBe(expectedHidden);
+      },
+    );
+
+    it("should be hidden when auto_range is disabled", () => {
+      const isHidden = GRAPH_AXIS_SETTINGS[
+        "graph.y_axis.unpin_from_zero"
+      ].getHidden([{ card: { display: "line" } }], {
+        "graph.metrics": ["foo"],
+        "graph.dimensions": ["bar"],
+        "graph.y_axis.auto_range": false,
+        series: () => ({ display: "line" }),
+      });
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden when line visualization has overriding series display settings", () => {
+      const isHidden = GRAPH_AXIS_SETTINGS[
+        "graph.y_axis.unpin_from_zero"
+      ].getHidden([{ card: { display: "line" } }], {
+        "graph.metrics": ["foo"],
+        "graph.dimensions": ["bar"],
+        "graph.y_axis.auto_range": false,
+        series: () => ({ display: "bar" }),
+      });
+      expect(isHidden).toBe(true);
+    });
+
+    it.each([
+      {
+        display: "scatter",
+        expectedDefault: true,
+      },
+      {
+        display: "line",
+        expectedDefault: false,
+      },
+      {
+        display: "bar",
+        expectedDefault: false,
+      },
+      {
+        display: "combo",
+        expectedDefault: false,
+      },
+    ])(
+      "should be enabled by default on scatter charts",
+      ({ display, expectedDefault }) => {
+        const isEnabled = GRAPH_AXIS_SETTINGS[
+          "graph.y_axis.unpin_from_zero"
+        ].getDefault([{ card: { display } }], {
+          "graph.metrics": ["foo"],
+          "graph.dimensions": ["bar"],
+          "graph.y_axis.auto_range": true,
+          series: () => ({ display }),
+        });
+        expect(isEnabled).toBe(expectedDefault);
+      },
+    );
   });
 });

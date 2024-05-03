@@ -41,27 +41,26 @@
   - `pivotTypes` function that return available column types for the drill - \"category\" | \"location\" | \"time\"
 
   - `pivotColumnsForType` returns the list of available columns for the drill and the selected type"
-
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private pivot-drill-pred :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private pivot-drill-pred :- [:sequential ::lib.schema.metadata/column]
   "Implementation for pivoting on various kinds of fields.
 
   Don't call this directly; call [[pivot-drill]]."
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context
-   field-pred             :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
+   field-pred             :- [:=> [:cat [:schema ::lib.schema.metadata/column]] boolean?]]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value)
@@ -154,7 +153,7 @@
                   [:map [:type [:= :drill-thru/pivot]]]]]
   (-> drill-thru :pivots keys sort))
 
-(mu/defn pivot-columns-for-type :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn pivot-columns-for-type :- [:sequential ::lib.schema.metadata/column]
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
   [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
                   [:map [:type [:= :drill-thru/pivot]]]]

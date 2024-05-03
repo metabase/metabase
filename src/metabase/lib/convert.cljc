@@ -139,7 +139,7 @@
   Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
   aliases and truncate them or anything like that."
   [joins]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util/unique-name-generator nil)]
     (mapv (fn [join]
             (cond-> join
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
@@ -154,23 +154,27 @@
         (dissoc :source-table))
     stage))
 
+(defn do-with-aggregation-list
+  "Impl for [[with-aggregation-list]]."
+  [aggregations thunk]
+  (let [legacy->pMBQL (into {}
+                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                           [idx ag-uuid]))
+                            aggregations)
+        pMBQL->legacy (into {}
+                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                           [ag-uuid idx]))
+                            aggregations)]
+    (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL
+              *pMBQL-uuid->legacy-index* pMBQL->legacy]
+      (thunk))))
+
 #?(:clj
    (defmacro with-aggregation-list
      "Macro for capturing the context of a query stage's `:aggregation` list, so any legacy `[:aggregation 0]` indexed
      refs can be converted correctly to UUID-based pMBQL refs."
      [aggregations & body]
-     `(let [aggregations#  ~aggregations
-            legacy->pMBQL# (into {}
-                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
-                                                [~'idx ~'ag-uuid]))
-                                 aggregations#)
-            pMBQL->legacy# (into {}
-                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
-                                                [~'ag-uuid ~'idx]))
-                                 aggregations#)]
-        (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL#
-                  *pMBQL-uuid->legacy-index* pMBQL->legacy#]
-          ~@body))))
+     `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
@@ -291,6 +295,19 @@
   [[tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
   [tag opts (->pMBQL expr) n])
+
+;; These four expressions have a different form depending on the number of arguments.
+(doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
+  (lib.hierarchy/derive tag ::string-comparison))
+
+(defmethod ->pMBQL ::string-comparison
+  [[tag opts & args :as clause]]
+  (if (> (count args) 2)
+    ;; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    (lib.options/ensure-uuid (into [tag opts] (map ->pMBQL args)))
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [[tag x y opts] clause]
+      (lib.options/ensure-uuid [tag (or opts {}) (->pMBQL x) (->pMBQL y)]))))
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
@@ -476,6 +493,15 @@
   [[tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
   [tag opts (->legacy-MBQL expr) n])
+
+(defmethod ->legacy-MBQL ::string-comparison
+  [[tag opts & args]]
+  (if (> (count args) 2)
+    (into [tag (disqualify opts)] (map ->legacy-MBQL args)) ; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
+    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
+    (let [opts (disqualify opts)]
+      (cond-> (into [tag] (map ->legacy-MBQL args))
+        (seq opts) (conj opts)))))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

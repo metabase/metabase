@@ -192,10 +192,10 @@
                       ;; the timezone that they were inserted in
                       ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:h2 :sqlserver :snowflake :oracle) 5
+                                         (:h2 :sqlserver :oracle) 5
                                          2)
                       :get-minute      (case driver/*driver*
-                                         (:h2 :sqlserver :snowflake :oracle) 19
+                                         (:h2 :sqlserver :oracle) 19
                                          49)
                       :get-second      9}
                      {:get-year        2003

@@ -867,10 +867,6 @@
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query
             (is (= [(cond
-                      ;; TIMEZONE FIXME — Busted
-                      (= driver/*driver* :vertica)
-                      "2018-04-17T00:00:00-07:00"
-
                       (qp.test-util/supports-report-timezone? driver/*driver*)
                       "2018-04-18T00:00:00-07:00"
 
