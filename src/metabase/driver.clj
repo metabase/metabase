@@ -751,15 +751,31 @@
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
-  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release ALL related resources when this is called."
+  "Notify the driver that the attributes of a `database` have changed. This is specifically relevant in the event that
+  the driver was doing some caching or connection pooling; the driver should check whether connection details have
+  changed in a relevant way and purge connection pools if needed."
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod notify-database-updated ::driver [_ _]
+(defmethod notify-database-updated ::driver
+  [_driver _database]
   nil) ; no-op
+
+(defmulti notify-database-will-be-deleted!
+  "Notify the driver that `database` is about to be deleted permanently. The driver should release any cached resources
+  or connection pools associated with the Database.
+
+  Prior to 0.50.0, [[notify-database-updated]] was called whenever a Database was updated *or* deleted. Thus the
+  default implementation of this calls [[notify-database-updated]] for backward compatibility. You can implement this
+  method separately if you want different behavior in the two situations."
+  {:added "0.50.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod notify-database-will-be-deleted! ::driver
+  [driver database]
+  (notify-database-updated driver database))
 
 (defmulti sync-in-context
   "Drivers may provide this function if they need to do special setup before a sync operation such as

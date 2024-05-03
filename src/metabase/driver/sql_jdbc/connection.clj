@@ -215,7 +215,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   (swap! database-id->jdbc-spec-hash assoc database-id (jdbc-spec-hash database))
   nil)
 
-(defn- invalidate-pool-for-db!
+(defn invalidate-pool-for-db!
   "Invalidates the connection pool for the given database by closing it and removing it from the cache."
   [database]
   (set-pool! (u/the-id database) nil nil))

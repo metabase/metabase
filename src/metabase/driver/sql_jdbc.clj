@@ -81,6 +81,10 @@
   [_driver database]
   (sql-jdbc.conn/invalidate-pool-for-db-if-needed! database))
 
+(defmethod driver/notify-database-will-be-deleted! :sql-jdbc
+  [_driver database]
+  (sql-jdbc.conn/invalidate-pool-for-db! database))
+
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))

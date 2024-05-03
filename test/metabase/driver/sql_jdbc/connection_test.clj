@@ -79,7 +79,7 @@
                    (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
                                   (u/id database)))))
                (testing "and is no longer in our connection map after cleanup"
-                 (driver/notify-database-updated :h2 database)
+                 (driver/notify-database-will-be-deleted! :h2 database)
                  (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
                                      (u/id database)))))
                (testing "the pool has been destroyed"
@@ -135,7 +135,7 @@
                                        (swap! hash-change-called-times inc)
                                        nil)]
         (try
-          (#'sql-jdbc.conn/invalidate-pool-for-db! db)
+          (sql-jdbc.conn/invalidate-pool-for-db! db)
           ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
