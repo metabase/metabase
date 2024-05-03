@@ -2,6 +2,8 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.string :as str]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -72,7 +74,8 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)]
+  (let [database (instance->metadata database :metadata/database)
+        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 

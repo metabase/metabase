@@ -297,6 +297,22 @@
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::database.methods.escape-alias
+  "MLv2 wrapper around [[metabase.driver/escape-alias]]. Note that this doesn't take `driver` as an argument. It has the
+  signature
+
+    (escape-alias string) => string"
+  [:=> [:cat :string] :string])
+
+(mr/def ::database.methods
+  "A map of wrappers around [[metabase.driver]] methods that we may need to use inside MLv2 such
+  as [[metabase.driver/escape-alias]], so we can decouple the driver interface from MLv2. Since driver methods are
+  Clojure-only, we should only expect these to be bound in Clojure-land usage (e.g. the QP) and not in Cljs usage.
+  MetadataProviders can pass these methods in as part of the database under the `:lib/methods` key. See the
+  `:metabase.lib.schema.metadata/database.methods` schema for more info."
+  [:map
+   [:escape-alias {:optional true} [:ref ::database.methods.escape-alias]]])
+
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
@@ -311,7 +327,8 @@
    [:engine       {:optional true} :keyword]
    [:features     {:optional true} [:set :keyword]]
    [:is-audit     {:optional true} :boolean]
-   [:settings     {:optional true} [:maybe :map]]])
+   [:settings     {:optional true} [:maybe :map]]
+   [:lib/methods  {:optional true} [:maybe [:ref ::database.methods]]]])
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."

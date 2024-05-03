@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata.invocation-tracker
   (:require
+   #?(:clj [pretty.core :as pretty])
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (def ^:private ^:dynamic *to-track-metadata-types*
@@ -58,7 +59,12 @@
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? InvocationTracker another)
-         (= metadata-provider (.metadata-provider ^InvocationTracker another)))))
+         (= metadata-provider (.metadata-provider ^InvocationTracker another))))
+
+  #?@(:clj
+      [pretty/PrettyPrintable
+       (pretty [_this]
+         (list `invocation-tracker-provider metadata-provider))]))
 
 (defn invocation-tracker-provider
   "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."
