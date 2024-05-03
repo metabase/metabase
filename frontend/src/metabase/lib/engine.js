@@ -62,21 +62,6 @@ export function getEngineLogo(engine) {
   }
 }
 
-export function getElevatedEngines() {
-  return [
-    "mysql",
-    "postgres",
-    "sqlserver",
-    "redshift",
-    "bigquery-cloud-sdk",
-    "snowflake",
-  ];
-}
-
-export function getEngineSupportsFirewall(engine) {
-  return engine !== "googleanalytics";
-}
-
 export function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
