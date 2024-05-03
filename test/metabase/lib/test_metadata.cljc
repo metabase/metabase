@@ -7,7 +7,7 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.util.malli :as mu]))
 
@@ -2450,13 +2450,13 @@
                   a-field-name)))
         (keys (methods field-metadata-method))))
 
-(mu/defn table-metadata :- lib.metadata/TableMetadata
+(mu/defn table-metadata :- ::lib.schema.metadata/table
   "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can
   test things that should consume Table metadata."
   [table-name :- :keyword]
   (dissoc (table-metadata-method table-name) :fields :metrics :segments))
 
-(mu/defn field-metadata :- lib.metadata/ColumnMetadata
+(mu/defn field-metadata :- ::lib.schema.metadata/column
   "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
   you can test things that should consume Field metadata."
   [table-name :- :keyword

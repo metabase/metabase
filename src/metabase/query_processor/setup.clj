@@ -41,6 +41,31 @@
         source-table        (:source-table deepest-inner-query)]
     (lib.util/legacy-string-table-id->card-id source-table)))
 
+(defn- bootstrap-metadatas [metadata-type ids]
+  (when (and (seq ids)
+             (= metadata-type :metadata/card))
+    (t2/select-fn-vec
+     (fn [card]
+       {:lib/type    :metadata/card
+        :id          (:id card)
+        :name        (format "Card #%d" (:id card))
+        :database-id (:database_id card)})
+     [:model/Card :id :database_id]
+     :id [:in (set ids)])))
+
+(deftype ^:private BootstrapMetadataProvider []
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]
+    nil)
+  (metadatas [_this metadata-type ids]
+    (bootstrap-metadatas metadata-type ids))
+  (tables [_this]
+    nil)
+  (metadatas-for-table [_this _metadata-type _table-id]
+    nil)
+  (setting [_this _setting-key]
+    nil))
+
 (mu/defn ^:private bootstrap-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "A super-basic metadata provider used only for resolving the database ID associated with a source Card, only for
   queries that use the [[lib.schema.id/saved-questions-virtual-database-id]] e.g.
@@ -53,14 +78,7 @@
   []
   (if (qp.store/initialized?)
     (qp.store/metadata-provider)
-    (reify lib.metadata.protocols/MetadataProvider
-      (card [_this card-id]
-        (t2/select-one-fn
-         (fn [card]
-           {:lib/type    :metadata/card
-            :database-id (:database_id card)})
-         [:model/Card :database_id]
-         :id card-id)))))
+    (->BootstrapMetadataProvider)))
 
 (mu/defn ^:private resolve-database-id-for-source-card :- ::lib.schema.id/database
   [source-card-id :- ::lib.schema.id/card]
