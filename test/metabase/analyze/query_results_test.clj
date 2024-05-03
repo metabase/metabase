@@ -11,7 +11,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -68,11 +67,11 @@
   (update-keys (t2/select-fn->fn :name :fingerprint Field :table_id (mt/id :venues))
                (comp keyword u/lower-case-en)))
 
-(deftest ^:parallel mbql-result-metadata-test
+(deftest mbql-result-metadata-test
   (testing "Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields"
     (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query venues))]
       (is (= (app-db-venue-fingerprints)
-             (tu/throw-if-called fingerprinters/with-global-fingerprinter
+             (mt/throw-if-called! fingerprinters/with-global-fingerprinter
                (name->fingerprints (query->result-metadata (query-for-card card)))))))))
 
 (deftest ^:parallel mbql-result-metadata-test-2
@@ -101,11 +100,11 @@
       (is (= (assoc venue-name->semantic-types :category_id nil :price nil)
              (name->semantic-type (query->result-metadata (query-for-card card))))))))
 
-(deftest ^:parallel one-column-test
+(deftest one-column-test
   (testing "Limiting to just 1 column on an MBQL query should still get the result metadata from the Field"
     (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query venues))]
       (is (= (select-keys (app-db-venue-fingerprints) [:longitude])
-             (tu/throw-if-called fingerprinters/fingerprinter
+             (mt/throw-if-called! fingerprinters/fingerprinter
                (-> card
                    query-for-card
                    (assoc-in [:query :fields] [[:field (mt/id :venues :longitude) nil]])

@@ -856,7 +856,7 @@
     (deliver pause-query true)
     ::success))
 
-(defmacro throw-if-called
+(defmacro throw-if-called!
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
   [fn-symb & body]
