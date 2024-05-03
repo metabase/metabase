@@ -64,6 +64,7 @@
   compojure/compojure                       {:mvn/version "1.7.1"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
+  datascript/datascript                     {:mvn/version "1.6.4"}
   dk.ative/docjure                          {:mvn/version "1.19.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
@@ -361,6 +362,7 @@
     cider/piggieback                   {:mvn/version "0.5.3"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
+    datascript/datascript              {:mvn/version "1.6.4"}
     io.github.metabase/hawk            {:git/url "https://github.com/metabase/hawk"
                                         :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}

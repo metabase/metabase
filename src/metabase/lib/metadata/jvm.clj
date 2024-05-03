@@ -338,9 +338,11 @@
 
 (defn- tables [database-id]
   (t2/select :metadata/table
-             :db_id           database-id
-             :active          true
-             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+             :db_id  database-id
+             :active true
+             {:where [:or
+                      [:is :visibility_type nil]
+                      [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]}))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type

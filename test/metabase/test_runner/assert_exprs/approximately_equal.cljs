@@ -3,11 +3,21 @@
   (:require [metabase.util :as u])
   (:require-macros [metabase.test-runner.assert-exprs.approximately-equal-js]))
 
+(defn- dispatch-keyword [x]
+  (let [upstream (u/dispatch-type-keyword x)]
+    ;; Fall back to using JS classes as opposed to :dispatch-type/*.
+    ;; This enables matching on eg. `datascript.impl.entity/Entity`.
+    (if (and (= upstream :dispatch-type/*)
+             (not (object? x))        ; Not a vanilla object
+             (instance? js/Object x)) ; But some other JS class
+      (type x)
+      upstream)))
+
 (defmulti =?-diff
   "Multimethod to use to diff two things with `=?`."
   {:arglists '([expected actual])}
   (fn [expected actual]
-    [(u/dispatch-type-keyword expected) (u/dispatch-type-keyword actual)]))
+    [(dispatch-keyword expected) (dispatch-keyword actual)]))
 
 ;;;; Default method impls
 

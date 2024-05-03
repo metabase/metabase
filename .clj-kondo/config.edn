@@ -332,6 +332,7 @@
     clojure.tools.namespace.find                                  ns.find
     clojure.tools.namespace.parse                                 ns.parse
     colorize.core                                                 colorize
+    datascript.core                                               d
     environ.core                                                  env
     hf.depstar.api                                                depstar
     hiccup.core                                                   hiccup

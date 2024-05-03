@@ -15,8 +15,10 @@
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
-                      :source-map      true}
+                      :source-map      true
+                      :externs         ["datascript/externs.js"]}
    :entries    [metabase.lib.column-group
+                metabase.lib.datascript
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
