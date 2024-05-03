@@ -13,11 +13,10 @@
 ;;
 ;; ## Unstable internals (what you shouldn't depend on):
 ;; The upload module hides the following implementation details which are subject to change:
-;; - The specific set of permissions and settings checks:
-;;    - The set of permissions and instance settings that are required to upload data.
+;; - The set of permissions and instance settings that are required to upload data.
 ;; - CSV parsing and column type logic:
+;;    - How it parses the CSV and converts the values to the correct types.
 ;;    - How it infers the schema of the CSV data by inferring column types based on the values in each column.
-;;    - How it parses the CSV data and converts the values to the correct types.
 ;; - Database interactions:
 ;;    - How it creates new tables and inserts the uploaded data. It uses the` `metabase.driver` namespace to perform
 ;;      database-specific operations, so the details of different databased driversare not this module's concern.
