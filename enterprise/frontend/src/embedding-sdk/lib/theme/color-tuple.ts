@@ -11,15 +11,15 @@ type ColorTuple = [
   string,
 ];
 
-export const colorTuple = (v: string): ColorTuple => [
-  v,
-  v,
-  v,
-  v,
-  v,
-  v,
-  v,
-  v,
-  v,
-  v,
+export const colorTuple = (value: string): ColorTuple => [
+  value,
+  value,
+  value,
+  value,
+  value,
+  value,
+  value,
+  value,
+  value,
+  value,
 ];
