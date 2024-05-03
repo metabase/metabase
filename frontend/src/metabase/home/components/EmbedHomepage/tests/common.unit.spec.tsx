@@ -27,7 +27,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
     expect(screen.getByText("Learn more")).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
+      "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 
@@ -159,7 +159,7 @@ describe("EmbedHomepage (OSS)", () => {
       await waitForElementToBeRemoved(() => queryFeedbackModal());
     });
 
-    it("should dismiss when submitting feedback - even if empty", async () => {
+    it("should dismiss when submitting feedback - even if empty, should not actually send the feedback", async () => {
       await setupForFeedbackModal();
 
       await userEvent.click(screen.getByText("Skip"));
@@ -167,15 +167,17 @@ describe("EmbedHomepage (OSS)", () => {
       const lastCall = getLastHomepageSettingSettingCall();
 
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
-
-      const feedbackBody = await getLastFeedbackCall()?.request?.json();
-
-      expect(feedbackBody).toEqual({
-        source: "embedding-homepage-dismiss",
-      });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
+
+      // when both fields are empty, the button says "Skip" and
+      // we should not make the http call
+      expect(getLastFeedbackCall()).toBeUndefined();
+
+      expect(
+        screen.queryByText("Your feedback was submitted, thank you."),
+      ).not.toBeInTheDocument();
     });
 
     it("should send feedback when submitting the modal", async () => {
@@ -192,7 +194,7 @@ describe("EmbedHomepage (OSS)", () => {
 
       const lastCall = getLastHomepageSettingSettingCall();
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
@@ -203,6 +205,10 @@ describe("EmbedHomepage (OSS)", () => {
       });
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
+
+      expect(
+        screen.getByText("Your feedback was submitted, thank you."),
+      ).toBeInTheDocument();
     });
   });
 });
