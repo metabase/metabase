@@ -47,7 +47,7 @@ don''t have one.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
-using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml")
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`")
   :feature :sso-saml
   :audit   :getter)
 
@@ -74,7 +74,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
-on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v")
+on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
   :feature :sso-saml
   :audit   :getter)
 
