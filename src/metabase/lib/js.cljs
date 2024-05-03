@@ -1085,7 +1085,7 @@
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
-        unique-name-fn (lib.util/unique-name-generator)]
+        unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider a-query))]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(-> %
                    (assoc :selected? true)
