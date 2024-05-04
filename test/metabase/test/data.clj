@@ -172,18 +172,10 @@
     :type     :native
     :native   ~inner-native-query})
 
-(def ^:dynamic ^{:arglists '([results])} *post-process-fn*
-  "Function that may be bound in tests. It was added as part of [[metabase.timeseries-query-processor-test]], to
-  enable post processing of query result prior it is returned to test code. Reason being that there is a difference
-  in column naming between :druid and :druid-jdbc -- first renames `__time` column to `timestamp`. Using this var,
-  results can be unified, thus existing tests can be reused for both aforementioned drivers."
-  identity)
-
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
   (try
-    (*post-process-fn*
-     (qp/process-query query))
+    (qp/process-query query)
     (catch Throwable e
       (throw (ex-info (ex-message e)
                       {:query query}
