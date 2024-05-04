@@ -6,6 +6,7 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.proxy-connection :as sql-jdbc.proxy-connection]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
@@ -21,13 +22,11 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
-   (javax.sql DataSource)))
+   (java.sql Connection)
+   (javax.sql DataSource)
+   (metabase.driver.sql_jdbc.proxy_connection ProxyConnection)))
 
 (set! *warn-on-reflection* true)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Interface                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti connection-details->spec
   "Given a Database `details-map`, return an unpooled JDBC connection spec. Driver authors should implement this method,
@@ -40,11 +39,6 @@
   {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Creating Connection Pools                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti data-warehouse-connection-pool-properties
   "c3p0 connection pool properties for connected data warehouse DBs. See
@@ -151,9 +145,17 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
   [{:keys [^DataSource datasource], :as spec} pool-properties]
-  (if datasource
-    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
-    (connection-pool/connection-pool-spec spec pool-properties)))
+  (when datasource
+    (assert (not (instance? com.mchange.v2.c3p0.PooledDataSource datasource))
+            "Attempting to pool an already-pooled data source!"))
+  (let [^DataSource unpooled-data-source (sql-jdbc.proxy-connection/proxy-data-source
+                                          (if datasource
+                                            datasource
+                                            (#'connection-pool/unpooled-data-source spec)))
+        pooled-data-source               (DataSources/pooledDataSource
+                                          unpooled-data-source
+                                          (connection-pool/map->properties pool-properties))]
+    {:datasource pooled-data-source}))
 
 (defn ^:private default-ssh-tunnel-target-port  [driver]
   (when-let [port-info (some
@@ -336,3 +338,35 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [driver details]
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (can-connect-with-spec? jdbc-spec)))
+
+;;; Calling SET SESSION TIMEZONE TO 'US/Pacific' on every single query is wasteful especially when that timezone mostly
+;;; never changes. So what if there was a way to only set it when it changes, I wondered? To do that, we'd need a way to
+;;; record the session timezone for each Connection whenever we set it... I couldn't find any good cross-database way of
+;;; doing this, so instead we're wrapping the connections so we can attach interesting metadata to them.
+
+(defn- unwrap-connection ^ProxyConnection [^Connection conn]
+  (when (.isWrapperFor conn ProxyConnection)
+    (.unwrap conn ProxyConnection)))
+
+(defn connection-metadata
+  "Get a map of metadata associated with a proxied JDBC `Connection`. Mostly useful for recording things like the
+  session timezone (so you can avoid setting it again if it has already been set)."
+  {:added "0.50.0"}
+  [^Connection conn]
+  (meta (unwrap-connection conn)))
+
+(defn set-connection-metadata!
+  "Destructively replace the metadata associated with a proxied JDBC `Connection` as with [[reset-meta!]]. No-ops if
+  this is not a proxied JDBC `Connection`."
+  {:added "0.50.0"}
+  [^Connection conn metadata]
+  (when-let [proxy-conn (unwrap-connection conn)]
+    (reset-meta! proxy-conn metadata)))
+
+(defn swap-connection-metadata!
+  "Destructively update the metadata associated with a proxied JDBC `Connection` as with [[alter-meta!]]. No-ops if this
+  is not a proxied JDBC `Connection`."
+  {:added "0.50.0"}
+  [^Connection conn f & args]
+  (when-let [proxy-conn (unwrap-connection conn)]
+    (apply alter-meta! proxy-conn f args)))

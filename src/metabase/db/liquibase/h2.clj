@@ -44,7 +44,7 @@
           package-name (.substring class-name 0 (.lastIndexOf class-name "."))]
       (doto method
         (.setAccessible true)
-        (.invoke (.getClassLoader klass) (into-array Object [package-name nil nil nil nil nil nil nil]))
+        (.invoke (.getClassLoader klass) (object-array [package-name nil nil nil nil nil nil nil]))
         (.setAccessible false))
       (assert (.getPackage klass) (format "Failed to create package for proxy class %s." class-name)))))
 

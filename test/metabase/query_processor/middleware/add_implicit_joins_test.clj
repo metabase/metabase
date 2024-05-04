@@ -6,8 +6,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-joins
-    :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

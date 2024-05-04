@@ -197,8 +197,8 @@
   (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)))
 
 (defn datasource-with-diagnostic-info!
-  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
-  pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
+  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the pool.
+  To be used in conjunction with [[metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info]]."
   {:added "0.40.0"}
   ^DataSource [driver db-or-id]
   (let [ds (datasource db-or-id)]
@@ -207,23 +207,28 @@
 
 (defn set-time-zone-if-supported!
   "Execute `set-timezone-sql`, if implemented by driver, to set the session time zone. This way of setting the time zone
-  should be considered deprecated in favor of implementing `connection-with-timezone` directly."
+  should be considered deprecated in favor of implementing [[do-with-connection-with-options]] directly."
   {:deprecated "0.35.0"}
   [driver ^Connection conn ^String timezone-id]
   (when timezone-id
-    (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
-      (try
-        (let [sql (format format-string (str \' timezone-id \'))]
-          (log/debugf "Setting %s database timezone with statement: %s" driver (pr-str sql))
+    (let [existing-session-timezone (::session-timezone (sql-jdbc.conn/connection-metadata conn))]
+      (println "existing-session-timezone:" existing-session-timezone) ; NOCOMMIT
+      (when-not (= existing-session-timezone timezone-id)
+        (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
           (try
-            (.setReadOnly conn false)
+            (let [sql (format format-string (str \' timezone-id \'))]
+              (log/debugf "Setting %s database timezone with statement: %s" driver (pr-str sql))
+              (try
+                (.setReadOnly conn false)
+                (catch Throwable e
+                  (log/debug e "Error setting connection to readwrite")))
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt sql)
+                (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
             (catch Throwable e
-              (log/debug e "Error setting connection to readwrite")))
-          (with-open [stmt (.createStatement conn)]
-            (.execute stmt sql)
-            (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
-        (catch Throwable e
-          (log/errorf e "Failed to set timezone '%s' for %s database" timezone-id driver))))))
+              (log/errorf e "Failed to set timezone '%s' for %s database" timezone-id driver)))
+          ;; record the timezone we just set, so we don't need to set it again in the future.
+          (sql-jdbc.conn/swap-connection-metadata! conn assoc ::session-timezone timezone-id))))))
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
@@ -676,9 +681,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
-;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;; Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
+;; remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
+;; be overriden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -748,7 +753,7 @@
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try
                                        (let [max-rows 0] ; 0 means no limit
-                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
+                                         (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
                                        (catch Throwable e
                                          (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                          {:driver driver

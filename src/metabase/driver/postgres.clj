@@ -67,6 +67,7 @@
                               :now                      true
                               :persist-models           true
                               :schemas                  true
+                              :set-timezone             true
                               :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -798,9 +799,21 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
 
-(defmethod sql-jdbc.execute/set-timezone-sql :postgres
-  [_]
-  "SET SESSION TIMEZONE TO %s;")
+(defmethod sql-jdbc.execute/do-with-connection-with-options :postgres
+  [driver db-or-id-or-spec {:keys [session-timezone], :as options} f]
+  (let [parent-method (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)]
+    (parent-method
+     driver
+     db-or-id-or-spec
+     options
+     (fn [^Connection conn]
+       (when session-timezone
+         (let [existing-session-timezone (::session-timezone (sql-jdbc.conn/connection-metadata conn))]
+           (when-not (= existing-session-timezone session-timezone)
+             (with-open [stmt (.createStatement conn)]
+               (.execute stmt (format "SET SESSION TIMEZONE TO '%s';" session-timezone)))
+             (sql-jdbc.conn/swap-connection-metadata! conn assoc ::session-timezone session-timezone))))
+       (f conn)))))
 
 ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
 ;; bug with the JDBC driver?
