@@ -14,6 +14,7 @@
   :redundant-fn-wrapper         {:level :warning}
   :refer-all                    {:level :warning, :exclude [clojure.test]}
   :single-key-in                {:level :warning}
+  :unsorted-required-namespaces {:level :warning}
   :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
@@ -122,7 +123,26 @@
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces {:level :warning}
+  :metabase/ns-module-checker
+  {:level :warning
+
+   ;; map of module name => the "core" external public-facing API namespace
+   :api-namespaces
+   {metabase.driver      #{metabase.driver}
+    metabase.legacy-mbql #{metabase.legacy-mbql.schema
+                           metabase.legacy-mbql.util}
+    metabase.lib         #{metabase.lib.core}
+    metabase.util        #{metabase.util
+                           metabase.util.i18n
+                           metabase.util.malli}}
+
+   ;; map of module => other modules you're allowed to use there
+   :allowed-modules
+   {metabase.query-processor
+    #{metabase.driver
+      metabase.legacy-mbql
+      metabase.lib
+      metabase.util}}}
 
   :consistent-alias
   {:aliases
@@ -491,7 +511,8 @@
 
  :hooks
  {:analyze-call
-  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
+   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest

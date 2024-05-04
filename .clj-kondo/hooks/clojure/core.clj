@@ -1,6 +1,7 @@
 (ns hooks.clojure.core
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [clojure.set :as set]
    [clojure.string :as str]))
 
 (defn- node->qualified-symbol [node]
@@ -15,7 +16,7 @@
    (catch Exception _
      nil)))
 
-(def ^:private white-card-symbols
+(def ^:private symbols-allowed-in-fns-not-ending-in-an-exclamation-point
   '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
      toucan2.core/delete!
@@ -159,7 +160,7 @@
                 (walk f child)))]
       (walk (fn [form]
               (when-let [qualified-symbol (node->qualified-symbol form)]
-                (when (and (not (contains? white-card-symbols qualified-symbol))
+                (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
                            (end-with-exclamation? qualified-symbol))
                   (hooks/reg-finding! (assoc (meta form-name)
                                              :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`."
@@ -203,3 +204,71 @@
        :findings))
 
  (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
+
+(defn- ns-form-node->ns-symb [ns-form-node]
+  (some-> (some (fn [node]
+                  (when (and (hooks/token-node? node)
+                             (not= (hooks/sexpr node) 'ns))
+                    node))
+                (:children ns-form-node))
+          hooks/sexpr))
+
+(defn- module
+  "E.g.
+
+    (module 'metabase.qp.middleware.wow) => 'metabase.qp"
+  [ns-symb]
+  (some-> (re-find #"^metabase\.[^.]+" (str ns-symb)) symbol))
+
+(defn- ns-form-node->require-node [ns-form-node]
+  (some (fn [node]
+          (when (and (hooks/list-node? node)
+                     (let [first-child (first (:children node))]
+                       (and (hooks/keyword-node? first-child)
+                            (= (hooks/sexpr first-child) :require))))
+            node))
+        (:children ns-form-node)))
+
+(defn- require-node->namespace-symb-nodes [require-node]
+  (let [[_ns & args] (:children require-node)]
+    (into []
+          ;; prefixed namespace forms are NOT SUPPORTED!!!!!!!!1
+          (keep (fn [node]
+                  (cond
+                    (hooks/vector-node? node)
+                    (first (:children node))
+
+                    (hooks/token-node? node)
+                    node
+
+                    :else
+                    (printf "Don't know how to figure out what namespace is being required in %s\n" (pr-str node)))))
+          args)))
+
+(defn- lint-required-namespaces [ns-form-node config]
+  (let [ns-symb         (ns-form-node->ns-symb ns-form-node)
+        current-module  (module ns-symb)
+        allowed-modules (some-> (get-in config [:allowed-modules current-module]) set)]
+    (when allowed-modules
+      (let [namespace-symb-nodes (-> ns-form-node
+                                     ns-form-node->require-node
+                                     require-node->namespace-symb-nodes)]
+        (doseq [node  namespace-symb-nodes
+                :let  [ns-symb         (hooks/sexpr node)
+                       required-module (module ns-symb)]
+                ;; ignore stuff not in a module i.e. non-Metabase stuff.
+                :when required-module
+                :when (not (or (= required-module current-module) ; in current module
+                               (and (contains? allowed-modules required-module)
+                                    (let [module-api-namespaces (set (get-in config [:api-namespaces required-module]))]
+                                      (contains? module-api-namespaces ns-symb)))))]
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message (format "Namespace %s is not allowed in the %s module. [:metabase/ns-module-checker]"
+                                                      ns-symb
+                                                      current-module)
+                                     :type :metabase/ns-module-checker)))))))
+
+
+(defn lint-ns [x]
+  (lint-required-namespaces (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
+  x)
