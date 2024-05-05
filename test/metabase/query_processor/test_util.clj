@@ -38,9 +38,9 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def ^:private abnormal-drivers
+(def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :googleanalytics})
+  #{:druid :druid-jdbc :googleanalytics})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -368,6 +368,12 @@
     {:rows (rows results), :cols (cols results)}"
   [results]
   {:rows (rows results), :cols (cols results)})
+
+(defn formatted-rows+column-names
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing. Format
+   the rows using `fns`."
+  [fns results]
+  {:rows (formatted-rows fns results), :columns (map :name (cols results))})
 
 (defn rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
