@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { Text, Box, Stack, Button } from "metabase/ui";
+import { Text, Box, Stack, Button, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
@@ -101,6 +101,11 @@ function ColumnPicker({
         />
       )}
       <Box py="sm">
+        {!onCancel && (
+          <Title p="md" pt="sm" pb={0} order={6}>
+            {t`Select column to extract from`}
+          </Title>
+        )}
         <QueryColumnPicker
           query={query}
           stageIndex={stageIndex}
