@@ -1092,7 +1092,17 @@ class TableInteractive extends Component {
                     </div>
                   </>
                 )}
-                {shortcutColumn && <ColumnShortcut height={headerHeight - 1} />}
+                {shortcutColumn && (
+                  <ColumnShortcut
+                    height={headerHeight - 1}
+                    onClick={evt => {
+                      this.onVisualizationClick(
+                        { columnShortcuts: true },
+                        evt.target,
+                      );
+                    }}
+                  />
+                )}
                 <Grid
                   ref={ref => (this.header = ref)}
                   style={{
@@ -1258,7 +1268,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({ height }) {
+function ColumnShortcut({ height, onClick }) {
   return (
     <div className={TableS.shortcutsWrapper} style={{ height }}>
       <UIButton
@@ -1267,6 +1277,7 @@ function ColumnShortcut({ height }) {
         leftIcon={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
+        onClick={onClick}
       />
     </div>
   );
