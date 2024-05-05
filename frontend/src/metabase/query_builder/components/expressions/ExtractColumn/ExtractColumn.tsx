@@ -18,7 +18,7 @@ type Props = {
     name: string,
     extraction: Lib.ColumnExtraction,
   ) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 };
 
 export function ExtractColumn({
@@ -81,7 +81,7 @@ function ColumnPicker({
   stageIndex: number;
   column: Lib.ColumnMetadata | null;
   onSelect: (column: Lib.ColumnMetadata) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }) {
   const extractableColumns = useMemo(
     () =>
@@ -94,10 +94,12 @@ function ColumnPicker({
 
   return (
     <>
-      <ExpressionWidgetHeader
-        title={t`Select column to extract from`}
-        onBack={onCancel}
-      />
+      {onCancel && (
+        <ExpressionWidgetHeader
+          title={t`Select column to extract from`}
+          onBack={onCancel}
+        />
+      )}
       <Box py="sm">
         <QueryColumnPicker
           query={query}
