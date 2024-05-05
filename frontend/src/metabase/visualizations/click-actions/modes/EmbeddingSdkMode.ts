@@ -1,5 +1,6 @@
 import type { QueryClickActionsMode } from "../../types";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
+import { ExtractColumnAction } from "../actions/ExtractColumn/ExtractColumn";
 import { HideColumnAction } from "../actions/HideColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 
@@ -23,6 +24,6 @@ export const EmbeddingSdkMode: QueryClickActionsMode = {
     "drill-thru/zoom-in.geographic",
     "drill-thru/zoom-in.timeseries",
   ],
-  clickActions: [HideColumnAction, DashboardClickAction],
+  clickActions: [HideColumnAction, DashboardClickAction, ExtractColumnAction],
   fallback: NativeQueryClickFallback,
 };
