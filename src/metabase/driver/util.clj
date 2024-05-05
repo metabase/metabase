@@ -524,6 +524,7 @@
   "The set of all official drivers"
   #{"athena"
     "bigquery-cloud-sdk"
+    "databricks-jdbc"
     "druid"
     "druid-jdbc"
     "h2"

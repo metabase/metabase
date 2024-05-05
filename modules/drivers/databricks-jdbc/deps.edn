@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ ;; TODO: Why that exclusion?
+ ;; TODO: Add link to docs!
+ {com.databricks/databricks-jdbc {:mvn/version "2.6.34" :exclusion [log4j/log4j]}}}

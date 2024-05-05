@@ -1,0 +1,3 @@
+(ns metabase.driver.databricks-jdbc-test)
+
+;; can connect with details...
