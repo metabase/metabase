@@ -23,9 +23,7 @@ describe("scenarios > metrics", () => {
       addAggregation("Count of rows");
       saveMetric();
       runQuery();
-      cy.findByTestId("scalar-container")
-        .findByText("18,760")
-        .should("be.visible");
+      verifyScalarValue("18,760");
     });
 
     it("should create a metric for a saved question", () => {
@@ -36,9 +34,18 @@ describe("scenarios > metrics", () => {
       addAggregation("Count of rows");
       saveMetric();
       runQuery();
-      cy.findByTestId("scalar-container")
-        .findByText("18,760")
-        .should("be.visible");
+      verifyScalarValue("18,760");
+    });
+
+    it("should create a metric for a model", () => {
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Models").click();
+      popover().findByText("Orders Model").click();
+      addAggregation("Count of rows");
+      saveMetric();
+      runQuery();
+      verifyScalarValue("18,760");
     });
   });
 
@@ -112,4 +119,8 @@ function saveMetric() {
 function runQuery() {
   cy.findAllByTestId("run-button").last().click();
   cy.wait("@dataset");
+}
+
+function verifyScalarValue(value: string) {
+  cy.findByTestId("scalar-container").findByText(value).should("be.visible");
 }

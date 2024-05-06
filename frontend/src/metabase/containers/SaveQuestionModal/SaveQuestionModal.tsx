@@ -238,7 +238,6 @@ export const SaveQuestionModal = ({
             initialValues={{ ...initialValues, ...resumedValues }}
             onSubmit={handleSubmit}
             validationSchema={SAVE_QUESTION_SCHEMA}
-            enableReinitialize
           >
             {({ values, setValues }) => (
               <Modal.Content p="md" data-testid="save-question-modal">
