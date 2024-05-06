@@ -484,6 +484,11 @@
                                       []))))]
     (map annotate search-results)))
 
+(defn- add-can-write [row]
+  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
+    (assoc row :can_write (mi/can-write? row))
+    row))
+
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -512,6 +517,7 @@
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                              true (map add-can-write)
                               true (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
