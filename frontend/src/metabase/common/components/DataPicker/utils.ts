@@ -1,8 +1,8 @@
 import { humanize, titleize } from "metabase/lib/formatting";
-import { checkNotNull } from "metabase/lib/types";
 import TableEntity from "metabase-lib/v1/metadata/Table";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
+  Card,
   Database,
   DatabaseId,
   SchemaName,
@@ -26,46 +26,53 @@ export const generateKey = (
 
 export const tablePickerValueFromTable = (
   table: Table | TableEntity | null,
+  sourceCard: Card | undefined,
 ): TablePickerValue | null => {
   if (table === null) {
     return null;
   }
 
-  // Temporary, for backward compatibility in DataStep, until entity framework is no more
-  if (table instanceof TableEntity) {
-    return tablePickerValueFromTableEntity(table);
+  const sourceCardId = getQuestionIdFromVirtualTableId(table.id);
+
+  if (sourceCardId && !sourceCard) {
+    return null;
   }
 
-  const id =
-    typeof table.id === "string"
-      ? getQuestionIdFromVirtualTableId(table.id)
-      : table.id;
+  // Temporary, for backward compatibility in DataStep, until entity framework is no more
+  if (table instanceof TableEntity) {
+    return tablePickerValueFromTableEntity(table, sourceCard);
+  }
 
   return {
     db_id: table.db_id,
-    id: checkNotNull(id),
+    id: sourceCardId ?? table.id,
     schema: table.schema,
-    model: "dataset", // TODO
+    model: getModelFromCard(sourceCard),
   };
 };
 
 const tablePickerValueFromTableEntity = (
   table: TableEntity,
+  card: Card | undefined,
 ): TablePickerValue => {
   // In DBs without schemas, API will use an empty string to indicate the default, virtual schema
   const NO_SCHEMA_FALLBACK = "";
-
-  const id =
-    typeof table.id === "string"
-      ? getQuestionIdFromVirtualTableId(table.id)
-      : table.id;
+  const sourceCardId = getQuestionIdFromVirtualTableId(table.id);
 
   return {
     db_id: table.db_id,
-    id: checkNotNull(id),
+    id: sourceCardId ?? table.id,
     schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
-    model: "dataset", // TODO
+    model: getModelFromCard(card),
   };
+};
+
+const getModelFromCard = (card: Card | undefined) => {
+  if (!card) {
+    return "table";
+  }
+
+  return card.type === "model" ? "dataset" : "card";
 };
 
 export const getDbItem = (

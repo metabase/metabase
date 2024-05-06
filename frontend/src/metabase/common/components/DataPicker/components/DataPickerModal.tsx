@@ -56,7 +56,6 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   const handleModelChange = useCallback(
     (item: QuestionPickerItem) => {
       if (item.model === "dataset") {
-        // TODO: pass model?
         onChange(getQuestionVirtualTableId(item.id));
         onClose();
       }
@@ -113,7 +112,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
     <EntityPickerModal
       canSelectItem
       options={options}
-      selectedItem={null}
+      selectedItem={null} // TODO
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
   tablePickerValueFromTable,
@@ -12,6 +13,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -38,6 +40,11 @@ export const DataStep = ({
   const tableMetadata = tableId
     ? Lib.tableOrCardMetadata(query, tableId)
     : null;
+
+  const sourceCardId = getQuestionIdFromVirtualTableId(tableId);
+  const { data: sourceCard } = useGetCardQuery(
+    sourceCardId ? { id: sourceCardId } : skipToken,
+  );
 
   const [isDataPickerOpen, setIsDataPickerOpen] = useState(!tableMetadata);
 
@@ -92,7 +99,7 @@ export const DataStep = ({
           {isDataPickerOpen && (
             <DataPickerModal
               collectionId={collectionId}
-              value={tablePickerValueFromTable(table)}
+              value={tablePickerValueFromTable(table, sourceCard)}
               onChange={handleTableSelect}
               onClose={() => setIsDataPickerOpen(false)}
             />
