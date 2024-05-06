@@ -24,7 +24,13 @@ type Modal = null | "create" | "edit" | "delete";
 
 function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
-    <Stack mt="xl" align="center" justify="center" spacing="sm">
+    <Stack
+      mt="xl"
+      align="center"
+      justify="center"
+      spacing="sm"
+      data-testid="empty-table-warning"
+    >
       <Title>{t`No API keys here yet`}</Title>
       <Text color="text.1" mb="md">
         {t`You can create an API key to make API calls programatically.`}
