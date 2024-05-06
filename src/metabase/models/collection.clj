@@ -77,12 +77,6 @@
   [collection]
   (str/starts-with? (:location collection) (trash-path)))
 
-(defn ensure-trash-collection-created!
-  "Creates the trash collection if it does not already exist."
-  []
-  ;; just call `trash-collection`
-  (trash-collection))
-
 (def Collection
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Card symbol in our codebase."
@@ -693,7 +687,6 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
-  (ensure-trash-collection-created!)
   (let [namespaced?   (some? (:namespace collection))
         archived? (:archived updates)
         new-parent-id (cond
