@@ -24,22 +24,15 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const dataPickerValueFromTableOrCard = (
-  table: Table | TableEntity | null,
-  card: Card | undefined,
-): DataPickerValue | null => {
-  if (card) {
-    return {
-      id: card.id,
-      name: card.name,
-      model: card.type === "model" ? "dataset" : "card",
-    };
-  }
-
-  return tablePickerValueFromTable(table);
+export const dataPickerValueFromCard = (card: Card): DataPickerValue | null => {
+  return {
+    id: card.id,
+    name: card.name,
+    model: card.type === "model" ? "dataset" : "card",
+  };
 };
 
-const tablePickerValueFromTable = (
+export const dataPickerValueFromTable = (
   table: Table | TableEntity | null,
 ): TablePickerValue | null => {
   if (table === null) {

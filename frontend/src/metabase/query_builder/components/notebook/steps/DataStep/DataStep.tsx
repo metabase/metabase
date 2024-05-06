@@ -5,7 +5,8 @@ import { t } from "ttag";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
-  dataPickerValueFromTableOrCard,
+  dataPickerValueFromCard,
+  dataPickerValueFromTable,
 } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import Tables from "metabase/entities/tables";
@@ -99,7 +100,11 @@ export const DataStep = ({
           {isDataPickerOpen && (
             <DataPickerModal
               collectionId={collectionId}
-              value={dataPickerValueFromTableOrCard(table, sourceCard)}
+              value={
+                sourceCardId && sourceCard
+                  ? dataPickerValueFromCard(sourceCard)
+                  : dataPickerValueFromTable(table)
+              }
               onChange={handleTableSelect}
               onClose={() => setIsDataPickerOpen(false)}
             />
