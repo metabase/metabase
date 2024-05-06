@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import BulkActions from "metabase/collections/components/BulkActions";
+import CollectionBulkActions from "metabase/collections/components/CollectionBulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -387,7 +387,7 @@ export const CollectionContentView = ({
                             />
                           )}
                         </div>
-                        <BulkActions
+                        <CollectionBulkActions
                           selected={selected}
                           collection={collection}
                           onArchive={handleBulkArchive}
