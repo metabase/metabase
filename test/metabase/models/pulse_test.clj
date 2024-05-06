@@ -412,23 +412,23 @@
                                                               :channel_type   :email}
                                                              pulse-channel-test/daily-at-6pm)]
       (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
-             (pulse-channel-test/send-pulse-triggers)))
+             (pulse-channel-test/send-pulse-triggers pulse-id)))
 
       (testing "archived pulse will disable pulse channels and remove triggers"
         (t2/update! :model/Pulse pulse-id {:archived true})
         (is (false? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
-        (is (empty? (pulse-channel-test/send-pulse-triggers))))
+        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
 
       (testing "re-enabled pulse will re-enable pulse channels and add triggers"
         (t2/update! :model/Pulse pulse-id {:archived false})
         (is (true? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
         (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
-               (pulse-channel-test/send-pulse-triggers))))
+               (pulse-channel-test/send-pulse-triggers pulse-id))))
 
       (testing "delete pulse will remove pulse channels and triggers"
         (t2/delete! :model/Pulse pulse-id)
         (is (false? (t2/exists? :model/PulseChannel pc-id)))
-        (is (empty? (pulse-channel-test/send-pulse-triggers)))))))
+        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |

@@ -134,27 +134,29 @@
                   (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-1am [pc-2-1])
                   ;; there is no pc-2--3 because it's disabled
                   (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-6pm [pc-2-2])}
-                (pulse-channel-test/send-pulse-triggers)))))))
+                (set/union
+                 (pulse-channel-test/send-pulse-triggers pulse-1)
+                 (pulse-channel-test/send-pulse-triggers pulse-2))))))))
 
 (deftest init-will-schedule-triggers-test
   ;; see [[task.send-pulses/init-send-pulse-triggers!]] docstring for more context
   (pulse-channel-test/with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        pulse   {}
-                   :model/PulseChannel channel (merge {:pulse_id       (:id pulse)
-                                                       :channel_type   :slack
-                                                       :details        {:channel "#random"}}
-                                                      daily-at-6pm)]
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                   :model/PulseChannel channel        (merge {:pulse_id       pulse-id
+                                                              :channel_type   :slack
+                                                              :details        {:channel "#random"}}
+                                                             daily-at-6pm)]
       (testing "sanity check that we don't have any send pulse job to start with"
         ;; the triggers were created in after-insert hook of PulseChannel, so we need to manually delete them
-        (doseq [trigger (pulse-channel-test/send-pulse-triggers)]
+        (doseq [trigger (pulse-channel-test/send-pulse-triggers pulse-id)]
           (task/delete-trigger! (triggers/key (:key trigger))))
-        (is (empty? (pulse-channel-test/send-pulse-triggers))))
+        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
 
       ;; init again
       (task/init! ::task.send-pulses/SendPulses)
       (testing "we have a send pulse job for each PulseChannel"
-        (is (= #{(pulse-channel-test/pulse->trigger-info (:id pulse) daily-at-6pm [(:id channel)])}
-               (pulse-channel-test/send-pulse-triggers)))))))
+        (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id daily-at-6pm [(:id channel)])}
+               (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest send-pulses-exceed-thread-pool-test
   (testing "test that if we have more send-pulse triggers than the number of available threads, all channels will still be sent"
@@ -177,7 +179,7 @@
                                                                 :details        {:channel "#random"}}
                                                                daily-at-6pm)))]
               (testing "sanity check that we have the correct number triggers and no channel has been sent yet"
-                (is (= pc-count (count (pulse-channel-test/send-pulse-triggers))))
+                (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count)))
                 (is (= #{} @sent-channel-ids)))
               ;; job run every 2 seconds, so wait a bit so the job can run
               (Thread/sleep 3000)
