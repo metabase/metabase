@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
@@ -70,7 +71,7 @@
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
-  "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that was deleted."
+  "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that were deleted."
   [pulse-id]
   (when-let [ids-to-delete (seq
                             (for [channel (t2/select [:model/PulseChannel :id :details]
@@ -122,17 +123,15 @@
                                          (name %)
                                          %))
         trigger-key      (send-pulse-trigger-key pulse-id schedule-map)
-        task-schedule    (u.cron/schedule-map->cron-string schedule-map)
         ;; there should be at most one existing trigger
         existing-trigger (->> (-> send-pulse-job-key task/job-info :triggers)
-                              (filter #(and (= (:key %) (.getName ^TriggerKey trigger-key))
-                                        (= (:schedule %) task-schedule)))
+                              (filter #(= (:key %) (.getName ^TriggerKey trigger-key)))
                               first)
         existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
         new-pc-ids      (if (some? existing-pc-ids)
-                          (cond
-                           (some? add-pc-ids)    (set/union existing-pc-ids (set add-pc-ids))
-                           (some? remove-pc-ids) (apply disj existing-pc-ids (set remove-pc-ids)))
+                          (cond-> existing-pc-ids
+                            (some? add-pc-ids)    (set/union existing-pc-ids (set add-pc-ids))
+                            (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
                           (set add-pc-ids))]
     (cond
      ;; no op when new-pc-ids doesnt't change
