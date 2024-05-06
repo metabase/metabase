@@ -110,7 +110,8 @@
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
-         (sort-by :max_ts (fn [a b] (compare (-> b :max_ts) (-> a :max_ts)))))))
+         (sort-by :max_ts)
+         reverse)))
 
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
