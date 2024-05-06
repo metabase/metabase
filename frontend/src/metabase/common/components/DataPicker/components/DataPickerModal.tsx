@@ -48,30 +48,20 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   const hasModels = useHasModels();
   const hasQuestions = useHasQuestions();
 
-  const handleTableChange = useCallback(
+  const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
-      onChange(item.id);
+      const id =
+        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+      onChange(id);
       onClose();
     },
     [onChange, onClose],
   );
 
-  const handleModelChange = useCallback(
+  const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
-      if (item.model === "dataset") {
-        onChange(getQuestionVirtualTableId(item.id));
-        onClose();
-      }
-    },
-    [onChange, onClose],
-  );
-
-  const handleQuestionChange = useCallback(
-    (item: QuestionPickerItem) => {
-      if (item.model === "card") {
-        onChange(getQuestionVirtualTableId(item.id));
-        onClose();
-      }
+      onChange(getQuestionVirtualTableId(item.id));
+      onClose();
     },
     [onChange, onClose],
   );
@@ -87,7 +77,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
               options={options}
-              onItemSelect={handleModelChange}
+              onItemSelect={handleCardChange}
             />
           ),
         }
@@ -99,7 +89,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       element: (
         <TablePicker
           value={isTableItem(value) ? value : undefined}
-          onChange={handleTableChange}
+          onChange={handleChange}
         />
       ),
     },
@@ -113,7 +103,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
               initialValue={isQuestionItem(value) ? value : undefined}
               models={QUESTION_PICKER_MODELS}
               options={options}
-              onItemSelect={handleQuestionChange}
+              onItemSelect={handleCardChange}
             />
           ),
         }
@@ -133,7 +123,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       title={t`Pick your starting data`}
       onClose={onClose}
       onConfirm={_.noop} // onConfirm is unused when options.hasConfirmButtons is falsy
-      onItemSelect={handleTableChange}
+      onItemSelect={handleChange}
     />
   );
 };
