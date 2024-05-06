@@ -7,7 +7,6 @@ import {
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
-import type { FormContainerProps } from "metabase/containers/FormikForm";
 import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 import { Flex, Loader } from "metabase/ui";
