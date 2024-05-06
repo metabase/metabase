@@ -227,7 +227,7 @@ export type MetricDisplayInfo = {
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<

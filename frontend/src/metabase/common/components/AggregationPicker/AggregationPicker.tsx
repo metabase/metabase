@@ -15,15 +15,16 @@ import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitleContainer,
   ColumnPickerHeaderTitle,
+  ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
-  clause?: Lib.AggregationClause;
   stageIndex: number;
+  clause?: Lib.AggregationClause;
+  clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   onSelect: (operator: Lib.Aggregable) => void;
@@ -36,6 +37,7 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
 
 type MetricListItem = Lib.MetricDisplayInfo & {
   metric: Lib.MetricMetadata;
+  selected: boolean;
 };
 
 type ListItem = OperatorListItem | MetricListItem;
@@ -55,8 +57,9 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
-  clause,
   stageIndex,
+  clause,
+  clauseIndex,
   operators,
   hasExpressionInput = true,
   onSelect,
@@ -100,7 +103,7 @@ export function AggregationPicker({
         key: "metrics",
         name: t`Metrics`,
         items: metrics.map(metric =>
-          getMetricListItem(query, stageIndex, metric),
+          getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
       });
@@ -128,7 +131,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [metadata, query, stageIndex, operators, hasExpressionInput]);
+  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -303,7 +306,12 @@ function isExpressionEditorInitiallyOpen(
   operators: Lib.AggregationOperator[],
 ): boolean {
   if (!clause) {
-    return false;
+    return (
+      Lib.isMetricBased(query, stageIndex) &&
+      Lib.availableMetrics(query, stageIndex)
+        .map(metric => Lib.displayInfo(query, stageIndex, metric))
+        .every(metricInfo => metricInfo.aggregationPosition != null)
+    );
   }
 
   const initialOperator = getInitialOperator(query, stageIndex, operators);
@@ -330,11 +338,14 @@ function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
   metric: Lib.MetricMetadata,
+  clauseIndex?: number,
 ): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
     metric,
+    selected:
+      clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
   };
 }
 
