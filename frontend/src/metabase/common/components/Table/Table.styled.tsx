@@ -19,9 +19,6 @@ export const StyledTable = styled(Table)`
     border-bottom: 1px solid ${color("border")};
   }
 
-  thead {
-  }
-
   tbody {
     width: 100%;
     max-height: 600px;
@@ -35,6 +32,10 @@ export const StyledTable = styled(Table)`
   td {
     border-bottom: 1px solid ${color("border")};
     padding-inline: 0.5rem;
+  }
+  &:first-of-type td,
+  th {
+    padding-inline-start: 1rem;
   }
 ` as typeof Table;
 // we have to cast this because emotion messes up the generic types here
