@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
-import { shouldDisableItem } from "./utils";
+import { shouldDisableItem, filterWritableDashboards } from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -88,6 +88,7 @@ export const AddToDashSelectDashModal = ({
         showRootCollection: !isQuestionInPersonalCollection,
       }}
       shouldDisableItem={shouldDisableItem}
+      searchFilter={filterWritableDashboards}
     />
   );
 };

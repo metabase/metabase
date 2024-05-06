@@ -30,6 +30,9 @@ interface DashboardPickerModalProps {
   onClose: () => void;
   options?: DashboardPickerOptions;
   value?: DashboardPickerInitialValueItem;
+  searchFilter?: (
+    searchResults: DashboardPickerItem[],
+  ) => DashboardPickerItem[];
   shouldDisableItem?: (
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
@@ -42,10 +45,10 @@ const canSelectItem = (
   return item?.model === "dashboard";
 };
 
-const searchFilter = (
+const noSearchFilter = (
   searchResults: DashboardPickerItem[],
 ): DashboardPickerItem[] => {
-  return searchResults.filter(result => result.can_write);
+  return searchResults;
 };
 
 const defaultOptions: DashboardPickerOptions = {
@@ -60,6 +63,7 @@ export const DashboardPickerModal = ({
   value = { model: "collection", id: "root" },
   options = defaultOptions,
   shouldDisableItem,
+  searchFilter,
 }: DashboardPickerModalProps) => {
   options = { ...defaultOptions, ...options };
 
@@ -141,7 +145,7 @@ export const DashboardPickerModal = ({
         initialValue={value}
         tabs={tabs}
         options={options}
-        searchResultFilter={searchFilter}
+        searchResultFilter={searchFilter ?? noSearchFilter}
         actionButtons={modalActions}
         searchParams={
           options.showRootCollection === false

@@ -36,3 +36,9 @@ export function isInPublicCollection(dashboard: Dashboard | undefined) {
 export const shouldDisableItem = (item: DashboardPickerItem) => {
   return item.model === "dashboard" && item.can_write === false;
 };
+
+export const filterWritableDashboards = (
+  dashes: DashboardPickerItem[],
+): DashboardPickerItem[] => {
+  return dashes.filter(dash => dash.can_write);
+};
