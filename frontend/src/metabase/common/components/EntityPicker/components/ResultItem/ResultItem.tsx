@@ -6,6 +6,8 @@ import { getIcon } from "metabase/lib/icon";
 import { Icon, Flex, Tooltip } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
+import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
+
 import { ChunkyListItem } from "./ResultItem.styled";
 
 export type ResultItemType = Pick<
@@ -53,12 +55,7 @@ export const ResultItem = ({
             maw="20rem"
             multiline
             label={item.description}
-            styles={{
-              tooltip: {
-                // required to get the tooltip to show up over the entity picker modal 😢
-                zIndex: "450 !important" as any,
-              },
-            }}
+            zIndex={ENTITY_PICKER_Z_INDEX}
           >
             <Icon color="brand" name="info" />
           </Tooltip>

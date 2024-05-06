@@ -1,6 +1,8 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import type { SyntheticEvent } from "react";
 
+export const DEFAULT_POPOVER_Z_INDEX = 300;
+
 export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
   Popover: {
     defaultProps: {
