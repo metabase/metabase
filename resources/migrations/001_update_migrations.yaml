@@ -3394,19 +3394,36 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-008
-      validCheckSum: 8:c0a512701d6dfd5cc1c4a689919be074
+      validCheckSum: ANY
       author: qnkhuat
       comment: Set revision.most_recent = true for latest revisions
       changes:
         - sql:
-            dbms: postgresql,h2
+            dbms: h2
             sql: >-
               UPDATE revision r
-              SET most_recent = true
-              WHERE (model, model_id, timestamp) IN (
-                                 SELECT model, model_id, MAX(timestamp)
-                                 FROM revision
-                                 GROUP BY model, model_id);
+              SET most_recent = TRUE
+              WHERE (model, model_id, timestamp, id) IN (
+                  SELECT model, model_id, timestamp, id
+                  FROM (
+                      SELECT model, model_id, timestamp, id,
+                            ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
+                      FROM revision
+                  ) AS subquery
+                  WHERE row_num = 1
+              );
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH max_timestamp_per_group AS (
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
+                  FROM revision
+              )
+              UPDATE revision r
+              SET most_recent = TRUE
+              FROM max_timestamp_per_group subquery
+              WHERE r.id = subquery.id
+                  AND subquery.row_num = 1;
           # mysql and mariadb does not allow update on a table that is in the select part
           # so it we join for them
         - sql:
@@ -3414,14 +3431,12 @@ databaseChangeLog:
             sql: >-
               UPDATE revision r
               JOIN (
-                  SELECT model, model_id, MAX(timestamp) AS max_timestamp
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
                   FROM revision
-                  GROUP BY model, model_id
               ) AS subquery
-              ON r.model = subquery.model AND r.model_id = subquery.model_id AND r.timestamp = subquery.max_timestamp
-              SET r.most_recent = true;
+              ON r.id = subquery.id
+              SET r.most_recent = (subquery.row_num = 1);
       rollback: # nothing to do since the most_recent will be dropped anyway
-
 
   - changeSet:
       id: v48.00-009
