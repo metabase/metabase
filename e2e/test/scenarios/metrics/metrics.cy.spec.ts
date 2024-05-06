@@ -47,6 +47,22 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("18,760");
     });
+
+    it("should create a metric for another metric", () => {
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      saveMetric();
+
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText("Orders, Count").click();
+      saveMetric();
+      runQuery();
+      verifyScalarValue("18,760");
+    });
   });
 
   describe("breakouts", () => {
@@ -59,10 +75,7 @@ describe("scenarios > metrics", () => {
       addBreakout("Created At");
       saveMetric();
       runQuery();
-      echartsContainer().within(() => {
-        cy.findByText("Sum of Total").should("be.visible");
-        cy.findByText("Created At").should("be.visible");
-      });
+      verifyLineChart("Created At", "Sum of Total");
     });
 
     it("should create a geo metric", () => {
@@ -75,7 +88,7 @@ describe("scenarios > metrics", () => {
       addBreakout("Longitude");
       saveMetric();
       runQuery();
-      cy.get("[data-element-id=pin-map]").should("exist");
+      verifyPinMap();
     });
   });
 });
@@ -123,4 +136,15 @@ function runQuery() {
 
 function verifyScalarValue(value: string) {
   cy.findByTestId("scalar-container").findByText(value).should("be.visible");
+}
+
+function verifyLineChart(xAxis: string, yAxis: string) {
+  echartsContainer().within(() => {
+    cy.findByText(yAxis).should("be.visible");
+    cy.findByText(xAxis).should("be.visible");
+  });
+}
+
+function verifyPinMap() {
+  cy.get("[data-element-id=pin-map]").should("exist");
 }
