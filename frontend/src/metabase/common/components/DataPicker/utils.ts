@@ -54,8 +54,9 @@ const tablePickerValueFromTable = (
   return {
     db_id: table.db_id,
     id: table.id,
-    schema: table.schema,
     model: "table",
+    name: table.display_name,
+    schema: table.schema,
   };
 };
 
@@ -68,8 +69,9 @@ const tablePickerValueFromTableEntity = (
   return {
     db_id: table.db_id,
     id: table.id,
-    schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
     model: "table",
+    name: table.display_name,
+    schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
   };
 };
 

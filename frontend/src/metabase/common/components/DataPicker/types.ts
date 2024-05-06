@@ -47,9 +47,10 @@ export type ModelItem = {
 
 export type TablePickerValue = {
   id: TableId;
+  name: string;
+  model: "table";
   db_id: DatabaseId;
   schema: SchemaName;
-  model: "table";
 };
 
 export type DataPickerValue = TablePickerValue | QuestionItem | ModelItem;

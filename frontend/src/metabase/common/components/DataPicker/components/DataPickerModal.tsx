@@ -19,6 +19,7 @@ import type {
   ModelItem,
   NotebookDataPickerValueItem,
   QuestionItem,
+  TablePickerValue,
 } from "../types";
 
 import { TablePicker } from "./TablePicker";
@@ -80,7 +81,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "model",
       element: (
         <QuestionPicker
-          initialValue={(value || undefined) as ModelItem | undefined}
+          initialValue={(value ?? undefined) as ModelItem | undefined}
           models={MODEL_PICKER_MODELS}
           options={options}
           onItemSelect={handleModelChange}
@@ -91,7 +92,12 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       displayName: t`Tables`,
       model: "table",
       icon: "table",
-      element: <TablePicker value={value} onChange={handleTableChange} />,
+      element: (
+        <TablePicker
+          value={value as TablePickerValue | null}
+          onChange={handleTableChange}
+        />
+      ),
     },
     {
       displayName: t`Saved questions`,
@@ -99,7 +105,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "folder",
       element: (
         <QuestionPicker
-          initialValue={(value || undefined) as QuestionItem | undefined}
+          initialValue={(value ?? undefined) as QuestionItem | undefined}
           models={QUESTION_PICKER_MODELS}
           options={options}
           onItemSelect={handleQuestionChange}
@@ -111,8 +117,9 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   return (
     <EntityPickerModal
       canSelectItem
+      initialValue={value ?? undefined}
       options={options}
-      selectedItem={null} // TODO
+      selectedItem={value}
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
