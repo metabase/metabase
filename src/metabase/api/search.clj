@@ -512,12 +512,12 @@
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
                             (map #(update % :pk_ref json/parse-string))
+                            (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (map add-can-write)
                               true (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
