@@ -14,7 +14,7 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 - **Entity Key**: The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 - **Entity Name**: Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, you might want to use a field containing usernames as the entity name.
-- **Foreign Key**: The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
+- **Foreign Key**: The column in this table that (usually) refers to the entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
 ## Common
 
