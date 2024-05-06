@@ -104,7 +104,10 @@
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [[[:case
+                             [:= :type nil] 0
+                             [:= :type collection/trash-collection-type] 1
+                             :else 2]] :asc]
                           [:%lower.name :asc]]})
    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -753,7 +756,10 @@
   [sort-info db-type]
   ;; always put "Metabase Analytics" last
   (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+         [[[:case
+            [:= :collection_type nil] 0
+            [:= :collection_type collection/trash-collection-type] 1
+            :else 2]] :asc]]
         (case sort-info
           nil                     [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]

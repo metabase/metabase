@@ -1034,11 +1034,16 @@
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
   "instance-analytics")
 
+(def trash-collection-type
+  "The value of the `:type` field for the Trash collection that holds archived items."
+  "trash")
+
 (defmethod mi/exclude-internal-content-hsql :model/Collection
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
      [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+     [:not= (maybe-alias :type) [:inline trash-collection-type]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
