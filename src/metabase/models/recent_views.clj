@@ -173,14 +173,14 @@
 (defn get-parent-coll
   "Gets parent collection info for a recent view item."
   [coll-id-or-coll]
-  (select-keys
-   (cond (map? coll-id-or-coll) (if-let [parent-id (:parent_id (t2/hydrate coll-id-or-coll :parent_id))]
-                                  ;; hydrate the effective location on the collection
-                                  (t2/select-one :model/Collection parent-id)
-                                  (root/root-collection-with-ui-details {}))
-         (nil? coll-id-or-coll) (root/root-collection-with-ui-details {})
-         :else (t2/select-one :model/Collection coll-id-or-coll))
-   [:id :name :authority_level]))
+  (-> (cond (map? coll-id-or-coll) (if-let [parent-id (:parent_id (t2/hydrate coll-id-or-coll :parent_id))]
+                                     ;; hydrate the effective location on the collection
+                                     (t2/select-one :model/Collection parent-id)
+                                     (root/root-collection-with-ui-details {}))
+            (nil? coll-id-or-coll) (root/root-collection-with-ui-details {})
+            :else (t2/select-one :model/Collection coll-id-or-coll))
+      (select-keys [:id :name :authority_level])
+      (update :authority_level #(some-> % keyword))))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp]}]
   (let [card (t2/select-one :model/Card model_id)]
