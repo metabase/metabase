@@ -132,7 +132,10 @@ function ActionMenu({
   }, [item]);
 
   const handleUnarchive = useCallback(async () => {
-    const result = await item.update?.({ archived: false });
+    const Entity = entityForObject(item);
+    const result = await dispatch(
+      Entity.actions.update({ id: item.id, archived: false }),
+    );
     const parent = HACK_getParentCollectionFromEntityUpdateAction(item, result);
     const redirect = parent ? Urls.collection(parent) : `/collection/root`;
 

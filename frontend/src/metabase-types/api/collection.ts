@@ -111,7 +111,6 @@ export interface CollectionItem {
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
-  update?: (update: Partial<CollectionItem>) => Promise<any>;
 }
 
 export interface CollectionListQuery {
