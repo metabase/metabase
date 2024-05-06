@@ -45,7 +45,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
       name: "combine",
       title: t`Combine columns`,
       section: "combine",
-      icon: "add",
+      icon: "combine",
       buttonType: "horizontal",
       popover: DrillPopover,
     },
