@@ -15,7 +15,12 @@ import type {
   DataPickerValue,
   NotebookDataPickerValueItem,
 } from "../types";
-import { isModelItem, isQuestionItem, isTableItem } from "../utils";
+import {
+  isModelItem,
+  isQuestionItem,
+  isTableItem,
+  isValidValueItem,
+} from "../utils";
 
 import { TablePicker } from "./TablePicker";
 
@@ -42,6 +47,10 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
 
   const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
+      if (!isValidValueItem(item.model)) {
+        return;
+      }
+
       const id =
         item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
       onChange(id);
@@ -52,6 +61,10 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
 
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
+      if (!isValidValueItem(item.model)) {
+        return;
+      }
+
       onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },

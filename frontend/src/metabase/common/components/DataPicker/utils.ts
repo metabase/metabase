@@ -5,6 +5,7 @@ import type {
   Database,
   DatabaseId,
   SchemaName,
+  SearchModel,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -134,4 +135,8 @@ export const isTableItem = (
   value: DataPickerValue | undefined,
 ): value is TablePickerValue => {
   return value?.model === "table";
+};
+
+export const isValidValueItem = (model: SearchModel): boolean => {
+  return ["dataset", "card", "table"].includes(model);
 };
