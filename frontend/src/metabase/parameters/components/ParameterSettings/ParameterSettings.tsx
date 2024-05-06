@@ -6,7 +6,7 @@ import { useDispatch } from "metabase/lib/redux";
 import type { SectionId } from "metabase/parameters/utils/dashboard-options";
 import {
   getDashboardParameterSections,
-  getDefaultOptionForParameterSection,
+  getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
@@ -58,7 +58,7 @@ const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
-const defaultOptionForSection = getDefaultOptionForParameterSection();
+const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
 
 export const ParameterSettings = ({
   parameter,

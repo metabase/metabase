@@ -16,19 +16,19 @@ export interface ParameterSection {
 export function getDashboardParameterSections(): ParameterSection[] {
   return [
     {
-      id: "date" as const,
+      id: "date",
       name: t`Time`,
       description: t`Date range, relative date, time of day, etc.`,
       options: buildTypedOperatorOptions("date", "date", t`Date`),
     },
     {
-      id: "location" as const,
+      id: "location",
       name: t`Location`,
       description: t`City, State, Country, ZIP code.`,
       options: buildTypedOperatorOptions("string", "location", t`Location`),
     },
     {
-      id: "id" as const,
+      id: "id",
       name: t`ID`,
       description: t`User ID, Product ID, Event ID, etc.`,
       options: [
@@ -39,60 +39,55 @@ export function getDashboardParameterSections(): ParameterSection[] {
       ],
     },
     {
-      id: "number" as const,
+      id: "number",
       name: t`Number`,
       description: t`Subtotal, Age, Price, Quantity, etc.`,
       options: buildTypedOperatorOptions("number", "number", t`Number`),
     },
     {
-      id: "string" as const,
+      id: "string",
       name: t`Text or Category`,
       description: t`Name, Rating, Description, etc.`,
       options: buildTypedOperatorOptions("string", "string", t`Text`),
     },
-  ].filter(Boolean);
+  ];
 }
 
-export function getDefaultOptionForParameterSection(): Record<
+const defaultSectionToParameter = {
+  location: "string/=",
+  number: "number/=",
+  string: "string/=",
+  date: "date/all-options",
+};
+
+export function getDefaultOptionForParameterSectionMap(): Record<
   SectionId,
   ParameterMappingOptions
 > {
   const sections = getDashboardParameterSections();
+  const map = {} as Record<SectionId, ParameterMappingOptions>;
 
-  const map = Object.fromEntries(
-    sections.map(section => {
-      const { id: sectionId, options } = section;
-      let defaultOption: ParameterMappingOptions | undefined;
+  for (const section of sections) {
+    const { id: sectionId, options } = section;
 
-      if (sectionId === "id") {
-        defaultOption = options[0];
-      }
+    if (sectionId === "id") {
+      map[sectionId] = options[0];
+      continue;
+    }
 
-      if (sectionId === "location") {
-        defaultOption = options.find(o => o.type === "string/=");
-      }
+    const defaultOperator = defaultSectionToParameter[sectionId];
+    const defaultOption = options.find(
+      option => option.type === defaultOperator,
+    );
 
-      if (sectionId === "number") {
-        defaultOption = options.find(o => o.type === "number/=");
-      }
+    if (!defaultOption) {
+      throw new Error(
+        `No default option found for parameter section "${sectionId}"`,
+      );
+    }
 
-      if (sectionId === "string") {
-        defaultOption = options.find(o => o.type === "string/=");
-      }
+    map[sectionId] = defaultOption;
+  }
 
-      if (sectionId === "date") {
-        defaultOption = options.find(o => o.type === "date/all-options");
-      }
-
-      if (!defaultOption) {
-        throw new Error(
-          "No default option found for parameter section: " + sectionId,
-        );
-      }
-
-      return [sectionId, defaultOption];
-    }),
-  );
-
-  return map as Record<SectionId, ParameterMappingOptions>;
+  return map;
 }
