@@ -1269,3 +1269,12 @@
                                                                           [:= :f.id nil]]}])]
     (doseq [card cards]
       (update-query-fields! card))))
+
+(define-migration DeleteSendPulsesTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.job"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
+    (qs/shutdown scheduler)))
