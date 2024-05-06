@@ -70,6 +70,7 @@ function ApiKeysTable({
 
   return (
     <StyledTable
+      data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
       rowRenderer={row => (
