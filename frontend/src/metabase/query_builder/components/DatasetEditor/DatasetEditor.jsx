@@ -74,6 +74,7 @@ const propTypes = {
   onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
+  updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 
@@ -209,6 +210,7 @@ function DatasetEditor(props) {
     onCancelDatasetChanges,
     onCancelCreateNewModel,
     onSave,
+    updateQuestion,
     handleResize,
     onOpenModal,
   } = props;
@@ -351,18 +353,27 @@ function DatasetEditor(props) {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
+    const questionWithDisplay = question.setDefaultDisplay();
 
     if (canBeDataset && isBrandNewDataset) {
+      await updateQuestion(questionWithDisplay, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(question, { rerunQuery: false });
+      await onSave(questionWithDisplay, { rerunQuery: false });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
     }
-  }, [question, onSave, setQueryBuilderMode, runQuestionQuery, onOpenModal]);
+  }, [
+    question,
+    updateQuestion,
+    onSave,
+    setQueryBuilderMode,
+    runQuestionQuery,
+    onOpenModal,
+  ]);
 
   const handleColumnSelect = useCallback(
     column => {
