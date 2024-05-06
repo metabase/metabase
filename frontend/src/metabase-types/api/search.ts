@@ -1,6 +1,6 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardId } from "./card";
+import type { CardDisplayType, CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
@@ -96,6 +96,7 @@ export interface SearchResult<
   bookmark: boolean | null;
   database_id: DatabaseId;
   database_name: string | null;
+  display: CardDisplayType | null;
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
