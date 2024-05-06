@@ -64,7 +64,7 @@ function getParameterOperatorType(parameterType?: string) {
 
 export function buildTypedOperatorOptions(
   operatorType: OperatorType,
-  sectionId: string,
+  sectionId: "number" | "string" | "date" | "location" | "id",
   sectionName: string,
 ): ParameterMappingOptions[] {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {

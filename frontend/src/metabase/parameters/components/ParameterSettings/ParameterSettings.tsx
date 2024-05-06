@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
+import type { SectionId } from "metabase/parameters/utils/dashboard-options";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSection,
@@ -21,7 +22,6 @@ import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-s
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -58,10 +58,7 @@ const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
-const defaultOptionForSection = getDefaultOptionForParameterSection() as Record<
-  string,
-  ParameterMappingOptions
->;
+const defaultOptionForSection = getDefaultOptionForParameterSection();
 
 export const ParameterSettings = ({
   parameter,
@@ -116,7 +113,7 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
-  const handleTypeChange = (sectionId: string) => {
+  const handleTypeChange = (sectionId: SectionId) => {
     const defaultOptionOfNextType = defaultOptionForSection[sectionId];
 
     onChangeType(defaultOptionOfNextType.type, sectionId);
