@@ -49,8 +49,10 @@ export type TablePickerValue = {
   id: TableId;
   db_id: DatabaseId;
   schema: SchemaName;
-  model: NotebookDataPickerValueItem["model"];
+  model: "table";
 };
+
+export type DataPickerValue = TablePickerValue | QuestionItem | ModelItem;
 
 export type NotebookDataPickerFolderItem =
   | CollectionItem

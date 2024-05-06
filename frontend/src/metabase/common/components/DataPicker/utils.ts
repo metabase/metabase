@@ -1,6 +1,5 @@
 import { humanize, titleize } from "metabase/lib/formatting";
 import TableEntity from "metabase-lib/v1/metadata/Table";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   Database,
@@ -11,6 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  DataPickerValue,
   NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
   TablePickerValue,
@@ -24,55 +24,53 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const tablePickerValueFromTable = (
+export const dataPickerValueFromTableOrCard = (
   table: Table | TableEntity | null,
-  sourceCard: Card | undefined,
+  card: Card | undefined,
+): DataPickerValue | null => {
+  if (card) {
+    return {
+      id: card.id,
+      name: card.name,
+      model: card.type === "model" ? "dataset" : "card",
+    };
+  }
+
+  return tablePickerValueFromTable(table);
+};
+
+const tablePickerValueFromTable = (
+  table: Table | TableEntity | null,
 ): TablePickerValue | null => {
   if (table === null) {
     return null;
   }
 
-  const sourceCardId = getQuestionIdFromVirtualTableId(table.id);
-
-  if (sourceCardId && !sourceCard) {
-    return null;
-  }
-
   // Temporary, for backward compatibility in DataStep, until entity framework is no more
   if (table instanceof TableEntity) {
-    return tablePickerValueFromTableEntity(table, sourceCard);
+    return tablePickerValueFromTableEntity(table);
   }
 
   return {
     db_id: table.db_id,
-    id: sourceCardId ?? table.id,
+    id: table.id,
     schema: table.schema,
-    model: getModelFromCard(sourceCard),
+    model: "table",
   };
 };
 
 const tablePickerValueFromTableEntity = (
   table: TableEntity,
-  card: Card | undefined,
 ): TablePickerValue => {
   // In DBs without schemas, API will use an empty string to indicate the default, virtual schema
   const NO_SCHEMA_FALLBACK = "";
-  const sourceCardId = getQuestionIdFromVirtualTableId(table.id);
 
   return {
     db_id: table.db_id,
-    id: sourceCardId ?? table.id,
+    id: table.id,
     schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
-    model: getModelFromCard(card),
+    model: "table",
   };
-};
-
-const getModelFromCard = (card: Card | undefined) => {
-  if (!card) {
-    return "table";
-  }
-
-  return card.type === "model" ? "dataset" : "card";
 };
 
 export const getDbItem = (

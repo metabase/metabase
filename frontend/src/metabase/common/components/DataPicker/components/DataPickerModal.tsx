@@ -15,10 +15,10 @@ import type { QuestionPickerItem } from "../../QuestionPicker";
 import { QuestionPicker } from "../../QuestionPicker";
 import type {
   DataPickerModalOptions,
+  DataPickerValue,
   ModelItem,
   NotebookDataPickerValueItem,
   QuestionItem,
-  TablePickerValue,
 } from "../types";
 
 import { TablePicker } from "./TablePicker";
@@ -28,7 +28,7 @@ interface Props {
    * TODO: use this prop in https://github.com/metabase/metabase/issues/40719
    */
   collectionId: CollectionId | null | undefined;
-  value: TablePickerValue | null;
+  value: DataPickerValue | null;
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
