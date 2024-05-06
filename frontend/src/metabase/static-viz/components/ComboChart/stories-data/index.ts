@@ -52,6 +52,7 @@ import lineLinearXScale from "./line-linear-x-scale.json";
 import lineLogYScaleNegative from "./line-log-y-scale-negative.json";
 import lineLogYScale from "./line-log-y-scale.json";
 import lineReplaceMissingValuesZero from "./line-replace-missing-values-zero.json";
+import lineSettings from "./line-settings.json";
 import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
@@ -171,5 +172,6 @@ export const data = {
   histogramTicks45Degrees,
   histogramTicks90Degrees,
   lineUnpinFromZero,
+  lineSettings,
   lineReplaceMissingValuesZero,
 };

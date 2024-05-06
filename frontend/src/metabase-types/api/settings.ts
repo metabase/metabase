@@ -216,6 +216,15 @@ interface InstanceSettings {
   "user-visibility": string | null;
 }
 
+export type EmbeddingHomepageDismissReason =
+  | "dismissed-done"
+  | "dismissed-run-into-issues"
+  | "dismissed-not-interested-now";
+export type EmbeddingHomepageStatus =
+  | EmbeddingHomepageDismissReason
+  | "visible"
+  | "hidden";
+
 interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
@@ -234,12 +243,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "embedding-homepage":
-    | "visible"
-    | "hidden"
-    | "dismissed-done"
-    | "dismissed-run-into-issues"
-    | "dismissed-not-interested-now";
+  "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
 }

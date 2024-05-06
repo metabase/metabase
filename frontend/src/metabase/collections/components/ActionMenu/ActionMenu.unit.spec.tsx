@@ -142,6 +142,7 @@ describe("ActionMenu", () => {
         personal_owner_id: 1,
         setCollection: jest.fn(),
         setArchived: jest.fn(),
+        copy: true,
       });
 
       setup({ item });
@@ -158,6 +159,7 @@ describe("ActionMenu", () => {
         can_write: false,
         setCollection: jest.fn(),
         setArchived: jest.fn(),
+        copy: true,
       });
 
       setup({ item });

@@ -283,16 +283,16 @@ const EntityItem = ({
   onMove?: OnMove;
   onCopy?: OnCopy;
   onArchive?: OnArchive;
-  selected: boolean;
+  selected?: boolean;
   onToggleSelected?: OnToggleSelected;
   selectable?: boolean;
-  variant: string;
+  variant?: string;
   item: CollectionItem;
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
   loading?: boolean;
-  disabled: boolean;
+  disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
 

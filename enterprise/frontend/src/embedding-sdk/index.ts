@@ -5,4 +5,9 @@ export * from "./components/public";
 export * from "./lib/plugins";
 
 export type { SDKConfig } from "./types";
-export type { MetabaseTheme } from "./types/theme";
+
+export type {
+  MetabaseTheme,
+  MetabaseColors,
+  MetabaseComponentTheme,
+} from "./types/theme";
