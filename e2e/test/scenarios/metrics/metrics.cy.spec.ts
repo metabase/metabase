@@ -17,7 +17,7 @@ describe("scenarios > metrics", () => {
   describe("data source", () => {
     it("should create a metric for a table", () => {
       cy.visit("/");
-      newMetric();
+      startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation("Count of rows");
@@ -30,7 +30,7 @@ describe("scenarios > metrics", () => {
 
     it("should create a metric for a saved question", () => {
       cy.visit("/");
-      newMetric();
+      startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
       addAggregation("Count of rows");
@@ -45,7 +45,7 @@ describe("scenarios > metrics", () => {
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       cy.visit("/");
-      newMetric();
+      startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation("Sum of ...", "Total");
@@ -60,7 +60,7 @@ describe("scenarios > metrics", () => {
 
     it("should create a geo metric", () => {
       cy.visit("/");
-      newMetric();
+      startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
       addAggregation("Count of rows");
@@ -73,7 +73,7 @@ describe("scenarios > metrics", () => {
   });
 });
 
-function newMetric() {
+function startNewMetric() {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Metric").click();
 }
