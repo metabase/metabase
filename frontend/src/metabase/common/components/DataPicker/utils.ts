@@ -1,5 +1,7 @@
 import { humanize, titleize } from "metabase/lib/formatting";
+import { checkNotNull } from "metabase/lib/types";
 import TableEntity from "metabase-lib/v1/metadata/Table";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Database,
   DatabaseId,
@@ -34,10 +36,16 @@ export const tablePickerValueFromTable = (
     return tablePickerValueFromTableEntity(table);
   }
 
+  const id =
+    typeof table.id === "string"
+      ? getQuestionIdFromVirtualTableId(table.id)
+      : table.id;
+
   return {
     db_id: table.db_id,
-    id: table.id,
+    id: checkNotNull(id),
     schema: table.schema,
+    model: "dataset", // TODO
   };
 };
 
@@ -47,10 +55,16 @@ const tablePickerValueFromTableEntity = (
   // In DBs without schemas, API will use an empty string to indicate the default, virtual schema
   const NO_SCHEMA_FALLBACK = "";
 
+  const id =
+    typeof table.id === "string"
+      ? getQuestionIdFromVirtualTableId(table.id)
+      : table.id;
+
   return {
     db_id: table.db_id,
-    id: table.id,
+    id: checkNotNull(id),
     schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
+    model: "dataset", // TODO
   };
 };
 
