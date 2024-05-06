@@ -224,7 +224,7 @@
      :can_write (mi/can-write? :model/Table model_id)
      :timestamp (str timestamp)
      :database {:id (:db_id table)
-                :name (:name table)}}))
+                :name (t2/select-one-fn :name :model/Database (:db_id table))}}))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (let [collection (or model_object (t2/select-one :model/Collection model_id))]
