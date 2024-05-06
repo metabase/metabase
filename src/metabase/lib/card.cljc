@@ -130,8 +130,8 @@
    card                  :- Card]
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
-      (when-let [result-metadata (or (:fields card)
-                                     (:result-metadata card)
+      (when-let [result-metadata (or (:result-metadata card)
+                                     (:fields card)
                                      (infer-returned-columns metadata-providerable (:dataset-query card)))]
         ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
         ;; contains` :columns` as well.
