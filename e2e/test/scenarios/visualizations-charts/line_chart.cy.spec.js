@@ -64,6 +64,40 @@ describe("scenarios > visualizations > line chart", () => {
       });
   });
 
+  it("should display line settings only for line/area charts", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    openSeriesSettings("Count");
+
+    popover().within(() => {
+      cy.findByText("Style").click();
+
+      // For line chart
+      cy.findByText("Line shape").should("exist");
+      cy.findByText("Line style").should("exist");
+      cy.findByText("Line size").should("exist");
+      cy.findByText("Show dots on lines").should("exist");
+
+      // For area chart
+      cy.icon("area").click();
+      cy.findByText("Line shape").should("exist");
+      cy.findByText("Line style").should("exist");
+      cy.findByText("Line size").should("exist");
+      cy.findByText("Show dots on lines").should("exist");
+
+      // For bar chart
+      cy.icon("bar").click();
+      cy.findByText("Line shape").should("not.be.visible");
+      cy.findByText("Line style").should("not.be.visible");
+      cy.findByText("Line size").should("not.be.visible");
+      cy.findByText("Show dots on lines").should("not.be.visible");
+    });
+  });
+
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
     visitQuestionAdhoc({
       dataset_query: {

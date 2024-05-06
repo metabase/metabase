@@ -15,9 +15,11 @@ import { SdkContentWrapper } from "./SdkContentWrapper";
 interface AppInitializeControllerProps {
   children: ReactNode;
   config: SDKConfig;
+  font?: string;
 }
 
 export const AppInitializeController = ({
+  font,
   config,
   children,
 }: AppInitializeControllerProps) => {
@@ -31,7 +33,7 @@ export const AppInitializeController = ({
     <SdkContentWrapper
       baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
-      font={config.font ?? DEFAULT_FONT}
+      font={font ?? DEFAULT_FONT}
     >
       {!isInitialized ? <div>{t`Loading…`}</div> : children}
     </SdkContentWrapper>

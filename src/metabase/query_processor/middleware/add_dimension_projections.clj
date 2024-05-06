@@ -37,6 +37,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
@@ -421,7 +422,7 @@
   metadata we get back when running a native query against a DB that doesn't return type metadata for query
   results (such as MongoDB, since it isn't strongly typed)."
   [:merge
-   lib.metadata/ColumnMetadata
+   ::lib.schema.metadata/column
    [:map
     [:base-type {:optional true} ::lib.schema.common/base-type]]])
 

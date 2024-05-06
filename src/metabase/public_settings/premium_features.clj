@@ -29,7 +29,7 @@
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
-  #"airgap_[0-9a-f]*")
+  #"airgap_.+")
 
 (def ^:private TokenStr
   [:or

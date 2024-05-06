@@ -65,6 +65,7 @@ export interface VisualizationProps {
   isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
+  isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;
