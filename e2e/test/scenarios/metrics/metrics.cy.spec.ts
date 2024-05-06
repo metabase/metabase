@@ -22,10 +22,7 @@ describe("scenarios > metrics", () => {
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
-        .click();
-      popover().findByText("Count of rows").click();
+      addAggregation("Count of rows");
       cy.button("Save").click();
       modal().button("Save").click();
       cy.wait("@createCard");
@@ -42,17 +39,8 @@ describe("scenarios > metrics", () => {
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
-        .click();
-      popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
-      });
-      getNotebookStep("summarize")
-        .findByText("Pick a column to group by")
-        .click();
-      popover().findByText("Created At").click();
+      addAggregation("Sum of ...", "Total");
+      addBreakout("Created At");
       cy.button("Save").click();
       modal().button("Save").click();
       cy.wait("@createCard");
@@ -70,19 +58,9 @@ describe("scenarios > metrics", () => {
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
-      getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
-        .click();
-      popover().findByText("Count of rows").click();
-      getNotebookStep("summarize")
-        .findByText("Pick a column to group by")
-        .click();
-      popover().findByText("Latitude").click();
-      getNotebookStep("summarize")
-        .findByTestId("breakout-step")
-        .icon("add")
-        .click();
-      popover().findByText("Longitude").click();
+      addAggregation("Count of rows");
+      addBreakout("Latitude");
+      addBreakout("Longitude");
       cy.button("Save").click();
       modal().button("Save").click();
       cy.wait("@createCard");
@@ -92,3 +70,28 @@ describe("scenarios > metrics", () => {
     });
   });
 });
+
+function addAggregation(operatorName: string, columnName?: string) {
+  getNotebookStep("summarize")
+    .findByTestId("aggregation-step")
+    .findAllByTestId("notebook-cell-item")
+    .last()
+    .click();
+
+  popover().within(() => {
+    cy.findByText(operatorName).click();
+    if (columnName) {
+      cy.findByText(columnName).click();
+    }
+  });
+}
+
+function addBreakout(columnName: string) {
+  getNotebookStep("summarize")
+    .findByTestId("breakout-step")
+    .findAllByTestId("notebook-cell-item")
+    .last()
+    .click();
+
+  popover().findByText(columnName).click();
+}
