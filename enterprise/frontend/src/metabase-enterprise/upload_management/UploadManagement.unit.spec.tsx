@@ -6,7 +6,7 @@ import {
   setupDeleteUploadManagementDeleteEndpoint,
   setupUploadManagementEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { UploadManagementTable } from "./UploadManagementTable";
@@ -93,10 +93,69 @@ describe("uploadManagementTable", () => {
     const deleteButton = screen.getAllByLabelText("trash icon")[0];
 
     await userEvent.click(deleteButton);
-    expect(screen.getByText("Delete Uploaded Table 1?")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Delete Uploaded Table 1?"),
+    ).toBeInTheDocument();
 
     const confirmButton = screen.getByRole("button", { name: "Delete" });
     await userEvent.click(confirmButton);
+  });
+
+  it("should delete dependent questions by default", async () => {
+    await setup();
+    const deleteButton = screen.getAllByLabelText("trash icon")[0];
+
+    await userEvent.click(deleteButton);
+    expect(
+      await screen.findByText("Delete Uploaded Table 1?"),
+    ).toBeInTheDocument();
+
+    const modal = screen.getByRole("dialog");
+    const confirmButton = within(modal).getByRole("button", { name: "Delete" });
+    await userEvent.click(confirmButton);
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Delete Uploaded Table 1?"),
+      ).not.toBeInTheDocument(),
+    );
+
+    await waitFor(() => {
+      const [url, details] = fetchMock.calls()[1]; // next to last call should be the DELETE request
+
+      expect(details?.method).toEqual("DELETE");
+      return expect(url).toContain("?archive-cards=true");
+    });
+  });
+
+  it("can toggle off dependent question deletion", async () => {
+    await setup();
+    const deleteButton = screen.getAllByLabelText("trash icon")[0];
+
+    await userEvent.click(deleteButton);
+    expect(
+      await screen.findByText("Delete Uploaded Table 1?"),
+    ).toBeInTheDocument();
+
+    const modal = screen.getByRole("dialog");
+    const confirmButton = within(modal).getByRole("button", { name: "Delete" });
+    const toggle = within(modal).getByLabelText(
+      /Also send all models and questions based on this table to the trash/i,
+    );
+    await userEvent.click(toggle);
+
+    await userEvent.click(confirmButton);
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Delete Uploaded Table 1?"),
+      ).not.toBeInTheDocument(),
+    );
+
+    await waitFor(() => {
+      const [url, details] = fetchMock.calls()[1]; // next to last call should be the DELETE request
+
+      expect(details?.method).toEqual("DELETE");
+      return expect(url).toContain("?archive-cards=false");
+    });
   });
 
   it("should delete multiple tables", async () => {

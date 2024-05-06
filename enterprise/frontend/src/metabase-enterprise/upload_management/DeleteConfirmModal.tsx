@@ -19,12 +19,17 @@ export function DeleteConfirmModal({
   const title =
     tables.length === 1
       ? c("{0} is the name of a database table to be deleted")
-          .t`Delete ${tables[0].display_name}?`
+          .t`Delete ${tables[0].name}?`
       : c("{0} is the number of database tables to be deleted")
           .t`Delete ${tables.length} tables?`;
 
   return (
-    <Modal opened={opened} title={title} onClose={onClose} size="md">
+    <Modal
+      opened={opened}
+      title={<Text style={{ wordBreak: "break-all" }}>{title}</Text>}
+      onClose={onClose}
+      size="md"
+    >
       <Box>
         <Text my="lg">
           {t`This may impact the models and questions that use the table(s) as their data source. This can't be undone.`}

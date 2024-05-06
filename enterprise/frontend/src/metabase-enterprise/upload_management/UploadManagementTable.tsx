@@ -7,7 +7,7 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActions";
 import { StyledTable } from "metabase/common/components/Table";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Text, Button, Icon, Checkbox } from "metabase/ui";
@@ -70,7 +70,7 @@ export function UploadManagementTable() {
   );
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   if (!uploadTables?.length) {
