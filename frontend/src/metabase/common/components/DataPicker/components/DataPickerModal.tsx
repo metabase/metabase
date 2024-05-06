@@ -27,7 +27,7 @@ interface Props {
    * TODO: use this prop in https://github.com/metabase/metabase/issues/40719
    */
   collectionId: CollectionId | null | undefined;
-  value: DataPickerValue | null;
+  value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
@@ -92,7 +92,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "table",
       element: (
         <TablePicker
-          value={isTableItem(value) ? value : null}
+          value={isTableItem(value) ? value : undefined}
           onChange={handleTableChange}
         />
       ),
@@ -115,9 +115,9 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   return (
     <EntityPickerModal
       canSelectItem
-      initialValue={value ?? undefined}
+      initialValue={value}
       options={options}
-      selectedItem={value}
+      selectedItem={value ?? null}
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}

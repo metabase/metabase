@@ -26,7 +26,7 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const dataPickerValueFromCard = (card: Card): DataPickerValue | null => {
+export const dataPickerValueFromCard = (card: Card): DataPickerValue => {
   return {
     id: card.id,
     name: card.name,
@@ -36,9 +36,9 @@ export const dataPickerValueFromCard = (card: Card): DataPickerValue | null => {
 
 export const dataPickerValueFromTable = (
   table: Table | TableEntity | null,
-): TablePickerValue | null => {
+): TablePickerValue | undefined => {
   if (table === null) {
-    return null;
+    return undefined;
   }
 
   // Temporary, for backward compatibility in DataStep, until entity framework is no more
@@ -119,19 +119,19 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
 };
 
 export const isModelItem = (
-  value: DataPickerValue | null,
+  value: DataPickerValue | undefined,
 ): value is ModelItem => {
   return value?.model === "dataset";
 };
 
 export const isQuestionItem = (
-  value: DataPickerValue | null,
+  value: DataPickerValue | undefined,
 ): value is QuestionItem => {
   return value?.model === "card";
 };
 
 export const isTableItem = (
-  value: DataPickerValue | null,
+  value: DataPickerValue | undefined,
 ): value is TablePickerValue => {
   return value?.model === "table";
 };
