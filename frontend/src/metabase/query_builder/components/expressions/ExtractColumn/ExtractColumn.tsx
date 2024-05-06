@@ -22,12 +22,17 @@ type Props = {
 };
 
 export function ExtractColumn({
-  query,
-  stageIndex,
+  query: originalQuery,
+  stageIndex: originalStageIndex,
   onCancel,
   onSubmit,
 }: Props) {
   const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
+
+  const { query, stageIndex } = Lib.asReturned(
+    originalQuery,
+    originalStageIndex,
+  );
 
   function handleSelect(column: Lib.ColumnMetadata) {
     setColumn(column);
