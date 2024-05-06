@@ -48,7 +48,9 @@ For which questions, models, and dashboards a group can view, instead see [colle
 
 ### Can view data permission
 
-Setting to "Can view** means the group can view all the data for the data source.
+Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
+
+In order to view the data in the [Browse data](../exploration-and-organization/exploration.md#browse-your-data) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
 
 ### Granular view data permission
 
