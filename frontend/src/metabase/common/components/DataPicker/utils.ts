@@ -11,8 +11,10 @@ import type {
 
 import type {
   DataPickerValue,
+  ModelItem,
   NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
+  QuestionItem,
   TablePickerValue,
 } from "./types";
 
@@ -114,4 +116,22 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   }
 
   return titleize(humanize(schemaName));
+};
+
+export const isModelItem = (
+  value: DataPickerValue | null,
+): value is ModelItem => {
+  return value?.model === "dataset";
+};
+
+export const isQuestionItem = (
+  value: DataPickerValue | null,
+): value is QuestionItem => {
+  return value?.model === "card";
+};
+
+export const isTableItem = (
+  value: DataPickerValue | null,
+): value is TablePickerValue => {
+  return value?.model === "table";
 };

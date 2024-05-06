@@ -16,11 +16,9 @@ import { QuestionPicker } from "../../QuestionPicker";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
-  ModelItem,
   NotebookDataPickerValueItem,
-  QuestionItem,
-  TablePickerValue,
 } from "../types";
+import { isModelItem, isQuestionItem, isTableItem } from "../utils";
 
 import { TablePicker } from "./TablePicker";
 
@@ -81,7 +79,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "model",
       element: (
         <QuestionPicker
-          initialValue={(value ?? undefined) as ModelItem | undefined}
+          initialValue={isModelItem(value) ? value : undefined}
           models={MODEL_PICKER_MODELS}
           options={options}
           onItemSelect={handleModelChange}
@@ -94,7 +92,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "table",
       element: (
         <TablePicker
-          value={value as TablePickerValue | null}
+          value={isTableItem(value) ? value : null}
           onChange={handleTableChange}
         />
       ),
@@ -105,7 +103,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "folder",
       element: (
         <QuestionPicker
-          initialValue={(value ?? undefined) as QuestionItem | undefined}
+          initialValue={isQuestionItem(value) ? value : undefined}
           models={QUESTION_PICKER_MODELS}
           options={options}
           onItemSelect={handleQuestionChange}
