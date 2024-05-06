@@ -13,6 +13,7 @@ import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type { QuestionPickerItem } from "../../QuestionPicker";
 import { QuestionPicker } from "../../QuestionPicker";
+import { useHasModels, useHasQuestions } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
@@ -44,6 +45,9 @@ const options: DataPickerModalOptions = {
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
+  const hasModels = useHasModels();
+  const hasQuestions = useHasQuestions();
+
   const handleTableChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
       onChange(item.id);
@@ -73,19 +77,21 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    {
-      displayName: t`Models`,
-      model: "dataset",
-      icon: "model",
-      element: (
-        <QuestionPicker
-          initialValue={isModelItem(value) ? value : undefined}
-          models={MODEL_PICKER_MODELS}
-          options={options}
-          onItemSelect={handleModelChange}
-        />
-      ),
-    },
+    hasModels
+      ? {
+          displayName: t`Models`,
+          model: "dataset",
+          icon: "model",
+          element: (
+            <QuestionPicker
+              initialValue={isModelItem(value) ? value : undefined}
+              models={MODEL_PICKER_MODELS}
+              options={options}
+              onItemSelect={handleModelChange}
+            />
+          ),
+        }
+      : undefined,
     {
       displayName: t`Tables`,
       model: "table",
@@ -97,20 +103,25 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
         />
       ),
     },
-    {
-      displayName: t`Saved questions`,
-      model: "card",
-      icon: "folder",
-      element: (
-        <QuestionPicker
-          initialValue={isQuestionItem(value) ? value : undefined}
-          models={QUESTION_PICKER_MODELS}
-          options={options}
-          onItemSelect={handleQuestionChange}
-        />
-      ),
-    },
-  ];
+    hasQuestions
+      ? {
+          displayName: t`Saved questions`,
+          model: "card",
+          icon: "folder",
+          element: (
+            <QuestionPicker
+              initialValue={isQuestionItem(value) ? value : undefined}
+              models={QUESTION_PICKER_MODELS}
+              options={options}
+              onItemSelect={handleQuestionChange}
+            />
+          ),
+        }
+      : undefined,
+  ].filter(
+    (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
+      tab != null,
+  );
 
   return (
     <EntityPickerModal
