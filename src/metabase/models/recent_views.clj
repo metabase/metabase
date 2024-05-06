@@ -136,7 +136,7 @@
           ;; Lower-case the model name, since that's what the FE expects
           (map #(update % :model u/lower-case-en))))))
 
-(def RecentItem
+(def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
   [:and {:registry {::pc [:map
                           [:id [:or [:int {:min 1}] [:= "root"]]]
@@ -164,7 +164,10 @@
                   [:authority_level [:enum :official nil]]]]]])
 
 (defmulti fill-recent-view-info
-  "Fills in additional information for a recent view, such as the display name of the object."
+  "Fills in additional information for a recent view, such as the display name of the object.
+
+  - When called from `GET /popular_items`, the `model_object` field will be present, and should be used instead of
+  querying the database for the object."
   (fn [{:keys [model #_model_id #_timestamp]}]
     (keyword (if (= model :model) "dataset" model))))
 
@@ -182,8 +185,8 @@
       (select-keys [:id :name :authority_level])
       (update :authority_level #(some-> % keyword))))
 
-(defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp]}]
-  (let [card (t2/select-one :model/Card model_id)]
+(defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
+  (let [card (or model_object (t2/select-one :model/Card model_id))]
     {:id model_id
      :name (:name card)
      :display (when-let [display (:display card)] (name display))
@@ -192,8 +195,8 @@
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id card))}))
 
-(defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp]}]
-  (let [dataset (t2/select-one :model/Card model_id)]
+(defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
+  (let [dataset (or model_object (t2/select-one :model/Card model_id))]
     {:id model_id
      :name (:name dataset)
      :model :dataset
@@ -201,8 +204,8 @@
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dataset))}))
 
-(defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp]}]
-  (let [dashboard (t2/select-one :model/Dashboard model_id)]
+(defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
+  (let [dashboard (or model_object (t2/select-one :model/Dashboard model_id))]
     {:id model_id
      :name (:name dashboard)
      :model :dashboard
@@ -210,8 +213,8 @@
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dashboard))}))
 
-(defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp]}]
-  (let [table (t2/select-one :model/Table model_id)]
+(defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
+  (let [table (or model_object (t2/select-one :model/Table model_id))]
     {:id model_id
      :name (:name table)
      :model :table
@@ -220,8 +223,8 @@
      :database {:id (:db_id table)
                 :name (:name table)}}))
 
-(defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp]}]
-  (let [collection (t2/select-one :model/Collection model_id)]
+(defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
+  (let [collection (or model_object (t2/select-one :model/Collection model_id))]
     {:id model_id
      :name (:name collection)
      :model :collection
@@ -250,7 +253,7 @@
       (dissoc :card_type)
       (update :model model->return-model)))
 
-(mu/defn get-list :- [:sequential RecentItem]
+(mu/defn get-list :- [:sequential Item]
   "Gets all recent views for a given user. Returns a list of at most 20 `RecentItem` maps per [[models-of-interest]]."
   [user-id]
   (into [] (map post-process) (do-query user-id)))
