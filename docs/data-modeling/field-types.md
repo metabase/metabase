@@ -38,7 +38,7 @@ Marking fields as locations tell Metabase that it can use the field to display d
 
 ## Financial
 
-Financial field types tell Metabase to treat the field's values as money. If you select any of the financial field types, Metabase will ask which currency you want to use.
+Financial field types tell Metabase to treat the field's values as money. If you select any of the financial field types, Metabase will ask which currency you want to use. Metabase treats each of the following types as money, their differences are purely semantic.
 
 - **Cost**
 - **Currency**
@@ -64,7 +64,7 @@ See [Number formatting options](../questions/sharing/visualizations/table.md#num
 
 Fields that deal with people.
 
-- **Birthday**: Everyone has a birthday, but birthdays only happen once a year.
+- **Birthday**. Date field.
 - **Company**: Text field.
 - **Email**: Displays as a [mailto](https://en.wikipedia.org/wiki/Mailto) link.
 - **Owner**: Text field.
@@ -101,7 +101,7 @@ See [Date formatting options](../questions/sharing/visualizations/table.md#date-
 
 - **Enum**: An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in the makeup of the column, and no options outside this list would be valid.
 - **Product**
-- **Source**: For example, the source of a visitor to your website.
+- **Source**: For example, the source of a visitor to your website (such as a search engine or other website).
 
 ## URLs
 
