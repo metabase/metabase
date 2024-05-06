@@ -33,7 +33,7 @@ For authentication, you have two options:
 
 - **Using a username and password:**
 
-  - Enter the username and password you use to log in to the bastion host into the `SSH tunnel username` and `SSH tunnel password` fields.
+  - In the `SSH tunnel username` and `SSH tunnel password` fields, enter the username and password you use to log in to the bastion host.
 
 - **Using SSH Key (PKI Authentication):**
 
