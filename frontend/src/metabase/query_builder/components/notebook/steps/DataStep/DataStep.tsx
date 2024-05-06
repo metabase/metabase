@@ -34,7 +34,6 @@ export const DataStep = ({
   const question = step.question;
   const questionRef = useLatest(question);
   const metadata = question.metadata();
-  const collectionId = question.collectionId();
 
   const tableId = Lib.sourceTableOrCardId(query);
   const table = metadata.table(tableId);
@@ -99,7 +98,6 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <DataPickerModal
-              collectionId={collectionId}
               value={
                 sourceCardId && sourceCard
                   ? dataPickerValueFromCard(sourceCard)

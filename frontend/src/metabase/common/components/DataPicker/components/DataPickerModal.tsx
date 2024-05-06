@@ -3,11 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  CollectionId,
-  CollectionItemModel,
-  TableId,
-} from "metabase-types/api";
+import type { CollectionItemModel, TableId } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -24,10 +20,6 @@ import { isModelItem, isQuestionItem, isTableItem } from "../utils";
 import { TablePicker } from "./TablePicker";
 
 interface Props {
-  /**
-   * TODO: use this prop in https://github.com/metabase/metabase/issues/40719
-   */
-  collectionId: CollectionId | null | undefined;
   value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
