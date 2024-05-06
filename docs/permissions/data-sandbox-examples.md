@@ -97,15 +97,15 @@ Here are the results:
 
 ![Filtering question](images/advanced-example-1-filtering-question.png)
 
-Now, when I go to the Permissions section and grant this group sandboxed access to this table, I'll select the second option, "Use a saved question to create a custom view for this table", and select the saved question I just created, like so:
+Now, when we go to the Permissions section and grant this group sandboxed access to this table, we'll select the second option, "Use a saved question to create a custom view for this table", and select the saved question we just created, like so:
 
 ![Sandbox options](images/advanced-example-1-sandbox-modal.png)
 
-To verify things are working correctly, I'll log in as a test user in the Customers group, and when I go to open up the `People` table, you should see that Mr. Beer can instead see the results of the filtering question:
+To verify things are working correctly, we can log in as Mr. Beer, and when we go to open up the `People` table, we should see that Mr. Beer can instead see the results of the filtering question:
 
 ![Sandboxed results](images/advanced-example-1-results.png)
 
-**Note:** this filtering will also happen when a user with sandboxed access goes to look at a chart that uses data from the sandboxed table. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will not load for that user.
+**Note:** When Mr. Beer views a chart that uses data from the sandboxed table, Metabase will also apply the filtering. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will NOT load for Mr. Beer.
 
 ## Custom example 2: Filtering rows and columns
 
@@ -143,11 +143,11 @@ Select Cloyd Beer's Customer group, and set the **View data** access for the `Or
 
 Select **Use a saved question to create a custom view for this table**.
 
-I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
+Open up the sandboxed access modal and select the second option and select my filtering question, we'll see an additional section which allows me to map the variable we defined in our question with a user attribute:
 
 ![Sandboxing options](images/advanced-example-2-sandboxing-options.png)
 
-Now, when you log in as Cloyd Beer  and look at the `Orders` table, Mr. Beer will only see the columns I included in the filtering question, and the rows are filtered as specified by the variable in the question's  `WHERE` clause:
+Now, when we log in as Mr. Beer and look at the `Orders` table, Mr. Beer will only see the columns we included in the filtering question, and the rows are filtered as specified by the variable in the question's  `WHERE` clause:
 
 ![Results](images/advanced-example-2-results.png)
 
