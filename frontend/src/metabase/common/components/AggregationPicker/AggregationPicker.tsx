@@ -93,10 +93,12 @@ export function AggregationPicker({
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
+    const isMetricBased = Lib.isMetricBased(query, stageIndex);
 
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
+        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric),
         ),
@@ -104,7 +106,7 @@ export function AggregationPicker({
       });
     }
 
-    if (operators.length > 0) {
+    if (operators.length > 0 && !isMetricBased) {
       sections.push({
         key: "operators",
         name: t`Basic Metrics`,
