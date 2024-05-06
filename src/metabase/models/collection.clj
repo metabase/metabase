@@ -10,7 +10,6 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.config :refer [trash-collection-id]]
    [metabase.db :as mdb]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -46,34 +45,37 @@
   "Maximum number of characters allowed in a Collection `slug`."
   510)
 
-(defn- trash-collection*
-  "Gets the Trash collection from the database."
-  []
-  (if-let [trash (t2/select-one :model/Collection :id trash-collection-id)]
-    trash
-    (do (t2/insert! :model/Collection {:id trash-collection-id
-                                       :name "Trash"
-                                       :type "trash"})
-        (t2/select-one :model/Collection :id trash-collection-id))))
+(defn- trash-collection* []
+  (t2/select-one :model/Collection :type "trash")
+  )
 
-(def trash-collection
-  "Gets the Trash collection from the database."
-  (memoize trash-collection*))
+(def ^{:arglists '([])} trash-collection
+  "Memoized copy of the Trash collection from the DB."
+  (mdb/memoize-for-application-db
+   (fn []
+     (u/prog1 (trash-collection*)
+       (when-not <>
+         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
-(def trash-path
+(defn trash-collection-id
+  "The ID representing the Trash collection."
+  [] (u/the-id (trash-collection)))
+
+(defn trash-path
   "The fixed location path for the trash collection."
-  (format "/%s/" trash-collection-id))
+  []
+  (format "/%s/" (trash-collection-id)))
 
 (defn is-trash?
   "Is this the trash collection?"
   [collection]
   (and (not (collection.root/is-root-collection? collection))
-       (= (u/the-id collection) trash-collection-id)))
+       (= (u/the-id collection) (trash-collection-id))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
   [collection]
-  (str/starts-with? (:location collection) trash-path))
+  (str/starts-with? (:location collection) (trash-path)))
 
 (defn ensure-trash-collection-created!
   "Creates the trash collection if it does not already exist."
@@ -691,12 +693,12 @@
                                      (:location collection))
 
                         ;; move archived things to the trash, no matter what.
-                        archived? trash-collection-id
+                        archived? (trash-collection-id)
 
                         (contains? updates :parent_id)
                         (:parent_id updates)
 
-                        (and (= (:location collection) trash-path)
+                        (and (= (:location collection) (trash-path))
                              (:trashed_from_location collection))
                         (location-path->parent-id
                          (:trashed_from_location collection))
@@ -744,7 +746,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
-        will-be-trashed? (str/starts-with? new-location trash-path)]
+        will-be-trashed? (str/starts-with? new-location (trash-path))]
     (when will-be-trashed?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection :new-location new-location})))
@@ -977,6 +979,9 @@
 
 (t2/define-before-delete :model/Collection
   [collection]
+  ;; This should never happen, but just to make sure...
+  (when (= (u/the-id collection) (trash-collection-id))
+    (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   ;; Delete all the Children of this Collection
   (t2/delete! Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]

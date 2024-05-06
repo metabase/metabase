@@ -6929,6 +6929,30 @@ databaseChangeLog:
             constraintName: fk_dashboard_collection_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v50.2024-05-03T16:29:53
+      author: johnswanson
+      comment: Create the Trash collection
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Trash', 'trash', 'trashtrashtrashtrasht', 'trash');
+              INSERT INTO permissions (object, group_id)
+              SELECT CONCAT('/collection/', c.id, '/'), pg.id
+              FROM collection c
+              CROSS JOIN permissions_group pg
+              WHERE c.type = 'trash';
+
+      rollback:
+        - sql:
+            sql: >-
+              DELETE p
+              FROM permissions p
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
+              WHERE c.type = 'trash';
+
+              DELETE FROM collection WHERE type = 'trash';
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
