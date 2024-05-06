@@ -14,11 +14,10 @@ describe("scenarios > metrics", () => {
     cy.intercept("POST", "/api/card").as("createCard");
   });
 
-  describe("breakouts", () => {
-    it("should create a scalar metric", () => {
+  describe("data source", () => {
+    it("should create a metric for a table", () => {
       cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByText("Metric").click();
+      newMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation("Count of rows");
@@ -29,10 +28,24 @@ describe("scenarios > metrics", () => {
         .should("be.visible");
     });
 
+    it("should create a metric for a saved question", () => {
+      cy.visit("/");
+      newMetric();
+      popover().findByText("Saved Questions").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      saveMetric();
+      runQuery();
+      cy.findByTestId("scalar-container")
+        .findByText("18,760")
+        .should("be.visible");
+    });
+  });
+
+  describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByText("Metric").click();
+      newMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation("Sum of ...", "Total");
@@ -47,8 +60,7 @@ describe("scenarios > metrics", () => {
 
     it("should create a geo metric", () => {
       cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByText("Metric").click();
+      newMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
       addAggregation("Count of rows");
@@ -60,6 +72,11 @@ describe("scenarios > metrics", () => {
     });
   });
 });
+
+function newMetric() {
+  cy.findByTestId("app-bar").findByText("New").click();
+  popover().findByText("Metric").click();
+}
 
 function addAggregation(operatorName: string, columnName?: string) {
   getNotebookStep("summarize")
