@@ -52,7 +52,7 @@ function _CartesianChart(props: VisualizationProps) {
     height: chartSize.height,
     settings,
   });
-  useChartDebug({ isQueryBuilder, rawSeries, option });
+  useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
 
