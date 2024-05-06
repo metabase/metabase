@@ -124,7 +124,7 @@ describe("scenarios > question > joined questions", () => {
       lhsTable: "question a",
       rhsTable: "question b",
       lhsSampleColumn: "TOTAL",
-      rhsSampleColumn: "question b - PRODUCT_ID → ID",
+      rhsSampleColumn: "question b → ID",
     });
 
     openNotebook();
@@ -141,7 +141,7 @@ describe("scenarios > question > joined questions", () => {
       lhsTable: "question a",
       rhsTable: "question b",
       lhsSampleColumn: "TOTAL",
-      rhsSampleColumn: "question b - PRODUCT_ID → Rating",
+      rhsSampleColumn: "question b → Rating",
     });
     queryBuilderMain().findByText("EAN").should("not.exist");
 
@@ -165,7 +165,7 @@ describe("scenarios > question > joined questions", () => {
     visualize();
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("question b - PRODUCT_ID → Category is Gadget")
+      .findByText("question b → Category is Gadget")
       .should("be.visible");
     cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });
