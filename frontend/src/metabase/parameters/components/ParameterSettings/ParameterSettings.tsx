@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import type { SectionId } from "metabase/parameters/utils/dashboard-options";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
@@ -18,6 +17,7 @@ import {
   Select,
   Button,
 } from "metabase/ui";
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -113,7 +113,7 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
-  const handleTypeChange = (sectionId: SectionId) => {
+  const handleTypeChange = (sectionId: ParameterSectionId) => {
     const defaultOptionOfNextType = defaultOptionForSection[sectionId];
 
     onChangeType(defaultOptionOfNextType.type, sectionId);

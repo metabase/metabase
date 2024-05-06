@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
 import { ID_OPTION } from "metabase-lib/v1/parameters/constants";
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
 import type { ParameterMappingOptions } from "metabase-types/api";
 
-export type SectionId = "date" | "location" | "id" | "number" | "string";
-
 export interface ParameterSection {
-  id: SectionId;
+  id: ParameterSectionId;
   name: string;
   description: string;
   options: ParameterMappingOptions[];
@@ -61,11 +60,11 @@ const defaultSectionToParameter = {
 };
 
 export function getDefaultOptionForParameterSectionMap(): Record<
-  SectionId,
+  ParameterSectionId,
   ParameterMappingOptions
 > {
   const sections = getDashboardParameterSections();
-  const map = {} as Record<SectionId, ParameterMappingOptions>;
+  const map = {} as Record<ParameterSectionId, ParameterMappingOptions>;
 
   for (const section of sections) {
     const { id: sectionId, options } = section;
