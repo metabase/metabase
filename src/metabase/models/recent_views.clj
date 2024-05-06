@@ -156,9 +156,11 @@
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
     [:dashboard [:map [:parent_collection ::pc]]]
-    [:table [:map [:database [:map
-                              [:id [:int {:min 1}]]
-                              [:name :string]]]]]
+    [:table [:map
+             [:display_name :string]
+             [:database [:map
+                         [:id [:int {:min 1}]]
+                         [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
                   [:authority_level [:enum :official nil]]]]]])
@@ -218,6 +220,7 @@
     {:id model_id
      :name (:name table)
      :model :table
+     :display_name (:display_name table)
      :can_write (mi/can-write? :model/Table model_id)
      :timestamp (str timestamp)
      :database {:id (:db_id table)
