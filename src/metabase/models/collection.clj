@@ -841,7 +841,8 @@
 
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
-  (when-not (is-personal-collection-or-descendant-of-one? collection)
+  (when-not (or (is-personal-collection-or-descendant-of-one? collection)
+                (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
