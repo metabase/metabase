@@ -104,7 +104,7 @@ describe("scenarios > collections > trash", () => {
     sidebar().findByText("Trash").should("not.exist");
   });
 
-  it("should be able to trash & restore <entity> on entity page and from parent collection", () => {
+  it("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", () => {
     cy.log("create test resources");
     createCollection({ name: "Collection A" });
     createDashboard({ name: "Dashboard A" });

@@ -2,29 +2,30 @@ import { t } from "ttag";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
+import type { ModalProps } from "metabase/components/Modal/Modal";
 
-interface DeleteConfirmModalProps {
+interface ConfirmDeleteModalProps extends Omit<ModalProps, "isOpen"> {
   name: string;
-  onCloseModal: () => void;
   onDelete: () => void;
 }
 
-export const DeleteConfirmModal = ({
+export const ConfirmDeleteModal = ({
   name,
-  onCloseModal,
+  onClose,
   onDelete,
-}: DeleteConfirmModalProps) => {
+  ...props
+}: ConfirmDeleteModalProps) => {
   return (
-    <Modal onClose={onCloseModal}>
+    <Modal onClose={onClose} {...props}>
       <ConfirmContent
         cancelButtonText={t`Cancel`}
         confirmButtonText={t`Delete permanently`}
-        data-testid="leave-confirmation"
+        data-testid="delete-confirmation"
         message={t`This can't be undone.`}
         title={t`Delete ${name} permanently?`}
         onAction={onDelete}
-        onCancel={onCloseModal}
-        onClose={onCloseModal}
+        onCancel={onClose}
+        onClose={onClose}
       />
     </Modal>
   );

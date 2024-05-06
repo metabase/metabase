@@ -9,7 +9,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import BulkActions from "metabase/collections/components/BulkActions";
+import { BulkActions } from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";

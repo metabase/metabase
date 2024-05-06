@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { collectionApi } from "metabase/api";
-import { undoSetArchived } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   createEntity,
@@ -100,14 +99,14 @@ const Collections = createEntity({
 
   objectActions: {
     setArchived: (
-      { id, name }: Collection,
+      { id }: Collection,
       archived: boolean,
       opts: Record<string, unknown>,
     ) =>
       Collections.actions.update(
         { id },
         { archived },
-        undoSetArchived(name, archived, opts),
+        undo(opts, t`collection`, archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: (

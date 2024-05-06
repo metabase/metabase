@@ -10,7 +10,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Series } from "metabase-types/api";
+import type { Card, Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -244,12 +244,16 @@ export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
   function (question, archived = true, undoing = false) {
     return async function (dispatch) {
-      await dispatch(
+      const result = (await dispatch(
         Questions.actions.update({ id: question.card().id }, { archived }),
-      );
+      )) as { payload: { object: Card } };
+
+      const updatedQuestion = question
+        .setArchived(archived)
+        .setCollectionId(result.payload.object.collection_id);
 
       dispatch(
-        updateQuestion(question.setArchived(archived), {
+        updateQuestion(updatedQuestion, {
           shouldUpdateUrl: false,
           shouldStartAdHocQuestion: false,
         }),

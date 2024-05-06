@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { c } from "ttag";
 import _ from "underscore";
 
@@ -24,13 +23,4 @@ export function getTrashUndoMessage(name: string, archived: boolean): string {
     : c(
         "{0} is the name of the entity being restored from the trash, e.g. My Awesome Dashboard",
       ).t`${name} has been restored.`;
-}
-
-export function undoSetArchived(
-  name: string,
-  archived: boolean,
-  opts: Record<string, unknown>,
-) {
-  const message = getTrashUndoMessage(name, archived);
-  return merge({ notify: { message, undo: true } }, opts || {});
 }

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
-import { Box, Button, Flex, FixedSizeIcon, Paper, Text } from "metabase/ui";
+import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
+import { Box, Flex, FixedSizeIcon, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { DeleteConfirmModal } from "../DeleteConfirmModal";
+import { BannerButton } from "./BannerButton";
 
 type ArchivedEntityBannerProps = {
   name: string;
@@ -30,12 +31,10 @@ export const ArchivedEntityBanner = ({
 
   return (
     <>
-      <Paper
+      <Box
         px="1.5rem"
         py=".75rem"
         bg="error"
-        shadow="0"
-        radius="0"
         w="100%"
         data-testid="archive-banner"
       >
@@ -56,59 +55,20 @@ export const ArchivedEntityBanner = ({
           {canWrite && (
             <Flex gap={{ base: "sm", sm: "md" }}>
               {canRestore && (
-                <Button
-                  compact
-                  variant="outline"
-                  color="white"
-                  miw="2rem"
-                  h="2rem"
-                  onClick={onUnarchive}
-                >
-                  <Flex align="center" gap="sm">
-                    <FixedSizeIcon size={12} name="revert" />
-                    <Text
-                      color="white"
-                      display={{ base: "none", sm: "inline" }}
-                    >{t`Restore`}</Text>
-                  </Flex>
-                </Button>
+                <BannerButton iconName="revert" onClick={onUnarchive}>
+                  {t`Restore`}
+                </BannerButton>
               )}
-              <Button
-                compact
-                variant="outline"
-                color="white"
-                miw="2rem"
-                h="2rem"
-                onClick={() => setModal("move")}
-              >
-                <Flex align="center" gap="sm">
-                  <FixedSizeIcon size={12} name="move" />
-                  <Text
-                    color="white"
-                    display={{ base: "none", sm: "inline" }}
-                  >{t`Move`}</Text>
-                </Flex>
-              </Button>
-              <Button
-                compact
-                variant="outline"
-                color="white"
-                miw="2rem"
-                h="2rem"
-                onClick={() => setModal("delete")}
-              >
-                <Flex align="center" gap="sm">
-                  <FixedSizeIcon size={12} name="trash" />
-                  <Text
-                    color="white"
-                    display={{ base: "none", sm: "inline" }}
-                  >{t`Delete permanently`}</Text>
-                </Flex>
-              </Button>
+              <BannerButton iconName="move" onClick={() => setModal("move")}>
+                {t`Move`}
+              </BannerButton>
+              <BannerButton iconName="trash" onClick={() => setModal("delete")}>
+                {t`Delete permanently`}
+              </BannerButton>
             </Flex>
           )}
         </Flex>
-      </Paper>
+      </Box>
       {modal === "move" && (
         <CollectionPickerModal
           title={`Move ${name}`}
@@ -125,9 +85,9 @@ export const ArchivedEntityBanner = ({
         />
       )}
       {modal === "delete" && (
-        <DeleteConfirmModal
+        <ConfirmDeleteModal
           name={name}
-          onCloseModal={() => setModal(null)}
+          onClose={() => setModal(null)}
           onDelete={onDeletePermanently}
         />
       )}

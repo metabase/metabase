@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { DeleteConfirmModal } from "metabase/archive/components/DeleteConfirmModal";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import type {
   CreateBookmark,
@@ -22,9 +21,10 @@ import {
   canUnarchiveItem,
   canDeleteItem,
 } from "metabase/collections/utils";
+import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import EventSandbox from "metabase/components/EventSandbox";
-import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
+import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { addUndo } from "metabase/redux/undo";
@@ -152,8 +152,9 @@ function ActionMenu({
   }, []);
 
   const handleDeletePermanently = useCallback(() => {
-    dispatch(Search.actions.delete(item));
-    dispatch(addUndo({ message: t`This is has been permanently deleted.` }));
+    const Entity = entityForObject(item);
+    dispatch(Entity.actions.delete(item));
+    dispatch(addUndo({ message: t`This item has been permanently deleted.` }));
   }, [item, dispatch]);
 
   return (
@@ -179,9 +180,9 @@ function ActionMenu({
           }
         />
         {showDeleteModal && (
-          <DeleteConfirmModal
+          <ConfirmDeleteModal
             name={item.name}
-            onCloseModal={() => setShowDeleteModal(false)}
+            onClose={() => setShowDeleteModal(false)}
             onDelete={handleDeletePermanently}
           />
         )}

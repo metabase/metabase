@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
-import { undoSetArchived } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getCollectionType,
@@ -81,11 +80,11 @@ const Dashboards = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id, name }, archived, opts) =>
+    setArchived: ({ id }, archived, opts) =>
       Dashboards.actions.update(
         { id },
         { archived },
-        undoSetArchived(name, archived, opts),
+        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: ({ id }, collection, opts) =>
