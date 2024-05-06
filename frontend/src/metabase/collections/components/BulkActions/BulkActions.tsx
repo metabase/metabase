@@ -2,7 +2,9 @@ import { memo, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
+import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
+import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
 import { Transition } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -110,6 +112,16 @@ export const BulkActions = memo(
             </BulkActionsToast>
           )}
         </Transition>
+
+        {selectedItems && hasSelectedItems && selectedAction === "copy" && (
+          <Modal onClose={handleCloseModal}>
+            <CollectionCopyEntityModal
+              entityObject={selectedItems?.[0]}
+              onClose={handleCloseModal}
+              onSaved={handleCloseModal}
+            />
+          </Modal>
+        )}
 
         {selectedItems && hasSelectedItems && selectedAction === "move" && (
           <BulkMoveModal

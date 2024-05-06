@@ -171,7 +171,7 @@ describe("personal collections", () => {
           popover().within(() => cy.findByText("Move to trash").click());
           modal().findByRole("button", { name: "Move to trash" }).click();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Foo has been moved to the trash.");
+          cy.findByText("Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
