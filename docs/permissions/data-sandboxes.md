@@ -8,15 +8,9 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
-Data sandboxes let you give granular permissions to rows and columns for different groups of people.
+Data sandboxes let you give granular permissions to rows and columns for different groups of people. You can sandbox what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
-Say you have an Accounts table with information about your customers. If you want to reuse one dashboard for different teams (say that the Customer Success team should see account emails, but everyone else should not), you can use a sandbox to automatically filter that dashboard for each team.
-
-Or, if your customers want to log into your Metabase themselves for [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), you can use a sandbox to make sure each customer can only view the rows that match their customer ID.
-
-Basically, sandboxes let people use data in Metabase without ever seeing any sensitive or irrelevant results that you don't want them to see.
-
-If you're ready to jump in, try our [Data sandbox examples](./data-sandbox-examples.md).
+You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that customers only see the data relevant to them.
 
 ## How sandboxes work
 
@@ -29,7 +23,7 @@ You can think of a data sandbox as a bundle of permissions that includes:
 
 You can define up to one data sandbox for each table/group combo in your Metabase. That means you can display different versions of a table for different groups, such as "Sandboxed Accounts for Sales" to your salespeople, and "Sandboxed Accounts for Managers" for sales managers.
 
-You can sandbox what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions).
+If you're ready to jump in, try our [Data sandbox examples](./data-sandbox-examples.md).
 
 ## Types of data sandboxes
 
@@ -58,7 +52,7 @@ For example, you can create a basic sandbox to filter the Accounts table for a g
 
 To **restrict columns** as well as rows, use a custom sandbox (also known as an advanced sandbox). A custom sandbox displays the results of a saved SQL question in place of your original table.
 
-For example, say your original Accounts table includes the columns: ID, Email, Plan, and Created At. If you want to hide the Email column, you can create a "Sandboxed Accounts" SQL question with the columns: ID, Plan, and Created At.
+For example, say your original Accounts table includes the columns: `ID`, `Email`, `Plan`, and `Created At`. If you want to hide the Email column, you can create a "Sandboxed Accounts" SQL question with the columns: `ID`, `Plan`, and `Created At`.
 
 A custom sandbox will display the "Sandboxed Accounts" question result instead of the original Accounts table, to a specific group, everywhere that Accounts is used in Metabase.
 
@@ -74,15 +68,15 @@ Things that don't play well in a sandbox.
 
 ### Groups with native query permissions (access to the SQL editor) cannot be sandboxed
 
-People with SQL editor access to a database will always be able to query any original table from that database. This is because Metabase cannot parse a SQL query --- if Metabase can't find a table, then Metabase can't sandbox the table.
+You can't set up [query builder and native](./data.md#create-queries-permissions) for sandboxed groups.
 
-[Native query permissions](../permissions/data.md) will get automatically **disabled** for any groups that you add to a data sandbox. If you need to prevent people with SQL access from querying specific tables in a database, you can edit your [database users, roles, and privileges](../databases/users-roles-privileges.md).
+To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
 
 ### SQL questions cannot be sandboxed
 
 Since Metabase can't parse SQL queries, the results of SQL questions will always use original tables, not sandboxed tables.
 
-[Use collection permissions](#saved-sql-questions) to prevent sandboxed groups from viewing saved SQL questions with restricted data.
+[Use collection permissions](#saved-sql-questions-cannot-be-sandboxed) to prevent sandboxed groups from viewing saved SQL questions with restricted data.
 
 ### Non-SQL databases cannot be sandboxed
 
@@ -125,7 +119,7 @@ Examples of user attributes in play:
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
 8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "User's Plan".
 
-> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions-cannot-be-sandboxed).
 
 You can find a sample basic sandbox setup in the [Data sandbox examples](./data-sandbox-examples.md).
 
@@ -142,7 +136,7 @@ In an advanced data sandbox, Metabase will display a saved question in place of 
 
 **Use a SQL question** to define the exact rows and columns to be included in the sandbox. If you use a query builder (GUI) question, you might accidentally expose extra data, since GUI questions can include data from other saved questions or models.
 
-> Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+> Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions-cannot-be-sandboxed).
 
 ### Displaying edited columns in an custom sandbox
 
@@ -248,7 +242,7 @@ To resolve data sandbox permissions conflicts:
 - Remove the person from all but one of the groups.
 - Remove all but one of the data sandboxes for that table (change the table's data access to **No self-service**).
 
-### Saved SQL questions
+### Saved SQL questions cannot be sandboxed
 
 Data sandbox permissions don't apply to the results of SQL questions. That is, saved SQL questions will always display results from the original table rather than the sandboxed table.
 
