@@ -3,7 +3,6 @@ import {
   getNotebookStep,
   modal,
   popover,
-  queryBuilderMain,
   restore,
 } from "e2e/support/helpers";
 
@@ -23,11 +22,8 @@ describe("scenarios > metrics", () => {
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation("Count of rows");
-      cy.button("Save").click();
-      modal().button("Save").click();
-      cy.wait("@createCard");
-      queryBuilderMain().findByTestId("run-button").click();
-      cy.wait("@dataset");
+      saveMetric();
+      runQuery();
       cy.findByTestId("scalar-container")
         .findByText("18,760")
         .should("be.visible");
@@ -41,11 +37,8 @@ describe("scenarios > metrics", () => {
       popover().findByText("Orders").click();
       addAggregation("Sum of ...", "Total");
       addBreakout("Created At");
-      cy.button("Save").click();
-      modal().button("Save").click();
-      cy.wait("@createCard");
-      queryBuilderMain().findByTestId("run-button").click();
-      cy.wait("@dataset");
+      saveMetric();
+      runQuery();
       echartsContainer().within(() => {
         cy.findByText("Sum of Total").should("be.visible");
         cy.findByText("Created At").should("be.visible");
@@ -61,11 +54,8 @@ describe("scenarios > metrics", () => {
       addAggregation("Count of rows");
       addBreakout("Latitude");
       addBreakout("Longitude");
-      cy.button("Save").click();
-      modal().button("Save").click();
-      cy.wait("@createCard");
-      queryBuilderMain().findByTestId("run-button").click();
-      cy.wait("@dataset");
+      saveMetric();
+      runQuery();
       cy.get("[data-element-id=pin-map]").should("exist");
     });
   });
@@ -73,7 +63,7 @@ describe("scenarios > metrics", () => {
 
 function addAggregation(operatorName: string, columnName?: string) {
   getNotebookStep("summarize")
-    .findByTestId("aggregation-step")
+    .findByTestId("aggregate-step")
     .findAllByTestId("notebook-cell-item")
     .last()
     .click();
@@ -94,4 +84,15 @@ function addBreakout(columnName: string) {
     .click();
 
   popover().findByText(columnName).click();
+}
+
+function saveMetric() {
+  cy.button("Save").click();
+  modal().button("Save").click();
+  cy.wait("@createCard");
+}
+
+function runQuery() {
+  cy.findAllByTestId("run-button").last().click();
+  cy.wait("@dataset");
 }
