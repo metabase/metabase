@@ -31,7 +31,7 @@ When connecting though a bastion host:
 
 For authentication, you have two options:
 
-- **Using a Username and Password:**
+- **Using a username and password:**
 
   - Enter the username and password you use to log in to the bastion host into the `SSH tunnel username` and `SSH tunnel password` fields.
 
