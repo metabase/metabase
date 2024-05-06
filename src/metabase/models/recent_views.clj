@@ -141,7 +141,7 @@
   [:and {:registry {::pc [:map
                           [:id [:or [:int {:min 1}] [:= "root"]]]
                           [:name :string]
-                          [:authority_level [:enum "official" nil]]]}}
+                          [:authority_level [:enum :official nil]]]}}
    [:map
     [:id [:int {:min 1}]]
     [:name :string]
