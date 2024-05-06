@@ -119,7 +119,7 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  {:recent-views (recent-views/get-list *current-user-id*)})
+  {:recent_views (recent-views/get-list *current-user-id*)})
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
@@ -172,13 +172,12 @@
                        (* (/ cnt max-count) views-wt)]]
            (assoc item :score (double (reduce + scores))))) items))))
 
-(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
-
-(defn- order-items-by-order-precedence
-  [items]
-  (when (seq items)
-    (let [groups (group-by :model items)]
-      (mapcat #(get groups %) model-precedence))))
+(def ^:private model->precedence
+  {"dashboard"  0
+   "card"       1
+   "dataset"    2
+   "table"      3
+   "collection" 4})
 
 (mu/defn get-popular-items-model-and-id
   "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
@@ -201,10 +200,13 @@
                            is-dataset? (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
-         (sort-by :score (fn [a b] (compare (-> b :score) (-> a :score))))
-         order-items-by-order-precedence
+         (sort-by
+          ;; sort by model first, and then score when they are the same model
+          (juxt #(-> % :model model->precedence) #(- (% :score))))
          (take 5)
-         (map recent-views/fill-recent-view-info))))
+         (map #(-> %
+                   (assoc :timestamp (:max_ts % ""))
+                   recent-views/fill-recent-view-info)))))
 
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
@@ -214,6 +216,6 @@
   ;; total count -> higher = higher score
   ;; recently viewed -> more recent = higher score
   ;; official/verified -> yes = higher score
-  {:popular-items (get-popular-items-model-and-id)})
+  {:popular_items (get-popular-items-model-and-id)})
 
 (define-routes)
