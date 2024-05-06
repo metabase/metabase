@@ -33,13 +33,12 @@
    UnresolvedMBQLQuery
    [:fn
     {:error/message "Valid MBQL query where `:joins` `:fields` is sequence of Fields or removed"}
-    (fn [{:keys [joins]}]
-      (every?
-       (fn [{:keys [fields]}]
-         (or
-          (empty? fields)
-          (sequential? fields)))
-       joins))]])
+    (letfn [(resolved-join? [{:keys [fields], :as join}]
+              (and (:alias join)
+                   (or (empty? fields)
+                       (sequential? fields))))]
+      (fn [{:keys [joins], :as _inner-query}]
+        (every? resolved-join? joins)))]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Resolving Tables & Fields / Saving in QP Store                                 |

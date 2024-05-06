@@ -112,7 +112,8 @@
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"
-        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
+        (doseq [[col-type field-id] {:datetime         (mt/id :times :dt)
+                                     :text-as-datetime (mt/id :times :as_dt)}
                 op                  [:get-year :get-quarter :get-month :get-day
                                      :get-day-of-week :get-hour :get-minute :get-second]
                 {:keys [expected-fn query-fn]}

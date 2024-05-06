@@ -15,7 +15,7 @@
 
 (def ^:private first-stage-keys
   "Keys from the original stage to keep in the new first stage. Other keys will get moved to the second stage."
-  #{:joins :expressions :source-table :source-card :sources #_:lib/stage-metadata})
+  #{:joins :expressions :source-table :source-card :sources :filters})
 
 (mu/defn ^:private first-stage-ref :- [:maybe [:or :mbql.clause/field :mbql.clause/expression]]
   [column-metadata :- ::lib.schema.metadata/column]
@@ -101,11 +101,34 @@
                      :field      other-visible-columns)]
          (second-stage-ref-using-visible-columns metadata-providerable &match cols options))))))
 
+(defn- should-nest-expressions?
+  "Whether we should nest the expressions in a stage; true if
+
+  1. there are some expression definitions in the stage, AND
+
+  2. there are some breakouts OR some aggregations in the stage
+
+  3. AND the breakouts/aggregations contain at least `:expression` reference."
+  [query stage-path]
+  (let [expressions (lib.walk/apply-f-for-stage-at-path lib/expressions query stage-path)]
+    (and
+     ;; 1. has some expression definitions
+     (seq expressions)
+     (let [breakouts    (lib.walk/apply-f-for-stage-at-path lib/breakouts query stage-path)
+           aggregations (lib.walk/apply-f-for-stage-at-path lib/aggregations query stage-path)]
+       (and
+        ;; 2. has some breakouts or aggregations
+        (or (seq breakouts)
+            (seq aggregations))
+        ;; 3. contains an `:expression` ref
+        (lib.util.match/match-one (concat breakouts aggregations)
+          :expression))))))
+
 (mu/defn ^:private nest-expressions-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
   [query :- ::lib.schema/query
    path  :- ::lib.walk/stage-path
    stage :- ::lib.schema/stage]
-  (when (seq (:expressions stage))
+  (when (should-nest-expressions? query path)
     (let [visible-columns-with-dupes   (lib.walk/apply-f-for-stage-at-path lib/visible-columns query path)
           visible-columns              visible-columns-with-dupes
           ;; do an initial calculation of the second stage so we can determine what we're using in it.

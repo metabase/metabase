@@ -76,13 +76,13 @@
                     :field_ref [:field (mt/id :products :created_at) {:temporal-unit :default}]
                     :display_name "Created At"}
                    {:name "ID"
-                    :field_ref [:field (mt/id :orders :id) {:join-alias "Question 54"}]
-                    :display_name "Question 54 → ID"
-                    :source_alias "Question 54"}
+                    :field_ref [:field (mt/id :orders :id) {:join-alias "Question_54"}]
+                    :display_name "Question_54 → ID"
+                    :source_alias "Question_54"}
                    {:name "ADDRESS"
-                    :field_ref [:field (mt/id :people :address) {:join-alias "Question 54"}]
-                    :display_name "Question 54 → Address"
-                    :source_alias "Question 54"}]
+                    :field_ref [:field (mt/id :people :address) {:join-alias "Question_54"}]
+                    :display_name "Question_54 → Address"
+                    :source_alias "Question_54"}]
                   (qp.preprocess/query->expected-cols query))))))))
 
 (deftest ^:parallel deduplicate-column-names-test

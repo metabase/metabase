@@ -30,6 +30,12 @@
    :embedded-xlsx-download
    :embedded-json-download])
 
+(mr/def ::alias-escaped->original
+  [:map-of
+   [:string
+    {:decode/normalize lib.schema.common/normalize-string-key}]
+   :string])
+
 (mr/def ::hash
   #?(:clj bytes?
      :cljs :any))
@@ -54,7 +60,7 @@
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:alias/escaped->original {:optional true} [:maybe [:map-of :any :any]]]
+   [:alias/escaped->original {:optional true} [:maybe [:ref ::alias-escaped->original]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.

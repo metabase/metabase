@@ -388,7 +388,8 @@
    :info            {:metadata/model-metadata identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings    identity
-                     :context                   maybe-normalize-token}
+                     :context                   maybe-normalize-token
+                     :alias/escaped->original   identity}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)

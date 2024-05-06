@@ -1339,7 +1339,10 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
+  [driver {:keys [condition], join-alias :alias, :as join} :- [:merge
+                                                               mbql.s/Join
+                                                               ;; join alias cannot be blank at this point.
+                                                               [:map [:alias ::lib.schema.common/non-blank-string]]]]
   [[(join-source driver join)
     (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
       [table-alias])]
@@ -1630,15 +1633,15 @@
   [_driver inner-query]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-      add/add-alias-info
-      nest-query/nest-expressions))
+      nest-query/nest-expressions
+      add/add-alias-info))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
   (binding [driver/*driver* driver]
     (let [inner-query (preprocess driver inner-query)]
-      (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+      (log/tracef "Compiling preprocessed MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)
         (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))))))
 

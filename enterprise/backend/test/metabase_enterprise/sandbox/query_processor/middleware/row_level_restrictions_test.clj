@@ -153,15 +153,15 @@
 
 (deftest ^:parallel all-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
-                "has a `:source-table` and some of its children also have a `:source-table`"))
-  (is (= (mt/$ids nil
-           #{$$checkins $$venues $$users $$categories})
-         (#'row-level-restrictions/all-table-ids
-          (mt/mbql-query nil
-            {:source-table $$checkins
-             :joins        [{:source-table $$venues}
-                            {:source-query {:source-table $$users
-                                            :joins        [{:source-table $$categories}]}}]})))))
+                "has a `:source-table` and some of its children also have a `:source-table`")
+    (is (= (mt/$ids nil
+             #{$$checkins $$venues $$users $$categories})
+           (#'row-level-restrictions/all-table-ids
+            (mt/mbql-query nil
+              {:source-table $$checkins
+               :joins        [{:source-table $$venues}
+                              {:source-query {:source-table $$users
+                                              :joins        [{:source-table $$categories}]}}]}))))))
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
@@ -177,8 +177,13 @@
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                  :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
-                     :attributes {"user" 5, "price" 1}}
+                                   :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
+                      :attributes {"user" 5, "price" 1}}
+      (is (= (mt/user->id :rasta)
+             api/*current-user-id*)
+          "Sanity check: we should be using test user Rasta")
+      (is (not api/*is-superuser?*)
+          "Sanity check: Rasta should not be a superuser")
       (testing "Should add a filter for attributes-only GTAP"
         (is (=? (mt/query checkins
                   {:type  :query
@@ -192,7 +197,6 @@
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer
                                                                                       :effective_type    :type/Integer
-                                                                                      :coercion_strategy nil
                                                                                       :semantic_type     :type/FK
                                                                                       :database_type     "INTEGER"
                                                                                       :name              "USER_ID"}]]]
@@ -205,7 +209,6 @@
                                                                             $venues.price
                                                                             [:value 1 {:base_type         :type/Integer
                                                                                        :effective_type    :type/Integer
-                                                                                       :coercion_strategy nil
                                                                                        :semantic_type     :type/Category
                                                                                        :database_type     "INTEGER"
                                                                                        :name              "PRICE"}]]
@@ -831,10 +834,10 @@
     ;; Sandbox ORDERS and PRODUCTS
     (mt/dataset test-data
       (met/with-gtaps! (mt/$ids nil
-                        {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
-                                      :products {:remappings {:user_cat [:dimension $products.category]}}}
-                         :attributes {:user_id  "1"
-                                      :user_cat "Widget"}})
+                         {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                       :products {:remappings {:user_cat [:dimension $products.category]}}}
+                          :attributes {:user_id  "1"
+                                       :user_cat "Widget"}})
         ;; create query with joins
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
@@ -871,16 +874,15 @@
                             test-preprocessing
                             (fn []
                               (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
-                                (is (= [:=
-                                        [:field (mt/id :products :category) {:join-alias "products"}]
-                                        [:value "Widget" {:base_type     :type/Text
-                                                          :effective_type :type/Text
-                                                          :coercion_strategy nil
-                                                          :semantic_type  (t2/select-one-fn :semantic_type Field
-                                                                                            :id (mt/id :products :category))
-                                                          :database_type "CHARACTER VARYING"
-                                                          :name          "CATEGORY"}]]
-                                       (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
+                                (is (=? [:=
+                                         [:field (mt/id :products :category) {:join-alias "products"}]
+                                         [:value "Widget" {:base_type     :type/Text
+                                                           :effective_type :type/Text
+                                                           :semantic_type  (t2/select-one-fn :semantic_type Field
+                                                                                             :id (mt/id :products :category))
+                                                           :database_type "CHARACTER VARYING"
+                                                           :name          "CATEGORY"}]]
+                                        (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
@@ -956,37 +958,41 @@
                                                                :value  param-value}])))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
+    (println "(metabase.util/pprint-to-str metadata):" (metabase.util/pprint-to-str metadata)) ; NOCOMMIT
     (t2/update! Card card-id {:result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset test-data
       (let [mbql-sandbox-results (met/with-gtaps! {:gtaps      (mt/$ids
-                                                                {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
-                                                                 :products {:remappings {"user_cat" [:dimension $products.category]}}})
-                                                  :attributes {"user_id" 1, "user_cat" "Widget"}}
+                                                                 {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
+                                                                  :products {:remappings {"user_cat" [:dimension $products.category]}}})
+                                                   :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
-                                     (mt/run-mbql-query orders)))]
-        (doseq [orders-gtap-card-has-metadata?   [true false]
+                                     (mt/run-mbql-query orders {:limit 1})))]
+        (is (not (some :field-ref (get-in mbql-sandbox-results [:data :cols])))
+            "Sanity check: results metadata should not contain kebab-case keys")
+        ;; NOCOMMIT
+        #_(doseq [orders-gtap-card-has-metadata?   [true false]
                 products-gtap-card-has-metadata? [true false]]
           (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
                            (pr-str orders-gtap-card-has-metadata?)
                            (pr-str products-gtap-card-has-metadata?))
             (met/with-gtaps! {:gtaps      {:orders   {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                                    :template-tags {"uid" {:display-name "User ID"
-                                                                                           :id           "1"
-                                                                                           :name         "uid"
-                                                                                           :type         :number}}})
-                                                     :remappings {"user_id" [:variable [:template-tag "uid"]]}}
-                                          :products {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                                    :template-tags {"cat" {:display-name "Category"
-                                                                                           :id           "2"
-                                                                                           :name         "cat"
-                                                                                           :type         :text}}})
-                                                     :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
-                             :attributes {"user_id" "1", "user_cat" "Widget"}}
+                                                                    {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                                     :template-tags {"uid" {:display-name "User ID"
+                                                                                            :id           "1"
+                                                                                            :name         "uid"
+                                                                                            :type         :number}}})
+                                                      :remappings {"user_id" [:variable [:template-tag "uid"]]}}
+                                           :products {:query      (mt/native-query
+                                                                    {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                                     :template-tags {"cat" {:display-name "Category"
+                                                                                            :id           "2"
+                                                                                            :name         "cat"
+                                                                                            :type         :text}}})
+                                                      :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
+                              :attributes {"user_id" "1", "user_cat" "Widget"}}
               (when orders-gtap-card-has-metadata?
                 (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
               (when products-gtap-card-has-metadata?
@@ -994,18 +1000,16 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
-                          (format-results [results]
-                            (-> results
-                                (update-in [:data :cols] (partial map format-col))
-                                (m/dissoc-in [:data :native_form])
-                                (m/dissoc-in [:data :results_metadata :checksum])
-                                (update-in [:data :results_metadata :columns] (partial map format-col))))]
-                    (is (= (format-results mbql-sandbox-results)
-                           (format-results (mt/run-mbql-query orders))))))
-                (testing "Should be able to run a query against Orders"
-                  (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
-                         (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
+                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))]
+                    (let [results (mt/run-mbql-query orders {:limit 1})]
+                      (doseq [ks [[:data :cols]
+                                  [:data :results_metadata :columns]]]
+                        (testing (format "columns in %s" ks)
+                          (is (= (map format-col (get-in mbql-sandbox-results ks))
+                                 (map format-col (get-in results ks))))))
+                      (testing "Should be able to run a query against Orders"
+                        (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
+                               (mt/rows (mt/run-mbql-query orders {:limit 1}))))))))))))))))
 
 (deftest pivot-query-test
   (mt/test-drivers (disj

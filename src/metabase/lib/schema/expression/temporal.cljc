@@ -10,13 +10,13 @@
    [metabase.shared.util.internal.time-common :as shared.ut.common]
    [metabase.util.malli.registry :as mr])
   #?@
-  (:clj
-   [(:import
-     (java.time ZoneId))]
-   :cljs
-   [(:require
-     ["moment" :as moment]
-     ["moment-timezone" :as mtz])]))
+   (:clj
+    [(:import
+      (java.time ZoneId))]
+    :cljs
+    [(:require
+      ["moment" :as moment]
+      ["moment-timezone" :as mtz])]))
 
 #?(:cljs
    ;; so the moment-timezone stuff gets loaded
@@ -180,8 +180,8 @@
   [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
-  #_:timestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
+  #_:timestr [:schema [:ref ::literal/time]]
+  #_:unit    [:ref ::temporal-bucketing/unit.time.interval])
 
 ;;; this has some stuff that's missing from [[::temporal-bucketing/unit.date-time.extract]], like `:week-of-year-iso`
 (mr/def ::temporal-extract.unit

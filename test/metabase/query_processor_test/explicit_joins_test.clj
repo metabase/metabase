@@ -1058,8 +1058,8 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
+            (is (= [["Doohickey" 3976]
+                    ["Gadget"    4939]]
                    (mt/rows (qp/process-query legacy-query))))))))))
 
 (deftest ^:parallel test-13000

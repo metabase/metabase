@@ -343,6 +343,7 @@
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
+;;; TODO -- terrible name, rename this to something like FieldOrExpression
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::Field])

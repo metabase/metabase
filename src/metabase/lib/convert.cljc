@@ -128,7 +128,7 @@
   with the join anyway.
 
   Since the new pMBQL schema makes `:alias` required, we'll explicitly add the implicit default when we encounter a
-  join without an alias, and remove it so we can round-trip without changes."
+  join without an alias."
   "__join")
 
 (defn- deduplicate-join-aliases
@@ -350,8 +350,10 @@
   (not-empty
    (into {}
          (comp (disqualify)
-               (remove (fn [[k _v]]
-                         (= k :effective-type))))
+               (remove (fn [[k v]]
+                         (and (= k :effective-type)
+                              ;; don't remove effective-type if it's different from base-type.
+                              (= v (:base-type m))))))
          m)))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -511,8 +513,7 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (cond-> (disqualify join)
-               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
+  (let [base (disqualify join)]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
