@@ -420,8 +420,6 @@
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
 
-
-(mt/set-test-drivers! #{:h2})
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
     (impl/test-migrations ["v48.00-007"] [migrate!]
