@@ -13,7 +13,6 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   question,
   drill,
   drillInfo,
-  clicked,
   applyDrill,
 }) => {
   const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
@@ -29,7 +28,6 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         question: () => applyDrill(drill, extraction.tag),
         extra: () => ({
           extraction: extractions[index],
-          settingsSyncOptions: { column: clicked.column },
         }),
       }),
     );
