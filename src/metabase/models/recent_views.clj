@@ -1,9 +1,19 @@
 (ns metabase.models.recent-views
-  "The Recent Views table is used to track the most recent views of objects such as Cards, Tables and Dashboards for
-  each user."
+  "The Recent Views table is used to track the most recent views of objects such as Cards, Models, Tables, Dashboards,
+  and Collections for each user, for an up to date list, see [[models-of-interest]].
+
+  It offers a simple API to add a recent, and fetch the list of recents.
+
+  Fetch recent items: `(recent-view/get-list <user-id>)`
+                        see: [[get-list]]
+  add recent item:    `(recent-views/update-users-recent-views! <user-id> <model> <model-id>)`
+                        see: [[update-users-recent-views!]]
+
+  When adding a recent item, duplicates will be removed, and [[*recent-views-stored-per-user-per-model*]] (20
+  currently) are kept of each entity type. E.G., if you were to view lots of _cards_, it would not push collections and
+  dashboards out of your recents."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
@@ -12,7 +22,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
-   [next.jdbc :as jdbc]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -33,16 +42,12 @@
 (defn- duplicate-model-ids
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
-  []
-  (->> (t2/with-connection [^java.sql.Connection conn]
-         (jdbc/execute! conn [(str/join "\n" ["SELECT id FROM"
-                                              "   (SELECT id, row_number()"
-                                              "     OVER (PARTITION BY model, model_id ORDER BY timestamp desc) AS rn"
-                                              "     FROM recent_views) ranked"
-                                              ;; rn 1 is the most recent view, so we want to exclude that from the set of
-                                              ;; duplicates to prune.
-                                              "WHERE rn != 1"])]))
-       (map :recent_views/id)
+  [user-id]
+  (->> (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
+       (group-by (juxt :model :model_id))
+       ;; skip the first row for each group, since it's the most recent
+       (mapcat (fn [[_ rows]] (drop 1 rows)))
+       (map :id)
        set))
 
 (def models-of-interest
@@ -78,7 +83,7 @@
   2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
   [user-id]
   (set/union
-   (duplicate-model-ids)
+   (duplicate-model-ids user-id)
    (empty-model-buckets user-id)))
 
 (mu/defn update-users-recent-views!
@@ -156,7 +161,7 @@
                               [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
-                  [:authority_level [:enum "official" nil]]]]]])
+                  [:authority_level [:enum :official nil]]]]]])
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object."
@@ -212,7 +217,7 @@
      :model :table
      :can_write (mi/can-write? :model/Table model_id)
      :timestamp (str timestamp)
-     :database {:id (:database-id table)
+     :database {:id (:db_id table)
                 :name (:name table)}}))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp]}]
