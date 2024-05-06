@@ -44,6 +44,9 @@ function findMBQL(op) {
 // as defined in MBQL_CLAUSES,
 // and b is the inferred type of the argument
 const isCompatible = (a, b) => {
+  if (a === "any") {
+    return true;
+  }
   if (a === b) {
     return true;
   }

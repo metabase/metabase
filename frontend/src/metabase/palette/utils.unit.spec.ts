@@ -1,5 +1,4 @@
-import type { ActionImpl } from "kbar";
-
+import type { PaletteActionImpl } from "./types";
 import { processResults, processSection } from "./utils";
 
 interface mockAction {
@@ -10,7 +9,7 @@ interface mockAction {
 const createMockAction = ({
   name,
   section = "basic",
-}: mockAction): ActionImpl => ({ name, section } as ActionImpl);
+}: mockAction): PaletteActionImpl => ({ name, section } as PaletteActionImpl);
 
 describe("command palette utils", () => {
   describe("processSection", () => {
@@ -25,7 +24,7 @@ describe("command palette utils", () => {
       expect(result[0]).toBe("Basic");
     });
     it("should return an empty list if there are no items", () => {
-      const items: ActionImpl[] = [];
+      const items: PaletteActionImpl[] = [];
       const result = processSection("Basic", items);
       expect(result).toHaveLength(0);
     });
@@ -96,7 +95,7 @@ describe("command palette utils", () => {
       );
       const adminIndex = results.findIndex(action => action === "Admin");
 
-      [actionsIndex, recentsIndex, adminIndex, searchIndex].forEach(
+      [recentsIndex, actionsIndex, adminIndex, searchIndex].forEach(
         (val, i, arr) => {
           expect(val).not.toBe(-1);
           const next = arr[i + 1] || Infinity; //can't call expect in an if, so this lets us do the last comparison

@@ -55,10 +55,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))
 
@@ -76,17 +77,9 @@
   To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
   same unique alias."
   []
-  (let [unique-name-fn (mbql.u/unique-name-generator
-                        ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
-                        ;; unique regardless of case
-                        :name-key-fn u/lower-case-en
-                        ;; TODO -- we should probably limit the length somehow like we do in
-                        ;; [[metabase.query-processor.middleware.add-implicit-joins/join-alias]], and also update this
-                        ;; function and that one to append a short suffix if we are limited by length. See also
-                        ;; [[driver/escape-alias]]
-                        :unique-alias-fn (fn [original suffix]
-                                           (driver/escape-alias driver/*driver* (str original \_ suffix))))]
+  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
     (fn unique-alias-fn [position original-alias]
+      {:pre (string? original-alias)}
       (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -147,6 +140,10 @@
       (map-indexed
        (fn [i ag]
          (lib.util.match/replace ag
+           ;; :offset is a special case since it doesn't NEED to get wrapped in aggregation options.
+           [:offset _opts _expr _n]
+           [:aggregation i]
+
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -170,7 +167,7 @@
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(mu/defn ^:private field-instance :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private field-instance :- [:maybe ::lib.schema.metadata/column]
   [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
@@ -320,7 +317,7 @@
 
 (mu/defmethod field-reference-mlv2 ::driver/driver
   [driver :- :keyword
-   field  :- lib.metadata/ColumnMetadata]
+   field  :- ::lib.schema.metadata/column]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (if (get-method field-reference driver)
     (do
@@ -435,14 +432,29 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
-  (let [position     (clause->position inner-query [:aggregation ag-index])
-        unique-alias (unique-alias-fn position original-ag-name)]
-    [:aggregation-options wrapped-ag-clause (assoc opts
-                                                   :name           unique-alias
-                                                   ::source-alias  original-ag-name
-                                                   ::position      position
-                                                   ::desired-alias unique-alias)]))
+  [inner-query unique-alias-fn ag-clause ag-index]
+  (lib.util.match/replace ag-clause
+    [:offset opts expr n]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:offset (assoc opts
+                      :name           unique-alias
+                      ::source-alias  original-ag-name
+                      ::position      position
+                      ::desired-alias unique-alias)
+       expr
+       n])
+
+    [:aggregation-options wrapped-ag-clause opts, :as _ag-clause]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:aggregation-options wrapped-ag-clause (assoc opts
+                                                     :name           unique-alias
+                                                     ::source-alias  original-ag-name
+                                                     ::position      position
+                                                     ::desired-alias unique-alias)])))
 
 (defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
   (cond-> inner-query

@@ -27,7 +27,8 @@
                  :percentile-aggregations
                  :regex
                  :standard-deviation-aggregations
-                 :window-functions]]
+                 :window-functions/cumulative
+                 :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (doseq [join-feature [:left-join

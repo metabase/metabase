@@ -4,17 +4,21 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
-  (mt/test-drivers (disj (mt/sql-jdbc-drivers)
-                         ;; presto doesn't create PK for test data :) not sure why
-                         :presto-jdbc
-                         ;; creating db for athena is expensive and require some extra steps,
-                         ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
-                         :athena
-                         ;; there is no PK in sparksql
-                         :sparksql)
+  (mt/test-drivers (apply disj (mt/sql-jdbc-drivers)
+                          ;; presto doesn't create PK for test data :) not sure why
+                          :presto-jdbc
+                          ;; creating db for athena is expensive and require some extra steps,
+                          ;; so it's not worth testing against, see
+                          ;; the[[metabase.test.data.athena/*allow-database-creation*]]
+                          :athena
+                          ;; there is no PK in sparksql
+                          :sparksql
+                          ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                          (tqpt/timeseries-drivers))
     (mt/dataset (mt/dataset-definition "custom-pk"
                   ["user"
                    [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
@@ -47,14 +51,17 @@
     [[1 2]]]])
 
 (deftest dataset-with-custom-composite-pk-test
-  (mt/test-drivers (disj (mt/sql-jdbc-drivers)
-                         ;; presto doesn't create PK for test data :) not sure why
-                         :presto-jdbc
-                         ;; creating db for athena is expensive and require some extra steps,
-                         ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
-                         :athena
-                         ;; there is no PK in sparksql
-                         :sparksql)
+  (mt/test-drivers (apply disj (mt/sql-jdbc-drivers)
+                          ;; presto doesn't create PK for test data :) not sure why
+                          :presto-jdbc
+                          ;; creating db for athena is expensive and require some extra steps,
+                          ;; so it's not worth testing against, see
+                          ;; the [[metabase.test.data.athena/*allow-database-creation*]]
+                          :athena
+                          ;; there is no PK in sparksql
+                          :sparksql
+                          ;; Timeseries drivers currently support only testing with pre-loaded dataset
+                          (tqpt/timeseries-drivers))
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
         (testing "(artist_id, song_id) is a PK"

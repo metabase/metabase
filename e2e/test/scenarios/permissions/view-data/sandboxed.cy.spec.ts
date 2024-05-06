@@ -74,10 +74,10 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
       ],
       // expect that the view data permissions has been automatically droped to query builder only
       ["All Users", "Sandboxed", "Query builder only", "1 million rows", "No"],
-      ["collection", "Can view", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No"],
+      ["collection", "Can view", "No", "1 million rows", "No"],
+      ["data", "Can view", "Query builder and native", "1 million rows", "No"],
+      ["nosql", "Can view", "Query builder only", "1 million rows", "No"],
+      ["readonly", "Can view", "No", "1 million rows", "No"],
     ];
     assertPermissionTable(expectedFinalPermissions);
 

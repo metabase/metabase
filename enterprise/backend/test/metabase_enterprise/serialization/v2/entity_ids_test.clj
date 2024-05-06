@@ -30,8 +30,7 @@
             (is (= nil
                    (entity-id)))
             (testing "Should return truthy on success"
-              (is (= true
-                     (v2.entity-ids/seed-entity-ids!))))
+              (is (= true (v2.entity-ids/seed-entity-ids!))))
             (is (= "998b109c"
                    (entity-id))))
           (testing "Error: duplicate entity IDs"

@@ -1,0 +1,492 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 10,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "closed_at",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            86,
+            { "base-type": "type/DateTimeWithLocalTZ", "temporal-unit": "week" }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 86,
+          "visibility_type": "normal",
+          "display_name": "Closed At",
+          "fingerprint": {
+            "global": { "distinct-count": 4035, "nil%": 0.3098477486232588 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2015-02-03T18:08:09.000Z",
+                "latest": "2019-01-04T16:34:06.000Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": { "distinct-count": 16, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.9583333333333335,
+                "q3": 9.75,
+                "max": 136,
+                "sd": 22.385094080096916,
+                "avg": 9.714285714285714
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "roman@metabase.com",
+        "first_name": "Roman",
+        "last_login": "2024-01-15T10:26:38.285693Z",
+        "is_qbnewb": false,
+        "is_superuser": false,
+        "id": 161,
+        "last_name": "Abdulmanov",
+        "date_joined": "2023-03-14T09:32:51.078429Z",
+        "common_name": "Roman Abdulmanov"
+      },
+      "can_write": true,
+      "database_id": 3,
+      "enable_embedding": false,
+      "collection_id": 1302,
+      "query_type": "query",
+      "name": "Closed Bugs Per Week",
+      "last_query_start": "2024-03-14T20:27:55.550134Z",
+      "dashboard_count": 0,
+      "average_query_time": 668.3888888888888889,
+      "creator_id": 161,
+      "moderation_reviews": [],
+      "updated_at": "2023-10-23T13:51:52.476682Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 3,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              86,
+              {
+                "base-type": "type/DateTimeWithLocalTZ",
+                "temporal-unit": "week"
+              }
+            ]
+          ],
+          "source-table": "card__13134"
+        }
+      },
+      "id": 13919,
+      "parameter_mappings": [],
+      "display": "line",
+      "entity_id": "kx9qI4HExYwV6sAas987g",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 161,
+        "email": "roman@metabase.com",
+        "first_name": "Roman",
+        "last_name": "Abdulmanov",
+        "timestamp": "2023-10-23T13:51:52.612693Z"
+      },
+      "visualization_settings": {
+        "table.pivot": false,
+        "table.pivot_column": "closed_at",
+        "table.cell_column": "count",
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["closed_at"]
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "query",
+        "name": "Query",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 1302,
+        "entity_id": "_6_8N3yC62r2-zWa5Yp0P",
+        "location": "/201/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-08-28T11:11:42.487582Z"
+      },
+      "metabase_version": "vUNKNOWN (b04b4ed)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-10-23T13:51:52.476682Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        ["2019-10-06T00:00:00-07:00", 1],
+        ["2019-10-13T00:00:00-07:00", 3],
+        ["2019-10-20T00:00:00-07:00", 4],
+        ["2019-11-03T00:00:00-07:00", 2],
+        ["2019-11-10T00:00:00-08:00", 1],
+        ["2019-12-01T00:00:00-08:00", 3],
+        ["2019-12-08T00:00:00-08:00", 6],
+        ["2019-12-15T00:00:00-08:00", 2],
+        ["2019-12-22T00:00:00-08:00", 3],
+        ["2019-12-29T00:00:00-08:00", 1],
+        ["2020-01-05T00:00:00-08:00", 3],
+        ["2020-01-12T00:00:00-08:00", 5],
+        ["2020-01-19T00:00:00-08:00", 4],
+        ["2020-01-26T00:00:00-08:00", 1],
+        ["2020-02-02T00:00:00-08:00", 1],
+        ["2020-02-09T00:00:00-08:00", 3],
+        ["2020-02-16T00:00:00-08:00", 3],
+        ["2020-02-23T00:00:00-08:00", 3],
+        ["2020-03-01T00:00:00-08:00", 7],
+        ["2020-03-08T00:00:00-08:00", 12],
+        ["2020-03-15T00:00:00-07:00", 11],
+        ["2020-03-29T00:00:00-07:00", 7],
+        ["2020-04-05T00:00:00-07:00", 1],
+        ["2020-04-12T00:00:00-07:00", 2],
+        ["2020-04-26T00:00:00-07:00", 1],
+        ["2020-05-03T00:00:00-07:00", 5],
+        ["2020-05-10T00:00:00-07:00", 7],
+        ["2020-05-17T00:00:00-07:00", 3],
+        ["2020-05-24T00:00:00-07:00", 16],
+        ["2020-05-31T00:00:00-07:00", 16],
+        ["2020-06-07T00:00:00-07:00", 3],
+        ["2020-06-14T00:00:00-07:00", 4],
+        ["2020-06-21T00:00:00-07:00", 4],
+        ["2020-07-05T00:00:00-07:00", 2],
+        ["2020-07-12T00:00:00-07:00", 1],
+        ["2020-07-19T00:00:00-07:00", 3],
+        ["2020-07-26T00:00:00-07:00", 4],
+        ["2020-08-02T00:00:00-07:00", 1],
+        ["2020-08-16T00:00:00-07:00", 1],
+        ["2020-09-13T00:00:00-07:00", 1],
+        ["2020-09-20T00:00:00-07:00", 1],
+        ["2020-10-11T00:00:00-07:00", 2],
+        ["2020-10-18T00:00:00-07:00", 2],
+        ["2020-10-25T00:00:00-07:00", 2],
+        ["2020-11-08T00:00:00-08:00", 2],
+        ["2020-11-29T00:00:00-08:00", 1],
+        ["2020-12-06T00:00:00-08:00", 1],
+        ["2020-12-13T00:00:00-08:00", 1],
+        ["2020-12-20T00:00:00-08:00", 1],
+        ["2021-01-10T00:00:00-08:00", 2],
+        ["2021-01-17T00:00:00-08:00", 1],
+        ["2021-01-24T00:00:00-08:00", 1],
+        ["2021-01-31T00:00:00-08:00", 1],
+        ["2021-02-07T00:00:00-08:00", 8],
+        ["2021-02-14T00:00:00-08:00", 7],
+        ["2021-02-21T00:00:00-08:00", 3],
+        ["2021-02-28T00:00:00-08:00", 5],
+        ["2021-03-21T00:00:00-07:00", 2],
+        ["2021-03-28T00:00:00-07:00", 1],
+        ["2021-04-04T00:00:00-07:00", 5],
+        ["2021-04-11T00:00:00-07:00", 7],
+        ["2021-04-18T00:00:00-07:00", 6],
+        ["2021-04-25T00:00:00-07:00", 4],
+        ["2021-05-02T00:00:00-07:00", 1],
+        ["2021-05-09T00:00:00-07:00", 1],
+        ["2021-05-16T00:00:00-07:00", 9],
+        ["2021-05-23T00:00:00-07:00", 9],
+        ["2021-05-30T00:00:00-07:00", 6],
+        ["2021-06-06T00:00:00-07:00", 5],
+        ["2021-06-13T00:00:00-07:00", 13],
+        ["2021-06-20T00:00:00-07:00", 5],
+        ["2021-06-27T00:00:00-07:00", 4],
+        ["2021-07-04T00:00:00-07:00", 1],
+        ["2021-07-11T00:00:00-07:00", 4],
+        ["2021-07-18T00:00:00-07:00", 3],
+        ["2021-08-01T00:00:00-07:00", 3],
+        ["2021-08-15T00:00:00-07:00", 2],
+        ["2021-08-22T00:00:00-07:00", 3],
+        ["2021-08-29T00:00:00-07:00", 1],
+        ["2021-09-05T00:00:00-07:00", 4],
+        ["2021-09-12T00:00:00-07:00", 8],
+        ["2021-09-19T00:00:00-07:00", 14],
+        ["2021-09-26T00:00:00-07:00", 7],
+        ["2021-10-03T00:00:00-07:00", 7],
+        ["2021-10-10T00:00:00-07:00", 6],
+        ["2021-10-17T00:00:00-07:00", 2],
+        ["2021-10-24T00:00:00-07:00", 3],
+        ["2021-10-31T00:00:00-07:00", 4],
+        ["2021-11-07T00:00:00-07:00", 8],
+        ["2021-11-14T00:00:00-08:00", 8],
+        ["2021-11-21T00:00:00-08:00", 1],
+        ["2021-11-28T00:00:00-08:00", 1],
+        ["2021-12-05T00:00:00-08:00", 3],
+        ["2021-12-12T00:00:00-08:00", 2],
+        ["2021-12-19T00:00:00-08:00", 1],
+        ["2022-01-02T00:00:00-08:00", 2],
+        ["2022-01-09T00:00:00-08:00", 1],
+        ["2022-01-16T00:00:00-08:00", 8],
+        ["2022-01-23T00:00:00-08:00", 7],
+        ["2022-01-30T00:00:00-08:00", 12],
+        ["2022-02-06T00:00:00-08:00", 5],
+        ["2022-02-13T00:00:00-08:00", 7],
+        ["2022-02-20T00:00:00-08:00", 2],
+        ["2022-02-27T00:00:00-08:00", 6],
+        ["2022-03-06T00:00:00-08:00", 5],
+        ["2022-03-13T00:00:00-08:00", 4],
+        ["2022-03-20T00:00:00-07:00", 7],
+        ["2022-03-27T00:00:00-07:00", 4],
+        ["2022-04-03T00:00:00-07:00", 2],
+        ["2022-04-10T00:00:00-07:00", 5],
+        ["2022-04-17T00:00:00-07:00", 25],
+        ["2022-04-24T00:00:00-07:00", 16],
+        ["2022-05-01T00:00:00-07:00", 25],
+        ["2022-05-08T00:00:00-07:00", 5],
+        ["2022-05-15T00:00:00-07:00", 3],
+        ["2022-05-22T00:00:00-07:00", 2],
+        ["2022-05-29T00:00:00-07:00", 5],
+        ["2022-06-05T00:00:00-07:00", 2],
+        ["2022-06-12T00:00:00-07:00", 1],
+        ["2022-06-19T00:00:00-07:00", 3],
+        ["2022-06-26T00:00:00-07:00", 2],
+        ["2022-07-03T00:00:00-07:00", 6],
+        ["2022-07-10T00:00:00-07:00", 1],
+        ["2022-07-17T00:00:00-07:00", 9],
+        ["2022-07-24T00:00:00-07:00", 2],
+        ["2022-07-31T00:00:00-07:00", 9],
+        ["2022-08-07T00:00:00-07:00", 10],
+        ["2022-08-14T00:00:00-07:00", 3],
+        ["2022-08-21T00:00:00-07:00", 2],
+        ["2022-08-28T00:00:00-07:00", 2],
+        ["2022-09-04T00:00:00-07:00", 8],
+        ["2022-09-11T00:00:00-07:00", 12],
+        ["2022-09-18T00:00:00-07:00", 4],
+        ["2022-09-25T00:00:00-07:00", 2],
+        ["2022-10-09T00:00:00-07:00", 1],
+        ["2022-10-16T00:00:00-07:00", 1],
+        ["2022-10-23T00:00:00-07:00", 2],
+        ["2022-10-30T00:00:00-07:00", 1],
+        ["2022-11-06T00:00:00-07:00", 1],
+        ["2022-11-27T00:00:00-08:00", 3],
+        ["2022-12-04T00:00:00-08:00", 1],
+        ["2022-12-18T00:00:00-08:00", 2],
+        ["2022-12-25T00:00:00-08:00", 1],
+        ["2023-01-01T00:00:00-08:00", 1],
+        ["2023-01-08T00:00:00-08:00", 3],
+        ["2023-01-15T00:00:00-08:00", 1],
+        ["2023-01-22T00:00:00-08:00", 4],
+        ["2023-01-29T00:00:00-08:00", 1],
+        ["2023-02-05T00:00:00-08:00", 3],
+        ["2023-02-12T00:00:00-08:00", 1],
+        ["2023-02-19T00:00:00-08:00", 3],
+        ["2023-02-26T00:00:00-08:00", 8],
+        ["2023-03-05T00:00:00-08:00", 6],
+        ["2023-03-12T00:00:00-08:00", 4],
+        ["2023-03-19T00:00:00-07:00", 6],
+        ["2023-03-26T00:00:00-07:00", 7],
+        ["2023-04-02T00:00:00-07:00", 1],
+        ["2023-04-09T00:00:00-07:00", 2],
+        ["2023-04-16T00:00:00-07:00", 3],
+        ["2023-04-23T00:00:00-07:00", 3],
+        ["2023-04-30T00:00:00-07:00", 2],
+        ["2023-05-07T00:00:00-07:00", 2],
+        ["2023-05-14T00:00:00-07:00", 2],
+        ["2023-05-21T00:00:00-07:00", 3],
+        ["2023-05-28T00:00:00-07:00", 5],
+        ["2023-06-04T00:00:00-07:00", 1],
+        ["2023-06-11T00:00:00-07:00", 2],
+        ["2023-06-18T00:00:00-07:00", 4],
+        ["2023-06-25T00:00:00-07:00", 11],
+        ["2023-07-02T00:00:00-07:00", 5],
+        ["2023-07-09T00:00:00-07:00", 3],
+        ["2023-07-16T00:00:00-07:00", 3],
+        ["2023-07-23T00:00:00-07:00", 3],
+        ["2023-07-30T00:00:00-07:00", 2],
+        ["2023-08-06T00:00:00-07:00", 2],
+        ["2023-08-13T00:00:00-07:00", 4],
+        ["2023-08-20T00:00:00-07:00", 4],
+        ["2023-08-27T00:00:00-07:00", 2],
+        ["2023-09-03T00:00:00-07:00", 2],
+        ["2023-09-10T00:00:00-07:00", 3],
+        ["2023-09-17T00:00:00-07:00", 3],
+        ["2023-09-24T00:00:00-07:00", 3],
+        ["2023-10-01T00:00:00-07:00", 3],
+        ["2023-10-08T00:00:00-07:00", 3],
+        ["2023-10-15T00:00:00-07:00", 4],
+        ["2023-10-22T00:00:00-07:00", 5],
+        ["2023-10-29T00:00:00-07:00", 3],
+        ["2023-11-05T00:00:00-07:00", 6],
+        ["2023-11-12T00:00:00-08:00", 3],
+        ["2023-11-19T00:00:00-08:00", 2],
+        ["2023-11-26T00:00:00-08:00", 1],
+        ["2023-12-03T00:00:00-08:00", 2],
+        ["2023-12-10T00:00:00-08:00", 1],
+        ["2023-12-17T00:00:00-08:00", 2],
+        ["2023-12-24T00:00:00-08:00", 4],
+        ["2023-12-31T00:00:00-08:00", 1],
+        ["2024-01-14T00:00:00-08:00", 4],
+        ["2024-01-21T00:00:00-08:00", 9],
+        ["2024-01-28T00:00:00-08:00", 3],
+        ["2024-02-11T00:00:00-08:00", 3],
+        ["2024-02-18T00:00:00-08:00", 3],
+        ["2024-02-25T00:00:00-08:00", 1],
+        ["2024-03-03T00:00:00-08:00", 6],
+        ["2024-03-10T00:00:00-08:00", 4],
+        [null, 121]
+      ],
+      "results_timezone": "US/Pacific",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "week",
+            "name": "closed_at",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              86,
+              {
+                "base-type": "type/DateTimeWithLocalTZ",
+                "temporal-unit": "week"
+              }
+            ],
+            "effective_type": "type/DateTimeWithLocalTZ",
+            "id": 86,
+            "visibility_type": "normal",
+            "display_name": "Closed At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4035,
+                "nil%": 0.3098477486232588
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2015-02-03T18:08:09.000Z",
+                  "latest": "2019-01-04T16:34:06.000Z"
+                }
+              }
+            },
+            "base_type": "type/DateTimeWithLocalTZ"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 17,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.6562621785045653,
+                  "q3": 5.20227351043177,
+                  "max": 121,
+                  "sd": 8.972267171247886,
+                  "avg": 4.619512195121951
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 10,
+          "coercion_strategy": null,
+          "unit": "week",
+          "name": "closed_at",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            86,
+            {
+              "base-type": "type/DateTimeWithLocalTZ",
+              "temporal-unit": "week"
+            }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 86,
+          "position": 6,
+          "visibility_type": "normal",
+          "display_name": "Closed At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4035,
+              "nil%": 0.3098477486232588
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2015-02-03T18:08:09.000Z",
+                "latest": "2019-01-04T16:34:06.000Z"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT (DATE_TRUNC('week', (\"source\".\"closed_at\" + INTERVAL '1 day')) + INTERVAL '-1 day') AS \"closed_at\", COUNT(*) AS \"count\" FROM (SELECT \"source\".\"id\" AS \"id\", \"source\".\"number\" AS \"number\", \"source\".\"state\" AS \"state\", \"source\".\"title\" AS \"title\", \"source\".\"created_at\" AS \"created_at\", \"source\".\"updated_at\" AS \"updated_at\", \"source\".\"closed_at\" AS \"closed_at\", \"source\".\"labels\" AS \"labels\", \"source\".\"sender_id\" AS \"sender_id\", \"source\".\"sender_login\" AS \"sender_login\", \"source\".\"ClosedOrOpenDate\" AS \"ClosedOrOpenDate\" FROM (SELECT \"public\".\"metabase_issues\".\"id\" AS \"id\", \"public\".\"metabase_issues\".\"number\" AS \"number\", \"public\".\"metabase_issues\".\"state\" AS \"state\", \"public\".\"metabase_issues\".\"title\" AS \"title\", \"public\".\"metabase_issues\".\"created_at\" AS \"created_at\", \"public\".\"metabase_issues\".\"updated_at\" AS \"updated_at\", \"public\".\"metabase_issues\".\"closed_at\" AS \"closed_at\", \"public\".\"metabase_issues\".\"labels\" AS \"labels\", \"public\".\"metabase_issues\".\"sender_id\" AS \"sender_id\", \"public\".\"metabase_issues\".\"sender_login\" AS \"sender_login\", CASE WHEN \"public\".\"metabase_issues\".\"closed_at\" IS NULL THEN \"public\".\"metabase_issues\".\"created_at\" ELSE \"public\".\"metabase_issues\".\"closed_at\" END AS \"ClosedOrOpenDate\" FROM \"public\".\"metabase_issues\" WHERE (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%type:bug%') AND ((\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Actions%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Forms%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Models%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Metrics%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Drill Thrus%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/GUI%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Native%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Nested Queries%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Notebook%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Querying/Parameters%') OR (\"public\".\"metabase_issues\".\"labels\" LIKE '%Administration/Metrics & Segments%')) AND (NOT (\"public\".\"metabase_issues\".\"labels\" LIKE '%.Team/QueryProcessor%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (\"public\".\"metabase_issues\".\"labels\" LIKE '%.Backend%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%.team/embedding%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%.team/dashviz%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%.echarts-scope%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%.metabase-lib%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%querying/processor%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL)) AND (NOT (LOWER(\"public\".\"metabase_issues\".\"labels\") LIKE '%.team/adminwebapp%') OR (\"public\".\"metabase_issues\".\"labels\" IS NULL))) AS \"source\") AS \"source\" GROUP BY (DATE_TRUNC('week', (\"source\".\"closed_at\" + INTERVAL '1 day')) + INTERVAL '-1 day') ORDER BY (DATE_TRUNC('week', (\"source\".\"closed_at\" + INTERVAL '1 day')) + INTERVAL '-1 day') ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": [
+        {
+          "previous-value": null,
+          "unit": "week",
+          "offset": 10.38404291578002,
+          "last-change": null,
+          "col": "count",
+          "slope": -0.00033311179542308236,
+          "last-value": 121,
+          "best-fit": [
+            "+",
+            10.38404291578002,
+            ["*", -0.00033311179542308236, "x"]
+          ]
+        }
+      ]
+    }
+  }
+]

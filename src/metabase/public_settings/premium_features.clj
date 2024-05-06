@@ -29,7 +29,7 @@
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
-  #"airgap_[0-9a-f]*")
+  #"airgap_.+")
 
 (def ^:private TokenStr
   [:or
@@ -84,6 +84,7 @@
   :visibility :admin
   :type       :integer
   :audit      :never
+  :setter     :none
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))

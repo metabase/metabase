@@ -10,6 +10,7 @@ import type {
   HoveredObject,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { formatValueForTooltip } from "../utils";
 
@@ -46,7 +47,7 @@ const KeyValuePairChartTooltip = ({
 export interface TooltipRowProps {
   name?: string;
   value?: any;
-  column?: RemappingHydratedDatasetColumn;
+  column: RemappingHydratedDatasetColumn | DatasetColumn | null;
   settings: ComputedVisualizationSettings;
 }
 

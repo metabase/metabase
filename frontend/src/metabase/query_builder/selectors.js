@@ -45,8 +45,8 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
-const getQueryStatus = state => state.qb.queryStatus;
-const getLoadingControls = state => state.qb.loadingControls;
+export const getQueryStatus = state => state.qb.queryStatus;
+export const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -299,8 +299,9 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
   ),
 );
 
-const getNextRunParameters = createSelector([getParameters], parameters =>
-  normalizeParameters(parameters),
+export const getNextRunParameters = createSelector(
+  [getParameters],
+  parameters => normalizeParameters(parameters),
 );
 
 export const getQueryBuilderMode = createSelector(
@@ -990,22 +991,6 @@ export const getDataReferenceStack = createSelector(
       : dbId
       ? [{ type: "database", item: { id: dbId } }]
       : [],
-);
-
-export const getNativeQueryFn = createSelector(
-  [getNextRunDatasetQuery, getNextRunParameters],
-  (datasetQuery, parameters) => {
-    let lastResult = undefined;
-
-    return async (options = {}) => {
-      lastResult ??= await MetabaseApi.native({
-        ...datasetQuery,
-        parameters,
-        ...options,
-      });
-      return lastResult;
-    };
-  },
 );
 
 export const getDashboardId = state => {

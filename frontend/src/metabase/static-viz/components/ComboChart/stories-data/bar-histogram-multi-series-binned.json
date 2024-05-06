@@ -1,0 +1,392 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-11T22:35:28.980437Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "bar",
+        "name": "Bar",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 14,
+        "entity_id": "7cs7gCidO3n43FfJ22e7a",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-12T22:54:03.258587Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["close"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["count", "avg"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-03-11T22:35:29.102381Z"
+      },
+      "collection_preview": true,
+      "entity_id": "8qVb-pZJVj6IMX1ql8rOU",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 274,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["count"],
+            [
+              "avg",
+              [
+                "field",
+                "volume",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "close",
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "default"
+                }
+              }
+            ]
+          ],
+          "source-table": "card__74"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-11T22:35:28.980437Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 264.3333333333333,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-12T17:45:26.048429Z",
+      "name": "Bar Histogram MultiSeries - AAPL Count, Avg Volume by Close",
+      "query_type": "query",
+      "collection_id": 14,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-08T20:14:19.465128Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "close",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1328,
+            {
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 40,
+                "max-value": 180,
+                "num-bins": 8,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "id": 1328,
+          "visibility_type": "normal",
+          "display_name": "Close",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1185,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 55.7899,
+                "q1": 84.9692710167667,
+                "q3": 127.19215641301255,
+                "max": 179.26,
+                "sd": 30.552164630741526,
+                "avg": 109.06669849086576
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 21,
+                "q1": 98,
+                "q3": 253.5,
+                "max": 370,
+                "sd": 116.19298396981429,
+                "avg": 179.85714285714286
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Volume",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "avg",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 26470915.118881118,
+                "q1": 34056048.01054217,
+                "q3": 80073426.10886177,
+                "max": 124275113.66666667,
+                "sd": 35183526.08206755,
+                "avg": 59097446.48851453
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 140,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [40, 21, 124275113.66666667],
+        [60, 269, 88505812.92936803],
+        [80, 207, 54776265.647342995],
+        [100, 370, 45104812.762162164],
+        [120, 166, 43711711.921686746],
+        [140, 143, 26470915.118881118],
+        [160, 83, 30837493.373493977]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 140,
+          "coercion_strategy": null,
+          "binning_info": {
+            "min_value": 40,
+            "max_value": 180,
+            "num_bins": 8,
+            "bin_width": 20,
+            "binning_strategy": "num-bins"
+          },
+          "name": "close",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1328,
+            {
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 40,
+                "max-value": 180,
+                "num-bins": 8,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1328,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Close",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1185,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 55.7899,
+                "q1": 84.9692710167667,
+                "q3": 127.19215641301255,
+                "max": 179.26,
+                "sd": 30.552164630741526,
+                "avg": 109.06669849086576
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Volume",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT (FLOOR(((\"source\".\"close\" - 40.0) / 20.0)) * 20.0) + 40.0 AS \"close\", COUNT(*) AS \"count\", AVG(\"source\".\"volume\") AS \"avg\" FROM (SELECT \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"open\" AS \"open\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"high\" AS \"high\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"low\" AS \"low\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"close\" AS \"close\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"volume\" AS \"volume\", \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\".\"name\" AS \"name\" FROM \"csv_upload_data\".\"csv_upload_aapl_data_20231121134145\") AS \"source\" GROUP BY (FLOOR(((\"source\".\"close\" - 40.0) / 20.0)) * 20.0) + 40.0 ORDER BY (FLOOR(((\"source\".\"close\" - 40.0) / 20.0)) * 20.0) + 40.0 ASC",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "close",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1328,
+              {
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 40,
+                  "max-value": 180,
+                  "num-bins": 8,
+                  "bin-width": 20
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 1328,
+            "visibility_type": "normal",
+            "display_name": "Close",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1185,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 55.7899,
+                  "q1": 84.9692710167667,
+                  "q3": 127.19215641301255,
+                  "max": 179.26,
+                  "sd": 30.552164630741526,
+                  "avg": 109.06669849086576
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 21,
+                  "q1": 98,
+                  "q3": 253.5,
+                  "max": 370,
+                  "sd": 116.19298396981429,
+                  "avg": 179.85714285714286
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Volume",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 26470915.118881118,
+                  "q1": 34056048.01054217,
+                  "q3": 80073426.10886177,
+                  "max": 124275113.66666667,
+                  "sd": 35183526.08206755,
+                  "avg": 59097446.48851453
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

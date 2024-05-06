@@ -220,7 +220,8 @@
    :public_uuid             nil
    :auto_apply_filters      true
    :show_in_getting_started false
-   :updated_at              true})
+   :updated_at              true
+   :view_count              0})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
@@ -398,6 +399,39 @@
                             :card_id            card-id
                             :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
+
+(deftest last-used-parameter-value-test
+  (mt/dataset test-data
+    (mt/with-column-remappings [orders.user_id people.name]
+      (binding [api/*current-user-permissions-set* (atom #{"/"})]
+        (t2.with-temp/with-temp
+          [Dashboard {dashboard-id :id} {:name             "Test Dashboard"
+                                         :creator_id       (mt/user->id :crowberto)
+                                         :embedding_params {:id "enabled"}
+                                         :parameters       [{:name "Id", :slug "id", :id "a", :type :id}]}
+           Card {card-id :id} {:database_id   (mt/id)
+                               :query_type    :native
+                               :name          "test question"
+                               :creator_id    (mt/user->id :crowberto)
+                               :dataset_query {:type     :native
+                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                                          :template-tags
+                                                          {"id"      {:name         "id"
+                                                                      :display-name "Id"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                                      :widget-type  :id
+                                                                      :default      nil}}}
+                                               :database (mt/id)}}
+           DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                            :card_id            card-id
+                                            :dashboard_id       dashboard-id}]
+          (testing "User's set parameter is saved and sent back in the dashboard response."
+            ;; api request mimicking a user setting a parameter value
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)
+                                             {:parameters [{:id "a" :value ["new value"]}]})))
+            (is (= {:a ["new value"]}
+                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -840,6 +874,25 @@
                        :specific-errors
                        :width
                        first)))))))))
+
+(deftest update-dashboard-add-time-granularity-param
+  (testing "PUT /api/dashboard/:id"
+    (testing "We can add a time granularity parameter to a dashboard"
+      (t2.with-temp/with-temp [Dashboard dashboard {}]
+        (with-dashboards-in-writeable-collection [dashboard]
+          (testing "the dashboard starts with no parameters."
+            (is (= []
+                   (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))
+
+          (testing "adding a new time granularity parameter works."
+            (let [params [{:name      "Time Unit"
+                           :slug      "time_unit"
+                           :id        "927e929"
+                           :type      :temporal-unit
+                           :sectionId "temporal-unit"}]]
+              (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:parameters params})
+              (is (= params
+                     (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
@@ -1506,24 +1559,35 @@
                                                         :parameters [{:name "Category ID"
                                                                       :slug "category_id"
                                                                       :id   "_CATEGORY_ID_"
-                                                                      :type :category}]}
+                                                                      :type :category}
+                                                                     {:name "Unit"
+                                                                      :slug "unit"
+                                                                      :id   "_unit_"
+                                                                      :type :temporal-unit}]}
                      Card          {card-id :id} {}
                      Card          {card-id2 :id} {}
                      DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
                                                       :card_id            card-id
                                                       :parameter_mappings [{:parameter_id "random-id"
                                                                             :card_id      card-id
-                                                                            :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
+                                                                            :target       [:dimension [:field (mt/id :venues :name) nil]]}
+                                                                           {:parameter_id "also-random"
+                                                                            :card_id      card-id
+                                                                            :target       [:dimension [:field (mt/id :orders :created_at) {:temporal-unit "month"}]]}]}
                      DashboardCard _ {:dashboard_id dashboard-id, :card_id card-id2}] {}
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
                    (count (t2/select-pks-set DashboardCard, :dashboard_id copy-id))))
-            (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+            (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}
+                     {:name "Unit", :slug "unit", :id "_unit_", :type :temporal-unit}]
                    (t2/select-one-fn :parameters Dashboard :id copy-id)))
             (is (=? [{:parameter_id "random-id"
                       :card_id      card-id
-                      :target       [:dimension [:field (mt/id :venues :name) nil]]}]
+                      :target       [:dimension [:field (mt/id :venues :name) nil]]}
+                     {:parameter_id "also-random"
+                      :card_id      card-id
+                      :target       [:dimension [:field (mt/id :orders :created_at) {:temporal-unit :month}]]}]
                    (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
              (t2/delete! Dashboard :id copy-id))))))))

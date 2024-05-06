@@ -1,4 +1,4 @@
-import type * as React from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,16 +8,18 @@ import {
 import { useInitData } from "embedding-sdk/hooks";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized } from "embedding-sdk/store/selectors";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
-  children: React.ReactNode;
-  config: SDKConfigType;
+  children: ReactNode;
+  config: SDKConfig;
+  font?: string;
 }
 
 export const AppInitializeController = ({
+  font,
   config,
   children,
 }: AppInitializeControllerProps) => {
@@ -29,8 +31,9 @@ export const AppInitializeController = ({
 
   return (
     <SdkContentWrapper
+      baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
-      font={config.font ?? DEFAULT_FONT}
+      font={font ?? DEFAULT_FONT}
     >
       {!isInitialized ? <div>{t`Loading…`}</div> : children}
     </SdkContentWrapper>

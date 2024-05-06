@@ -4,11 +4,6 @@ import { t } from "ttag";
 
 import { fieldApi } from "metabase/api";
 import {
-  field_visibility_types,
-  field_semantic_types,
-  has_field_values_options,
-} from "metabase/lib/core";
-import {
   createEntity,
   entityCompatibleQuery,
   notify,
@@ -31,7 +26,6 @@ import {
 import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
-import { TYPE } from "metabase-lib/v1/types/constants";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -225,38 +219,6 @@ const Fields = createEntity({
     },
     {},
   ),
-
-  form: {
-    fields: (values = {}) =>
-      [
-        { name: "display_name" },
-        { name: "description" },
-        {
-          name: "visibility_type",
-          type: "select",
-          options: field_visibility_types.map(type => ({
-            name: type.name,
-            value: type.id,
-          })),
-        },
-        {
-          name: "semantic_type",
-          type: "select",
-          options: field_semantic_types.map(type => ({
-            name: type.name,
-            value: type.id,
-          })),
-        },
-        values.semantic_type === TYPE.FK && {
-          name: "fk_target_field_id",
-        },
-        {
-          name: "has_field_values",
-          type: "select",
-          options: has_field_values_options,
-        },
-      ].filter(f => f),
-  },
 });
 
 export default Fields;
