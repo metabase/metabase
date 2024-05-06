@@ -20,7 +20,7 @@
   (testing "Removes empty PulseChannel"
     (mt/with-temp [Pulse        {pulse-id :id} {}
                    PulseChannel _ {:pulse_id pulse-id}]
-      (#'task.send-pulses/clear-pulse-channels! pulse-id)
+      (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
       (is (= 0
              (t2/count PulseChannel)))
       (is (:archived (t2/select-one Pulse :id pulse-id)))))
@@ -31,7 +31,7 @@
                                                       :channel_type :email}
                    PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
                                                       :pulse_channel_id pc-id}]
-      (#'task.send-pulses/clear-pulse-channels! pulse-id)
+      (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
       (is (= 1
              (t2/count PulseChannel)))))
 
@@ -40,7 +40,7 @@
                    PulseChannel _ {:pulse_id     pulse-id
                                    :channel_type :email
                                    :details      {:emails ["test@metabase.com"]}}]
-      (#'task.send-pulses/clear-pulse-channels! pulse-id)
+      (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
       (is (= 1
              (t2/count PulseChannel)))))
 
@@ -49,7 +49,7 @@
                    PulseChannel _ {:pulse_id     pulse-id
                                    :channel_type :slack
                                    :details      {:channel ["#test"]}}]
-      (#'task.send-pulses/clear-pulse-channels! pulse-id)
+      (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
       (is (= 1
              (t2/count PulseChannel))))))
 
@@ -64,6 +64,36 @@
    :schedule_hour  18
    :schedule_day   nil
    :schedule_frame nil})
+
+(deftest clear-pcs-and-send-pulse!-test
+  (testing "clear-pcs-and-send-pulse! should delete PulseChannels and only send to enabled channels"
+    (let [sent-channel-ids (atom #{})]
+      (with-redefs [task.send-pulses/send-pulse! (fn [_pulse-id channel-ids]
+                                                   (swap! sent-channel-ids set/union channel-ids))]
+        (mt/with-temp
+          [:model/Pulse        {pulse :id}            {}
+           :model/PulseChannel {pc :id}               (merge
+                                                       {:pulse_id     pulse
+                                                        :channel_type :slack
+                                                        :details      {:channel "#random"}}
+                                                       daily-at-1am)
+           :model/PulseChannel {pc-disabled :id}      (merge
+                                                       {:enabled      false
+                                                        :pulse_id     pulse
+                                                        :channel_type :slack
+                                                        :details      {:channel "#random"}}
+                                                       daily-at-1am)
+           :model/PulseChannel {pc-no-recipient :id}  (merge
+                                                       {:pulse_id     pulse
+                                                        :channel_type :slack
+                                                        :details      {}}
+                                                       daily-at-1am)]
+          (#'task.send-pulses/clear-pcs-and-send-pulse! pulse #{pc pc-disabled pc-no-recipient})
+          (testing "only send to enabled channels that has recipients"
+            (is (= #{pc} @sent-channel-ids)))
+
+          (testing "channels that has no recipients are deleted"
+            (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"

@@ -408,13 +408,13 @@
    :data     {"pulse-id"    pulse-id
               "channel-ids" (set pc-ids)}})
 
-(def ^:private daily-at-6pm
+(def daily-at-6pm
   {:schedule_type  "daily"
    :schedule_hour  18
    :schedule_day   nil
    :schedule_frame nil})
 
-(def ^:private daily-at-7pm
+(def daily-at-7pm
   {:schedule_type  "daily"
    :schedule_hour  19
    :schedule_day   nil

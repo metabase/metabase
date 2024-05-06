@@ -20,8 +20,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (org.quartz
-    CronTrigger)))
+   (org.quartz CronTrigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +68,8 @@
       (cron/with-misfire-handling-instruction-fire-and-proceed)))))
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
-(defn- clear-pulse-channels!
+(defn- clear-pulse-channels-no-recipients!
+  "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that was deleted."
   [pulse-id]
   (when-let [ids-to-delete (seq
                             (for [channel (t2/select [:model/PulseChannel :id :details]
@@ -82,14 +82,23 @@
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
+    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
+    (set ids-to-delete)))
+
+(defn- clear-pcs-and-send-pulse!
+  [pulse-id channel-ids]
+  (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
+        to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
+        to-send-enabled-channel-ids (t2/select-pks-set :model/PulseChannel :id [:in to-send-channel-ids] :enabled true)]
+    (if (seq to-send-enabled-channel-ids)
+     (send-pulse! pulse-id to-send-enabled-channel-ids)
+     (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse! pulse-id channel-ids)
-    (clear-pulse-channels! pulse-id)))
+    (clear-pcs-and-send-pulse! pulse-id channel-ids)))
 
 ;;; --------------------------------------------- Helpers -------------------------------------------
 
@@ -115,7 +124,7 @@
         task-schedule    (u.cron/schedule-map->cron-string schedule-map)
         ;; there should be at most one existing trigger
         existing-trigger (->> (-> send-pulse-job-key task/job-info :triggers)
-                              (filter #(and (= (:key %) (.getName trigger-key))
+                              (filter #(and (= (:key %) (.getName ^TriggerKey trigger-key))
                                         (= (:schedule %) task-schedule)))
                               first)
         existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
