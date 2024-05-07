@@ -99,15 +99,19 @@
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                      {:cards [{:id            1
-                                                :name          "Metric 1"
-                                                :dataset-query {:source-table (mt/id :venues)
-                                                                :aggregation  [:sum-where
-                                                                               [:field (mt/id :venues :price) nil]
-                                                                               [:< [:field (mt/id :venues :price) nil] 4]]}
-                                                :type          :metric}]})
+    (qp.store/with-metadata-provider
+      (lib.tu/mock-metadata-provider
+       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+       {:cards [{:id            1
+                 :database-id   (mt/id)
+                 :name          "Metric 1"
+                 :dataset-query {:database (mt/id)
+                                 :type :query
+                                 :query {:source-table (mt/id :venues)
+                                         :aggregation  [:sum-where
+                                                        [:field (mt/id :venues :price) nil]
+                                                        [:< [:field (mt/id :venues :price) nil] 4]]}}
+                 :type          :metric}]})
       (is (= 179.0
              (->> {:aggregation  [[:metric 1]]
                    :source-table "card__1"}
