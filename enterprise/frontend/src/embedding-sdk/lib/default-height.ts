@@ -1,8 +1,9 @@
 import type { CardDisplayType } from "metabase-types/api";
 
 /**
- * Visualization's default height is determined by the
- * chart's height measured when at the minimum size.
+ * Default height for each visualization type.
+ *
+ * The values are derived from the visualization's default size in the dashboard.
  */
 export function getDefaultVizHeight(
   type?: CardDisplayType,
@@ -11,13 +12,9 @@ export function getDefaultVizHeight(
     return;
   }
 
-  if (["line", "bar", "area", "combo"].includes(type)) {
-    return 210;
-  }
-
   if (["scalar", "smartscalar"].includes(type)) {
-    return 100;
+    return 50;
   }
 
-  return 200;
+  return 250;
 }
