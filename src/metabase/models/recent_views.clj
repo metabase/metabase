@@ -126,12 +126,11 @@
   ([user-id]
    (user-recent-views user-id *recent-views-stored-per-user*))
   ([user-id n]
-   (let [all-user-views (t2/select-fn-vec #(select-keys % [:model :model_id])
-                                          :model/RecentViews
-                                          :user_id user-id
-                                          {:order-by [[:id :desc]]
-                                           :limit    *recent-views-stored-per-user*})]
-     (->> (distinct all-user-views)
+   (let [all-views-for-user (t2/select [:model/RecentViews :model :model_id]
+                                       :user_id user-id
+                                       {:order-by [[:timestamp :desc] [:id :desc]]
+                                        :limit    *recent-views-stored-per-user*})]
+     (->> (distinct all-views-for-user)
           (take n)
           ;; Lower-case the model name, since that's what the FE expects
           (map #(update % :model u/lower-case-en))))))
