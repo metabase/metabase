@@ -215,6 +215,8 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
+  const isMetric = question.type() === "metric";
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
@@ -441,9 +443,6 @@ function DatasetEditor(props) {
         : undefined,
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
-
-  const isMetric = question.type() === "metric";
-  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const canSaveChanges =
     isDirty &&
