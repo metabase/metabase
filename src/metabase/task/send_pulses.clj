@@ -101,6 +101,34 @@
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
     (clear-pcs-and-send-pulse! pulse-id channel-ids)))
 
+;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
+
+(declare update-send-pulse-trigger-if-needed!)
+
+(defn- init-send-pulse-triggers!
+  []
+  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
+                               (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
+                               (update-vals results #(map :id %)))]
+    (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
+      (update-send-pulse-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))))
+
+(jobs/defjob
+  ^{:doc
+    "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
+
+    This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
+
+    Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
+    hour.
+    Since that's inefficient and we want to be able to send pulses in parallel, we changed it so that each PulseChannel
+    of the same schedule will have its own SendPulse trigger.
+    During this transition, we need to schedule all the SendPulse triggers for existing PulseChannels, so we have this job
+    that run once on Metabase startup to do that."}
+  InitSendPulseTriggers
+  [_context]
+  (init-send-pulse-triggers!))
+
 ;;; --------------------------------------------- Helpers -------------------------------------------
 
 ;; called by PulseChannel hooks
@@ -151,24 +179,6 @@
       (task/delete-trigger! trigger-key)
       (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids))))))
 
-(defn- init-send-pulse-triggers!
-  "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
-
-  This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
-
-  Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
-  hour.
-  Since that's inefficient and we want to be able to send pulses in parallel, we changed it so that each PulseChannel
-  of the same schedule will have its own SendPulse trigger.
-  During this transition, we need to schedule all the SendPulse triggers for existing PulseChannels.
-  To do that, we called `init-send-pulse-triggers!` in [[task/init!]], since this function is idempotent it's fine to call it mulitple times."
-  []
-  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
-                               (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
-                               (update-vals results #(map :id %)))]
-    (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
-      (update-send-pulse-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))))
-
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 
 (defmethod task/init! ::SendPulses [_]
@@ -176,6 +186,14 @@
                         (jobs/with-identity send-pulse-job-key)
                         (jobs/with-description "Send Pulse")
                         (jobs/of-type SendPulse)
-                        (jobs/store-durably))]
+                        (jobs/store-durably))
+        init-job       (jobs/build
+                        (jobs/of-type InitSendPulseTriggers)
+                        (jobs/with-identity (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+                        (jobs/store-durably))
+        init-trigger   (triggers/build
+                        (triggers/with-identity (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))
+                        ;; runs once on Metabase startup
+                        (triggers/start-now))]
     (task/add-job! send-pulse-job)
-    (init-send-pulse-triggers!)))
+    (task/schedule-task! init-job init-trigger)))
