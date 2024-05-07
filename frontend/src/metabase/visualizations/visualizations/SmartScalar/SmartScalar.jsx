@@ -199,7 +199,7 @@ function PreviousValueComparison({
       display="inline-block"
       mx={0.2}
       style={{ transform: "scale(0.7)" }}
-      color={lighten(theme.fn.themeColor("text-light"), 0.25)}
+      c={lighten(theme.fn.themeColor("text-light"), 0.25)}
       span
     >
       {" • "}
@@ -237,14 +237,14 @@ function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueStr} color="text-light" span>
+        <Text key={valueStr} c="text-light" span>
           {valueStr}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" color="text-light" span>
+      <Text key="value-str" c="text-light" span>
         {valueStr}
       </Text>
     )}`;
@@ -260,7 +260,7 @@ function PreviousValueComparison({
   );
 
   const VariationPercent = ({ iconSize, children }) => (
-    <Flex align="center" maw="100%" color={changeColor ?? "text-light"}>
+    <Flex align="center" maw="100%" c={changeColor ?? "text-light"}>
       {changeArrowIconName && (
         <VariationIcon name={changeArrowIconName} size={iconSize} />
       )}
@@ -270,7 +270,7 @@ function PreviousValueComparison({
 
   const VariationDetails = ({ children }) =>
     children && (
-      <Title order={4} color="text-medium">
+      <Title order={4} c="text-medium">
         {separator}
         {children}
       </Title>
