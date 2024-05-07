@@ -9,7 +9,9 @@ import {
 } from "metabase/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Text, Button, Icon, Checkbox } from "metabase/ui";
 import {
   useListUploadTablesQuery,
@@ -32,6 +34,7 @@ export function UploadManagementTable() {
   const [selectedItems, setSelectedItems] = useState<Table[]>([]);
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const dispatch = useDispatch();
 
   const { data: uploadTables, error, isLoading } = useListUploadTablesQuery();
 
@@ -78,15 +81,35 @@ export function UploadManagementTable() {
   }
 
   return (
-    <Box p="md" mt="lg">
+    <Box p="md" pb="xl" my="lg">
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
         onConfirm={async sendToTrash => {
-          await Promise.all(
+          const result = await Promise.all(
             selectedItems.map(table => deleteTable(table, sendToTrash)),
           );
           setShowDeleteConfirmModal(false);
+
+          if (!result) {
+            const message = ngettext(
+              msgid`Error deleting table`,
+              `Error deleting tables`,
+              selectedItems.length,
+            );
+
+            dispatch(
+              addUndo({ message, toastColor: "error", icon: "warning" }),
+            );
+          } else if (result.length > 0) {
+            const message = ngettext(
+              msgid`1 table deleted`,
+              `${result.length} tables deleted`,
+              result.length,
+            );
+
+            dispatch(addUndo({ message }));
+          }
           setSelectedItems([]);
         }}
         onClose={() => setShowDeleteConfirmModal(false)}
