@@ -1,5 +1,6 @@
 import {
   echartsContainer,
+  enterCustomColumnDetails,
   getNotebookStep,
   modal,
   popover,
@@ -125,9 +126,50 @@ describe("scenarios > metrics", () => {
       addAggregation("Count of rows");
       saveMetric();
 
-      saveMetric();
-      popover().findByText("Metrics");
+      startNewMetric();
+      popover().findByText("Metrics").click();
       popover().findByText("Orders, Count").click();
+      getNotebookStep("summarize").findByText("Orders, Count").click();
+      enterCustomColumnDetails({ formula: "[Orders, Count] / 2 ", name: "" });
+      popover().button("Update").click();
+      saveMetric();
+      runQuery();
+      verifyScalarValue("9,380");
+    });
+
+    it("should create a metric with a custom aggregation expression based on 2 metrics", () => {
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      saveMetric();
+
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Products").click();
+      addAggregation("Count of rows");
+      saveMetric();
+
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText("Orders, Count").click();
+      cy.button("Join data").click();
+      popover().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
+        cy.findByText("Metrics").click();
+        cy.findByText("Products, Count").click();
+      });
+      getNotebookStep("summarize").findByText("Orders, Count").click();
+      enterCustomColumnDetails({
+        formula: "[Orders, Count] / [Products, Count] ",
+        name: "",
+      });
+      popover().button("Update").click();
+      saveMetric();
+      runQuery();
+      verifyScalarValue("9,380");
     });
   });
 });
