@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,6 +7,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -28,7 +29,7 @@ import type { Card, CardId, Dataset } from "metabase-types/api";
 export type QueryVisualizationProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
-  height: string | number;
+  height?: string | number;
 };
 
 type State = {
@@ -51,6 +52,10 @@ const _StaticQuestion = ({
     result: null,
     error: null,
   });
+
+  const defaultHeight = useMemo(() => {
+    return getDefaultVizHeight(card?.display);
+  }, [card]);
 
   const loadCardData = async ({ questionId }: { questionId: number }) => {
     setState(prevState => ({
@@ -112,12 +117,13 @@ const _StaticQuestion = ({
   }
 
   const question = new Question(card, metadata);
+
   const legacyQuery = question.legacyQuery({
     useStructuredQuery: true,
   });
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (
           <Box w="355px">

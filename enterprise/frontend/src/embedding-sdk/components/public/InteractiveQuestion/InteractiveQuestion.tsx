@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,6 +7,7 @@ import {
   SdkError,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -38,7 +39,7 @@ interface InteractiveQuestionProps {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
-  height: string | number;
+  height?: string | number;
 }
 
 export const _InteractiveQuestion = ({
@@ -59,6 +60,10 @@ export const _InteractiveQuestion = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
   const queryResults = useSelector(getQueryResults);
+
+  const defaultHeight = useMemo(() => {
+    return getDefaultVizHeight(card?.display);
+  }, [card]);
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
@@ -111,7 +116,7 @@ export const _InteractiveQuestion = ({
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&
