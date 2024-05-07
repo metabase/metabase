@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn- ->local-date [t]
@@ -72,8 +73,8 @@
 
 (deftest ^:parallel offset-expression-test-order-by-parameterized-expression
   (testing "An offset as a plain expression with an order by that will get parameterized with ? placeholders"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset :left-join)
+      (let [metadata-provider (qp.test-util/mock-fks-application-database-metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -113,8 +114,8 @@
 
 (deftest ^:parallel offset-expression-inside-other-expression-test
   (testing "An offset as a plain expression nested inside another expression"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset :left-join)
+      (let [metadata-provider (qp.test-util/mock-fks-application-database-metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
