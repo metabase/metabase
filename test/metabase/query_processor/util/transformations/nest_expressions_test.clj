@@ -2,7 +2,6 @@
   "Additional tests are in [[metabase.query-processor.util.nest-query-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
