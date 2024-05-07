@@ -270,7 +270,7 @@ function PreviousValueComparison({
 
   const VariationDetails = ({ children }) =>
     children && (
-      <Title order={4} c="text-medium">
+      <Title order={4} c="text-medium" style={{ whiteSpace: "pre" }}>
         {separator}
         {children}
       </Title>
@@ -294,6 +294,7 @@ function PreviousValueComparison({
         align="center"
         justify="center"
         mx="sm"
+        my="xs"
         lh="1.2rem"
         className={cx(
           DashboardS.fullscreenNormalText,
