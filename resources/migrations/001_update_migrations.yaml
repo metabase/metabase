@@ -5802,6 +5802,10 @@ databaseChangeLog:
       id: v49.2024-05-07T10:00:00
       author: qnkhuat
       comment: Set revision.most_recent = true to latest revision and false to others. A redo of v48.00-008 for mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
       changes:
         - sql:
             dbms: mysql,mariadb
