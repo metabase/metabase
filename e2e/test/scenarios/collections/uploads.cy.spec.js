@@ -347,8 +347,8 @@ describe("Upload Table Cleanup/Management", () => {
     cy.wait("@getUploadTables");
 
     cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog breeds/i).should("have.length", 3);
-      cy.findAllByText(/star wars characters/i).should("have.length", 2);
+      cy.findAllByText(/dog_breeds/i).should("have.length", 3);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
 
       // single delete
       cy.findAllByLabelText("trash icon").first().click();
@@ -357,9 +357,11 @@ describe("Upload Table Cleanup/Management", () => {
     modal().button("Delete").click();
     cy.wait("@getUploadTables");
 
+    cy.findByTestId("undo-list").findByText(/1 table deleted/i);
+
     cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog breeds/i).should("have.length", 2);
-      cy.findAllByText(/star wars characters/i).should("have.length", 2);
+      cy.findAllByText(/dog_breeds/i).should("have.length", 2);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
 
       // multiple delete
       cy.findAllByRole("checkbox").first().click();
@@ -370,9 +372,11 @@ describe("Upload Table Cleanup/Management", () => {
     modal().button("Delete").click();
     cy.wait("@getUploadTables");
 
+    cy.findByTestId("undo-list").findByText(/2 tables deleted/i);
+
     cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog breeds/i).should("have.length", 1);
-      cy.findAllByText(/star wars characters/i).should("have.length", 1);
+      cy.findAllByText(/dog_breeds/i).should("have.length", 1);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 1);
     });
   });
 });
