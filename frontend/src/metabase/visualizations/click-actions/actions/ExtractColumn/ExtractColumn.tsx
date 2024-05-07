@@ -44,6 +44,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
         query={query}
         stageIndex={stageIndex}
         onSubmit={handleSubmit}
+        onCancel={onClose}
       />
     );
   };
