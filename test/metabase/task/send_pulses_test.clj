@@ -111,8 +111,9 @@
         (testing "priority is 0 to starts with"
           (is (= 0 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
-        (testing "send pulse should updates it priority based on duration"
-          (is (pos-int? (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))))))
+        (testing "send pulse should updates it priority"
+          ;; negative because job takes 1 seconds and priority is the invert of duration
+          (is (neg-int? (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"

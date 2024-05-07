@@ -112,7 +112,8 @@
             result   (send-pulse! pulse-id to-send-enabled-channel-ids)
             end      (System/currentTimeMillis)
             ;; we set priority as duration in seconds, the quicker the pulse is sent the higher the priority
-            priority (int (/ (- end start) 1000))]
+            ;; highest priorities triggers are executed first, so we need to invert it with the duration
+            priority (-> (- end start) (/ 1000) int -)]
         (log/info "Send Pulse result: " result priority)
         (when (= :done result)
           (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids priority))))
