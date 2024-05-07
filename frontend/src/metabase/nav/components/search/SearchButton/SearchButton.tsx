@@ -2,17 +2,16 @@ import { useKBar, VisualState } from "kbar";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { isMac } from "metabase/lib/browser";
+import { METAKEY } from "metabase/lib/browser";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
-const METAKEY = isMac() ? "⌘" : "Ctrl";
-
 export const SearchButton = () => {
-  const { query } = useKBar();
+  const kbar = useKBar();
+  const { setVisualState } = kbar.query;
 
   const handleClick = useCallback(() => {
-    query.setVisualState(VisualState.showing);
-  }, [query]);
+    setVisualState(VisualState.showing);
+  }, [setVisualState]);
 
   return (
     <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
