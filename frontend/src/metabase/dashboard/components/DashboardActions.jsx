@@ -49,7 +49,7 @@ export const getDashboardActions = props => {
   const shouldShowSubscriptionsButton =
     emailConfigured || slackConfigured || isAdmin;
 
-  if (!isEditing && !isEmpty && !isPublic) {
+  if (!isEditing && !isEmpty && !isPublic && !dashboard?.archived) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
     if (
       shouldShowSubscriptionsButton &&
@@ -76,7 +76,7 @@ export const getDashboardActions = props => {
     );
   }
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && !dashboard?.archived) {
     buttons.push(
       <RefreshWidgetButton
         key="refresh"
@@ -87,7 +87,12 @@ export const getDashboardActions = props => {
     );
   }
 
-  if (!isEditing && isFullscreen && hasNightModeToggle) {
+  if (
+    !isEditing &&
+    isFullscreen &&
+    !dashboard?.archived &&
+    hasNightModeToggle
+  ) {
     buttons.push(
       <Tooltip
         key="night"

@@ -1,5 +1,5 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   CreateBookmark,
@@ -8,6 +8,7 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
+import { isTrashedCollection } from "metabase/collections/utils";
 import CheckBox from "metabase/core/components/CheckBox";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -152,6 +153,7 @@ export const BaseItemsTable = ({
     });
 
   const canSelect = !!collection?.can_write;
+  const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
     <Table canSelect={canSelect} {...props}>
@@ -202,14 +204,18 @@ export const BaseItemsTable = ({
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {t`Last edited by`}
+              {isTrashed
+                ? c("Precedes the name of a user").t`Deleted by`
+                : t`Last edited by`}
             </SortableColumnHeader>
             <SortableColumnHeader
               name="last_edited_at"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
             >
-              {t`Last edited at`}
+              {isTrashed
+                ? c("Precedes the name of a user").t`Deleted at`
+                : t`Last edited at`}
             </SortableColumnHeader>
             <th></th>
           </tr>
