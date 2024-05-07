@@ -56,7 +56,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
       buttonType: "horizontal",
       icon: "arrow_split",
       default: true,
-      section: "extract",
+      section: "new-column",
       popover: Popover,
     },
   ];
