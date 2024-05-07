@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLatest } from "react-use";
 
 interface Props<Item> {
+  disabled: boolean;
   items: Item[] | undefined;
   onChange: (item: Item) => void;
 }
@@ -13,6 +14,7 @@ interface Props<Item> {
  * @returns true when there's only 1 item.
  */
 export const useAutoSelectOnlyItem = <Item>({
+  disabled,
   items,
   onChange,
 }: Props<Item>): boolean => {
@@ -23,11 +25,11 @@ export const useAutoSelectOnlyItem = <Item>({
 
   useEffect(
     function autoSelectOnlyItem() {
-      if (onlyItem) {
+      if (!disabled && onlyItem) {
         onChangeRef.current(onlyItem);
       }
     },
-    [onlyItem, onChangeRef],
+    [disabled, onlyItem, onChangeRef],
   );
 
   // let consumer component know when to not render itself
