@@ -13,16 +13,6 @@ export type SettingsSyncOptions = {
   column: DatasetColumn;
 };
 
-function isValid(cols: DatasetColumn[], settings: VisualizationSettings) {
-  const tableColumnSettings = settings["table.columns"] || [];
-  const columnIndexes = findColumnIndexesForColumnSettings(
-    cols,
-    tableColumnSettings.filter(({ enabled }) => enabled),
-  );
-
-  return columnIndexes.every(columnIndex => columnIndex >= 0);
-}
-
 export function syncColumnSettings(
   settings: VisualizationSettings,
   queryResults?: Dataset,
@@ -32,16 +22,6 @@ export function syncColumnSettings(
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
-    const { cols } = queryResults.data;
-
-    if (!isValid(cols, settings)) {
-      // reset table columns settings as they are not valid
-      return {
-        ...newSettings,
-        "table.columns": undefined,
-      };
-    }
-
     newSettings = syncTableColumnSettings(newSettings, queryResults, options);
 
     if (prevQueryResults && !prevQueryResults.error) {

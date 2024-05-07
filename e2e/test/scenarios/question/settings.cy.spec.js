@@ -137,8 +137,21 @@ describe("scenarios > question > settings", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  [
+                    "field",
+                    PRODUCTS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "Products",
+                    },
+                  ],
                 ],
                 alias: "Products",
               },
@@ -178,6 +191,7 @@ describe("scenarios > question > settings", () => {
 
       // Add "Address"
       cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.pause();
       cy.findByLabelText("Address").should("not.be.checked").click();
 
       // The result automatically load when adding new fields but two requests are fired.
