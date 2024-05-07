@@ -4,7 +4,9 @@ title: Migrating from legacy permissions
 
 # Migrating from legacy permissions
 
-In Metabase 50, we overhauled our permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
+In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
+
+The TL;DR: we split the old **Data access** setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions)
 
 ## How Metabase migrated your permissions
 
@@ -12,12 +14,12 @@ If you're migrating from Metabase 50 or earlier, Metabase will (with [one except
 
 ## Why we updated our permissions system
 
-The original data access permission contains five levels of access: unrestricted, granular, no self-service, and block. These levels aren’t at the same axis. They combined on one axis, whether you could view data, and on another axis, whether you could query that data. This created a two-dimensional setting:
+The original Data access permission setting contained five levels of access: unrestricted, granular, no self-service, and block. These levels aren’t at the same axis. They combined on one axis, whether you could view data, and on another axis, whether you could query that data. This created a two-dimensional setting:
 
 - **No self-service.** Restricts groups from using the query builder to create or edit questions.
 - **Sandbox and block.** Restricts view _and_ query builder access to the underlying data.
 
-Mixing two axes (Querying + Viewing) to a single permissions setting could yield unexpected behavior. For example, by changing access from "Sandboxed" to "No self-service", an admin might think that they would be _restricting_ that group's access to data. But in that case, the group could potentially see _more_ data, provided the group also had access to collections with existing models, questions, or dashboards.
+Mixing two axes (querying + viewing) to a single permissions setting could yield unexpected behavior. For example, by changing access from "Sandboxed" to "No self-service", an admin might think that they would be _restricting_ that group's access to data. But in that case, the group could potentially see _more_ data, provided the group also had access to collections with existing models, questions, or dashboards.
 
 ## What our overhaul of permissions accomplishes
 
@@ -44,7 +46,7 @@ Before, Metabase had **Data access** and **Native query editing**. Now, Metabase
 
 ## The `No self-service (deprecated)` View access level
 
-If you see the `No self-service (deprecated)` permission setting in **View data** for any group, you'll need to manually change it.
+If you see the `No self-service (deprecated)` permission setting in **View data** for any group, you should (but don't _need_ to) manually change it at some point.
 
 For any group that has their **View data** access set to `No self-service (deprecated)`, you'll need to change the **View data** permission to one of the new types:
 
@@ -53,7 +55,7 @@ For any group that has their **View data** access set to `No self-service (depre
 - [Sandboxed](./data.md#sandboxed-view-data-permission)
 - [Blocked](./data.md#blocked-view-data-permission)
 
-Please make the change soon, but don't stress about it: if you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View access, to prevent any unintended access to data.
+Please make the change soon, but don't stress about it: if you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data.
 
 Why we couldn't migrate this setting manually: in the old permissions system, consider people in multiple groups.
 
@@ -65,8 +67,6 @@ Say you have the following groups in the old permissions framework:
 |                 | **Group A**  | **Group B**     | **Group C** | **Group D** | **Group E**  |
 | --------------- | ------------ | --------------- | ----------- | ----------- | ------------ |
 | **Data Access** | Unrestricted | No self-service | Blocked     | Sandboxed   | Impersonated |
-
-If a person is in either group A or B, and in one of groups C, D, or E, it's not clear how we'd migrate them to the new framework, which has separate settings for viewing and querying data.
 
 If you’re a member of Group A and one of Group C, D, or E, you’ll have full, unrestricted access to the data, with no blocks, sandboxes, or impersonations applied.
 
