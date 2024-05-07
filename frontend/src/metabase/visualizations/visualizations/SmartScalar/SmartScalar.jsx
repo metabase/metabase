@@ -293,8 +293,8 @@ function PreviousValueComparison({
         wrap="wrap"
         align="center"
         justify="center"
-        mx="xs"
-        lh={1.2}
+        mx="sm"
+        lh="1.2rem"
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
