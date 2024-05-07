@@ -161,6 +161,9 @@
       (set-progress id :dump 20)
       (binding [*ignore-read-only-mode* true]
         (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true}))
+      (when-not (read-only-mode)
+        (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
+                        {:id id})))
       (read-only-mode! false)
 
       (log/info "Uploading dump to store")
