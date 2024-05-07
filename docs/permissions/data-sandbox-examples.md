@@ -17,7 +17,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click on the **All users** group. For the Sample database, set the All User's [View data](./data.md#view-data-permissions) permission to "Blocked".
 
-2. **Create a group called Customers**. Hit cm/crtl + k and search for the People settings. [Create a group called "Customers".
+2. **Create a group called Customers**. Hit cmd/ctrl + k and search for the People settings. [Create a group called "Customers".
 
 3. **Create a user account for Cloyd Beer**. We'll [create a user account](../people-and-groups/managing.md#creating-an-account) for a random person from the People table in our Sample Database. Let's go with `Cloyd Beer` from the Sample database's `People` table.
 
