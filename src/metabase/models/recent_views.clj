@@ -74,7 +74,7 @@
                      :order-by [[:rv.timestamp :desc]]
                      :offset *recent-views-stored-per-user-per-model*}))
 
-(defn- empty-model-buckets [user-id]
+(defn- overflowing-model-buckets [user-id]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id %)) models-of-interest))
 
 (defn ids-to-prune
@@ -84,7 +84,7 @@
   [user-id]
   (set/union
    (duplicate-model-ids user-id)
-   (empty-model-buckets user-id)))
+   (overflowing-model-buckets user-id)))
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
@@ -118,22 +118,6 @@
                [:= :model (h2x/literal "dashboard")]
                [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
     :order-by [[:id :desc]]}))
-
-(def ^:private ^:dynamic *recent-views-stored-per-user* 30)
-
-(defn user-recent-views
-  "Returns the most recent `n` unique views for a given user."
-  ([user-id]
-   (user-recent-views user-id *recent-views-stored-per-user*))
-  ([user-id n]
-   (let [all-views-for-user (t2/select [:model/RecentViews :model :model_id]
-                                       :user_id user-id
-                                       {:order-by [[:timestamp :desc] [:id :desc]]
-                                        :limit    *recent-views-stored-per-user*})]
-     (->> (distinct all-views-for-user)
-          (take n)
-          ;; Lower-case the model name, since that's what the FE expects
-          (map #(update % :model u/lower-case-en))))))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
