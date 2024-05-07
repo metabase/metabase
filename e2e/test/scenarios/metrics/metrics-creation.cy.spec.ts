@@ -160,6 +160,24 @@ describe("scenarios > metrics", () => {
     });
   });
 
+  describe("custom columns", () => {
+    it.skip("should be able to use custom columns in metric queries (metabase#42360)", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      startNewCustomColumn();
+      enterCustomColumnDetails({
+        formula: "[Total] / 2",
+        name: "Total2",
+      });
+      popover().button("Done").click();
+      addAggregation("Sum of ...", "Total2");
+      saveMetric();
+      runQuery();
+      verifyScalarValue("755,310.84");
+    });
+  });
+
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       startNewMetric();
@@ -234,6 +252,10 @@ function startNewClause() {
 
 function startNewJoin() {
   cy.findAllByTestId("action-buttons").first().button("Join data").click();
+}
+
+function startNewCustomColumn() {
+  cy.findAllByTestId("action-buttons").first().button("Custom column").click();
 }
 
 function startNewFilter() {
