@@ -1,6 +1,5 @@
 import type { CardDisplayType } from "./card";
-import type { CollectionId } from "./collection";
-import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { InitialSyncStatus } from "./database";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -10,17 +9,6 @@ export const ACTIVITY_MODELS = [
   "collection",
 ] as const;
 export type ActivityModel = typeof ACTIVITY_MODELS[number];
-export type ActivityModelId = number;
-
-export interface ActivityModelObject {
-  name: string;
-  display_name?: string;
-  moderated_status?: string;
-  collection_id?: CollectionId | null;
-  collection_name?: string;
-  database_name?: string;
-  db_id?: DatabaseId;
-}
 
 export interface BaseRecentItem {
   id: number;
