@@ -832,17 +832,16 @@
                                                         :model_id    2
                                                         :user_id     user-id
                                                         :object      "{}"
-                                                        ;; both are most recent with the same timestamp,
-                                                        ;; the one that has higher id will be most_recent
+                                                        ;; both this and the previous one has most recent = true with the same timestamp,
+                                                        ;; the one that has higher id will be updated
                                                         :most_recent true
                                                         :timestamp   now})
+              ;; test case where there is only one migration per item
               rev-card-3-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "card"
                                                         :model_id    3
                                                         :user_id     user-id
                                                         :object      "{}"
-                                                        ;; both are most recent with the same timestamp,
-                                                        ;; the one that has higher id will be most_recent
                                                         :most_recent true
                                                         :timestamp   now})]
          (migrate!)
