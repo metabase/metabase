@@ -3,7 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CollectionItemModel, TableId } from "metabase-types/api";
+import type {
+  CollectionItemModel,
+  DatabaseId,
+  TableId,
+} from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -25,6 +29,11 @@ import {
 import { TablePicker } from "./TablePicker";
 
 interface Props {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId | null;
+  initialTab?: DataPickerValue["model"];
   value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
