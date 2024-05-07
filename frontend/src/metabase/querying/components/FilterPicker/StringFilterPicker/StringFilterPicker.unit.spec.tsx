@@ -372,8 +372,8 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        const input = screen.getByRole("textbox", { name: "Filter value" });
-        await userEvent.clear(input);
+        const input = screen.getByLabelText("Filter value");
+        expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
 
         await userEvent.type(input, "foo");
         await userEvent.click(screen.getByLabelText("Case sensitive"));
@@ -383,7 +383,7 @@ describe("StringFilterPicker", () => {
         expect(filterParts).toMatchObject({
           operator: "contains",
           column: expect.anything(),
-          values: ["foo"],
+          values: ["abc", "foo"],
           options: { "case-sensitive": true },
         });
         expect(getNextFilterColumnName()).toBe("Product → Description");
@@ -520,8 +520,7 @@ describe("StringFilterPicker", () => {
 
       await setOperator("Contains");
 
-      expect(screen.getByDisplayValue("Gadget")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("Gizmo")).not.toBeInTheDocument();
+      expect(screen.getByDisplayValue("Gadget,Gizmo")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
       await setOperator("Is empty");
