@@ -34,6 +34,8 @@ export interface MetabaseColors {
 
   /** Text color on light elements. Should be a darker color for readability. */
   "text-light"?: string;
+
+  "text-medium"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

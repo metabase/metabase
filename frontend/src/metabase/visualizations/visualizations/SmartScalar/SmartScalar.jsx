@@ -12,6 +12,8 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { space } from "metabase/styled-components/theme";
+import { Box, Flex, Title, Text } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -28,18 +30,7 @@ import {
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
-import {
-  PreviousValueDetails,
-  VariationContainer,
-  PreviousValueWrapper,
-  PreviousValueNumber,
-  Separator,
-  Variation,
-  VariationIcon,
-  VariationContainerTooltip,
-  VariationValue,
-  ScalarPeriodContent,
-} from "./SmartScalar.styled";
+import { VariationIcon, VariationValue } from "./SmartScalar.styled";
 import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 import {
   DASHCARD_HEADER_HEIGHT,
@@ -137,27 +128,29 @@ export function SmartScalar({
           />
         </span>
       </ScalarContainer>
-      {isPeriodVisible(innerHeight) && (
-        <ScalarPeriod lines={1} period={display.date} />
-      )}
+      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
       {comparisons.map((comparison, index) => (
-        <PreviousValueWrapper key={index} data-testid="scalar-previous-value">
+        <Box maw="100%" key={index} data-testid="scalar-previous-value">
           <PreviousValueComparison
             comparison={comparison}
             fontFamily={fontFamily}
             formatOptions={formatOptions}
             width={width}
           />
-        </PreviousValueWrapper>
+        </Box>
       ))}
     </ScalarWrapper>
   );
 }
 
-function ScalarPeriod({ lines = 2, period, onClick }) {
+function ScalarPeriod({ period, onClick }) {
   return (
-    <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
-      <ScalarPeriodContent
+    <ScalarTitleContainer data-testid="scalar-period" lines={1}>
+      <Title
+        ta="center"
+        style={{ overflow: "hidden", cursor: onClick && "pointer" }}
+        order={3}
+        size={0.875}
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -165,10 +158,10 @@ function ScalarPeriod({ lines = 2, period, onClick }) {
         )}
         onClick={onClick}
       >
-        <Ellipsified tooltip={period} lines={lines} placement="bottom">
+        <Ellipsified tooltip={period} lines={1} placement="bottom">
           {period}
         </Ellipsified>
-      </ScalarPeriodContent>
+      </Title>
     </ScalarTitleContainer>
   );
 }
@@ -199,7 +192,18 @@ function PreviousValueComparison({
           width: getChangeWidth(width),
         })
       : display.percentChange;
-  const separator = <Separator> • </Separator>;
+  const separator = (
+    <Text
+      display="inline-block"
+      mx={0.2}
+      style={{ transform: "scale(0.7)" }}
+      // lighten 0.25
+      color="text-light"
+      span
+    >
+      {" • "}
+    </Text>
+  );
   const availableComparisonWidth =
     width -
     4 * SPACING -
@@ -223,6 +227,7 @@ function PreviousValueComparison({
       : []),
     "",
   ];
+
   const detailCandidates = valueCandidates.map(valueStr => {
     if (isEmpty(valueStr)) {
       return comparisonDescStr;
@@ -230,12 +235,16 @@ function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <PreviousValueNumber key={valueStr}>{valueStr}</PreviousValueNumber>
+        <Text key={valueStr} color="text-light" span>
+          {valueStr}
+        </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <PreviousValueNumber key="value-str">{valueStr}</PreviousValueNumber>
+      <Text key="value-str" color="text-light" span>
+        {valueStr}
+      </Text>
     )}`;
   });
   const fullDetailDisplay = detailCandidates[0];
@@ -249,35 +258,41 @@ function PreviousValueComparison({
   );
 
   const VariationPercent = ({ iconSize, children }) => (
-    <Variation color={changeColor}>
+    <Flex align="center" maw="100%" color={changeColor ?? "text-light"}>
       {changeArrowIconName && (
         <VariationIcon name={changeArrowIconName} size={iconSize} />
       )}
       <VariationValue showTooltip={false}>{children}</VariationValue>
-    </Variation>
+    </Flex>
   );
+
   const VariationDetails = ({ children }) =>
-    children ? (
-      <PreviousValueDetails>
+    children && (
+      <Title order={4} color="text-medium">
         {separator}
         {children}
-      </PreviousValueDetails>
-    ) : null;
+      </Title>
+    );
 
   return (
     <Tooltip
       isEnabled={fullDetailDisplay !== fittedDetailDisplay}
       placement="bottom"
       tooltip={
-        <VariationContainerTooltip className="variation-container-tooltip">
+        <Flex align="center" className="variation-container-tooltip">
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
             {display.percentChange}
           </VariationPercent>
           <VariationDetails>{fullDetailDisplay}</VariationDetails>
-        </VariationContainerTooltip>
+        </Flex>
       }
     >
-      <VariationContainer
+      <Flex
+        wrap="wrap"
+        align="center"
+        justify="center"
+        margin={`${space(0)} ${space(1)}`}
+        lh={1.2}
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -288,7 +303,7 @@ function PreviousValueComparison({
           {fittedChangeDisplay}
         </VariationPercent>
         <VariationDetails>{fittedDetailDisplay}</VariationDetails>
-      </VariationContainer>
+      </Flex>
     </Tooltip>
   );
 }
