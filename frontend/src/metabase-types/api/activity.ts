@@ -1,12 +1,13 @@
+import type { CardDisplayType } from "./card";
 import type { CollectionId } from "./collection";
-import type { DatabaseId } from "./database";
-import type { UserId } from "./user";
+import type { DatabaseId, InitialSyncStatus } from "./database";
 
 export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
   "dashboard",
+  "collection",
 ] as const;
 export type ActivityModel = typeof ACTIVITY_MODELS[number];
 export type ActivityModelId = number;
@@ -21,17 +22,43 @@ export interface ActivityModelObject {
   db_id?: DatabaseId;
 }
 
-export interface RecentItem {
-  cnt: number;
-  max_ts: string;
-  user_id: UserId;
+export interface BaseRecentItem {
+  id: number;
+  name: string;
   model: ActivityModel;
-  model_id: ActivityModelId;
-  model_object: ActivityModelObject;
+  timestamp: string;
 }
 
-export interface PopularItem {
-  model: ActivityModel;
-  model_id: ActivityModelId;
-  model_object: ActivityModelObject;
+export interface RecentTableItem extends BaseRecentItem {
+  model: "table";
+  display_name: string;
+  database: {
+    id: number;
+    name: string;
+    initial_sync_status: InitialSyncStatus;
+  };
+}
+
+export interface RecentCollectionItem extends BaseRecentItem {
+  model: "collection" | "dashboard" | "dataset" | "card";
+  parent_collection: {
+    id: number | null;
+    name: string;
+    authority_level?: "official" | null;
+  };
+  authority_level?: "official" | null; // for collections
+  moderated_status?: "verified" | null; // for models
+  display?: CardDisplayType; // for questions
+}
+
+export type RecentItem = RecentTableItem | RecentCollectionItem;
+
+export interface RecentItemsResponse {
+  recent_views: RecentItem[];
+}
+
+export type PopularItem = RecentItem;
+
+export interface PopularItemsResponse {
+  popular_items: PopularItem[];
 }
