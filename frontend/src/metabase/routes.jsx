@@ -138,7 +138,7 @@ export const getRoutes = store => {
           />
 
           <Route path="search" title={t`Search`} component={SearchApp} />
-          {/* Send historical /archive route to trash - can remove in v51 */}
+          {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect path="archive" to="trash" replace />
           <Redirect
             path={`/collection/${TRASH_COLLECTION.id}-trash`}
