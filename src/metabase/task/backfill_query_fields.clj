@@ -18,7 +18,7 @@
     (run! query-field/update-query-fields-for-card! cards)))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Backfill QueryField for cards created earlier."}
+               :doc "Backfill QueryField for cards created earlier. Runs once per instance."}
   BackfillQueryField [_ctx]
   (backfill-query-fields!))
 
@@ -29,6 +29,5 @@
                   (jobs/store-durably))
         trigger (triggers/build
                   (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
-                  ;; runs once on Metabase startup
                   (triggers/start-now))]
     (task/schedule-task! job trigger)))
