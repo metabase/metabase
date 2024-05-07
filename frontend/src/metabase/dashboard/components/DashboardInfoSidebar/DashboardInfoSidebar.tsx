@@ -85,9 +85,6 @@ const DashboardInfoSidebarBody = ({
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
-  const showCaching =
-    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
-
   const handleDescriptionChange = useCallback(
     (description: string) => {
       setDashboardAttribute?.("description", description);
@@ -104,8 +101,13 @@ const DashboardInfoSidebarBody = ({
   );
 
   const autoApplyFilterToggleId = useUniqueId();
-  const canWrite = dashboard.can_write;
+  const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
+
+  const showCaching =
+    canWrite &&
+    PLUGIN_CACHING.isEnabled() &&
+    MetabaseSettings.get("enable-query-caching");
 
   return (
     <>

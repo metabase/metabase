@@ -7,7 +7,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ROOT_COLLECTION } from "./constants";
+import { ROOT_COLLECTION, TRASH_COLLECTION } from "./constants";
 
 type Props = {
   collectionId?: Collection["id"];
@@ -52,16 +52,15 @@ const getInitialCollectionId = createSelector(
   ],
   (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
-    const allCollectionIds = [
-      ...(collectionIds as CollectionId[]),
-      rootCollectionId,
-    ];
+    const validCollectionIds = collectionIds
+      .filter(id => id !== TRASH_COLLECTION.id)
+      .concat(rootCollectionId) as CollectionId[];
 
     if (personalCollectionId) {
-      allCollectionIds.push(personalCollectionId);
+      validCollectionIds.push(personalCollectionId);
     }
 
-    for (const collectionId of allCollectionIds) {
+    for (const collectionId of validCollectionIds) {
       const collection = collections[collectionId];
       if (collection?.can_write) {
         return canonicalCollectionId(collectionId);

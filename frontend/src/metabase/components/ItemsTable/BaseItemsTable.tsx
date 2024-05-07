@@ -4,6 +4,7 @@ import {
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
+import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import type {
@@ -15,6 +16,8 @@ import type {
 } from "metabase/collections/types";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
+import { isTrashedCollection } from "metabase/collections/utils";
+import CheckBox from "metabase/core/components/CheckBox";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -150,6 +153,8 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
+  const isTrashed = !!collection && isTrashedCollection(collection);
+
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
@@ -189,10 +194,12 @@ export const BaseItemsTable = ({
             <Columns.LastEditedBy.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.LastEditedAt.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.ActionMenu.Header />
             <Columns.RightEdge.Header />

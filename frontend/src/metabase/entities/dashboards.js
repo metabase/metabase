@@ -84,13 +84,16 @@ const Dashboards = createEntity({
       Dashboards.actions.update(
         { id },
         { archived },
-        undo(opts, "dashboard", archived ? "archived" : "unarchived"),
+        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
+        {
+          collection_id: canonicalCollectionId(collection && collection.id),
+          archived: false,
+        },
         undo(opts, "dashboard", "moved"),
       ),
 

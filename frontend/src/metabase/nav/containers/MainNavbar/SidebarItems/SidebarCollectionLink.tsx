@@ -11,6 +11,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 import {
+  CollectionLinkRoot,
   CollectionNodeRoot,
   ExpandToggleButton,
   FullWidthLink,
@@ -121,7 +122,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     const collection = item as unknown as Collection;
     return (
-      <div data-testid="sidebar-collection-link-root">
+      <CollectionLinkRoot data-testid="sidebar-collection-link-root">
         <CollectionDropTarget collection={collection}>
           {(droppableProps: DroppableProps) => (
             <SidebarCollectionLink
@@ -132,7 +133,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
             />
           )}
         </CollectionDropTarget>
-      </div>
+      </CollectionLinkRoot>
     );
   },
 );
