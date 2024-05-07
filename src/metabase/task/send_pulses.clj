@@ -12,7 +12,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.pulse :as pulse]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
@@ -161,7 +160,7 @@
   hour.
   Since that's inefficient and we want to be able to send pulses in parallel, we changed it so that each PulseChannel
   of the same schedule will have its own SendPulse trigger.
-  During this transition, we need have a cold start problem to schedule all the SendPulse triggers for existing PulseChannels.
+  During this transition, we need to schedule all the SendPulse triggers for existing PulseChannels.
   To do that, we called `init-send-pulse-triggers!` in [[task/init!]], since this function is idempotent it's fine to call it mulitple times."
   []
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
