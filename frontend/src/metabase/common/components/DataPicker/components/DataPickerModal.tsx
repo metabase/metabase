@@ -9,7 +9,7 @@ import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type { QuestionPickerItem } from "../../QuestionPicker";
 import { QuestionPicker } from "../../QuestionPicker";
-import { useHasModels, useHasQuestions } from "../hooks";
+import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
@@ -42,8 +42,7 @@ const options: DataPickerModalOptions = {
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
-  const hasModels = useHasModels();
-  const hasQuestions = useHasQuestions();
+  const { hasModels, hasQuestions } = useAvailableData();
 
   const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
