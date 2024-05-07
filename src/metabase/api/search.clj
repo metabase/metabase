@@ -106,16 +106,6 @@
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
 
-(defn- collection-permission-id [model]
-  (case model
-    ("dashboard" "card" "dataset" "action") [:coalesce :trashed_from_collection_id :collection_id]
-    "collection" :collection.id))
-
-(defn- collection-join-id [model]
-  (case model
-    ("dashboard" "card" "dataset" "action") :collection_id
-    "collection" :collection.id))
-
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`.
@@ -134,8 +124,12 @@
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
-        collection-join-id       (collection-join-id model)
-        collection-permission-id (collection-permission-id model)
+        collection-join-id       (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-permission-id (if (= model "collection")
+                                   :collection.id
+                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-permission-id
                                   visible-collections)]
@@ -530,9 +524,12 @@
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
+
                             (map #(update % :archived api/bit->boolean))
+
                             (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
