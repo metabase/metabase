@@ -7,21 +7,17 @@
     (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
   (:require
    [clojure.set :as set]
-   [metabase.driver :as driver]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 ;;; this is done in a series of discrete steps
 
-(defn- escape-alias [driver join-alias]
-  (driver/escape-alias driver join-alias))
-
-(defn- driver->escape-fn [driver]
-  (comp (lib.util/unique-name-generator (qp.store/metadata-provider))
-        (partial escape-alias driver)))
+(defn- unique-name-generator []
+  (lib.util/unique-name-generator (qp.store/metadata-provider)))
 
 (defn- add-escaped-aliases
   "Walk the query and add an `::alias` key to every join in the query."
@@ -166,7 +162,7 @@
   ;; add logging around the steps to make this easier to debug.
   (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
   (letfn [(add-escaped-aliases* [query]
-            (add-escaped-aliases query (driver->escape-fn driver/*driver*)))
+            (add-escaped-aliases query (unique-name-generator)))
           (add-original->escaped-alias-maps* [query]
             (log/tracef "Adding ::alias to joins\n%s" (u/pprint-to-str query))
             (add-original->escaped-alias-maps query))
@@ -201,31 +197,28 @@
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you
 ;;; try to take stuff like the field refs and manipulate the original query with them.
 
-(defn- rename-join-aliases
-  "Rename joins in `query` by replacing aliases whose keys appear in `original->new` with their corresponding values."
-  [query original->new]
-  (let [original->new      (into {} (remove (fn [[original-alias escaped-alias]] (= original-alias escaped-alias))
-                                            original->new))
-        aliases-to-replace (set (keys original->new))]
-    (if (empty? original->new)
-      query
-      (do
-        (log/tracef "Rewriting join aliases:\n%s" (u/pprint-to-str original->new))
-        (letfn [(rename-join-aliases* [query]
-                  (lib.util.match/replace query
-                    [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
-                    [:field id-or-name (update opts :join-alias original->new)]
+(mu/defn restore-aliases
+  "Restore aliases in query. If aliases were changed in [[escape-join-aliases]], there is a key in `:info` of
+  `:alias/escaped->original` which we can restore the aliases in the query."
+  [query             :- :map
+   escaped->original :- [:maybe [:map-of :string :string]]]
+  (if (empty? escaped->original)
+    query
+    (let [original->new      (into {} (remove (fn [[original-alias escaped-alias]] (= original-alias escaped-alias))
+                                              escaped->original))
+          aliases-to-replace (set (keys original->new))]
+      (if (empty? original->new)
+        query
+        (do
+          (log/tracef "Rewriting join aliases:\n%s" (u/pprint-to-str original->new))
+          (letfn [(rename-join-aliases* [query]
+                    (lib.util.match/replace query
+                      [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
+                      [:field id-or-name (update opts :join-alias original->new)]
 
-                    (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
-                    (merge
-                     ;; recursively update stuff inside the join
-                     (rename-join-aliases* (dissoc join :alias))
-                     {:alias (original->new (:alias join))})))]
-          (rename-join-aliases* query))))))
-
-(defn restore-aliases
-  "Restore aliases in query.
-  If aliases were changed in [[escape-join-aliases]], there is a key in `:info` of `:alias/escaped->original` which we
-  can restore the aliases in the query."
-  [query escaped->original]
-  (rename-join-aliases query escaped->original))
+                      (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
+                      (merge
+                       ;; recursively update stuff inside the join
+                       (rename-join-aliases* (dissoc join :alias))
+                       {:alias (original->new (:alias join))})))]
+            (rename-join-aliases* query)))))))

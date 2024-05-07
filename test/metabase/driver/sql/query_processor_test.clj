@@ -195,7 +195,9 @@
                 :h2
                 (lib.tu.macros/mbql-query venues
                   {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :base_type :type/Integer}]
+                   :source-metadata [{:name         "name"
+                                      :display_name "Name"
+                                      :base_type    :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
@@ -373,22 +375,14 @@
                     source.LONGITUDE   AS LONGITUDE
                     source.PRICE       AS PRICE
                     source.double_id   AS double_id]
-           :from   [{:select [source.ID          AS ID
-                              source.NAME        AS NAME
-                              source.CATEGORY_ID AS CATEGORY_ID
-                              source.LATITUDE    AS LATITUDE
-                              source.LONGITUDE   AS LONGITUDE
-                              source.PRICE       AS PRICE
-                              source.double_id   AS double_id]
-                     :from   [{:select [VENUES.ID AS ID
-                                        VENUES.NAME AS NAME
-                                        VENUES.CATEGORY_ID AS CATEGORY_ID
-                                        VENUES.LATITUDE    AS LATITUDE
-                                        VENUES.LONGITUDE   AS LONGITUDE
-                                        VENUES.PRICE       AS PRICE
-                                        VENUES.ID * 2      AS double_id]
-                               :from   [VENUES]}
-                              AS source]}
+           :from   [{:select [VENUES.ID AS ID
+                              VENUES.NAME AS NAME
+                              VENUES.CATEGORY_ID AS CATEGORY_ID
+                              VENUES.LATITUDE    AS LATITUDE
+                              VENUES.LONGITUDE   AS LONGITUDE
+                              VENUES.PRICE       AS PRICE
+                              VENUES.ID * 2      AS double_id]
+                     :from   [VENUES]}
                     AS source]
            :limit  [1]}
          (-> (lib.tu.macros/mbql-query venues
@@ -403,20 +397,16 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                        source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
-                        source.pivot-grouping AS pivot-grouping
-                        COUNT (*) AS count]
-             :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
-                                     ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                     ORDERS.CREATED_AT                  AS CREATED_AT
+                        source.PEOPLE__via__USER_ID__SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                        DATE_TRUNC ("year" source.CREATED_AT)      AS CREATED_AT
+                        source.pivot-grouping                      AS pivot-grouping
+                        COUNT (*)                                  AS count]
+             :from     [{:select    [ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
                                      ;; TODO -- I'm not sure if the order here is deterministic
                                      ;; Tech debt issue: #39396
                                      PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
@@ -479,42 +469,30 @@
                sql.qp-test-util/sql->sql-map)))))
 
 (def ^:private reference-aggregation-expressions-in-joins-test-expected-sql
-  '{:select [source.ID                           AS ID
-             source.NAME                         AS NAME
-             source.CATEGORY_ID                  AS CATEGORY_ID
-             source.LATITUDE                     AS LATITUDE
-             source.LONGITUDE                    AS LONGITUDE
-             source.PRICE                        AS PRICE
-             source.RelativePrice                AS RelativePrice
-             source.CategoriesStats__CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-             source.CategoriesStats__MaxPrice    AS CategoriesStats__MaxPrice
-             source.CategoriesStats__AvgPrice    AS CategoriesStats__AvgPrice
-             source.CategoriesStats__MinPrice    AS CategoriesStats__MinPrice]
-    :from   [{:select    [VENUES.ID          AS ID
-                          VENUES.NAME        AS NAME
-                          VENUES.CATEGORY_ID AS CATEGORY_ID
-                          VENUES.LATITUDE    AS LATITUDE
-                          VENUES.LONGITUDE   AS LONGITUDE
-                          VENUES.PRICE       AS PRICE
-                          CAST (VENUES.PRICE AS float)
-                          /
-                          CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
-                          ELSE CategoriesStats.AvgPrice END AS RelativePrice
-                          CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-                          CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
-                          CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
-                          CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
-              :from      [VENUES]
-              :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
-                                      MAX (VENUES.PRICE) AS MaxPrice
-                                      AVG (VENUES.PRICE) AS AvgPrice
-                                      MIN (VENUES.PRICE) AS MinPrice]
-                           :from     [VENUES]
-                           :group-by [VENUES.CATEGORY_ID]
-                           :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
-                          ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]}
-             AS source]
-    :limit  [3]})
+  '{:select    [VENUES.ID          AS ID
+                VENUES.NAME        AS NAME
+                VENUES.CATEGORY_ID AS CATEGORY_ID
+                VENUES.LATITUDE    AS LATITUDE
+                VENUES.LONGITUDE   AS LONGITUDE
+                VENUES.PRICE       AS PRICE
+                CAST (VENUES.PRICE AS float)
+                /
+                CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
+                ELSE CategoriesStats.AvgPrice END AS RelativePrice
+                CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
+                CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
+                CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
+                CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
+    :from      [VENUES]
+    :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
+                            MAX (VENUES.PRICE) AS MaxPrice
+                            AVG (VENUES.PRICE) AS AvgPrice
+                            MIN (VENUES.PRICE) AS MinPrice]
+                 :from     [VENUES]
+                 :group-by [VENUES.CATEGORY_ID]
+                 :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
+                ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]
+    :limit     [3]})
 
 (deftest ^:parallel reference-aggregation-expressions-in-joins-test
   (testing "See if we can correctly compile a query that references expressions that come from a join"
@@ -588,12 +566,9 @@
                                    [:expression "test"]]
                      :limit       1})]
         (testing "Generated SQL"
-          (is (= '{:select [source.PRICE AS PRICE
-                            source.test  AS test]
-                   :from   [{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
-                                      1 * 1 AS test]
-                             :from   [VENUES]}
-                            AS source]
+          (is (= '{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
+                            1 * 1 AS test]
+                   :from   [VENUES]
                    :limit  [1]}
                  (-> query mbql->native sql.qp-test-util/sql->sql-map)))
           (testing "Results"
@@ -725,20 +700,19 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
-                        COUNT (*)         AS count]
-             :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
-                                  CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
+    (is (= '{:select   [source.CATEGORY AS CATEGORY
+                        COUNT (*)       AS count]
+             :from     [{:select [CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY]
                          :from   [PRODUCTS]}
                         AS source]
-             :group-by [source.CATEGORY_2]
-             :order-by [source.CATEGORY_2 ASC]
+             :group-by [source.CATEGORY]
+             :order-by [source.CATEGORY ASC]
              :limit    [1]}
            (-> (lib.tu.macros/mbql-query products
-                 {:expressions {:CATEGORY [:concat $category "2"]}
-                  :breakout    [[:expression :CATEGORY]]
+                 {:expressions {"CATEGORY" [:concat $category "2"]}
+                  :breakout    [[:expression "CATEGORY"]]
                   :aggregation [[:count]]
-                  :order-by    [[:asc [:expression :CATEGORY]]]
+                  :order-by    [[:asc [:expression "CATEGORY"]]]
                   :limit       1})
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
@@ -804,19 +778,15 @@
 
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
-    (is (= '{:select   [source.my_cool_new_field AS my_cool_new_field]
-             :from     [{:select [VENUES.ID          AS ID
-                                  VENUES.PRICE       AS PRICE
-                                  VENUES.PRICE + 2   AS big_price
-                                  CAST
-                                  (VENUES.PRICE AS float)
-                                  /
-                                  CASE WHEN (VENUES.PRICE + 2) = 0 THEN NULL
-                                  ELSE VENUES.PRICE + 2
-                                  END AS my_cool_new_field]
-                         :from   [VENUES]}
-                        AS source]
-             :order-by [source.ID ASC]
+    (is (= '{:select   [CAST (VENUES.PRICE AS float)
+                        /
+                        CASE
+                          WHEN (VENUES.PRICE + 2) = 0
+                            THEN NULL
+                          ELSE VENUES.PRICE + 2
+                        END AS my_cool_new_field]
+             :from     [VENUES]
+             :order-by [VENUES.ID ASC]
              :limit    [3]}
            (-> (lib.tu.macros/mbql-query venues
                  {:expressions {:big_price         [:+ $price 2]
@@ -829,10 +799,8 @@
 
 (deftest ^:parallel floating-point-division-test-2
   (testing "Don't generate unneeded casts to FLOAT for the numerator if it is a number literal"
-    (is (= '{:select [source.my_cool_new_field AS my_cool_new_field]
-             :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
-                       :from   [VENUES]}
-                      AS source]
+    (is (= '{:select [2.0 / 4.0 AS my_cool_new_field]
+             :from   [VENUES]
              :limit  [1]}
            (-> (lib.tu.macros/mbql-query venues
                  {:expressions {:my_cool_new_field [:/ 2 4]}
@@ -900,30 +868,22 @@
                            Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     source.CC       AS CC]
-                            :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count    AS count
-                                               1 + 1           AS CC]
-                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                           COUNT (*)         AS count]
-                                                :from     [PRODUCTS]
-                                                :group-by [PRODUCTS.CATEGORY]
-                                                :order-by [PRODUCTS.CATEGORY ASC]}
-                                               AS source]}
+                                     1 + 1           AS CC]
+                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                 COUNT (*)         AS count]
+                                      :from     [PRODUCTS]
+                                      :group-by [PRODUCTS.CATEGORY]
+                                      :order-by [PRODUCTS.CATEGORY ASC]}
                                      AS source]}
                            AS source]
                :left-join [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     source.CC       AS CC]
-                            :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count    AS count
-                                               1 + 1           AS CC]
-                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                           COUNT (*)         AS count]
-                                                :from     [PRODUCTS]
-                                                :group-by [PRODUCTS.CATEGORY]
-                                                :order-by [PRODUCTS.CATEGORY ASC]}
-                                               AS source]}
+                                     1 + 1           AS CC]
+                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                 COUNT (*)         AS count]
+                                      :from     [PRODUCTS]
+                                      :group-by [PRODUCTS.CATEGORY]
+                                      :order-by [PRODUCTS.CATEGORY ASC]}
                                      AS source]}
                            AS Q1 ON source.CC = Q1.CC]
                :limit     [1]}

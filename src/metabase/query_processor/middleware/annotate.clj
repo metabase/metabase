@@ -31,18 +31,22 @@
   ;; name and display name can be blank because some wacko DBMSes like SQL Server return blank column names for
   ;; unaliased aggregations like COUNT(*) (this only applies to native queries, since we determine our own names for
   ;; MBQL.)
-  [:map
-   [:name         :string]
-   [:display_name :string]
-   ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ::lib.schema.common/base-type]
-   ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
-   ;; from the metadata but that's for another day
-   ;; where this column came from in the original query.
-   [:source       [:enum :aggregation :fields :breakout :native]]
-   ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
-   ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true} mbql.s/Reference]])
+  [:and
+   [:map
+    [:name         :string]
+    [:display_name :string]
+    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
+    [:base_type    ::lib.schema.common/base-type]
+    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
+    ;; from the metadata but that's for another day
+    ;; where this column came from in the original query.
+    [:source       [:enum :aggregation :fields :breakout :native]]
+    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
+    ;; Added by this middleware as one of the last steps.
+    [:field_ref {:optional true} mbql.s/Reference]]
+   [:fn
+    {:error/message "Results metadata columns should not contain kebab-case keys like :field-ref"}
+    (complement :field-ref)]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -633,7 +637,7 @@
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
       (let [query (cond-> query
-                    (seq escaped->original) ;; if we replaced aliases, restore them
+                    (seq escaped->original) ; if we replaced aliases, restore them
                     (escape-join-aliases/restore-aliases escaped->original))]
         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
                (seq model-metadata)

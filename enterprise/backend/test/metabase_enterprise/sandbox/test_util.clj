@@ -53,12 +53,14 @@
            (do-with-gtap-defs! group more f)))))))
 
 (def ^:private WithGTAPsArgs
-  "Schema for valid arguments to `with-gtaps`."
+  "Schema for valid arguments to [[with-gtaps!]]."
   [:map
-   [:gtaps [:map-of :keyword [:maybe
-                              [:map
-                               [:query      {:optional true} :map]
-                               [:remappings {:optional true} :map]]]]]
+   [:gtaps [:map-of
+            :keyword ; table name
+            [:maybe
+             [:map
+              [:query      {:optional true} :map]
+              [:remappings {:optional true} :map]]]]]
    [:attributes {:optional true} :map]])
 
 (defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
@@ -110,7 +112,7 @@
 
     (met/with-gtaps! {:gtaps      {:checkins {:query      {:database (data/id), ...}
                                               :remappings {:user_category [\"variable\" ...]}}}
-                     :attributes {\"user_category\" 1}}
+                      :attributes {\"user_category\" 1}}
       (mt/run-mbql-query checkins {:limit 2}))
 
   Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."

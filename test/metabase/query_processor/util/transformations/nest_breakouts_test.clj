@@ -118,7 +118,9 @@
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 (lib/breakout products-category))
           preprocessed     (lib.query/query metadata-provider (qp.preprocess/preprocess query))]
-      (is (=? {:stages [{;; join alias is escaped:
+      (is (=? {:info {:alias/escaped->original {"test_data_products__v_af2712b9" "test_data_products__via__product_id"}}}
+              preprocessed))
+      (is (=? {:stages [{ ;; join alias is escaped:
                          ;;
                          ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
                          ;;    =>
@@ -152,7 +154,5 @@
                                     [:asc {} [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
                                                       :source-field (symbol "nil #_\"key is not present.\"")}
                                               "test_data_products__v_f48e965c"]]]}]
-               ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
-               ;; string
-               :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}
+               :info {:alias/escaped->original {"test_data_products__v_af2712b9" "test_data_products__via__product_id"}}}
               (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed))))))

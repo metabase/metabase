@@ -971,13 +971,9 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
-;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
-;;        deleting data is not easy.
-;;
-;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
-;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
-;; machine isn't as slow as the CircleCI ones)
+;; HACK - Don't run these tests against Athena because the databases need to be loaded every time the tests are ran and
+;;        loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because deleting
+;;        data is not easy.
 (deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "4 checkins per minute dataset"

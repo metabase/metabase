@@ -17,6 +17,7 @@
    [metabase.query-processor.middleware.check-features :as check-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
+   [metabase.query-processor.middleware.deduplicate-expression-names :as qp.deduplicate-expression-names]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
@@ -108,6 +109,7 @@
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-legacy #'limit/add-default-limit)
+   (ensure-pmbql #'qp.deduplicate-expression-names/deduplicate-expression-names)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
 

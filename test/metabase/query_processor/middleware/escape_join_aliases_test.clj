@@ -51,13 +51,13 @@
   (driver/with-driver :h2
     (do-with-metadata-provider
      (fn []
-       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn :h2))))))
+       (#'escape/add-escaped-aliases query (#'escape/unique-name-generator))))))
 
 (defn- add-escaped-aliases-custom-escape [query]
   (driver/with-driver ::custom-escape
     (do-with-metadata-provider
      (fn []
-       (#'escape/add-escaped-aliases query (#'escape/driver->escape-fn ::custom-escape))))))
+       (#'escape/add-escaped-aliases query (#'escape/unique-name-generator))))))
 
 ;;; the tests below test what a query should look like after each sub-step
 

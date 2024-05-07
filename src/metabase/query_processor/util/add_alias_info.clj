@@ -80,7 +80,7 @@
   (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
     (fn unique-alias-fn [position original-alias]
       {:pre (string? original-alias)}
-      (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
+      (unique-name-fn position original-alias))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
 ;; [[unique-alias-fn]] below.

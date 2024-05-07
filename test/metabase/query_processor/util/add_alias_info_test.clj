@@ -41,7 +41,10 @@
 (defn- add-alias-info [query]
   (mt/with-metadata-provider (if (qp.store/initialized?)
                                (qp.store/metadata-provider)
-                               meta/metadata-provider)
+                               (lib.tu/merged-mock-metadata-provider
+                                meta/metadata-provider
+                                {:database {:lib/methods {:escape-alias (fn [s]
+                                                                          (driver/escape-alias driver/*driver* s))}}}))
     (driver/with-driver (or driver/*driver* :h2)
       (-> query qp.preprocess/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
@@ -382,7 +385,9 @@
 (driver/register! ::custom-escape :parent :h2)
 
 (defn- prefix-alias [alias]
-  (str "COOL." alias))
+  (if (str/starts-with? alias "COOL")
+    alias
+    (str "COOL." alias)))
 
 (defmethod driver/escape-alias ::custom-escape
   [_driver field-alias]
@@ -399,25 +404,26 @@
                                                                   ::add/desired-alias "COOL.PRICE"
                                                                   ::add/position      0}]]
                                         {:source-table $$venues
-                                         :expressions  {"double_price" [:* price 2]}
+                                         :expressions {"COOL.double_price" [:* price 2]}
                                          :fields       [price
-                                                        [:expression "double_price" {::add/desired-alias "COOL.double_price"
-                                                                                     ::add/position      1}]]
+                                                        [:expression "COOL.double_price"
+                                                        {::add/desired-alias "COOL.double_price"
+                                                         ::add/position      1}]]
                                          :limit        1})}
                        (let [double-price [:field
-                                           "double_price"
+                                           "COOL.double_price"
                                            {:base-type          :type/Integer
                                             ::add/source-table  ::add/source
-                                            ::add/source-alias  "COOL.double_price"
-                                            ::add/desired-alias "COOL.COOL.double_price"
+                                            ::add/source-alias  "double_price" ; <= WRONG
+                                            ::add/desired-alias "COOL.double_price"
                                             ::add/position      0}]]
                          ;; this is escaped once during preprocessing by
                          ;; the [[metabase.query-processor.middleware.pre-alias-aggregations]] middleware and then once
                          ;; more when we call [[metabase.query-processor.util.add-alias-info/add-alias-info]]
-                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.COOL.count"
+                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
                                                                         ::add/position      1
                                                                         ::add/source-alias  "COOL.count"
-                                                                        ::add/desired-alias "COOL.COOL.count"}]]
+                                                                        ::add/desired-alias "COOL.count"}]]
                           :breakout    [double-price]
                           :order-by    [[:asc double-price]]})))
                     (-> (lib.tu.macros/mbql-query venues
@@ -536,7 +542,6 @@
                                      [:value
                                       "Doohickey"
                                       {:base_type         :type/Text
-                                       :coercion_strategy nil
                                        :database_type     "CHARACTER VARYING"
                                        :effective_type    :type/Text
                                        :name              "CATEGORY"
@@ -940,3 +945,15 @@
                     qp.preprocess/preprocess
                     add/add-alias-info
                     :query)))))))
+
+(deftest ^:parallel nested-expressions-with-existing-names-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (driver/with-driver :h2
+      (let [query {:source-query {:source-table (meta/id :products)
+                                  :expressions  {"CATEGORY" [:concat [:field (meta/id :products :category) {:base-type :type/Text}] "2"]}
+                                  :fields       [[:expression "CATEGORY" {:base-type :type/Text}]]}
+                   :breakout     [[:field "CATEGORY" {:base-type :type/Text}]]
+                   :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                   :order-by     [[:asc [:field "CATEGORY" {:base-type :type/Text}]]]}]
+        (is (= :wow
+               (add/add-alias-info query)))))))

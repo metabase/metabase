@@ -153,7 +153,7 @@
 (mr/def ::unit.date.interval
   (into [:enum {:error/message    "Valid date interval unit"
                 :decode/normalize common/normalize-keyword}]
-        date-interval-units))
+        (cons :default date-interval-units)))
 
 (def time-interval-units
   "Time units that are valid in intervals or clauses like `:datetime-add`. Currently the same
@@ -163,7 +163,7 @@
 (mr/def ::unit.time.interval
   (into [:enum {:error/message    "Valid time interval unit"
                 :decode/normalize common/normalize-keyword}]
-        time-interval-units))
+        (cons :default time-interval-units)))
 
 (def datetime-interval-units
   "Units valid in intervals or clauses like `:datetime-add` for datetimes."
@@ -172,7 +172,7 @@
 (mr/def ::unit.date-time.interval
   (into [:enum {:error/message    "Valid datetime interval unit"
                 :decode/normalize common/normalize-keyword}]
-        datetime-interval-units))
+        (cons :default datetime-interval-units)))
 
 (mr/def ::option
   [:map

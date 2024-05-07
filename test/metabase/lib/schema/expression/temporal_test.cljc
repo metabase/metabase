@@ -130,3 +130,8 @@
     ;; mode is not allowed to be nil
     [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25" nil]
     [nil nil nil ["should be either :iso, :us or :instance" "Valid :get-week clause"]]))
+
+(deftest ^:parallel time-test
+  (are [t] (not (me/humanize (mc/explain :mbql.clause/time [:time {:lib/uuid "00000000-0000-0000-0000-000000000000"} t :default])))
+    "08:00"
+    #?@(:clj [#t "08:00"])))
