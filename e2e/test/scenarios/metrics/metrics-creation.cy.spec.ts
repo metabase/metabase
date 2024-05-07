@@ -182,7 +182,7 @@ function startNewMetric() {
 }
 
 function startNewClause() {
-  cy.findByTestId("notebook-cell-item").last().click();
+  cy.findAllByTestId("notebook-cell-item").last().click();
 }
 
 function startNewFilter() {
