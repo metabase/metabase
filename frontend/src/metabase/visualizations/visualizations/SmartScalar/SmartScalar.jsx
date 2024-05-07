@@ -149,7 +149,7 @@ function ScalarPeriod({ period, onClick }) {
         ta="center"
         style={{ overflow: "hidden", cursor: onClick && "pointer" }}
         order={3}
-        size={0.875}
+        size="0.875rem"
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -197,7 +197,7 @@ function PreviousValueComparison({
   const separator = (
     <Text
       display="inline-block"
-      mx={0.2}
+      mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
       c={lighten(theme.fn.themeColor("text-light"), 0.25)}
       span
