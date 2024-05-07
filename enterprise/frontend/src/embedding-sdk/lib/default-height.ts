@@ -8,12 +8,17 @@ import type { CardDisplayType } from "metabase-types/api";
 export function getDefaultVizHeight(
   type?: CardDisplayType,
 ): number | undefined {
+  // If the card type is not loaded yet, return a default height.
   if (!type) {
-    return;
+    return 50;
   }
 
   if (["scalar", "smartscalar"].includes(type)) {
     return 50;
+  }
+
+  if (["table", "pivot"].includes(type)) {
+    return 400;
   }
 
   return 250;
