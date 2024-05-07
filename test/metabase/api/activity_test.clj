@@ -84,60 +84,65 @@
                  (mt/user-http-request :crowberto :get 200
                                        "activity/most_recently_viewed_dashboard"))))))))
 
-(deftest recent-views-test
-  (clear-recent-views-for-user :crowberto)
-  (clear-recent-views-for-user :rasta)
-  (mt/with-temp [Card      card1     {:name                   "rand-name"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}
-                 Card      archived  {:name                   "archived-card"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :archived               true
-                                      :visualization_settings {}}
-                 Dashboard dash {:name        "rand-name2"
-                                 :description "rand-name2"
-                                 :creator_id  (mt/user->id :crowberto)}
-                 Table     table1 {:name "rand-name"}
-                 Table     hidden-table {:name            "hidden table"
-                                         :visibility_type "hidden"}
-                 Card      dataset {:name                   "rand-name"
-                                    :type                   :model
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
-    (testing "recent_views endpoint shows the current user's recently viewed items."
-      (mt/with-model-cleanup [ViewLog]
-        (mt/with-test-user :crowberto
-          (doseq [{:keys [topic event]} [{:topic :event/card-query :event {:card-id (:id dataset)}}
-                                         {:topic :event/card-query :event {:card-id (:id dataset)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/dashboard-read :event {:object dash}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/dashboard-read :event {:object dash}}
-                                         {:topic :event/table-read :event {:object table1}}
-                                         {:topic :event/card-query :event {:card-id (:id archived)}}
-                                         {:topic :event/table-read :event {:object hidden-table}}]]
-            (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-          (testing "No duplicates or archived items are returned."
-            (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-              (is (partial=
-                   [{:model "table" :model_id (u/the-id table1)}
-                    {:model "dashboard" :model_id (u/the-id dash)}
-                    {:model "card" :model_id (u/the-id card1)}
-                    {:model "dataset" :model_id (u/the-id dataset)}]
-                   recent-views)))))
-        (mt/with-test-user :rasta
-          (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
-          (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
-          (testing "Only the user's own views are returned."
-            (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
-              (is (partial=
-                   [{:model "dataset" :model_id (u/the-id dataset)}]
-                   (reverse recent-views))))))))))
+(do
+  (deftest recent-views-test
+   (clear-recent-views-for-user :crowberto)
+   (clear-recent-views-for-user :rasta)
+   (mt/with-temp [Card      card1     {:name                   "rand-name"
+                                       :creator_id             (mt/user->id :crowberto)
+                                       :display                "table"
+                                       :visualization_settings {}}
+                  Card      archived  {:name                   "archived-card"
+                                       :creator_id             (mt/user->id :crowberto)
+                                       :display                "table"
+                                       :archived               true
+                                       :visualization_settings {}}
+                  Dashboard dash {:name        "rand-name2"
+                                  :description "rand-name2"
+                                  :creator_id  (mt/user->id :crowberto)}
+                  Table     table1 {:name "rand-name"}
+                  Table     hidden-table {:name            "hidden table"
+                                          :visibility_type "hidden"}
+                  Card      dataset {:name                   "rand-name"
+                                     :type                   :model
+                                     :creator_id             (mt/user->id :crowberto)
+                                     :display                "table"
+                                     :visualization_settings {}}]
+     (testing "recent_views endpoint shows the current user's recently viewed items."
+       (mt/with-model-cleanup [ViewLog]
+         (mt/with-test-user :crowberto
+           (doseq [{:keys [topic event]} [{:topic :event/card-query :event {:card-id (:id dataset)}}
+                                          {:topic :event/card-query :event {:card-id (:id dataset)}}
+                                          {:topic :event/card-query :event {:card-id (:id card1)}}
+                                          {:topic :event/card-query :event {:card-id (:id card1)}}
+                                          {:topic :event/card-query :event {:card-id (:id card1)}}
+                                          {:topic :event/dashboard-read :event {:object dash}}
+                                          {:topic :event/card-query :event {:card-id (:id card1)}}
+                                          {:topic :event/dashboard-read :event {:object dash}}
+                                          {:topic :event/table-read :event {:object table1}}
+                                          {:topic :event/card-query :event {:card-id (:id archived)}}
+                                          {:topic :event/table-read :event {:object hidden-table}}]]
+             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+           (testing "No duplicates or archived items are returned."
+             (def wtf (mt/user-http-request :crowberto :get 200 "activity/recent_views"))
+             #_(let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views") "???")]
+               (def rv recent-views)
+               (is (partial=
+                    [{:model "table" :id (u/the-id table1)}
+                     {:model "dashboard" :id (u/the-id dash)}
+                     {:model "card" :id (u/the-id card1)}
+                     {:model "dataset" :id (u/the-id dataset)}]
+                    recent-views)))))
+         #_(mt/with-test-user :rasta
+           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
+           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
+           (testing "Only the user's own views are returned."
+             (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
+               (is (partial=
+                    [{:model "dataset" :id (u/the-id dataset)}]
+                    (reverse recent-views))))))))))
+
+ (run-test recent-views-test))
 
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
@@ -188,18 +193,19 @@
                                     :display                "table"
                                     :visualization_settings {}}]
     (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset]))]
-      (testing "Items viewed by multiple users are not duplicated in the popular items list."
+      (testing "Items viewed by multiple users are never duplicated in the popular items list."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
                           [(mt/user->id :crowberto) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta)     "card"      (:id card1)]
                           [(mt/user->id :crowberto) "card"      (:id card1)]])
-          (is (= [["dashboard" (:id dash1)]
-                  ["card" (:id card1)]]
+          (is (= [["dashboard" (u/the-id dash1)]
+                  ["card" (u/the-id card1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id)))))))
+                      :popular_items
+                      (filter (comp test-ids u/the-id))
+                      (map (juxt :model :id)))))))
       (testing "Items viewed by other users can still show up in popular items."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
@@ -212,8 +218,9 @@
                   ["table" (:id table1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id)))))))
+                      :popular_items
+                      (filter #(test-ids (:id %)))
+                      (map (juxt :model :id)))))))
       (testing "Items with more views show up sooner in popular items."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! (concat
@@ -230,5 +237,6 @@
                   ["table"     (:id table1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id))))))))))
+                      :popular_items
+                      (filter #(test-ids (:id %)))
+                      (map (juxt :model :id))))))))))

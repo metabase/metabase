@@ -185,6 +185,10 @@
    The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
    whether the item is 'official' or 'verified', and more."
   [] :- [:sequential recent-views/Item]
+  ;; we do a weighted score which incorporates:
+  ;; - total count -> higher = higher score
+  ;; - recently viewed -> more recent = higher score
+  ;; - official/verified -> yes = higher score
   (let [views (views-and-runs views-limit card-runs-limit true)
         model->id->items (models-for-views views)
         filtered-views (for [{:keys [model model_id] :as view-log} views
@@ -196,8 +200,7 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))
                              :let [is-dataset? (= (keyword (:type model-object)) :model)]]
-                         (cond-> view-log
-                           true (assoc :model_object model-object)
+                         (cond-> (assoc view-log :model_object model-object)
                            is-dataset? (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
