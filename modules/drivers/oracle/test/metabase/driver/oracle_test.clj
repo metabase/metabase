@@ -225,7 +225,7 @@
   [[username-binding & [username]] & body]
   `(do-with-temp-user ~username (fn [~username-binding] ~@body)))
 
-(deftest subselect-test
+(deftest ^:parallel subselect-test
   (testing "Don't try to generate queries with SELECT (...) AS source, Oracle hates `AS`"
     ;; TODO -- seems WACK that we actually have to create objects for this to work and can't just stick them in the QP
     ;; store.
@@ -241,9 +241,11 @@
                                           :base_type     :type/Text}]
       (qp.store/with-metadata-provider (u/the-id db)
         (let [hsql (sql.qp/mbql->honeysql :oracle
-                                          {:query {:source-table (:id table)
-                                                   :expressions  {"s" [:substring [:field (:id field) nil] 2]}
-                                                   :fields       [[:expression "s"]]
+                                          {:query {:source-query {:source-table (:id table)
+                                                                  :expressions  {"s" [:substring [:field (:id field) nil] 2]}
+                                                                  :fields       [[:field (:id field) nil]
+                                                                                 [:expression "s"]]}
+                                                   :fields       [[:field "s" {:base-type :type/Text}]]
                                                    :limit        3}})]
           (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
             (is (= [["SELECT"
