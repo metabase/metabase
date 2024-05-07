@@ -23,7 +23,7 @@ import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
 
 interface Props {
-  value: TablePickerValue | null;
+  value: TablePickerValue | undefined;
   onChange: (value: NotebookDataPickerValueItem) => void;
 }
 

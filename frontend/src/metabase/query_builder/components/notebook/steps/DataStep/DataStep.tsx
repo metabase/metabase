@@ -2,9 +2,11 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
-  tablePickerValueFromTable,
+  dataPickerValueFromCard,
+  dataPickerValueFromTable,
 } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import Tables from "metabase/entities/tables";
@@ -12,6 +14,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -31,13 +34,17 @@ export const DataStep = ({
   const question = step.question;
   const questionRef = useLatest(question);
   const metadata = question.metadata();
-  const collectionId = question.collectionId();
 
   const tableId = Lib.sourceTableOrCardId(query);
   const table = metadata.table(tableId);
   const tableMetadata = tableId
     ? Lib.tableOrCardMetadata(query, tableId)
     : null;
+
+  const sourceCardId = getQuestionIdFromVirtualTableId(tableId);
+  const { data: sourceCard } = useGetCardQuery(
+    sourceCardId ? { id: sourceCardId } : skipToken,
+  );
 
   const [isDataPickerOpen, setIsDataPickerOpen] = useState(!tableMetadata);
 
@@ -91,8 +98,11 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <DataPickerModal
-              collectionId={collectionId}
-              value={tablePickerValueFromTable(table)}
+              value={
+                sourceCardId && sourceCard
+                  ? dataPickerValueFromCard(sourceCard)
+                  : dataPickerValueFromTable(table)
+              }
               onChange={handleTableSelect}
               onClose={() => setIsDataPickerOpen(false)}
             />

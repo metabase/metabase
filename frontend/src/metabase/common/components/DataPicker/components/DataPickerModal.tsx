@@ -2,57 +2,132 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { CollectionId, TableId } from "metabase-types/api";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { CollectionItemModel, TableId } from "metabase-types/api";
 
-import type { EntityPickerModalOptions, EntityTab } from "../../EntityPicker";
+import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type { NotebookDataPickerValueItem, TablePickerValue } from "../types";
+import type { QuestionPickerItem } from "../../QuestionPicker";
+import { QuestionPicker } from "../../QuestionPicker";
+import { useAvailableData } from "../hooks";
+import type {
+  DataPickerModalOptions,
+  DataPickerValue,
+  NotebookDataPickerValueItem,
+} from "../types";
+import {
+  isModelItem,
+  isQuestionItem,
+  isTableItem,
+  isValidValueItem,
+} from "../utils";
 
 import { TablePicker } from "./TablePicker";
 
 interface Props {
-  /**
-   * TODO: use this prop in https://github.com/metabase/metabase/issues/40719
-   */
-  collectionId: CollectionId | null | undefined;
-  value: TablePickerValue | null;
+  value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
 
-const options: EntityPickerModalOptions = {
+const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
+
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+
+const options: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
+  showPersonalCollections: true,
+  showRootCollection: true,
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
-  const handleItemChange = useCallback(
+  const { hasModels, hasQuestions } = useAvailableData();
+
+  const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
-      onChange(item.id);
+      if (!isValidValueItem(item.model)) {
+        return;
+      }
+
+      const id =
+        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+      onChange(id);
+      onClose();
+    },
+    [onChange, onClose],
+  );
+
+  const handleCardChange = useCallback(
+    (item: QuestionPickerItem) => {
+      if (!isValidValueItem(item.model)) {
+        return;
+      }
+
+      onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },
     [onChange, onClose],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
+    hasModels
+      ? {
+          displayName: t`Models`,
+          model: "dataset",
+          icon: "model",
+          element: (
+            <QuestionPicker
+              initialValue={isModelItem(value) ? value : undefined}
+              models={MODEL_PICKER_MODELS}
+              options={options}
+              onItemSelect={handleCardChange}
+            />
+          ),
+        }
+      : undefined,
     {
       displayName: t`Tables`,
       model: "table",
       icon: "table",
-      element: <TablePicker value={value} onChange={handleItemChange} />,
+      element: (
+        <TablePicker
+          value={isTableItem(value) ? value : undefined}
+          onChange={handleChange}
+        />
+      ),
     },
-  ];
+    hasQuestions
+      ? {
+          displayName: t`Saved questions`,
+          model: "card",
+          icon: "folder",
+          element: (
+            <QuestionPicker
+              initialValue={isQuestionItem(value) ? value : undefined}
+              models={QUESTION_PICKER_MODELS}
+              options={options}
+              onItemSelect={handleCardChange}
+            />
+          ),
+        }
+      : undefined,
+  ].filter(
+    (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
+      tab != null,
+  );
 
   return (
     <EntityPickerModal
       canSelectItem
+      initialValue={value}
       options={options}
-      selectedItem={null}
+      selectedItem={value ?? null}
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
       onConfirm={_.noop} // onConfirm is unused when options.hasConfirmButtons is falsy
-      onItemSelect={handleItemChange}
+      onItemSelect={handleChange}
     />
   );
 };
