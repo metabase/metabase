@@ -13,6 +13,7 @@ import {
   within,
   waitFor,
   mockScrollTo,
+  mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
@@ -94,6 +95,7 @@ const recents_2 = createMockRecentItem({
 });
 
 mockScrollTo();
+mockScrollIntoView();
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
@@ -165,6 +167,10 @@ describe("PaletteResults", () => {
     await waitFor(async () => {
       expect(await screen.findByText("Search results")).toBeInTheDocument();
     });
+
+    expect(
+      await screen.findByRole("option", { name: /View and filter/i }),
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
