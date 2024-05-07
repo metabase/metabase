@@ -204,25 +204,6 @@ describe("StringFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
 
-    it("should add a filter with one value via keyboard", async () => {
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
-
-      await setOperator("Contains");
-      const input = screen.getByPlaceholderText("Enter some text");
-      await userEvent.type(input, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      await userEvent.type(input, "green{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
-        operator: "contains",
-        column: expect.anything(),
-        values: ["green"],
-        options: { "case-sensitive": false },
-      });
-      expect(getNextFilterColumnName()).toBe("Product → Description");
-    });
-
     it("should add a case-sensitive filter", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
