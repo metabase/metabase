@@ -7,13 +7,13 @@ import { t, jt } from "ttag";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { space } from "metabase/styled-components/theme";
-import { Box, Flex, Title, Text } from "metabase/ui";
+import { Box, Flex, Title, Text, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -184,6 +184,8 @@ function PreviousValueComparison({
     display,
   } = comparison;
 
+  const theme = useMantineTheme();
+
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
       ? formatChangeAutoPrecision(percentChange, {
@@ -192,18 +194,19 @@ function PreviousValueComparison({
           width: getChangeWidth(width),
         })
       : display.percentChange;
+
   const separator = (
     <Text
       display="inline-block"
       mx={0.2}
       style={{ transform: "scale(0.7)" }}
-      // lighten 0.25
-      color="text-light"
+      color={lighten(theme.fn.themeColor("text-light"), 0.25)}
       span
     >
       {" • "}
     </Text>
   );
+
   const availableComparisonWidth =
     width -
     4 * SPACING -
