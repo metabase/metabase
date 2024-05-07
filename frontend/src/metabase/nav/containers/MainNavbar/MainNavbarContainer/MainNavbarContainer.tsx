@@ -13,6 +13,7 @@ import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
+  TRASH_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
@@ -55,6 +56,7 @@ interface Props extends MainNavbarProps {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
+  trashCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allError: boolean;
@@ -77,6 +79,7 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
+  trashCollection,
   hasDataAccess,
   allError,
   allFetched,
@@ -105,6 +108,14 @@ function MainNavbarContainer({
     preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
+    if (trashCollection) {
+      const trash: CollectionTreeItem = {
+        ...trashCollection,
+        icon: getCollectionIcon(trashCollection),
+        children: [],
+      };
+      tree.push(trash);
+    }
 
     if (rootCollection) {
       const root: CollectionTreeItem = {
@@ -116,7 +127,7 @@ function MainNavbarContainer({
     } else {
       return tree;
     }
-  }, [rootCollection, collections, currentUser]);
+  }, [rootCollection, trashCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
     ({ newIndex, oldIndex }) => {
@@ -191,6 +202,11 @@ export default _.compose(
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",
+    loadingAndErrorWrapper: false,
+  }),
+  Collections.load({
+    id: TRASH_COLLECTION.id,
+    entityAlias: "trashCollection",
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({

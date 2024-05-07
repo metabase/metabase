@@ -343,6 +343,8 @@ import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
+import trash_filled_component from "./trash_filled.svg?component";
+import trash_filled_source from "./trash_filled.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -1052,6 +1054,10 @@ export const Icons = {
   trash: {
     component: trash_component,
     source: trash_source,
+  },
+  trash_filled: {
+    component: trash_filled_component,
+    source: trash_filled_source,
   },
   triangle_left: {
     component: triangle_left_component,
