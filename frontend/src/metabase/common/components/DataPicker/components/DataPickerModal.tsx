@@ -48,7 +48,12 @@ const options: DataPickerModalOptions = {
   showRootCollection: true,
 };
 
-export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
+export const DataPickerModal = ({
+  databaseId,
+  value,
+  onChange,
+  onClose,
+}: Props) => {
   const { hasModels, hasQuestions } = useAvailableData();
 
   const handleChange = useCallback(
@@ -99,6 +104,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "table",
       element: (
         <TablePicker
+          databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
           onChange={handleChange}
         />
