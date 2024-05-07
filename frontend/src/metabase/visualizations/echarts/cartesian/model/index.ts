@@ -123,14 +123,15 @@ export const getCartesianChartModel = (
     settings["stackable.stack_type"],
   );
 
-  const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
-    xAxisModel,
-    seriesModels,
-    yAxisScaleTransforms,
-    settings,
-    showWarning,
-  );
+  const { groupedSeriesKeys, transformedDataset } =
+    applyVisualizationSettingsDataTransformations(
+      dataset,
+      xAxisModel,
+      seriesModels,
+      yAxisScaleTransforms,
+      settings,
+      showWarning,
+    );
 
   const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
     rawSeries[0].card.display,
@@ -159,6 +160,7 @@ export const getCartesianChartModel = (
     dataset,
     transformedDataset,
     seriesModels,
+    groupedSeriesKeys,
     yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,

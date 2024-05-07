@@ -183,6 +183,7 @@ export type TrendLinesModel = {
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
+  groupedSeriesKeys: DataKey[];
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
   yAxisScaleTransforms: NumericAxisScaleTransforms;

@@ -11,7 +11,10 @@ import type {
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
-import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
+import {
+  buildEChartsSeries,
+  computeBarWidth,
+} from "metabase/visualizations/echarts/cartesian/option/series";
 import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
@@ -76,6 +79,15 @@ export const getCartesianChartOption = (
   );
   const trendSeriesOption = getTrendLinesOption(chartModel);
 
+  // const barSeriesCount = chartModel.seriesModels.reduce(
+  //   (count, seriesModel) =>
+  //     settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
+  //     "bar"
+  //       ? count + 1
+  //       : count,
+  //   0,
+  // );
+
   const seriesOption = [
     // Data series should always come first for correct labels positioning
     // since series labelLayout function params return seriesIndex which is used to access label value
@@ -83,12 +95,65 @@ export const getCartesianChartOption = (
     goalSeriesOption,
     trendSeriesOption,
     timelineEventsSeries,
+    // TODO move this, restore other options
+    {
+      id: "_other",
+      emphasis: {
+        focus: "series",
+        itemStyle: {
+          color: "#88BF4D",
+        },
+      },
+      blur: {
+        label: {
+          show: false,
+          opacity: 1,
+        },
+        itemStyle: {
+          opacity: 0.3,
+        },
+      },
+      type: "bar",
+      z: 6,
+      yAxisIndex: 0,
+      barGap: 0,
+      barWidth: computeBarWidth(
+        chartModel.xAxisModel,
+        chartMeasurements.boundaryWidth,
+        (settings["graph.max_categories"] ?? 0) + 1, // TODO fix this check (should not always add 1, only when there are grouped series), also refactor to common func, also cap max_categories
+        1, // TODO fix this
+        false,
+      ),
+      encode: {
+        y: "_other",
+        x: "\u0000_x",
+      },
+      label: {
+        silent: true,
+        show: false,
+        opacity: 1,
+        fontFamily: "Lato",
+        fontWeight: 600,
+        fontSize: 12,
+        color: "#4C5773",
+        textBorderColor: "#FFFFFF",
+        textBorderWidth: 3,
+      },
+      itemStyle: {
+        color: "#949AAB",
+      },
+    },
   ].flatMap(option => option ?? []);
+
+  const groupedSeriesKeysSet = new Set(chartModel.groupedSeriesKeys);
 
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
-    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
+    "_other", // TODO use constant
+    ...chartModel.seriesModels
+      .map(seriesModel => seriesModel.dataKey)
+      .filter(key => !groupedSeriesKeysSet.has(key)),
   ];
 
   if (settings["stackable.stack_type"] != null) {

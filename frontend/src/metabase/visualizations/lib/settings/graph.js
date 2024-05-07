@@ -391,6 +391,13 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     default: "auto",
     readDependencies: ["graph.show_values"],
   },
+  "graph.max_categories": {
+    // TODO add to static viz default computation
+    section: t`Display`,
+    title: t`Maximum number of categories`,
+    widget: "number",
+    default: 8,
+  },
 };
 
 export const GRAPH_COLORS_SETTINGS = {

@@ -136,6 +136,7 @@ export type YAxisScale = NumericScale;
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
+  "graph.max_categories"?: number;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

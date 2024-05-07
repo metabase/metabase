@@ -257,6 +257,16 @@ const buildEChartsBarSeries = (
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
 
+  // todo put this back
+  debugger;
+  const barWidth = computeBarWidth(
+    xAxisModel,
+    chartMeasurements.boundaryWidth,
+    barSeriesCount,
+    yAxisWithBarSeriesCount,
+    !!stackName,
+  );
+
   return {
     id: seriesModel.dataKey,
     emphasis: {
@@ -276,13 +286,7 @@ const buildEChartsBarSeries = (
     yAxisIndex,
     barGap: 0,
     stack: stackName,
-    barWidth: computeBarWidth(
-      xAxisModel,
-      chartMeasurements.boundaryWidth,
-      barSeriesCount,
-      yAxisWithBarSeriesCount,
-      !!stackName,
-    ),
+    barWidth,
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
@@ -664,8 +668,14 @@ export const buildEChartsSeries = (
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
+  const groupedSeriesKeysSet = new Set(chartModel.groupedSeriesKeys);
+
   const series = chartModel.seriesModels
     .map(seriesModel => {
+      if (groupedSeriesKeysSet.has(seriesModel.dataKey)) {
+        return null;
+      }
+
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
 
@@ -692,7 +702,9 @@ export const buildEChartsSeries = (
             seriesModel,
             settings,
             yAxisIndex,
-            barSeriesCount,
+            settings["graph.max_categories"] != null
+              ? settings["graph.max_categories"] + 1
+              : barSeriesCount, // TODO improve this check
             yAxisWithBarSeriesCount,
             hasMultipleSeries,
             renderingContext,
