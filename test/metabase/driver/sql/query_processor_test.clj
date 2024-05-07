@@ -498,8 +498,7 @@
                           VENUES.PRICE       AS PRICE
                           CAST (VENUES.PRICE AS float)
                           /
-                          CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
-                          ELSE CategoriesStats.AvgPrice END AS RelativePrice
+                          NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
                           CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                           CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                           CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -811,9 +810,8 @@
                                   CAST
                                   (VENUES.PRICE AS float)
                                   /
-                                  CASE WHEN (VENUES.PRICE + 2) = 0 THEN NULL
-                                  ELSE VENUES.PRICE + 2
-                                  END AS my_cool_new_field]
+                                  NULLIF (VENUES.PRICE + 2, 0)
+                                  AS my_cool_new_field]
                          :from   [VENUES]}
                         AS source]
              :order-by [source.ID ASC]
