@@ -1,4 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeWithSnowplow,
   expectGoodSnowplowEvent,
@@ -8,6 +9,8 @@ import {
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describeWithSnowplow(
   "scenarios > visualizations > drillthroughs > table_drills > combine columns",
@@ -88,16 +91,16 @@ describeWithSnowplow(
     });
 
     it("should handle duplicate column names", () => {
-      openPeopleTable({ limit: 3, mode: "notebook" });
-
-      cy.findByLabelText("Pick columns").click();
-      popover().within(() => {
-        cy.findByText("Select none").click();
-        cy.findByLabelText("Email").click();
-      });
-
-      cy.findByLabelText("Pick columns").click();
-      cy.button("Visualize").click();
+      createQuestion(
+        {
+          query: {
+            "source-table": PRODUCTS_ID,
+            fields: [["field", PRODUCTS.EMAIL, { "base-type": "type/Text" }]],
+            limit: 3,
+          },
+        },
+        { visitQuestion: true },
+      );
 
       // first combine (email + ID)
       cy.findAllByTestId("header-cell").contains("Email").click();
