@@ -45,6 +45,7 @@ const defaultDatasetEditorProps = {
   isShowingTemplateTagsEditor: false,
   parameterValues: {},
   params: { slug: "query" },
+  updateQuestion: noop,
   handleResize: noop,
   onCancelCreateNewModel: noop,
   onCancelDatasetChanges: noop,
