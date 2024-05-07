@@ -35,6 +35,11 @@
                                      u.cron/schedule-map->cron-string
                                      (str/replace " " "_")))))
 
+(defn- send-pulse-trigger-key->schedule-map
+  [trigger-key]
+  (let [[_ _pulse-id schedule-str] (re-matches #"metabase\.task\.send-pulse\.trigger\.(\d+)\.(.*)" trigger-key)]
+    (str/replace schedule-str "_" " ")))
+
 (defn- send-pulse!
   [pulse-id channel-ids]
   (try
@@ -43,17 +48,23 @@
                                                     :channel-ids (seq channel-ids)}}
       (log/debugf "Starting Pulse Execution: %d" pulse-id)
       (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-        (metabase.pulse/send-pulse! pulse :channel-ids channel-ids))
-      (log/debugf "Finished Pulse Execution: %d" pulse-id))
+        (metabase.pulse/send-pulse! pulse :channel-ids channel-ids)
+        (log/debugf "Finished Pulse Execution: %d" pulse-id)
+        :done))
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
 
 (mu/defn ^:private send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
-  [pulse-id     :- pos-int?
+  ([pulse-id     :- pos-int?
+    schedule-map :- u.cron/ScheduleMap
+    pc-ids       :- [:set pos-int?]]
+   (send-pulse-trigger pulse-id schedule-map pc-ids 0))
+ ([pulse-id     :- pos-int?
    schedule-map :- u.cron/ScheduleMap
-   pc-ids       :- [:set pos-int?]]
+   pc-ids       :- [:set pos-int?]
+   priority     :- int?]
   (triggers/build
    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
    (triggers/for-job send-pulse-job-key)
@@ -66,7 +77,8 @@
       ;; Just wait until the next sync cycle.
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-      (cron/with-misfire-handling-instruction-fire-and-proceed)))))
+      (cron/with-misfire-handling-instruction-fire-and-proceed)))
+   (triggers/with-priority priority))))
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
@@ -86,20 +98,32 @@
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
     (set ids-to-delete)))
 
-(defn- clear-pcs-and-send-pulse!
-  [pulse-id channel-ids]
+(defn- send-pulse!*
+  "Do several things:
+  - Clear PulseChannels that have no recipients and no channel set for a pulse
+  - Send a pulse to a list of channels
+  - Update the priority of the trigger if the pulse is sent successfully"
+  [schedule-map pulse-id channel-ids]
   (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
         to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
         to-send-enabled-channel-ids (t2/select-pks-set :model/PulseChannel :id [:in to-send-channel-ids] :enabled true)]
     (if (seq to-send-enabled-channel-ids)
-     (send-pulse! pulse-id to-send-enabled-channel-ids)
-     (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
+      (let [start    (System/currentTimeMillis)
+            result   (send-pulse! pulse-id to-send-enabled-channel-ids)
+            end      (System/currentTimeMillis)
+            ;; we set priority as duration in seconds, the quicker the pulse is sent the higher the priority
+            priority (int (/ (- end start) 1000))]
+        (log/info "Send Pulse result: " result priority)
+        (when (= :done result)
+          (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids priority))))
+      (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (clear-pcs-and-send-pulse! pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
+        trigger-key                    (.. context getTrigger getKey getName)]
+    (send-pulse!* (send-pulse-trigger-key->schedule-map trigger-key) pulse-id channel-ids)))
 
 ;;; --------------------------------------------- Helpers -------------------------------------------
 

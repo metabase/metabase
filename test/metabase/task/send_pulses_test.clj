@@ -7,6 +7,7 @@
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -65,11 +66,11 @@
    :schedule_day   nil
    :schedule_frame nil})
 
-(deftest clear-pcs-and-send-pulse!-test
-  (testing "clear-pcs-and-send-pulse! should delete PulseChannels and only send to enabled channels"
+(deftest send-pulse!*-delete-pcs-no-recipients-test
+  (testing "send-pulse!* should delete PulseChannels and only send to enabled channels"
     (let [sent-channel-ids (atom #{})]
-      (with-redefs [task.send-pulses/send-pulse! (fn [_pulse-id channel-ids]
-                                                   (swap! sent-channel-ids set/union channel-ids))]
+      (with-redefs [metabase.pulse/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
+                                                 (swap! sent-channel-ids set/union channel-ids))]
         (mt/with-temp
           [:model/Pulse        {pulse :id}            {}
            :model/PulseChannel {pc :id}               (merge
@@ -88,12 +89,30 @@
                                                         :channel_type :slack
                                                         :details      {}}
                                                        daily-at-1am)]
-          (#'task.send-pulses/clear-pcs-and-send-pulse! pulse #{pc pc-disabled pc-no-recipient})
+          (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc pc-disabled pc-no-recipient})
           (testing "only send to enabled channels that has recipients"
             (is (= #{pc} @sent-channel-ids)))
 
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
+
+(deftest send-pulse!*-update-trigger-priority-test
+  (testing "send-pulse!* should update the priority of the trigger based on the duration of the pulse"
+    (with-redefs [metabase.pulse/send-pulse! (fn [& _args]
+                                               ;; priority is duration round to seconds
+                                               (Thread/sleep 1000))]
+      (mt/with-temp
+        [:model/Pulse        {pulse :id}            {}
+         :model/PulseChannel {pc :id}               (merge
+                                                     {:pulse_id     pulse
+                                                      :channel_type :slack
+                                                      :details      {:channel "#random"}}
+                                                     daily-at-1am)]
+        (testing "priority is 0 to starts with"
+          (is (= 0 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
+        (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
+        (testing "send pulse should updates it priority based on duration"
+          (is (pos-int? (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"

@@ -424,7 +424,7 @@
   [pulse-id]
   (->> (task/job-info @#'task.send-pulses/send-pulse-job-key)
        :triggers
-       (map #(select-keys % [:key :schedule :data]))
+       (map #(select-keys % [:key :schedule :data :priority]))
        (map #(update % :data (fn [data] (into {} data))))
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))
        set))
