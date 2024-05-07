@@ -12,7 +12,6 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { space } from "metabase/styled-components/theme";
 import { Box, Flex, Title, Text, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
@@ -294,7 +293,7 @@ function PreviousValueComparison({
         wrap="wrap"
         align="center"
         justify="center"
-        mx={space(1)}
+        mx="xs"
         lh={1.2}
         className={cx(
           DashboardS.fullscreenNormalText,
