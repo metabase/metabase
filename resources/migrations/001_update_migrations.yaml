@@ -3403,11 +3403,10 @@ databaseChangeLog:
             sql: >-
               UPDATE revision r
               SET most_recent = TRUE
-              WHERE (model, model_id, timestamp, id) IN (
-                  SELECT model, model_id, timestamp, id
+              WHERE (id) IN (
+                  SELECT id
                   FROM (
-                      SELECT model, model_id, timestamp, id,
-                            ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
+                      SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
                       FROM revision
                   ) AS subquery
                   WHERE row_num = 1
@@ -3422,8 +3421,7 @@ databaseChangeLog:
               UPDATE revision r
               SET most_recent = TRUE
               FROM max_timestamp_per_group subquery
-              WHERE r.id = subquery.id
-                  AND subquery.row_num = 1;
+              WHERE r.id = subquery.id AND subquery.row_num = 1;
           # mysql and mariadb does not allow update on a table that is in the select part
           # so it we join for them
         - sql:
