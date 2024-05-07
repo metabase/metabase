@@ -65,6 +65,28 @@ describe("scenarios > metrics", () => {
     });
   });
 
+  describe("joins", () => {
+    it("should join a table", () => {
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      cy.button("Join data").click();
+      popover().findByText("Products").click();
+      startNewFilter();
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Category").click();
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      addAggregation("Count of rows");
+      saveMetric();
+      runQuery();
+      verifyScalarValue("4,939");
+    });
+  });
+
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       cy.visit("/");
@@ -96,6 +118,12 @@ describe("scenarios > metrics", () => {
 function startNewMetric() {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Metric").click();
+}
+
+function startNewFilter() {
+  getNotebookStep("filter")
+    .findByText("Add filters to narrow your answer")
+    .click();
 }
 
 function addAggregation(operatorName: string, columnName?: string) {
