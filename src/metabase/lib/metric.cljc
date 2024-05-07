@@ -91,6 +91,10 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/metric
+  [query stage-number metric options]
+  (lib.metadata.calculation/returned-columns-method query stage-number (assoc metric :lib/type :metadata/card) options))
+
 (defn- metrics-for-all-joins
   [query stage-number]
   (for [join (lib.join/joins query stage-number)]
