@@ -1,6 +1,8 @@
 (ns metabase.models.query-field
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.util :as lib.util]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -14,13 +16,20 @@
 
 ;;; Updating QueryField from card
 
-(defn- field-ids-for-mbql
+(defn- query-field-ids
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
   so returns `{:direct #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterwards."
   [query]
-  {:direct (mbql.u/referenced-field-ids query)})
+  (case (lib/normalized-query-type query)
+    :native     (try
+                  (query-analyzer/field-ids-for-sql query)
+                  (catch Exception e
+                    (log/error e "Error parsing SQL" query)))
+    :query      {:direct (mbql.u/referenced-field-ids query)}
+    :mbql/query {:direct (lib.util/referenced-field-ids query)}
+    nil))
 
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
@@ -30,13 +39,7 @@
   Returns `nil` (and logs the error) if there was a parse error."
   [{card-id :id, query :dataset_query}]
   (try
-    (let [{:keys [direct indirect] :as res} (case (:type query)
-                                              :native (try
-                                                        (query-analyzer/field-ids-for-sql query)
-                                                        (catch Exception e
-                                                          (log/error e "Error parsing SQL" query)))
-                                              :query  (field-ids-for-mbql query)
-                                              nil     nil)
+    (let [{:keys [direct indirect] :as res} (query-field-ids query)
           id->row                           (fn [direct? field-id]
                                               {:card_id          card-id
                                                :field_id         field-id
@@ -65,4 +68,4 @@
               (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
                           (select-keys item [:direct_reference])))))))
     (catch Exception e
-      (log/error e "Error update query fields"))))
+      (log/error e "Error updating query fields"))))
