@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
+  startNewMetric,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -64,9 +65,22 @@ describe("scenarios > metrics", () => {
     cy.intercept("POST", "/api/card").as("createCard");
   });
 
+  describe("location", () => {
+    it("should create a new metric from the homepage", () => {
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      popover().findByText("Metric").click();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      saveMetric();
+      runQuery();
+      verifyScalarValue("18,760");
+    });
+  });
+
   describe("data source", () => {
     it("should create a metric for a table", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
@@ -77,7 +91,6 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric for a saved question", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
@@ -88,7 +101,6 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric for a model", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
@@ -100,7 +112,6 @@ describe("scenarios > metrics", () => {
 
     it("should create a metric for another metric", () => {
       createQuestion(ORDER_COUNT_DETAILS);
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(ORDER_COUNT_DETAILS.name).click();
@@ -112,7 +123,6 @@ describe("scenarios > metrics", () => {
 
   describe("joins", () => {
     it("should join a table", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Products").click();
@@ -136,7 +146,6 @@ describe("scenarios > metrics", () => {
     it("should suggest join conditions when joining metrics with breakout clauses", () => {
       createQuestion(ORDER_COUNT_CREATED_AT_DETAILS);
       createQuestion(PRODUCT_COUNT_CREATED_AT_DETAILS);
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).click();
@@ -157,7 +166,6 @@ describe("scenarios > metrics", () => {
 
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
@@ -169,7 +177,6 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a geo metric", () => {
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
@@ -185,7 +192,6 @@ describe("scenarios > metrics", () => {
   describe("aggregations", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDER_COUNT_DETAILS);
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(ORDER_COUNT_DETAILS.name).click();
@@ -203,7 +209,6 @@ describe("scenarios > metrics", () => {
     it("should create a metric with a custom aggregation expression based on 2 metrics", () => {
       createQuestion(ORDER_COUNT_DETAILS);
       createQuestion(PRODUCT_COUNT_DETAILS);
-      cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(ORDER_COUNT_DETAILS.name).click();
@@ -228,11 +233,6 @@ describe("scenarios > metrics", () => {
     });
   });
 });
-
-function startNewMetric() {
-  cy.findByTestId("app-bar").findByText("New").click();
-  popover().findByText("Metric").click();
-}
 
 function startNewClause() {
   cy.findAllByTestId("notebook-cell-item").last().click();
