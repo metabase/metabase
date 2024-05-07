@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
@@ -34,6 +35,20 @@
   (deferred-tru "Store URL for migrations. Internal test use only.")
   :visibility :internal
   :default    "https://store-api.metabase.com/api/v2/migration"
+  :doc        false
+  :export?    false)
+
+(defsetting migration-dump-file
+  (deferred-tru "Dump file for migrations. Internal test use only.")
+  :visibility :internal
+  :default    nil
+  :doc        false
+  :export?    false)
+
+(defsetting migration-dump-version
+  (deferred-tru "Custom dump version for migrations. Internal test use only.")
+  :visibility :internal
+  :default    nil
   :doc        false
   :export?    false)
 
@@ -139,7 +154,7 @@
   "Migrate this instance to Metabase Cloud.
   Will exit early if migration has been cancelled in any cluster instance.
   Should run in a separate thread since it can take a long time to complete."
-  [{:keys [id external_id upload_url]} & {:keys [retry? custom-dump-file]}]
+  [{:keys [id external_id upload_url]} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
   ;; in the same process.
   (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))
@@ -169,7 +184,9 @@
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
       ;; custom-dump-file is used for testing older dumps in the rich comment below
-      (let [upload-file (or custom-dump-file dump-file)]
+      (let [upload-file (if (migration-dump-file)
+                          (io/file (migration-dump-file))
+                          dump-file)]
         (http/put upload_url {:headers {"x-amz-server-side-encryption" "aws:kms"}
                               :length  (.length ^File upload-file)
                               :body    (progress-file-input-stream
@@ -194,9 +211,10 @@
 
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
-  [from-version]
+  []
   (-> (metabase-store-migration-url)
-      (http/post {:form-params  {:local_mb_version from-version}
+      (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
+                                                       (config/mb-version-info :tag))}
                   :content-type :json})
       :body
       (json/parse-string keyword)
@@ -207,26 +225,26 @@
   ;; are we in read-only-mode ?
   (read-only-mode)
 
-  ;; use staging for testing.
+  ;; test settings.
+  ;; use staging
   (metabase-store-migration-url! "https://store-api.staging.metabase.com/api/v2/migration")
-
   ;; make sure to use a version that store supports, and a dump for that version.
-  (def version "v0.49.7")
+  (migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java -jar metabase.jar dump-to-h2 dump --dump-plaintext
-  (def custom-dump-file (io/file "/path/to/dump.mv.db"))
+  #_(migration-dump-file! "/path/to/dump.mv.db")
 
   ;; add new
-  (t2/insert-returning-instance! :model/CloudMigration (get-store-migration version))
+  (t2/insert-returning-instance! :model/CloudMigration (get-store-migration))
 
   ;; get migration
   @(def mig (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
-  ;; migrate a custom db dump
-  (migrate! mig :custom-dump-file custom-dump-file)
+  ;; migrate
+  (migrate! mig)
 
   ;; retry failed migration
-  (migrate! mig :retry? true :custom-dump-file custom-dump-file)
+  (migrate! mig :retry? true)
 
   ;; cancel all
   (t2/update! :model/CloudMigration {:state [:not-in terminal-states]} {:state :cancelled}))

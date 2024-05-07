@@ -6,7 +6,6 @@
   (:require
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.models.cloud-migration :as cloud-migration]
    [metabase.public-settings.premium-features :as premium-features]
    [toucan2.core :as t2]))
@@ -24,9 +23,8 @@
 
     :else
     (try
-      (let [cloud-migration (->> (config/mb-version-info :tag)
-                                 cloud-migration/get-store-migration
-                                 (t2/insert-returning-instance! :model/CloudMigration))]
+      (let [cloud-migration (t2/insert-returning-instance! :model/CloudMigration
+                                                           (cloud-migration/get-store-migration))]
         (future (cloud-migration/migrate! cloud-migration))
         cloud-migration)
       (catch Exception e
