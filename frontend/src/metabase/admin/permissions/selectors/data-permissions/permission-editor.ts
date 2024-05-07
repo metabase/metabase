@@ -107,9 +107,8 @@ const getEditorEntityName = (
     return t`Table name`;
   } else if (databaseId) {
     return t`Schema name`;
-  } else {
-    return t`Database name`;
   }
+  return t`Database name`;
 };
 
 const getFilterPlaceholder = (
@@ -120,9 +119,8 @@ const getFilterPlaceholder = (
     return t`Search for a table`;
   } else if (databaseId) {
     return t`Search for a schema`;
-  } else {
-    return t`Search for a database`;
   }
+  return t`Search for a database`;
 };
 
 const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {

@@ -350,9 +350,8 @@ const ToggleVisibilityButton = ({
 const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   if (hasMultipleTables) {
     return isHidden ? t`Unhide all` : t`Hide all`;
-  } else {
-    return isHidden ? t`Unhide` : t`Hide`;
   }
+  return isHidden ? t`Unhide` : t`Hide`;
 };
 
 const getReloadInterval = (

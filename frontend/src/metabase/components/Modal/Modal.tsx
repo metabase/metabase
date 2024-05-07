@@ -12,9 +12,8 @@ const Modal = ({
 } & (WindowModalProps & FullPageModalProps)) => {
   if (full) {
     return props.isOpen ? <RoutelessFullPageModal {...props} /> : null;
-  } else {
-    return <WindowModal {...props} />;
   }
+  return <WindowModal {...props} />;
 };
 
 Modal.defaultProps = {

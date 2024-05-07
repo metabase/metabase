@@ -27,7 +27,6 @@ export function formatEmail(
     return (
       <ExternalLink href={"mailto:" + email}>{label || email}</ExternalLink>
     );
-  } else {
-    return email;
   }
+  return email;
 }

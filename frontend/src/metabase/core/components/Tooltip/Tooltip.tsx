@@ -43,9 +43,8 @@ export interface TooltipProps
 function getSafeChildren(children: React.ReactNode) {
   if (isReactDOMTypeElement(children) || ReactIs.isForwardRef(children)) {
     return children;
-  } else {
-    return <span data-testid="tooltip-component-wrapper">{children}</span>;
   }
+  return <span data-testid="tooltip-component-wrapper">{children}</span>;
 }
 
 function getTargetProps(
@@ -121,9 +120,8 @@ function Tooltip({
         {...targetProps}
       />
     );
-  } else {
-    return <React.Fragment>{children}</React.Fragment>;
   }
+  return <React.Fragment>{children}</React.Fragment>;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

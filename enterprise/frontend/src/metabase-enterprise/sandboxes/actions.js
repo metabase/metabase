@@ -99,9 +99,8 @@ const groupTableAccessPolicies = handleActions(
 
           if (isTableSandboxed && isUnsandboxingTable) {
             return _.omit(state, key);
-          } else {
-            return state;
           }
+          return state;
         }
 
         if (entityId.databaseId !== null) {

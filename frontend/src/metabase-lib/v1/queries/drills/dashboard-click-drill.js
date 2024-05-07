@@ -36,9 +36,8 @@ export function getDashboardDrillType(clicked) {
     } else if (linkType === "dashboard") {
       if (extraData.dashboard.id === targetId) {
         return "dashboard-reset";
-      } else {
-        return "dashboard-url";
       }
+      return "dashboard-url";
     } else if (linkType === "question" && extraData && extraData.questions) {
       return "question-url";
     }

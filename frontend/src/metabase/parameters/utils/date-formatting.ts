@@ -26,9 +26,8 @@ function getFilterValueSerializer(func: (...args: any[]) => string) {
     if (startingFrom) {
       const [value, unit] = getRelativeDatetimeInterval(filter);
       return func(value, unit, { startingFrom });
-    } else {
-      return func(filter[2], filter[3], filter[4] || {});
     }
+    return func(filter[2], filter[3], filter[4] || {});
   };
 }
 
@@ -85,9 +84,8 @@ export function filterToUrlEncoded(filter: any[]) {
   const operator = getFilterOperator(filter);
   if (operator) {
     return serializersByOperatorName[operator.name](filter);
-  } else {
-    return null;
   }
+  return null;
 }
 
 const prefixedOperators = new Set([

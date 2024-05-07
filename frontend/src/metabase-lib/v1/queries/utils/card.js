@@ -40,9 +40,8 @@ export function cardIsEquivalent(cardA, cardB) {
 export function getQuery(card) {
   if (card.dataset_query.type === "query") {
     return card.dataset_query.query;
-  } else {
-    return null;
   }
+  return null;
 }
 
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.

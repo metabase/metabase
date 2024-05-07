@@ -38,9 +38,8 @@ CustomFilter.args = {
   filterOptions: (value: string | undefined, options: string[]) => {
     if (!value) {
       return [];
-    } else {
-      return options.filter(o => o.includes(value[0]));
     }
+    return options.filter(o => o.includes(value[0]));
   },
 };
 

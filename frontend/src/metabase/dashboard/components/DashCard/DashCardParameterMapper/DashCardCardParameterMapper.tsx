@@ -240,14 +240,13 @@ export function DashCardCardParameterMapper({
             />
           ),
         };
-      } else {
-        return {
-          buttonVariant: "default",
-          buttonTooltip: null,
-          buttonText: t`Select…`,
-          buttonIcon: <ChevrondownIcon name="chevrondown" />,
-        };
       }
+      return {
+        buttonVariant: "default",
+        buttonTooltip: null,
+        buttonText: t`Select…`,
+        buttonIcon: <ChevrondownIcon name="chevrondown" />,
+      };
     }, [
       hasPermissionsToMap,
       isDisabled,
@@ -266,9 +265,8 @@ export function DashCardCardParameterMapper({
     if (layoutHeight > 2) {
       if (!isVirtual && !(isNative && isDisabled)) {
         return t`Column to filter on`;
-      } else {
-        return t`Variable to map to`;
       }
+      return t`Variable to map to`;
     }
     return null;
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);

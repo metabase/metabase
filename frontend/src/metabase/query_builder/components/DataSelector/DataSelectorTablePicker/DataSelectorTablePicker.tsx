@@ -139,14 +139,13 @@ const DataSelectorTablePicker = ({
         </Box>
       </DelayGroup>
     );
-  } else {
-    return (
-      <Section>
-        <DataSelectorSectionHeader header={header} />
-        <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
-      </Section>
-    );
   }
+  return (
+    <Section>
+      <DataSelectorSectionHeader header={header} />
+      <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
+    </Section>
+  );
 };
 
 const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (

@@ -114,22 +114,21 @@ export function getSelectionPosition(element) {
   // input, textarea, IE
   if (element.setSelectionRange || element.createTextRange) {
     return [element.selectionStart, element.selectionEnd];
-  } else {
-    // contenteditable
-    try {
-      const selection = window.getSelection();
-      // Clone the Range otherwise setStart/setEnd will mutate the actual selection in Chrome 58+ and Firefox!
-      const range = selection.getRangeAt(0).cloneRange();
-      const { startContainer, startOffset } = range;
-      range.setStart(element, 0);
-      const end = range.toString().length;
-      range.setEnd(startContainer, startOffset);
-      const start = range.toString().length;
+  }
+  // contenteditable
+  try {
+    const selection = window.getSelection();
+    // Clone the Range otherwise setStart/setEnd will mutate the actual selection in Chrome 58+ and Firefox!
+    const range = selection.getRangeAt(0).cloneRange();
+    const { startContainer, startOffset } = range;
+    range.setStart(element, 0);
+    const end = range.toString().length;
+    range.setEnd(startContainer, startOffset);
+    const start = range.toString().length;
 
-      return [start, end];
-    } catch (e) {
-      return [0, 0];
-    }
+    return [start, end];
+  } catch (e) {
+    return [0, 0];
   }
 }
 

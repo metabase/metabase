@@ -13,7 +13,6 @@ export function getFullName(user) {
 
   if (!first_name && !last_name) {
     return email;
-  } else {
-    return first_name || last_name;
   }
+  return first_name || last_name;
 }

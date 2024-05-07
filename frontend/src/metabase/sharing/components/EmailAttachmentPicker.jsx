@@ -106,9 +106,8 @@ export default class EmailAttachmentPicker extends Component {
       return "xls";
     } else if (cards.some(c => c.include_csv)) {
       return "csv";
-    } else {
-      return null;
     }
+    return null;
   }
 
   /*

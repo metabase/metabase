@@ -34,14 +34,13 @@ const MetadataTablePicker = ({
         canGoBack={schemas.length > 1}
       />
     );
-  } else {
-    return (
-      <MetadataSchemaList
-        selectedDatabaseId={selectedDatabaseId}
-        selectedSchemaId={selectedSchemaId}
-      />
-    );
   }
+  return (
+    <MetadataSchemaList
+      selectedDatabaseId={selectedDatabaseId}
+      selectedSchemaId={selectedSchemaId}
+    />
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -159,17 +159,16 @@ class ChartSettings extends Component {
   _getWidgets() {
     if (this.props.widgets) {
       return this.props.widgets;
-    } else {
-      const { isDashboard, dashboard } = this.props;
-      const transformedSeries = this._getTransformedSeries();
-
-      return getSettingsWidgetsForSeries(
-        transformedSeries,
-        this.handleChangeSettings,
-        isDashboard,
-        { dashboardId: dashboard?.id },
-      );
     }
+    const { isDashboard, dashboard } = this.props;
+    const transformedSeries = this._getTransformedSeries();
+
+    return getSettingsWidgetsForSeries(
+      transformedSeries,
+      this.handleChangeSettings,
+      isDashboard,
+      { dashboardId: dashboard?.id },
+    );
   }
 
   // TODO: move this logic out of the React component

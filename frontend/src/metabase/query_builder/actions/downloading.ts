@@ -180,13 +180,12 @@ const getDatasetResponse = ({
     })({
       formData: formattedBody,
     });
-  } else {
-    return GET(requestUrl, {
-      fetch: true,
-      transformResponse: ({ response }: TransformResponseProps) =>
-        checkNotNull(response),
-    })();
   }
+  return GET(requestUrl, {
+    fetch: true,
+    transformResponse: ({ response }: TransformResponseProps) =>
+      checkNotNull(response),
+  })();
 };
 
 const getDatasetFileName = (headers: Headers, type: string) => {

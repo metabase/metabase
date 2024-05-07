@@ -90,11 +90,10 @@ export function shouldList({
 }) {
   if (disableSearch) {
     return false;
-  } else {
-    return parameter
-      ? canListParameterValues(parameter)
-      : canListFieldValues(fields);
   }
+  return parameter
+    ? canListParameterValues(parameter)
+    : canListFieldValues(fields);
 }
 
 function getNonSearchableTokenFieldPlaceholder(
@@ -223,9 +222,8 @@ export function isSearchable({
     return true;
   } else if (parameter) {
     return canSearchParameterValues(parameter, disablePKRemappingForSearch);
-  } else {
-    return canSearchFieldValues(fields, disablePKRemappingForSearch);
   }
+  return canSearchFieldValues(fields, disablePKRemappingForSearch);
 }
 
 export function getTokenFieldPlaceholder({
@@ -275,9 +273,8 @@ export function getTokenFieldPlaceholder({
       firstField,
       disablePKRemappingForSearch,
     );
-  } else {
-    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
   }
+  return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
 }
 
 export function getValuesMode({

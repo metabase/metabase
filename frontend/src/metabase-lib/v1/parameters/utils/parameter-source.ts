@@ -24,10 +24,9 @@ const getDefaultQueryType = (
 ): ValuesQueryType => {
   if (parameter.hasVariableTemplateTagTarget) {
     return "none";
-  } else {
-    const operator = deriveFieldOperatorFromParameter(parameter);
-    return operator != null && isFuzzyOperator(operator) ? "none" : "list";
   }
+  const operator = deriveFieldOperatorFromParameter(parameter);
+  return operator != null && isFuzzyOperator(operator) ? "none" : "list";
 };
 
 export const getSourceType = (parameter: Parameter): ValuesSourceType => {

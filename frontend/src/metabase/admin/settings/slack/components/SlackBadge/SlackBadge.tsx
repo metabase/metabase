@@ -19,9 +19,8 @@ const SlackBadge = ({ isBot, isValid }: SlackBadgeProps): JSX.Element => {
 const getMessage = (isBot?: boolean, isValid?: boolean): string => {
   if (isBot) {
     return isValid ? t`Slack bot is working.` : t`Slack bot is not working.`;
-  } else {
-    return isValid ? t`Slack app is working` : t`Slack app is not working.`;
   }
+  return isValid ? t`Slack app is working` : t`Slack app is not working.`;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

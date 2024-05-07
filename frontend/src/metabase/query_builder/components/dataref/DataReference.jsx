@@ -46,9 +46,8 @@ const DataReference = ({
         onBack={popDataReferenceStack}
       />
     );
-  } else {
-    return <MainPane onItemClick={onItemClick} onClose={onClose} />;
   }
+  return <MainPane onItemClick={onItemClick} onClose={onClose} />;
 };
 
 DataReference.propTypes = DataReferencePropTypes;

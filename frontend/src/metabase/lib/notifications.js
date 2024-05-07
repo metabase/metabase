@@ -121,9 +121,8 @@ export const canArchive = (item, user) => {
   const recipients = item.channels.flatMap(channel => {
     if (channel.recipients) {
       return channel.recipients.map(recipient => recipient.id);
-    } else {
-      return [];
     }
+    return [];
   });
 
   const isCreator = item.creator?.id === user.id;

@@ -46,9 +46,8 @@ const getTitle = (databases: Database[]): string => {
     return t`Error syncing`;
   } else if (isDone) {
     return t`Done!`;
-  } else {
-    return t`Syncing…`;
   }
+  return t`Syncing…`;
 };
 
 const getDescription = (database: Database): string => {
@@ -59,9 +58,8 @@ const getDescription = (database: Database): string => {
     return t`Sync failed`;
   } else if (isDone) {
     return t`Syncing completed`;
-  } else {
-    return t`Syncing tables…`;
   }
+  return t`Syncing tables…`;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

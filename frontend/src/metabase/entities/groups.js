@@ -70,9 +70,8 @@ const Groups = createEntity({
       if (members) {
         const updatedMembers = [...members, membership];
         return assocIn(state, [group_id, "members"], updatedMembers);
-      } else {
-        return state;
       }
+      return state;
     }
 
     if (type === DELETE_MEMBERSHIP && !error) {
@@ -84,9 +83,8 @@ const Groups = createEntity({
           [groupId, "members"],
           members.filter(m => m.membership_id !== membershipId),
         );
-      } else {
-        return state;
       }
+      return state;
     }
 
     if (type === CLEAR_MEMBERSHIPS && !error) {

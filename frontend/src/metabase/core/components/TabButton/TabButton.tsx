@@ -261,9 +261,8 @@ export function RenameableTabButton({
   const dragLabel = (s: string) => {
     if (s.length < 20) {
       return s;
-    } else {
-      return `${s.slice(0, 17)}...`;
     }
+    return `${s.slice(0, 17)}...`;
   };
 
   const { isDragging } = useSortable({ id: props.value });

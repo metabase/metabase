@@ -104,9 +104,8 @@ export function MultiAutocomplete({
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
     return { value: item };
-  } else {
-    return item;
   }
+  return item;
 }
 
 function getAvailableSelectItems(

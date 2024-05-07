@@ -42,7 +42,6 @@ export const InstanceAnalyticsButton = ({
         }}
       />
     );
-  } else {
-    return null;
   }
+  return null;
 };

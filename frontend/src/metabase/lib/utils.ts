@@ -36,9 +36,8 @@ export function numberToWord(num: number) {
 
   if (num >= 0 && num <= 9) {
     return names[num];
-  } else {
-    return "" + num;
   }
+  return "" + num;
 }
 
 export function uuid() {

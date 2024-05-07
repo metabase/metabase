@@ -98,9 +98,8 @@ class _ModalRoute extends Route {
 
       // @ts-expect-error - Route.createRouteFromReactElement is not typed
       return Route.createRouteFromReactElement(element);
-    } else {
-      throw new Error("`modal` property is missing from ModalRoute");
     }
+    throw new Error("`modal` property is missing from ModalRoute");
   }
 }
 

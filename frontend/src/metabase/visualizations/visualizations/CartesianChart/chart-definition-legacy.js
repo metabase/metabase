@@ -17,9 +17,8 @@ export function transformSeries(series) {
   );
   if (_.isEqual(series, newSeries) || newSeries.length === 0) {
     return series;
-  } else {
-    return newSeries;
   }
+  return newSeries;
 }
 
 function transformSingleSeries(s, series, seriesIndex) {
@@ -112,48 +111,47 @@ function transformSingleSeries(s, series, seriesIndex) {
         ],
       },
     }));
-  } else {
-    // dimensions.length <= 1
-    const dimensionColumnIndex = dimensionColumnIndexes[0];
-    return metricColumnIndexes.map(metricColumnIndex => {
-      const col = cols[metricColumnIndex];
-      const rowColumnIndexes = [dimensionColumnIndex].concat(
-        metricColumnIndex,
-        extraColumnIndexes,
-      );
-      const name = [
-        // show series title if it's multiseries
-        series.length > 1 && card.name,
-        // show column name if there are multiple metrics or sigle series
-        (metricColumnIndexes.length > 1 || series.length === 1) &&
-          col &&
-          getFriendlyName(col),
-      ]
-        .filter(n => n)
-        .join(": ");
-
-      return {
-        card: {
-          ...card,
-          name: name,
-          originalCardName: card.name,
-          _seriesIndex: seriesIndex,
-          // use underlying column name as the seriesKey since it should be unique
-          // EXCEPT for dashboard multiseries, so check seriesIndex == 0
-          _seriesKey: seriesIndex === 0 && col ? col.name : name,
-        },
-        data: {
-          rows: rows.map((row, rowIndex) => {
-            const newRow = rowColumnIndexes.map(i => row[i]);
-            newRow._origin = { seriesIndex, rowIndex, row, cols };
-            return newRow;
-          }),
-          cols: rowColumnIndexes.map(i => cols[i]),
-          results_timezone: data.results_timezone,
-          _transformed: true,
-          _rawCols: cols,
-        },
-      };
-    });
   }
+  // dimensions.length <= 1
+  const dimensionColumnIndex = dimensionColumnIndexes[0];
+  return metricColumnIndexes.map(metricColumnIndex => {
+    const col = cols[metricColumnIndex];
+    const rowColumnIndexes = [dimensionColumnIndex].concat(
+      metricColumnIndex,
+      extraColumnIndexes,
+    );
+    const name = [
+      // show series title if it's multiseries
+      series.length > 1 && card.name,
+      // show column name if there are multiple metrics or sigle series
+      (metricColumnIndexes.length > 1 || series.length === 1) &&
+        col &&
+        getFriendlyName(col),
+    ]
+      .filter(n => n)
+      .join(": ");
+
+    return {
+      card: {
+        ...card,
+        name: name,
+        originalCardName: card.name,
+        _seriesIndex: seriesIndex,
+        // use underlying column name as the seriesKey since it should be unique
+        // EXCEPT for dashboard multiseries, so check seriesIndex == 0
+        _seriesKey: seriesIndex === 0 && col ? col.name : name,
+      },
+      data: {
+        rows: rows.map((row, rowIndex) => {
+          const newRow = rowColumnIndexes.map(i => row[i]);
+          newRow._origin = { seriesIndex, rowIndex, row, cols };
+          return newRow;
+        }),
+        cols: rowColumnIndexes.map(i => cols[i]),
+        results_timezone: data.results_timezone,
+        _transformed: true,
+        _rawCols: cols,
+      },
+    };
+  });
 }

@@ -35,9 +35,8 @@ export function getDirection(
 ): RelativeIntervalDirection {
   if (value.value === "current") {
     return "current";
-  } else {
-    return value.value < 0 ? "last" : "next";
   }
+  return value.value < 0 ? "last" : "next";
 }
 
 export function setDirection(

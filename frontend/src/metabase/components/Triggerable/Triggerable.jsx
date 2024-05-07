@@ -68,9 +68,8 @@ const Triggerable = ComposedComponent =>
     target() {
       if (this.props.target) {
         return this.props.target();
-      } else {
-        return this.trigger.current;
       }
+      return this.trigger.current;
     }
 
     componentDidMount() {

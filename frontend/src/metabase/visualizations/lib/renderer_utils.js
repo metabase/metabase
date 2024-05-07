@@ -147,9 +147,8 @@ function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
     // We have remapped values, so check their type for determining whether the dimension is numeric
     // ES6 Map makes the lookup of first value a little verbose
     return typeof column.remapping.values().next().value === "string";
-  } else {
-    return false;
   }
+  return false;
 }
 
 export const isRemappedToString = series =>

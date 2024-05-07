@@ -26,9 +26,8 @@ export const processSection = (
 ) => {
   if (items && items.length > 0) {
     return [sectionName, ...items];
-  } else {
-    return [];
   }
+  return [];
 };
 
 export const findClosestActionIndex = (
@@ -43,9 +42,8 @@ export const findClosestActionIndex = (
   } else if (typeof actions[index + diff] === "string") {
     if (diff < 0) {
       return findClosestActionIndex(actions, index, diff - 1);
-    } else {
-      return findClosestActionIndex(actions, index, diff + 1);
     }
+    return findClosestActionIndex(actions, index, diff + 1);
   }
 
   return index + diff;

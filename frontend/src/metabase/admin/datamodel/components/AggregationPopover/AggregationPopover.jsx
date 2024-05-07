@@ -97,9 +97,8 @@ export class AggregationPopover extends Component {
     const { aggregation, query } = this.props;
     if (aggregation && !(aggregation instanceof Aggregation)) {
       return new Aggregation(aggregation, null, query);
-    } else {
-      return aggregation;
     }
+    return aggregation;
   }
 
   onPickAggregation = item => {

@@ -268,9 +268,8 @@ export default class AccordionList extends Component {
     }
     if (searchFuzzy) {
       return itemText.indexOf(searchText) >= 0;
-    } else {
-      return itemText.startsWith(searchText);
     }
+    return itemText.startsWith(searchText);
   };
 
   checkSectionHasItemsMatchingSearch = (section, searchFilter) => {

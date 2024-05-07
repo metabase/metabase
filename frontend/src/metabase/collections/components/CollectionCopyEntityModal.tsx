@@ -22,9 +22,8 @@ const getTitle = (entityObject: any, isShallowCopy: boolean) => {
     return "";
   } else if (isShallowCopy) {
     return t`Duplicate "${entityObject.name}"`;
-  } else {
-    return t`Duplicate "${entityObject.name}" and its questions`;
   }
+  return t`Duplicate "${entityObject.name}" and its questions`;
 };
 
 function CollectionCopyEntityModal({

@@ -152,9 +152,8 @@ const getCollectionParentId = (collection: Collection) => {
 
   if (pathFromRoot.length === 0) {
     return "root";
-  } else {
-    return pathFromRoot[pathFromRoot.length - 1];
   }
+  return pathFromRoot[pathFromRoot.length - 1];
 };
 
 interface SetupOpts {

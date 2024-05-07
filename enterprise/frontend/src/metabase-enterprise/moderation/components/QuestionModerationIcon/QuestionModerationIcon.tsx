@@ -14,9 +14,8 @@ const QuestionModerationIcon = ({
 
   if (review) {
     return <ModerationReviewIcon review={review} />;
-  } else {
-    return null;
   }
+  return null;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

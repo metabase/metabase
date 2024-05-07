@@ -183,9 +183,8 @@ export class DimensionList extends Component {
       // as a binned field (which would use the default binning)
       // Let's unwrap the base field of the binned field instead
       return dimension.baseDimension();
-    } else {
-      return dimension;
     }
+    return dimension;
   }
 
   handleChange = item => {

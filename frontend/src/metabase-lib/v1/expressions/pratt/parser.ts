@@ -345,9 +345,8 @@ function shouldReparent(leftType: NodeType, rightType: NodeType) {
   // identifier, then it can't become the parent of the left node anyway
   if (rightType.leftOperands === 0) {
     return false;
-  } else {
-    return rightType.precedence > leftType.precedence;
   }
+  return rightType.precedence > leftType.precedence;
 }
 
 function getASType(type: NodeType, parentType: NodeType) {

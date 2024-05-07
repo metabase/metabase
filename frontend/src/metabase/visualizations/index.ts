@@ -157,9 +157,8 @@ export const extractRemappedColumns = (data: DatasetData) => {
           row[colIndex],
         );
         return false;
-      } else {
-        return true;
       }
+      return true;
     }),
   );
   return {

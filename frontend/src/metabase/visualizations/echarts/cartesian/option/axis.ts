@@ -137,9 +137,8 @@ const getHistogramTicksOptions = (
       verticalAlign: "bottom",
       padding: [0, 0, rightOffset, 0],
     };
-  } else {
-    return { ...options, padding: [0, histogramDimensionWidth, 0, 0] };
   }
+  return { ...options, padding: [0, histogramDimensionWidth, 0, 0] };
 };
 
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {

@@ -14,9 +14,8 @@ const getTranslateX = ({ checked, small }: ToggleRootProps): string => {
     return "1px";
   } else if (!small) {
     return "25px";
-  } else {
-    return "12px";
   }
+  return "12px";
 };
 
 const getBackgroundColor = ({
@@ -25,9 +24,8 @@ const getBackgroundColor = ({
 }: ToggleRootProps): string => {
   if (checked) {
     return currentColor ?? color("brand");
-  } else {
-    return color("bg-medium");
   }
+  return color("bg-medium");
 };
 
 export const ToggleRoot = styled.input<ToggleRootProps>`

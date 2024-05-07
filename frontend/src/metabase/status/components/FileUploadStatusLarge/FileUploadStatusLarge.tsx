@@ -102,9 +102,8 @@ const getTitle = (
     return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
     return t`Error uploading your file`;
-  } else {
-    return t`Uploading data to ${uploadDestination.name} …`;
   }
+  return t`Uploading data to ${uploadDestination.name} …`;
 };
 
 const loadingMessages = [

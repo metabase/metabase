@@ -82,14 +82,13 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
         size={24}
       />
     );
-  } else {
-    return (
-      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-        size={24}
-        color={color("brand")}
-        collection={collection}
-        entity="collection"
-      />
-    );
   }
+  return (
+    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+      size={24}
+      color={color("brand")}
+      collection={collection}
+      entity="collection"
+    />
+  );
 };

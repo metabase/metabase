@@ -47,9 +47,8 @@ export default class Revision extends Component {
     } = this.props;
     if (user.id === currentUser.id) {
       return t`You`;
-    } else {
-      return user.common_name;
     }
+    return user.common_name;
   }
 
   render() {

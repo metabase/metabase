@@ -31,12 +31,10 @@ export function determineSeriesIndexFromElement(
     if (element.classList.contains("dot")) {
       // .dots are children of dc-tooltip
       return getElementIndex(getParentWithClass(element, "dc-tooltip"));
-    } else {
-      return getElementIndex(getParentWithClass(element, "stack"));
     }
-  } else {
-    return getElementIndex(getParentWithClass(element, "sub"));
+    return getElementIndex(getParentWithClass(element, "stack"));
   }
+  return getElementIndex(getParentWithClass(element, "sub"));
 }
 
 export const formatValueForTooltip = ({

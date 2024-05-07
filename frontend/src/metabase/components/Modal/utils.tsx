@@ -26,7 +26,6 @@ export function getModalContent(props: any) {
     props.footer != null
   ) {
     return <ModalContent {..._.omit(props, "className", "style")} />;
-  } else {
-    return React.Children.only(props.children);
   }
+  return React.Children.only(props.children);
 }

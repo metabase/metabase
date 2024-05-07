@@ -34,9 +34,8 @@ export function getDefaultOperator(
     Lib.isCategory(column)
   ) {
     return "=";
-  } else {
-    return "between";
   }
+  return "between";
 }
 
 export function getDefaultValues(

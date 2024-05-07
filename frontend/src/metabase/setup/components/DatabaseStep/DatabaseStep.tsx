@@ -110,9 +110,8 @@ const getStepTitle = (
     return t`Connecting to ${database.name}`;
   } else if (invite) {
     return t`I'll invite a teammate to connect the database`;
-  } else {
-    return t`I'll add my own data later`;
   }
+  return t`I'll add my own data later`;
 };
 
 const getSubmitError = (error: unknown): unknown => {

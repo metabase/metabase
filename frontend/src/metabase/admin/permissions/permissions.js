@@ -364,17 +364,16 @@ const dataPermissions = handleActions(
             permissionInfo.permission,
             shouldDowngradeNative,
           );
-        } else {
-          return updateSchemasPermission(
-            state,
-            groupId,
-            entityId,
-            value,
-            database,
-            permissionInfo.permission,
-            shouldDowngradeNative,
-          );
         }
+        return updateSchemasPermission(
+          state,
+          groupId,
+          entityId,
+          value,
+          database,
+          permissionInfo.permission,
+          shouldDowngradeNative,
+        );
       },
     },
   },
@@ -491,12 +490,11 @@ const checkRevisionChanged = (state, { payload }) => {
     };
   } else if (state.revision === payload.revision && !state.hasChanged) {
     return state;
-  } else {
-    return {
-      revision: payload.revision,
-      hasChanged: true,
-    };
   }
+  return {
+    revision: payload.revision,
+    hasChanged: true,
+  };
 };
 
 const hasRevisionChanged = handleActions(

@@ -388,12 +388,10 @@ export function createEntity(def) {
     if (payload && "entities" in payload && "result" in payload) {
       if (Array.isArray(payload.result)) {
         return payload.result.map(id => payload.entities[entity.name][id]);
-      } else {
-        return payload.entities[entity.name][payload.result];
       }
-    } else {
-      return payload;
+      return payload.entities[entity.name][payload.result];
     }
+    return payload;
   };
 
   // SELECTORS
@@ -625,10 +623,9 @@ export function createEntity(def) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
             return this._dispatch(method(this, ...args));
-          } else {
-            // otherwise just return the action
-            return method(this, ...args);
           }
+          // otherwise just return the action
+          return method(this, ...args);
         };
       }
     }

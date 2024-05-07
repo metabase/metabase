@@ -38,9 +38,8 @@ const getStatus = (databases: Database[]): InitialSyncStatus => {
     return "incomplete";
   } else if (databases.some(isSyncAborted)) {
     return "aborted";
-  } else {
-    return "complete";
   }
+  return "complete";
 };
 
 const getStatusLabel = (status: InitialSyncStatus): string => {

@@ -68,13 +68,12 @@ const Bookmarks = createEntity({
       const key = `card-${id}`;
       if (archived) {
         return dissoc(state, key);
-      } else {
-        return updateIn(state, [key], item => ({
-          ...item,
-          card_type: type,
-          name,
-        }));
       }
+      return updateIn(state, [key], item => ({
+        ...item,
+        card_type: type,
+        name,
+      }));
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object) {
@@ -82,9 +81,8 @@ const Bookmarks = createEntity({
       const key = `dashboard-${id}`;
       if (archived) {
         return dissoc(state, key);
-      } else {
-        return updateIn(state, [key], item => ({ ...item, name }));
       }
+      return updateIn(state, [key], item => ({ ...item, name }));
     }
 
     if (type === Collections.actionTypes.UPDATE && payload?.object) {
@@ -93,13 +91,12 @@ const Bookmarks = createEntity({
 
       if (payload.object.archived) {
         return dissoc(state, key);
-      } else {
-        return updateIn(state, [key], item => ({
-          ...item,
-          authority_level,
-          name,
-        }));
       }
+      return updateIn(state, [key], item => ({
+        ...item,
+        authority_level,
+        name,
+      }));
     }
 
     if (type === Bookmarks.actionTypes.REORDER) {

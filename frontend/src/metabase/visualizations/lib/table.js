@@ -17,12 +17,11 @@ export function getTableClickedObjectRowData(
   // originalRowIndex may be null if the pivot table is empty in that cell
   if (originalRowIndex === null) {
     return null;
-  } else {
-    return rows[originalRowIndex].map((value, index) => ({
-      value,
-      col: cols[index],
-    }));
   }
+  return rows[originalRowIndex].map((value, index) => ({
+    value,
+    col: cols[index],
+  }));
 }
 
 export function getTableCellClickedObject(
@@ -44,15 +43,14 @@ export function getTableCellClickedObject(
     if (columnIndex === 0) {
       const { value, column: col } = row._dimension;
       return { value, column: col, settings, data: [{ value, col }] };
-    } else {
-      return {
-        value,
-        column,
-        settings,
-        dimensions: [row._dimension, column._dimension],
-        data: clickedRowData,
-      };
     }
+    return {
+      value,
+      column,
+      settings,
+      dimensions: [row._dimension, column._dimension],
+      data: clickedRowData,
+    };
   } else if (column.source === "aggregation") {
     return {
       value,
@@ -64,15 +62,14 @@ export function getTableCellClickedObject(
       origin: { rowIndex, row, cols },
       data: clickedRowData,
     };
-  } else {
-    return {
-      value,
-      column,
-      settings,
-      origin: { rowIndex, row, cols },
-      data: clickedRowData,
-    };
   }
+  return {
+    value,
+    column,
+    settings,
+    origin: { rowIndex, row, cols },
+    data: clickedRowData,
+  };
 }
 
 export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
@@ -81,14 +78,12 @@ export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex >= 0 && column) {
       return column._dimension;
-    } else {
-      return null; // FIXME?
     }
-  } else {
-    return {
-      column,
-    };
+    return null; // FIXME?
   }
+  return {
+    column,
+  };
 }
 
 /*

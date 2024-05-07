@@ -209,10 +209,9 @@ export function withAction(actionType) {
             throw error;
           }
         };
-      } else {
-        // payload, return an action
-        return { type: actionType, payload: payloadOrThunk };
       }
+      // payload, return an action
+      return { type: actionType, payload: payloadOrThunk };
     }
     newCreator.toString = () => actionType;
     return newCreator;

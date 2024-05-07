@@ -7,17 +7,16 @@ export const getColorScale = (
 ) => {
   if (isQuantile) {
     return d3.scale.quantile<string>().domain(extent).range(colors);
-  } else {
-    const [start, end] = extent;
-    return d3.scale
-      .linear<string>()
-      .domain(
-        colors.length === 3
-          ? [start, start + (end - start) / 2, end]
-          : [start, end],
-      )
-      .range(colors);
   }
+  const [start, end] = extent;
+  return d3.scale
+    .linear<string>()
+    .domain(
+      colors.length === 3
+        ? [start, start + (end - start) / 2, end]
+        : [start, end],
+    )
+    .range(colors);
 };
 
 const RGBA_REGEX =

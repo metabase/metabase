@@ -65,9 +65,8 @@ const getTime = value => {
     /^\d+:\d+(:\d+(.\d+(\+\d+:\d+)?)?)?$/.test(value)
   ) {
     return value;
-  } else {
-    return "00:00:00.000+00:00";
   }
+  return "00:00:00.000+00:00";
 };
 
 export const TIME_OPERATORS = [

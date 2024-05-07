@@ -17,9 +17,8 @@ export const isNumber = (value: unknown): value is number => {
 export const checkNotNull = <T>(value: T | null | undefined): T => {
   if (value != null) {
     return value;
-  } else {
-    throw new TypeError();
   }
+  throw new TypeError();
 };
 
 export const isNullOrUndefined = (value: any): value is null | undefined =>

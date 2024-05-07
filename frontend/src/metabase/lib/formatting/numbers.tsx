@@ -79,71 +79,70 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
-  } else {
-    try {
-      let nf;
-      if (
-        number < 1 &&
-        number > -1 &&
-        options.decimals == null &&
-        options.number_style !== "percent"
-      ) {
-        // NOTE: special case to match existing behavior for small numbers, use
-        // max significant digits instead of max fraction digits
-        nf = numberFormatterForOptions({
-          ...options,
-          maximumSignificantDigits: Math.max(
-            2,
-            options.minimumSignificantDigits || 0,
-          ),
-          maximumFractionDigits: undefined,
-        });
-      } else if (options._numberFormatter) {
-        // NOTE: options._numberFormatter allows you to provide a predefined
-        // Intl.NumberFormat object for increased performance
-        nf = options._numberFormatter;
-      } else {
-        nf = numberFormatterForOptions(options);
+  }
+  try {
+    let nf;
+    if (
+      number < 1 &&
+      number > -1 &&
+      options.decimals == null &&
+      options.number_style !== "percent"
+    ) {
+      // NOTE: special case to match existing behavior for small numbers, use
+      // max significant digits instead of max fraction digits
+      nf = numberFormatterForOptions({
+        ...options,
+        maximumSignificantDigits: Math.max(
+          2,
+          options.minimumSignificantDigits || 0,
+        ),
+        maximumFractionDigits: undefined,
+      });
+    } else if (options._numberFormatter) {
+      // NOTE: options._numberFormatter allows you to provide a predefined
+      // Intl.NumberFormat object for increased performance
+      nf = options._numberFormatter;
+    } else {
+      nf = numberFormatterForOptions(options);
+    }
+
+    let formatted = nf.format(number);
+
+    // extract number portion of currency if we're formatting a cell
+    if (
+      options["type"] === "cell" &&
+      options["currency_in_header"] &&
+      options["number_style"] === "currency"
+    ) {
+      const match = formatted.match(NUMBER_REGEX);
+      if (match) {
+        formatted = (match[1] || "").trim() + (match[2] || "").trim();
       }
+    }
 
-      let formatted = nf.format(number);
+    // replace the separators if not default
+    const separators = options["number_separators"];
+    if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
+      formatted = replaceNumberSeparators(formatted, separators);
+    }
 
-      // extract number portion of currency if we're formatting a cell
-      if (
-        options["type"] === "cell" &&
-        options["currency_in_header"] &&
-        options["number_style"] === "currency"
-      ) {
-        const match = formatted.match(NUMBER_REGEX);
-        if (match) {
-          formatted = (match[1] || "").trim() + (match[2] || "").trim();
-        }
-      }
-
-      // replace the separators if not default
-      const separators = options["number_separators"];
-      if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
-        formatted = replaceNumberSeparators(formatted, separators);
-      }
-
-      // fixes issue where certain symbols, such as
-      // czech Kč, and Bitcoin ₿, are not displayed
-      if (options["currency_style"] === "symbol") {
-        formatted = formatted.replace(
-          options["currency"],
-          getCurrencySymbol(options["currency"] as string),
-        );
-      }
-
-      return formatted;
-    } catch (e) {
-      console.warn("Error formatting number", e);
-      // fall back to old, less capable formatter
-      // NOTE: does not handle things like currency, percent
-      return FIXED_NUMBER_FORMATTER(
-        d3.round(number, options.maximumFractionDigits),
+    // fixes issue where certain symbols, such as
+    // czech Kč, and Bitcoin ₿, are not displayed
+    if (options["currency_style"] === "symbol") {
+      formatted = formatted.replace(
+        options["currency"],
+        getCurrencySymbol(options["currency"] as string),
       );
     }
+
+    return formatted;
+  } catch (e) {
+    console.warn("Error formatting number", e);
+    // fall back to old, less capable formatter
+    // NOTE: does not handle things like currency, percent
+    return FIXED_NUMBER_FORMATTER(
+      d3.round(number, options.maximumFractionDigits),
+    );
   }
 }
 
@@ -225,11 +224,10 @@ function formatNumberCompactWithoutOptions(value: number) {
   } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
-  } else {
-    // 1 => 1
-    // 1000 => 1K
-    return Humanize.compactInteger(Math.round(value), 1);
   }
+  // 1 => 1
+  // 1000 => 1K
+  return Humanize.compactInteger(Math.round(value), 1);
 }
 
 // replaces the decimal and grouping separators with those specified by a NumberSeparators option
@@ -265,7 +263,6 @@ function formatNumberScientific(
         {m}×10<sup>{n.replace(/^\+/, "")}</sup>
       </span>
     );
-  } else {
-    return exp;
   }
+  return exp;
 }

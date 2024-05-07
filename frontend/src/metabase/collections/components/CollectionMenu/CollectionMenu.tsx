@@ -70,7 +70,6 @@ export const CollectionMenu = ({
         tooltipPlacement="bottom"
       />
     );
-  } else {
-    return null;
   }
+  return null;
 };

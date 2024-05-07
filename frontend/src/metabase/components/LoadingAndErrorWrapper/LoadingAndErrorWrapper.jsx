@@ -95,9 +95,8 @@ export default class LoadingAndErrorWrapper extends Component {
       return child.map(this.getChildren);
     } else if (typeof child === "function") {
       return child();
-    } else {
-      return child;
     }
+    return child;
   }
 
   cycleLoadingMessage = () => {

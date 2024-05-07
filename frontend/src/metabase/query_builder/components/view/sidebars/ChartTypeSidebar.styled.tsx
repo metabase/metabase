@@ -10,9 +10,8 @@ export interface OptionRootProps {
 const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
   if (isSelected) {
     return color("white");
-  } else {
-    return color("brand");
   }
+  return color("brand");
 };
 
 export const OptionRoot = styled.div<OptionRootProps>`

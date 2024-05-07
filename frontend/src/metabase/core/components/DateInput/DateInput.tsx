@@ -70,9 +70,8 @@ const DateInput = forwardRef(function DateInput(
       return "";
     } else if (hasTime) {
       return value.format(dateTimeFormat);
-    } else {
-      return value.format(dateFormat);
     }
+    return value.format(dateFormat);
   }, [value, hasTime, dateFormat, dateTimeFormat]);
 
   const mixedTimeFormats = useMemo(

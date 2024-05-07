@@ -16,14 +16,13 @@ export const getCrumbs = (
         .map(collection => [collection.name, () => callback(collection.id)]),
       [collection.name],
     ];
-  } else {
-    const rootCollection = collectionsById.root;
-
-    return [
-      ...(rootCollection
-        ? [[rootCollection.name, () => callback(rootCollection.id)]]
-        : []),
-      [t`Unknown`],
-    ];
   }
+  const rootCollection = collectionsById.root;
+
+  return [
+    ...(rootCollection
+      ? [[rootCollection.name, () => callback(rootCollection.id)]]
+      : []),
+    [t`Unknown`],
+  ];
 };

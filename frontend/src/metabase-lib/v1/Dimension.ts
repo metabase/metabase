@@ -167,13 +167,12 @@ export default class Dimension {
 
     if (!DimensionTypes && dimensionOptions) {
       return dimensionOptions.map(option => this._dimensionForOption(option));
-    } else {
-      return [].concat(
-        ...(DimensionTypes || []).map(DimensionType =>
-          DimensionType.dimensions(this),
-        ),
-      );
     }
+    return [].concat(
+      ...(DimensionTypes || []).map(DimensionType =>
+        DimensionType.dimensions(this),
+      ),
+    );
   }
 
   /**
@@ -350,9 +349,8 @@ export default class Dimension {
 
     if (defaultSubDimension) {
       return defaultSubDimension.mbql();
-    } else {
-      return this.mbql();
     }
+    return this.mbql();
   }
 
   /**
@@ -455,9 +453,8 @@ export default class Dimension {
       const binWidth = this._getBinningOption("bin-width");
       const units = this.field().isCoordinate() ? "°" : "";
       return `${binWidth}${units}`;
-    } else {
-      return t`Auto binned`;
     }
+    return t`Auto binned`;
   }
 
   /**

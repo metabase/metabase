@@ -68,17 +68,16 @@ export function VisualizationError({
           action={<EmailAdmin />}
         />
       );
-    } else {
-      return (
-        <ErrorMessage
-          className={className}
-          type="serverError"
-          title={t`We're experiencing server issues`}
-          message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
-          action={<EmailAdmin />}
-        />
-      );
     }
+    return (
+      <ErrorMessage
+        className={className}
+        type="serverError"
+        title={t`We're experiencing server issues`}
+        message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
+        action={<EmailAdmin />}
+      />
+    );
   } else if (error instanceof Error) {
     return (
       <div
@@ -135,33 +134,32 @@ export function VisualizationError({
         </QueryErrorContent>
       </QueryError>
     );
-  } else {
-    return (
+  }
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.QueryError2,
+        CS.flex,
+        CS.justifyCenter,
+      )}
+    >
       <div
         className={cx(
-          className,
-          QueryBuilderS.QueryError2,
-          CS.flex,
-          CS.justifyCenter,
+          QueryBuilderS.QueryErrorImage,
+          QueryBuilderS.QueryErrorImageQueryError,
+          CS.mr4,
         )}
-      >
-        <div
-          className={cx(
-            QueryBuilderS.QueryErrorImage,
-            QueryBuilderS.QueryErrorImageQueryError,
-            CS.mr4,
-          )}
-        />
-        <div className={QueryBuilderS.QueryError2Details}>
-          <h1
-            className={CS.textBold}
-          >{t`There was a problem with your question`}</h1>
-          <p
-            className={QueryBuilderS.QueryErrorMessageText}
-          >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-          <ErrorDetails className={CS.pt2} details={error} />
-        </div>
+      />
+      <div className={QueryBuilderS.QueryError2Details}>
+        <h1
+          className={CS.textBold}
+        >{t`There was a problem with your question`}</h1>
+        <p
+          className={QueryBuilderS.QueryErrorMessageText}
+        >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
+        <ErrorDetails className={CS.pt2} details={error} />
       </div>
-    );
-  }
+    </div>
+  );
 }

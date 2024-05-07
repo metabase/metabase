@@ -42,9 +42,8 @@ export function formatUrl(value: string, options: OptionsType = {}) {
         {text}
       </ExternalLink>
     );
-  } else {
-    return value;
   }
+  return value;
 }
 
 function getLinkText(value: string, options: OptionsType) {

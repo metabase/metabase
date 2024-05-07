@@ -44,9 +44,8 @@ const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
       } else if (timeout > 0) {
         cy.wait(INBOX_INTERVAL);
         return getInboxWithRetry(timeout - INBOX_INTERVAL);
-      } else {
-        throw new Error("Inbox retry timeout");
       }
+      throw new Error("Inbox retry timeout");
     });
 };
 

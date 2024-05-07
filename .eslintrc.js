@@ -39,6 +39,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "no-else-return": 2,
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,

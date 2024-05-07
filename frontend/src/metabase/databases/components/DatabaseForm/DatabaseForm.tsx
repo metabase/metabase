@@ -201,15 +201,14 @@ const DatabaseFormFooter = ({
         <FormSubmitButton title={t`Connect database`} primary />
       </FormFooter>
     );
-  } else {
-    return (
-      <LinkFooter>
-        <LinkButton type="button" onClick={onCancel}>
-          {t`I'll add my data later`}
-        </LinkButton>
-      </LinkFooter>
-    );
   }
+  return (
+    <LinkFooter>
+      <LinkButton type="button" onClick={onCancel}>
+        {t`I'll add my data later`}
+      </LinkButton>
+    </LinkFooter>
+  );
 };
 
 const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {

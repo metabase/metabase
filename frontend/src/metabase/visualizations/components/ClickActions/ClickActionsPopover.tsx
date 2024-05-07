@@ -87,9 +87,8 @@ export class ClickActionsPopover extends Component<
     if (clicked.element) {
       if (clicked.element.firstChild instanceof HTMLElement) {
         return clicked.element.firstChild;
-      } else {
-        return clicked.element;
       }
+      return clicked.element;
     } else if (clicked.event) {
       return getEventTarget(clicked.event);
     }

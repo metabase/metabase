@@ -12,19 +12,18 @@ export default class ChartNestedSettingColumns extends Component {
     const { object, objects, onChangeEditingObject } = this.props;
     if (object) {
       return <div>{this.props.objectSettingsWidgets}</div>;
-    } else {
-      return (
-        <div>
-          {objects.map((column, index) => (
-            <ColumnItem
-              key={index}
-              title={displayNameForColumn(column)}
-              onEdit={() => onChangeEditingObject(column)}
-              onClick={() => onChangeEditingObject(column)}
-            />
-          ))}
-        </div>
-      );
     }
+    return (
+      <div>
+        {objects.map((column, index) => (
+          <ColumnItem
+            key={index}
+            title={displayNameForColumn(column)}
+            onEdit={() => onChangeEditingObject(column)}
+            onClick={() => onChangeEditingObject(column)}
+          />
+        ))}
+      </div>
+    );
   }
 }

@@ -66,9 +66,8 @@ function getDateTimeDimensionFromFilter(
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
-    } else {
-      return dimension.withoutTemporalBucketing().mbql();
     }
+    return dimension.withoutTemporalBucketing().mbql();
   }
   return null;
 }
@@ -79,9 +78,8 @@ function getDateTimeDimensionFromMbql(mbql: any, bucketing?: string) {
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
-    } else {
-      return dimension.withoutTemporalBucketing().mbql();
     }
+    return dimension.withoutTemporalBucketing().mbql();
   }
   return mbql;
 }
@@ -91,9 +89,8 @@ function getDateTimeFieldRef(field: Field, bucketing?: string) {
     FieldDimension.parseMBQLOrWarn(field) ?? new FieldDimension(null);
   if (bucketing) {
     return dimension.withTemporalUnit(bucketing).mbql();
-  } else {
-    return dimension.withoutTemporalBucketing().mbql();
   }
+  return dimension.withoutTemporalBucketing().mbql();
 }
 
 // add temporal-unit to fields if any of them have a time component
@@ -127,9 +124,8 @@ function getOnFilterDimensionAndValues(filter: Filter) {
 
   if (op === "between") {
     return [dimension, values[1]];
-  } else {
-    return [dimension, values[0]];
   }
+  return [dimension, values[0]];
 }
 
 function getBeforeFilterDimensionAndValues(filter: Filter) {
@@ -139,9 +135,8 @@ function getBeforeFilterDimensionAndValues(filter: Filter) {
 
   if (op === "between") {
     return [dimension, values[1]];
-  } else {
-    return [dimension, values[0]];
   }
+  return [dimension, values[0]];
 }
 
 function getAfterFilterDimensionAndValues(filter: Filter) {
@@ -162,9 +157,8 @@ function getBetweenFilterDimensionAndValues(filter: Filter) {
     const afterDate = moment(values[0]).add(30, "day");
     const afterValue = afterDate.format("YYYY-MM-DD");
     return [dimension, values[0], afterValue];
-  } else {
-    return [dimension, ...values];
   }
+  return [dimension, ...values];
 }
 
 export function getPreviousDateFilter(filter: Filter) {

@@ -88,10 +88,9 @@ export const strategyValidationSchema = Yup.object().test(
           message: error.message,
           path: error.path,
         });
-      } else {
-        console.error("Unhandled error:", error);
-        return false;
       }
+      console.error("Unhandled error:", error);
+      return false;
     }
   },
 ) as Yup.AnySchema;
@@ -137,9 +136,8 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
   if (strategy.type === "schedule") {
     const frequency = getFrequencyFromCron(strategy.schedule);
     return `${mainLabel}: ${frequency}`;
-  } else {
-    return mainLabel;
   }
+  return mainLabel;
 };
 
 export const getFieldsForStrategyType = (strategyType: StrategyType) => {

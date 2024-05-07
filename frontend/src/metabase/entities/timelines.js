@@ -119,9 +119,8 @@ const Timelines = createEntity({
             return _.without(eventIds, event.id);
           } else if (!hasEvent && hasTimeline) {
             return [...eventIds, event.id];
-          } else {
-            return eventIds;
           }
+          return eventIds;
         });
       });
     }

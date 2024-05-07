@@ -125,9 +125,8 @@ export function normalizeParameterValue(type, value) {
     return PULSE_PARAM_EMPTY;
   } else if (["string", "number"].includes(fieldType)) {
     return [].concat(value);
-  } else {
-    return value;
   }
+  return value;
 }
 
 export function getParameterValuesBySlug(parameters, parameterValuesById) {

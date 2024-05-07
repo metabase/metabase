@@ -168,22 +168,11 @@ function generateSplits(
     return left.length < right.length
       ? [[left.concat(list), right]]
       : [[left, right.concat(list)]];
-  } else {
-    return [
-      ...generateSplits(
-        list.slice(1),
-        left.concat([list[0]]),
-        right,
-        depth + 1,
-      ),
-      ...generateSplits(
-        list.slice(1),
-        left,
-        right.concat([list[0]]),
-        depth + 1,
-      ),
-    ];
   }
+  return [
+    ...generateSplits(list.slice(1), left.concat([list[0]]), right, depth + 1),
+    ...generateSplits(list.slice(1), left, right.concat([list[0]]), depth + 1),
+  ];
 }
 
 function axisCost(extents: Extent[], favorUnsplit = true) {
@@ -193,17 +182,16 @@ function axisCost(extents: Extent[], favorUnsplit = true) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
     return 0;
-  } else {
-    return extents.reduce(
-      (sum, seriesExtent) =>
-        sum +
-        Math.pow(
-          axisRange / (seriesExtent[1] - seriesExtent[0]),
-          SPLIT_AXIS_COST_FACTOR,
-        ),
-      0,
-    );
   }
+  return extents.reduce(
+    (sum, seriesExtent) =>
+      sum +
+      Math.pow(
+        axisRange / (seriesExtent[1] - seriesExtent[0]),
+        SPLIT_AXIS_COST_FACTOR,
+      ),
+    0,
+  );
 }
 
 export function computeSplit(

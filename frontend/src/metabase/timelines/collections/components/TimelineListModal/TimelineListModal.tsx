@@ -79,9 +79,8 @@ const getTitle = (
     return t`Archived timelines`;
   } else if (timelines.length) {
     return t`Events`;
-  } else {
-    return getDefaultTimelineName(collection);
   }
+  return getDefaultTimelineName(collection);
 };
 
 const getMenuItems = (

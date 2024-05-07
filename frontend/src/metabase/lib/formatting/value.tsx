@@ -72,13 +72,12 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
           {markdown}
         </ReactMarkdown>
       );
-    } else {
-      // FIXME: render and get the innerText?
-      console.warn(
-        "formatValue: options.markdown_template not supported when options.jsx = false",
-      );
-      return formatted;
     }
+    // FIXME: render and get the innerText?
+    console.warn(
+      "formatValue: options.markdown_template not supported when options.jsx = false",
+    );
+    return formatted;
   }
   if (prefix || suffix) {
     if (options.jsx && typeof formatted !== "string") {
@@ -89,12 +88,10 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
           {suffix || ""}
         </span>
       );
-    } else {
-      return `${prefix || ""}${formatted}${suffix || ""}`;
     }
-  } else {
-    return formatted;
+    return `${prefix || ""}${formatted}${suffix || ""}`;
   }
+  return formatted;
 }
 
 export function getRemappedValue(
@@ -206,22 +203,19 @@ export function formatValueRaw(
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatCoordinate, options);
-    } else {
-      return formatCoordinate(value, options);
     }
+    return formatCoordinate(value, options);
   } else if (typeof value === "number" && isNumber(column)) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatNumber, options);
-    } else {
-      return formatNumber(value, options);
     }
+    return formatNumber(value, options);
   } else if (typeof value === "boolean" && isBoolean(column)) {
     return JSON.stringify(value);
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
     return JSON.stringify(value);
-  } else {
-    return String(value);
   }
+  return String(value);
 }

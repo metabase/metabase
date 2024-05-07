@@ -54,7 +54,6 @@ export function getCanonicalRowKey(key, region) {
     return stateNamesMap.get(key);
   } else if (region === "world_countries" && key in COUNTRY_NAME_TO_CODE) {
     return COUNTRY_NAME_TO_CODE[key];
-  } else {
-    return key;
   }
+  return key;
 }

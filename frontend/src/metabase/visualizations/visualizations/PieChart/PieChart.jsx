@@ -453,19 +453,18 @@ export default class PieChart extends Component {
             total,
           ),
         };
-      } else {
-        return {
-          index,
-          event: event && event.nativeEvent,
-          stackedTooltipModel: getTooltipModel(
-            slices,
-            index,
-            getFriendlyName(cols[dimensionIndex]),
-            formatDimension,
-            formatMetric,
-          ),
-        };
       }
+      return {
+        index,
+        event: event && event.nativeEvent,
+        stackedTooltipModel: getTooltipModel(
+          slices,
+          index,
+          getFriendlyName(cols[dimensionIndex]),
+          formatDimension,
+          formatMetric,
+        ),
+      };
     }
 
     let value, title;

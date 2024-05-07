@@ -47,11 +47,10 @@ const DatabaseEngineWidget = ({
         onChange={onChange}
       />
     );
-  } else {
-    return (
-      <EngineSearch options={options} isHosted={isHosted} onChange={onChange} />
-    );
   }
+  return (
+    <EngineSearch options={options} isHosted={isHosted} onChange={onChange} />
+  );
 };
 
 interface EngineButtonProps {
@@ -294,9 +293,8 @@ const getVisibleOptions = (
     return options.filter(e => includesIgnoreCase(e.name, searchText));
   } else if (isExpanded) {
     return options;
-  } else {
-    return options.slice(0, DEFAULT_OPTIONS_COUNT);
   }
+  return options.slice(0, DEFAULT_OPTIONS_COUNT);
 };
 
 const includesIgnoreCase = (
@@ -326,15 +324,15 @@ const getActiveIndex = (
     case "ArrowDown":
       if (activeIndex != null) {
         return Math.min(activeIndex + 1, optionCount - 1);
-      } else {
-        return 0;
       }
+      return 0;
+
     case "ArrowUp":
       if (activeIndex != null) {
         return Math.max(activeIndex - 1, 0);
-      } else {
-        return optionCount;
       }
+      return optionCount;
+
     default:
       return activeIndex;
   }

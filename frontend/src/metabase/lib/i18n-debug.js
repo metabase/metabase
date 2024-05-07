@@ -28,10 +28,9 @@ const SPECIAL_STRINGS = new Set([
 const obfuscateString = (original, string) => {
   if (SPECIAL_STRINGS.has(original)) {
     return string.toUpperCase();
-  } else {
-    // divide by 2 because Unicode `FULL BLOCK` is quite wide
-    return new Array(Math.ceil(string.length / 2) + 1).join("█");
   }
+  // divide by 2 because Unicode `FULL BLOCK` is quite wide
+  return new Array(Math.ceil(string.length / 2) + 1).join("█");
 };
 
 export function enableTranslatedStringReplacement() {

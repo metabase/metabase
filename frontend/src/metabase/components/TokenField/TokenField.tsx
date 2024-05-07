@@ -167,27 +167,24 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       return idKey(value);
     } else if (typeof idKey === "string") {
       return value[idKey];
-    } else {
-      return value;
     }
+    return value;
   }
 
   _value(option: any) {
     const { valueKey = "value" } = this.props;
     if (typeof valueKey === "function") {
       return valueKey(option);
-    } else {
-      return option[valueKey];
     }
+    return option[valueKey];
   }
 
   _label(option: any) {
     const { labelKey = "label" } = this.props;
     if (typeof labelKey === "function") {
       return labelKey(option);
-    } else {
-      return option[labelKey];
     }
+    return option[labelKey];
   }
 
   _key(option: any) {
@@ -433,13 +430,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // return false so we don't stop the keyDown from propagating in case we're listening
         // for it, e.x. in the filter popover this allows enter to commit the filter
         return false;
-      } else {
-        const value = this.props.parseFreeformValue(input?.value);
-        if (value != null && (multi || value !== this.props.value[0])) {
-          this.addValue(value);
-          this.clearInputValue();
-          return true;
-        }
+      }
+      const value = this.props.parseFreeformValue(input?.value);
+      if (value != null && (multi || value !== this.props.value[0])) {
+        this.addValue(value);
+        this.clearInputValue();
+        return true;
       }
     }
   }

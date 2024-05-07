@@ -67,17 +67,16 @@ export default class QuestionAlertWidget extends Component {
           </Popover>
         </span>
       );
-    } else {
-      return (
-        <AlertIcon
-          name="bell"
-          tooltip={t`Get alerts`}
-          size={20}
-          className={className}
-          onClick={onCreateAlert}
-        />
-      );
     }
+    return (
+      <AlertIcon
+        name="bell"
+        tooltip={t`Get alerts`}
+        size={20}
+        className={className}
+        onClick={onCreateAlert}
+      />
+    );
   }
 }
 

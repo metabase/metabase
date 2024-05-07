@@ -118,9 +118,8 @@ const isFieldValid = (
 
   if (field.required && isEmpty && isVisible) {
     return context.createError({ message: Errors.required });
-  } else {
-    return true;
   }
+  return true;
 };
 
 const isFieldVisible = (

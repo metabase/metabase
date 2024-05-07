@@ -79,9 +79,8 @@ function isEventWithin(eventIndex, eventPoints, eventDistance) {
 function hasEventText(events, eventIndex, eventPoints) {
   if (events.length > 1) {
     return !isEventWithin(eventIndex, eventPoints, TEXT_DISTANCE);
-  } else {
-    return false;
   }
+  return false;
 }
 
 function renderEventBrush({ chart }) {

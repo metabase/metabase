@@ -259,18 +259,17 @@ export default class Popover extends Component {
     );
     if (this.props.noOnClickOutsideWrapper) {
       return content;
-    } else {
-      return (
-        <OnClickOutsideWrapper
-          handleDismissal={this.handleDismissal}
-          ignoreElement={
-            this.props.ignoreTrigger ? this._getTargetElement() : undefined
-          }
-        >
-          {content}
-        </OnClickOutsideWrapper>
-      );
     }
+    return (
+      <OnClickOutsideWrapper
+        handleDismissal={this.handleDismissal}
+        ignoreElement={
+          this.props.ignoreTrigger ? this._getTargetElement() : undefined
+        }
+      >
+        {content}
+      </OnClickOutsideWrapper>
+    );
   }
 
   _setTetherOptions(tetherOptions, o) {

@@ -150,9 +150,8 @@ function getBetweenFilterParts(
       column,
       values: [endValue],
     };
-  } else {
-    return undefined;
   }
+  return undefined;
 }
 
 function getInsideFilterParts(

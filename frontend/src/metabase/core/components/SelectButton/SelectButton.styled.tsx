@@ -14,9 +14,8 @@ interface SelectButtonRootProps {
 const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-white") : color("text-dark");
-  } else {
-    return color("text-light");
   }
+  return color("text-light");
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`

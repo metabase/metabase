@@ -18,9 +18,8 @@ export function getFilters(filter) {
     return [];
   } else if (op(filter) === "and") {
     return args(filter);
-  } else {
-    return [filter];
   }
+  return [filter];
 }
 
 // turns a list of Filters into the canonical FilterClause, either `undefined`, `filter`, or `["and", filter...]`
@@ -29,9 +28,8 @@ export function getFilterClause(filters) {
     return undefined;
   } else if (filters.length === 1) {
     return filters[0];
-  } else {
-    return ["and", ...filters];
   }
+  return ["and", ...filters];
 }
 
 export function addFilter(filter, newFilter) {
@@ -117,9 +115,8 @@ export function getFilterOptions(filter) {
   const _filter = filter;
   if (hasFilterOptions(filter)) {
     return _filter[_filter.length - 1];
-  } else {
-    return {};
   }
+  return {};
 }
 
 export function setFilterOptions(filter, options) {

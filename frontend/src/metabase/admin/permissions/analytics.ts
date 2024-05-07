@@ -20,9 +20,8 @@ const getEventName = (entityId: Partial<TableEntityId>, isNative: boolean) => {
     return "fields";
   } else if (entityId.schemaName != null) {
     return "tables";
-  } else {
-    return "schemas";
   }
+  return "schemas";
 };
 
 export const trackPermissionChange = (

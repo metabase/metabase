@@ -87,9 +87,8 @@ export function ClickBehaviorSidebar({
     }
     if (hasSelectedColumn) {
       return getClickBehaviorForColumn(dashcard, selectedColumn);
-    } else {
-      return getIn(dashcard, ["visualization_settings", "click_behavior"]);
     }
+    return getIn(dashcard, ["visualization_settings", "click_behavior"]);
   }, [dashcard, selectedColumn, hasSelectedColumn]);
 
   const isDashboardLink =

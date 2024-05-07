@@ -108,9 +108,8 @@ const retrySnowplowRequest = (url, condition, timeout = SNOWPLOW_TIMEOUT) => {
     } else if (timeout > 0) {
       cy.wait(SNOWPLOW_INTERVAL);
       return retrySnowplowRequest(url, condition, timeout - SNOWPLOW_INTERVAL);
-    } else {
-      throw new Error("Snowplow retry timeout");
     }
+    throw new Error("Snowplow retry timeout");
   });
 };
 

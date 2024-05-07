@@ -36,9 +36,8 @@ export default class Aggregation extends MBQLClause {
   replace(aggregation?: AggregationObject | Aggregation): StructuredQuery {
     if (aggregation != null) {
       return this._query.updateAggregation(this._index, aggregation);
-    } else {
-      return this._query.updateAggregation(this._index, this);
     }
+    return this._query.updateAggregation(this._index, this);
   }
 
   /**
@@ -85,9 +84,8 @@ export default class Aggregation extends MBQLClause {
 
         if (dimension) {
           return t`${aggregationName} of ${dimension.render()}`;
-        } else {
-          return aggregationName;
         }
+        return aggregationName;
       }
     }
 
@@ -276,9 +274,8 @@ export default class Aggregation extends MBQLClause {
   options() {
     if (this.hasOptions()) {
       return this[2] || {};
-    } else {
-      return {};
     }
+    return {};
   }
 
   /**
@@ -287,9 +284,8 @@ export default class Aggregation extends MBQLClause {
   aggregation(): Aggregation {
     if (this.hasOptions()) {
       return new Aggregation(this[1], this._index, this._query);
-    } else {
-      return this;
     }
+    return this;
   }
 
   filters(): Filter[] {

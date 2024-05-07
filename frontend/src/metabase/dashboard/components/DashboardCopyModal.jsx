@@ -35,9 +35,8 @@ const getTitle = (dashboard, isShallowCopy) => {
     return "";
   } else if (isShallowCopy) {
     return t`Duplicate "${dashboard.name}"`;
-  } else {
-    return t`Duplicate "${dashboard.name}" and its questions`;
   }
+  return t`Duplicate "${dashboard.name}" and its questions`;
 };
 
 const DashboardCopyModal = ({

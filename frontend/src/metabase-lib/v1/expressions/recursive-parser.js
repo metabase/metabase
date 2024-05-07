@@ -340,25 +340,24 @@ export const adjustBooleans = tree =>
           }),
           options,
         ];
-      } else {
-        const [operator, ...operands] = node;
-        const { args = [] } = MBQL_CLAUSES[operator] || {};
-        return [
-          operator,
-          ...operands.map((operand, index) => {
-            if (!Array.isArray(operand) || args[index] !== "boolean") {
-              return operand;
-            }
-            const [op, _id, opts] = operand;
-            const isBooleanField =
-              op === "field" && opts?.["base-type"] === "type/Boolean";
-            if (isBooleanField || op === "segment") {
-              return withAST(["=", operand, true], operand);
-            }
-            return operand;
-          }),
-        ];
       }
+      const [operator, ...operands] = node;
+      const { args = [] } = MBQL_CLAUSES[operator] || {};
+      return [
+        operator,
+        ...operands.map((operand, index) => {
+          if (!Array.isArray(operand) || args[index] !== "boolean") {
+            return operand;
+          }
+          const [op, _id, opts] = operand;
+          const isBooleanField =
+            op === "field" && opts?.["base-type"] === "type/Boolean";
+          if (isBooleanField || op === "segment") {
+            return withAST(["=", operand, true], operand);
+          }
+          return operand;
+        }),
+      ];
     }
     return node;
   });

@@ -243,13 +243,12 @@ export function getDefaultScatterColumns(data: DatasetData) {
       metrics: [dimensions[1].name],
       bubble: metrics.length === 1 ? metrics[0].name : null,
     };
-  } else {
-    return {
-      dimensions: [null],
-      metrics: [null],
-      bubble: null,
-    };
   }
+  return {
+    dimensions: [null],
+    metrics: [null],
+    bubble: null,
+  };
 }
 
 /**
@@ -266,9 +265,8 @@ export function getDefaultBubbleSizeCol(data: DatasetData) {
 export function getDefaultColumns(series: RawSeries) {
   if (series[0].card.display === "scatter") {
     return getDefaultScatterColumns(series[0].data);
-  } else {
-    return getDefaultLineAreaBarColumns(series);
   }
+  return getDefaultLineAreaBarColumns(series);
 }
 
 function getDefaultLineAreaBarColumns(series: RawSeries) {

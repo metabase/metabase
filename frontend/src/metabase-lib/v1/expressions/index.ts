@@ -243,9 +243,8 @@ export function quoteString(string: string, quote: string) {
   } else if (quote === "") {
     // unquoted
     return string;
-  } else {
-    throw new Error("Unknown quoting: " + quote);
   }
+  throw new Error("Unknown quoting: " + quote);
 }
 
 export function unquoteString(string: string) {
@@ -268,9 +267,8 @@ export function unquoteString(string: string) {
     return str;
   } else if (quote === "[") {
     return unescapeString(string).slice(1, -1);
-  } else {
-    throw new Error("Unknown quoting: " + string);
   }
+  throw new Error("Unknown quoting: " + string);
 }
 
 // move to query lib

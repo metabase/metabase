@@ -267,9 +267,8 @@ function dashboardHasQuestions(cards) {
     const isPopulated = questions.length > 0;
 
     return isPopulated && questions;
-  } else {
-    return false;
   }
+  return false;
 }
 
 export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {

@@ -23,9 +23,8 @@ const getDatabaseId = (props, { includeVirtual } = {}) => {
     return undefined;
   } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
     return undefined;
-  } else {
-    return dbId;
   }
+  return dbId;
 };
 
 const getSchemaName = props => {

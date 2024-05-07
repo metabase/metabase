@@ -259,9 +259,8 @@ export const queryErrored = createThunkAction(
     return async () => {
       if (error && error.isCancelled) {
         return null;
-      } else {
-        return { error: error, duration: new Date() - startTime };
       }
+      return { error: error, duration: new Date() - startTime };
     };
   },
 );

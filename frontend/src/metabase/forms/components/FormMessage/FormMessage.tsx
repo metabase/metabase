@@ -40,9 +40,8 @@ export const getErrorMessage = (formError?: Response) => {
       return formError.data.message;
     } else if (formError.status >= 400) {
       return t`Server error encountered`;
-    } else {
-      return t`Unknown error encountered`;
     }
+    return t`Unknown error encountered`;
   }
 };
 

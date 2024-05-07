@@ -12,9 +12,8 @@ export default class NumberPicker extends Component {
       stringValues: props.values.map(v => {
         if (typeof v === "number") {
           return String(v);
-        } else {
-          return String(v || "");
         }
+        return String(v || "");
       }),
       validations: this._validate(props.values),
     };

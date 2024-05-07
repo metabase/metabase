@@ -50,11 +50,10 @@ function hasGreaterPermissions(
   // a default group permission of "none" would overrule "block".
   if (a === DataPermissionValue.NO && b === DataPermissionValue.BLOCKED) {
     return false;
-  } else {
-    return (
-      descendingPermissions.indexOf(a) - descendingPermissions.indexOf(b) < 0
-    );
   }
+  return (
+    descendingPermissions.indexOf(a) - descendingPermissions.indexOf(b) < 0
+  );
 }
 
 export function getPermissionWarning(

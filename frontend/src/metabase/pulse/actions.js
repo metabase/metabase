@@ -68,11 +68,10 @@ export const saveEditingPulse = createThunkAction(
         return Pulses.HACK_getObjectFromAction(
           await dispatch(Pulses.actions.update(editingPulse)),
         );
-      } else {
-        return Pulses.HACK_getObjectFromAction(
-          await dispatch(Pulses.actions.create(editingPulse)),
-        );
       }
+      return Pulses.HACK_getObjectFromAction(
+        await dispatch(Pulses.actions.create(editingPulse)),
+      );
     };
   },
 );

@@ -316,10 +316,9 @@ export class AlertScheduleText extends Component {
 
       if (verbose) {
         return `weekly on ${day}s at ${hour} ${amPm}`;
-      } else {
-        // omit the minute part of time
-        return `${day}s, ${hour.substr(0, hour.indexOf(":"))} ${amPm}`;
       }
+      // omit the minute part of time
+      return `${day}s, ${hour.substr(0, hour.indexOf(":"))} ${amPm}`;
     }
   };
 
@@ -334,9 +333,8 @@ export class AlertScheduleText extends Component {
           Checking <b>{scheduleText}</b>
         </span>
       );
-    } else {
-      return <span>{scheduleText}</span>;
     }
+    return <span>{scheduleText}</span>;
   }
 }
 

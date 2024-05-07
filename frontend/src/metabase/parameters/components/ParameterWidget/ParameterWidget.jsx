@@ -143,8 +143,7 @@ export class ParameterWidget extends Component {
       );
     } else if (isEditing && setEditingParameter) {
       return renderEditing();
-    } else {
-      return renderFieldInNormalMode();
     }
+    return renderFieldInNormalMode();
   }
 }

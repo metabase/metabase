@@ -48,9 +48,8 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
       }
       return memo;
     }, {} as any);
-  } else {
-    return before.embedding_params;
   }
+  return before.embedding_params;
 }
 
 // This adds default properties and placeholder IDs for an inline dashboard
@@ -131,9 +130,8 @@ export function showVirtualDashCardInfoText(
 ) {
   if (isVirtualDashCard(dashcard)) {
     return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
   }
+  return true;
 }
 
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
@@ -188,9 +186,8 @@ export function getDashboardType(id: unknown) {
     return "embed";
   } else if (typeof id === "string" && /\/auto\/dashboard/.test(id)) {
     return "transient";
-  } else {
-    return "normal";
   }
+  return "normal";
 }
 
 export async function fetchDataOrError<T>(dataPromise: Promise<T>) {

@@ -6,9 +6,8 @@ const CollectionName = ({ id }) => {
     return <span>{ROOT_COLLECTION.name}</span>;
   } else if (id === undefined || isNaN(id)) {
     return null;
-  } else {
-    return <Collection.Name id={id} />;
   }
+  return <Collection.Name id={id} />;
 };
 
 export default CollectionName;

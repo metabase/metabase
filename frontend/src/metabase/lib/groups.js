@@ -28,15 +28,13 @@ export function getGroupColor(group) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
     return color("text-medium");
-  } else {
-    return color("brand");
   }
+  return color("brand");
 }
 
 export function getGroupNameLocalized(group) {
   if (SPECIAL_GROUP_NAMES.has(group.name)) {
     return SPECIAL_GROUP_NAMES.get(group.name);
-  } else {
-    return group.name;
   }
+  return group.name;
 }

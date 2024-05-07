@@ -106,10 +106,9 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
     const format = getDateFormatFromStyle(option.value, unit);
     if (seen.has(format)) {
       return false;
-    } else {
-      seen.add(format);
-      return true;
     }
+    seen.add(format);
+    return true;
   });
 }
 
@@ -350,12 +349,11 @@ export const NUMBER_COLUMN_SETTINGS = {
     getHidden: (_column, settings, { series, forAdminSettings }) => {
       if (forAdminSettings === true) {
         return false;
-      } else {
-        return (
-          settings["number_style"] !== "currency" ||
-          series[0].card.display !== "table"
-        );
       }
+      return (
+        settings["number_style"] !== "currency" ||
+        series[0].card.display !== "table"
+      );
     },
     readDependencies: ["number_style"],
   },
@@ -478,12 +476,11 @@ export function getSettingDefinitionsForColumn(series, column) {
       ...NUMBER_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else {
-    return {
-      ...extraColumnSettings,
-      ...COMMON_COLUMN_SETTINGS,
-    };
   }
+  return {
+    ...extraColumnSettings,
+    ...COMMON_COLUMN_SETTINGS,
+  };
 }
 
 export function isPivoted(series, settings) {
@@ -513,11 +510,8 @@ export const getTitleForColumn = (column, series, settings) => {
   const pivoted = isPivoted(series, settings);
   if (pivoted) {
     return formatColumn(column) || t`Unset`;
-  } else {
-    return (
-      settings.column(column)["_column_title_full"] || formatColumn(column)
-    );
   }
+  return settings.column(column)["_column_title_full"] || formatColumn(column);
 };
 
 export const buildTableColumnSettings = ({
@@ -567,9 +561,8 @@ export const buildTableColumnSettings = ({
       const columnSettings = vizSettings["table.columns"];
       if (!columnSettings || !isValid(columnSettings)) {
         return getValue([]);
-      } else {
-        return getValue(columnSettings);
       }
+      return getValue(columnSettings);
     },
     getProps: (series, settings) => {
       const [

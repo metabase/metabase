@@ -330,12 +330,10 @@ class TableInteractive extends Component {
               return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
             } else if (this.state.columnWidths[index]) {
               return this.state.columnWidths[index];
-            } else {
-              return 0;
             }
-          } else {
-            return contentWidths[index] + 1;
+            return 0;
           }
+          return contentWidths[index] + 1;
         });
 
         // Doing this on next tick makes sure it actually gets removed on initial measure

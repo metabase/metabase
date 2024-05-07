@@ -973,9 +973,8 @@ export function formatRange(
         {start} {EN_DASH} {end}
       </span>
     );
-  } else {
-    return `${start}  ${EN_DASH}  ${end}`;
   }
+  return `${start}  ${EN_DASH}  ${end}`;
 }
 
 function formatWeek(m: Moment, options: OptionsType = {}) {
@@ -1005,9 +1004,8 @@ function formatMajorMinor(
         <span>{minor}</span>
       </span>
     );
-  } else {
-    return `${major} - ${minor}`;
   }
+  return `${major} - ${minor}`;
 }
 
 function replaceDateFormatNames(format: string, options: OptionsType) {

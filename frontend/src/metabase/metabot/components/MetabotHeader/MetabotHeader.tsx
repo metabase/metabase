@@ -126,9 +126,8 @@ const getTitle = (
     return getModelTitle(model, user);
   } else if (databases.length > 1 && database) {
     return getDatabaseTitle(database, databases, user, onDatabaseChange);
-  } else {
-    return t`You can ask me things about your data.`;
   }
+  return t`You can ask me things about your data.`;
 };
 
 const getModelTitle = (model: Question, user: User | null) => {
@@ -163,9 +162,8 @@ const getDatabaseTitle = (
 const getPlaceholder = (model?: Question) => {
   if (model) {
     return t`Ask something like, how many ${model.displayName()} have we had over time?`;
-  } else {
-    return t`Ask something…`;
   }
+  return t`Ask something…`;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

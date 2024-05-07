@@ -36,14 +36,13 @@ function shouldPropagateDashboardParameters({
     return true;
   } else if (!originalCard) {
     return false;
-  } else {
-    const equivalentCards = cardIsEquivalent(deserializedCard, originalCard);
-    const differentParameters = !cardParametersAreEquivalent(
-      deserializedCard,
-      originalCard,
-    );
-    return equivalentCards && differentParameters;
   }
+  const equivalentCards = cardIsEquivalent(deserializedCard, originalCard);
+  const differentParameters = !cardParametersAreEquivalent(
+    deserializedCard,
+    originalCard,
+  );
+  return equivalentCards && differentParameters;
 }
 
 async function verifyMatchingDashcardAndParameters({

@@ -105,11 +105,10 @@ class FieldRemappingSettings extends Component {
     if (fkTargetFields) {
       const nameField = fkTargetFields.find(field => isEntityName(field));
       return nameField ? nameField.id : null;
-    } else {
-      throw new Error(
-        t`Current field isn't a foreign key or FK target table metadata is missing`,
-      );
     }
+    throw new Error(
+      t`Current field isn't a foreign key or FK target table metadata is missing`,
+    );
   };
 
   clearEditingStates = () => {

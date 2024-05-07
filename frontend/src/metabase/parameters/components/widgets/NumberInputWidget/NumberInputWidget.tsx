@@ -116,7 +116,6 @@ export function NumberInputWidget({
 function normalize(value: number[] | undefined): number[] {
   if (Array.isArray(value)) {
     return value;
-  } else {
-    return [];
   }
+  return [];
 }

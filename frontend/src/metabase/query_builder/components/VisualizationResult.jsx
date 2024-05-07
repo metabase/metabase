@@ -109,48 +109,42 @@ export default class VisualizationResult extends Component {
           )}
         </div>
       );
-    } else {
-      const vizSpecificProps = _.pick(
-        this.props,
-        ...ALLOWED_VISUALIZATION_PROPS,
-      );
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      const hasDrills = isEditable;
-      return (
-        <>
-          <Visualization
-            className={className}
-            rawSeries={rawSeries}
-            onChangeCardAndRun={
-              hasDrills ? navigateToNewCardInsideQB : undefined
-            }
-            isEditing={true}
-            isObjectDetail={false}
-            isQueryBuilder={true}
-            queryBuilderMode={queryBuilderMode}
-            showTitle={false}
-            metadata={question.metadata()}
-            timelineEvents={timelineEvents}
-            selectedTimelineEventIds={selectedTimelineEventIds}
-            handleVisualizationClick={this.props.handleVisualizationClick}
-            onOpenTimelines={this.props.onOpenTimelines}
-            onSelectTimelineEvents={this.props.selectTimelineEvents}
-            onDeselectTimelineEvents={this.props.deselectTimelineEvents}
-            onOpenChartSettings={this.props.onOpenChartSettings}
-            onUpdateWarnings={this.props.onUpdateWarnings}
-            onUpdateVisualizationSettings={
-              this.props.onUpdateVisualizationSettings
-            }
-            {...vizSpecificProps}
-          />
-          {this.props.isObjectDetail && (
-            <Visualization
-              isObjectDetail={true}
-              rawSeries={this.getObjectDetailData(rawSeries)}
-            />
-          )}
-        </>
-      );
     }
+    const vizSpecificProps = _.pick(this.props, ...ALLOWED_VISUALIZATION_PROPS);
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const hasDrills = isEditable;
+    return (
+      <>
+        <Visualization
+          className={className}
+          rawSeries={rawSeries}
+          onChangeCardAndRun={hasDrills ? navigateToNewCardInsideQB : undefined}
+          isEditing={true}
+          isObjectDetail={false}
+          isQueryBuilder={true}
+          queryBuilderMode={queryBuilderMode}
+          showTitle={false}
+          metadata={question.metadata()}
+          timelineEvents={timelineEvents}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          handleVisualizationClick={this.props.handleVisualizationClick}
+          onOpenTimelines={this.props.onOpenTimelines}
+          onSelectTimelineEvents={this.props.selectTimelineEvents}
+          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onUpdateWarnings={this.props.onUpdateWarnings}
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
+          {...vizSpecificProps}
+        />
+        {this.props.isObjectDetail && (
+          <Visualization
+            isObjectDetail={true}
+            rawSeries={this.getObjectDetailData(rawSeries)}
+          />
+        )}
+      </>
+    );
   }
 }

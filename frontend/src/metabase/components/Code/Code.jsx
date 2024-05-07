@@ -27,9 +27,8 @@ const Code = ({ children, block }) => {
         ))}
       </span>
     );
-  } else {
-    return <span className={CS.textCode}>{children}</span>;
   }
+  return <span className={CS.textCode}>{children}</span>;
 };
 
 BoldCode.propTypes = {

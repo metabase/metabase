@@ -170,12 +170,10 @@ export class Map extends Component {
                 // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
                 // } else if (settings["map.metric_column"]) {
                 //   return "heat";
-              } else {
-                return "pin";
               }
-            } else {
-              return "region";
+              return "pin";
             }
+            return "region";
         }
       },
       readDependencies: [

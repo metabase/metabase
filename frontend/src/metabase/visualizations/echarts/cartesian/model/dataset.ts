@@ -213,9 +213,8 @@ export const transformDataset = (
         return transform;
       } else if (transform.condition) {
         return transform.fn;
-      } else {
-        return null;
       }
+      return null;
     })
     .filter(isNotNull);
 

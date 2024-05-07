@@ -66,9 +66,8 @@ function updateSectionsWithPlugins(sections) {
     ) => order1 - order2;
 
     return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
-  } else {
-    return sections;
   }
+  return sections;
 }
 
 export const ADMIN_SETTINGS_SECTIONS = {
@@ -729,9 +728,8 @@ export const getSections = createSelector(
             ...setting,
             value,
           };
-        } else {
-          return setting;
         }
+        return setting;
       });
       sectionsWithAPISettings[slug] = { ...section, settings };
     }
@@ -747,8 +745,7 @@ export const getActiveSection = createSelector(
   (section = "setup", sections) => {
     if (sections) {
       return sections[section];
-    } else {
-      return null;
     }
+    return null;
   },
 );

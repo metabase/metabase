@@ -33,9 +33,8 @@ export function getDefaultOperator(
     Lib.isCategory(column)
   ) {
     return "=";
-  } else {
-    return "contains";
   }
+  return "contains";
 }
 
 export function getDefaultValues(

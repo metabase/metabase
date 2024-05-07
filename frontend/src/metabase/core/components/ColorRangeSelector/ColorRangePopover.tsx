@@ -130,9 +130,8 @@ const getColorRange = (
 ) => {
   if (isInverted) {
     return [...colorMapping[color]].reverse();
-  } else {
-    return colorMapping[color];
   }
+  return colorMapping[color];
 };
 
 const getDefaultColor = (
@@ -145,9 +144,8 @@ const getDefaultColor = (
       return color;
     } else if (_.isEqual(value, [...range].reverse())) {
       return color;
-    } else {
-      return selection;
     }
+    return selection;
   }, "" as string);
 };
 

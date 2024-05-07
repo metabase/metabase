@@ -548,9 +548,8 @@ export class NativeQueryEditor extends Component<
         return [{ getCompletions: this.getSnippetCompletions }];
       } else if (this.getCardTagNameAtCursor(pos)) {
         return [{ getCompletions: this.getCardTagCompletions }];
-      } else {
-        return standardCompleters;
       }
+      return standardCompleters;
     };
   }
 

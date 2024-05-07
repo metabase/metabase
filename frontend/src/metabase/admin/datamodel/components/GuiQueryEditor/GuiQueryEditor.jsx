@@ -71,14 +71,13 @@ export class GuiQueryEditor extends Component {
           {this.renderAddIcon(targetRefName)}
         </a>
       );
-    } else {
-      return (
-        <span className={className}>
-          {text && <span className={CS.mr1}>{text}</span>}
-          {this.renderAddIcon(targetRefName)}
-        </span>
-      );
     }
+    return (
+      <span className={className}>
+        {text && <span className={CS.mr1}>{text}</span>}
+        {this.renderAddIcon(targetRefName)}
+      </span>
+    );
   }
 
   renderAddIcon(targetRefName) {
@@ -223,16 +222,15 @@ export class GuiQueryEditor extends Component {
         }
       }
       return aggregationList;
-    } else {
-      // TODO: move this into AggregationWidget?
-      return (
-        <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
-          <a
-            className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
-          >{t`Raw data`}</a>
-        </div>
-      );
     }
+    // TODO: move this into AggregationWidget?
+    return (
+      <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
+        <a
+          className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
+        >{t`Raw data`}</a>
+      </div>
+    );
   }
 
   renderDataSection() {

@@ -210,17 +210,16 @@ function prattCompiler({
       }
 
       return Lib.legacyRef(query, stageIndex, segment);
-    } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
-      // fallback
-      const dimension = parseDimension(name, { reference, ...options });
-      if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, dimension);
     }
+    const reference = options.name ?? ""; // avoid circular reference
+
+    // fallback
+    const dimension = parseDimension(name, { reference, ...options });
+    if (!dimension) {
+      throw new ResolverError(t`Unknown Field: ${name}`, node);
+    }
+
+    return Lib.legacyRef(query, stageIndex, dimension);
   }
 
   // COMPILE

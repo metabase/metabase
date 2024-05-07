@@ -141,9 +141,8 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
       .exec(parameterValue)
       .splice(1);
     return deserializer.deserialize(substringMatches, fieldRef);
-  } else {
-    return null;
   }
+  return null;
 }
 
 export function stringParameterValueToMBQL(parameter, fieldRef) {
@@ -201,16 +200,14 @@ function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else if (Lib.isNumeric(column)) {
     return numberParameterValueToMBQL(parameter, fieldRef);
-  } else {
-    return stringParameterValueToMBQL(parameter, fieldRef);
   }
+  return stringParameterValueToMBQL(parameter, fieldRef);
 }
 
 export function fieldFilterParameterToFilter(query, stageIndex, parameter) {
   const mbql = fieldFilterParameterToMBQL(query, stageIndex, parameter);
   if (mbql) {
     return Lib.expressionClauseForLegacyExpression(query, stageIndex, mbql);
-  } else {
-    return null;
   }
+  return null;
 }

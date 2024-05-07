@@ -154,9 +154,8 @@ export default class SelectionModule extends Component {
       }
 
       return items;
-    } else {
-      return t`Sorry. Something went wrong.`;
     }
+    return t`Sorry. Something went wrong.`;
   }
 
   _select(item) {

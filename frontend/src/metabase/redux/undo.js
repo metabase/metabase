@@ -95,9 +95,8 @@ export default function (state = [], { type, payload, error }) {
 
         _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
       });
-    } else {
-      return state.concat(undo);
     }
+    return state.concat(undo);
   } else if (type === DISMISS_UNDO) {
     const dismissedUndo = getUndo({ undo: state }, payload);
 

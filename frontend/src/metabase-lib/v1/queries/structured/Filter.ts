@@ -47,9 +47,8 @@ export default class Filter extends MBQLClause {
   replace(filter?: Filter | FilterObject): StructuredQuery {
     if (filter != null) {
       return this._query.updateFilter(this._index, filter);
-    } else {
-      return this._query.updateFilter(this._index, this);
     }
+    return this._query.updateFilter(this._index, this);
   }
 
   /**
@@ -118,9 +117,8 @@ export default class Filter extends MBQLClause {
         .join(" ");
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
-    } else {
-      return t`Unknown Filter`;
     }
+    return t`Unknown Filter`;
   }
 
   /**
@@ -317,9 +315,8 @@ export default class Filter extends MBQLClause {
 
       if (operatorName && filter.operatorName() !== operatorName) {
         return filter.setOperator(operatorName);
-      } else {
-        return filter;
       }
+      return filter;
     }
 
     return this;
@@ -368,26 +365,25 @@ export default class Filter extends MBQLClause {
       !dimension.field().isTime()
     ) {
       return generateTimeFilterValuesDescriptions(this);
-    } else {
-      return args
-        .map((value, index) => [
-          value,
-          getFilterArgumentFormatOptions(operator, index),
-        ])
-        .filter(([value, options]) => value !== undefined && !options.hide)
-        .map(
-          (
-            [value, _options],
-            _index, // FIXME: remapping
-          ) => value, // <Value
-          //   key={index}
-          //   value={value}
-          //   column={dimension.field()}
-          //   remap
-          //   {...options}
-          // />
-        );
     }
+    return args
+      .map((value, index) => [
+        value,
+        getFilterArgumentFormatOptions(operator, index),
+      ])
+      .filter(([value, options]) => value !== undefined && !options.hide)
+      .map(
+        (
+          [value, _options],
+          _index, // FIXME: remapping
+        ) => value, // <Value
+        //   key={index}
+        //   value={value}
+        //   column={dimension.field()}
+        //   remap
+        //   {...options}
+        // />
+      );
   }
 
   isDimension(otherDimension: Dimension) {

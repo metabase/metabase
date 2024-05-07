@@ -75,10 +75,8 @@ const getInactiveStepTitle = ({
   if (isStepCompleted) {
     if (hasStoreToken) {
       return t`Commercial license active`;
-    } else {
-      return t`I'll activate my commercial license later`;
     }
-  } else {
-    return t`Activate your commercial license`;
+    return t`I'll activate my commercial license later`;
   }
+  return t`Activate your commercial license`;
 };

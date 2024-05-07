@@ -60,9 +60,8 @@ function sendMessage(message) {
 function getFrameSpec() {
   if (isFitViewportMode()) {
     return { mode: "fit", height: getScrollHeight() };
-  } else {
-    return { mode: "normal", height: document.body.scrollHeight };
   }
+  return { mode: "normal", height: document.body.scrollHeight };
 }
 
 function defaultGetScrollHeight() {

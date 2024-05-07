@@ -29,17 +29,16 @@ export function processSource(options: {
       }
 
       return Lib.legacyRef(query, stageIndex, segment);
-    } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
-      // fallback
-      const dimension = parseDimension(name, { reference, ...options });
-      if (!dimension) {
-        throw new Error(t`Unknown Field: ${name}`);
-      }
-
-      return Lib.legacyRef(query, stageIndex, dimension);
     }
+    const reference = options.name ?? ""; // avoid circular reference
+
+    // fallback
+    const dimension = parseDimension(name, { reference, ...options });
+    if (!dimension) {
+      throw new Error(t`Unknown Field: ${name}`);
+    }
+
+    return Lib.legacyRef(query, stageIndex, dimension);
   };
 
   const { source, query, stageIndex, startRule } = options;

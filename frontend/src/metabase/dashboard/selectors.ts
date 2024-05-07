@@ -84,9 +84,8 @@ export const getIsSlowDashboard = createSelector(
   (startTime, endTime) => {
     if (startTime != null && endTime != null) {
       return endTime - startTime > DASHBOARD_SLOW_TIMEOUT;
-    } else {
-      return false;
     }
+    return false;
   },
 );
 

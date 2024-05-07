@@ -35,25 +35,24 @@ class UserActivationModalInner extends Component {
           </Button>
         </ModalContent>
       );
-    } else {
-      return (
-        <ModalContent
-          title={t`Reactivate ${user.common_name}?`}
-          onClose={onClose}
-        >
-          <Text>
-            {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
-          </Text>
-          <Button
-            className={CS.mlAuto}
-            danger
-            onClick={() => user.reactivate() && onClose()}
-          >
-            {t`Reactivate`}
-          </Button>
-        </ModalContent>
-      );
     }
+    return (
+      <ModalContent
+        title={t`Reactivate ${user.common_name}?`}
+        onClose={onClose}
+      >
+        <Text>
+          {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
+        </Text>
+        <Button
+          className={CS.mlAuto}
+          danger
+          onClick={() => user.reactivate() && onClose()}
+        >
+          {t`Reactivate`}
+        </Button>
+      </ModalContent>
+    );
   }
 }
 

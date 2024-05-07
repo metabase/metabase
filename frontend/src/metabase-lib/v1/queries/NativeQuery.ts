@@ -159,9 +159,8 @@ export default class NativeQuery extends AtomicQuery {
         this._originalQuestion,
         assoc(this.datasetQuery(), "database", databaseId),
       );
-    } else {
-      return this;
     }
+    return this;
   }
 
   setDefaultCollection(): NativeQuery {

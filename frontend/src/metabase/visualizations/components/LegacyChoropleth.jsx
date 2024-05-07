@@ -89,9 +89,8 @@ class ShouldUpdate extends Component {
     const { children } = this.props;
     if (typeof children === "function") {
       return children();
-    } else {
-      return children;
     }
+    return children;
   }
 }
 

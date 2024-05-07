@@ -189,9 +189,8 @@ export function canonicalCollectionId(
     return null;
   } else if (typeof collectionId === "number") {
     return collectionId;
-  } else {
-    return parseInt(collectionId, 10);
   }
+  return parseInt(collectionId, 10);
 }
 
 export function isValidCollectionId(

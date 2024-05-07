@@ -14,17 +14,16 @@ export const getColorsForValues = (
       existingMapping,
       (color: string) => getPreferredColor(color, palette),
     );
-  } else {
-    return getOrderBasedMapping(
-      keys,
-      getAccentColors(
-        { light: keys.length > ACCENT_COUNT * 2, harmony: true },
-        palette,
-      ),
-      existingMapping,
-      (color: string) => getPreferredColor(color, palette),
-    );
   }
+  return getOrderBasedMapping(
+    keys,
+    getAccentColors(
+      { light: keys.length > ACCENT_COUNT * 2, harmony: true },
+      palette,
+    ),
+    existingMapping,
+    (color: string) => getPreferredColor(color, palette),
+  );
 };
 
 const getOrderBasedMapping = (

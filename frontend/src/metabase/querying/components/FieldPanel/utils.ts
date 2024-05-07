@@ -139,10 +139,9 @@ export function toggleColumnGroupInQuery(
       return columnItem.isSelected
         ? Lib.removeField(query, stageIndex, columnItem.column)
         : query;
-    } else {
-      return columnItem.isSelected
-        ? query
-        : Lib.addField(query, stageIndex, columnItem.column);
     }
+    return columnItem.isSelected
+      ? query
+      : Lib.addField(query, stageIndex, columnItem.column);
   }, query);
 }

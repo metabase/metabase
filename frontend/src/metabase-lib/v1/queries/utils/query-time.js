@@ -109,9 +109,8 @@ export function expandTimeIntervalFilter(filter) {
       ["relative-datetime", n < 0 ? n : 0, unit],
       ["relative-datetime", n < 0 ? 0 : n, unit],
     ];
-  } else {
-    return ["=", field, ["relative-datetime", n, unit]];
   }
+  return ["=", field, ["relative-datetime", n, unit]];
 }
 
 export function generateTimeFilterValuesDescriptions(filter) {
@@ -131,11 +130,10 @@ export function generateTimeFilterValuesDescriptions(filter) {
     const [n, bucketing] = startingFrom;
     const suffix = formatStartingFrom(bucketing, -n);
     return [t`${prefix}, starting ${Math.abs(n)} ${suffix}`];
-  } else {
-    return values.map(value =>
-      generateTimeValueDescription(value, bucketing, operator === "!="),
-    );
   }
+  return values.map(value =>
+    generateTimeValueDescription(value, bucketing, operator === "!="),
+  );
 }
 
 function generateTimeValueDescription(value, bucketing, isExclude) {
@@ -147,9 +145,8 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
     } else if (m.hours() || m.minutes()) {
       return m.format("MMMM D, YYYY hh:mm a");
-    } else {
-      return m.format("MMMM D, YYYY");
     }
+    return m.format("MMMM D, YYYY");
   } else if (isRelativeDatetime(value)) {
     let [n, unit] = value;
 
@@ -161,10 +158,9 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
     return bucketing === unit
       ? Lib.describeTemporalInterval(n, unit)
       : Lib.describeRelativeDatetime(n, unit);
-  } else {
-    console.warn("Unknown datetime format", value);
-    return `[${t`Unknown`}]`;
   }
+  console.warn("Unknown datetime format", value);
+  return `[${t`Unknown`}]`;
 }
 
 export function absolute(date) {
@@ -172,9 +168,8 @@ export function absolute(date) {
     return moment(date);
   } else if (Array.isArray(date) && date[0] === "relative-datetime") {
     return moment().add(date[1], date[2]);
-  } else {
-    console.warn("Unknown datetime format", date);
   }
+  console.warn("Unknown datetime format", date);
 }
 
 /**
@@ -333,9 +328,8 @@ export function getRelativeDatetimeField(filter) {
     const [_op, expr] = filter;
     const [_exprOp, field] = expr;
     return field;
-  } else {
-    return filter?.[1];
   }
+  return filter?.[1];
 }
 
 export function getRelativeDatetimeInterval(filter) {
@@ -347,9 +341,8 @@ export function getRelativeDatetimeInterval(filter) {
         leftNum < 0 ? leftNum : rightNum,
         unit && unit !== "none" ? unit : "day",
       ];
-    } else {
-      return [leftNum, unit];
     }
+    return [leftNum, unit];
   } else if (filter[0] === "time-interval") {
     const unit = filter[3];
     return [filter[2], unit && unit !== "none" ? unit : "day"];
@@ -467,9 +460,8 @@ export const setTimeComponent = (value, hours, minutes) => {
 
   if (hasTime) {
     return m.format(DATE_TIME_FORMAT);
-  } else {
-    return m.format(DATE_FORMAT);
   }
+  return m.format(DATE_FORMAT);
 };
 
 const getMomentDateForSerialization = date => {

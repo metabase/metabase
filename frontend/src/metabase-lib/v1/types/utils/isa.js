@@ -129,9 +129,8 @@ export const isNumericBaseType = field => {
   }
   if (field.effective_type) {
     return isa(field.effective_type, TYPE.Number);
-  } else {
-    return isa(field.base_type, TYPE.Number);
   }
+  return isa(field.base_type, TYPE.Number);
 };
 
 export const isDateWithoutTime = field => {
@@ -140,9 +139,8 @@ export const isDateWithoutTime = field => {
   }
   if (field.effective_type) {
     return isa(field.effective_type, TYPE.Date);
-  } else {
-    return isa(field.base_type, TYPE.Date);
   }
+  return isa(field.base_type, TYPE.Date);
 };
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
@@ -157,9 +155,8 @@ export const isTime = field => {
   }
   if (field.effective_type) {
     return isa(field.effective_type, TYPE.Time);
-  } else {
-    return isa(field.base_type, TYPE.Time);
   }
+  return isa(field.base_type, TYPE.Time);
 };
 
 export const isAddress = field =>

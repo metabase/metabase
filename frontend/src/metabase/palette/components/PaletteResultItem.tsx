@@ -135,7 +135,6 @@ export const PaletteResultItem = ({
         {content}
       </Box>
     );
-  } else {
-    return content;
   }
+  return content;
 };

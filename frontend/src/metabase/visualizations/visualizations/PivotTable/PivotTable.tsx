@@ -191,9 +191,8 @@ function PivotTable({
 
     if (scrollsHorizontally && scrollBarSize > 0) {
       return scrollBarSize;
-    } else {
-      return 0;
     }
+    return 0;
   }
 
   useEffect(() => {

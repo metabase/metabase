@@ -99,9 +99,8 @@ class EntityListLoaderInner extends Component {
   maybeDebounce(f, ...args) {
     if (this.props.debounced) {
       return _.debounce(f, ...args);
-    } else {
-      return f;
     }
+    return f;
   }
 
   fetchList = this.maybeDebounce(

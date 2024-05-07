@@ -172,16 +172,15 @@ export const useCommandPalette = () => {
             };
           }),
         );
-      } else {
-        return [
-          {
-            id: "no-search-results",
-            name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
-            section: "search",
-          },
-        ];
       }
+      return [
+        {
+          id: "no-search-results",
+          name: t`No results for “${debouncedSearchText}”`,
+          keywords: debouncedSearchText,
+          section: "search",
+        },
+      ];
     }
     return [];
   }, [

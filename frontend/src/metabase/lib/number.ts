@@ -7,7 +7,6 @@ export function parseNumberValue(value: any): number | null {
 
   if (Number.isFinite(number)) {
     return number;
-  } else {
-    return null;
   }
+  return null;
 }

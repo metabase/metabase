@@ -94,12 +94,11 @@ function longitudeFieldSelectArgument(field, table) {
       type: "hidden",
       default: values[0].key,
     };
-  } else {
-    return {
-      type: "select",
-      values: values,
-    };
   }
+  return {
+    type: "select",
+    values: values,
+  };
 }
 
 const CASE_SENSITIVE_OPTION = {

@@ -26,9 +26,8 @@ export function dashboard(
   // x-ray dashboards have ids as urls
   if (typeof dashboard.id === "string") {
     return hash ? `${dashboard.id}#${hash}` : dashboard.id;
-  } else {
-    return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
   }
+  return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
 }
 
 export function publicDashboard(uuid: string) {

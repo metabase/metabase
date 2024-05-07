@@ -67,13 +67,12 @@ const Tables = createEntity({
           databaseApi.endpoints.getDatabaseMetadata,
         );
         return database.tables;
-      } else {
-        return entityCompatibleQuery(
-          params,
-          dispatch,
-          tableApi.endpoints.listTables,
-        );
       }
+      return entityCompatibleQuery(
+        params,
+        dispatch,
+        tableApi.endpoints.listTables,
+      );
     },
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(entityQuery, dispatch, tableApi.endpoints.getTable),

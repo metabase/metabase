@@ -7,11 +7,10 @@ function getWithFallback(
 ) {
   if (map.has(key)) {
     return map.get(key);
-  } else {
-    const value = fallback();
-    map.set(key, value);
-    return value;
   }
+  const value = fallback();
+  map.set(key, value);
+  return value;
 }
 
 const memoized = new WeakMap();

@@ -186,18 +186,17 @@ const renderSchedule = ({
           <SelectMinute key="minute" {...minuteProps} />,
         ],
       );
-    } else {
-      // e.g. "Send hourly"
-      return addScheduleComponents(
-        // We cannot use "{0} {1}" as an argument to the t function, since only has placeholders.
-        // So, as a workaround, we include square brackets in the string, and then remove them.
-        c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-          .t`[{0} {1}]`
-          .replace(/^\[/, "")
-          .replace(/\]$/, ""),
-        [verb, <SelectFrequency key="frequency" {...frequencyProps} />],
-      );
     }
+    // e.g. "Send hourly"
+    return addScheduleComponents(
+      // We cannot use "{0} {1}" as an argument to the t function, since only has placeholders.
+      // So, as a workaround, we include square brackets in the string, and then remove them.
+      c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+        .t`[{0} {1}]`
+        .replace(/^\[/, "")
+        .replace(/\]$/, ""),
+      [verb, <SelectFrequency key="frequency" {...frequencyProps} />],
+    );
   } else if (scheduleType === "daily") {
     // e.g. "Send daily at 12:00pm"
     return addScheduleComponents(
@@ -237,27 +236,25 @@ const renderSchedule = ({
           <SelectTime key="time" {...timeProps} />,
         ],
       );
-    } else {
-      // e.g. "Send monthly on the first Tuesday at 12:00pm"
-      return addScheduleComponents(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-        ).t`{0} {1} on the {2} {3} at {4}`,
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectFrame key="frame" {...frameProps} />,
-          <SelectWeekdayOfMonth
-            key="weekday-of-month"
-            {...weekdayOfMonthProps}
-          />,
-          <SelectTime key="time" {...timeProps} />,
-        ],
-      );
     }
-  } else {
-    return null;
+    // e.g. "Send monthly on the first Tuesday at 12:00pm"
+    return addScheduleComponents(
+      c(
+        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+      ).t`{0} {1} on the {2} {3} at {4}`,
+      [
+        verb,
+        <SelectFrequency key="frequency" {...frequencyProps} />,
+        <SelectFrame key="frame" {...frameProps} />,
+        <SelectWeekdayOfMonth
+          key="weekday-of-month"
+          {...weekdayOfMonthProps}
+        />,
+        <SelectTime key="time" {...timeProps} />,
+      ],
+    );
   }
+  return null;
 };
 
 /** A Select that changes the schedule frequency (e.g., daily, hourly, monthly, etc.),

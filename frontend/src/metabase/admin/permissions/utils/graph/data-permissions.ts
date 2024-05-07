@@ -187,9 +187,8 @@ export const getTablesPermission = (
       path: [schemaName ?? ""],
       isControlledType: true,
     });
-  } else {
-    return schemas;
   }
+  return schemas;
 };
 
 export const getFieldsPermission = (
@@ -216,9 +215,8 @@ export const getFieldsPermission = (
       path: [schemaName || "", tableId],
       isControlledType: true,
     });
-  } else {
-    return tables;
   }
+  return tables;
 };
 
 const getEntityPermission = (
@@ -241,9 +239,8 @@ const getEntityPermission = (
       entityId as SchemaEntityId,
       permission,
     );
-  } else {
-    return getSchemasPermission(permissions, groupId, entityId, permission);
   }
+  return getSchemasPermission(permissions, groupId, entityId, permission);
 };
 
 // return boolean if able to find if a value is present in all or a portion of the permissions graph
@@ -388,9 +385,8 @@ export function downgradeNativePermissionsIfNeeded(
       [],
       DataPermissionValue.NO,
     );
-  } else {
-    return permissions;
   }
+  return permissions;
 }
 
 const metadataTableToTableEntityId = (table: Table) => ({
@@ -431,9 +427,8 @@ function inferEntityPermissionValueFromChildTables(
 
   if (allTablesHaveSamePermissions) {
     return keys[0];
-  } else {
-    return DataPermissionValue.CONTROLLED;
   }
+  return DataPermissionValue.CONTROLLED;
 }
 
 // Checks the child tables of a given entityId and updates the shared table and/or schema permission values according to table permissions

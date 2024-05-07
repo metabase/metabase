@@ -5,7 +5,6 @@ export function getValue(filter: Filter) {
   if (operatorName === "=") {
     const [value] = filter.arguments();
     return value;
-  } else {
-    return operatorName;
   }
+  return operatorName;
 }

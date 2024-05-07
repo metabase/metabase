@@ -153,9 +153,8 @@ function getDateTimeField(field, bucketing) {
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
-    } else {
-      return dimension.withoutTemporalBucketing().mbql();
     }
+    return dimension.withoutTemporalBucketing().mbql();
   }
   return field;
 }
@@ -164,9 +163,8 @@ export function getDateTimeFieldTarget(field) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
-  } else {
-    return field;
   }
+  return field;
 }
 
 // add temporal-unit to fields if any of them have a time component

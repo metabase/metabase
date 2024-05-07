@@ -27,7 +27,6 @@ export const Setup = (): JSX.Element => {
 
   if (step === "welcome") {
     return <WelcomePage />;
-  } else {
-    return <SettingsPage />;
   }
+  return <SettingsPage />;
 };

@@ -90,12 +90,11 @@ const requestStateReducer = handleActions(
 function requestStateReducerRecursive(state, action) {
   if (!state || state._isRequestState) {
     return requestStateReducer(state, action);
-  } else {
-    for (const [key, subState] of Object.entries(state)) {
-      state = assoc(state, key, requestStateReducerRecursive(subState, action));
-    }
-    return state;
   }
+  for (const [key, subState] of Object.entries(state)) {
+    state = assoc(state, key, requestStateReducerRecursive(subState, action));
+  }
+  return state;
 }
 
 const isBulkInvalidation = statePath => {

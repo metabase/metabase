@@ -276,9 +276,8 @@ class MetabaseSettings {
         .utc(parseTimestamp(ts))
         .local()
         .format("MMMM Do YYYY, h:mm:ss a");
-    } else {
-      return t`never`;
     }
+    return t`never`;
   }
 
   /**
@@ -377,9 +376,8 @@ class MetabaseSettings {
       return t`must be ${total}.`;
     } else if (includes) {
       return t`must include ${includes}.`;
-    } else {
-      return null;
     }
+    return null;
   }
 
   /**

@@ -47,18 +47,17 @@ if (hasPremiumFeature("official_collections")) {
             }),
         },
       ];
-    } else {
-      return [
-        {
-          title: t`Remove Official badge`,
-          icon: "close",
-          action: () =>
-            onUpdate(collection, {
-              authority_level: REGULAR_COLLECTION.type,
-            }),
-        },
-      ];
     }
+    return [
+      {
+        title: t`Remove Official badge`,
+        icon: "close",
+        action: () =>
+          onUpdate(collection, {
+            authority_level: REGULAR_COLLECTION.type,
+          }),
+      },
+    ];
   };
 
   PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =

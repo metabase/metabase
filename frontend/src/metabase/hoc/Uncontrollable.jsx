@@ -35,16 +35,15 @@ const Uncontrollable = () => WrappedComponent =>
       if (this.props.value !== undefined) {
         // controlled
         return <WrappedComponent {...this.props} />;
-      } else {
-        // uncontrolled
-        return (
-          <WrappedComponent
-            {...this.props}
-            value={this.state.value}
-            onChange={this.handleChange}
-          />
-        );
       }
+      // uncontrolled
+      return (
+        <WrappedComponent
+          {...this.props}
+          value={this.state.value}
+          onChange={this.handleChange}
+        />
+      );
     }
   };
 

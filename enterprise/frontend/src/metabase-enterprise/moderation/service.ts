@@ -115,9 +115,8 @@ export const getModeratorDisplayName = (
     return t`You`;
   } else if (moderatorId != null && common_name) {
     return common_name;
-  } else {
-    return t`A moderator`;
   }
+  return t`A moderator`;
 };
 
 export const getModeratorDisplayText = (

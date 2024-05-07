@@ -421,12 +421,10 @@ class Question {
       // We don't currently support goal alerts for multiseries question
       if (goalEnabled && hasSingleYAxisColumn) {
         return ALERT_TYPE_TIMESERIES_GOAL;
-      } else {
-        return ALERT_TYPE_ROWS;
       }
-    } else {
       return ALERT_TYPE_ROWS;
     }
+    return ALERT_TYPE_ROWS;
   }
 
   /**
@@ -472,9 +470,8 @@ class Question {
 
     if (newSettings !== settings) {
       return this.setSettings(newSettings);
-    } else {
-      return this;
     }
+    return this;
   }
 
   /**
@@ -569,11 +566,10 @@ class Question {
     const { isNative } = Lib.queryDisplayInfo(query);
     if (isNative) {
       return this.legacyQuery().table();
-    } else {
-      const tableId = Lib.sourceTableOrCardId(query);
-      const metadata = this.metadata();
-      return metadata.table(tableId);
     }
+    const tableId = Lib.sourceTableOrCardId(query);
+    const metadata = this.metadata();
+    return metadata.table(tableId);
   }
 
   legacyQueryTableId(): TableId | null {
@@ -661,20 +657,19 @@ class Question {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
       // if it's new, then it's dirty if it is runnable
       return true;
-    } else {
-      // if it's saved, then it's dirty when the current card doesn't match the last saved version
-      const origCardSerialized =
-        originalQuestion &&
-        originalQuestion._serializeForUrl({
-          includeOriginalCardId: false,
-        });
-
-      const currentCardSerialized = this._serializeForUrl({
+    }
+    // if it's saved, then it's dirty when the current card doesn't match the last saved version
+    const origCardSerialized =
+      originalQuestion &&
+      originalQuestion._serializeForUrl({
         includeOriginalCardId: false,
       });
 
-      return currentCardSerialized !== origCardSerialized;
-    }
+    const currentCardSerialized = this._serializeForUrl({
+      includeOriginalCardId: false,
+    });
+
+    return currentCardSerialized !== origCardSerialized;
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {

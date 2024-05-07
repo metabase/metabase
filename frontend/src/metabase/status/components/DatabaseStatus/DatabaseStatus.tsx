@@ -20,9 +20,8 @@ const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
 
   if (isVisible) {
     return <DatabaseStatusContent databases={databases} />;
-  } else {
-    return null;
   }
+  return null;
 };
 
 const DatabaseStatusContent = ({

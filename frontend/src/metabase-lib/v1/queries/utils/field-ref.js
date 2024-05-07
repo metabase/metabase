@@ -31,9 +31,8 @@ export function isSameField(
 ) {
   if (useDeepEquality) {
     return _.isEqual(fieldA, fieldB);
-  } else {
-    return getFieldTargetId(fieldA) === getFieldTargetId(fieldB);
   }
+  return getFieldTargetId(fieldA) === getFieldTargetId(fieldB);
 }
 
 /**

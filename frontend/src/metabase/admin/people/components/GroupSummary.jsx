@@ -36,9 +36,8 @@ const GroupSummary = ({ groups, selectedGroupIds }) => {
         )}
       </span>
     );
-  } else {
-    return <span>{t`Default`}</span>;
   }
+  return <span>{t`Default`}</span>;
 };
 
 export default GroupSummary;

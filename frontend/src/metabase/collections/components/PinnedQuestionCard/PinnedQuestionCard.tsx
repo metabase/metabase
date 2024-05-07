@@ -108,9 +108,8 @@ const PinnedQuestionCard = ({
 const getSkeletonTooltip = (item: CollectionItem) => {
   if (!isFullyParameterized(item)) {
     return t`Open this question and fill in its variables to see it.`;
-  } else {
-    return undefined;
   }
+  return undefined;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

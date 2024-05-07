@@ -29,9 +29,8 @@ export function getOperatorDisplayName(
     return option.name;
   } else if (operatorType === "string" && option.operator === "=") {
     return sectionName;
-  } else {
-    return `${sectionName} ${option.name.toLowerCase()}`;
   }
+  return `${sectionName} ${option.name.toLowerCase()}`;
 }
 
 export function getParameterOperatorName(maybeOperatorName?: string) {

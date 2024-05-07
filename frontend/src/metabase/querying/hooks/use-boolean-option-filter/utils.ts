@@ -37,9 +37,8 @@ export function getOptionType(
 
   if (filterParts.operator === "=") {
     return filterParts.values[0] ? "true" : "false";
-  } else {
-    return filterParts.operator;
   }
+  return filterParts.operator;
 }
 
 export function getFilterClause(

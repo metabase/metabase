@@ -32,31 +32,30 @@ export function makeCellBackgroundGetter(
   }
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
-  } else {
-    return function (value, rowIndex, colName) {
-      if (formatters[colName]) {
-        // const value = rows[rowIndex][colIndexes[colName]];
-        for (let i = 0; i < formatters[colName].length; i++) {
-          const formatter = formatters[colName][i];
-          const color = formatter(value);
-          if (color != null) {
-            return color;
-          }
-        }
-      }
-      // don't highlight row for pivoted tables
-      if (!isPivoted) {
-        for (let i = 0; i < rowFormatters.length; i++) {
-          const rowFormatter = rowFormatters[i];
-          const color = rowFormatter(rows[rowIndex], colIndexes);
-          if (color != null) {
-            return color;
-          }
-        }
-      }
-      return null;
-    };
   }
+  return function (value, rowIndex, colName) {
+    if (formatters[colName]) {
+      // const value = rows[rowIndex][colIndexes[colName]];
+      for (let i = 0; i < formatters[colName].length; i++) {
+        const formatter = formatters[colName][i];
+        const color = formatter(value);
+        if (color != null) {
+          return color;
+        }
+      }
+    }
+    // don't highlight row for pivoted tables
+    if (!isPivoted) {
+      for (let i = 0; i < rowFormatters.length; i++) {
+        const rowFormatter = rowFormatters[i];
+        const color = rowFormatter(rows[rowIndex], colIndexes);
+        if (color != null) {
+          return color;
+        }
+      }
+    }
+    return null;
+  };
 }
 
 function getColumnIndexesByName(cols) {
@@ -150,10 +149,9 @@ export function compileFormatter(
       }
       return getSafeColor(colorValue);
     };
-  } else {
-    console.warn("Unknown format type", format.type);
-    return () => null;
   }
+  console.warn("Unknown format type", format.type);
+  return () => null;
 }
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may

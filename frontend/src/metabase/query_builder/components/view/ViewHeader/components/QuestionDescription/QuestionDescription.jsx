@@ -68,7 +68,6 @@ export const QuestionDescription = ({
         isObjectDetail={isObjectDetail}
       />
     );
-  } else {
-    return <span>{t`New question`}</span>;
   }
+  return <span>{t`New question`}</span>;
 };

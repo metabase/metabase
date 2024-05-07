@@ -46,9 +46,8 @@ function cleanFieldValue(
   } else if (fieldType === "number") {
     const number = Number(value);
     return !Number.isNaN(number) ? number : undefined;
-  } else {
-    return undefined;
   }
+  return undefined;
 }
 
 function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {

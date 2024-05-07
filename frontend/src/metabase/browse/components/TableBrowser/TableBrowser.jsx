@@ -156,11 +156,10 @@ const getDatabaseCrumbs = dbId => {
       title: t`Saved Questions`,
       to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
     };
-  } else {
-    return {
-      title: <Database.Link id={dbId} />,
-    };
   }
+  return {
+    title: <Database.Link id={dbId} />,
+  };
 };
 
 export default TableBrowser;

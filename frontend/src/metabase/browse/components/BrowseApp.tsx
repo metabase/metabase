@@ -163,9 +163,8 @@ const BrowseTabContent = ({
   }
   if (tab === "models") {
     return <BrowseModels modelsResult={modelsResult} />;
-  } else {
-    return <BrowseDatabases databasesResult={databasesResult} />;
   }
+  return <BrowseDatabases databasesResult={databasesResult} />;
 };
 
 const LearnAboutDataLink = () => (

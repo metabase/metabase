@@ -28,7 +28,6 @@ export function getTimeFormatFromStyle(
     return format.replace(/mm/, "mm:ss.SSS");
   } else if (timeEnabled === "seconds") {
     return format.replace(/mm/, "mm:ss");
-  } else {
-    return format;
   }
+  return format;
 }

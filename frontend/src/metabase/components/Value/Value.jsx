@@ -14,9 +14,8 @@ const Value = ({ value, ...options }) => {
   const formatted = formatValue(value, { ...options, jsx: true });
   if (isValidElement(formatted)) {
     return formatted;
-  } else {
-    return <span>{formatted}</span>;
   }
+  return <span>{formatted}</span>;
 };
 
 export default Value;

@@ -79,7 +79,6 @@ export function StringInputWidget({
 function normalize(value: string[] | undefined): string[] {
   if (Array.isArray(value)) {
     return value;
-  } else {
-    return [];
   }
+  return [];
 }

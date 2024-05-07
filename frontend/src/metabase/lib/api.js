@@ -142,9 +142,8 @@ export class Api extends EventEmitter {
             data,
             options,
           );
-        } else {
-          return this._makeRequest(method, url, headers, body, data, options);
         }
+        return this._makeRequest(method, url, headers, body, data, options);
       };
     };
   }
@@ -185,9 +184,8 @@ export class Api extends EventEmitter {
     // we should switch to using fetch in all cases (metabase#28489)
     if (isTest || options.fetch) {
       return this._makeRequestWithFetch(...args);
-    } else {
-      return this._makeRequestWithXhr(...args);
     }
+    return this._makeRequestWithXhr(...args);
   }
 
   _makeRequestWithXhr(method, url, headers, body, data, options) {
@@ -297,9 +295,8 @@ export class Api extends EventEmitter {
               });
             }
             return body;
-          } else {
-            throw { status: status, data: body };
           }
+          throw { status: status, data: body };
         });
       })
       .catch(error => {

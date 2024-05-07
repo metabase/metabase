@@ -115,32 +115,31 @@ class EntityMenu extends Component {
                       {item.component}
                     </li>
                   );
-                } else {
-                  return (
-                    <li key={item.title} data-testid={item.testId}>
-                      <EntityMenuItem
-                        icon={item.icon}
-                        title={item.title}
-                        externalLink={item.externalLink}
-                        action={
-                          item.action &&
-                          (e => {
-                            item.action(e);
-                            this.toggleMenu();
-                          })
-                        }
-                        event={item.event}
-                        link={item.link}
-                        tooltip={item.tooltip}
-                        disabled={item.disabled}
-                        onClose={() => {
-                          this.toggleMenu();
-                          item?.onClose?.();
-                        }}
-                      />
-                    </li>
-                  );
                 }
+                return (
+                  <li key={item.title} data-testid={item.testId}>
+                    <EntityMenuItem
+                      icon={item.icon}
+                      title={item.title}
+                      externalLink={item.externalLink}
+                      action={
+                        item.action &&
+                        (e => {
+                          item.action(e);
+                          this.toggleMenu();
+                        })
+                      }
+                      event={item.event}
+                      link={item.link}
+                      tooltip={item.tooltip}
+                      disabled={item.disabled}
+                      onClose={() => {
+                        this.toggleMenu();
+                        item?.onClose?.();
+                      }}
+                    />
+                  </li>
+                );
               })}
             </ol>
           )}

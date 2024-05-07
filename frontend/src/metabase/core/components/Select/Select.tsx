@@ -158,9 +158,8 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           .pairs()
           .map(([section, items]) => ({ name: section, items }))
           .value();
-      } else {
-        return [{ items: options }];
       }
+      return [{ items: options }];
     } else if (sections) {
       return sections;
     }

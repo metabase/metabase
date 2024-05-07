@@ -182,25 +182,22 @@ const RadioItem = <TValue,>({
 const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {
   if (isDefaultOption<TValue>(option)) {
     return String(option.value);
-  } else {
-    throw new TypeError();
   }
+  throw new TypeError();
 };
 
 const getDefaultOptionName = <TValue, TOption>(option: TOption): ReactNode => {
   if (isDefaultOption<TValue>(option)) {
     return option.name;
-  } else {
-    throw new TypeError();
   }
+  throw new TypeError();
 };
 
 const getDefaultOptionValue = <TValue, TOption>(option: TOption): TValue => {
   if (isDefaultOption<TValue>(option)) {
     return option.value;
-  } else {
-    throw new TypeError();
   }
+  throw new TypeError();
 };
 
 function isDefaultOption<TValue>(

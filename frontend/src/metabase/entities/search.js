@@ -70,28 +70,27 @@ export default createEntity({
               }))
             : [],
         };
-      } else {
-        const { data, ...rest } = await entityCompatibleQuery(
-          query,
-          dispatch,
-          searchApi.endpoints.search,
-        );
-
-        return {
-          ...rest,
-          data: data
-            ? data.map(item => {
-                const collectionKey = item.collection
-                  ? { collection_id: item.collection.id }
-                  : {};
-                return {
-                  ...collectionKey,
-                  ...item,
-                };
-              })
-            : [],
-        };
       }
+      const { data, ...rest } = await entityCompatibleQuery(
+        query,
+        dispatch,
+        searchApi.endpoints.search,
+      );
+
+      return {
+        ...rest,
+        data: data
+          ? data.map(item => {
+              const collectionKey = item.collection
+                ? { collection_id: item.collection.id }
+                : {};
+              return {
+                ...collectionKey,
+                ...item,
+              };
+            })
+          : [],
+      };
     },
   },
 
@@ -102,10 +101,9 @@ export default createEntity({
     const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
-    } else {
-      console.warn("Couldn't find entity for object", object);
-      return object;
     }
+    console.warn("Couldn't find entity for object", object);
+    return object;
   },
 
   objectActions: {

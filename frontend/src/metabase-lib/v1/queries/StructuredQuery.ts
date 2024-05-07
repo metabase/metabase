@@ -168,9 +168,8 @@ class StructuredQuery extends AtomicQuery {
           })
           .value(),
       );
-    } else {
-      return this;
     }
+    return this;
   }
 
   /**
@@ -272,13 +271,12 @@ class StructuredQuery extends AtomicQuery {
           ),
         ]),
       });
-    } else {
-      return new DimensionOptions({
-        count: 0,
-        fks: [],
-        dimensions: [],
-      });
     }
+    return new DimensionOptions({
+      count: 0,
+      fks: [],
+      dimensions: [],
+    });
   }
 
   /**
@@ -522,29 +520,28 @@ class StructuredQuery extends AtomicQuery {
   columnDimensions = _.once((): Dimension[] => {
     if (this.hasAggregations()) {
       return this.aggregationDimensions();
-    } else {
-      const table = this.tableDimensions();
-
-      const sorted = _.chain(table)
-        .filter(d => {
-          const f = d.field();
-          return (
-            f.active !== false &&
-            f.visibility_type !== "sensitive" &&
-            f.visibility_type !== "retired" &&
-            f.parent_id == null
-          );
-        })
-        .sortBy(d => d.displayName()?.toLowerCase())
-        .sortBy(d => {
-          const type = d.field().semantic_type;
-          return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
-        })
-        .sortBy(d => d.field().position)
-        .value();
-
-      return sorted;
     }
+    const table = this.tableDimensions();
+
+    const sorted = _.chain(table)
+      .filter(d => {
+        const f = d.field();
+        return (
+          f.active !== false &&
+          f.visibility_type !== "sensitive" &&
+          f.visibility_type !== "retired" &&
+          f.parent_id == null
+        );
+      })
+      .sortBy(d => d.displayName()?.toLowerCase())
+      .sortBy(d => {
+        const type = d.field().semantic_type;
+        return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
+      })
+      .sortBy(d => d.field().position)
+      .value();
+
+    return sorted;
   });
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
@@ -558,10 +555,9 @@ class StructuredQuery extends AtomicQuery {
         const count = nameCounts.get(name) + 1;
         nameCounts.set(name, count);
         return `${name}_${count}`;
-      } else {
-        nameCounts.set(name, 1);
-        return name;
       }
+      nameCounts.set(name, 1);
+      return name;
     });
   });
 

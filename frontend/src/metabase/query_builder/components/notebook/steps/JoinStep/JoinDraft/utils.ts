@@ -19,7 +19,6 @@ export function getJoinFields(
     return "all";
   } else if (selectedColumns.length === 0) {
     return "none";
-  } else {
-    return selectedColumns;
   }
+  return selectedColumns;
 }

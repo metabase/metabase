@@ -237,27 +237,26 @@ export function FieldValuesWidgetInner({
       );
 
       return dedupeValues(fieldValues);
-    } else {
-      const cancelDeferred = defer();
-      const cancelled: Promise<unknown> = cancelDeferred.promise;
-      _cancel.current = () => {
-        _cancel.current = null;
-        cancelDeferred.resolve();
-      };
-
-      const options = await searchFieldValues(
-        {
-          value: query,
-          fields,
-          disablePKRemappingForSearch,
-          maxResults,
-        },
-        cancelled,
-      );
-
-      _cancel.current = null;
-      return options;
     }
+    const cancelDeferred = defer();
+    const cancelled: Promise<unknown> = cancelDeferred.promise;
+    _cancel.current = () => {
+      _cancel.current = null;
+      cancelDeferred.resolve();
+    };
+
+    const options = await searchFieldValues(
+      {
+        value: query,
+        fields,
+        disablePKRemappingForSearch,
+        maxResults,
+      },
+      cancelled,
+    );
+
+    _cancel.current = null;
+    return options;
   };
 
   const dispatchFetchParameterValues = async (query?: string) => {

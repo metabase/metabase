@@ -113,9 +113,8 @@ function MainNavbarContainer({
         children: [],
       };
       return [root, ...tree];
-    } else {
-      return tree;
     }
+    return tree;
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(

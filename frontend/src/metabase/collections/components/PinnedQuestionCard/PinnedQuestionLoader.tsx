@@ -96,9 +96,8 @@ const getError = (error?: any, result?: any) => {
     return undefined;
   } else if (errorResponse.status === 403) {
     return getPermissionErrorMessage();
-  } else {
-    return getGenericErrorMessage();
   }
+  return getGenericErrorMessage();
 };
 
 const getErrorIcon = (error?: any, result?: any) => {
@@ -108,9 +107,8 @@ const getErrorIcon = (error?: any, result?: any) => {
     return undefined;
   } else if (errorResponse.status === 403) {
     return "lock";
-  } else {
-    return "warning";
   }
+  return "warning";
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

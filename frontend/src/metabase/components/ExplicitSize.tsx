@@ -110,9 +110,8 @@ function ExplicitSize<T extends BaseInnerProps>({
           return "none";
         } else if (typeof refreshMode === "function") {
           return refreshMode(this.props);
-        } else {
-          return refreshMode;
         }
+        return refreshMode;
       };
 
       _updateRefreshMode = () => {
@@ -201,9 +200,8 @@ function ExplicitSize<T extends BaseInnerProps>({
               />
             </div>
           );
-        } else {
-          return <ComposedComponent {...this.props} {...this.state} />;
         }
+        return <ComposedComponent {...this.props} {...this.state} />;
       }
     }
 

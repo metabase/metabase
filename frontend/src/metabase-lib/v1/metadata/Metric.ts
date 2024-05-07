@@ -62,9 +62,8 @@ class Metric {
     } else if (typeof this.id === "string") {
       // special case for Google Analytics metrics
       return this.id;
-    } else {
-      return null;
     }
+    return null;
   }
 
   isActive() {

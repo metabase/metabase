@@ -24,7 +24,6 @@ export function getQuestionWithDefaultVisualizationSettings(
   // (even if fields values haven't changed, updating the settings will make the question appear dirty)
   if (!_.isEqual(oldVizSettings, newVizSettings)) {
     return question.setSettings(newVizSettings);
-  } else {
-    return question;
   }
+  return question;
 }

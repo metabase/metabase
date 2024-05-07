@@ -46,9 +46,8 @@ function useSelectedTables({
     (id: TableId) => {
       if (selectedTableIds.has(id)) {
         return removeSelectedTableId(id);
-      } else {
-        return addSelectedTableId(id);
       }
+      return addSelectedTableId(id);
     },
     [selectedTableIds, addSelectedTableId, removeSelectedTableId],
   );

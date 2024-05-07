@@ -27,9 +27,8 @@ function getAggregationClause(aggregations) {
   aggregations = getAggregations(aggregations);
   if (aggregations.length === 0) {
     return undefined;
-  } else {
-    return aggregations;
   }
+  return aggregations;
 }
 
 /**
@@ -143,9 +142,8 @@ export function setName(aggregation, name) {
 export function getMetric(aggregation) {
   if (isMetric(aggregation)) {
     return aggregation[1];
-  } else {
-    return null;
   }
+  return null;
 }
 
 // STANDARD
@@ -157,9 +155,8 @@ export function getMetric(aggregation) {
 export function getOperator(aggregation) {
   if (isStandard(aggregation)) {
     return aggregation[0];
-  } else {
-    return null;
   }
+  return null;
 }
 
 /**
@@ -169,10 +166,9 @@ export function getOperator(aggregation) {
 export function setField(aggregation, fieldRef) {
   if (isStandard(aggregation)) {
     return [aggregation[0], fieldRef];
-  } else {
-    // TODO: is there a better failure response than just returning the aggregation unmodified??
-    return aggregation;
   }
+  // TODO: is there a better failure response than just returning the aggregation unmodified??
+  return aggregation;
 }
 
 /**

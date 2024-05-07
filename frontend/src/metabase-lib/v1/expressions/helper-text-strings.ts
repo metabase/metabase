@@ -24,9 +24,8 @@ const getDescriptionForNow: HelpTextConfig["description"] = (
   // deeper logic to support displaying timestamps in it.
   if (database.engine === "h2") {
     return t`Returns the current timestamp (in milliseconds).`;
-  } else {
-    return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
   }
+  return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
 };
 
 const getNowAtTimezone = (

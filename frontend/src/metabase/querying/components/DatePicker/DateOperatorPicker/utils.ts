@@ -29,15 +29,15 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
     case "relative":
       if (value.value === "current") {
         return "current";
-      } else {
-        return value.value < 0 ? "last" : "next";
       }
+      return value.value < 0 ? "last" : "next";
+
     case "exclude":
       if (value.operator !== "!=") {
         return value.operator;
-      } else {
-        return "none";
       }
+      return "none";
+
     default:
       return "none";
   }

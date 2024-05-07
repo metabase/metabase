@@ -101,17 +101,15 @@ const MetabotWidget = ({
 const getGreetingMessage = (user: User | null) => {
   if (user?.first_name) {
     return t`Hey there, ${user?.first_name}!`;
-  } else {
-    return t`Hey there!`;
   }
+  return t`Hey there!`;
 };
 
 const getPromptPlaceholder = (model: Question | undefined) => {
   if (model) {
     return t`Ask something like, how many ${model?.displayName()} have we had over time?`;
-  } else {
-    return t`Ask something…`;
   }
+  return t`Ask something…`;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

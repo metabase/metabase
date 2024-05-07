@@ -308,11 +308,10 @@ function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
     return schema.database
       .getTables()
       .filter(table => table.schema_name === schema.name);
-  } else {
-    return Object.values(metadata.tables).filter(
-      table => table.schema && table.schema.id === schema.id,
-    );
   }
+  return Object.values(metadata.tables).filter(
+    table => table.schema && table.schema.id === schema.id,
+  );
 }
 
 function hydrateTableDatabase(

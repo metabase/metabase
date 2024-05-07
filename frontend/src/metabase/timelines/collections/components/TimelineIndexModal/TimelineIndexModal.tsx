@@ -22,9 +22,8 @@ const TimelineIndexModal = ({
         onClose={onClose}
       />
     );
-  } else {
-    return <TimelineListModal params={params} onClose={onClose} />;
   }
+  return <TimelineListModal params={params} onClose={onClose} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -39,9 +39,8 @@ const getTimePassedSince = (timestamp: string) => {
     const timePassed = date.fromNow();
     dayjs.updateLocale(locale, { relativeTime: cachedRules });
     return timePassed;
-  } else {
-    return t`(invalid date)`;
   }
+  return t`(invalid date)`;
 };
 
 export const LastEdited = ({

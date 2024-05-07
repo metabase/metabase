@@ -17,9 +17,8 @@ export const hasFields = (parameter: UiParameter) => {
 export const getFields = (parameter: UiParameter): Field[] => {
   if (isFieldFilterUiParameter(parameter) && hasFields(parameter)) {
     return parameter.fields;
-  } else {
-    return [];
   }
+  return [];
 };
 
 export const getNonVirtualFields = (parameter: UiParameter) => {

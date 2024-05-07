@@ -90,9 +90,8 @@ export function getParametersFromCard(
 
   if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
-  } else {
-    return getTemplateTagParametersFromCard(card);
   }
+  return getTemplateTagParametersFromCard(card);
 }
 
 export function getTemplateTagParametersFromCard(card: Card) {

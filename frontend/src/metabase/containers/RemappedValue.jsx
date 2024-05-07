@@ -47,9 +47,8 @@ const RemappedValueContent = ({
   }
   if (displayValue != null) {
     return renderRemapped({ value, displayValue, column, displayColumn });
-  } else {
-    return renderNormal({ value, column });
   }
+  return renderNormal({ value, column });
 };
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);

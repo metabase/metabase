@@ -323,9 +323,8 @@ class FieldInner extends Base {
       return this.id;
     } else if (this.field_ref) {
       return this.field_ref;
-    } else {
-      return ["field", this.id, null];
     }
+    return ["field", this.id, null];
   }
 
   // 1. `_fieldInstance` is passed in so that we can shortwire any subsequent calls to `field()` form the dimension instance
@@ -416,9 +415,8 @@ class FieldInner extends Base {
         return "day";
       } else if (days < 365) {
         return "week";
-      } else {
-        return "month";
       }
+      return "month";
     } catch (e) {
       return "day";
     }

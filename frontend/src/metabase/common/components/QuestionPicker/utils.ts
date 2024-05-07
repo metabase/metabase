@@ -44,9 +44,8 @@ export const getCollectionIdPath = (
     return [...pathFromRoot, collection.id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, collection.id];
-  } else {
-    return ["root", ...pathFromRoot, collection.id];
   }
+  return ["root", ...pathFromRoot, collection.id];
 };
 
 export const getStateFromIdPath = ({

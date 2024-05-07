@@ -142,9 +142,8 @@ const getDateMessage = (event: TimelineEvent) => {
 
   if (event.time_matters) {
     return formatDateTimeWithUnit(date, "default", options);
-  } else {
-    return formatDateTimeWithUnit(date, "day", options);
   }
+  return formatDateTimeWithUnit(date, "day", options);
 };
 
 const getCreatorMessage = (event: TimelineEvent) => {
@@ -153,9 +152,8 @@ const getCreatorMessage = (event: TimelineEvent) => {
 
   if (event.creator) {
     return t`${event.creator.common_name} added this on ${createdAt}`;
-  } else {
-    return t`Added on ${createdAt}`;
   }
+  return t`Added on ${createdAt}`;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

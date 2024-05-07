@@ -113,9 +113,8 @@ const getStepTitle = (
     return t`Usage data preferences`;
   } else if (isTrackingAllowed) {
     return t`Thanks for helping us improve`;
-  } else {
-    return t`We won't collect any usage events`;
   }
+  return t`We won't collect any usage events`;
 };
 
 const getSubmitError = (error: unknown): string => {
@@ -126,7 +125,6 @@ const getSubmitError = (error: unknown): string => {
     return String(message);
   } else if (errors) {
     return String(Object.values(errors)[0]);
-  } else {
-    return t`An error occurred`;
   }
+  return t`An error occurred`;
 };

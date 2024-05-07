@@ -70,22 +70,11 @@ function generateSplits(list, left = [], right = [], depth = 0) {
     return left.length < right.length
       ? [[left.concat(list), right]]
       : [[left, right.concat(list)]];
-  } else {
-    return [
-      ...generateSplits(
-        list.slice(1),
-        left.concat([list[0]]),
-        right,
-        depth + 1,
-      ),
-      ...generateSplits(
-        list.slice(1),
-        left,
-        right.concat([list[0]]),
-        depth + 1,
-      ),
-    ];
   }
+  return [
+    ...generateSplits(list.slice(1), left.concat([list[0]]), right, depth + 1),
+    ...generateSplits(list.slice(1), left, right.concat([list[0]]), depth + 1),
+  ];
 }
 
 function axisCost(seriesExtents, favorUnsplit = true) {
@@ -95,17 +84,16 @@ function axisCost(seriesExtents, favorUnsplit = true) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
     return 0;
-  } else {
-    return seriesExtents.reduce(
-      (sum, seriesExtent) =>
-        sum +
-        Math.pow(
-          axisRange / (seriesExtent[1] - seriesExtent[0]),
-          SPLIT_AXIS_COST_FACTOR,
-        ),
-      0,
-    );
   }
+  return seriesExtents.reduce(
+    (sum, seriesExtent) =>
+      sum +
+      Math.pow(
+        axisRange / (seriesExtent[1] - seriesExtent[0]),
+        SPLIT_AXIS_COST_FACTOR,
+      ),
+    0,
+  );
 }
 
 export function computeSplit(extents, left = [], right = []) {
@@ -140,9 +128,8 @@ export function computeSplit(extents, left = [], right = []) {
   // don't sort if we provided an initial left/right
   if (left.length > 0 || right.length > 0) {
     return best;
-  } else {
-    return best && best.sort((a, b) => a[0] - b[0]);
   }
+  return best && best.sort((a, b) => a[0] - b[0]);
 }
 
 const AGGREGATION_NAME_MAP = {
@@ -259,14 +246,13 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         : nextCard.id,
       id: null,
     };
-  } else {
-    // Even though the card is currently clean, we might still apply dashboard parameters to it,
-    // so add the original_card_id to ensure a correct behavior in that context
-    return {
-      ...nextCard,
-      original_card_id: nextCard.id,
-    };
   }
+  // Even though the card is currently clean, we might still apply dashboard parameters to it,
+  // so add the original_card_id to ensure a correct behavior in that context
+  return {
+    ...nextCard,
+    original_card_id: nextCard.id,
+  };
 }
 
 export function getDefaultDimensionAndMetric(series) {

@@ -87,9 +87,8 @@ export const DropdownSidebarFilter = ({
   const getDropdownIcon = (): IconName => {
     if (fieldHasValue) {
       return "close";
-    } else {
-      return isPopoverOpen ? "chevronup" : "chevrondown";
     }
+    return isPopoverOpen ? "chevronup" : "chevrondown";
   };
 
   return (

@@ -61,8 +61,7 @@ export default class ExpandableString extends Component {
           >{t`View more`}</span>
         </span>
       );
-    } else {
-      return <span>{this.props.str}</span>;
     }
+    return <span>{this.props.str}</span>;
   }
 }

@@ -72,11 +72,10 @@ export function getFilterOperators(field, table, selected) {
           return operator["name"] !== "not-null";
         } else if (selected === "not-null") {
           return operator["name"] !== "is-null";
-        } else {
-          return (
-            operator["name"] !== "not-null" && operator["name"] !== "is-null"
-          );
         }
+        return (
+          operator["name"] !== "not-null" && operator["name"] !== "is-null"
+        );
       }
       return true;
     });
