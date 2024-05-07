@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.cloud-migration-test :as cloud-migration-test]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -18,6 +19,10 @@
     (cloud-migration-test/mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
     (mt/user-http-request :crowberto :get 200 "cloud-migration")
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")))
+
+(deftest hosted-test
+  (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/user-http-request :crowberto :post 400 "cloud-migration")))
 
 (deftest lifecycle-test
   (let [latest-migration (cloud-migration-test/mock-external-calls!

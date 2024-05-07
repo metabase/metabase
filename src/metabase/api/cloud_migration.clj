@@ -8,14 +8,21 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.public-settings.premium-features :as premium-features]
    [toucan2.core :as t2]))
 
 (api/defendpoint POST "/"
   "Initiate a new cloud migration."
   [_]
   (api/check-superuser)
-  (if (t2/select-one :model/CloudMigration :state [:not-in cloud-migration/terminal-states])
+  (cond
+    (premium-features/is-hosted?)
+    {:status 400 :body "Cannot migrate a hosted instance."}
+
+    (t2/select-one :model/CloudMigration :state [:not-in cloud-migration/terminal-states])
     {:status 409 :body "There's an ongoing migration already."}
+
+    :else
     (try
       (let [cloud-migration (->> (config/mb-version-info :tag)
                                  cloud-migration/get-store-migration
