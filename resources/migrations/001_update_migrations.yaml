@@ -6946,11 +6946,11 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: >-
-              DELETE p
-              FROM permissions p
-              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
-              WHERE c.type = 'trash';
-
+              DELETE
+              FROM permissions
+              WHERE permissions.object IN (
+                SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
+              );
               DELETE FROM collection WHERE type = 'trash';
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
