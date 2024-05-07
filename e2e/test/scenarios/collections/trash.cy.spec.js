@@ -198,7 +198,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.log("only shows restore in root trash collection");
-    visitTrashCollection();
+    cy.visit("/trash");
 
     toggleEllipsisMenuFor("Collection A");
     popover().findByText("Restore").should("exist");
@@ -208,7 +208,7 @@ describe("scenarios > collections > trash", () => {
     popover().findByText("Restore").should("not.exist");
 
     cy.log("only shows restore on entity page if in root trash collection");
-    visitTrashCollection();
+    cy.visit("/trash");
     collectionTable().findByText("Collection A").click();
     archiveBanner().findByText("Restore").should("exist");
     collectionTable().findByText("Collection B").click();
@@ -226,7 +226,7 @@ describe("scenarios > collections > trash", () => {
     createNativeQuestion({ name: "Question B", ...query }, true);
 
     cy.log("can move from trash list");
-    visitTrashCollection();
+    cy.visit("/trash");
     toggleEllipsisMenuFor("Collection A");
     popover().findByText("Move").click();
     modal().within(() => {
@@ -263,7 +263,7 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.log("can move from entity page");
-    visitTrashCollection();
+    cy.visit("/trash");
     collectionTable().within(() => {
       cy.findByText("Collection B").click();
     });
@@ -276,7 +276,7 @@ describe("scenarios > collections > trash", () => {
     });
     archiveBanner().should("not.exist");
 
-    visitTrashCollection();
+    cy.visit("/trash");
     collectionTable().within(() => {
       cy.findByText("Dashboard B").click();
     });
@@ -289,7 +289,7 @@ describe("scenarios > collections > trash", () => {
     });
     archiveBanner().should("not.exist");
 
-    visitTrashCollection();
+    cy.visit("/trash");
     collectionTable().within(() => {
       cy.findByText("Question B").click();
     });
@@ -302,7 +302,7 @@ describe("scenarios > collections > trash", () => {
     });
     archiveBanner().should("not.exist");
 
-    visitTrashCollection();
+    cy.visit("/trash");
 
     collectionTable().within(() => {
       cy.findByText("Collection A").should("not.exist");
@@ -329,7 +329,7 @@ describe("scenarios > collections > trash", () => {
     createNativeQuestion({ name: "Question A", ...query }, true);
     createNativeQuestion({ name: "Question B", ...query }, true);
 
-    visitTrashCollection();
+    cy.visit("/trash");
 
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
@@ -396,7 +396,7 @@ describe("scenarios > collections > trash", () => {
         { name: "Question A", native: { query: "select 1;" } },
         true,
       );
-      visitTrashCollection();
+      cy.visit("/trash");
       selectItem("Collection A");
       selectItem("Dashboard A");
       selectItem("Question A");
@@ -588,7 +588,7 @@ describe("scenarios > collections > trash", () => {
     );
 
     // assert on desired behavior for read-only user
-    visitTrashCollection();
+    cy.visit("/trash");
 
     cy.get("main").within(() => {
       cy.findByText(READ_ONLY_NAME).should("not.exist");
@@ -597,7 +597,7 @@ describe("scenarios > collections > trash", () => {
 
     // assert on desired behavior for admin user
     cy.signInAsAdmin();
-    visitTrashCollection();
+    cy.visit("/trash");
 
     cy.get("main").within(() => {
       cy.findByText(READ_ONLY_NAME).should("be.visible");
@@ -651,10 +651,6 @@ function createDashboard(dashboardInfo, archive) {
 
 function visitRootCollection() {
   cy.visit("/collection/root");
-}
-
-function visitTrashCollection() {
-  cy.visit("/collection/13371339-trash");
 }
 
 function collectionTable() {
