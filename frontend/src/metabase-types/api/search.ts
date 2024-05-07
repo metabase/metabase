@@ -23,7 +23,6 @@ export const SEARCH_MODELS = [
   ...ENABLED_SEARCH_MODELS,
   "segment",
   "metric",
-  "snippet",
 ] as const;
 
 export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
