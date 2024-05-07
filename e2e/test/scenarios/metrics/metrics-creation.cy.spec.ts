@@ -215,8 +215,6 @@ describe("scenarios > metrics", () => {
         cy.findByText("Metrics").click();
         cy.findByText(PRODUCT_COUNT_DETAILS.name).click();
       });
-      popover().findByText("Product ID").click();
-      popover().findByText("ID").click();
       getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
       enterCustomColumnDetails({
         formula: `[${ORDER_COUNT_DETAILS.name}] / [${PRODUCT_COUNT_DETAILS.name}]`,
