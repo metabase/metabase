@@ -62,13 +62,12 @@ The SDK will call this endpoint if it doesn't have a token or to refresh the tok
 Example:
 
 ```ts
-import express from "express"
-import type { Request, Response } from "express"
+const express = require("express")
 
-import jwt from "jsonwebtoken"
-import fetch from "node-fetch"
+const jwt = require("jsonwebtoken")
+const fetch = require("node-fetch")
 
-async function metabaseAuthHandler(req: Request, res: Response) {
+async function metabaseAuthHandler(req, res) {
   const { user } = req.session
 
   if (!user) {
@@ -89,7 +88,7 @@ async function metabaseAuthHandler(req: Request, res: Response) {
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET
   )
-  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`
 
   try {
     const response = await fetch(ssoUrl, { method: 'GET' })
@@ -109,7 +108,15 @@ async function metabaseAuthHandler(req: Request, res: Response) {
 
 const app = express()
 
-// middleware
+// Middleware
+
+// If your FE application is on a different domain from your BE, you need to enable CORS
+// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
+// to your FE application URL.
+app.use(cors({
+  credentials: true,
+}))
+
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -132,7 +139,7 @@ app.listen(PORT, () => {
 You can install Metabase Embedding SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react --force
 ```
 
 or using yarn:
@@ -187,7 +194,11 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
+      {/** You need to set the parent container to have some width and height, and display as flex,
+           because the Metabase visualizations have flex-grow: 1 and will take up all available space. */}
+      <div style={{ width: 800, height: 600, display: "flex" }}>
+        <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
+      </div>
     </MetabaseProvider>
   );
 }
@@ -206,7 +217,9 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <InteractiveQuestion questionId={questionId}  />
+      <div style={{ width: 800, height: 600, display: "flex" }}>
+        <InteractiveQuestion questionId={questionId}  />
+      </div>
     </MetabaseProvider>
   );
 }
@@ -271,7 +284,9 @@ const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={questionId}  />
+    <div style={{ width: 800, height: 600, display: "flex" }}>
+      <InteractiveQuestion questionId={questionId}  />
+    </div>
   </MetabaseProvider>
 );
 ```
