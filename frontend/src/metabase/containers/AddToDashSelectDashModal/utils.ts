@@ -4,7 +4,7 @@ import {
 } from "metabase/collections/utils";
 import type { DashboardPickerItem } from "metabase/common/components/DashboardPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard, SearchResult } from "metabase-types/api";
 
 interface GetInitialOpenCollectionIdProps {
   isQuestionInPersonalCollection: boolean;
@@ -38,7 +38,7 @@ export const shouldDisableItem = (item: DashboardPickerItem) => {
 };
 
 export const filterWritableDashboards = (
-  dashes: DashboardPickerItem[],
-): DashboardPickerItem[] => {
+  dashes: SearchResult[],
+): SearchResult[] => {
   return dashes.filter(dash => dash.can_write);
 };

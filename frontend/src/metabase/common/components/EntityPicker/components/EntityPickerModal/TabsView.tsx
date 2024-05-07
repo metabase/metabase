@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useMount, usePrevious } from "react-use";
 
 import { Icon, Tabs } from "metabase/ui";
-import type { SearchResult, SearchResultId, SearchRequest } from "metabase-types/api";
+import type {
+  SearchResult,
+  SearchResultId,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {

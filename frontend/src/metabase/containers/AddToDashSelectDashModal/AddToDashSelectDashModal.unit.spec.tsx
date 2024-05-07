@@ -541,7 +541,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
-      await screen.findAllByTestId("search-result-item");
+      await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
@@ -569,7 +569,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
-      await screen.findAllByTestId("search-result-item");
+      await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));

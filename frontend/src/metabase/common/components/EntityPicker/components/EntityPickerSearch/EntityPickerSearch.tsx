@@ -20,13 +20,7 @@ import { ResultItem, ChunkyList } from "../ResultItem";
 
 import { getSearchTabText } from "./utils";
 
-const defaultSearchFilter = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->(
-  results: Item[],
-) => results;
+const defaultSearchFilter = (results: SearchResult[]) => results;
 
 export function EntityPickerSearchInput({
   searchQuery,
@@ -135,16 +129,12 @@ export const EntityPickerSearchResults = <
   );
 };
 
-export const EntityPickerSearchTab = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
   onClick,
 }: {
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   searchQuery: string;
   onClick: () => void;
 }) => (

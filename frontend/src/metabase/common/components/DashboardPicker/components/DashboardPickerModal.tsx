@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import type { CollectionPickerModel } from "../../CollectionPicker";
 import type { EntityTab } from "../../EntityPicker";
@@ -30,9 +31,7 @@ interface DashboardPickerModalProps {
   onClose: () => void;
   options?: DashboardPickerOptions;
   value?: DashboardPickerInitialValueItem;
-  searchFilter?: (
-    searchResults: DashboardPickerItem[],
-  ) => DashboardPickerItem[];
+  searchFilter?: (searchResults: SearchResult[]) => SearchResult[];
   shouldDisableItem?: (
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
@@ -43,12 +42,6 @@ const canSelectItem = (
   item: DashboardPickerItem | DashboardPickerInitialValueItem | null,
 ): item is DashboardPickerValueItem => {
   return item?.model === "dashboard";
-};
-
-const noSearchFilter = (
-  searchResults: DashboardPickerItem[],
-): DashboardPickerItem[] => {
-  return searchResults;
 };
 
 const defaultOptions: DashboardPickerOptions = {
@@ -145,7 +138,7 @@ export const DashboardPickerModal = ({
         initialValue={value}
         tabs={tabs}
         options={options}
-        searchResultFilter={searchFilter ?? noSearchFilter}
+        searchResultFilter={searchFilter}
         actionButtons={modalActions}
         searchParams={
           options.showRootCollection === false
