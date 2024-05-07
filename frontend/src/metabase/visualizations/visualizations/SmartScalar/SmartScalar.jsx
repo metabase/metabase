@@ -294,7 +294,7 @@ function PreviousValueComparison({
         wrap="wrap"
         align="center"
         justify="center"
-        margin={`${space(0)} ${space(1)}`}
+        mx={space(1)}
         lh={1.2}
         className={cx(
           DashboardS.fullscreenNormalText,
