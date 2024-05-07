@@ -161,9 +161,11 @@ describe("scenarios > metrics", () => {
         cy.findByText("Metrics").click();
         cy.findByText("Products, Count").click();
       });
+      popover().findByText("Product ID").click();
+      popover().findByText("ID").click();
       getNotebookStep("summarize").findByText("Orders, Count").click();
       enterCustomColumnDetails({
-        formula: "[Orders, Count] / [Products, Count] ",
+        formula: "[Orders, Count] / [Products, Count]",
         name: "",
       });
       popover().button("Update").click();
