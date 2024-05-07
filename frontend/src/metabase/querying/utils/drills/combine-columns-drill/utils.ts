@@ -139,9 +139,37 @@ export const getExpressionName = (
   column: Lib.ColumnMetadata,
   columnsAndSeparators: ColumnAndSeparator[],
 ): string => {
+  const columnNames = Lib.returnedColumns(query, stageIndex).map(
+    column => Lib.displayInfo(query, stageIndex, column).displayName,
+  );
+
+  const name = getCombinedColumnName(
+    query,
+    stageIndex,
+    column,
+    columnsAndSeparators,
+  );
+
+  return getNextName(columnNames, name, 1);
+};
+
+function getNextName(names: string[], name: string, index: number): string {
+  const suffixed = index === 1 ? name : `${name}_${index}`;
+  if (!names.includes(suffixed)) {
+    return suffixed;
+  }
+  return getNextName(names, name, index + 1);
+}
+
+function getCombinedColumnName(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  columnsAndSeparators: ColumnAndSeparator[],
+) {
   const columns = [column, ...columnsAndSeparators.map(({ column }) => column)];
   const names = columns.map(
     column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
   return names.join(" ");
-};
+}

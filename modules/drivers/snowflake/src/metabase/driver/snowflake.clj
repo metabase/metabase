@@ -544,6 +544,34 @@
   [_ entity-name]
   (escape-name-for-metadata entity-name))
 
+(defn- dynamic-table?
+  "Check if the table is a dynamic table.
+
+  You can't rely on :table_type from INFORMATION_SCHEMA.TABLES or :type from getTables because in
+  both cases it returns `Table` for dynamic tables."
+  [^Connection conn ^String db-name ^String schema-name ^String table-name]
+  (try
+    ;; there is another way of checking this by using SHOW TABLES command and check `is_dynamic` column.
+    ;; But this column is not documented on https://docs.snowflake.com/en/sql-reference/sql/show-tables (2024/05/07),
+    ;; So we avoid using it here.
+    (-> (jdbc/query
+         {:connection conn}
+         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA \"%s\".\"%s\";"
+                  table-name db-name schema-name)])
+     first
+     some?)
+    (catch SnowflakeSQLException e
+      (log/warn e "Failed to check if table is dynamic")
+      ;; query will fail if schema doesn't exist
+      false)))
+
+(defn- table->db-name
+  [table]
+  (qp.store/with-metadata-provider (:db_id table)
+    (-> (qp.store/metadata-provider)
+        lib.metadata/database
+        db-name)))
+
 ;; The Snowflake JDBC driver is buggy: schema and table name are interpreted as patterns
 ;; in getPrimaryKeys and getImportedKeys calls. When this bug gets fixed, the
 ;; [[sql-jdbc.describe-table/get-table-pks]] method and the [[describe-table-fks*]] and
@@ -556,55 +584,51 @@
         schema-name                (-> table :schema escape-name-for-metadata)
         table-name                 (-> table :name escape-name-for-metadata)]
     (try
-     (into [] (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata db-name-or-nil
-                                 schema-name
-                                 table-name)
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
-     (catch SnowflakeSQLException e
-       ;; dynamic tables doesn't support pks so it's fine to suppress the exception
-       (if (= "DYNAMIC_TABLE"
-              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
-                  jdbc/result-set-seq first :table_type))
-         []
-         (throw e))))))
+      (into [] (sql-jdbc.sync.common/reducible-results
+                #(.getPrimaryKeys metadata db-name-or-nil
+                                  schema-name
+                                  table-name)
+                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
+      (catch SnowflakeSQLException e
+        ;; dynamic tables doesn't support pks so it's fine to suppress the exception
+        (if (dynamic-table? conn (or db-name-or-nil (table->db-name table)) (:schema table) (:name table))
+          []
+          (throw e))))))
 
 (defn- describe-table-fks*
   "Stolen from [[sql-jdbc.describe-table]].
   The only change is that it escapes `schema` and `table-name`."
-  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} db-name]
   ;; Snowflake bug: schema and table name are interpreted as patterns
   (let [metadata    (.getMetaData conn)
         schema-name (escape-name-for-metadata schema)
         table-name  (escape-name-for-metadata table-name)]
     (try
-     (into
-      #{}
-      (sql-jdbc.sync.common/reducible-results #(.getImportedKeys metadata db-name-or-nil schema-name table-name)
-                                              (fn [^ResultSet rs]
-                                                (fn []
-                                                  {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                   :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                      :schema (.getString rs "PKTABLE_SCHEM")}
-                                                   :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
-     (catch SnowflakeSQLException e
-       ;; dynamic tables doesn't support kks so it's fine to suppress the exception
-       (if (= "DYNAMIC_TABLE"
-              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
-                  jdbc/result-set-seq first :table_type))
-         #{}
-         (throw e))))))
+      (into
+       #{}
+       (sql-jdbc.sync.common/reducible-results #(.getImportedKeys metadata db-name schema-name table-name)
+                                               (fn [^ResultSet rs]
+                                                 (fn []
+                                                   {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                    :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                       :schema (.getString rs "PKTABLE_SCHEM")}
+                                                    :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
+      (catch SnowflakeSQLException e
+        ;; dynamic tables doesn't support fks so it's fine to suppress the exception
+        (if (dynamic-table? conn db-name schema table-name)
+          #{}
+          (throw e))))))
 
 (defn- describe-table-fks
   "Stolen from [[sql-jdbc.describe-table]].
   The only change is that it calls the stolen function [[describe-table-fks*]]."
-  [driver db-or-id-or-spec table & [db-name-or-nil]]
+  [driver db-or-id-or-spec table db-name]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    db-or-id-or-spec
    nil
    (fn [conn]
-     (describe-table-fks* driver conn table db-name-or-nil))))
+     (describe-table-fks* driver conn table db-name))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :snowflake
