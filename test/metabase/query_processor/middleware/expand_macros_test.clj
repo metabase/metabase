@@ -433,3 +433,26 @@
                                                            {:lib/uuid "7fb46618-622c-40f3-b0d4-4a779179f055"}
                                                            "0c586819-5288-4da9-adba-1ae904a34d5e"]]]}]
                 :database               (meta/id)}))))))
+
+(deftest ^:parallel mbql-2-macro-expansion-test
+  (testing "If the Macro is using super-legacy MBQL 2 can we still expand it?"
+    (is (=? {:aggregation [[:sum-where
+                            {}
+                            [:field {} (meta/id :venues :price)]
+                            [:<
+                             {}
+                             [:field {} (meta/id :venues :price)]
+                             4]]]}
+            (#'expand-macros/legacy-macro-definition->pMBQL
+             meta/metadata-provider
+             {:lib/type   :metadata/legacy-metric
+              :id         1
+              :name       "Metric 1"
+              :table-id   (meta/id :venues)
+              :definition {:source-table (meta/id :venues)
+                           ;; note that `:aggregation` here is a single aggregation rather than a sequence of
+                           ;; aggregations, which is how we did things in MBQL 1 and 2. Also `:field` clauses are don't
+                           ;; have options map or `nil` which wasn't added until MBQL 4
+                           :aggregation  [:sum-where
+                                          [:field (meta/id :venues :price)]
+                                          [:< [:field (meta/id :venues :price)] 4]]}})))))

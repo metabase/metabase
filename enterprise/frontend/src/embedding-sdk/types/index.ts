@@ -4,7 +4,6 @@ import type { SdkErrorProps } from "embedding-sdk/components/private/PublicCompo
 
 export type SDKConfig = {
   metabaseInstanceUrl: string;
-  font?: string;
   jwtProviderUri: string;
   loaderComponent?: () => JSX.Element;
   errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;

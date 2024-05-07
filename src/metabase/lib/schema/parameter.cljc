@@ -103,6 +103,12 @@
    ;; any date option above.
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
 
+   ;; `:temporal-unit` is a specialized type of parameter, and specialized widget. In MBQL queries, it maps only to
+   ;; breakout columns which have temporal bucketing set, and overrides the unit from the query.
+   ;; The value for this type of parameter is one of the temporal units from [[metabase.lib.schema.temporal-bucketing]].
+   ;; TODO: Document how this works for native queries.
+   :temporal-unit    {:allowed-for #{:temporal-unit}}
+
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
    :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}

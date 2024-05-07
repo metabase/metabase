@@ -6,20 +6,17 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  QueryColumnInfoIcon,
-  HoverParent,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Icon, DelayGroup } from "metabase/ui";
+import { Box, DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import {
+  ColumnInfoIcon,
+  ColumnNameContainer,
   StyledAccordionList,
-  NameAndBucketing,
-  ItemName,
 } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
@@ -66,8 +63,8 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
-  "data-testid": dataTestId,
   width,
+  "data-testid": dataTestId,
   hasInitialFocus = true,
   alwaysExpanded,
   disableSearch,
@@ -147,8 +144,8 @@ export function QueryColumnPicker({
 
   const renderItemName = useCallback(
     (item: ColumnListItem) => (
-      <NameAndBucketing>
-        <ItemName>{item.displayName}</ItemName>
+      <ColumnNameContainer>
+        <Box mr="sm">{item.displayName}</Box>
         {(hasBinning || hasTemporalBucketing) && (
           <BucketPickerPopover
             query={query}
@@ -163,7 +160,7 @@ export function QueryColumnPicker({
             onSelect={handleSelect}
           />
         )}
-      </NameAndBucketing>
+      </ColumnNameContainer>
     ),
     [
       query,
@@ -179,7 +176,7 @@ export function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     (item: ColumnListItem) => (
-      <QueryColumnInfoIcon
+      <ColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
         column={item.column}

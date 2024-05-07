@@ -105,9 +105,9 @@
   (let [unique-name-fn (->> (lib.util/query-stage query stage-number)
                             (lib.metadata.calculation/returned-columns query stage-number)
                             (map :name)
-                            lib.util/unique-name-generator)]
+                            (lib.util/unique-name-generator (lib.metadata/->metadata-provider query)))]
     (lib.expression/expression
-      query
-      stage-number
-      (unique-name-fn display-name)
-      (extraction-expression extraction))))
+     query
+     stage-number
+     (unique-name-fn display-name)
+     (extraction-expression extraction))))
