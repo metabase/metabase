@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   echartsContainer,
   enterCustomColumnDetails,
@@ -6,6 +7,8 @@ import {
   popover,
   restore,
 } from "e2e/support/helpers";
+
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > metrics", () => {
   beforeEach(() => {
@@ -50,13 +53,8 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric for another metric", () => {
+      createOrderCountMetric();
       cy.visit("/");
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation("Count of rows");
-      saveMetric();
-
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText("Orders, Count").click();
@@ -119,13 +117,8 @@ describe("scenarios > metrics", () => {
 
   describe("aggregations", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
+      createOrderCountMetric();
       cy.visit("/");
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation("Count of rows");
-      saveMetric();
-
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText("Orders, Count").click();
@@ -138,19 +131,9 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric with a custom aggregation expression based on 2 metrics", () => {
+      createOrderCountMetric();
+      createProductCountMetric();
       cy.visit("/");
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation("Count of rows");
-      saveMetric();
-
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Products").click();
-      addAggregation("Count of rows");
-      saveMetric();
-
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText("Orders, Count").click();
@@ -175,6 +158,30 @@ describe("scenarios > metrics", () => {
     });
   });
 });
+
+function createOrderCountMetric() {
+  cy.createQuestion({
+    name: "Orders, Count",
+    type: "metric",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  });
+}
+
+function createProductCountMetric() {
+  cy.createQuestion({
+    name: "Products, Count",
+    type: "metric",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  });
+}
 
 function startNewMetric() {
   cy.findByTestId("app-bar").findByText("New").click();
