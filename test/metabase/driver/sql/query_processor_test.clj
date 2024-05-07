@@ -195,7 +195,7 @@
                 :h2
                 (lib.tu.macros/mbql-query venues
                   {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :base_type :type/Integer}]
+                   :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
@@ -399,16 +399,12 @@
                         DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
                         source.pivot-grouping AS pivot-grouping
                         COUNT (*) AS count]
-             :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
-                                     ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                     ORDERS.CREATED_AT                  AS CREATED_AT
+             :from     [{:select    [ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
                                      ;; TODO -- I'm not sure if the order here is deterministic
                                      ;; Tech debt issue: #39396
                                      PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
@@ -702,20 +698,19 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
-                        COUNT (*)         AS count]
-             :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
-                                  CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
+    (is (= '{:select   [source.CATEGORY AS CATEGORY
+                        COUNT (*)       AS count]
+             :from     [{:select [CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY]
                          :from   [PRODUCTS]}
                         AS source]
-             :group-by [source.CATEGORY_2]
-             :order-by [source.CATEGORY_2 ASC]
+             :group-by [source.CATEGORY]
+             :order-by [source.CATEGORY ASC]
              :limit    [1]}
            (-> (lib.tu.macros/mbql-query products
-                 {:expressions {:CATEGORY [:concat $category "2"]}
-                  :breakout    [[:expression :CATEGORY]]
+                 {:expressions {"CATEGORY" [:concat $category "2"]}
+                  :breakout    [[:expression "CATEGORY"]]
                   :aggregation [[:count]]
-                  :order-by    [[:asc [:expression :CATEGORY]]]
+                  :order-by    [[:asc [:expression "CATEGORY"]]]
                   :limit       1})
                mbql->native
                sql.qp-test-util/sql->sql-map)))))

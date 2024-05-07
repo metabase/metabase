@@ -1630,8 +1630,8 @@
   [_driver inner-query]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-      add/add-alias-info
-      nest-query/nest-expressions))
+      nest-query/nest-expressions
+      add/add-alias-info))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
