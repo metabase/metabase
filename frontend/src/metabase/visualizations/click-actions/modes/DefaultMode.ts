@@ -2,6 +2,7 @@ import type { QueryClickActionsMode } from "../../types";
 import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
 import { HideColumnAction } from "../actions/HideColumnAction";
+import { hideSeriesAction } from "../actions/HideSeriesAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 
 export const DefaultMode: QueryClickActionsMode = {
@@ -11,6 +12,7 @@ export const DefaultMode: QueryClickActionsMode = {
     HideColumnAction,
     ColumnFormattingAction,
     DashboardClickAction,
+    hideSeriesAction,
   ],
   fallback: NativeQueryClickFallback,
 };
