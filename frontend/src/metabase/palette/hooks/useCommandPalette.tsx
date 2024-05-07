@@ -22,6 +22,7 @@ import {
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import type { PaletteAction } from "../types";
+import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = () => {
   const dispatch = useDispatch();
@@ -197,7 +198,7 @@ export const useCommandPalette = () => {
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
-      recentItems?.map(item => ({
+      filterRecentItems(recentItems ?? []).map(item => ({
         id: `recent-item-${getName(item)}`,
         name: getName(item),
         icon: getIcon(item).name,
