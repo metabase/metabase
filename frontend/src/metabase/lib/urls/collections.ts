@@ -1,6 +1,9 @@
 import slugg from "slugg";
 
-import { isRootPersonalCollection } from "metabase/collections/utils";
+import {
+  isRootPersonalCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,
@@ -42,6 +45,10 @@ export function collection(collection?: Pick<Collection, "id" | "name">) {
   if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
+  }
+
+  if (isRootTrashCollection(collection)) {
+    return `/trash`;
   }
 
   const slug = isRootPersonalCollection(collection)
