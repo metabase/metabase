@@ -47,7 +47,6 @@ const setup = ({
   title = "Pick a thing",
   onItemSelect = jest.fn(),
   onClose = jest.fn(),
-  onConfirm = jest.fn(),
   tabs = [TEST_TAB],
   selectedItem = null,
   ...rest
@@ -63,7 +62,6 @@ const setup = ({
       onClose={onClose}
       tabs={tabs}
       selectedItem={selectedItem}
-      onConfirm={onConfirm}
       {...rest}
     />,
   );
@@ -73,13 +71,31 @@ describe("EntityPickerModal", () => {
   afterAll(() => {
     jest.restoreAllMocks();
   });
+
+  it("should throw when options.hasConfirmButtons is true but onConfirm prop is missing", async () => {
+    expect(() => {
+      setup({
+        options: {
+          hasConfirmButtons: true,
+        },
+        onConfirm: undefined,
+      });
+    }).toThrow("onConfirm prop is required when hasConfirmButtons is true");
+  });
+
   it("should render a picker", async () => {
-    setup({});
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
   });
 
   it("should render a search bar by default and show confirmation button", async () => {
-    setup();
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByPlaceholderText("Search…")).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Select" }),
@@ -91,22 +107,24 @@ describe("EntityPickerModal", () => {
       options: {
         showSearch: false,
       },
+      onConfirm: jest.fn(),
     });
+
     expect(screen.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: EntityTab<SampleModelType>[] = [
-      TEST_TAB,
-      {
-        icon: "folder",
-        displayName: "All the bar",
-        model: "table",
-        element: <TestPicker name="bar" />,
-      },
-    ];
     setup({
-      tabs,
+      tabs: [
+        TEST_TAB,
+        {
+          icon: "folder",
+          displayName: "All the bar",
+          model: "table",
+          element: <TestPicker name="bar" />,
+        },
+      ],
+      onConfirm: jest.fn(),
     });
 
     const tabList = await screen.findByRole("tablist");
@@ -151,10 +169,10 @@ describe("EntityPickerModal", () => {
     fetchMock.get("path:/api/user/recipients", { data: [] });
 
     const onItemSelect = jest.fn();
-    const onConfirm = jest.fn();
+
     setup({
       onItemSelect,
-      onConfirm,
+      onConfirm: jest.fn(),
     });
 
     await userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
@@ -182,7 +200,10 @@ describe("EntityPickerModal", () => {
       </Button>,
     ];
 
-    setup({ actionButtons });
+    setup({
+      actionButtons,
+      onConfirm: jest.fn(),
+    });
 
     expect(
       await screen.findByRole("button", { name: "Click Me" }),

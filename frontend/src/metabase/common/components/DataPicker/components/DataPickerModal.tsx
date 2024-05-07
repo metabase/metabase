@@ -126,7 +126,6 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
-      onConfirm={_.noop} // onConfirm is unused when options.hasConfirmButtons is falsy
       onItemSelect={handleChange}
     />
   );

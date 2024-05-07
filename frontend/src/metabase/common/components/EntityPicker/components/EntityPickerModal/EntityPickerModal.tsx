@@ -43,7 +43,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
@@ -78,12 +78,11 @@ export function EntityPickerModal<
   );
 
   const hydratedOptions = useMemo(
-    () => ({
-      ...defaultOptions,
-      ...options,
-    }),
+    () => ({ ...defaultOptions, ...options }),
     [options],
   );
+
+  assertValidProps(hydratedOptions, onConfirm);
 
   const { open } = useModalOpen();
 
@@ -143,7 +142,7 @@ export function EntityPickerModal<
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
             )}
-            {!!hydratedOptions.hasConfirmButtons && (
+            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar
                 onConfirm={onConfirm}
                 onCancel={onClose}
@@ -159,3 +158,14 @@ export function EntityPickerModal<
     </Modal.Root>
   );
 }
+
+const assertValidProps = (
+  options: EntityPickerModalOptions,
+  onConfirm: (() => void) | undefined,
+) => {
+  if (options.hasConfirmButtons && !onConfirm) {
+    throw new Error(
+      "onConfirm prop is required when hasConfirmButtons is true",
+    );
+  }
+};
