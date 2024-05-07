@@ -230,7 +230,8 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            (is (= 110 (-> @entities (get "Collection") count))))
+            ;; +1 for the Trash collection
+            (is (= 111 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -239,7 +240,8 @@
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
-              (is (= 110 (count (for [f (file-set (io/file dump-dir))
+              ;; +1 for the Trash collection
+              (is (= 111 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]

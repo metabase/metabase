@@ -462,7 +462,8 @@
 (methodical/defmethod t2/simple-hydrate [:default :trashed_from_parent_id]
   "Get the immediate parent `collection` id this collection was *trashed* from, if set."
   [_model k collection]
-  (assoc collection k (trashed-from-parent-id* collection)))
+  (cond-> collection
+    (:archived collection) (assoc k (trashed-from-parent-id* collection))))
 
 (methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
@@ -1082,7 +1083,7 @@
                :trashed_from_parent_id trashed-from-parent-id)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes/load-xform "Collection" [{:keys [parent_id trashed_from_parent_id] :as contents}]
+(defmethod serdes/load-xform "Collection" [{:keys [parent_id trashed_from_parent_id archived] :as contents}]
   (let [loc (fn [col-id]
               (if col-id
                 (let [{:keys [id location]} (serdes/lookup-by-id Collection col-id)]
@@ -1092,7 +1093,7 @@
         (dissoc :parent_id)
         (dissoc :trashed_from_parent_id)
         (assoc :location (loc parent_id)
-               :trashed_from_location (loc trashed_from_parent_id))
+               :trashed_from_location (when archived (loc trashed_from_parent_id)))
         (update :personal_owner_id serdes/*import-user*)
         serdes/load-xform-basics)))
 
