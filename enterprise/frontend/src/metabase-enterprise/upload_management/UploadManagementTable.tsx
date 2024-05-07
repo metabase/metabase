@@ -40,7 +40,7 @@ export function UploadManagementTable() {
 
   const deleteTable = useCallback(
     async (table: Table, sendToTrash: boolean) => {
-      await deleteTableRequest({
+      return deleteTableRequest({
         tableId: table.id,
         "archive-cards": sendToTrash,
       });
@@ -89,9 +89,10 @@ export function UploadManagementTable() {
           const result = await Promise.all(
             selectedItems.map(table => deleteTable(table, sendToTrash)),
           );
+
           setShowDeleteConfirmModal(false);
 
-          if (!result) {
+          if (result.some(result => "error" in result)) {
             const message = ngettext(
               msgid`Error deleting table`,
               `Error deleting tables`,

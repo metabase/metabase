@@ -46,7 +46,7 @@ const setup = async () => {
   setupUploadManagementEndpoint(sampleTables);
   setupDeleteUploadManagementDeleteEndpoint(99);
 
-  renderWithProviders(<UploadManagementTable />);
+  renderWithProviders(<UploadManagementTable />, { withUndos: true });
 
   await screen.findByText("Uploaded Tables");
 };
@@ -183,6 +183,82 @@ describe("uploadManagementTable", () => {
       "DELETE",
       "GET",
     ]);
+  });
+
+  it("should show a single-success toast", async () => {
+    await setup();
+    const deleteButton = screen.getAllByLabelText("trash icon")[1];
+
+    await userEvent.click(deleteButton);
+    expect(
+      await screen.findByText("Delete Uploaded Table 2?"),
+    ).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole("button", { name: "Delete" });
+    await userEvent.click(confirmButton);
+    expect(await screen.findByText("1 table deleted")).toBeInTheDocument();
+  });
+
+  it("should show a multi-success toast", async () => {
+    await setup();
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    await userEvent.click(checkboxes[0]);
+    await userEvent.click(checkboxes[1]);
+    await userEvent.click(checkboxes[2]);
+
+    // bulk action popover
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    // modal
+    expect(screen.getByText("Delete 3 tables?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Delete")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("3 tables deleted")).toBeInTheDocument();
+  });
+
+  it("should show an error toast", async () => {
+    await setup();
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    await userEvent.click(checkboxes[3]);
+
+    // bulk action popover
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    // modal
+    expect(screen.getByText("Delete Uploaded Table 99?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Delete")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("Error deleting table")).toBeInTheDocument();
+  });
+
+  it("should show a multi-error toast", async () => {
+    await setup();
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    await userEvent.click(checkboxes[2]);
+    await userEvent.click(checkboxes[3]);
+
+    // bulk action popover
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    // modal
+    expect(screen.getByText("Delete 2 tables?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Delete")).not.toBeInTheDocument(),
+    );
+    expect(
+      await screen.findByText("Error deleting tables"),
+    ).toBeInTheDocument();
   });
 });
 

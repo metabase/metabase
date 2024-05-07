@@ -26,7 +26,11 @@ export function DeleteConfirmModal({
   return (
     <Modal
       opened={opened}
-      title={<Text style={{ wordBreak: "break-all" }}>{title}</Text>}
+      title={
+        <Text size="lg" style={{ wordBreak: "break-all" }}>
+          {title}
+        </Text>
+      }
       onClose={onClose}
       size="md"
     >
