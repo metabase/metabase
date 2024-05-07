@@ -118,7 +118,7 @@
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
