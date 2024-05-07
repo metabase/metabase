@@ -5,14 +5,7 @@ import type { CardDisplayType } from "metabase-types/api";
  *
  * The values are derived from the visualization's default size in the dashboard.
  */
-export function getDefaultVizHeight(
-  type?: CardDisplayType,
-): number | undefined {
-  // If the card type is not loaded yet, return a default height.
-  if (!type) {
-    return 50;
-  }
-
+export function getDefaultVizHeight(type: CardDisplayType): number {
   if (["scalar", "smartscalar"].includes(type)) {
     return 50;
   }

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -60,10 +60,7 @@ export const _InteractiveQuestion = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
   const queryResults = useSelector(getQueryResults);
-
-  const defaultHeight = useMemo(() => {
-    return getDefaultVizHeight(card?.display);
-  }, [card]);
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);

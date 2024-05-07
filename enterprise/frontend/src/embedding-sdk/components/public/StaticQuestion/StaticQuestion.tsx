@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -52,10 +52,6 @@ const _StaticQuestion = ({
     result: null,
     error: null,
   });
-
-  const defaultHeight = useMemo(() => {
-    return getDefaultVizHeight(card?.display);
-  }, [card]);
 
   const loadCardData = async ({ questionId }: { questionId: number }) => {
     setState(prevState => ({
@@ -117,6 +113,7 @@ const _StaticQuestion = ({
   }
 
   const question = new Question(card, metadata);
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   const legacyQuery = question.legacyQuery({
     useStructuredQuery: true,
