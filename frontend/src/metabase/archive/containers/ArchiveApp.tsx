@@ -10,14 +10,12 @@ import { VirtualizedList } from "metabase/components/VirtualizedList";
 import PageHeading from "metabase/components/type/PageHeading";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsNavbarOpen } from "metabase/selectors/app";
+import { useDispatch } from "metabase/lib/redux";
 import { Button } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
   ArchiveBarContent,
-  ArchiveBarText,
   ArchiveBody,
   ArchiveEmptyState,
   ArchiveHeader,
@@ -28,7 +26,6 @@ import {
 
 export function ArchiveApp() {
   const dispatch = useDispatch();
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   const { data, isLoading, error } = useSearchListQuery({
     query: { archived: true },
@@ -103,7 +100,10 @@ export function ArchiveApp() {
           </VirtualizedListWrapper>
         )}
       </ArchiveBody>
-      <BulkActionBar isNavbarOpen={isNavbarOpen} showing={selected.length > 0}>
+      <BulkActionBar
+        opened={selected.length > 0}
+        message={t`${selected.length} items selected`}
+      >
         <ArchiveBarContent>
           <SelectionControls
             allSelected={allSelected}
@@ -111,7 +111,6 @@ export function ArchiveApp() {
             clear={clear}
           />
           <BulkActionControls selected={selected} />
-          <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
         </ArchiveBarContent>
       </BulkActionBar>
     </ArchiveRoot>

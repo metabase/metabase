@@ -4,9 +4,12 @@ import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/components/BulkActionBar";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
-import { Transition } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import type {
@@ -15,21 +18,7 @@ import type {
   OnMoveWithOneItem,
 } from "../types";
 
-import {
-  BulkActionsToast,
-  CardButton,
-  CardSide,
-  ToastCard,
-} from "./BulkActions.styled";
-
-const slideIn = {
-  in: { opacity: 1, transform: "translate(-50%, 0)" },
-  out: { opacity: 0, transform: "translate(-50%, 100px)" },
-  common: { transformOrigin: "top" },
-  transitionProperty: "transform, opacity",
-};
-
-type BulkActionsProps = {
+type CollectionBulkActionsProps = {
   selected: any[];
   collection: Collection;
   selectedItems: CollectionItem[] | null;
@@ -41,7 +30,7 @@ type BulkActionsProps = {
   onCopy: OnCopyWithoutArguments;
 };
 
-const BulkActions = ({
+const CollectionBulkActions = ({
   selected,
   collection,
   selectedItems,
@@ -51,51 +40,35 @@ const BulkActions = ({
   onCloseModal,
   onMove,
   onCopy,
-}: BulkActionsProps) => {
+}: CollectionBulkActionsProps) => {
   const canMove = selected.every(item => canMoveItem(item, collection));
   const canArchive = selected.every(item => canArchiveItem(item, collection));
   const isVisible = selected.length > 0;
 
   const areSomeItemsSelected = !!selectedItems && !_.isEmpty(selectedItems);
 
+  const actionMessage = ngettext(
+    msgid`${selected.length} item selected`,
+    `${selected.length} items selected`,
+    selected.length,
+  );
+
   return (
     <>
-      <Transition
-        mounted={isVisible}
-        transition={slideIn}
-        duration={400}
-        timingFunction="ease"
-      >
-        {styles => (
-          <BulkActionsToast style={styles}>
-            <ToastCard dark data-testid="toast-card">
-              <CardSide>
-                {ngettext(
-                  msgid`${selected.length} item selected`,
-                  `${selected.length} items selected`,
-                  selected.length,
-                )}
-              </CardSide>
-              <CardSide>
-                <CardButton
-                  medium
-                  purple
-                  disabled={!canMove}
-                  onClick={onMoveStart}
-                >{t`Move`}</CardButton>
-                <CardButton
-                  medium
-                  purple
-                  disabled={!canArchive}
-                  onClick={() => {
-                    onArchive?.();
-                  }}
-                >{t`Archive`}</CardButton>
-              </CardSide>
-            </ToastCard>
-          </BulkActionsToast>
-        )}
-      </Transition>
+      <BulkActionBar message={actionMessage} opened={isVisible}>
+        <BulkActionButton
+          disabled={!canMove}
+          onClick={onMoveStart}
+        >{t`Move`}</BulkActionButton>
+        <BulkActionButton
+          disabled={!canArchive}
+          onClick={() => {
+            onArchive?.();
+          }}
+        >
+          {t`Archive`}
+        </BulkActionButton>
+      </BulkActionBar>
       {areSomeItemsSelected && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>
           <CollectionCopyEntityModal
@@ -121,4 +94,4 @@ const BulkActions = ({
 };
 
 // eslint-disable-next-line import/no-default-export
-export default memo(BulkActions);
+export default memo(CollectionBulkActions);

@@ -147,6 +147,18 @@ export function formatNumber(
   }
 }
 
+export function formatChangeWithSign(
+  change: number,
+  { maximumFractionDigits = 2 } = {},
+): string {
+  return change === Infinity
+    ? "∞%"
+    : formatNumber(change, {
+        number_style: "percent",
+        maximumFractionDigits,
+      });
+}
+
 export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option

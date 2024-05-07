@@ -1,16 +1,21 @@
 import { humanize, titleize } from "metabase/lib/formatting";
 import TableEntity from "metabase-lib/v1/metadata/Table";
 import type {
+  Card,
   Database,
   DatabaseId,
   SchemaName,
+  SearchModel,
   Table,
   TableId,
 } from "metabase-types/api";
 
 import type {
+  DataPickerValue,
+  ModelItem,
   NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
+  QuestionItem,
   TablePickerValue,
 } from "./types";
 
@@ -22,11 +27,19 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const tablePickerValueFromTable = (
+export const dataPickerValueFromCard = (card: Card): DataPickerValue => {
+  return {
+    id: card.id,
+    name: card.name,
+    model: card.type === "model" ? "dataset" : "card",
+  };
+};
+
+export const dataPickerValueFromTable = (
   table: Table | TableEntity | null,
-): TablePickerValue | null => {
+): TablePickerValue | undefined => {
   if (table === null) {
-    return null;
+    return undefined;
   }
 
   // Temporary, for backward compatibility in DataStep, until entity framework is no more
@@ -37,6 +50,8 @@ export const tablePickerValueFromTable = (
   return {
     db_id: table.db_id,
     id: table.id,
+    model: "table",
+    name: table.display_name,
     schema: table.schema,
   };
 };
@@ -50,6 +65,8 @@ const tablePickerValueFromTableEntity = (
   return {
     db_id: table.db_id,
     id: table.id,
+    model: "table",
+    name: table.display_name,
     schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
   };
 };
@@ -100,4 +117,26 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   }
 
   return titleize(humanize(schemaName));
+};
+
+export const isModelItem = (
+  value: DataPickerValue | undefined,
+): value is ModelItem => {
+  return value?.model === "dataset";
+};
+
+export const isQuestionItem = (
+  value: DataPickerValue | undefined,
+): value is QuestionItem => {
+  return value?.model === "card";
+};
+
+export const isTableItem = (
+  value: DataPickerValue | undefined,
+): value is TablePickerValue => {
+  return value?.model === "table";
+};
+
+export const isValidValueItem = (model: SearchModel): boolean => {
+  return ["dataset", "card", "table"].includes(model);
 };
