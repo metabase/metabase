@@ -12,9 +12,11 @@ Data sandboxes let you give granular permissions to rows and columns for differe
 
 You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that customers only see the data relevant to them.
 
-## How sandboxes work
+## Data sandbox examples
 
-Data sandboxes work by displaying a filtered version of a table, instead of the original table, to a specific group.
+You can skip the theory and go [straight to sandbox examples](data-sandbox-examples.md).
+
+## How sandboxes work
 
 You can think of a data sandbox as a bundle of permissions that includes:
 
@@ -22,8 +24,6 @@ You can think of a data sandbox as a bundle of permissions that includes:
 - The [group](../people-and-groups/managing.md#groups) of people who should see the filtered version of the table.
 
 You can define up to one data sandbox for each table/group combo in your Metabase. That means you can display different versions of a table for different groups, such as "Sandboxed Accounts for Sales" to your salespeople, and "Sandboxed Accounts for Managers" for sales managers.
-
-If you're ready to jump in, try our [Data sandbox examples](./data-sandbox-examples.md).
 
 ## Types of data sandboxes
 
@@ -96,7 +96,7 @@ For example, you can set up a basic sandbox so that:
 
 ## Choosing user attributes for data sandboxes
 
-**User attributes are required for basic sandboxes** and optional for custom sandboxes. When [adding a new user attribute](../people-and-groups/managing.md#adding-a-user-attribute), you'll set up a key-value pair for each person.
+**User attributes are required for basic sandboxes, and optional for custom sandboxes**. When [adding a new user attribute](../people-and-groups/managing.md#adding-a-user-attribute), you'll set up a key-value pair for each person.
 
 The user attribute key is used to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
 
@@ -104,8 +104,8 @@ The **user attribute value** must be an exact, case-sensitive match for the filt
 
 Examples of user attributes in play:
 
-- [Restricting rows in basic sandboxes](./data-sandbox-examples.md#basic-sandbox-setup)
-- [Restricting rows in custom sandboxes](./data-sandbox-examples.md#example-2-using-variables-in-a-saved-question)
+- [Restricting rows in basic sandboxes](./data-sandbox-examples.md#basic-sandbox-setup-filtering-rows-based-on-user-attributes)
+- [Restricting rows in custom sandboxes](./data-sandbox-examples.md#custom-example-2-filtering-rows-and-columns)
 - [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 
 ## Creating a basic sandbox
@@ -222,7 +222,7 @@ The Email column may get exposed to a sandboxed person if:
 
 - The sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandbox-permissions).
 - A non-sandboxed person shares the Email column from:
-  - A [saved SQL question](#saved-sql-questions)
+  - A saved [SQL question](../questions/native-editor/writing-sql.md).
   - A [public link](#public-sharing)
   - An [alert, or dashboard subscription](../permissions/notifications.md)
 
@@ -240,7 +240,7 @@ If you put Vincent Accountman in both groups, he'll be in conflicting sandboxes 
 To resolve data sandbox permissions conflicts:
 
 - Remove the person from all but one of the groups.
-- Remove all but one of the data sandboxes for that table (change the table's data access to **No self-service**).
+- Set the all but one of the group's [View data](./data.md#view-data-permissions) access to the datatabase to "Blocked".
 
 ### Saved SQL questions cannot be sandboxed
 
