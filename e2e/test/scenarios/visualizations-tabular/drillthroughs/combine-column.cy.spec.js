@@ -5,7 +5,6 @@ import {
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  openPeopleTable,
   popover,
   resetSnowplow,
   restore,
@@ -27,16 +26,16 @@ describeWithSnowplow(
     });
 
     it("should be possible to combine columns from the a table header", () => {
-      openPeopleTable({ limit: 3, mode: "notebook" });
-
-      cy.findByLabelText("Pick columns").click();
-      popover().within(() => {
-        cy.findByText("Select none").click();
-        cy.findByLabelText("Email").click();
-      });
-
-      cy.findByLabelText("Pick columns").click();
-      cy.button("Visualize").click();
+      createQuestion(
+        {
+          query: {
+            "source-table": PRODUCTS_ID,
+            fields: [["field", PRODUCTS.EMAIL, { "base-type": "type/Text" }]],
+            limit: 3,
+          },
+        },
+        { visitQuestion: true },
+      );
 
       cy.findAllByTestId("header-cell").contains("Email").click();
       popover().findByText("Combine columns").click();
