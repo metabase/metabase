@@ -198,8 +198,8 @@ export const useCommandPalette = () => {
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
       recentItems?.map(item => ({
-        id: `recent-item-${getName(item.model_object)}`,
-        name: getName(item.model_object),
+        id: `recent-item-${getName(item)}`,
+        name: getName(item),
         icon: getIcon(item).name,
         section: "recent",
         perform: () => {
@@ -217,10 +217,10 @@ export const useCommandPalette = () => {
               }
             : {
                 parentCollection:
-                  item.model_object.collection_id === null
+                  item.parent_collection.id === null
                     ? ROOT_COLLECTION.name
-                    : item.model_object.collection_name,
-                isVerified: item.model_object.moderated_status === "verified",
+                    : item.parent_collection.name,
+                isVerified: item.moderated_status === "verified",
                 href: Urls.modelToUrl(item),
               },
       })) || []

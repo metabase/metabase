@@ -29,10 +29,8 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const onContainerClick = (item: RecentItem) => {
     if (onClick) {
       onClick({
-        ...item.model_object,
-        model: item.model,
-        name: getName(item.model_object),
-        id: item.model_id,
+        ...item,
+        name: getName(item),
       });
     } else {
       onChangeLocation(item);
