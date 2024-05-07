@@ -28,7 +28,6 @@ interface JoinTablePickerProps {
   tableName: string | undefined;
   color: string;
   isReadOnly: boolean;
-  isModelDataSource: boolean;
   columnPicker: ReactNode;
   onChange?: (table: Lib.Joinable) => void;
 }
@@ -39,7 +38,6 @@ export function JoinTablePicker({
   tableName,
   color,
   isReadOnly,
-  isModelDataSource,
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
@@ -110,9 +108,6 @@ export function JoinTablePicker({
       {isDataPickerOpen && (
         <DataPickerModal
           databaseId={databaseId}
-          initialTab={
-            isModelDataSource && !pickerInfo?.tableId ? "dataset" : undefined
-          }
           value={value}
           onChange={handleTableChange}
           onClose={() => setIsDataPickerOpen(false)}

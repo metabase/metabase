@@ -8,7 +8,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type Question from "metabase-lib/v1/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
+import { createMockNotebookStep } from "../test-utils";
 import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
 
 import NotebookStep from "./NotebookStep";
@@ -18,10 +18,7 @@ type SetupOpts = {
   question?: Question;
 };
 
-function setup({
-  step = createMockNotebookStep(),
-  question = DEFAULT_QUESTION,
-}: SetupOpts = {}) {
+function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const openStep = jest.fn();
   const updateQuery = jest.fn();
 
@@ -31,7 +28,6 @@ function setup({
   renderWithProviders(
     <NotebookStep
       step={step}
-      sourceQuestion={question}
       isLastStep={false}
       isLastOpened={false}
       reportTimezone="Europe/London"
