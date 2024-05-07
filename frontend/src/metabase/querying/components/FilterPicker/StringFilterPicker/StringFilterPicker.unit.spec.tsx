@@ -374,6 +374,8 @@ describe("StringFilterPicker", () => {
 
         const input = screen.getByLabelText("Filter value");
         expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
+        await userEvent.type(input, "{backspace}");
+        expect(screen.queryByDisplayValue("abc")).not.toBeInTheDocument();
 
         await userEvent.type(input, "foo");
         await userEvent.click(screen.getByLabelText("Case sensitive"));
@@ -383,7 +385,7 @@ describe("StringFilterPicker", () => {
         expect(filterParts).toMatchObject({
           operator: "contains",
           column: expect.anything(),
-          values: ["abc", "foo"],
+          values: ["foo"],
           options: { "case-sensitive": true },
         });
         expect(getNextFilterColumnName()).toBe("Product → Description");

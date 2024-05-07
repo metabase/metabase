@@ -277,10 +277,11 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "Wi");
+      const input = screen.getByLabelText("Filter value");
+      await userEvent.type(input, "{backspace}Wi");
       await userEvent.tab();
 
-      expect(getNextFilterName()).toBe("Category starts with 2 selections");
+      expect(getNextFilterName()).toBe("Category starts with Wi");
     });
 
     it("should preserve values when changing the filter operator", async () => {
