@@ -10,7 +10,7 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 type QuestionDetails = StructuredQuestionDetails & { name: string };
 
@@ -24,11 +24,33 @@ const ORDER_COUNT_DETAILS: QuestionDetails = {
   display: "scalar",
 };
 
+const ORDER_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
+  name: "Orders metric",
+  type: "metric",
+  query: {
+    "source-table": ORDERS_ID,
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
 const PRODUCT_COUNT_DETAILS: QuestionDetails = {
   name: "Products metric",
   type: "metric",
   query: {
     "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const PRODUCT_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
+  name: "Products metric",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -94,7 +116,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Products").click();
-      cy.button("Join data").click();
+      startNewJoin();
       popover().findByText("Orders").click();
       popover().findByText("ID").click();
       popover().findByText("Product ID").click();
@@ -109,6 +131,27 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("613");
+    });
+
+    it("should suggest join conditions when joining metrics with breakout clauses", () => {
+      createQuestion(ORDER_COUNT_CREATED_AT_DETAILS);
+      createQuestion(PRODUCT_COUNT_CREATED_AT_DETAILS);
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).click();
+      startNewJoin();
+      popover().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
+        cy.findByText("Metrics").click();
+        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
+      });
+      startNewAggregation();
+      popover().findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
+      getNotebookStep("summarize")
+        .findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name)
+        .should("be.visible");
     });
   });
 
@@ -164,7 +207,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(ORDER_COUNT_DETAILS.name).click();
-      cy.button("Join data").click();
+      startNewJoin();
       popover().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Raw Data").click();
@@ -195,6 +238,10 @@ function startNewClause() {
   cy.findAllByTestId("notebook-cell-item").last().click();
 }
 
+function startNewJoin() {
+  cy.findAllByTestId("action-buttons").first().button("Join data").click();
+}
+
 function startNewFilter() {
   getNotebookStep("filter").within(() => startNewClause());
 }
@@ -202,6 +249,12 @@ function startNewFilter() {
 function startNewAggregation() {
   getNotebookStep("summarize")
     .findByTestId("aggregate-step")
+    .within(() => startNewClause());
+}
+
+function startNewBreakout() {
+  getNotebookStep("summarize")
+    .findByTestId("breakout-step")
     .within(() => startNewClause());
 }
 
@@ -214,12 +267,6 @@ function addAggregation(operatorName: string, columnName?: string) {
       cy.findByText(columnName).click();
     }
   });
-}
-
-function startNewBreakout() {
-  getNotebookStep("summarize")
-    .findByTestId("breakout-step")
-    .within(() => startNewClause());
 }
 
 function addBreakout(columnName: string) {
