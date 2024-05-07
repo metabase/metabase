@@ -58,7 +58,7 @@ const isCompatible = (a, b) => {
   }
   if (
     a === "expression" &&
-    (b === "datetime" || b === "number" || b === "string")
+    ["datetime", "number", "string", "aggregation"].includes(b)
   ) {
     return true;
   }
