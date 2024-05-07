@@ -160,7 +160,7 @@ You cannot add a column to a custom sandbox.
 8. Select your saved question. The question should be written in SQL. If the question contains parameters, those parameters must be required (they cannot be optional).
 9. Optional: [restrict rows based on people's user attributes](#restricting-rows-in-an-custom-sandbox-with-user-attributes).
 
-> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections.
 
 You can find sample custom sandbox setups in the [Data sandbox examples](./data-sandbox-examples.md).
 
