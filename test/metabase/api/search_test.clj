@@ -423,7 +423,7 @@
             (is (ordered-subset? (->> (default-search-results)
                                       (remove (comp #{"collection"} :model))
                                       (map #(cond-> %
-                                              (contains? #{"dashboard" "card" "dataset"} (:model %))
+                                              (contains? #{"dashboard" "card" "dataset" "metric"} (:model %))
                                               (assoc :can_write false))))
                                  (search-request-data :rasta :q "test"))))))))
 
@@ -437,7 +437,7 @@
               (perms/grant-collection-read-permissions! group (u/the-id collection))
               (is (=? (->> (default-results-with-collection)
                           (map #(cond-> %
-                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "segment test2 segment", :description "Lookin' for a blueberry",
@@ -462,7 +462,7 @@
                                                      (remove #(= "collection" (:model %)))
                                                      (map #(update % :name str/replace "test" "test2"))))
                                         (map #(cond-> %
-                                                (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                                (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                                 (assoc :can_write false)))
                                         reverse
                                         sorted-results)
@@ -497,7 +497,7 @@
                                        [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
                                          :creator_id true :creator_common_name "Rasta Toucan"}]))
                           (map #(cond-> %
-                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
                           reverse
                           sorted-results)
