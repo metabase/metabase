@@ -875,12 +875,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       openNotebook();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sort").click();
 
       // Sorts ascending by default
