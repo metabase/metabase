@@ -70,20 +70,22 @@ describe("scenarios > metrics", () => {
       cy.visit("/");
       startNewMetric();
       popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      cy.button("Join data").click();
       popover().findByText("Products").click();
+      cy.button("Join data").click();
+      popover().findByText("Orders").click();
+      popover().findByText("ID").click();
+      popover().findByText("Product ID").click();
       startNewFilter();
       popover().within(() => {
-        cy.findByText("Product").click();
-        cy.findByText("Category").click();
-        cy.findByText("Gadget").click();
+        cy.findByText("User").click();
+        cy.findByText("State").click();
+        cy.findByText("CA").click();
         cy.button("Add filter").click();
       });
       addAggregation("Count of rows");
       saveMetric();
       runQuery();
-      verifyScalarValue("4,939");
+      verifyScalarValue("613");
     });
   });
 
