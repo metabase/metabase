@@ -144,18 +144,37 @@
                                 (assoc join :qp/refs (:qp/refs query)))
                               joins))))))
 
+(defn- should-nest-expressions?
+  "Whether we should nest the expressions in a inner query; true if
+
+  1. there are some expression definitions in the inner query, AND
+
+  2. there are some breakouts OR some aggregations in the inner query
+
+  3. AND the breakouts/aggregations contain at least `:expression` reference."
+  [{:keys [expressions], breakouts :breakout, aggregations :aggregation, :as _inner-query}]
+  (and
+   ;; 1. has some expression definitions
+   (seq expressions)
+   ;; 2. has some breakouts or aggregations
+   (or (seq breakouts)
+       (seq aggregations))
+   ;; 3. contains an `:expression` ref
+   (lib.util.match/match-one (concat breakouts aggregations)
+                             :expression)))
+
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [query]
-  (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
-    (if (empty? expressions)
-      query
-      (let [{:keys [source-query], :as query} (nest-source query)
-            query                             (rewrite-fields-and-expressions query)
-            source-query                      (assoc source-query :expressions expressions)]
-        (-> query
+  [inner-query]
+  (let [{:keys [expressions], :as inner-query} (m/update-existing inner-query :source-query nest-expressions)]
+    (if-not (should-nest-expressions? inner-query)
+      inner-query
+      (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
+            inner-query                                   (rewrite-fields-and-expressions inner-query)
+            source-query                            (assoc source-query :expressions expressions)]
+        (-> inner-query
             (dissoc :source-query :expressions)
             (assoc :source-query source-query)
             add/add-alias-info)))))
