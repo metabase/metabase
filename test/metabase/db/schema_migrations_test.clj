@@ -775,80 +775,81 @@
 
 (deftest fix-multiple-revistion-most-recent-test
   (testing "Migrations v49.2024-05-07T10:00:00: Set revision.most_recent = true ensures that there is only one most recent revision per model_id"
-    (impl/test-migrations "v49.2024-05-07T10:00:00" [migrate!]
-      (let [user-id         (:id (create-raw-user! (mt/random-email)))
-            old             (t/minus (t/local-date-time) (t/hours 1))
-            now             (t/local-date-time)
-            rev-dash-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "dashboard"
-                                                      :model_id    1
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :is_creation true
-                                                      :timestamp   old})
-            rev-dash-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "dashboard"
-                                                      :model_id    1
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :timestamp   now})
-            rev-dash-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "dashboard"
-                                                      :model_id    2
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :is_creation true
-                                                      :timestamp   old})
-            rev-dash-2-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "dashboard"
-                                                      :model_id    2
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :timestamp   now})
-            rev-card-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "card"
-                                                      :model_id    1
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :is_creation true
-                                                      :timestamp   now})
-            rev-card-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "card"
-                                                      :model_id    1
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :timestamp   now})
-            rev-card-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "card"
-                                                      :model_id    2
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      :is_creation true
-                                                      :most_recent true
-                                                      :timestamp   now})
-            rev-card-2-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "card"
-                                                      :model_id    2
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      ;; both are most recent with the same timestamp,
-                                                      ;; the one that has higher id will be most_recent
-                                                      :most_recent true
-                                                      :timestamp   now})
-            rev-card-3-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
-                                                     {:model       "card"
-                                                      :model_id    3
-                                                      :user_id     user-id
-                                                      :object      "{}"
-                                                      ;; both are most recent with the same timestamp,
-                                                      ;; the one that has higher id will be most_recent
-                                                      :most_recent true
-                                                      :timestamp   now})]
-        (migrate!)
-        (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
-                                          :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old]])))
-        (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
-                                         :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new]])))))))
+    (mt/test-driver :mysql
+      (impl/test-migrations "v49.2024-05-07T10:00:00" [migrate!]
+        (let [user-id         (:id (create-raw-user! (mt/random-email)))
+              old             (t/minus (t/local-date-time) (t/hours 1))
+              now             (t/local-date-time)
+              rev-dash-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "dashboard"
+                                                        :model_id    1
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :is_creation true
+                                                        :timestamp   old})
+              rev-dash-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "dashboard"
+                                                        :model_id    1
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :timestamp   now})
+              rev-dash-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "dashboard"
+                                                        :model_id    2
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :is_creation true
+                                                        :timestamp   old})
+              rev-dash-2-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "dashboard"
+                                                        :model_id    2
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :timestamp   now})
+              rev-card-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "card"
+                                                        :model_id    1
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :is_creation true
+                                                        :timestamp   now})
+              rev-card-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "card"
+                                                        :model_id    1
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :timestamp   now})
+              rev-card-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "card"
+                                                        :model_id    2
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        :is_creation true
+                                                        :most_recent true
+                                                        :timestamp   now})
+              rev-card-2-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "card"
+                                                        :model_id    2
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        ;; both are most recent with the same timestamp,
+                                                        ;; the one that has higher id will be most_recent
+                                                        :most_recent true
+                                                        :timestamp   now})
+              rev-card-3-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
+                                                       {:model       "card"
+                                                        :model_id    3
+                                                        :user_id     user-id
+                                                        :object      "{}"
+                                                        ;; both are most recent with the same timestamp,
+                                                        ;; the one that has higher id will be most_recent
+                                                        :most_recent true
+                                                        :timestamp   now})]
+         (migrate!)
+         (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old]])))
+         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
+                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new]]))))))))
 
 (defn- clear-permissions!
   []

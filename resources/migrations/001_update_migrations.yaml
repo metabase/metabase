@@ -5801,34 +5801,8 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-05-07T10:00:00
       author: qnkhuat
-      # a redo of v48.00-008
-      comment: Set revision.most_recent = true ensures that there is only one most recent revision per model_id
+      comment: Set revision.most_recent = true to latest revision and false to others. A redo of v48.00-008 for mysql
       changes:
-        - sql:
-            dbms: h2
-            sql: >-
-              UPDATE revision r
-              SET r.most_recent = (
-                  SELECT CASE WHEN row_num = 1 THEN TRUE ELSE FALSE END
-                  FROM (
-                      SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
-                      FROM revision
-                  ) AS subquery
-                  WHERE r.id = subquery.id
-              );
-        - sql:
-            dbms: postgresql
-            sql: >-
-              WITH max_timestamp_per_group AS (
-                  SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
-                  FROM revision
-              )
-              UPDATE revision r
-              SET most_recent = (subquery.row_num = 1)
-              FROM max_timestamp_per_group subquery
-              WHERE r.id = subquery.id;
-          # mysql and mariadb does not allow update on a table that is in the select part
-          # so it we join for them
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -5839,7 +5813,7 @@ databaseChangeLog:
               ) AS subquery
               ON r.id = subquery.id
               SET r.most_recent = (subquery.row_num = 1);
-      rollback: # nothing to do since the most_recent will be dropped anyway
+      rollback: # nothing
 
   - changeSet:
       id: v50.2024-01-04T13:52:51
