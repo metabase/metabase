@@ -1,5 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
+  createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
   getNotebookStep,
@@ -9,6 +11,28 @@ import {
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+type QuestionDetails = StructuredQuestionDetails & { name: string };
+
+const ORDER_COUNT_DETAILS: QuestionDetails = {
+  name: "Orders metric",
+  type: "metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const PRODUCT_COUNT_DETAILS: QuestionDetails = {
+  name: "Products metric",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
 
 describe("scenarios > metrics", () => {
   beforeEach(() => {
@@ -53,11 +77,11 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric for another metric", () => {
-      createOrderCountMetric();
+      createQuestion(ORDER_COUNT_DETAILS);
       cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText("Orders, Count").click();
+      popover().findByText(ORDER_COUNT_DETAILS.name).click();
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -117,13 +141,16 @@ describe("scenarios > metrics", () => {
 
   describe("aggregations", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
-      createOrderCountMetric();
+      createQuestion(ORDER_COUNT_DETAILS);
       cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText("Orders, Count").click();
-      getNotebookStep("summarize").findByText("Orders, Count").click();
-      enterCustomColumnDetails({ formula: "[Orders, Count] / 2 ", name: "" });
+      popover().findByText(ORDER_COUNT_DETAILS.name).click();
+      getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
+      enterCustomColumnDetails({
+        formula: `[${ORDER_COUNT_DETAILS.name}] / 2`,
+        name: "",
+      });
       popover().button("Update").click();
       saveMetric();
       runQuery();
@@ -131,24 +158,24 @@ describe("scenarios > metrics", () => {
     });
 
     it("should create a metric with a custom aggregation expression based on 2 metrics", () => {
-      createOrderCountMetric();
-      createProductCountMetric();
+      createQuestion(ORDER_COUNT_DETAILS);
+      createQuestion(PRODUCT_COUNT_DETAILS);
       cy.visit("/");
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText("Orders, Count").click();
+      popover().findByText(ORDER_COUNT_DETAILS.name).click();
       cy.button("Join data").click();
       popover().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Raw Data").click();
         cy.findByText("Metrics").click();
-        cy.findByText("Products, Count").click();
+        cy.findByText(PRODUCT_COUNT_DETAILS.name).click();
       });
       popover().findByText("Product ID").click();
       popover().findByText("ID").click();
-      getNotebookStep("summarize").findByText("Orders, Count").click();
+      getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
       enterCustomColumnDetails({
-        formula: "[Orders, Count] / [Products, Count]",
+        formula: `[${ORDER_COUNT_DETAILS.name}] / [${PRODUCT_COUNT_DETAILS.name}]`,
         name: "",
       });
       popover().button("Update").click();
@@ -158,30 +185,6 @@ describe("scenarios > metrics", () => {
     });
   });
 });
-
-function createOrderCountMetric() {
-  cy.createQuestion({
-    name: "Orders, Count",
-    type: "metric",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    },
-    display: "scalar",
-  });
-}
-
-function createProductCountMetric() {
-  cy.createQuestion({
-    name: "Products, Count",
-    type: "metric",
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-    },
-    display: "scalar",
-  });
-}
 
 function startNewMetric() {
   cy.findByTestId("app-bar").findByText("New").click();
