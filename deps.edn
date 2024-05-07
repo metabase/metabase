@@ -182,7 +182,7 @@
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
   ;;delete me
-  com.hyperfiddle/rcf {:mvn/version "20220926-202227"}}}
+  com.hyperfiddle/rcf {:mvn/version "20220926-202227"}}
 
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
