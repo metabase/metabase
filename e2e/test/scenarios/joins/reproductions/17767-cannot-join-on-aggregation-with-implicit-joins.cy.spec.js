@@ -32,13 +32,6 @@ describe("issue 17767", () => {
     // Join "Previous results" with
     popover().contains("Reviews").click();
 
-    // On
-    popover().contains("ID").click();
-    // =
-    popover()
-      .contains(/Products? ID/)
-      .click();
-
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
