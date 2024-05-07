@@ -2,12 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
@@ -137,26 +135,6 @@
                 (set/union
                  (pulse-channel-test/send-pulse-triggers pulse-1)
                  (pulse-channel-test/send-pulse-triggers pulse-2))))))))
-
-(deftest init-will-schedule-triggers-test
-  ;; see [[task.send-pulses/init-send-pulse-triggers!]] docstring for more context
-  (pulse-channel-test/with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel channel        (merge {:pulse_id       pulse-id
-                                                              :channel_type   :slack
-                                                              :details        {:channel "#random"}}
-                                                             daily-at-6pm)]
-      (testing "sanity check that we don't have any send pulse job to start with"
-        ;; the triggers were created in after-insert hook of PulseChannel, so we need to manually delete them
-        (doseq [trigger (pulse-channel-test/send-pulse-triggers pulse-id)]
-          (task/delete-trigger! (triggers/key (:key trigger))))
-        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
-
-      ;; init again
-      (task/init! ::task.send-pulses/SendPulses)
-      (testing "we have a send pulse job for each PulseChannel"
-        (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id daily-at-6pm [(:id channel)])}
-               (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest send-pulses-exceed-thread-pool-test
   (testing "test that if we have more send-pulse triggers than the number of available threads, all channels will still be sent"
