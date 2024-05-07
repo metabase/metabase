@@ -10,16 +10,17 @@ import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
 
 import { ChunkyListItem } from "./ResultItem.styled";
 
-export type ResultItemType = Pick<
-  SearchResult,
-  | "model"
-  | "collection"
-  | "name"
-  | "description"
-  | "collection_authority_level"
-  | "moderated_status"
-  | "display"
->;
+export type ResultItemType = Pick<SearchResult, "model" | "name"> &
+  Partial<
+    Pick<
+      SearchResult,
+      | "collection"
+      | "description"
+      | "collection_authority_level"
+      | "moderated_status"
+      | "display"
+    >
+  >;
 
 export const ResultItem = ({
   item,
