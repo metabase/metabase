@@ -115,6 +115,21 @@ describe("scenarios > metrics", () => {
       verifyPinMap();
     });
   });
+
+  describe("aggregations", () => {
+    it("should create a metric with a custom aggregation expression based on 1 metric", () => {
+      cy.visit("/");
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      saveMetric();
+
+      saveMetric();
+      popover().findByText("Metrics");
+      popover().findByText("Orders, Count").click();
+    });
+  });
 });
 
 function startNewMetric() {
@@ -122,18 +137,22 @@ function startNewMetric() {
   popover().findByText("Metric").click();
 }
 
+function startNewClause() {
+  cy.findByTestId("notebook-cell-item").last().click();
+}
+
 function startNewFilter() {
-  getNotebookStep("filter")
-    .findByText("Add filters to narrow your answer")
-    .click();
+  getNotebookStep("filter").within(() => startNewClause());
+}
+
+function startNewAggregation() {
+  getNotebookStep("summarize")
+    .findByTestId("aggregate-step")
+    .within(() => startNewClause());
 }
 
 function addAggregation(operatorName: string, columnName?: string) {
-  getNotebookStep("summarize")
-    .findByTestId("aggregate-step")
-    .findAllByTestId("notebook-cell-item")
-    .last()
-    .click();
+  startNewAggregation();
 
   popover().within(() => {
     cy.findByText(operatorName).click();
@@ -143,13 +162,14 @@ function addAggregation(operatorName: string, columnName?: string) {
   });
 }
 
-function addBreakout(columnName: string) {
+function startNewBreakout() {
   getNotebookStep("summarize")
     .findByTestId("breakout-step")
-    .findAllByTestId("notebook-cell-item")
-    .last()
-    .click();
+    .within(() => startNewClause());
+}
 
+function addBreakout(columnName: string) {
+  startNewBreakout();
   popover().findByText(columnName).click();
 }
 
