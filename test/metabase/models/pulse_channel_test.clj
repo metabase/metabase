@@ -405,6 +405,7 @@
   [pulse-id schedule-map pc-ids]
   {:key      (.getName (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
    :schedule (u.cron/schedule-map->cron-string schedule-map)
+   :priority 0
    :data     {"pulse-id"    pulse-id
               "channel-ids" (set pc-ids)}})
 
