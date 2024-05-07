@@ -30,6 +30,8 @@ if (hasPremiumFeature("official_collections")) {
 
   PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
+  PLUGIN_COLLECTIONS.getIcon = getIcon;
+
   PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
     collection: Collection,
     onUpdate: (collection: Collection, values: Partial<Collection>) => void,
@@ -77,5 +79,4 @@ if (hasPremiumFeature("audit_app")) {
     CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
 
   PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
-  PLUGIN_COLLECTIONS.getIcon = getIcon;
 }
