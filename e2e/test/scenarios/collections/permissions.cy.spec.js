@@ -152,10 +152,7 @@ describe("collection permissions", () => {
                     navigationSidebar().within(() => {
                       cy.findByText("Trash").click();
                     });
-                    cy.location("pathname").should(
-                      "eq",
-                      "/collection/13371339-trash",
-                    );
+                    cy.location("pathname").should("eq", "/trash");
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders");
                   });
