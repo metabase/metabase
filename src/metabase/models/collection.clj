@@ -461,6 +461,15 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
+(mu/defn ^:private trashed-from-parent-id* :- [:maybe ms/PositiveInt]
+  [{:keys [trashed_from_location]} :- CollectionWithLocationOrRoot]
+  (some-> trashed_from_location location-path->parent-id))
+
+(methodical/defmethod t2/simple-hydrate [:default :trashed_from_parent_id]
+  "Get the immediate parent `collection` id this collection was *trashed* from, if set."
+  [_model k collection]
+  (assoc collection k (trashed-from-parent-id* collection)))
+
 (methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
   [_model k collection]
@@ -1055,57 +1064,74 @@
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
-  (let [fetch-collection (fn [id]
-                           (t2/select-one Collection :id id))
-        parent           (some-> coll
-                                 :id
-                                 fetch-collection
-                                 (t2/hydrate :parent_id)
-                                 :parent_id
-                                 fetch-collection)
-        parent-id        (when parent
-                           (or (:entity_id parent) (serdes/identity-hash parent)))
-        owner-email      (when (:personal_owner_id coll)
-                           (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
+  (let [fetch-collection       (fn [id]
+                              (t2/select-one Collection :id id))
+        {:keys [trashed_from_parent_id
+                parent_id]}    (some-> coll :id fetch-collection (t2/hydrate :parent_id :trashed_from_parent_id))
+        parent                 (some-> parent_id fetch-collection)
+        trashed-from-parent    (some-> trashed_from_parent_id fetch-collection)
+        parent-id              (when parent
+                              (or (:entity_id parent) (serdes/identity-hash parent)))
+        trashed-from-parent-id (when trashed-from-parent
+                                 (or (:entity_id trashed-from-parent) (serdes/identity-hash trashed-from-parent)))
+        owner-email            (when (:personal_owner_id coll)
+                                 (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
     (-> (serdes/extract-one-basics "Collection" coll)
         (dissoc :location)
-        (assoc :parent_id parent-id :personal_owner_id owner-email)
+        (assoc :parent_id parent-id
+               :personal_owner_id owner-email
+               :trashed_from_parent_id trashed-from-parent-id)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
-  (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
-                       (str location id "/"))
-                     "/")]
+(defmethod serdes/load-xform "Collection" [{:keys [parent_id trashed_from_parent_id] :as contents}]
+  (let [loc (fn [col-id]
+              (if col-id
+                (let [{:keys [id location]} (serdes/lookup-by-id Collection col-id)]
+                  (str location id "/"))
+                "/"))]
     (-> contents
         (dissoc :parent_id)
-        (assoc :location loc)
+        (dissoc :trashed_from_parent_id)
+        (assoc :location (loc parent_id)
+               :trashed_from_location (loc trashed_from_parent_id))
         (update :personal_owner_id serdes/*import-user*)
         serdes/load-xform-basics)))
 
 (defmethod serdes/dependencies "Collection"
-  [{:keys [parent_id]}]
-  (if parent_id
-    [[{:model "Collection" :id parent_id}]]
-    []))
+  [{:keys [parent_id trashed_from_parent_id]}]
+  (set/union (when parent_id
+                   #{[{:model "Collection" :id parent_id}]})
+             (when trashed_from_parent_id
+               #{[{:model "Collection" :id trashed_from_parent_id}]})))
 
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
 (defmethod serdes/ascendants "Collection" [_ id]
-  (let [location (t2/select-one-fn :location Collection :id id)]
+  (let [{:keys [location trashed_from_location]} (t2/select-one :model/Collection :id id)]
     ;; it would work returning just one, but why not return all if it's cheap
-    (set (map vector (repeat "Collection") (location-path->ids location)))))
+    (set (concat (map vector (repeat "Collection") (location-path->ids location))
+                 (when trashed_from_location
+                   (map vector (repeat "Collection") (location-path->ids trashed_from_location)))))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
-  (let [location    (t2/select-one-fn :location Collection :id id)
-        child-colls (set (for [child-id (t2/select-pks-set Collection {:where [:like :location (str location id "/%")]})]
-                           ["Collection" child-id]))
-        dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
-                           ["Dashboard" dash-id]))
-        cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
-                           ["Card" card-id]))]
-    (set/union child-colls dashboards cards)))
+  ;; the Trash collection has no descendants, for our purposes. This allows us to only include trashed items that were
+  ;; explicitly included in the export.
+  (when-not (is-trash? (t2/select-one :model/Collection :id id))
+    (let [location    (t2/select-one-fn :location Collection :id id)
+          child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:or
+                                                                                        [:like :location (str location id "/%")]
+                                                                                        [:like :trashed_from_location (str location id "/%")]]})]
+                             ["Collection" child-id]))
+          dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:or
+                                                                                      [:= :collection_id id]
+                                                                                      [:= :trashed_from_collection_id id]]})]
+                             ["Dashboard" dash-id]))
+          cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:or
+                                                                                 [:= :collection_id id]
+                                                                                 [:= :trashed_from_collection_id id]]})]
+                             ["Card" card-id]))]
+      (set/union child-colls dashboards cards))))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
