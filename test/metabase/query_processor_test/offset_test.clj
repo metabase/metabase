@@ -126,16 +126,18 @@
                                 (lib/expression query "offset_total" (lib/+ (lib/offset orders-total -1) 10.0))
                                 (lib/expression query "product_title" (lib/concat "TITLE: " product-title))
                                 (lib/with-fields query [orders-id
+                                                        (lib/expression-ref query "product_title")
                                                         orders-total
                                                         (lib/expression-ref query "offset_total")])
                                 (lib/order-by query (lib/expression-ref query "product_title"))
+                                (lib/order-by query orders-id)
                                 (lib/limit query 3))]
         (mt/with-native-query-testing-context query
-          (is (= [[14186 42.52 nil] ; or should this be 10?
-                  [16279 62.21 52.52]
-                  [10637 63.65 72.21]]
+          (is (= [[121 "TITLE: Aerodynamic Bronze Hat" 55.54 nil]
+                  [362 "TITLE: Aerodynamic Bronze Hat" 63.65 65.54]
+                  [377 "TITLE: Aerodynamic Bronze Hat" 64.57 73.65]]
                  (mt/formatted-rows
-                  [int 2.0 2.0]
+                  [int str 2.0 2.0]
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel offset-aggregation-test
