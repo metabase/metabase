@@ -7,6 +7,7 @@
   "
   (:require
    [clojure.string :as str]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -49,28 +50,29 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-
 (defn- values-from-card-query
-  [card value-field query]
-  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))
-        expressions (get-in card [:dataset_query :query :expressions])]
+  [card value-field-ref query]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
+        value-field-ref (lib.util.match/replace value-field-ref
+                          [:expression expr-name opts]
+                          [:field expr-name (merge {:base-type value-base-type} opts)]
+
+                          [:expression expr-name]
+                          [:field expr-name {:base-type value-base-type}])]
     {:database (:database_id card)
      :type     :query
-     :query    (merge
-                 (cond-> {:source-table (format "card__%d" (:id card))
-                          :breakout     [value-field]
-                          :limit        *max-rows*}
-                   expressions
-                   (assoc :expressions expressions))
-                 {:filter [:and
-                           [(if (isa? value-base-type :type/Text)
-                              :not-empty
-                              :not-null)
-                            value-field]
-                           (when query
-                             (if-not (isa? value-base-type :type/Text)
-                               [:= value-field query]
-                               [:contains [:lower value-field] (u/lower-case-en query)]))]})
+     :query    {:source-table (format "card__%d" (:id card))
+                :breakout     [value-field-ref]
+                :limit        *max-rows*
+                :filter       [:and
+                               [(if (isa? value-base-type :type/Text)
+                                  :not-empty
+                                  :not-null)
+                                value-field-ref]
+                               (when query
+                                 (if-not (isa? value-base-type :type/Text)
+                                   [:= value-field-ref query]
+                                   [:contains [:lower value-field-ref] (u/lower-case-en query)]))]}
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
@@ -91,9 +93,9 @@
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf Card)
-    value-field     :- ms/Field
+    value-field-ref :- ms/LegacyFieldOrExpressionReference
     query           :- [:any]]
-   (let [mbql-query   (values-from-card-query card value-field query)
+   (let [mbql-query   (values-from-card-query card value-field-ref query)
          result       (qp/process-query mbql-query)
          values       (get-in result [:data :rows])]
      {:values         values

@@ -9,7 +9,7 @@
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 
-(deftest with-mbql-card-test
+(deftest ^:parallel with-mbql-card-test
   (doseq [model? [true false]]
     (testing (format "source card is a %s" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
@@ -33,7 +33,7 @@
                       (mt/$ids $venues.name)
                       "bakery"))))))))))
 
-(deftest with-mbql-card-test-2
+(deftest ^:parallel with-mbql-card-test-2
   (doseq [model? [true false]]
     (testing (format "source card is a %s" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
@@ -73,7 +73,7 @@
                       [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
                       "bakery"))))))))))
 
-(deftest with-mbql-card-test-3
+(deftest ^:parallel with-mbql-card-test-3
   (doseq [model? [true false]]
     (testing (format "source card is a %s" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
@@ -100,7 +100,7 @@
                         (mt/$ids $venues.category_id)
                         2)))))))))))
 
-(deftest with-native-card-test
+(deftest ^:parallel with-native-card-test
   (doseq [model? [true false]]
     (testing (format "source card is a %s with native question" (if model? "model" "question"))
       (binding [custom-values/*max-rows* 3]
