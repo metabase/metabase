@@ -21,6 +21,9 @@ describe("Transform Embedding Theme Override", () => {
         "text-dark": expect.arrayContaining(["yellow"]),
         "text-light": expect.arrayContaining(["green"]),
       },
+      other: {
+        fontSize: "2rem",
+      },
     });
   });
 });
