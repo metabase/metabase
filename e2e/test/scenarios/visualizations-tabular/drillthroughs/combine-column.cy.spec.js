@@ -86,5 +86,31 @@ describeWithSnowplow(
         database_id: SAMPLE_DB_ID,
       });
     });
+
+    it("should handle duplicate column names", () => {
+      openPeopleTable({ limit: 3, mode: "notebook" });
+
+      cy.findByLabelText("Pick columns").click();
+      popover().within(() => {
+        cy.findByText("Select none").click();
+        cy.findByLabelText("Email").click();
+      });
+
+      cy.findByLabelText("Pick columns").click();
+      cy.button("Visualize").click();
+
+      // first combine (email + ID)
+      cy.findAllByTestId("header-cell").contains("Email").click();
+      popover().findByText("Combine columns").click();
+      popover().findByText("Done").click();
+
+      // second combine (email + ID)
+      cy.findAllByTestId("header-cell").contains("Email").click();
+      popover().findByText("Combine columns").click();
+      popover().findByText("Done").click();
+
+      cy.findAllByTestId("header-cell").contains("Email ID").should("exist");
+      cy.findAllByTestId("header-cell").contains("Email ID_2").should("exist");
+    });
   },
 );
