@@ -272,6 +272,7 @@ export type CollectionAuthorityLevelIcon = ComponentType<
   Omit<IconProps, "name" | "tooltip"> & {
     collection: Pick<Collection, "authority_level">;
     tooltip?: "default" | "belonging";
+    archived?: boolean;
   }
 >;
 

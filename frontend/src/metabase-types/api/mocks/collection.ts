@@ -28,6 +28,7 @@ export const createMockCollectionItem = (
   type: null,
   getIcon: () => ({ name: "question" }),
   getUrl: () => "/question/1",
+  archived: false,
   ...opts,
 });
 

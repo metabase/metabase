@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
@@ -26,10 +27,31 @@ export function isPersonalCollection(
   return collection.is_personal;
 }
 
+export function isRootTrashCollection(
+  collection: Pick<Collection, "id">,
+): boolean {
+  return collection.id === TRASH_COLLECTION.id;
+}
+
+export function isTrashedCollection(
+  collection: Pick<Collection, "id" | "archived">,
+): boolean {
+  return isRootTrashCollection(collection) || collection.archived;
+}
+
 export function isPublicCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
   return !isPersonalCollection(collection);
+}
+
+export function isEditableCollection(collection: Collection) {
+  return (
+    collection.can_write &&
+    !isRootCollection(collection) &&
+    !isRootPersonalCollection(collection) &&
+    !isTrashedCollection(collection)
+  );
 }
 
 export function isInstanceAnalyticsCollection(
@@ -134,11 +156,16 @@ export function isReadOnlyCollection(collection: CollectionItem) {
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null;
+  return collection?.can_write && item.setPinned != null && !item.archived;
 }
 
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && isItemPinned(item) && isItemQuestion(item);
+  return (
+    collection?.can_write &&
+    isItemPinned(item) &&
+    isItemQuestion(item) &&
+    !item.archived
+  );
 }
 
 export function canMoveItem(item: CollectionItem, collection?: Collection) {
@@ -154,8 +181,29 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !item.archived
   );
+}
+
+export function canUnarchiveItem(
+  item: CollectionItem,
+  collection?: Collection,
+) {
+  return (
+    item.archived &&
+    collection &&
+    isRootTrashCollection(collection) &&
+    (item.can_write ?? collection?.can_write ?? true)
+  );
+}
+
+export function canDeleteItem(item: CollectionItem, collection?: Collection) {
+  return item.archived && (item.can_write ?? collection?.can_write ?? true);
+}
+
+export function canCopyItem(item: CollectionItem) {
+  return item.copy && !item.archived;
 }
 
 export function isPreviewShown(item: CollectionItem) {

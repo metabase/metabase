@@ -4,9 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import CollectionBulkActions from "metabase/collections/components/CollectionBulkActions";
+import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -16,13 +19,17 @@ import type {
   OnFileUpload,
   UploadFile,
 } from "metabase/collections/types";
-import { isPersonalCollectionChild } from "metabase/collections/utils";
+import {
+  isRootTrashCollection,
+  isPersonalCollectionChild,
+} from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
 import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
+import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -168,35 +175,6 @@ export const CollectionContentView = ({
     accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
   });
 
-  const handleBulkArchive = useCallback(async () => {
-    try {
-      await Promise.all(selected.map(item => item.setArchived?.(true)));
-    } finally {
-      clear();
-    }
-  }, [selected, clear]);
-
-  const handleBulkMoveStart = () => {
-    setSelectedItems(selected);
-    setSelectedAction("move");
-  };
-
-  const handleBulkMove = useCallback(
-    async (collection: Pick<Collection, "id"> & Partial<Collection>) => {
-      try {
-        if (selectedItems) {
-          await Promise.all(
-            selectedItems.map(item => item.setCollection?.(collection)),
-          );
-        }
-        handleCloseModal();
-      } finally {
-        clear();
-      }
-    },
-    [selectedItems, clear],
-  );
-
   const handleUnpinnedItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions) => {
       setUnpinnedItemsSorting(sortingOpts);
@@ -204,11 +182,6 @@ export const CollectionContentView = ({
     },
     [setPage],
   );
-
-  const handleCloseModal = () => {
-    setSelectedItems(null);
-    setSelectedAction(null);
-  };
 
   const handleMove = (selectedItems: CollectionItem[]) => {
     setSelectedItems(selectedItems);
@@ -237,7 +210,9 @@ export const CollectionContentView = ({
     models: ALL_MODELS,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-    pinned_state: "is_not_pinned",
+    ...(isRootTrashCollection(collection)
+      ? {}
+      : { pinned_state: "is_not_pinned" }),
     ...unpinnedItemsSorting,
   };
 
@@ -256,13 +231,21 @@ export const CollectionContentView = ({
       wrapped
     >
       {({
-        list: pinnedItems = [],
+        list,
         loading: loadingPinnedItems,
       }: {
         list: CollectionItem[];
         loading: boolean;
       }) => {
+        const pinnedItems =
+          list && !isRootTrashCollection(collection) ? list : [];
         const hasPinnedItems = pinnedItems.length > 0;
+        const actionId = { id: collectionId };
+        const parentCollection =
+          collection.effective_ancestors &&
+          _.last(collection.effective_ancestors);
+        const canRestore =
+          !!parentCollection && isRootTrashCollection(parentCollection);
 
         return (
           <CollectionRoot {...dropzoneProps}>
@@ -280,6 +263,28 @@ export const CollectionContentView = ({
                 />
               </>
             )}
+
+            {collection.archived && (
+              <ArchivedEntityBanner
+                name={collection.name}
+                entityType="collection"
+                canWrite={collection.can_write}
+                canRestore={canRestore}
+                onUnarchive={() => {
+                  const input = { ...actionId, name: collection.name };
+                  dispatch(Collections.actions.setArchived(input, false));
+                }}
+                onMove={id =>
+                  dispatch(Collections.actions.setCollection(actionId, { id }))
+                }
+                onDeletePermanently={() =>
+                  dispatch(
+                    deletePermanently(Collections.actions.delete(actionId)),
+                  )
+                }
+              />
+            )}
+
             <CollectionMain>
               <ErrorBoundary>
                 <Header
@@ -388,15 +393,13 @@ export const CollectionContentView = ({
                           </div>
                         </CollectionTable>
                         <CollectionBulkActions
-                          selected={selected}
                           collection={collection}
-                          onArchive={handleBulkArchive}
-                          onMoveStart={handleBulkMoveStart}
-                          onMove={handleBulkMove}
-                          onCloseModal={handleCloseModal}
-                          onCopy={clear}
+                          selected={selected}
+                          clearSelected={clear}
                           selectedItems={selectedItems}
+                          setSelectedItems={setSelectedItems}
                           selectedAction={selectedAction}
+                          setSelectedAction={setSelectedAction}
                         />
                       </>
                     );

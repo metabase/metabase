@@ -31,7 +31,7 @@ describe("issue 31663", () => {
 
     main().findByText("Orders Model").click();
     cy.wait("@dataset");
-    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByLabelText("Move, trash, and more...").click();
     popover().findByText("Edit metadata").click();
 
     cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
