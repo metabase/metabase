@@ -88,7 +88,6 @@ export const _InteractiveQuestion = ({
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
-    } finally {
       setLoading(false);
     }
   };

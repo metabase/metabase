@@ -65,7 +65,7 @@ export default DragSource(
 
           onDrop && onDrop();
         } catch (e) {
-          console.error("There was a problem moving these items: " + e);
+          console.error("There was a problem moving these items: ", e);
         }
       }
     },

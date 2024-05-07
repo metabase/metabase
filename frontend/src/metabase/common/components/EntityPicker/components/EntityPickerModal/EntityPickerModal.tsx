@@ -5,7 +5,11 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModel, SearchResultId } from "metabase-types/api";
+import type {
+  SearchModel,
+  SearchResult,
+  SearchResultId,
+} from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -47,7 +51,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   onClose: () => void;
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
-  searchResultFilter?: (results: Item[]) => Item[];
+  searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
@@ -71,7 +75,9 @@ export function EntityPickerModal<
   trapFocus = true,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<Item[] | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
+    null,
+  );
 
   const hydratedOptions = useMemo(
     () => ({
@@ -114,7 +120,7 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <EntityPickerSearchInput<Id, Model, Item>
+              <EntityPickerSearchInput
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}

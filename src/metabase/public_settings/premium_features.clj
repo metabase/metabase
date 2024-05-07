@@ -29,7 +29,7 @@
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
-  #"airgap_[0-9a-f]*")
+  #"airgap_.+")
 
 (def ^:private TokenStr
   [:or
@@ -73,7 +73,7 @@
                 f
                 :ttl/threshold (u/minutes->ms 5))
       lock     (Object.)]
-  (defn- cached-active-users-count
+  (defn cached-active-users-count
     "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
     []
     (locking lock
@@ -133,7 +133,7 @@
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 (declare decode-airgap-token)
 
-(mu/defn ^:private max-users-allowed
+(mu/defn max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
   (when-let [token (premium-embedding-token)]
@@ -254,6 +254,7 @@
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -280,6 +281,11 @@
         (throw (ex-info (.getMessage e) (merge
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
+
+(defn is-airgapped?
+  "Returns true if the current instance is airgapped."
+  []
+  (mc/validate AirgapToken (premium-embedding-token)))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}

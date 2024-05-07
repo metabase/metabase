@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMount, usePrevious } from "react-use";
 
 import { Icon, Tabs } from "metabase/ui";
+import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {
@@ -10,7 +11,7 @@ import {
 } from "../EntityPickerSearch";
 
 export const TabsView = <
-  Id,
+  Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
@@ -24,7 +25,7 @@ export const TabsView = <
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
 }) => {

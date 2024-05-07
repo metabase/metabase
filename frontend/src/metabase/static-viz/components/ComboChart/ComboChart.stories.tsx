@@ -619,6 +619,13 @@ LineUnpinFromZero.args = {
   renderingContext,
 };
 
+export const LineSettings = Template.bind({});
+LineSettings.args = {
+  rawSeries: data.lineSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineReplaceMissingValuesZero = Template.bind({});
 LineReplaceMissingValuesZero.args = {
   rawSeries: data.lineReplaceMissingValuesZero as any,

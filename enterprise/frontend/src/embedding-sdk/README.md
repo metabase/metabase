@@ -19,19 +19,28 @@ Features planned:
 
 * You have an application using React 17 or higher
 * You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-* You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
+* You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
 
 # Getting started
 
-## Start a local build of Metabase from master
+## Start Metabase
 
-1. Check out the code from the metabase repo
-```git clone git@github.com:metabase/metabase.git```
-1. Move into the repo and start it
-```cd metabase && yarn dev-ee```
-1. Metabase will be running at http://localhost:3000/
-1. Go through the setup process
-1. Make sure to activate your license. You can do this during the setup process or after, from the admin settings
+Currently, the SDK only works with specific versions of Metabase.
+You have the following options:
+
+### 1. Running on Docker
+Start the Metabase container:
+```bash
+docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.0
+```
+
+### 2. Running the Jar file
+1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.0/metabase.jar
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
+```bash
+java -jar metabase.jar
+```
 
 ## Configure Metabase
 
@@ -146,12 +155,17 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-  font: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+}
+
+// Theme Options
+const theme = {
+  fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+  colors: { brand: "#9b59b6" }
 }
 
 export default function App() {
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} theme={theme}>
       Hello World!
     </MetabaseProvider>
   );
