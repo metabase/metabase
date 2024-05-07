@@ -16,7 +16,7 @@ export function getEmbeddingThemeOverride(
 
     other: {
       ...theme.components,
-      fontSize: theme.fontSize,
+      ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
   };
 
