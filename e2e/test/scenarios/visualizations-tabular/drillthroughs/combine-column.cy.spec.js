@@ -10,7 +10,7 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describeWithSnowplow(
   "scenarios > visualizations > drillthroughs > table_drills > combine columns",
@@ -29,8 +29,11 @@ describeWithSnowplow(
       createQuestion(
         {
           query: {
-            "source-table": PRODUCTS_ID,
-            fields: [["field", PRODUCTS.EMAIL, { "base-type": "type/Text" }]],
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+              ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+            ],
             limit: 3,
           },
         },
@@ -94,8 +97,11 @@ describeWithSnowplow(
       createQuestion(
         {
           query: {
-            "source-table": PRODUCTS_ID,
-            fields: [["field", PRODUCTS.EMAIL, { "base-type": "type/Text" }]],
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+              ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+            ],
             limit: 3,
           },
         },
