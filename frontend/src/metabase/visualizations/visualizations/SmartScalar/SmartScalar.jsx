@@ -269,12 +269,12 @@ function PreviousValueComparison({
   );
 
   const VariationDetails = ({ children }) =>
-    children && (
+    children ? (
       <Title order={4} c="text-medium" style={{ whiteSpace: "pre" }}>
         {separator}
         {children}
       </Title>
-    );
+    ) : null;
 
   return (
     <Tooltip
