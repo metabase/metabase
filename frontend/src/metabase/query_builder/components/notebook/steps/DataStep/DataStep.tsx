@@ -99,19 +99,17 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <>
-          <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
-            {pickerLabel}
-          </DataStepCell>
+        <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+          {pickerLabel}
+        </DataStepCell>
 
-          {isDataPickerOpen && (
-            <DataPickerModal
-              value={value}
-              onChange={handleTableChange}
-              onClose={() => setIsDataPickerOpen(false)}
-            />
-          )}
-        </>
+        {isDataPickerOpen && (
+          <DataPickerModal
+            value={value}
+            onChange={handleTableChange}
+            onClose={() => setIsDataPickerOpen(false)}
+          />
+        )}
       </NotebookCellItem>
     </NotebookCell>
   );
