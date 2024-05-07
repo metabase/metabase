@@ -9,12 +9,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- backfill-query-fields! []
-  (let [cards (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                :select    [:c.id]
-                                                :where     [:and
-                                                            [:not :c.archived]
-                                                            [:= :f.id nil]]}])]
+  (let [cards (t2/reducible-select :model/Card :id [:in {:from      [[:report_card :c]]
+                                                         :left-join [[:query_field :f] [:= :f.card_id :c.id]]
+                                                         :select    [:c.id]
+                                                         :where     [:and
+                                                                     [:not :c.archived]
+                                                                     [:= :f.id nil]]}])]
     (run! query-field/update-query-fields-for-card! cards)))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
