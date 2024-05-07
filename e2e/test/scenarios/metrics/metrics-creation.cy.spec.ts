@@ -61,8 +61,6 @@ describe("scenarios > metrics", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   describe("location", () => {
@@ -273,12 +271,14 @@ function addBreakout(columnName: string) {
 }
 
 function saveMetric() {
+  cy.intercept("POST", "/api/card").as("createCard");
   cy.button("Save").click();
   modal().button("Save").click();
   cy.wait("@createCard");
 }
 
 function runQuery() {
+  cy.intercept("POST", "/api/dataset").as("dataset");
   cy.findAllByTestId("run-button").last().click();
   cy.wait("@dataset");
 }
