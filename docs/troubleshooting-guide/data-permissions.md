@@ -48,7 +48,7 @@ For more information about the different types of database permissions, check ou
 
 If a person is a member of multiple [groups][groups], Metabase will grant the _most permissive_ level of access across all the groups in which they're a member.
 
-For example, if a person is a member of two groups — one which grants [Unrestricted][unrestricted] access to a database or table and another that grants [No self-service][no-self-service] access — that person will have full unrestricted access.
+For example, if a person is a member of two groups — one which grants [View data] access of "Can view" to a database or table and another that grants "Blocked" access to that database — that person will be able to view the data.
 
 Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All Users** group, and create new groups to selectively apply permissions to your data sources.
 
@@ -58,14 +58,14 @@ Remember that everyone is a member of the **All Users** group. We recommend you 
 
 1. Go to **Admin** > **Permissions** and select the user group.
 2. Select the database or table that you want to restrict.
-3. Choose **Block** from the dropdown and click **Save**.
+3. Set **View data** permissions to **Blocked** and click **Save**.
 4. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation**
 
-If you've granted a group **No self-service** access to a database or table, people can still view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
+If you've granted a group View data access of "Can view" to a database or table, people can view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
 
-The [**Block** data permission][block-data-permission] is available on [paid versions of Metabase][pricing]. If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
+The [**Blocked** data permission][block-data-permission] is available on [paid versions of Metabase][pricing]. If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
 
 ## Getting a "permission denied" error message
 
