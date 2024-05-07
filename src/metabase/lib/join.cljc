@@ -521,7 +521,7 @@
          metric              (lib.metric.basics/join-metric query a-join)]
      (cond-> (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
                                                                              (conj (vec existing-joins) a-join)))
-       metric (lib.aggregation/aggregate (lib.ref/ref metric))))))
+       metric (lib.aggregation/aggregate stage-number (lib.ref/ref metric))))))
 
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the

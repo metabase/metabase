@@ -1524,8 +1524,9 @@
                (lib.tu/metadata-provider-with-card-from-query 1 (-> lib.tu/venues-query (lib/aggregate (lib/count))) {:type :metric})
                (lib.tu/metadata-provider-with-card-from-query 2 (-> lib.tu/venues-query (lib/aggregate (lib/count))) {:type :metric}))
         query (-> (lib/query mp (meta/table-metadata :checkins))
-                  (lib/join (lib.metadata/card mp 1))
-                  (lib/join (lib.metadata/card mp 2)))
+                  (lib/append-stage)
+                  (lib/join 0 (lib.metadata/card mp 1))
+                  (lib/join 0 (lib.metadata/card mp 2)))
         join-1 (get-in query [:stages 0 :joins 0 :alias])
         join-2 (get-in query [:stages 0 :joins 1 :alias])]
     (is (=? {:stages [{:joins [{:stages [{:source-card 1}]}
