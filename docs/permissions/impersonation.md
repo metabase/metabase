@@ -35,7 +35,7 @@ For exactly how to create a new role in your database and grant that role privil
 
 4. Select the database you want to set permissions on.
 
-5. Find the group that you want to associate with the database role you created. Under **Data access** for that group, select **Impersonation**.
+5. Find the group that you want to associate with the database role you created. Under **View data** setting for that group, select **Impersonation**.
 
 6. From the dropdown, select the user attribute that you added that maps to the role you want the group to use when querying the database.
 
