@@ -84,7 +84,11 @@ export const PaletteResults = () => {
                   {item}
                 </Box>
               ) : (
-                <PaletteResultItem item={item} active={active} />
+                <PaletteResultItem
+                  item={item}
+                  active={active}
+                  togglePalette={query.toggle}
+                />
               )}
             </Flex>
           );

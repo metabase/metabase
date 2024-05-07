@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]))
 
 #?(:cljs
@@ -299,7 +300,7 @@
                (truncate-alias s max-bytes)))))))
 
 (deftest ^:parallel unique-name-generator-test
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util/unique-name-generator meta/metadata-provider)]
     (is (= "wow"
            (unique-name-fn "wow")))
     (is (= "wow_2"
@@ -310,8 +311,29 @@
     (testing "should truncate long names"
       (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_2dc86ef1"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
-      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_fc11882d"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
+
+(deftest ^:parallel unique-name-generator-idempotence-test
+  (testing "idempotence (2-arity calls to generated function)"
+    (let [unique-name (lib.util/unique-name-generator meta/metadata-provider)]
+      (is (= ["A" "B" "A" "A_2" "A_2"]
+             [(unique-name :x "A")
+              (unique-name :x "B")
+              (unique-name :x "A")
+              (unique-name :y "A")
+              (unique-name :y "A")])))))
+
+(deftest ^:parallel unique-name-use-database-methods-test
+  (testing "Should use database :lib/methods"
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:database {:lib/methods {:escape-alias #(lib.util/truncate-alias % 15)}}})
+          unique-name        (lib.util/unique-name-generator metadata-provider)]
+      (is (= "catego_ef520013"
+             (unique-name "categories__via__category_id__name")))
+      (is (= "catego_ec940c72"
+             (unique-name "categories__via__category_id__name"))))))
 
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))

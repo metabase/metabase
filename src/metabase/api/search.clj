@@ -486,6 +486,11 @@
                                       []))))]
     (map annotate search-results)))
 
+(defn- add-can-write [row]
+  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
+    (assoc row :can_write (mi/can-write? row))
+    row))
+
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -509,6 +514,7 @@
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
                             (map #(update % :pk_ref json/parse-string))
+                            (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)

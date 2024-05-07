@@ -493,7 +493,8 @@
       true)))
 
 (defn- post-process-card-row [row]
-  (-> row
+  (-> (t2/instance :model/Card row)
+      (t2/hydrate :can_write)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
@@ -529,12 +530,15 @@
   [_ collection options]
   (dashboard-query collection options))
 
+(defn- post-process-dashboard [dashboard]
+  (-> (t2/instance :model/Dashboard dashboard)
+      (t2/hydrate :can_write)
+      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+              :dataset_query :table_id :query_type :is_upload)))
+
 (defmethod post-process-collection-children :dashboard
   [_ _ rows]
-  (map #(dissoc %
-                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query :table_id :query_type :is_upload)
-       rows))
+  (map post-process-dashboard rows))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the

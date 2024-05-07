@@ -454,15 +454,14 @@
   []
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields
-                                     :has_field_values
-                                     [:target :has_field_values]]
-                            :segments
-                            :metrics]))
+               (t2/hydrate
+                (if skip-fields?
+                  [:tables :segments :metrics]
+                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -499,15 +498,17 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model remove_inactive]
+  [id include_hidden include_editable_data_model remove_inactive skip_fields]
   {id                          ms/PositiveInt
    include_hidden              [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]
-   remove_inactive             [:maybe ms/BooleanValue]}
+   remove_inactive             [:maybe ms/BooleanValue]
+   skip_fields                 [:maybe ms/BooleanValue]}
   (db-metadata id
                include_hidden
                include_editable_data_model
-               remove_inactive))
+               remove_inactive
+               skip_fields))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------

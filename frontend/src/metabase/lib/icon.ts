@@ -9,8 +9,10 @@ import type {
 
 export type ObjectWithModel = {
   model: SearchModel;
-  authority_level?: string;
-  display?: CardDisplayType;
+  authority_level?: "official" | string | null;
+  collection_authority_level?: "official" | string | null;
+  moderated_status?: "verified" | string | null;
+  display?: CardDisplayType | null;
   type?: Collection["type"];
 };
 
@@ -24,8 +26,7 @@ const modelIconMap: Record<SearchModel, IconName> = {
   dashboard: "dashboard",
   card: "table",
   segment: "segment",
-  metric: "metric",
-  snippet: "snippet",
+  metric: "funnel",
 };
 
 const secondaryModelIconMap: Partial<Record<SearchModel, IconName>> = {
@@ -57,4 +58,9 @@ export const getIconBase = (
   return { name: modelIconMap?.[item.model] ?? "unknown" };
 };
 
-export const getIcon = PLUGIN_COLLECTIONS.getIcon ?? getIconBase;
+export const getIcon = (item: ObjectWithModel, options: IconOptions = {}) => {
+  if (PLUGIN_COLLECTIONS) {
+    return PLUGIN_COLLECTIONS.getIcon(item, options);
+  }
+  return getIconBase(item, options);
+};

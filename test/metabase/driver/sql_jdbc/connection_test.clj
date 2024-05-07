@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.core :as mbc]
@@ -20,6 +21,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
@@ -116,11 +118,13 @@
 
               (cond-> details
                 ;; swap localhost and 127.0.0.1
-                (= "localhost" (:host details))
-                (assoc :host "127.0.0.1")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "localhost"))
+                (update :host str/replace "localhost" "127.0.0.1")
 
-                (= "127.0.0.1" (:host details))
-                (assoc :host "localhost")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "127.0.0.1"))
+                (update :host str/replace "127.0.0.1" "localhost")
 
                 :else
                 (assoc :new-config "something"))))))
@@ -229,7 +233,8 @@
 
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
+  (mt/test-drivers (apply disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
+                          (tqpt/timeseries-drivers))
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

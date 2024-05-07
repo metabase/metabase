@@ -11,6 +11,7 @@
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -20,7 +21,7 @@
 
 (deftest ^:parallel fetch-field-test
   (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
-    (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+    (is (not (me/humanize (mc/validate ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}

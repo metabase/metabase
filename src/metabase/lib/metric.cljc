@@ -14,6 +14,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -23,7 +24,7 @@
     (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [dataset-query], :as _metric-metadata} :- lib.metadata/MetricMetadata]
+  [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
     (let [normalized-definition (cond-> dataset-query
                                   (not (contains? dataset-query :lib/type))
@@ -119,7 +120,7 @@
        (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))
        (every? identity (metrics-for-all-joins query 0))))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
+(mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
   ([query]
    (available-metrics query -1))
