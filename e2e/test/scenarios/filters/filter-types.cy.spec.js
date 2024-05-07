@@ -484,8 +484,11 @@ describe("scenarios > filters > filter types", () => {
           popover().findByText(columnName).click();
           selectFilterOperator(operator);
           popover().within(() => {
-            values.forEach((value, index) => {
-              cy.findByLabelText("Filter value").focus().type(value).blur();
+            values.forEach(value => {
+              cy.findByLabelText("Filter value")
+                .focus()
+                .type(value)
+                .realPress("Tab");
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
