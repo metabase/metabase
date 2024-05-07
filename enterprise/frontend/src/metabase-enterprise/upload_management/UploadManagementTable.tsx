@@ -2,11 +2,11 @@ import { useCallback, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import {
-  BulkActionsPopover,
-  BulkActionButton,
-} from "metabase/common/components/BulkActions";
 import { StyledTable } from "metabase/common/components/Table";
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
@@ -91,8 +91,8 @@ export function UploadManagementTable() {
         }}
         onClose={() => setShowDeleteConfirmModal(false)}
       />
-      {selectedItems.length > 0 && (
-        <BulkActionsPopover
+      {selectedItems.length > 0 && !showDeleteConfirmModal && (
+        <BulkActionBar
           opened={selectedItems.length > 0}
           message={ngettext(
             msgid`Selected ${selectedItems.length} table`,
@@ -103,7 +103,7 @@ export function UploadManagementTable() {
           <BulkActionButton onClick={() => setShowDeleteConfirmModal(true)}>
             {t`Delete`}
           </BulkActionButton>
-        </BulkActionsPopover>
+        </BulkActionBar>
       )}
       <SettingHeader
         id="upload-tables-list"
