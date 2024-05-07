@@ -74,17 +74,13 @@
   {:db/id             -10
    :mbql/database     [:metadata.database/id 1]
 
-   :mbql.stage/_query [{:db/id                      -1
-                        :mbql.stage/successor-stage -2}
+   :mbql.stage/_query [{:db/id                      -1}
                        {:db/id                      -2
-                        :mbql.stage/previous-stage  -1
-                        :mbql.stage/successor-stage -3}
+                        :mbql.stage/previous-stage  -1}
                        {:db/id                      -3
-                        :mbql.stage/previous-stage  -2
-                        :mbql.stage/successor-stage -4}
+                        :mbql.stage/previous-stage  -2}
                        {:db/id                      -4
-                        :mbql.stage/previous-stage  -3
-                        :mbql.stage/successor-stage -5}
+                        :mbql.stage/previous-stage  -3}
                        {:db/id                      -5
                         :mbql.stage/previous-stage  -4}]
    :mbql.query/stage0 -1
@@ -153,8 +149,8 @@
       (is (d/db? (d/entity-db query)))
 
       (is (=? {:mbql.query/database {:metadata.database/id (meta/id)}
-               :mbql.query/stage0   {:mbql.source/table {:metadata.table/id   (meta/id :orders)
-                                                         :metadata.table/name "ORDERS"}}}
+               :mbql.query/stage0   {:mbql.stage/source {:mbql.source/incoming {:metadata.table/id   (meta/id :orders)
+                                                                                :metadata.table/name "ORDERS"}}}}
               query))
       (testing "has only one stage"
         (is (= (:mbql.query/stage0 query)
@@ -227,28 +223,149 @@
         (testing "ld/filters does sort the output"
           (is (=? filters (ld/filters query -1))))))))
 
-#_(deftest ^:parallel series-test
-  (let [conn                       (test-conn)
-        query-tx                   {:db/id              -1
-                                    :mbql.query/stage0  -2
-                                    :mbql.query/stage
-                                    {:db/id            -2
-                                     :mbql.stage/query -1
-                                     :mbql.stage/filter
-                                     [{:db/id -3
-                                       :mbql/series 1
-                                       :mbql.clause/operator :=
-                                       :mbql.clause/argument
-                                       [{:mbql/series 1
-                                         :mbql/ref [:metadata.field/id (meta/id :products :category)]}
-                                        {:mbql/series 2
-                                         :mbql/lit "Doohickey"}]}]}}
-        {{query-eid -1
-          clause    -3} :tempids
-         db             :db-after} (d/transact! conn [query-tx])]
-    (is (=? [clause]
-            (ld/filters db query-eid -1)))
-    (is (=? [{:mbql.clause/operator :=
-              :mbql.clause/argument [{:mbql/ref {:metadata.field/id (meta/id :products :category)}}
-                                     {:mbql/lit "Doohickey"}]}]
-            (mapv #(ld/expression-parts db %) (ld/filters db query-eid -1))))))
+(deftest ^:parallel aggregations-test
+  (testing "aggregations"
+    (testing "individually"
+      (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                      (ld/aggregate -1 (ld/agg-count)))
+            exp   {:mbql.aggregation/operator :count
+                   :mbql/series               0}]
+        (is (=? {:mbql.query/stage {:mbql.stage/aggregation [exp]}}
+                query))
+        (is (=? [exp]
+                (ld/aggregations query -1)))))
+    (testing "multiple aggregations"
+      (let [query            (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                                 (ld/aggregate -1 (ld/agg-count))
+                                 (ld/aggregate -1 (ld/agg-sum [:metadata.field/id (meta/id :orders :subtotal)]))
+                                 (ld/aggregate -1 (ld/agg-sum-where
+                                                    [:metadata.field/id (meta/id :orders :discount)]
+                                                    (ld/expr :not-null [:metadata.field/id (meta/id :orders :discount)])))
+                                 (ld/aggregate -1 (ld/agg-count-where
+                                                    (ld/expr :> [:metadata.field/id (meta/id :products :category)]
+                                                             "Doohickey"))))
+            agg-count        {:mbql.aggregation/operator :count
+                              :mbql/series               0}
+            agg-sum          {:mbql.aggregation/operator :sum
+                              :mbql.aggregation/column   {:metadata.field/id  (meta/id :orders :subtotal)}
+                              :mbql/series               1}
+            agg-sum-where    {:mbql.aggregation/operator :sum-where
+                              :mbql.aggregation/column   {:metadata.field/id  (meta/id :orders :discount)}
+                              :mbql/series               2
+                              :mbql.aggregation/filter
+                              {:mbql.clause/operator :not-null
+                               :mbql.clause/argument [{:mbql/ref    {:metadata.field/id (meta/id :orders :discount)}
+                                                       :mbql/series 0}]}}
+            agg-count-where  {:mbql.aggregation/operator :count-where
+                              :mbql/series               3
+                              :mbql.aggregation/filter
+                              {:mbql.clause/operator :>
+                               :mbql.clause/argument [{:mbql/ref    {:metadata.field/id (meta/id :products :category)}
+                                                       :mbql/series 0}
+                                                      {:mbql/lit    "Doohickey"
+                                                       :mbql/series 1}]}}
+            aggs             [agg-count agg-sum agg-sum-where agg-count-where]]
+        (testing "undefined order with direct DB access - =? hides the details"
+          (doseq [shuffled (take 5 (iterate shuffle aggs))]
+            (is (=? {:mbql.query/stage {:mbql.stage/aggregation shuffled}}
+                    query))))
+        (testing "ld/aggregations does sort the output"
+          (is (=? aggs (ld/aggregations query -1))))))))
+
+(deftest ^:parallel expressions-test
+  (testing "expressions"
+    (testing "individually"
+      (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                      (ld/expression -1 "taxes_25p" (ld/expr :* [:metadata.field/id (meta/id :orders :subtotal)]
+                                                             0.25)))
+            exp   {:mbql.expression/name "taxes_25p"
+                   :mbql.clause/operator :*
+                   :mbql.clause/argument [{:mbql/ref    {:metadata.field/id (meta/id :orders :subtotal)}
+                                           :mbql/series 0}
+                                          {:mbql/lit    0.25
+                                           :mbql/series 1}]
+                   :mbql/series          0}]
+        (is (=? {:mbql.query/stage {:mbql.stage/expression [exp]}}
+                query))
+        (is (=? [exp]
+                (ld/expressions query -1)))))
+    (testing "multiple expressions"
+      (let [query            (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                                 (ld/expression -1 "taxes_25p"
+                                                (ld/expr :* [:metadata.field/id (meta/id :orders :subtotal)] 0.25))
+                                 (ld/expression -1 "tax_rate"
+                                                (ld/expr (keyword "/")
+                                                         [:metadata.field/id (meta/id :orders :tax)]
+                                                         [:metadata.field/id (meta/id :orders :subtotal)]))
+                                 (ld/expression -1 "discount_ratio"
+                                                (ld/expr (keyword "/")
+                                                         (ld/expr :coalesce
+                                                                  [:metadata.field/id (meta/id :orders :discount)]
+                                                                  0)
+                                                         [:metadata.field/id (meta/id :orders :subtotal)])))
+            exp-taxes-25p    {:mbql.expression/name "taxes_25p"
+                              :mbql/series          0
+                              :mbql.clause/operator :*
+                              :mbql.clause/argument
+                              [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}}
+                               {:mbql/series 1, :mbql/lit 0.25}]}
+            exp-tax-rate     {:mbql.expression/name "tax_rate"
+                              :mbql/series          1
+                              :mbql.clause/operator (keyword "/")
+                              :mbql.clause/argument
+                              [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :tax)}}
+                               {:mbql/series 1, :mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}}]}
+            exp-discount     {:mbql.expression/name "discount_ratio"
+                              :mbql/series          2
+                              :mbql.clause/operator (keyword "/")
+                              :mbql.clause/argument
+                              [{:mbql/series          0
+                                :mbql/ref {:mbql.clause/operator :coalesce
+                                           :mbql.clause/argument
+                                           [{:mbql/series 0
+                                             :mbql/ref    {:metadata.field/id (meta/id :orders :discount)}}
+                                            {:mbql/series 1
+                                             :mbql/lit    0}]}}
+                               {:mbql/series 1, :mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}}]}
+            exprs            [exp-taxes-25p exp-tax-rate exp-discount]]
+        (testing "undefined order with direct DB access - =? hides the details"
+          (doseq [shuffled (take 5 (iterate shuffle exprs))]
+            (is (=? {:mbql.query/stage {:mbql.stage/expression shuffled}}
+                    query))))
+        (testing "ld/expressions does sort the output"
+          (is (=? exprs (ld/expressions query -1))))))))
+
+(deftest ^:parallel breakouts-test
+  (testing "breakouts"
+    (testing "individually"
+      (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                      (ld/aggregate -1 (ld/agg-count))
+                      ;; TODO: This is an implicit join! I shouldn't be able to add this directly, since there might
+                      ;; be multiple FKs pointing at the same table.
+                      (ld/breakout -1 [:metadata.field/id (meta/id :products :category)]))
+            brk   {:mbql.breakout/origin {:metadata.field/id (meta/id :products :category)}
+                   :mbql/series          0}]
+        (is (=? {:mbql.query/stage {:mbql.stage/breakout [brk]}}
+                query))
+        (is (=? [brk]
+                (ld/breakouts query -1)))))
+    (testing "multiple breakouts"
+      (let [query        (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                             (ld/aggregate -1 (ld/agg-count))
+                             ;; TODO: This is an implicit join as well!
+                             (ld/breakout -1 [:metadata.field/id (meta/id :products :category)])
+                             (ld/breakout -1 (ld/with-temporal-bucketing
+                                               [:metadata.field/id (meta/id :orders :created-at)]
+                                               :month)))
+            brk-category {:mbql.breakout/origin        {:metadata.field/id (meta/id :products :category)}
+                          :mbql/series                 0}
+            brk-month    {:mbql.breakout/origin        {:metadata.field/id (meta/id :orders :created-at)}
+                          :mbql.breakout/temporal-unit :month
+                          :mbql/series                 1}
+            brks         [brk-category brk-month]]
+        (testing "undefined order with direct DB access - =? hides the details"
+          (doseq [shuffled (take 5 (iterate shuffle brks))]
+            (is (=? {:mbql.query/stage {:mbql.stage/breakout shuffled}}
+                    query))))
+        (testing "ld/breakouts does sort the output"
+          (is (=? brks (ld/breakouts query -1))))))))
