@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -98,7 +98,7 @@ const isOverwriteMode = (
 
 export const SaveQuestionModal = ({
   question,
-  originalQuestion,
+  originalQuestion: latestOriginalQuestion,
   onCreate,
   onSave,
   onClose,
@@ -106,6 +106,7 @@ export const SaveQuestionModal = ({
   initialCollectionId,
 }: SaveQuestionModalProps) => {
   const { data: collections } = useCollectionListQuery();
+  const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   // we can't use null because that can be ID of the root collection
@@ -238,6 +239,7 @@ export const SaveQuestionModal = ({
             initialValues={{ ...initialValues, ...resumedValues }}
             onSubmit={handleSubmit}
             validationSchema={SAVE_QUESTION_SCHEMA}
+            enableReinitialize
           >
             {({ values, setValues }) => (
               <Modal.Content p="md" data-testid="save-question-modal">
