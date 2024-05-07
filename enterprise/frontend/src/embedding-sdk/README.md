@@ -114,7 +114,6 @@ const app = express()
 // by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
 // to your FE application URL.
 app.use(cors({
-  origin: FRONTEND_URL,
   credentials: true,
 }))
 
@@ -195,6 +194,8 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
+      {/** You need to set the parent container to have some width and height, and display as flex,
+           because the Metabase visualizations have flex-grow: 1 and will take up all available space. */}
       <div style={{ width: 800, height: 600, display: "flex" }}>
         <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
       </div>
