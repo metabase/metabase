@@ -353,7 +353,9 @@ function DatasetEditor(props) {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const questionWithDisplay = question.setDefaultDisplay();
+    const questionWithDisplay = isMetric
+      ? question.setDefaultDisplay()
+      : question;
 
     if (canBeDataset && isBrandNewDataset) {
       await updateQuestion(questionWithDisplay, { rerunQuery: false });
@@ -368,6 +370,7 @@ function DatasetEditor(props) {
     }
   }, [
     question,
+    isMetric,
     updateQuestion,
     onSave,
     setQueryBuilderMode,
