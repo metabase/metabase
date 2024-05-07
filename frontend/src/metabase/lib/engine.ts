@@ -14,7 +14,7 @@ export function getNativeQueryLanguage(engine?: string) {
   return getEngineNativeType(engine).toUpperCase();
 }
 
-export function getEngineNativeAceMode(engine?: string) {
+export function getEngineNativeAceMode(engine?: string | null) {
   switch (engine) {
     case "mongo":
     case "druid":
