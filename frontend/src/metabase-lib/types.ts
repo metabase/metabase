@@ -127,12 +127,13 @@ export type BucketDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
+  isMetric?: boolean;
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
 };
 
-export type CardDisplayInfo = TableDisplayInfo & { isMetric?: boolean };
+export type CardDisplayInfo = TableDisplayInfo;
 
 type TableInlineDisplayInfo = Pick<
   TableDisplayInfo,
