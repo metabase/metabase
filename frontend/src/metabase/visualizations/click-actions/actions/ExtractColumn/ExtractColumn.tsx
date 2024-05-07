@@ -51,10 +51,10 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
   return [
     {
       name: "column-extract",
-      title: t`Extract column`,
+      title: t`Extract part of column`,
+      tooltip: t`Extract part of column`,
       buttonType: "horizontal",
       icon: "arrow_split",
-      tooltip: t`Extract column`,
       default: true,
       section: "extract",
       popover: Popover,

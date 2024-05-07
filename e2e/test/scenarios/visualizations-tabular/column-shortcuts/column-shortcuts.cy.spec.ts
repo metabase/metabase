@@ -215,7 +215,7 @@ function extractColumnAndCheck({
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByLabelText("Add column").click();
 
-  popover().findByText("Extract column").click();
+  popover().findByText("Extract part of column").click();
   popover().findAllByText(column).first().click();
 
   if (example) {
