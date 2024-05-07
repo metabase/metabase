@@ -28,3 +28,12 @@ export const PERSONAL_COLLECTIONS = {
   can_write: false,
   is_personal: true,
 };
+
+export const TRASH_COLLECTION = {
+  id: 13371339 as const,
+  name: t`Trash`,
+  icon: "trash" as const,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  is_personal: false,
+};

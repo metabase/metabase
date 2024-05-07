@@ -60,7 +60,6 @@ type Props = {
 const BROWSE_MODELS_URL = "/browse/models";
 const BROWSE_DATA_URL = "/browse/databases";
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
@@ -224,13 +223,6 @@ function CollectionSectionHeading({
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink
-          icon="view_archive"
-          url={ARCHIVE_URL}
-          onClick={closePopover}
-        >
-          {t`View archive`}
-        </SidebarLink>
       </CollectionMenuList>
     ),
     [currentUser, handleCreateNewCollection],

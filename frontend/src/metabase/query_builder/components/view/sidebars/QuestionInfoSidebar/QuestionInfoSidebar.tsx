@@ -25,7 +25,7 @@ export const QuestionInfoSidebar = ({
   onSave,
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
-  const canWrite = question.canWrite();
+  const canWrite = question.canWrite() && !question.isArchived();
   const isPersisted = question.isPersisted();
   const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
 
@@ -46,7 +46,7 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <HeaderContainer>
           <h3>{t`About`}</h3>
-          {question.type() === "model" && (
+          {question.type() === "model" && !question.isArchived() && (
             <Link
               variant="brand"
               to={Urls.modelDetail(question.card())}
