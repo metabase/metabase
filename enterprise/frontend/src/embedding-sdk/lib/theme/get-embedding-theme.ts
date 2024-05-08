@@ -1,8 +1,5 @@
-import type {
-  MetabaseTheme,
-  EmbeddingThemeOverride,
-  MetabaseColor,
-} from "embedding-sdk/types/theme";
+import type { MetabaseTheme, MetabaseColor } from "../../types/theme";
+import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
 
@@ -15,9 +12,12 @@ export function getEmbeddingThemeOverride(
 ): EmbeddingThemeOverride {
   const override: EmbeddingThemeOverride = {
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
-    ...(theme.components && { other: theme.components }),
-    ...(theme.fontSize && { fontSizes: { md: theme.fontSize } }),
     ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
+
+    other: {
+      ...theme.components,
+      ...(theme.fontSize && { fontSize: theme.fontSize }),
+    },
   };
 
   if (theme.colors) {
