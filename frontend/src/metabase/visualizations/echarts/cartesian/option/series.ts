@@ -264,6 +264,7 @@ const buildEChartsBarSeries = (
 
   return {
     id: seriesModel.dataKey,
+    name: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
@@ -380,6 +381,7 @@ const buildEChartsLineAreaSeries = (
     },
     z: CHART_STYLE.series.zIndexLineArea,
     id: seriesModel.dataKey,
+    name: seriesModel.dataKey,
     type: "line",
     lineStyle: {
       type: seriesSettings["line.style"],

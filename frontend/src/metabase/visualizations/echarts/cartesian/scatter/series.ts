@@ -58,6 +58,7 @@ export function buildEChartsScatterSeries(
       : undefined;
   return {
     id: seriesModel.dataKey,
+    name: seriesModel.dataKey,
     type: "scatter",
     yAxisIndex,
     symbolSize: getBubbleDiameterScale(bubbleSizeDomain, bubbleSizeDataKey),

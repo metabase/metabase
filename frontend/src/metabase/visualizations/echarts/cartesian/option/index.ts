@@ -123,6 +123,13 @@ export const getCartesianChartOption = (
     grid: {
       ...chartMeasurements.padding,
     },
+    // We need to specify the legend property in order to dispatch the
+    // `legendToggleSelect` action, which we use to toggle series visiblity.
+    // However, right now we are still using our own custom legend component, so
+    // we don't want the echarts legend to be visibile/interactable
+    legend: {
+      show: false,
+    },
     dataset: echartsDataset,
     series: seriesOption,
     ...buildAxes(

@@ -130,6 +130,7 @@ export const buildEChartsWaterfallSeries = (
   const series: SeriesOption[] = [
     {
       id: seriesModel.dataKey,
+      name: seriesModel.dataKey,
       type: "custom",
       clip: true,
       animationDuration: 0,

@@ -304,6 +304,13 @@ export const useChartEvents = (
         cardId: seriesModel.cardId,
         dimensions,
         settings,
+        extraData: {
+          onLegendClick: () =>
+            chartRef.current?.dispatchAction({
+              type: "legendToggleSelect",
+              name: seriesModel.dataKey,
+            }),
+        },
       };
 
       if (
@@ -320,6 +327,7 @@ export const useChartEvents = (
       }
     },
     [
+      chartRef,
       chartModel.seriesModels,
       rawSeries,
       settings,

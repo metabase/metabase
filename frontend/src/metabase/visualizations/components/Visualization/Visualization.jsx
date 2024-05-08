@@ -241,6 +241,7 @@ class Visualization extends PureComponent {
           {
             ...clicked,
             extraData: {
+              ...clicked.extraData,
               ...getExtraDataForClick(clicked),
               isRawTable,
             },
