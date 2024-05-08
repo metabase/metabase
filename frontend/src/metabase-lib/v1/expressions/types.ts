@@ -23,7 +23,7 @@ interface HelpTextArg {
   example: string;
 }
 
-export type MBQLClauseFunctionReturnType =
+type MBQLClauseFunctionReturnType =
   | "aggregation"
   | "boolean"
   | "datetime"
