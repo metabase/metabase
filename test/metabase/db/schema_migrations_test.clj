@@ -786,12 +786,14 @@
                                                         :user_id     user-id
                                                         :object      "{}"
                                                         :is_creation true
+                                                        :most_recent false
                                                         :timestamp   old})
               rev-dash-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "dashboard"
                                                         :model_id    1
                                                         :user_id     user-id
                                                         :object      "{}"
+                                                        :most_recent true
                                                         :timestamp   now})
               rev-dash-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "dashboard"
@@ -799,12 +801,14 @@
                                                         :user_id     user-id
                                                         :object      "{}"
                                                         :is_creation true
+                                                        :most_recent true
                                                         :timestamp   old})
               rev-dash-2-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "dashboard"
                                                         :model_id    2
                                                         :user_id     user-id
                                                         :object      "{}"
+                                                        :most_recent true
                                                         :timestamp   now})
               rev-card-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "card"
@@ -812,12 +816,14 @@
                                                         :user_id     user-id
                                                         :object      "{}"
                                                         :is_creation true
+                                                        :most_recent false
                                                         :timestamp   now})
               rev-card-1-new  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "card"
                                                         :model_id    1
                                                         :user_id     user-id
                                                         :object      "{}"
+                                                        :most_recent true
                                                         :timestamp   now})
               rev-card-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                        {:model       "card"

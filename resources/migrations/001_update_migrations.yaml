@@ -5810,13 +5810,20 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              UPDATE revision r
+              UPDATE revision AS r
               JOIN (
-                  SELECT id, ROW_NUMBER() OVER (PARTITION BY model, model_id ORDER BY timestamp DESC, id DESC) AS row_num
-                  FROM revision
-              ) AS subquery
-              ON r.id = subquery.id
-              SET r.most_recent = (subquery.row_num = 1);
+                  SELECT r.id,
+                        ROW_NUMBER() OVER (PARTITION BY r.model, r.model_id ORDER BY r.timestamp DESC, r.id DESC) AS row_num
+                    FROM revision AS r
+                    JOIN (
+                          SELECT model, model_id
+                          FROM revision
+                          WHERE most_recent = 't'
+                          GROUP BY model, model_id
+                          HAVING count(*) > 1
+                        ) AS i ON r.model = i.model AND r.model_id = i.model_id
+              ) AS n ON r.id = n.id
+              SET r.most_recent = (n.row_num = 1);
       rollback: # nothing
 
   - changeSet:
