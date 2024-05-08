@@ -74,9 +74,10 @@ export const CollectionBreadcrumbsWithTooltip = ({
 
   return (
     <Tooltip
-      disabled={!isTooltipEnabled}
-      variant="multiline"
       label={pathString}
+      disabled={!isTooltipEnabled}
+      multiline
+      maw="20rem"
     >
       <ResponsiveContainer
         aria-label={pathString}
