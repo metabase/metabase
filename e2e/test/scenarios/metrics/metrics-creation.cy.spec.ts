@@ -302,19 +302,46 @@ function clickAddClauseButton() {
   cy.findAllByTestId("notebook-cell-item").last().click();
 }
 
-function startNewJoin() {
-  cy.findAllByTestId("action-buttons").first().button("Join data").click();
+interface StartNewClauseOpts {
+  stageIndex?: number;
+  isPostAggregation?: boolean;
 }
 
-function startNewCustomColumn() {
-  cy.findAllByTestId("action-buttons").first().button("Custom column").click();
+function startNewJoin({
+  stageIndex,
+  isPostAggregation,
+}: StartNewClauseOpts = {}) {
+  if (isPostAggregation) {
+    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+      clickActionButton("Join data"),
+    );
+  } else {
+    getNotebookStep("data", { stage: stageIndex }).within(() =>
+      clickActionButton("Join data"),
+    );
+  }
+}
+
+function startNewCustomColumn({
+  stageIndex,
+  isPostAggregation,
+}: StartNewClauseOpts = {}) {
+  if (isPostAggregation) {
+    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+      clickActionButton("Custom column"),
+    );
+  } else {
+    getNotebookStep("data", { stage: stageIndex }).within(() =>
+      clickActionButton("Custom column"),
+    );
+  }
 }
 
 function startNewFilter({
   stageIndex,
-  isNewStage,
-}: { stageIndex?: number; isNewStage?: boolean } = {}) {
-  if (isNewStage) {
+  isPostAggregation,
+}: StartNewClauseOpts = {}) {
+  if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       clickActionButton("Filter (optional)"),
     );
@@ -327,9 +354,9 @@ function startNewFilter({
 
 function startNewAggregation({
   stageIndex,
-  isNewStage,
-}: { stageIndex?: number; isNewStage?: boolean } = {}) {
-  if (isNewStage) {
+  isPostAggregation,
+}: StartNewClauseOpts = {}) {
+  if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       clickActionButton("Measure calculation"),
     );
@@ -340,7 +367,7 @@ function startNewAggregation({
   }
 }
 
-function startNewBreakout({ stageIndex }: { stageIndex?: number } = {}) {
+function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
   getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
     .within(() => clickAddClauseButton());
@@ -350,14 +377,14 @@ function addAggregation({
   operatorName,
   columnName,
   stageIndex,
-  isNewStage,
+  isPostAggregation,
 }: {
   operatorName: string;
   columnName?: string;
   stageIndex?: number;
-  isNewStage?: boolean;
+  isPostAggregation?: boolean;
 }) {
-  startNewAggregation({ stageIndex, isNewStage });
+  startNewAggregation({ stageIndex, isPostAggregation });
 
   popover().within(() => {
     cy.findByText(operatorName).click();
