@@ -1,10 +1,15 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import type { DatabaseId } from "metabase-types/api";
 
 import type { CollectionItemListProps } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
+
+interface Props extends CollectionItemListProps {
+  databaseId?: DatabaseId;
+}
 
 export const CollectionItemPickerResolver = ({
   databaseId,
@@ -15,7 +20,7 @@ export const CollectionItemPickerResolver = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: Props) => {
   if (!query) {
     return (
       <RootItemList
