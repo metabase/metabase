@@ -265,9 +265,19 @@ const getYAxisSplit = (
       .map(seriesModel => seriesModel.dataKey)
       .filter(seriesKey => !stackedKeys.has(seriesKey)),
   );
+  // Stacked series use left y-axis by default unless every stacked series has right y-axis selected
+  const stackedSeriesAxis = seriesModels
+    .map(seriesModel =>
+      settings.series(seriesModel.legacySeriesSettingsObjectKey),
+    )
+    .every(seriesSettings => seriesSettings?.axis === "right")
+    ? "right"
+    : "left";
 
   if (settings["stackable.stack_type"] === "normalized") {
-    return [stackedKeys, nonStackedKeys];
+    return stackedSeriesAxis === "left"
+      ? [stackedKeys, nonStackedKeys]
+      : [nonStackedKeys, stackedKeys];
   }
 
   const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
@@ -277,7 +287,7 @@ const getYAxisSplit = (
 
     // Stacked series always use left axis
     acc[seriesModel.dataKey] = stackedKeys.has(seriesModel.dataKey)
-      ? "left"
+      ? stackedSeriesAxis
       : seriesSettings?.["axis"];
     return acc;
   }, {} as Record<DataKey, string | undefined>);
