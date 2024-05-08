@@ -267,7 +267,7 @@ describe("scenarios > metrics", () => {
       popover().findByText("Orders").click();
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Created At", bucketName: "Year" });
-      addOrderBy("Count");
+      addOrderBy({ columnName: "Count" });
       saveMetric();
       runQuery();
       cy.findByTestId("view-footer").findByLabelText("Switch to data").click();
@@ -286,7 +286,7 @@ describe("scenarios > metrics", () => {
       popover().findByText("Orders").click();
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Created At" });
-      addLimit(limit);
+      addLimit({ limit });
       saveMetric();
       runQuery();
       assertQueryBuilderRowCount(limit);
@@ -334,9 +334,9 @@ function startNewAggregation({
       clickActionButton("Measure calculation"),
     );
   } else {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickAddClauseButton(),
-    );
+    getNotebookStep("summarize", { stage: stageIndex })
+      .findByTestId("aggregate-step")
+      .within(() => clickAddClauseButton());
   }
 }
 
@@ -385,13 +385,29 @@ function addBreakout({
   }
 }
 
-function addOrderBy(columnName: string) {
-  cy.button("Sort").click();
+function addOrderBy({
+  columnName,
+  stageIndex,
+}: {
+  columnName: string;
+  stageIndex?: number;
+}) {
+  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+    clickActionButton("Sort"),
+  );
   popover().findByText(columnName).click();
 }
 
-function addLimit(limit: number) {
-  cy.button("Row limit").click();
+function addLimit({
+  limit,
+  stageIndex,
+}: {
+  limit: number;
+  stageIndex?: number;
+}) {
+  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+    clickActionButton("Limit"),
+  );
   getNotebookStep("limit")
     .findByPlaceholderText("Enter a limit")
     .type(String(limit));
