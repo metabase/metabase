@@ -11,12 +11,12 @@
 
 (declare load-one!)
 
-(defn- circuit-breaker
-  "Removes data which causes circular dependency"
+(defn- without-references
+  "Remove references to other entities from a given one. Used to break circular dependencies when loading."
   [entity]
   (if (:dashcards entity)
     (dissoc entity :dashcards)
-    (throw (ex-info "Cannot break circular dependency!" {:entity entity}))))
+    (throw (ex-info "No known references found when breaking circular dependency!" {:entity entity}))))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -35,12 +35,12 @@
                          (serdes/load-find-local dep))
                     ctx
 
-                    ;; It's a circular dep, strip of probable cause and retry. This will store an incomplete version
+                    ;; It's a circular dep, strip off probable cause and retry. This will store an incomplete version
                     ;; of an entity, but this is not a problem - a full version is waiting to be stored up the stack.
                     (= (:error (ex-data e)) ::circular)
                     (do
                       (log/debug "Detected circular dependency" (serdes/log-path-str dep))
-                      (load-one! (update ctx :expanding disj dep) dep circuit-breaker))
+                      (load-one! (update ctx :expanding disj dep) dep without-references))
 
                     :else
                     (throw e)))))]
@@ -57,8 +57,8 @@
   [[metabase.models.serialization/load-one!]] and its various overridable parts, which see.
 
   Error is thrown on a circular dependency, should be handled and retried at the caller. `modfn` is an optional
-  parameter to modify entity so that circular dependency could be stripped and (temporary) incomplete entity could be
-  stored."
+  parameter to modify entity data after reading and before other processing (before loading dependencies, finding
+  local version, and storing in the db)."
   [{:keys [expanding ingestion seen] :as ctx} path & [modfn]]
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
