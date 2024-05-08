@@ -42,6 +42,7 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const dispatch = useDispatch();
+  const onChangeRef = useLatest(onChange);
   const queryRef = useLatest(query);
 
   const [isDataPickerOpen, setIsDataPickerOpen] = useState(!joinable);
@@ -66,9 +67,7 @@ export function JoinTablePicker({
   const handleTableChange = async (tableId: TableId) => {
     // we need to populate query metadata with selected table
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-
-    // using queryRef because query is most likely stale by now
-    onChange?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
+    onChangeRef.current?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
   };
 
   const value = useMemo(() => {
