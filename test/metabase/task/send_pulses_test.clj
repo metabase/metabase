@@ -102,12 +102,12 @@
                                                ;; priority is duration round to seconds
                                                (Thread/sleep 1000))]
       (mt/with-temp
-        [:model/Pulse        {pulse :id}            {}
-         :model/PulseChannel {pc :id}               (merge
-                                                     {:pulse_id     pulse
-                                                      :channel_type :slack
-                                                      :details      {:channel "#random"}}
-                                                     daily-at-1am)]
+        [:model/Pulse        {pulse :id} {}
+         :model/PulseChannel {pc :id}    (merge
+                                          {:pulse_id     pulse
+                                           :channel_type :slack
+                                           :details      {:channel "#random"}}
+                                          daily-at-1am)]
         (testing "priority is 0 to starts with"
           (is (= 0 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})

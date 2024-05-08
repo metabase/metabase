@@ -38,7 +38,9 @@
 (defn- send-pulse-trigger-key->schedule-map
   [trigger-key]
   (let [[_ _pulse-id schedule-str] (re-matches #"metabase\.task\.send-pulse\.trigger\.(\d+)\.(.*)" trigger-key)]
-    (str/replace schedule-str "_" " ")))
+    (-> schedule-str
+        (str/replace "_" " ")
+        u.cron/cron-string->schedule-map)))
 
 (defn- send-pulse!
   [pulse-id channel-ids]
@@ -114,8 +116,8 @@
             ;; we set priority as duration in seconds, the quicker the pulse is sent the higher the priority
             ;; highest priorities triggers are executed first, so we need to invert it with the duration
             priority (-> (- end start) (/ 1000) int -)]
-        (log/info "Send Pulse result: " result priority)
         (when (= :done result)
+          (log/infof "Updating priority of trigger %s to %d" (.getName (send-pulse-trigger-key pulse-id schedule-map)) priority)
           (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids priority))))
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
