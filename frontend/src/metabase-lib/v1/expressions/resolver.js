@@ -40,32 +40,32 @@ function findMBQL(op) {
   return clause;
 }
 
-const isCompatible = (expectedArgumentType, inferredType) => {
-  if (expectedArgumentType === "any") {
+const isCompatible = (expectedType, inferredType) => {
+  if (expectedType === "any") {
     return true;
   }
   if (inferredType === "any") {
     return true;
   }
-  if (expectedArgumentType === inferredType) {
+  if (expectedType === inferredType) {
     return true;
   }
   // if b is a string, then it can be an arg to a function that expects a datetime argument.
   // This allows datetime string literals to work as args for functions that expect datetime types.
   // FIXME: By doing this we are allowing string columns to be arguments to functions, which isn’t valid MBQL.
-  if (expectedArgumentType === "datetime" && inferredType === "string") {
+  if (expectedType === "datetime" && inferredType === "string") {
     return true;
   }
   if (
-    expectedArgumentType === "expression" &&
+    expectedType === "expression" &&
     ["datetime", "number", "string"].includes(inferredType)
   ) {
     return true;
   }
-  if (expectedArgumentType === "aggregation" && inferredType === "number") {
+  if (expectedType === "aggregation" && inferredType === "number") {
     return true;
   }
-  if (expectedArgumentType === "number" && inferredType === "aggregation") {
+  if (expectedType === "number" && inferredType === "aggregation") {
     return true;
   }
   return false;
