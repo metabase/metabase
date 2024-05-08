@@ -14,6 +14,7 @@ export const getLegendItems = (
   }
 
   return seriesModels.map(seriesModel => ({
+    key: seriesModel.dataKey,
     name: seriesModel.name,
     color: seriesModel.color,
   }));
