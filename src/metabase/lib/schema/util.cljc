@@ -12,7 +12,7 @@
           [our-uuid]
           [])
         (comp (remove (fn [[k _v]]
-                        (#{:lib/metadata :lib/stage-metadata :lib/options} k)))
+                        (qualified-keyword? k)))
               (mapcat (fn [[_k v]]
                         (collect-uuids v))))
         m))
