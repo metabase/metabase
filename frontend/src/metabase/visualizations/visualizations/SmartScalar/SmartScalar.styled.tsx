@@ -4,15 +4,13 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
-// export const Variation = styled.div`
-//   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-//     .${DashboardS.fullscreenNightText}
-//     &,
-//   .variation-container-tooltip & {
-//     color: ${props =>
-//       isEmpty(props.color) ? lighten("text-medium", 0.3) : props.color};
-//   }
-// `;
+/**
+ * TODO: Embedding Dark Mode
+ * PreviousValueNumber is lighten(text-medium, 0.45)
+ * PreviousValueDetails is lighten(text-light, 0.25)
+ * Separator is lighten(text-medium, 0.15)
+ * Variation when changeColor empty is lighten(text-medium, 0.3)
+ */
 
 export const VariationIcon = styled(Icon)`
   display: flex;
@@ -25,33 +23,3 @@ export const VariationIcon = styled(Icon)`
 export const VariationValue = styled(Ellipsified)`
   font-weight: 900;
 `;
-
-// export const Separator = styled.span`
-//   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-//     .${DashboardS.fullscreenNightText}
-//     &,
-//   .variation-container-tooltip & {
-//     color: ${lighten("text-medium", 0.15)};
-//   }
-// `;
-
-// export const PreviousValueDetails = styled.h4`
-//   color: ${color("text-medium")};
-//   white-space: pre;
-
-//   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-//     .${DashboardS.fullscreenNightText}
-//     &,
-//   .variation-container-tooltip & {
-//     color: ${lighten("text-light", 0.25)};
-//   }
-// `;
-
-// export const PreviousValueNumber = styled.span`
-//   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-//     .${DashboardS.fullscreenNightText}
-//     &,
-//   .variation-container-tooltip & {
-//     color: ${lighten("text-medium", 0.45)};
-//   }
-// `;
