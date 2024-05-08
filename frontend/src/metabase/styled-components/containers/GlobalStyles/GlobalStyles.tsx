@@ -41,6 +41,7 @@ export const GlobalStyles = (): JSX.Element => {
     ${aceEditorStyles}
     ${saveDomImageStyles}
     body {
+      font-size: 0.875em;
       ${getRootStyle(theme)}
     }
 
