@@ -688,9 +688,20 @@
   (mt/with-temp [Database {db-id :id} {}
                  Table    _ {:db_id db-id, :active false}]
     (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
-                          :tables)]
-          (is (= () tables))))))
+      (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
+                        :tables)]
+        (is (= () tables))))))
+
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-temp [Database {db-id :id} {}
+                 Table    table       {:db_id db-id}
+                 Field    _           {:table_id (u/the-id table)}]
+    (testing "GET /api/database/:id/metadata?skip_fields=true"
+      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                      :tables
+                      first
+                      :fields)]
+        (is (= () fields))))))
 
 (deftest autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]

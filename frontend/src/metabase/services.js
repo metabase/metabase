@@ -253,7 +253,6 @@ export const AutoApi = {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
   }),
-  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {
@@ -329,8 +328,6 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
-  dataset_duration: POST("/api/dataset/duration"),
-  native: POST("/api/dataset/native"),
 
   // to support audit app  allow the endpoint to be provided in the query
   datasetEndpoint: POST("/api/:endpoint", {
@@ -483,7 +480,9 @@ export function setEmbedQuestionEndpoints(token) {
 
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed");
+    setDashboardEndpoints(embedBase);
+  } else {
+    setDashboardParameterValuesEndpoint(embedBase);
   }
 }
 
@@ -523,6 +522,12 @@ function setDashboardEndpoints(prefix) {
   );
   DashboardApi.parameterSearch = GET(
     `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
+  );
+}
+
+function setDashboardParameterValuesEndpoint(prefix) {
+  DashboardApi.parameterValues = GET(
+    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
 }
 

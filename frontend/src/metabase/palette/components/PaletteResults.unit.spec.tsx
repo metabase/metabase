@@ -1,6 +1,6 @@
-import { KBarProvider, useKBar } from "kbar";
+import { useKBar } from "kbar";
 import { useEffect } from "react";
-import { withRouter, type WithRouterProps } from "react-router";
+import { Route, withRouter, type WithRouterProps } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -10,10 +10,9 @@ import {
 import {
   renderWithProviders,
   screen,
-  mockGetBoundingClientRect,
   within,
   waitFor,
-  mockOffsetHeightAndWidth,
+  mockScrollTo,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
@@ -74,6 +73,7 @@ const dashboard = createMockCollectionItem({
   model: "dashboard",
   name: "Bar Dashboard",
   collection: collection_1,
+  description: "Such Bar. Much Wow.",
 });
 
 const recents_1 = createMockRecentItem({
@@ -93,8 +93,7 @@ const recents_2 = createMockRecentItem({
   }),
 });
 
-mockGetBoundingClientRect();
-mockOffsetHeightAndWidth(10); // This is absurdley small, but it allows all the items to render in the "virtual list"
+mockScrollTo();
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
@@ -102,10 +101,10 @@ const setup = ({ query }: { query?: string } = {}) => {
   setupRecentViewsEndpoints([recents_1, recents_2]);
 
   renderWithProviders(
-    <KBarProvider>
-      <TestComponent q={query} isLoggedIn />
-    </KBarProvider>,
+    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
     {
+      withKBar: true,
+      withRouter: true,
       storeInitialState: {
         admin: createMockAdminState({
           app: createMockAdminAppState({
@@ -143,6 +142,11 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("lame collection");
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
     expect(
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
@@ -165,6 +169,14 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
       await screen.findByText('Search documentation for "Bar"'),
     ).toBeInTheDocument();
