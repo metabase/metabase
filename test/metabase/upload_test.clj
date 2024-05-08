@@ -537,17 +537,17 @@
 
 (defn- columns-with-auto-pk [columns]
  (cond-> columns
-   (driver/database-supports? driver/*driver* :auto-incrementing-upload-column (mt/db))
+   (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
    (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
-    (driver/database-supports? driver/*driver* :auto-incrementing-upload-column (mt/db))
+    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (cons @#'upload/auto-pk-column-name)))
 
 (defn- rows-with-auto-pk [rows]
   (cond->> rows
-    (driver/database-supports? driver/*driver* :auto-incrementing-upload-column (mt/db))
+    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (deftest load-from-csv-test
@@ -775,7 +775,7 @@
                    (rows-for-table table)))))))))
 
 (deftest load-from-csv-auto-pk-column-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :auto-incrementing-upload-column)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
     (with-mysql-local-infile-on-and-off
       (testing "Upload a CSV file with column names that are reserved by the DB, ignoring them"
         (testing "A single column whose name normalizes to _mb_row_id"
@@ -832,11 +832,11 @@
 
 (deftest load-from-csv-auto-pk-column-non-supporting-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    ;; There aren't any officially supported databases yet that don't support `:auto-incrementing-upload-column`
+    ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
     (let [original-database-supports?-fn driver/database-supports?]
       (with-redefs [driver/database-supports? (fn [driver feature db]
-                                                (if (= feature :auto-incrementing-upload-column)
+                                                (if (= feature :upload-with-auto-pk)
                                                   false
                                                   (original-database-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
@@ -1098,7 +1098,7 @@
 
 (deftest create-csv-upload!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads :auto-incrementing-upload-column)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
       (with-upload-table! [table (card->table (upload-example-csv!))]
         (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
           (is (= "_mb_row_id"
@@ -1332,7 +1332,7 @@
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 (if (driver/database-supports? driver/*driver* :auto-incrementing-upload-column (mt/db))
+                 (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
                    (trim-lines "The CSV file contains extra columns that are not in the table:
                                 - extra_column_two
                                 - extra_column_one")
@@ -1483,7 +1483,7 @@
               (io/delete-file file))))))))
 
 (deftest append-mb-row-id-csv-only-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :auto-incrementing-upload-column)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
     (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
       (with-upload-table!
         [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
@@ -1635,7 +1635,7 @@
         ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
-          (doseq [auto-pk-column? (if (driver/database-supports? driver/*driver* :auto-incrementing-upload-column (mt/db))
+          (doseq [auto-pk-column? (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
                                     [true false]
                                     [false])]
             (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")

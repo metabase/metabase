@@ -411,7 +411,7 @@
   (merge (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk) columns))
 
 (defn- create-auto-pk-column? [driver db]
-  (driver/database-supports? driver :auto-incrementing-upload-column db))
+  (driver/database-supports? driver :upload-with-auto-pk db))
 
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.

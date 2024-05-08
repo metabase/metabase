@@ -589,7 +589,7 @@
 
     ;; Does the driver support automatically adding an auto-incrementing integer column for uploads?
     ;; DEFAULTS TO TRUE
-    :auto-incrementing-upload-column})
+    :upload-with-auto-pk})
 
 
 (defmulti supports?
@@ -646,7 +646,7 @@
                               :temporal-extract                       true
                               :convert-timezone                       false
                               :test/jvm-timezone-setting              true
-                              :auto-incrementing-upload-column        true}]
+                              :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
