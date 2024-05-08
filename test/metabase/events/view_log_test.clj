@@ -47,7 +47,7 @@
 (deftest collection-read-ee-test
   (when (premium-features/log-enabled?)
     (mt/with-temp [:model/Collection coll {}]
-      (testing "A basic card read event is recorded in EE"
+      (testing "A basic collection read event is recorded in EE"
         (events/publish-event! :event/collection-read {:object coll :user-id (mt/user->id :crowberto)})
         (is (partial=
              {:user_id    (mt/user->id :crowberto)
@@ -105,6 +105,49 @@
                 :has_access true
                 :context    "dashboard"}
                (latest-view (u/id user) (u/id card)))))))))
+
+(deftest card-read-view-count-test
+  (mt/with-temp [:model/User user {}
+                 :model/Card card {:creator_id (u/id user)}]
+    (testing "A card read events are recorded by a card's view_count"
+      (is (= 0 (:view_count card))
+          "view_count should be 0 before the event is published")
+      (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+      (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
+      (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+      (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
+
+(deftest dashboard-read-view-count-test
+  (mt/with-temp [:model/User          user      {}
+                 :model/Dashboard     dashboard {:creator_id (u/id user)}
+                 :model/Card          card      {:name "Dashboard Test Card"}
+                 :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
+    (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
+      (testing "A dashboard read events are recorded by a dashboard's view_count"
+        (is (= 0 (:view_count dashboard) (:view_count card))
+            "view_count should be 0 before the event is published")
+        (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
+        (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
+        (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card)))
+            "view_count for cards on the dashboard be incremented too")
+        (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
+        (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
+        (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))
+            "view_count for cards on the dashboard be incremented too")))))
+
+(deftest table-read-view-count-test
+  (mt/with-temp [:model/User  user  {}
+                 :model/Table table {}]
+    (testing "A card read events are recorded by a card's view_count"
+      (is (= 0 (:view_count table))
+          "view_count should be 0 before the event is published")
+      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+      (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+          "view_count should be incremented")
+      (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
+      (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+          "view_count should be incremented"))))
+
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
