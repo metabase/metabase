@@ -8,6 +8,7 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .as("formula")
     .should("exist")
     .focus()
+    .clear()
     .type(formula);
 
   if (name) {

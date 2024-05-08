@@ -24,9 +24,7 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     addJoin({
-      leftColumn: "ID",
       rightTable: "Orders",
-      rightColumn: "Product ID",
     });
 
     addJoin({
