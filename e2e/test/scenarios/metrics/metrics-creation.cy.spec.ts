@@ -311,8 +311,7 @@ function addLimit(limit: number) {
   cy.button("Row limit").click();
   getNotebookStep("limit")
     .findByPlaceholderText("Enter a limit")
-    .type(String(limit))
-    .blur();
+    .type(String(limit));
 }
 
 function saveMetric() {
