@@ -321,7 +321,7 @@
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
-    metabase.api.common                                           api.common
+    metabase.api.common                                           api ; TODO -- change this to `api.common`, since it conflicts with `metabase.api`
     metabase.api.dashboard                                        api.dashboard
     metabase.api.dashboard-test                                   api.dashboard-test
     metabase.api.database                                         api.database

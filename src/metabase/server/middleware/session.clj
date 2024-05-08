@@ -16,11 +16,11 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   ;; This is a 'glue' namespace between modules, so we'll allow it to hit the internals of `metabase.api.common`... for
+   ;; This is a 'glue' namespace between modules, so we'll allow it to hit the internals of `metabase.api`... for
    ;; now.
    #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.api.common
-    :as api.common
+    :as api
     :refer [*current-user*
             *current-user-id*
             *current-user-permissions-set*
@@ -428,7 +428,7 @@
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
+  "Middleware that binds [[metabase.api/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
   [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request

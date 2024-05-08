@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:consistent-alias]}
 (ns metabase.api
   "API namespace for the Metabase REST API module."
   [:require
