@@ -625,7 +625,8 @@
                                                                         :moderator_id        user-id
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
+                [{:can_write           true
+                  :id                  card-id
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
@@ -1914,3 +1915,22 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
+
+(deftest cards-and-dashboards-get-can-write
+  (t2.with-temp/with-temp [:model/Collection {collection-id :id :as collection} {}
+                           :model/Card _ {:collection_id collection-id}
+                           :model/Dashboard _ {:collection_id collection-id}
+                           :model/Card _ {:collection_id collection-id
+                                          :type :model}]
+
+    (testing "`can_write` is `true` when appropriate"
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (is (= #{[true "card"] [true "dataset"] [true "dashboard"]}
+             (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))
+
+    (testing "and `false` when appropriate"
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (is (= #{[false "card"] [false "dataset"] [false "dashboard"]}
+             (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))))
