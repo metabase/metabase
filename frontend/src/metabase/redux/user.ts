@@ -37,8 +37,10 @@ export const currentUser = createReducer<User | null>(null, builder => {
     .addCase(CLOSE_QB_NEWB_MODAL, state => {
       if (state) {
         state.is_qbnewb = false;
+
         return state;
       }
+
       return state;
     })
     .addCase(Users.actionTypes.UPDATE, (state, { payload }) => {
@@ -49,6 +51,7 @@ export const currentUser = createReducer<User | null>(null, builder => {
           ...payload.user,
         };
       }
+
       return state;
     });
 });

@@ -898,6 +898,7 @@ describe("Dimension", () => {
             aggregation: [agg],
           },
         });
+
         return Dimension.parseMBQL(["aggregation", 0], metadata, query);
       }
 

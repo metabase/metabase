@@ -79,6 +79,7 @@ export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
 
   if (hasResults && !areResultsDirty) {
     const question = getQuestion(getState());
+
     return dispatch(queryCompleted(question, queryResults));
   }
 
@@ -137,6 +138,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
+
         return dispatch(
           queryCompleted(question, queryResults, {
             prevQueryResults: prevQueryResults ?? getQueryResults(getState()),

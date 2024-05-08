@@ -245,6 +245,7 @@ function splitPivotData(data) {
     })
     .object()
     .value();
+
   return { pivotData, columns };
 }
 
@@ -259,11 +260,13 @@ function filterCollapsedSubtotals(collapsedSubtotals, columnSettings) {
   const columnIsCollapsible = columnSettings.map(
     settings => settings[COLUMN_SHOW_TOTALS] !== false,
   );
+
   return collapsedSubtotals.filter(pathOrLengthString => {
     const pathOrLength = JSON.parse(pathOrLengthString);
     const length = Array.isArray(pathOrLength)
       ? pathOrLength.length
       : pathOrLength;
+
     return columnIsCollapsible[length - 1];
   });
 }
@@ -308,10 +311,12 @@ function createRowSectionGetter({
       const columnIndexes = columnColumnIndexes.slice(0, columnValues.length);
       const indexes = columnIndexes.concat(rowIndexes);
       const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
+
       return getSubtotals(indexes, indexValues, otherAttrs);
     }
     const { values, data, dimensions, valueColumns } =
       valuesByKey[JSON.stringify(indexValues)] || {};
+
     return formatValues(values).map((o, index) =>
       data === undefined
         ? o
@@ -326,6 +331,7 @@ function createRowSectionGetter({
           },
     );
   };
+
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
 }
 
@@ -341,6 +347,7 @@ function enumeratePaths(
     return [path];
   }
   const pathWithValue = [...path, rawValue];
+
   return children.length === 0
     ? [pathWithValue]
     : children.flatMap(child => enumeratePaths(child, pathWithValue));
@@ -380,8 +387,10 @@ function addValueColumnNodes(nodes, valueColumns) {
   function updateNode(node) {
     const children =
       node.children.length === 0 ? leafNodes : node.children.map(updateNode);
+
     return { ...node, children };
   }
+
   return nodes.map(updateNode);
 }
 
@@ -487,6 +496,7 @@ function sortLevelOfTree(array, { [COLUMN_SORT_ORDER]: sortOrder } = {}) {
     if (sortOrder === COLUMN_SORT_ORDER_DESC) {
       result *= -1;
     }
+
     return result;
   });
 }
@@ -527,10 +537,12 @@ function treeToArray(nodes) {
       totalSpan += result.span;
       maxDepth = Math.max(maxDepth, result.maxDepth);
     }
+
     return { span: totalSpan, maxDepth: maxDepth + 1 };
   }
 
   dfs(nodes, 0, 0);
+
   return a;
 }
 
@@ -553,6 +565,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
       value: normalValues,
       column: data.cols[normalCol],
     };
+
     return row;
   });
 

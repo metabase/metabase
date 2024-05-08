@@ -138,10 +138,12 @@ export const addSampleDatabase = createThunkAction(
         const sampleDatabase = await MetabaseApi.db_add_sample_database();
         dispatch(Databases.actions.invalidateLists());
         MetabaseAnalytics.trackStructEvent("Databases", "Add Sample Data");
+
         return sampleDatabase;
       } catch (error) {
         console.error("error adding sample database", error);
         dispatch({ type: ADD_SAMPLE_DATABASE_FAILED, payload: error });
+
         return error;
       }
     };
@@ -270,6 +272,7 @@ const editingDatabase = handleActions(
       if (error) {
         return state;
       }
+
       return {
         ...state,
         features: [...state.features, "persist-models-enabled"],
@@ -279,6 +282,7 @@ const editingDatabase = handleActions(
       if (error) {
         return state;
       }
+
       return {
         ...state,
         features: _.without(state.features, "persist-models-enabled"),

@@ -384,6 +384,7 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
             }
 
             const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
             return (
               <span>
                 <strong>{columnInfo.displayName}</strong> field
@@ -394,5 +395,6 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
       );
     }
   }
+
   return <strong>[{t`Unknown target`}]</strong>;
 };

@@ -44,21 +44,25 @@ function setup({ query, column, filter, isNew = false }: SetupOpts) {
     const [filter] = onChange.mock.lastCall;
     const filterParts = Lib.filterParts(query, STAGE_INDEX, filter);
     const column = checkNotNull(filterParts?.column);
+
     return Lib.displayInfo(query, STAGE_INDEX, column).name;
   };
 
   const getNextSpecificFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
+
     return Lib.specificDateFilterParts(query, STAGE_INDEX, filter);
   };
 
   const getNextRelativeFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
+
     return Lib.relativeDateFilterParts(query, STAGE_INDEX, filter);
   };
 
   const getNextExcludeFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
+
     return Lib.excludeDateFilterParts(query, STAGE_INDEX, filter);
   };
 

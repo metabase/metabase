@@ -46,6 +46,7 @@ export function joinConditionClause(
   rhsColumn: ColumnMetadata,
 ): JoinCondition {
   const operatorInfo = displayInfo(query, stageIndex, operator);
+
   return ML.expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
 }
 

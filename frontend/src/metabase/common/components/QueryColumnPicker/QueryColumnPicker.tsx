@@ -102,17 +102,20 @@ export function QueryColumnPicker({
 
       if (isSameColumn) {
         onClose?.();
+
         return;
       }
 
       if (!withDefaultBucketing) {
         handleSelect(item.column);
+
         return;
       }
 
       const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
         handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
+
         return;
       }
 
@@ -125,6 +128,7 @@ export function QueryColumnPicker({
         handleSelect(
           Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
         );
+
         return;
       }
 

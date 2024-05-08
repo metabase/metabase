@@ -100,6 +100,7 @@ interface TimeValueInputProps {
 function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
+
     return (
       <TimeInput
         value={value}
@@ -112,6 +113,7 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
 
   if (valueCount === 2) {
     const [value1, value2] = values;
+
     return (
       <Flex direction="row" align="center" gap="sm" w="100%">
         <TimeInput

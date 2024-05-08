@@ -12,5 +12,6 @@ export const AppBanner = () => {
   if (tokenStatus && shouldRenderPaymentBanner({ isAdmin, tokenStatus })) {
     return <PaymentBanner isAdmin={isAdmin} tokenStatus={tokenStatus} />;
   }
+
   return null;
 };

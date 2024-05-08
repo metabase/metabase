@@ -29,5 +29,6 @@ export function formatCoordinate(value: number, options: OptionsType = {}) {
     : options.compact
     ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
     : DECIMAL_DEGREES_FORMATTER(value);
+
   return formattedValue + "°" + direction;
 }

@@ -37,6 +37,7 @@ const getReloadInterval = (_state, _props, tables = []) =>
 
 const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
+
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 

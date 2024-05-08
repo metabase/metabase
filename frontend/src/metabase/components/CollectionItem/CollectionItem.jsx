@@ -19,6 +19,7 @@ const propTypes = {
 
 const CollectionItem = ({ collection, event }) => {
   const icon = getCollectionIcon(collection);
+
   return (
     <ItemLink to={collection.getUrl()}>
       <Card hoverable>

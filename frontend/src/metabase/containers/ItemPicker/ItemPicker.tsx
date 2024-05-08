@@ -59,6 +59,7 @@ function canWriteToCollectionOrChildren(collection: Collection) {
 
 function mapStateToProps<TId>(state: State, props: OwnProps<TId>) {
   const entity = props.entity || Collections;
+
   return {
     collectionsById: entity.selectors.getExpandedCollectionsById(state, props),
     getCollectionIcon: entity.objectSelectors.getIcon,
@@ -76,6 +77,7 @@ function getItemId<TId>(item: PickerItem<TId> | PickerValue<TId>) {
   if (item.model === "collection") {
     return item.id === null ? "root" : item.id;
   }
+
   return item.id;
 }
 
@@ -164,6 +166,7 @@ function ItemPicker<TId>({
         return false;
       }
       const isSameModel = item.model === value.model || models.length === 1;
+
       return isSameModel && getItemId(item) === getItemId(value);
     },
     [value, models],
@@ -202,6 +205,7 @@ function ItemPicker<TId>({
       const collection = item.collection_id
         ? collectionsById[item.collection_id]
         : collectionsById["root"];
+
       return collection?.can_write;
     },
     [models, collectionsById],

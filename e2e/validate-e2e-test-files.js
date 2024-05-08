@@ -56,6 +56,7 @@ function isE2ETestFile(fullPath) {
   const dirName = path.dirname(fullPath);
   const excludedPaths =
     dirName.endsWith("/helpers") || dirName.endsWith("/shared");
+
   return dirName.startsWith(E2E_HOME) && !excludedPaths;
 }
 

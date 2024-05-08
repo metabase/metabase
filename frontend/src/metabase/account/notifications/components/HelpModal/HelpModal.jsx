@@ -56,6 +56,7 @@ const getAdminLink = (email, text) => {
 
 const getAdminMessage = (email, applicationName) => {
   const adminLink = getAdminLink(email, t`your instance administrator`);
+
   return jt`${applicationName} doesn’t manage those lists, so we’d recommend contacting ${adminLink}. `;
 };
 

@@ -144,6 +144,7 @@ export function ObjectDetailView({
     if (data && notFoundObject) {
       setMaybeLoading(true);
       setHasNotFoundError(true);
+
       return;
     }
 
@@ -171,6 +172,7 @@ export function ObjectDetailView({
     };
 
     window.addEventListener("keydown", onKeyDown, true);
+
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     hasNotFoundError,

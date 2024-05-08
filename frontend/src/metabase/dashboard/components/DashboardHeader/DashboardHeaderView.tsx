@@ -104,6 +104,7 @@ export function DashboardHeaderComponent({
         setShowSubHeader(false);
       }
     }, 4000);
+
     return () => clearTimeout(timerId);
   }, [isLastEditInfoVisible]);
 

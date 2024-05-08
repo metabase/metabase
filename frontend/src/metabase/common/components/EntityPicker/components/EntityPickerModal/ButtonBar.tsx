@@ -27,6 +27,7 @@ export const ButtonBar = ({
       }
     };
     document.addEventListener("keypress", handleEnter);
+
     return () => {
       document.removeEventListener("keypress", handleEnter);
     };

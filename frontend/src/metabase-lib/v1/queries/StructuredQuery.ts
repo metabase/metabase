@@ -104,6 +104,7 @@ class StructuredQuery extends AtomicQuery {
    */
   tables(): Table[] | null | undefined {
     const database = this._database();
+
     return (database && database.tables) || null;
   }
 
@@ -122,6 +123,7 @@ class StructuredQuery extends AtomicQuery {
    */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
+
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
@@ -151,6 +153,7 @@ class StructuredQuery extends AtomicQuery {
   private _sourceTableId(): TableId | null | undefined {
     const query = this.getMLv2Query();
     const sourceTableId = Lib.sourceTableOrCardId(query);
+
     return sourceTableId;
   }
 
@@ -179,6 +182,7 @@ class StructuredQuery extends AtomicQuery {
   table = _.once((): Table | null => {
     const question = this.question();
     const metadata = question.metadata();
+
     return metadata.table(this._sourceTableId());
   });
 
@@ -257,6 +261,7 @@ class StructuredQuery extends AtomicQuery {
           aggregation.validFieldsFilters[0]([field]).length === 1
         );
       });
+
       // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
       // ends up often omitting all expressions because the field object of ExpressionDimension is empty.
       // Expressions can be applied to all aggregations so we can simply add all expressions to the
@@ -354,6 +359,7 @@ class StructuredQuery extends AtomicQuery {
     const filterSegmentOptions = includeSegments
       ? this.filterSegmentOptions(filter, includeAppliedSegments)
       : [];
+
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
@@ -383,6 +389,7 @@ class StructuredQuery extends AtomicQuery {
     }
 
     const currentSegmentId = filter && filter.isSegment() && filter.segmentId();
+
     return this.table().segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
@@ -491,6 +498,7 @@ class StructuredQuery extends AtomicQuery {
   fieldOptions(fieldFilter: FieldFilterFn = _field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
+
       return !field || (field.isDimension() && fieldFilter(field));
     };
 
@@ -504,6 +512,7 @@ class StructuredQuery extends AtomicQuery {
 
   tableDimensions = _.once((): Dimension[] => {
     const table: Table = this.table();
+
     return table // HACK: ensure the dimensions are associated with this query
       ? table
           .dimensions()
@@ -528,6 +537,7 @@ class StructuredQuery extends AtomicQuery {
       const sorted = _.chain(table)
         .filter(d => {
           const f = d.field();
+
           return (
             f.active !== false &&
             f.visibility_type !== "sensitive" &&
@@ -538,6 +548,7 @@ class StructuredQuery extends AtomicQuery {
         .sortBy(d => d.displayName()?.toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
+
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
         })
         .sortBy(d => d.field().position)
@@ -551,15 +562,18 @@ class StructuredQuery extends AtomicQuery {
   columnNames = _.once(() => {
     // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
     const nameCounts = new Map();
+
     return this.columnDimensions().map(dimension => {
       const name = dimension.columnName();
 
       if (nameCounts.has(name)) {
         const count = nameCounts.get(name) + 1;
         nameCounts.set(name, count);
+
         return `${name}_${count}`;
       } else {
         nameCounts.set(name, 1);
+
         return name;
       }
     });
@@ -567,6 +581,7 @@ class StructuredQuery extends AtomicQuery {
 
   columns = _.once(() => {
     const names = this.columnNames();
+
     return this.columnDimensions().map((dimension, index) => ({
       ...dimension.column(),
       name: names[index],

@@ -113,6 +113,7 @@ function TimeValueInput({
 }: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
+
     return (
       <TimeInput
         value={value}
@@ -128,6 +129,7 @@ function TimeValueInput({
 
   if (valueCount === 2) {
     const [value1, value2] = values;
+
     return (
       <Flex align="center">
         <TimeInput

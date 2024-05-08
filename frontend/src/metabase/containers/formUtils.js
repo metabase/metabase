@@ -29,6 +29,7 @@ function makeFormMethod(form, methodName, defaultValues = {}, mergeFn) {
         setValueAtPath(values, field.name, value, mergeFn);
       }
     }
+
     return values;
   };
 }
@@ -98,6 +99,7 @@ export function cleanObject(object) {
       }
     }
   });
+
   return result;
 }
 

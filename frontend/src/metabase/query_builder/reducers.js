@@ -456,6 +456,7 @@ export const lastRunCard = handleActions(
 function mergeMetadatWithQueryResults(queryResults, metadata) {
   const [result] = queryResults;
   const { columns } = metadata;
+
   return [
     {
       ...result,
@@ -499,6 +500,7 @@ export const metadataDiff = handleActions(
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
         const { field_ref, changes } = payload;
+
         return {
           ...state,
           [field_ref]: state[field_ref]
@@ -584,6 +586,7 @@ export const visibleTimelineEventIds = handleActions(
     [HIDE_TIMELINE_EVENTS]: {
       next: (state, { payload: events }) => {
         const eventIdsToHide = events.map(event => event.id);
+
         return state.filter(eventId => !eventIdsToHide.includes(eventId));
       },
     },

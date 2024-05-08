@@ -46,6 +46,7 @@ function getSeries(metricColumnProps) {
 
 const setup = seriesDisplay => {
   const series = getSeries(seriesDisplay);
+
   return renderWithProviders(
     <ChartSettings series={series} initial={{ section: "Data" }} />,
   );

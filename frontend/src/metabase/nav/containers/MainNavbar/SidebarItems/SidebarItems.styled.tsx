@@ -121,6 +121,7 @@ export function NameContainer({ children: itemName }: { children: string }) {
       </Tooltip>
     );
   }
+
   return <TreeNode.NameContainer>{itemName}</TreeNode.NameContainer>;
 }
 

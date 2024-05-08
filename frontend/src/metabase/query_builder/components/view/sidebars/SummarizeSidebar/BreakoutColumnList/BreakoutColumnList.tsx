@@ -183,6 +183,7 @@ function getColumnListItem(
     displayInfo.breakoutPosition != null
       ? breakouts[displayInfo.breakoutPosition]
       : undefined;
+
   return {
     ...displayInfo,
     column,
@@ -202,6 +203,7 @@ function getColumnSections(
     formattedSearchQuery.length > 0
       ? columns.filter(column => {
           const { displayName } = Lib.displayInfo(query, STAGE_INDEX, column);
+
           return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
@@ -227,5 +229,6 @@ function isPinnedColumn(
 ) {
   const { breakoutPosition } = Lib.displayInfo(query, STAGE_INDEX, column);
   const maxPinnedBreakoutIndex = pinnedBreakouts.length - 1;
+
   return breakoutPosition != null && breakoutPosition <= maxPinnedBreakoutIndex;
 }

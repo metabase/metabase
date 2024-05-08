@@ -13,6 +13,7 @@ export default class TroubleshootingApp extends Component {
 
   render() {
     const { children } = this.props;
+
     return (
       <AdminLayout
         sidebar={

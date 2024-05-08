@@ -68,6 +68,7 @@ export default class InputWithSelectPrefix extends Component {
   render() {
     const { prefixes, defaultPrefix } = this.props;
     const { prefix, rest } = this.state;
+
     return (
       <div
         className={cx(

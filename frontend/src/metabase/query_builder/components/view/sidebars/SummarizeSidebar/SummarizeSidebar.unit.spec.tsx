@@ -83,11 +83,13 @@ async function setup({
 
   function getNextQuery() {
     const [lastCall] = onQueryChange.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 
   function getNextAggregations() {
     const query = getNextQuery();
+
     return Lib.aggregations(query, -1).map(aggregation =>
       Lib.displayInfo(query, -1, aggregation),
     );
@@ -95,6 +97,7 @@ async function setup({
 
   function getNextBreakouts() {
     const query = getNextQuery();
+
     return Lib.breakouts(query, -1).map(breakout =>
       Lib.displayInfo(query, -1, breakout),
     );

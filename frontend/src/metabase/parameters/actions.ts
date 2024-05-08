@@ -164,5 +164,6 @@ const fetchParameterValuesWithCache = async <T>(
 
   const payload = { requestKey, response };
   dispatch({ type: FETCH_PARAMETER_VALUES, payload });
+
   return response;
 };

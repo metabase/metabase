@@ -80,6 +80,7 @@ export function getNotProvidedActionParameters(
     if ("default" in parameter) {
       return false;
     }
+
     return !isMappedParameter(parameter, dashboardParamValues);
   });
 }
@@ -89,6 +90,7 @@ export function getMappedActionParameters(
   dashboardParamValues: ParametersForActionExecution,
 ) {
   const parameters = action.parameters ?? [];
+
   return parameters.filter(parameter => {
     return isMappedParameter(parameter, dashboardParamValues);
   });
@@ -100,6 +102,7 @@ export const shouldShowConfirmation = (action?: WritebackAction) => {
   }
   const hasConfirmationMessage =
     !!action.visualization_settings?.confirmMessage;
+
   return hasConfirmationMessage || isImplicitDeleteAction(action);
 };
 

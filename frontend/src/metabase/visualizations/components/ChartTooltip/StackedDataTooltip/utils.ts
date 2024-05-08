@@ -8,6 +8,7 @@ export const getTotalValue = (
 ) => {
   return [...headerRows, ...bodyRows].reduce((sum, row) => {
     const value = typeof row.value === "number" ? row.value : 0;
+
     return sum + value;
   }, 0);
 };
@@ -41,6 +42,7 @@ export const groupExcessiveTooltipRows = (
       ) {
         grouped.value += current.value;
       }
+
       return grouped;
     },
     {

@@ -4,6 +4,7 @@ export function appendSlug(path: string | number, slug?: string) {
 
 export function extractEntityId(slug = "") {
   const id = parseInt(slug, 10);
+
   return Number.isSafeInteger(id) ? id : undefined;
 }
 
@@ -11,6 +12,7 @@ function flattenParam([key, value]: [string, unknown]) {
   if (value instanceof Array) {
     return value.map(p => [key, p]);
   }
+
   return [[key, value]];
 }
 
@@ -24,6 +26,7 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
       if (value == null) {
         return [key, ""];
       }
+
       return [key, value];
     }),
   );

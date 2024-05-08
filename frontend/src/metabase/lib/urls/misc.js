@@ -14,6 +14,7 @@ function prepareModel(item) {
   if (item.model_object) {
     return item.model_object;
   }
+
   return {
     id: item.model_id,
     ...item.details,

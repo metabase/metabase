@@ -59,6 +59,7 @@ export const getDatabasesEditorBreadcrumbs = (
     id: schema.name,
     text: schema.name,
   };
+
   return [groupItem, databaseItem, schemaItem];
 };
 

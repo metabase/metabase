@@ -10,6 +10,7 @@ export function setupMetricEndpoint(metric: Metric) {
 export function setupMetricsEndpoints(metrics: Metric[]) {
   fetchMock.post("path:/api/legacy-metric", async url => {
     const metric = await fetchMock.lastCall(url)?.request?.json();
+
     return createMockMetric(metric);
   });
   fetchMock.get("path:/api/legacy-metric", metrics);

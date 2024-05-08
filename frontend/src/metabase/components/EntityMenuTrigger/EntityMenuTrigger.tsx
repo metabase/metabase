@@ -38,6 +38,7 @@ const EntityMenuTrigger = ({
       {...triggerProps}
     />
   );
+
   return tooltip ? (
     <Tooltip tooltip={tooltip} isEnabled={!open} placement={tooltipPlacement}>
       {triggerContent}

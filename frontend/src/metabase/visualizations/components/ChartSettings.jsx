@@ -181,6 +181,7 @@ class ChartSettings extends Component {
       [0, "card", "visualization_settings"],
       settings,
     );
+
     return rawSeries;
   }
   _getTransformedSeries() {
@@ -188,6 +189,7 @@ class ChartSettings extends Component {
     const { series: transformedSeries } = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
+
     return transformedSeries;
   }
 
@@ -319,6 +321,7 @@ class ChartSettings extends Component {
       const [aIdx, bIdx] = [a, b].map(x =>
         sectionSortOrder.indexOf(x.toLowerCase()),
       );
+
       return aIdx - bIdx;
     });
 

@@ -12,6 +12,7 @@ function logEventKey(ev: Log) {
 
 export function mergeLogs(logArrays: Log[][]) {
   let prevLogKey = "";
+
   return orderBy(
     logArrays.flat(),
     ["timestamp", "process_uuid", "msg"],
@@ -23,6 +24,7 @@ export function mergeLogs(logArrays: Log[][]) {
       if (keep) {
         prevLogKey = key;
       }
+
       return keep;
     })
     .slice(-1 * MAX_LOGS);
@@ -34,6 +36,7 @@ export function maybeMergeLogs(logs: Log[], newLogs: Log[]) {
   if (hasFetchedNewLogs) {
     return mergeLogs([logs, newLogs.reverse()]);
   }
+
   return logs;
 }
 
@@ -52,6 +55,7 @@ export function filterLogs(logs: Log[], processUUID: string) {
 export function getAllProcessUUIDs(logs: Log[]) {
   const uuids = new Set<string>();
   logs.forEach(log => uuids.add(log.process_uuid));
+
   return [...uuids].filter(Boolean).sort();
 }
 
@@ -62,6 +66,7 @@ const memoedFormatTs = _.memoize(formatTs);
 export function formatLog(log: Log) {
   const timestamp = memoedFormatTs(log.timestamp);
   const uuid = log.process_uuid || "---";
+
   return [
     `[${uuid}] ${timestamp} ${log.level} ${log.fqns} ${log.msg}`,
     ...(log.exception || []),

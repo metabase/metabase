@@ -77,6 +77,7 @@ export function getLegendTitles(groups, columnSettings) {
   return groups.map((group, index) => {
     const min = formatMetric(group[0], compact);
     const max = formatMetric(group[group.length - 1], compact);
+
     return index === groups.length - 1
       ? `${min} +` // the last value in the list
       : min !== max
@@ -96,6 +97,7 @@ function shouldUseCompactFormatting(groups, formatMetric) {
   const averageLength =
     formattedValues.reduce((sum, { length }) => sum + length, 0) /
     formattedValues.length;
+
   return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
@@ -231,6 +233,7 @@ export default class ChoroplethMap extends Component {
     const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = (feature, { lowerCase = true } = {}) => {
       const key = String(feature.properties[keyProperty]);
+
       return lowerCase ? key.toLowerCase() : key;
     };
 
@@ -336,6 +339,7 @@ export default class ChoroplethMap extends Component {
 
     const getColor = feature => {
       const value = getFeatureValue(feature);
+
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 

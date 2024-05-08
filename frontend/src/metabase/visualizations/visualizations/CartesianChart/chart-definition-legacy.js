@@ -115,6 +115,7 @@ function transformSingleSeries(s, series, seriesIndex) {
   } else {
     // dimensions.length <= 1
     const dimensionColumnIndex = dimensionColumnIndexes[0];
+
     return metricColumnIndexes.map(metricColumnIndex => {
       const col = cols[metricColumnIndex];
       const rowColumnIndexes = [dimensionColumnIndex].concat(
@@ -146,6 +147,7 @@ function transformSingleSeries(s, series, seriesIndex) {
           rows: rows.map((row, rowIndex) => {
             const newRow = rowColumnIndexes.map(i => row[i]);
             newRow._origin = { seriesIndex, rowIndex, row, cols };
+
             return newRow;
           }),
           cols: rowColumnIndexes.map(i => cols[i]),

@@ -147,6 +147,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           cy.wrap(el).within(() => {
             cy.icon("ellipsis").click();
           });
+
           return false; // stop iterating
         }
       });
@@ -171,6 +172,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           cy.wrap(el).within(() => {
             cy.icon("ellipsis").click();
           });
+
           return false; // stop iterating
         }
       });
@@ -379,6 +381,7 @@ function getItemId(collectionName, itemName) {
   return getCollectionId(collectionName).then(id => {
     cy.request("GET", `/api/collection/${id}/items`).then(({ body }) => {
       const item = body.data.find(({ name }) => name === itemName);
+
       return item.id;
     });
   });

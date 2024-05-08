@@ -334,12 +334,14 @@ class ExpressionEditorTextfield extends React.Component<
     if ("footer" in suggestion) {
       // open link in new window
       window.open(suggestion.href, "_blank");
+
       return;
     }
 
     if ("shortcut" in suggestion) {
       // run the shortcut
       suggestion.action();
+
       return;
     }
 
@@ -657,6 +659,7 @@ class ExpressionEditorTextfield extends React.Component<
         ];
       }
     }
+
     return [];
   }
 

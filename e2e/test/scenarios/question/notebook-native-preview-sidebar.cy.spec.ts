@@ -136,6 +136,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
           "`cy.click()` failed because this element",
         );
         expect(err.message).to.include("is being covered by another element");
+
         // returning false here prevents Cypress from failing the test
         return false;
       });

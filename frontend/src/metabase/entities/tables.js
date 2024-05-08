@@ -66,6 +66,7 @@ const Tables = createEntity({
           dispatch,
           databaseApi.endpoints.getDatabaseMetadata,
         );
+
         return database.tables;
       } else {
         return entityCompatibleQuery(
@@ -157,6 +158,7 @@ const Tables = createEntity({
         dispatch,
         tableApi.endpoints.listTableForeignKeys,
       );
+
       return { id, fks: fks };
     }),
 
@@ -196,6 +198,7 @@ const Tables = createEntity({
 
       if (card.archived && state[virtualTableId]) {
         delete state[virtualTableId];
+
         return state;
       }
 
@@ -313,6 +316,7 @@ const Tables = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Tables.selectors.getEntityIds(state, { entityQuery }) ?? [];
+
       return entityIds.map(entityId =>
         Tables.selectors.getObjectUnfiltered(state, { entityId }),
       );

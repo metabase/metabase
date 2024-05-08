@@ -18,6 +18,7 @@ describe("Visualization", () => {
 
   const chartPathsWithColor = color => {
     const container = screen.getByTestId("chart-container");
+
     return container.querySelectorAll(`path[fill="${color}"]`);
   };
 

@@ -49,6 +49,7 @@ function getAction(
       return {
         action: () => {
           const parameterIdValuePairs = getDashboardDrillParameters(clicked);
+
           return setOrUnsetParameterValues(parameterIdValuePairs);
         },
       };

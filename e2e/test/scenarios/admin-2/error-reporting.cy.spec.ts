@@ -160,6 +160,7 @@ describe("error reporting modal", () => {
 
 function getDiagnosticInfoFile() {
   cy.findByLabelText("Download diagnostic information").should("not.exist");
+
   return cy
     .verifyDownload("metabase-diagnostic-info-", {
       contains: true,

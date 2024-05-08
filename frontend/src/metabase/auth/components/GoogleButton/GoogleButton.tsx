@@ -82,5 +82,6 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
 
 const getErrors = (error: unknown): string[] => {
   const errors = getIn(error, ["data", "errors"]);
+
   return errors ? Object.values(errors) : [];
 };

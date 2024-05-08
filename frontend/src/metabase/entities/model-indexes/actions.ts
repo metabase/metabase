@@ -119,6 +119,7 @@ export function cleanIndexFlags(fields: Field[] = []) {
       if (field.should_index !== undefined) {
         indexesToClean.push(thisIndex);
       }
+
       return indexesToClean;
     },
     [],
@@ -130,5 +131,6 @@ export function cleanIndexFlags(fields: Field[] = []) {
       "should_index",
     ]);
   }
+
   return newResultMetadata;
 }

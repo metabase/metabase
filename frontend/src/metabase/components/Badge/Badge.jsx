@@ -26,6 +26,7 @@ function getIconProps(iconProp) {
   if (!props.size && !props.width && !props.height) {
     props.size = DEFAULT_ICON_SIZE;
   }
+
   return props;
 }
 

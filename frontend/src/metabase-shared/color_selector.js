@@ -29,6 +29,7 @@ global.makeCellBackgroundGetter = function (
     );
   } catch (e) {
     print("ERROR", e);
+
     return () => null;
   }
 };

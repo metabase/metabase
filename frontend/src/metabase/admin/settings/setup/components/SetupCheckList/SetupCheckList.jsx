@@ -123,6 +123,7 @@ class SetupCheckList extends Component {
           if (task.is_next_step) {
             nextTask = task;
           }
+
           return !task.is_next_step;
         }),
       }));

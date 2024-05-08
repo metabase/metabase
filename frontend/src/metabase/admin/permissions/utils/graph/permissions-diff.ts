@@ -83,6 +83,7 @@ function diffDatabasePermissions(
   for (const type of ["grantedTables", "revokedTables"]) {
     deleteIfEmpty(databaseDiff, type);
   }
+
   return databaseDiff;
 }
 
@@ -106,6 +107,7 @@ function diffGroupPermissions(
     }
   }
   deleteIfEmpty(groupDiff, "databases");
+
   return groupDiff;
 }
 
@@ -130,5 +132,6 @@ export function diffDataPermissions(
       }
     }
   }
+
   return permissionsDiff;
 }

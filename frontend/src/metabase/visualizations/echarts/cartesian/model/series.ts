@@ -98,6 +98,7 @@ export const getCardsSeriesModels = (
   renderingContext: RenderingContext,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
+
   return rawSeries.flatMap((cardDataset, index) => {
     const cardColumns = cardsColumns[index];
 
@@ -252,6 +253,7 @@ export const getDimensionModel = (
     columnByCardId: rawSeries.reduce((columnByCardId, series, index) => {
       const cardColumns = cardsColumns[index];
       columnByCardId[series.card.id] = cardColumns.dimension.column;
+
       return columnByCardId;
     }, {} as Record<CardId, DatasetColumn>),
   };

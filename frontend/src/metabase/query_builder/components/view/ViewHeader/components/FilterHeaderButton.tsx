@@ -46,6 +46,7 @@ FilterHeaderButton.shouldRender = ({
   isActionListVisible,
 }: RenderCheckOpts) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+
   return (
     queryBuilderMode === "view" &&
     !isNative &&

@@ -60,6 +60,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
         </Link>
       );
     }
+
     return job.state;
   }, [job]);
 

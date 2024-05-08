@@ -10,6 +10,7 @@ import type { SeriesData } from "../types";
 
 const getExtent = (values: number[]) => {
   const [min, max] = extent(values);
+
   return [min ?? 0, max ?? 0];
 };
 

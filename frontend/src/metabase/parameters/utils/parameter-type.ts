@@ -20,5 +20,6 @@ export function isSingleOrMultiSelectable(
   if (SINGLE_OR_MULTI_SELECTABLE_TYPES[type] === "any") {
     return true;
   }
+
   return SINGLE_OR_MULTI_SELECTABLE_TYPES[type].includes(subType);
 }

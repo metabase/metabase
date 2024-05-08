@@ -19,6 +19,7 @@ export default startTimePropName => ComposedComponent =>
             .map(Math.floor) // round both down
             .map(x => (x < 10 ? `0${x}` : `${x}`)) // pad with "0" to two digits
             .join(":"); // separate with ":"
+
     return { title, refresh: delay(100) };
   })(
     // remove the start time prop to prevent affecting child components

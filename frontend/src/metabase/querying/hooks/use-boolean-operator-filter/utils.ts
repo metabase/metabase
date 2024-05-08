@@ -38,6 +38,7 @@ export function getFilterClause(
   values: boolean[],
 ) {
   const filterParts = getFilterParts(operator, column, values);
+
   return filterParts != null ? Lib.booleanFilterClause(filterParts) : undefined;
 }
 

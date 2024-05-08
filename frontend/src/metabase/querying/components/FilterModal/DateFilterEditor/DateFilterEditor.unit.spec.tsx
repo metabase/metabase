@@ -31,6 +31,7 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
 
   const getNextFilterName = () => {
     const [nextFilter] = onChange.mock.lastCall;
+
     return nextFilter
       ? Lib.displayInfo(query, stageIndex, nextFilter).displayName
       : null;
@@ -211,5 +212,6 @@ function createQueryWithFilter(
 ) {
   const query = Lib.filter(initialQuery, stageIndex, clause);
   const [filter] = Lib.filters(query, stageIndex);
+
   return { query, filter };
 }

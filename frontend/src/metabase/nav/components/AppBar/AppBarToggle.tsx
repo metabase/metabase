@@ -70,5 +70,6 @@ export function AppBarToggle({
 const getSidebarTooltipLabel = (isNavBarOpen?: boolean) => {
   const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
   const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+
   return `${message} ${shortcut}`;
 };

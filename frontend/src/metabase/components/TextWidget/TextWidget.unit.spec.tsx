@@ -6,6 +6,7 @@ import { TextWidget } from "./TextWidget";
 
 const TextInputWithStateWrapper = ({ value }: { value?: number | string }) => {
   const [val, setVal] = useState<number | string | null>(value ?? "");
+
   return (
     <TextWidget value={val ?? ""} setValue={setVal} focusChanged={jest.fn()} />
   );

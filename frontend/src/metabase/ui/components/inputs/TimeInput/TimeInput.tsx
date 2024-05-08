@@ -73,5 +73,6 @@ function formatValue(value: Date | null | undefined) {
 
 function parseValue(value: string) {
   const time = dayjs(value, TIME_FORMAT, true);
+
   return time.isValid() ? time.toDate() : null;
 }

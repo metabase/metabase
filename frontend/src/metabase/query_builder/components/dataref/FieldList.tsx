@@ -39,6 +39,7 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
         // because metabase-lib cannot import from metabase.
         const iconName = field.icon() as IconName;
         const tooltip = iconName === "unknown" ? t`Unknown type` : null;
+
         return (
           <NodeListItem as="li" key={field.getUniqueId()}>
             <NodeListItemLink onClick={() => onFieldClick(field)}>

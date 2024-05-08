@@ -86,6 +86,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
     if (mobileNavOpen) {
       const listener = () => setMobileNavOpen(false);
       document.addEventListener("click", listener, { once: true });
+
       return () => document.removeEventListener("click", listener);
     }
   }, [mobileNavOpen]);

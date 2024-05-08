@@ -114,5 +114,6 @@ const getUniqueClauseName = (
     ]),
   );
   const uniqueName = getUniqueExpressionName(expressionsObject, name);
+
   return uniqueName;
 };

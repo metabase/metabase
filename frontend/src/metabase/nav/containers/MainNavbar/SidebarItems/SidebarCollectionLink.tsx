@@ -120,6 +120,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     ref,
   ) {
     const collection = item as unknown as Collection;
+
     return (
       <div data-testid="sidebar-collection-link-root">
         <CollectionDropTarget collection={collection}>

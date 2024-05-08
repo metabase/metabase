@@ -70,6 +70,7 @@ const getFieldValue = (
   return new Promise((resolve, reject) => {
     if (!files?.length) {
       resolve("");
+
       return;
     }
 

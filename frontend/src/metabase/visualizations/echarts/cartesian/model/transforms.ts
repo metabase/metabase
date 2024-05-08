@@ -29,6 +29,7 @@ export function getAxisTransforms(
         if (stackType != null) {
           return value;
         }
+
         return signedSquareRoot(value);
       },
       fromEChartsAxisValue: value => {
@@ -46,6 +47,7 @@ export function getAxisTransforms(
         if (stackType != null) {
           return value;
         }
+
         return signedLog(value);
       },
       fromEChartsAxisValue: value => {
@@ -59,6 +61,7 @@ export function getAxisTransforms(
       if (!isNumber(value)) {
         return null;
       }
+
       return value;
     },
     fromEChartsAxisValue: value => value,

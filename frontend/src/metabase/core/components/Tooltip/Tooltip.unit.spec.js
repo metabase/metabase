@@ -131,6 +131,7 @@ describe("Tooltip", () => {
   it("should support using a reference element instead of a child target element", () => {
     function ReferenceTooltipTest() {
       const [eventTarget, setEventTarget] = useState();
+
       return (
         <div>
           <Tooltip reference={eventTarget} tooltip="reference tooltip" isOpen />

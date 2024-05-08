@@ -49,6 +49,7 @@ export const DatabaseTablesPane = ({
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
+
   return (
     <SidebarContent
       title={database.name}

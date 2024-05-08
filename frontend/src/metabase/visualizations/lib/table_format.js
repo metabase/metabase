@@ -54,6 +54,7 @@ export function makeCellBackgroundGetter(
           }
         }
       }
+
       return null;
     };
   }
@@ -64,6 +65,7 @@ function getColumnIndexesByName(cols) {
   for (let i = 0; i < cols.length; i++) {
     colIndexes[cols[i].name] = i;
   }
+
   return colIndexes;
 }
 
@@ -114,6 +116,7 @@ export function compileFormatter(
     }
 
     console.error("Unsupported formatting operator:", operator);
+
     return () => null;
   } else if (format.type === "range") {
     const columnMin = name =>
@@ -136,6 +139,7 @@ export function compileFormatter(
 
     if (typeof max !== "number" || typeof min !== "number") {
       console.warn("Invalid range min/max", min, max);
+
       return () => null;
     }
 
@@ -143,15 +147,18 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
+
     return value => {
       const colorValue = scale(value);
       if (!colorValue) {
         return null;
       }
+
       return getSafeColor(colorValue);
     };
   } else {
     console.warn("Unknown format type", format.type);
+
     return () => null;
   }
 }
@@ -171,6 +178,7 @@ export function extent(rows, colIndex) {
       max = value;
     }
   }
+
   return [min, max];
 }
 
@@ -184,6 +192,7 @@ function computeColumnExtents(formats, rows, colIndexes) {
       }
     });
   });
+
   return columnExtents;
 }
 
@@ -197,6 +206,7 @@ function compileFormatters(formats, columnExtents) {
       );
     });
   });
+
   return formatters;
 }
 
@@ -214,5 +224,6 @@ function compileRowFormatters(formats) {
         });
       }
     });
+
   return rowFormatters;
 }

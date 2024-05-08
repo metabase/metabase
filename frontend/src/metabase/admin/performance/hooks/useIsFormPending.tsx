@@ -7,5 +7,6 @@ export const useIsFormPending = (delay = 500) => {
   const { status } = useFormContext();
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, delay);
+
   return { isFormPending, wasFormRecentlyPending };
 };

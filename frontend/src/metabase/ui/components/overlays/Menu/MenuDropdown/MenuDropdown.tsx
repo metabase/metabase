@@ -25,6 +25,7 @@ function MenuDropdownContent({ children }: MenuDropdownContentProps) {
 
   useEffect(() => {
     setupCloseHandler(document.body, () => undefined);
+
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler]);
 

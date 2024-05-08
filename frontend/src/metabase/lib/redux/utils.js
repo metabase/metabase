@@ -29,6 +29,7 @@ export function momentifyTimestamps(
       object[timestamp] = moment(object[timestamp]);
     }
   }
+
   return object;
 }
 
@@ -93,6 +94,7 @@ export const fetchData = async ({
   } catch (error) {
     dispatch(setRequestError(statePath, queryKey, error));
     console.error("fetchData error", error);
+
     return existingData;
   }
 };
@@ -129,6 +131,7 @@ export const updateData = async ({
   } catch (error) {
     dispatch(setRequestError(statePath, queryKey, error));
     console.error(error);
+
     return existingData;
   }
 };
@@ -145,6 +148,7 @@ export function mergeEntities(entities, newEntities) {
       entities[id] = { ...entities[id], ...newEntities[id] };
     }
   }
+
   return entities;
 }
 
@@ -163,6 +167,7 @@ export function handleEntities(
     if (actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
+
     return reducer(state, action);
   };
 }
@@ -215,6 +220,7 @@ export function withAction(actionType) {
       }
     }
     newCreator.toString = () => actionType;
+
     return newCreator;
   };
 }
@@ -357,6 +363,7 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
       } catch (error) {
         console.warn("withAnalytics threw an error:", error);
       }
+
       return thunkCreator(...args)(dispatch, getState);
     };
 }

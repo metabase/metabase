@@ -89,5 +89,6 @@ describe("getSchemaName", () => {
 
 function getEncodedPayload(object) {
   const json = JSON.stringify(object);
+
   return encodeURIComponent(json);
 }

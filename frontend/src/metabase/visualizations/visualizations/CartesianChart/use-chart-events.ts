@@ -91,6 +91,7 @@ export const useChartEvents = (
             );
 
             onHoverChange?.(eventData);
+
             return;
           }
 
@@ -98,6 +99,7 @@ export const useChartEvents = (
             const eventData = getGoalLineHoverData(settings, event);
 
             onHoverChange?.(eventData);
+
             return;
           }
 
@@ -143,10 +145,12 @@ export const useChartEvents = (
               )
             ) {
               onDeselectTimelineEvents?.();
+
               return;
             }
 
             onSelectTimelineEvents?.(clickedTimelineEvents);
+
             return;
           }
 
@@ -287,6 +291,7 @@ export const useChartEvents = (
 
       if (areMultipleCards) {
         onOpenQuestion(seriesModel.cardId);
+
         return;
       }
 

@@ -107,6 +107,7 @@ function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
   }
 
   const newColumn = Lib.withDefaultBucket(query, stageIndex, column);
+
   return Lib.replaceBreakouts(query, -1, newColumn);
 }
 
@@ -142,5 +143,6 @@ export const has = entity => entity && entity.length > 0;
 export const getDescription = question => {
   const timestamp = moment(question.getCreatedAt()).fromNow();
   const author = question.getCreator().common_name;
+
   return t`Created ${timestamp} by ${author}`;
 };

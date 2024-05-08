@@ -10,6 +10,7 @@ import { FileInput } from "./ImageUpload.styled";
 
 export const ImageUpload = ({ id, setting, onChange, ...props }) => {
   const imageSource = setting.value;
+
   return (
     <div>
       {imageSource && (

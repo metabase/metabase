@@ -44,6 +44,7 @@ const validate = (value: TimeoutValue) => {
   if (days >= daysIn100Years) {
     return t`Timeout must be less than 100 years`;
   }
+
   return null;
 };
 

@@ -20,6 +20,7 @@ function cardVisualizationIsEquivalent(cardA, cardB) {
 export function cardQueryIsEquivalent(cardA, cardB) {
   cardA = updateIn(cardA, ["dataset_query", "parameters"], p => p || []);
   cardB = updateIn(cardB, ["dataset_query", "parameters"], p => p || []);
+
   return Lib.areLegacyQueriesEqual(
     _.pick(cardA, "dataset_query"),
     _.pick(cardB, "dataset_query"),

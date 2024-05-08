@@ -32,6 +32,7 @@ class CardRenderer extends Component {
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
     const sameSeries = isSameSeries(this.props.series, nextProps.series);
+
     return !(sameSize && sameSeries);
   }
 

@@ -38,6 +38,7 @@ export const PublicLinkPopover = ({
     if (isOpen && !url) {
       return createPublicLink();
     }
+
     return null;
   }, [url, isOpen]);
 

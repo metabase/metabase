@@ -5,12 +5,14 @@ export function findBreakoutColumn(
   stageIndex: number,
 ): Lib.ColumnMetadata | undefined {
   const columns = Lib.breakoutableColumns(query, stageIndex);
+
   return columns.find(column => {
     if (!Lib.isDate(column)) {
       return false;
     }
 
     const { breakoutPosition } = Lib.displayInfo(query, stageIndex, column);
+
     return breakoutPosition != null;
   });
 }
@@ -38,6 +40,7 @@ export function findFilterClause(
 ): Lib.FilterClause | undefined {
   const filters = Lib.filters(query, stageIndex);
   const { filterPositions } = Lib.displayInfo(query, stageIndex, filterColumn);
+
   return filterPositions != null && filterPositions.length > 0
     ? filters[filterPositions[0]]
     : undefined;
@@ -54,5 +57,6 @@ export function findBreakoutClause(
     stageIndex,
     breakoutColumn,
   );
+
   return breakoutPosition != null ? breakouts[breakoutPosition] : undefined;
 }

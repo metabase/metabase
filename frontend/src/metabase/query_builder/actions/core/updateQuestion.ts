@@ -52,6 +52,7 @@ function checkShouldRerunPivotTableQuestion({
     "pivot_table.column_split",
   );
   const newPivotSettings = newQuestion.setting("pivot_table.column_split");
+
   return (
     isValidPivotTable && !_.isEqual(currentPivotSettings, newPivotSettings)
   );
@@ -89,6 +90,7 @@ function shouldTemplateTagEditorBeVisible({
   } else if (nextTags.length === 0) {
     return false;
   }
+
   return isVisible;
 }
 

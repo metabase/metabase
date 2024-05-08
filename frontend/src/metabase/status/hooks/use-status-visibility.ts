@@ -10,6 +10,7 @@ const useStatusVisibility = (isActive: boolean) => {
       setIsVisible(true);
     } else {
       const timeout = setTimeout(() => setIsVisible(false), HIDE_DELAY);
+
       return () => clearTimeout(timeout);
     }
   }, [isActive]);

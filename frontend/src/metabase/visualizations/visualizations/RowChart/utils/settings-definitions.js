@@ -149,10 +149,12 @@ export const ROW_CHART_SETTINGS = {
         new Set(
           series.map(({ data: { cols } }) => {
             const metricCol = cols.find(c => c.name === metric);
+
             return metricCol && metricCol.display_name;
           }),
         ),
       );
+
       return metricNames.length === 1 ? metricNames[0] : null;
     },
     readDependencies: ["series", "graph.metrics"],

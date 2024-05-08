@@ -47,6 +47,7 @@ const LeaveConfirmationModalBase = ({
       if (isEnabled && !isConfirmed && !isLocationAllowed(location)) {
         setIsConfirmationVisible(true);
         setNextLocation(location);
+
         return false;
       }
     });

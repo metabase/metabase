@@ -86,6 +86,7 @@ function ProfileLink({ adminItems, onLogout }) {
   // show trademark if application name is not whitelabeled
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const showTrademark = !isWhiteLabeling;
+
   return (
     <div>
       <EntityMenu

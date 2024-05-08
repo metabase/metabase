@@ -11,6 +11,7 @@ ColumnCount.propTypes = {
 
 function ColumnCount({ table }: { table: Table }) {
   const fieldCount = table.numFields();
+
   return (
     <LabelContainer color="text-dark">
       <Label>

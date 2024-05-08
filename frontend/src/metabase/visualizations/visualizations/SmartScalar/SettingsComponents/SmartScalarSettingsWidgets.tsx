@@ -106,6 +106,7 @@ export function SmartScalarComparisonWidget({
           <ComparisonList data-testid="comparison-list">
             {value.map((comparison, index) => {
               const isLast = index === value.length - 1;
+
               return (
                 <Sortable
                   as="li"

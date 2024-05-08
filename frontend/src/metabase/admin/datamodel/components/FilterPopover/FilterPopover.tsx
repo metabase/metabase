@@ -182,6 +182,7 @@ export function FilterPopover({
   if (editingFilter) {
     const filterMBQL = filter?.raw();
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
+
     return (
       <ExpressionWidget
         query={question.query()}

@@ -6,6 +6,7 @@ import { Anchor, Popover, Stack, Text } from "metabase/ui";
 
 export function MetabaseLinksToggleDescription() {
   const [opened, setOpened] = useState(false);
+
   return (
     <Popover
       key="popover"

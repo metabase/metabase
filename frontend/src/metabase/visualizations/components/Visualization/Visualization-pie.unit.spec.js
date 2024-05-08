@@ -10,6 +10,7 @@ const series = rows => {
     StringColumn({ name: "Name" }),
     NumberColumn({ name: "Count" }),
   ];
+
   return [{ card: { display: "pie" }, data: { rows, cols } }];
 };
 

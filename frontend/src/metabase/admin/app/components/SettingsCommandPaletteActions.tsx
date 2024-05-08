@@ -56,6 +56,7 @@ export const SettingsCommandPaletteActions = () => {
             icon: "gear",
           })),
       ];
+
       return acc;
     }, []);
   }, [sections, dispatch]);

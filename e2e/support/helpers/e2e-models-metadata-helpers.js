@@ -53,6 +53,7 @@ export function mapColumnTo({ table, column } = {}) {
 export function setModelMetadata(modelId, callback) {
   return cy.request("GET", `/api/card/${modelId}`).then(response => {
     const { result_metadata } = response.body;
+
     return cy.request("PUT", `/api/card/${modelId}`, {
       result_metadata: result_metadata.map(callback),
     });

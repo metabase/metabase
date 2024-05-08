@@ -80,6 +80,7 @@ const defaultItem: CollectionItem & { description: string } =
 function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
+
   return renderWithProviders(
     <Route
       path="/"

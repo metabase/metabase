@@ -97,6 +97,7 @@ function RadioContainer({
   onEditClick?: () => void;
 }) {
   const isChecked = selectedValue === ownValue;
+
   return (
     <Flex justify="space-between">
       <Radio checked={isChecked} label={label} value={ownValue} />

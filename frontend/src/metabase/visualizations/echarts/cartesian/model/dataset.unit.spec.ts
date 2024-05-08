@@ -280,6 +280,7 @@ describe("dataset transform functions", () => {
         if (dataKey === "key1") {
           return value;
         }
+
         return value ?? 0;
       };
 

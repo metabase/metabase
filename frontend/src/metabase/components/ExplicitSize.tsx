@@ -80,6 +80,7 @@ function ExplicitSize<T extends BaseInnerProps>({
         if (selector && element instanceof Element) {
           element = element.querySelector(selector) || element;
         }
+
         return element instanceof Element ? element : null;
       }
 
@@ -192,6 +193,7 @@ function ExplicitSize<T extends BaseInnerProps>({
         if (wrapped) {
           const { className, style = {}, ...props } = this.props;
           const { width, height } = this.state;
+
           return (
             <div className={cx(className, CS.relative)} style={style}>
               <ComposedComponent

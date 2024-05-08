@@ -59,6 +59,7 @@ function replaceTagName(
   const queryText = query
     .queryText()
     .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
+
   return query.setQueryText(queryText);
 }
 
@@ -73,10 +74,12 @@ export function updateCardTemplateTagNames(
     .filter(tag => tag.type === "card")
     // only tags for given cards
     .filter(tag => cardById[tag["card-id"]]);
+
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
     const card = cardById[tag["card-id"]];
     const newTagName = `#${card.id}-${slugg(card.name)}`;
+
     return replaceTagName(query, tag.name, newTagName);
   }, query);
 }
@@ -126,6 +129,7 @@ export default class NativeQuery extends AtomicQuery {
   /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
+
     return (database && database.tables) || null;
   }
 
@@ -142,11 +146,13 @@ export default class NativeQuery extends AtomicQuery {
    */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
+
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
     const database = this._database();
+
     return database && database.engine;
   }
 
@@ -178,11 +184,13 @@ export default class NativeQuery extends AtomicQuery {
 
   hasWritePermission() {
     const database = this._database();
+
     return database != null && database.native_permissions === "write";
   }
 
   supportsNativeParameters() {
     const database = this._database();
+
     return (
       database != null && _.contains(database.features, "native-parameters")
     );
@@ -234,6 +242,7 @@ export default class NativeQuery extends AtomicQuery {
           const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
 
           entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
+
           return _.object(entries);
         },
       ),
@@ -242,6 +251,7 @@ export default class NativeQuery extends AtomicQuery {
 
   lineCount(): number {
     const queryText = this.queryText();
+
     return queryText ? queryText.split(/\n/g).length : 0;
   }
 
@@ -304,6 +314,7 @@ export default class NativeQuery extends AtomicQuery {
 
   private _allTemplateTagsAreValid() {
     const tagErrors = this._validateTemplateTags();
+
     return tagErrors.length === 0;
   }
 
@@ -321,6 +332,7 @@ export default class NativeQuery extends AtomicQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
+
     return this.question().setParameter(tag.id, newParameter).legacyQuery();
   }
 
@@ -336,6 +348,7 @@ export default class NativeQuery extends AtomicQuery {
       .filter(tag => tag.type === "dimension" && operatorFilter(tag))
       .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter(dimension => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,

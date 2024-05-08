@@ -13,6 +13,7 @@ function formatDefaultParamValues(parameters) {
   return parameters
     .map(parameter => {
       const value = conjunct([].concat(parameter.default), t`and`);
+
       return value && `${parameter.name} is ${value}`;
     })
     .filter(Boolean);

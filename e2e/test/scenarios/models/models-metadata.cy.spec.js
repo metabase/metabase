@@ -311,6 +311,7 @@ describe("scenarios > models metadata", () => {
           if (field.display_name !== "QUANTITY") {
             return field;
           }
+
           return {
             ...field,
             display_name: "Review ID",

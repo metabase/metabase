@@ -151,6 +151,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
   function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 
@@ -167,6 +168,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
         0,
         condition,
       );
+
       return {
         operator: Lib.displayInfo(query, 0, operator),
         lhsColumn: Lib.displayInfo(query, 0, lhsColumn),

@@ -239,6 +239,7 @@ export class Map extends Component {
         } else if (card.display === "country" || _.any(data.cols, isCountry)) {
           return "world_countries";
         }
+
         return null;
       },
       getProps: () => ({
@@ -337,6 +338,7 @@ export class Map extends Component {
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
     const sameSeries = isSameSeries(this.props.series, nextProps.series);
+
     return !(sameSize && sameSeries);
   }
 

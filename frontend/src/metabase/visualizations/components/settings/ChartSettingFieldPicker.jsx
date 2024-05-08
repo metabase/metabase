@@ -41,12 +41,14 @@ const ChartSettingFieldPicker = ({
   if (series && columnKey && showColorPicker) {
     const seriesForColumn = series.find(single => {
       const metricColumn = single.data.cols[1];
+
       return getColumnKey(metricColumn) === columnKey;
     });
     if (seriesForColumn) {
       seriesKey = keyForSingleSeries(seriesForColumn);
     }
   }
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}

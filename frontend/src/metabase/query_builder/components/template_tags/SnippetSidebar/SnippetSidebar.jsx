@@ -337,5 +337,6 @@ function Row(props) {
     snippet: SnippetRow,
     ...PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
   }[props.type];
+
   return Component ? <Component {...props} /> : null;
 }

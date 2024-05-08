@@ -12,6 +12,7 @@ export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
   border-style: solid;
   ${({ theme, width }) => {
     const dividerWidth = width ?? "100%";
+
     return css`
       border-color: ${theme.fn.themeColor("border")};
       width: ${dividerWidth};

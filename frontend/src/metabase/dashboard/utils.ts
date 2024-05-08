@@ -46,6 +46,7 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
           memo[newParam.slug] = before.embedding_params[embedSlug];
         }
       }
+
       return memo;
     }, {} as any);
   } else {
@@ -160,6 +161,7 @@ export function getAllDashboardCards(dashboard: Dashboard) {
       results.push(...cards.map(card => ({ card, dashcard })));
     }
   }
+
   return results;
 }
 
@@ -214,6 +216,7 @@ export function isDashcardLoading(
   }
 
   const cardData = Object.values(dashcardsData[dashcard.id]);
+
   return cardData.length === 0 || cardData.some(data => data == null);
 }
 
@@ -235,8 +238,10 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (errors.length > 0) {
     if (IS_EMBED_PREVIEW) {
       const message = errors[0]?.data || getGenericErrorMessage();
+
       return { message, icon: "warning" as const };
     }
+
     return {
       message: getGenericErrorMessage(),
       icon: "warning" as const,

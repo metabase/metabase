@@ -60,6 +60,7 @@ const DataSelectorTablePicker = ({
     if (onBack) {
       onBack();
     }
+
     return null;
   }
 

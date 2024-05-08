@@ -82,6 +82,7 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
                 )
                   ? "text-light"
                   : icon.color;
+
                 return (
                   <SelectList.Item
                     key={collection.id}

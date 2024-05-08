@@ -29,9 +29,11 @@ export const useConfirmOnRouteLeave = ({
           setIsConfirmed(true);
           setNextLocation(location);
         });
+
         return false;
       }
     });
+
     return removeLeaveHook;
   }, [router, route, isConfirmed, shouldConfirm, confirm]);
 

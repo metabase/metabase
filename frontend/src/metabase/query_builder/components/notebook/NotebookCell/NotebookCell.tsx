@@ -52,6 +52,7 @@ export const NotebookCellItem = forwardRef<
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
   }
+
   return (
     <NotebookCellItemContainer
       inactive={inactive}

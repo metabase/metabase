@@ -43,6 +43,7 @@ export function seriesSetting({
             return legacyTitles[index];
           }
         }
+
         return single.card.name;
       },
     },
@@ -214,6 +215,7 @@ export function seriesSetting({
           memo[keyForSingleSeries(singleSeries)] = getNameForCard(
             singleSeries.card,
           );
+
           return memo;
         }, {}),
       }),
@@ -223,6 +225,7 @@ export function seriesSetting({
     [SERIES_COLORS_SETTING_KEY]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
+
         return getSeriesColors(keys, settings);
       },
     },

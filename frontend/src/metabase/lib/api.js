@@ -267,6 +267,7 @@ export class Api extends EventEmitter {
     return fetch(request)
       .then(response => {
         const unreadResponse = response.clone();
+
         return response.text().then(body => {
           if (options.json) {
             try {
@@ -296,6 +297,7 @@ export class Api extends EventEmitter {
                 response: unreadResponse,
               });
             }
+
             return body;
           } else {
             throw { status: status, data: body };

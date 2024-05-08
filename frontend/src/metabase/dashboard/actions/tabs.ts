@@ -242,6 +242,7 @@ export function getIdFromSlug(slug: string | undefined) {
   }
 
   const id = Number(slug.split("-")[0]);
+
   return Number.isNaN(id) ? undefined : id;
 }
 
@@ -270,6 +271,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
           // 2. Select new tab
           state.selectedTabId = tabId;
+
           return;
         }
 
@@ -362,6 +364,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
         // 3. Select new tab
         state.selectedTabId = newTabId;
+
         return;
       },
     );

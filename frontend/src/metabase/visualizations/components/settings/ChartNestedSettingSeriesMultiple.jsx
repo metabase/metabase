@@ -35,6 +35,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
             const key = getObjectKey(single);
             const settings = allComputedSettings[key] || {};
             const seriesCardName = seriesCardNames?.[key];
+
             return (
               <div
                 key={key}

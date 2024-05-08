@@ -20,6 +20,7 @@ import {
 const columnMove = (columns, from, to) => {
   const columnCopy = [...columns];
   columnCopy.splice(to, 0, columnCopy.splice(from, 1)[0]);
+
   return columnCopy;
 };
 
@@ -105,11 +106,13 @@ class ChartSettingFieldsPartition extends Component {
     );
 
     const { getColumnTitle } = this.props;
+
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         {this.props.partitions.map(({ name: partitionName, title }, index) => {
           const columns = value[partitionName] ?? [];
           const partitionType = this.getPartitionType(partitionName);
+
           return (
             <div
               className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
@@ -175,6 +178,7 @@ class Column extends Component {
 
   render() {
     const { title } = this.props;
+
     return (
       <FieldPartitionColumn
         title={title}

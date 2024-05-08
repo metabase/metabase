@@ -51,6 +51,7 @@ export function canAddFilter(filter) {
   if (filters.length > 0) {
     return noNullValues(filters[filters.length - 1]);
   }
+
   return true;
 }
 
@@ -81,6 +82,7 @@ export function isStandard(filter) {
     const optionNames = _.keys(stringOp.options);
     const isOptionName = arg => _.contains(optionNames, _.first(_.keys(arg)));
     const valueArgs = _.filter(args, arg => !isOptionName(arg));
+
     return (
       isValidField(field) && _.all(valueArgs, arg => isLiteralOrUndefined(arg))
     );
@@ -109,6 +111,7 @@ export function isFieldFilter(filter) {
 // TODO: is it safe to assume if the last item is an object then it's options?
 export function hasFilterOptions(filter) {
   const o = filter[filter.length - 1];
+
   return !!o && typeof o == "object" && o.constructor === Object;
 }
 
@@ -133,5 +136,6 @@ export function setFilterOptions(filter, options) {
   if (Object.keys(options).length > 0) {
     _filter = [..._filter, options];
   }
+
   return _filter;
 }

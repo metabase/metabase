@@ -35,6 +35,7 @@ function Item<TId>({
     if (hasChildren) {
       return () => onChangeOpenCollectionId?.(item.id);
     }
+
     return;
   }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
 

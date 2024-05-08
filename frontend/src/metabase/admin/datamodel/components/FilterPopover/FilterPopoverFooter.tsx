@@ -32,6 +32,7 @@ export function FilterPopoverFooter({
     CS.alignCenter,
     PopoverS.PopoverFooter,
   );
+
   return (
     <div className={containerClassName}>
       <FilterOptions

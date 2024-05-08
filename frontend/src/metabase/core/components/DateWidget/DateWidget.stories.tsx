@@ -11,6 +11,7 @@ export default {
 
 const Template: ComponentStory<typeof DateWidget> = args => {
   const [value, setValue] = useState<Moment>();
+
   return <DateWidget {...args} value={value} onChange={setValue} />;
 };
 

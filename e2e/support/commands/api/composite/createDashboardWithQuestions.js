@@ -14,6 +14,7 @@ Cypress.Commands.add(
           const questions = dashcardResponses.map(
             dashcardResponse => dashcardResponse.body.card,
           );
+
           return {
             questions,
             dashboard,

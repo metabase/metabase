@@ -15,6 +15,7 @@ import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
+
   return renderWithProviders(
     <BrowseModels
       modelsResult={{ data: models, isLoading: false, error: false }}

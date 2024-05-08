@@ -23,12 +23,14 @@ const DEFAULT_CUSTOM_SCHEDULE = "0 * * * ?";
 function isCustomSchedule(setting) {
   const value = setting.value || setting.default;
   const defaultSchedules = setting.options.map(o => o.value);
+
   return !defaultSchedules.includes(value);
 }
 
 function formatCronExpression(cronExpression) {
   const [, ...partsWithoutSeconds] = cronExpression.split(" ");
   const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
+
   return partsWithoutSecondsAndYear.join(" ");
 }
 

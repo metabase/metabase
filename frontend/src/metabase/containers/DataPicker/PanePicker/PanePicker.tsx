@@ -30,6 +30,7 @@ function PanePicker({
   children,
 }: PanePickerProps) {
   const hasContent = data.length > 0;
+
   return (
     <Root>
       <LeftPaneContainer hasContent={hasContent}>

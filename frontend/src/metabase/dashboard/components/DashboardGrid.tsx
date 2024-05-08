@@ -236,6 +236,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       .map(card => this.getLayoutForDashCard(card))
       .reduce((acc, dashcardLayout) => {
         const dashcardId = dashcardLayout.i;
+
         return {
           ...acc,
           [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
@@ -311,6 +312,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       minW = minSize.width;
       minH = minSize.height;
     }
+
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
@@ -348,6 +350,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
       heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
     });
+
     return { desktop, mobile };
   }
 
@@ -372,6 +375,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const { addSeriesModalDashCard } = this.state;
     const isOpen =
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
+
     return (
       <Modal
         className={cx(
@@ -498,6 +502,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
       const iconSize = 14;
+
       return {
         name: opts.icon,
         color: opts.color ? color(opts.color) : undefined,
@@ -566,6 +571,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   get isEditingLayout() {
     const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
       this.props;
+
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );
@@ -616,6 +622,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const { width } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
+
     return (
       <GridLayout
         className={cx({
@@ -642,6 +649,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   render() {
     const { dashboard, width } = this.props;
+
     return (
       <DashboardGridContainer
         data-testid="dashboard-grid"

@@ -130,6 +130,7 @@ export default ({
         if (suggestions.length === 0) {
           return null;
         }
+
         return (
           <ComposedComponent
             {...this.props}

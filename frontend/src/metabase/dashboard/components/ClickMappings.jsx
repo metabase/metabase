@@ -60,6 +60,7 @@ class ClickMappings extends Component {
         >{t`No available targets`}</p>
       );
     }
+
     return (
       <div data-testid="click-mappings">
         <div>
@@ -99,6 +100,7 @@ class ClickMappings extends Component {
 
   getTargetName() {
     const objectType = clickTargetObjectType(this.props.object);
+
     return { dashboard: t`filter`, native: t`variable`, gui: t`column` }[
       objectType
     ];
@@ -121,6 +123,7 @@ class ClickMappings extends Component {
         ? t`Other available columns`
         : t`Available columns`;
     }
+
     return "Unknown";
   }
 }
@@ -160,6 +163,7 @@ export const ClickMappingsConnected = _.compose(
       column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
       parameter: parameters,
     };
+
     return { setTargets, unsetTargets, sourceOptions, question };
   }),
 )(ClickMappings);
@@ -219,6 +223,7 @@ function TargetWithSource({
   const { name, id } = target;
   const source =
     getIn(clickBehavior, ["parameterMapping", id, "source"]) || null;
+
   return (
     <div className={CS.mb2}>
       <div
@@ -312,6 +317,7 @@ function loadQuestionMetadata(getQuestion) {
 
       render() {
         const { question, metadata, ...rest } = this.props;
+
         return <ComposedComponent {...rest} />;
       }
     }

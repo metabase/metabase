@@ -34,6 +34,7 @@ class UserPasswordResetModal extends Component {
 
   render() {
     const { user, emailConfigured, temporaryPassword } = this.props;
+
     return temporaryPassword ? (
       <ModalContent
         title={t`${user.common_name}'s password has been reset`}

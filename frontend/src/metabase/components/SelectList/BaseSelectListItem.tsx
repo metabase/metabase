@@ -34,6 +34,7 @@ export function BaseSelectListItem({
 }: BaseSelectListItemProps) {
   const ref = useScrollOnMount();
   const Root = as;
+
   return (
     <Root
       ref={isSelected ? ref : undefined}

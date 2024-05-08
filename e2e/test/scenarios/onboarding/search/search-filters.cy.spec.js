@@ -216,6 +216,7 @@ describe("scenarios > search", () => {
           const uniqueResults = new Set(
             $results.toArray().map(el => {
               const label = el.getAttribute("aria-label");
+
               return label.split(" ").slice(-1)[0];
             }),
           );

@@ -81,6 +81,7 @@ const getYAxisTicksWidth = (
     }
 
     const formattedValue = axisModel.formatter(value);
+
     return measureText(formattedValue, fontStyle);
   });
 
@@ -115,6 +116,7 @@ const getXAxisTicksWidth = (
         dataset[index][X_AXIS_DATA_KEY] as number,
       );
     }
+
     return dataset[index][X_AXIS_DATA_KEY];
   });
 
@@ -169,6 +171,7 @@ const checkHeight = (
   if (rotation === "rotate-90") {
     return maxXTickWidth / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD;
   }
+
   return (
     maxXTickWidth / Math.SQRT2 / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD
   );
@@ -385,6 +388,7 @@ export const getChartPadding = (
     const seriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
     );
+
     return seriesSettings.display === "scatter";
   });
   if (isScatterPlot && chartModel.xAxisModel.axisType !== "category") {

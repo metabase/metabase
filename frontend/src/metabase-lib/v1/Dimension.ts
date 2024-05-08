@@ -130,6 +130,7 @@ export default class Dimension {
       a instanceof Dimension ? a : Dimension.parseMBQL(a);
     const dimensionB: Dimension | null | undefined =
       b instanceof Dimension ? b : Dimension.parseMBQL(b);
+
     return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
   }
 
@@ -266,6 +267,7 @@ export default class Dimension {
     const baseDimensionB =
       otherDimension &&
       otherDimension.getMLv1CompatibleDimension().baseDimension();
+
     return (
       !!baseDimensionA &&
       !!baseDimensionB &&
@@ -365,6 +367,7 @@ export default class Dimension {
 
   column(extra = {}) {
     const field = this.baseDimension().field();
+
     return {
       id: field.id,
       base_type: field.base_type,
@@ -407,6 +410,7 @@ export default class Dimension {
    */
   getOption(k: string): any {
     const options = this.getOptions();
+
     return options?.[k];
   }
 
@@ -448,12 +452,14 @@ export default class Dimension {
 
     if (this.binningStrategy() === "num-bins") {
       const n = this._getBinningOption("num-bins");
+
       return ngettext(msgid`${n} bin`, `${n} bins`, n);
     }
 
     if (this.binningStrategy() === "bin-width") {
       const binWidth = this._getBinningOption("bin-width");
       const units = this.field().isCoordinate() ? "°" : "";
+
       return `${binWidth}${units}`;
     } else {
       return t`Auto binned`;
@@ -608,6 +614,7 @@ export default class Dimension {
    */
   _isBinnable(): boolean {
     const defaultDimension = this.defaultDimension();
+
     return (
       defaultDimension &&
       isFieldDimension(defaultDimension) &&
@@ -666,6 +673,7 @@ export class FieldDimension extends Dimension {
         "FieldDimension.parseMBQLOrWarn() called with a raw integer Field ID. This is an error. Fixme!",
         mbql,
       );
+
       return FieldDimension.parseMBQLOrWarn(
         ["field", mbql, null],
         metadata,
@@ -736,6 +744,7 @@ export class FieldDimension extends Dimension {
         this._metadata,
         this._query,
       );
+
       return dimension ? this.isEqual(dimension) : false;
     }
 
@@ -796,6 +805,7 @@ export class FieldDimension extends Dimension {
     const fieldIdentifier = this.fieldIdOrName();
     if (this._query) {
       const queryTableFields = this._query.table()?.fields;
+
       return _.findWhere(queryTableFields, {
         [identifierProp]: fieldIdentifier,
       });
@@ -843,6 +853,7 @@ export class FieldDimension extends Dimension {
       return this._createFallbackField();
     } catch (e) {
       console.warn("FieldDimension.field()", this.mbql(), e);
+
       return null;
     }
   }
@@ -1013,6 +1024,7 @@ export class FieldDimension extends Dimension {
         this,
         option,
       );
+
       return null;
     }
 
@@ -1124,6 +1136,7 @@ export class ExpressionDimension extends Dimension {
   ): Dimension | null | undefined {
     if (isExpressionReference(mbql)) {
       const [expressionName, options] = mbql.slice(1);
+
       return new ExpressionDimension(expressionName, options, metadata, query);
     }
   }
@@ -1176,6 +1189,7 @@ export class ExpressionDimension extends Dimension {
         this._metadata,
         this._query,
       );
+
       return dimension ? this.isEqual(dimension) : false;
     }
 
@@ -1228,6 +1242,7 @@ export class ExpressionDimension extends Dimension {
               this._metadata,
               this._query,
             );
+
             return dimension?.field();
           };
 
@@ -1299,6 +1314,7 @@ export class ExpressionDimension extends Dimension {
       });
     } catch (e) {
       console.warn("ExpressionDimension.field()", this.mbql(), e);
+
       return null;
     }
   }
@@ -1309,6 +1325,7 @@ export class ExpressionDimension extends Dimension {
 
   icon(): string {
     const field = this.field();
+
     return field ? field.icon() : "unknown";
   }
 
@@ -1407,6 +1424,7 @@ export class AggregationDimension extends Dimension {
   ): Dimension | null | undefined {
     if (isAggregationReference(mbql)) {
       const [aggregationIndex, options] = mbql.slice(1);
+
       return new AggregationDimension(
         aggregationIndex,
         options,
@@ -1469,6 +1487,7 @@ export class AggregationDimension extends Dimension {
       const dimension = aggregation.dimension();
       const field = dimension && dimension.field();
       const { semantic_type } = field || {};
+
       return new Field({
         name: aggregation.columnName(),
         display_name: aggregation.displayName(),
@@ -1482,6 +1501,7 @@ export class AggregationDimension extends Dimension {
       });
     } catch (e) {
       console.warn("AggregationDimension.field()", this.mbql(), e);
+
       return null;
     }
   }
@@ -1591,22 +1611,26 @@ export class TemplateTagDimension extends FieldDimension {
 
   isValidDimensionType() {
     const maybeErrors = this.validateTemplateTag();
+
     return this.isDimensionType() && maybeErrors === null;
   }
 
   isDimensionType() {
     const maybeTag = this.tag();
+
     return maybeTag?.type === "dimension";
   }
 
   isVariableType() {
     const maybeTag = this.tag();
+
     return ["text", "number", "date"].includes(maybeTag?.type);
   }
 
   dimension() {
     if (this.isValidDimensionType()) {
       const tag = this.tag();
+
       return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
     }
 
@@ -1616,6 +1640,7 @@ export class TemplateTagDimension extends FieldDimension {
   variable() {
     if (this.isVariableType()) {
       const tag = this.tag();
+
       return new TemplateTagVariable([tag.name], this._metadata, this._query);
     }
 
@@ -1624,6 +1649,7 @@ export class TemplateTagDimension extends FieldDimension {
 
   tag() {
     const templateTagMap = this._query?.templateTagsMap() ?? {};
+
     return templateTagMap[this.tagName()];
   }
 
@@ -1632,9 +1658,11 @@ export class TemplateTagDimension extends FieldDimension {
       if (this.isValidDimensionType()) {
         return this.dimension().field();
       }
+
       return null;
     } catch (e) {
       console.warn("TemplateTagDimension.field()", this.mbql(), e);
+
       return null;
     }
   }
@@ -1649,6 +1677,7 @@ export class TemplateTagDimension extends FieldDimension {
 
   displayName() {
     const tag = this.tag();
+
     return (tag && tag["display-name"]) || super.displayName();
   }
 

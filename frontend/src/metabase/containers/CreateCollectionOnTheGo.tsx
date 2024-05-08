@@ -42,6 +42,7 @@ export function CreateCollectionOnTheGo({
     openCollectionId,
     filterPersonalCollections,
   } = state;
+
   return enabled ? (
     <CreateCollectionModal
       collectionId={openCollectionId}
@@ -72,6 +73,7 @@ export function CreateCollectionOnTheGoButton({
 }: CreateCollectionOnTheGoButtonProps) {
   const { canCreateNew, updateState } = useContext(Context);
   const formik = useFormikContext<Values>();
+
   return canCreateNew && formik ? (
     <NewCollectionButton
       light

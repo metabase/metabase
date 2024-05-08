@@ -63,5 +63,6 @@ function setClause(clauseName, query, clause) {
   } else {
     query[clauseName] = clause;
   }
+
   return query;
 }

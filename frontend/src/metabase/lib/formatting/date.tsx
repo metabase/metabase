@@ -819,6 +819,7 @@ export function normalizeDateTimeRangeWithUnit(
   const end = b.clone().endOf(momentUnit);
   const shift = a.diff(start, "days");
   [start, end].forEach(d => d.add(shift, "days"));
+
   return [start, end, shift];
 }
 
@@ -1044,6 +1045,7 @@ function formatDateTimeWithFormats(
   if (shouldIncludeTime) {
     format.push(timeFormat);
   }
+
   return m.format(format.join(", "));
 }
 

@@ -24,6 +24,7 @@ export function findColumnIndexesForColumnSettings(
   const columnIndexByKey = new Map(
     columns.map((column, index) => [getColumnKey(column), index]),
   );
+
   return columnSettings.map(
     columnSetting =>
       columnIndexByKey.get(getColumnSettingKey(columnSetting)) ?? -1,
@@ -40,6 +41,7 @@ export function findColumnSettingIndexesForColumns(
       index,
     ]),
   );
+
   return columns.map(
     column => columnSettingIndexByKey.get(getColumnKey(column)) ?? -1,
   );

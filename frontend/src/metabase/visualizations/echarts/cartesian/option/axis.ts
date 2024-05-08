@@ -124,6 +124,7 @@ const getHistogramTicksOptions = (
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
     const topOffset =
       (histogramDimensionWidth + CHART_STYLE.axisTicks.size / 2) * Math.SQRT1_2;
+
     return {
       ...options,
       padding: [0, topOffset, 0, 0],
@@ -132,6 +133,7 @@ const getHistogramTicksOptions = (
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
     const rightOffset =
       histogramDimensionWidth / 2 - CHART_STYLE.axisTicks.size / 2;
+
     return {
       ...options,
       verticalAlign: "bottom",
@@ -162,6 +164,7 @@ const getCommonDimensionAxisOptions = (
     chartMeasurements.ticksDimensions.xTicksHeight,
   );
   const { getColor } = renderingContext;
+
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -257,6 +260,7 @@ export const buildNumericDimensionAxis = (
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
         }
+
         return ` ${formatter(fromEChartsAxisValue(rawValue))} `;
       },
     },
@@ -299,6 +303,7 @@ export const buildTimeSeriesDimensionAxis = (
         if (canRender(value)) {
           return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]"))} `; // spaces force padding between ticks
         }
+
         return "";
       },
     },

@@ -25,9 +25,11 @@ export const executeAction =
 
       const message = getActionExecutionMessage(action, result);
       dispatch(addUndo({ message, toastColor: "success" }));
+
       return { success: true, message };
     } catch (error) {
       const message = getActionErrorMessage(error);
+
       return { success: false, error, message };
     }
   };

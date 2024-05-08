@@ -79,6 +79,7 @@ const TestInnerComponent = () => {
 const setup = () => {
   setupDatabaseEndpoints(TEST_DB);
   setupTableEndpoints(TEST_TABLE);
+
   return renderWithProviders(<TestComponent />);
 };
 

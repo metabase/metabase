@@ -8,6 +8,7 @@ export function getDefaultJoinStrategy(
   const defaultStrategy = strategies.find(
     strategy => Lib.displayInfo(query, stageIndex, strategy).default,
   );
+
   return defaultStrategy ?? strategies[0];
 }
 

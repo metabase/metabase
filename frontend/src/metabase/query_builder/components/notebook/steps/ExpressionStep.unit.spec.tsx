@@ -23,6 +23,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
   function getRecentQuery(): Lib.Query {
     expect(updateQuery).toHaveBeenCalledWith(expect.anything());
     const [recentQuery] = updateQuery.mock.lastCall;
+
     return recentQuery;
   }
 

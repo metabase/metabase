@@ -65,12 +65,14 @@ export default class LegendVertical extends Component {
     } else {
       items = titles;
     }
+
     return (
       <ol className={cx(className, LegendS.Legend, LegendS.vertical)}>
         {items.map((title, index) => {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;
           const legendItemTitle = Array.isArray(title) ? title[0] : title;
+
           return (
             <li
               key={index}

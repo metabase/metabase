@@ -117,6 +117,7 @@ export default class Calendar extends Component<CalendarProps, State> {
 
   renderMonthHeader(current?: Moment, side?: "left" | "right") {
     current = current || moment();
+
     return (
       <div
         className={cx(
@@ -233,6 +234,7 @@ export default class Calendar extends Component<CalendarProps, State> {
 
   render() {
     const { current } = this.state;
+
     return this.renderCalendar(current);
   }
 }

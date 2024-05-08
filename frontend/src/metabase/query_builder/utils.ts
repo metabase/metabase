@@ -24,6 +24,7 @@ export function getPathNameFromQueryBuilderMode({
   if (queryBuilderMode === "dataset") {
     return `${pathname}/${datasetEditorTab}`;
   }
+
   return `${pathname}/${queryBuilderMode}`;
 }
 
@@ -32,6 +33,7 @@ export function getCurrentQueryParams() {
     window.location.search.charAt(0) === "?"
       ? window.location.search.slice(1)
       : window.location.search;
+
   return querystring.parse(search);
 }
 
@@ -59,6 +61,7 @@ export function getURLForCardState(
       options.objectId = objectId;
     }
   }
+
   return Urls.question(card, options);
 }
 

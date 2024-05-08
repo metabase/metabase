@@ -33,6 +33,7 @@ export function CoordinateColumnPicker({
 
   const [value, setValue] = useState(() => {
     const option = getInitialOption(query, stageIndex, options, secondColumn);
+
     return option?.value;
   });
 

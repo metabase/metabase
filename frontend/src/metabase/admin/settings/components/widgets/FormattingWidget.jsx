@@ -46,6 +46,7 @@ class FormattingWidget extends Component {
   render() {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;
+
     return (
       <div className={CS.mt2}>
         {SETTING_TYPES.map(({ type, name, column, settings }) => (

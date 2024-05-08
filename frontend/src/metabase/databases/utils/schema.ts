@@ -46,6 +46,7 @@ export const getVisibleFields = (
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced);
+
   return fields.filter(field => isFieldVisible(field, values.details));
 };
 
@@ -105,6 +106,7 @@ const getFieldSchema = (field: EngineField) => {
 
 const isDetailField = (field: EngineField) => {
   const override = FIELD_OVERRIDES[field.name];
+
   return override?.name == null;
 };
 

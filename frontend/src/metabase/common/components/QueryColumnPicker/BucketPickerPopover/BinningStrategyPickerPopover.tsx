@@ -43,6 +43,7 @@ export function BinningStrategyPickerPopover({
       if (item.bucket === null) {
         return !selectedBucket && isEditing;
       }
+
       return !!item.selected;
     },
     [selectedBucket, isEditing],

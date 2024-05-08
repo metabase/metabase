@@ -45,6 +45,7 @@ export function StackedCheckBox({
     if (label == null) {
       return null;
     }
+
     return <Label>{label}</Label>;
   }, [label]);
 

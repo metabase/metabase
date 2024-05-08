@@ -18,6 +18,7 @@ function setup(opts: SetupOpts) {
 
 function Child() {
   const { shouldDelay, onOpen, onClose } = useDelayGroup();
+
   return (
     <button onMouseEnter={onOpen} onMouseLeave={onClose}>
       delay: {JSON.stringify(shouldDelay)}

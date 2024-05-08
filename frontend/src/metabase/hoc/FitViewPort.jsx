@@ -69,6 +69,7 @@ export function isFitViewportMode() {
   if (root && root.firstChild) {
     return root.firstChild.classList.contains(CS.spread);
   }
+
   return false;
 }
 

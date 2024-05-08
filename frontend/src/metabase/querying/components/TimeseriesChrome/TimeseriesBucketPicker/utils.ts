@@ -10,6 +10,7 @@ export function getBucketItem(
   bucket: Lib.Bucket,
 ): BucketItem {
   const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+
   return {
     name: bucketInfo.displayName,
     bucket,
@@ -22,6 +23,7 @@ export function getSelectedItem(
   column: Lib.ColumnMetadata,
 ) {
   const bucket = Lib.temporalBucket(column);
+
   return bucket
     ? getBucketItem(query, stageIndex, bucket)
     : { name: t`Unbinned`, bucket: null };

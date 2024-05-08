@@ -39,6 +39,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
       didPerform = true;
     }
   }
+
   return didPerform;
 }
 

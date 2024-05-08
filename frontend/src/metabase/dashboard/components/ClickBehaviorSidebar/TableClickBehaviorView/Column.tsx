@@ -44,6 +44,7 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
       </Quoted>
     );
   }
+
   return t`Unknown`;
 };
 
@@ -60,6 +61,7 @@ function getClickBehaviorDescription({
 
   if (clickBehavior.type === "crossfilter") {
     const parameters = Object.keys(clickBehavior.parameterMapping || {});
+
     return (n =>
       ngettext(
         msgid`${column.display_name} updates ${n} filter`,

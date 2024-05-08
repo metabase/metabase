@@ -84,6 +84,7 @@ const chartSettingNestedSettings =
               this.handleChangeSettingsForEditingObject,
               extra,
             );
+
             return (
               <ComposedComponent
                 {...this.props}
@@ -98,6 +99,7 @@ const chartSettingNestedSettings =
             );
           }
         }
+
         return (
           <ComposedComponent
             {...this.props}

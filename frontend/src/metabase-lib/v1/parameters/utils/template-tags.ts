@@ -26,6 +26,7 @@ function getParameterType(tag: TemplateTag) {
   if (type === "number") {
     return "number/=";
   }
+
   return "category";
 }
 
@@ -97,6 +98,7 @@ export function getParametersFromCard(
 
 export function getTemplateTagParametersFromCard(card: Card) {
   const tags = getTemplateTags(card);
+
   return getTemplateTagParameters(tags, card.parameters);
 }
 

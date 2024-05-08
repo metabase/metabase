@@ -125,6 +125,7 @@ const getBreakoutsWithColumns = (
 ) => {
   return breakouts.map(breakout => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
+
     return { breakout, column };
   });
 };

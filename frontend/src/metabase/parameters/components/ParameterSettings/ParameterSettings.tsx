@@ -295,5 +295,6 @@ function getLabelError({
   if (labelValue.toLowerCase() === "tab") {
     return t`This label is reserved for dashboard tabs.`;
   }
+
   return null;
 }

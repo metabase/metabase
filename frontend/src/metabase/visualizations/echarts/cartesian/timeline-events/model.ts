@@ -86,6 +86,7 @@ export const mergeOverlappingTimelineEventGroups = (
   sortedGroups.forEach(currentGroup => {
     if (mergedGroups.length === 0) {
       mergedGroups.push(currentGroup);
+
       return;
     }
 
@@ -123,6 +124,7 @@ const getTimelineEventsInsideRange = (
   range: DateRange,
 ) => {
   const [min, max] = range;
+
   return timelineEvents.filter(event => {
     return (
       (min.isSame(event.timestamp) || min.isBefore(event.timestamp)) &&
@@ -162,6 +164,7 @@ export const getTimelineEventsModel = (
   );
 
   const dayWidth = getDayWidth(dimensionRange, chartMeasurements);
+
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
     dayWidth,

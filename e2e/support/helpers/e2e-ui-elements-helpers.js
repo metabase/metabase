@@ -4,6 +4,7 @@ export const POPOVER_ELEMENT =
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
+
   return cy.get(POPOVER_ELEMENT);
 }
 
@@ -11,6 +12,7 @@ const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
+
   return cy.get(HOVERCARD_ELEMENT);
 }
 
@@ -25,6 +27,7 @@ export function menu() {
 export function modal() {
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
+
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 

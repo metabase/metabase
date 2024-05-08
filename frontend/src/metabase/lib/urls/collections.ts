@@ -41,6 +41,7 @@ export function collection(collection?: Pick<Collection, "id" | "name">) {
 
   if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
+
     return `/collection/${id}`;
   }
 
@@ -59,5 +60,6 @@ export function extractCollectionId(slug = ""): CollectionId | undefined {
   if (slug === "root" || slug === "users") {
     return slug;
   }
+
   return extractEntityId(slug);
 }

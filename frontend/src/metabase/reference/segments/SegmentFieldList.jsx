@@ -36,6 +36,7 @@ const emptyStateData = {
 
 const mapStateToProps = (state, props) => {
   const data = getFieldsBySegment(state, props);
+
   return {
     segment: getSegment(state, props),
     entities: data,

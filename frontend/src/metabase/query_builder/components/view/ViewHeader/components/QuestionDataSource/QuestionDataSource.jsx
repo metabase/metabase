@@ -30,6 +30,7 @@ QuestionDataSource.propTypes = {
 function isMaybeBasedOnDataset(question) {
   const query = question.query();
   const sourceTableId = Lib.sourceTableOrCardId(query);
+
   return isVirtualCardId(sourceTableId);
 }
 
@@ -88,6 +89,7 @@ export function QuestionDataSource({
                 />
               );
             }
+
             return (
               <DataSourceCrumbs
                 question={question}
@@ -114,6 +116,7 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
     subHead: variant === "subhead",
     isObjectDetail,
   });
+
   return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
 }
 
@@ -278,7 +281,9 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
 function getTableURL(table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
+
     return Urls.question({ id: cardId, name: table.displayName() });
   }
+
   return ML_Urls.getUrl(table.newQuestion());
 }

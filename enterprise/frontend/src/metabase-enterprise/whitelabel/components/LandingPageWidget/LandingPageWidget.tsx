@@ -19,6 +19,7 @@ export function LandingPageWidget({ onChange, settingValues }: Props) {
     if (typeof value !== "string") {
       return value;
     }
+
     return value.trim() || null;
   };
 

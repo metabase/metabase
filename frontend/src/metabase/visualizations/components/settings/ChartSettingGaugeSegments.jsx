@@ -19,6 +19,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
       { ...segments[index], [property]: value },
       ...segments.slice(index + 1),
     ]);
+
   return (
     <div>
       <table>

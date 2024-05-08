@@ -63,6 +63,7 @@ const buildMapping = (entries: Entry[]): MappingType =>
     if (key) {
       memo[key] = value;
     }
+
     return memo;
   }, {});
 
@@ -133,6 +134,7 @@ export const MappingEditor = ({
             onChange: newValue =>
               handleChange(replaceEntryValue(entries, index, newValue)),
           });
+
           return (
             <tr key={index}>
               <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
@@ -187,6 +189,7 @@ const addEntry = (entries: Entry[]) => {
 const removeEntry = (entries: Entry[], index: number) => {
   const entriesCopy = [...entries];
   entriesCopy.splice(index, 1);
+
   return entriesCopy;
 };
 
@@ -197,11 +200,13 @@ const replaceEntryValue = (
 ) => {
   const newEntries = [...entries];
   newEntries[index].value = newValue;
+
   return newEntries;
 };
 
 const replaceEntryKey = (entries: Entry[], index: number, newKey: string) => {
   const newEntries = [...entries];
   newEntries[index].key = newKey;
+
   return newEntries;
 };

@@ -37,6 +37,7 @@ type ListColumnSlot = "left" | "right";
 
 function formatValueForSelect(value: FieldIdOrFieldRef): string | number {
   const isFieldReference = Array.isArray(value);
+
   return isFieldReference ? JSON.stringify(value) : value;
 }
 
@@ -45,6 +46,7 @@ function parseSelectValue(
 ): FieldIdOrFieldRef {
   const eventValue = event.target.value;
   const isFieldReference = typeof eventValue === "string";
+
   return isFieldReference ? JSON.parse(eventValue) : eventValue;
 }
 

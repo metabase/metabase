@@ -10,6 +10,7 @@ export default {
 
 const Template: ComponentStory<typeof AutocompleteInput> = args => {
   const [value, setValue] = useState("");
+
   return (
     <AutocompleteInput
       {...args}
@@ -52,6 +53,7 @@ const CustomOptionClickTemplate: ComponentStory<
   const handleOptionSelect = (option: string) => {
     setValue(v => `${v}${option}`);
   };
+
   return (
     <AutocompleteInput
       {...args}

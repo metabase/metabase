@@ -21,6 +21,7 @@ const CollectionDropTarget = DropTarget(
       const droppingToSameCollection =
         canonicalCollectionId(item.collection_id) ===
         canonicalCollectionId(collection.id);
+
       return item.model !== "collection" && !droppingToSameCollection;
     },
   },

@@ -15,6 +15,7 @@ export function getClickBehaviorDescription(dashcard) {
     if (count === 0) {
       return noBehaviorMessage;
     }
+
     return ngettext(
       msgid`${count} column has custom behavior`,
       `${count} columns have custom behavior`,
@@ -27,6 +28,7 @@ export function getClickBehaviorDescription(dashcard) {
   }
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;
+
     return linkType == null
       ? t`Go to...`
       : linkType === "dashboard"
@@ -51,6 +53,7 @@ export function isTableDisplay(dashcard) {
 
 export function getLinkTargets(settings) {
   const { click_behavior, column_settings = {} } = settings || {};
+
   return [
     click_behavior,
     ...Object.values(column_settings).map(settings => settings.click_behavior),
@@ -63,6 +66,7 @@ function hasLinkedQuestionOrDashboard({ type, linkType } = {}) {
   if (type === "link") {
     return linkType === "question" || linkType === "dashboard";
   }
+
   return false;
 }
 

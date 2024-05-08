@@ -21,6 +21,7 @@ function getIndicationColor(percentage: number, isHovered: boolean): string {
   if (!isHovered) {
     return color("text-medium");
   }
+
   return percentage >= 0.9 ? color("success") : color("warning");
 }
 

@@ -73,6 +73,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         />
       );
     }
+
     return null;
   };
 

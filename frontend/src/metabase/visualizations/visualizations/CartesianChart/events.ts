@@ -97,6 +97,7 @@ const getSameCardDataKeys = (
     }
 
     const { cardId } = parseDataKey(dataKey);
+
     return cardId == null || cardId === seriesModel.cardId;
   });
 };
@@ -328,6 +329,7 @@ function getDataIndex(
 
   const originalDataIndex =
     transformedDataset[echartsDataIndex][ORIGINAL_INDEX_DATA_KEY];
+
   return originalDataIndex ?? echartsDataIndex;
 }
 

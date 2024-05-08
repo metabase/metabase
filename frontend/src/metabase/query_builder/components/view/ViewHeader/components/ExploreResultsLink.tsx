@@ -21,6 +21,7 @@ export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
 
   if (query) {
     const url = ML_getUrl(query.setDisplay("table").setSettings({}));
+
     return <Link to={url}>{button}</Link>;
   }
 

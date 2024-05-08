@@ -31,6 +31,7 @@ const STEPS: NotebookStepDef[] = [
     type: "join",
     valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
+
       return hasData(query) && Boolean(database?.hasFeature("join"));
     },
     subSteps: (query, stageIndex) => {
@@ -61,6 +62,7 @@ const STEPS: NotebookStepDef[] = [
     type: "expression",
     valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
+
       return hasData(query) && Boolean(database?.hasFeature("expressions"));
     },
     active: (query, stageIndex) => {
@@ -157,6 +159,7 @@ const STEPS: NotebookStepDef[] = [
 
 const hasData = (query: Lib.Query): boolean => {
   const databaseId = Lib.databaseID(query);
+
   return databaseId !== null;
 };
 
@@ -220,6 +223,7 @@ function getStageSteps(
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
     const isValidItemIndex = itemIndex != null && itemIndex > 0;
+
     return (
       `${stageIndex}:${step.type}` + (isValidItemIndex ? `:${itemIndex}` : "")
     );
@@ -228,6 +232,7 @@ function getStageSteps(
   const getTestId = (step: NotebookStepDef, itemIndex: number | null) => {
     const isValidItemIndex = itemIndex != null && itemIndex > 0;
     const finalItemIndex = isValidItemIndex ? itemIndex : 0;
+
     return `step-${step.type}-${stageIndex}-${finalItemIndex}`;
   };
 
@@ -250,6 +255,7 @@ function getStageSteps(
       revert: STEP.revert
         ? (query: Lib.Query) => {
             const revert = checkNotNull(STEP.revert);
+
             return revert(query, stageIndex, itemIndex ?? undefined);
           }
         : null,
@@ -258,6 +264,7 @@ function getStageSteps(
       next: null,
       previous: null,
     };
+
     return step;
   }
 
@@ -266,6 +273,7 @@ function getStageSteps(
     if (STEP.subSteps) {
       // add 1 for the initial or next action button
       const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
+
       return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
     }
 

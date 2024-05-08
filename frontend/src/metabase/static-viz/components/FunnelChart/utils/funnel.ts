@@ -105,6 +105,7 @@ export const reorderData = (
     .map(orderedItem => {
       if (orderedItem.enabled) {
         const dataIndex = keys.findIndex(key => key === orderedItem.key);
+
         return data[dataIndex];
       }
     })

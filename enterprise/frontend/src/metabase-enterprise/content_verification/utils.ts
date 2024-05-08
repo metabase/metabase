@@ -13,6 +13,7 @@ export const sortCollectionsByVerification = (
   if (isCollection2Official && !isCollection1Official) {
     return 1;
   }
+
   return 0;
 };
 
@@ -25,6 +26,7 @@ export const sortModelsByVerification = (a: SearchResult, b: SearchResult) => {
   if (!aVerified && bVerified) {
     return 1;
   }
+
   return 0;
 };
 

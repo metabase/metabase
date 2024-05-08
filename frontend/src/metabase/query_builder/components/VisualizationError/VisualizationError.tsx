@@ -29,6 +29,7 @@ import { adjustPositions, stripRemarks } from "./utils";
 
 function EmailAdmin(): JSX.Element | null {
   const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
+
   return hasAdminEmail ? (
     <span className={QueryBuilderS.QueryErrorAdminEmail}>
       <a className={CS.noDecoration} href={`mailto:${hasAdminEmail}`}>

@@ -62,5 +62,6 @@ export const getIcon = (item: ObjectWithModel, options: IconOptions = {}) => {
   if (PLUGIN_COLLECTIONS) {
     return PLUGIN_COLLECTIONS.getIcon(item, options);
   }
+
   return getIconBase(item, options);
 };

@@ -18,6 +18,7 @@ const Template: ComponentStory<typeof SchedulePicker> = args => {
     updateArgs,
   ] = useArgs();
   const handleChange = (schedule: unknown) => updateArgs({ schedule });
+
   return (
     <SchedulePicker
       {...args}

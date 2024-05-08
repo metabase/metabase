@@ -78,6 +78,7 @@ export function getLatestModerationReview(reviews: ModerationReview[]) {
   if (!maybeReview) {
     return undefined;
   }
+
   // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
   return isRemovedReviewStatus(maybeReview.status) ? undefined : maybeReview;
 }
@@ -85,6 +86,7 @@ export function getLatestModerationReview(reviews: ModerationReview[]) {
 export const getStatusIconForQuestion = (question: Question) => {
   const reviews = question.getModerationReviews();
   const review = getLatestModerationReview(reviews);
+
   return review ? getIconForReview(review) : noIcon;
 };
 
@@ -98,6 +100,7 @@ export const getTextForReviewBanner = (
   if (status === "verified") {
     const bannerText = getModeratorDisplayText(moderator, currentUser);
     const tooltipText = t`Remove verification`;
+
     return { bannerText, tooltipText };
   }
 
@@ -125,6 +128,7 @@ export const getModeratorDisplayText = (
   currentUser: User | null,
 ) => {
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
+
   return c("{0} is the name of a user").t`${moderatorName} verified this`;
 };
 

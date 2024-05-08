@@ -45,6 +45,7 @@ const Metabot = ({
 }: MetabotProps) => {
   useEffect(() => {
     onInit({ entityId, entityType, initialPrompt });
+
     return () => onReset();
   }, [entityId, entityType, initialPrompt, onInit, onReset]);
 

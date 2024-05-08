@@ -86,6 +86,7 @@ export const createMockEmbedDataset = (
 ): EmbedDataset => {
   if ("data" in opts) {
     const { data = {}, ...rest } = opts;
+
     return {
       data: createMockEmbedDatasetData(data),
       json_query: {

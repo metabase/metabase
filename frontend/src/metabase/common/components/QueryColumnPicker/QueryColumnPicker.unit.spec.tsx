@@ -22,6 +22,7 @@ function createQueryWithBreakout() {
   const query = Lib.breakout(plainQuery, 0, column);
   const [clause] = Lib.breakouts(query, 0);
   const clauseInfo = Lib.displayInfo(query, 0, clause);
+
   return { query, clause, clauseInfo };
 }
 

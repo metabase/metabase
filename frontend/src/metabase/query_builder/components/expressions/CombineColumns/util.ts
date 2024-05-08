@@ -83,6 +83,7 @@ export const getExpressionName = (
   const names = columns.map(
     column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
+
   return t`Combined ${names.join(", ")}`;
 };
 

@@ -47,6 +47,7 @@ function recursiveParse(source) {
     if (!terminated) {
       throw new Error(t`Expecting a closing parenthesis`);
     }
+
     return expr;
   };
 
@@ -63,6 +64,7 @@ function recursiveParse(source) {
       expectOp(OP.Comma);
     }
     expectOp(OP.CloseParenthesis);
+
     return params;
   };
 
@@ -71,6 +73,7 @@ function recursiveParse(source) {
 
   const field = name => {
     const ref = name[0] === "[" ? shrink(name) : name;
+
     return ["dimension", unescapeString(ref)];
   };
 
@@ -97,8 +100,10 @@ function recursiveParse(source) {
       if (peek && peek.op === OP.OpenParenthesis) {
         const fn = getMBQLName(text.trim().toLowerCase());
         const params = parseParameters();
+
         return [fn ? fn : text, ...params];
       }
+
       return field(text);
     } else if (type === TOKEN.Boolean) {
       return text.toLowerCase() === "true" ? true : false;
@@ -115,8 +120,10 @@ function recursiveParse(source) {
     if (matchOps([OP.Plus, OP.Minus])) {
       const { op } = next();
       const expr = parseUnary();
+
       return op === OP.Minus && typeof expr === "number" ? -expr : [op, expr];
     }
+
     return parsePrimary();
   };
 
@@ -133,6 +140,7 @@ function recursiveParse(source) {
         expr = [op, expr, parseUnary()];
       }
     }
+
     return expr;
   };
 
@@ -150,6 +158,7 @@ function recursiveParse(source) {
         expr = [op, expr, parseMultiplicative()];
       }
     }
+
     return expr;
   };
 
@@ -161,6 +170,7 @@ function recursiveParse(source) {
       const { op } = next();
       expr = [op, expr, parseAdditive()];
     }
+
     return expr;
   };
 
@@ -169,8 +179,10 @@ function recursiveParse(source) {
   const parseBooleanUnary = () => {
     if (matchOps([OP.Not])) {
       const { op } = next();
+
       return [op, parseBooleanUnary()];
     }
+
     return parseComparison();
   };
 
@@ -186,6 +198,7 @@ function recursiveParse(source) {
         expr = [op, expr, parseBooleanUnary()];
       }
     }
+
     return expr;
   };
 
@@ -201,6 +214,7 @@ function recursiveParse(source) {
         expr = [op, expr, parseBooleanAnd()];
       }
     }
+
     return expr;
   };
 
@@ -214,11 +228,13 @@ const modify = (node, transform) => {
   // MBQL clause?
   if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
     const [operator, ...operands] = node;
+
     return withAST(
       transform([operator, ...operands.map(sub => modify(sub, transform))]),
       node,
     );
   }
+
   return withAST(transform(node), node);
 };
 
@@ -232,6 +248,7 @@ const withAST = (result, expr) => {
       value: expr.node,
     });
   }
+
   return result;
 };
 
@@ -254,6 +271,7 @@ export const useShorthands = tree =>
         }
       }
     }
+
     return node;
   });
 
@@ -276,11 +294,13 @@ export const adjustOptions = tree =>
               operands.pop();
               operands.push({ "include-current": true });
             }
+
             return withAST([operator, ...operands], node);
           }
         }
       }
     }
+
     return node;
   });
 
@@ -299,11 +319,14 @@ export const adjustCase = tree =>
         }
         if (operands.length > 2 * pairCount) {
           const defVal = operands[operands.length - 1];
+
           return withAST([operator, pairs, { default: defVal }], node);
         }
+
         return withAST([operator, pairs], node);
       }
     }
+
     return node;
   });
 
@@ -313,9 +336,11 @@ export const adjustOffset = tree =>
       const [tag, expr, n] = node;
       if (tag === "offset") {
         const opts = {};
+
         return withAST([tag, opts, expr, n], node);
       }
     }
+
     return node;
   });
 
@@ -324,6 +349,7 @@ export const adjustBooleans = tree =>
     if (Array.isArray(node)) {
       if (node?.[0] === "case") {
         const [operator, pairs, options] = node;
+
         return [
           operator,
           pairs.map(([operand, value]) => {
@@ -336,6 +362,7 @@ export const adjustBooleans = tree =>
             if (isBooleanField) {
               return withAST([["=", operand, true], value], operand);
             }
+
             return [operand, value];
           }),
           options,
@@ -343,6 +370,7 @@ export const adjustBooleans = tree =>
       } else {
         const [operator, ...operands] = node;
         const { args = [] } = MBQL_CLAUSES[operator] || {};
+
         return [
           operator,
           ...operands.map((operand, index) => {
@@ -355,11 +383,13 @@ export const adjustBooleans = tree =>
             if (isBooleanField || op === "segment") {
               return withAST(["=", operand, true], operand);
             }
+
             return operand;
           }),
         ];
       }
     }
+
     return node;
   });
 

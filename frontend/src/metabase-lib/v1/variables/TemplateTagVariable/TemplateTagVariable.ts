@@ -14,11 +14,13 @@ export default class TemplateTagVariable extends Variable {
 
   displayName(): string | null | undefined {
     const tag = this.tag();
+
     return tag && (tag["display-name"] || tag.name);
   }
 
   icon(): string | null | undefined {
     const tag = this.tag();
+
     return tag && VARIABLE_ICONS[tag.type];
   }
 

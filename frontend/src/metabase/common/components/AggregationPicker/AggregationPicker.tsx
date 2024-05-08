@@ -220,6 +220,7 @@ export function AggregationPicker({
   if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
+
     return (
       <ColumnPickerContainer
         className={className}
@@ -294,6 +295,7 @@ function getInitialOperator(
   const operator = operators.find(
     operator => Lib.displayInfo(query, stageIndex, operator).selected,
   );
+
   return operator ?? null;
 }
 
@@ -321,6 +323,7 @@ function getOperatorListItem(
   operator: Lib.AggregationOperator,
 ): OperatorListItem {
   const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
+
   return {
     ...operatorInfo,
     operator,
@@ -333,6 +336,7 @@ function getMetricListItem(
   metric: Lib.LegacyMetricMetadata,
 ): LegacyMetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
+
   return {
     ...metricInfo,
     metric,

@@ -122,6 +122,7 @@ class LogoIcon extends Component {
   render() {
     const { dark, style = {}, className } = this.props;
     style.height ||= "32px";
+
     return (
       <span
         ref={c => (this._container = c)}

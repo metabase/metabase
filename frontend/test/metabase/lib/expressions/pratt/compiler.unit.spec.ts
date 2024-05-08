@@ -6,6 +6,7 @@ describe("metabase-lib/v1/expressions/compiler", () => {
     opts: { throwOnError?: boolean; resolverPass?: boolean } = {},
   ) {
     const { throwOnError = true, resolverPass } = opts;
+
     return compile(source, "expression", { throwOnError, resolverPass });
   }
 

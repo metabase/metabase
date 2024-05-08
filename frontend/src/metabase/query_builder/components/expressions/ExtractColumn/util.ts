@@ -34,6 +34,7 @@ function getNextName(names: string[], name: string, index: number): string {
   if (!names.includes(suffixed)) {
     return suffixed;
   }
+
   return getNextName(names, name, index + 1);
 }
 

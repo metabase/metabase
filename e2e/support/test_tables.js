@@ -99,6 +99,7 @@ export const many_data_types = async dbClient => {
   });
 
   await dbClient(tableName).insert(many_data_types_rows);
+
   return null;
 };
 

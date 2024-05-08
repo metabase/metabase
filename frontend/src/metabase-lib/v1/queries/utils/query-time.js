@@ -120,6 +120,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
 
   if (operator === "time-interval") {
     const [n, unit] = values;
+
     return [Lib.describeTemporalInterval(n, unit)];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
@@ -130,6 +131,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     }
     const [n, bucketing] = startingFrom;
     const suffix = formatStartingFrom(bucketing, -n);
+
     return [t`${prefix}, starting ${Math.abs(n)} ${suffix}`];
   } else {
     return values.map(value =>
@@ -163,6 +165,7 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
       : Lib.describeRelativeDatetime(n, unit);
   } else {
     console.warn("Unknown datetime format", value);
+
     return `[${t`Unknown`}]`;
   }
 }
@@ -188,6 +191,7 @@ export function parseFieldBucketing(field, defaultUnit = null) {
   } else if (isStartingFromExpr) {
     return parseFieldBucketing(field[1], defaultUnit);
   }
+
   return defaultUnit;
 }
 
@@ -209,6 +213,7 @@ function isInterval(mbql) {
     return false;
   }
   const [op, num, unit] = mbql;
+
   return (
     op === "interval" &&
     typeof num === "number" &&
@@ -244,6 +249,7 @@ export function getStartingFrom(mbql) {
   const [_op, expr, _left, _right] = mbql;
   const [_expr, _field, interval] = expr;
   const [_interval, num, unit] = interval;
+
   return [num, unit];
 }
 
@@ -265,6 +271,7 @@ export function formatStartingFrom(bucketing, n) {
     case "year":
       return ngettext(msgid`year ${suffix}`, `years ${suffix}`, n);
   }
+
   return "";
 }
 
@@ -272,6 +279,7 @@ function getTimeInterval(mbql) {
   if (Array.isArray(mbql) && mbql[0] === "time-interval") {
     return [mbql[1], mbql[2], mbql[3] || "day"];
   }
+
   return null;
 }
 
@@ -287,6 +295,7 @@ export function setStartingFrom(mbql, num, unit) {
       field,
       [intervalOp, num ?? getDefaultDatetimeValue(newUnit), newUnit],
     ];
+
     return op === "=" ? [op, newExpr, left] : [op, newExpr, left, right];
   }
 
@@ -303,6 +312,7 @@ export function setStartingFrom(mbql, num, unit) {
     const zeroed = ["relative-datetime", 0, intervalUnit];
     const left = intervalNum < 0 ? newInterval : zeroed;
     const right = intervalNum < 0 ? zeroed : newInterval;
+
     return ["between", expr, left, right];
   }
 
@@ -332,6 +342,7 @@ export function getRelativeDatetimeField(filter) {
   if (isStartingFrom(filter)) {
     const [_op, expr] = filter;
     const [_exprOp, field] = expr;
+
     return field;
   } else {
     return filter?.[1];
@@ -343,6 +354,7 @@ export function getRelativeDatetimeInterval(filter) {
     const [_op, _field, [_left, leftNum, unit], right] = filter;
     if (right) {
       const [_right, rightNum] = right;
+
       return [
         leftNum < 0 ? leftNum : rightNum,
         unit && unit !== "none" ? unit : "day",
@@ -352,6 +364,7 @@ export function getRelativeDatetimeInterval(filter) {
     }
   } else if (filter[0] === "time-interval") {
     const unit = filter[3];
+
     return [filter[2], unit && unit !== "none" ? unit : "day"];
   }
 
@@ -365,6 +378,7 @@ export function toTimeInterval(filter) {
   if (isStartingFrom(filter)) {
     return ["time-interval", field, -num, unit];
   }
+
   return ["time-interval", field, num, unit];
 }
 
@@ -378,6 +392,7 @@ export function updateRelativeDatetimeFilter(filter, positive) {
     const numValue =
       typeof value === "number" ? value : getDefaultDatetimeValue(unit, true);
     const newValue = positive ? Math.abs(numValue) : -Math.abs(numValue);
+
     return options
       ? [op, field, newValue, unit, options]
       : [op, field, newValue, unit];
@@ -394,8 +409,10 @@ export function updateRelativeDatetimeFilter(filter, positive) {
     const interval = ["relative-datetime", newValue, unit];
     const left = newValue < 0 ? interval : zeroed;
     const right = newValue < 0 ? zeroed : interval;
+
     return ["between", newField, left, right];
   }
+
   return null;
 }
 
@@ -406,12 +423,14 @@ export function setRelativeDatetimeUnit(filter, unit) {
   const startingFrom = getStartingFrom(filter);
   if (startingFrom) {
     const [op, field, start, end] = filter;
+
     return setStartingFrom(
       [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end],
       startingFrom[0],
       unit,
     );
   }
+
   return filter;
 }
 
@@ -422,6 +441,7 @@ export function setRelativeDatetimeValue(filter, value) {
   if (isStartingFrom(filter)) {
     const [_op, field] = filter;
     const [_num, unit] = getRelativeDatetimeInterval(filter);
+
     return [
       "between",
       field,
@@ -429,6 +449,7 @@ export function setRelativeDatetimeValue(filter, value) {
       ["relative-datetime", value < 0 ? 0 : value, unit],
     ];
   }
+
   return filter;
 }
 
@@ -449,6 +470,7 @@ export const getTimeComponent = value => {
   } else {
     date = moment();
   }
+
   return { hours, minutes, date };
 };
 
@@ -489,11 +511,13 @@ export const EXCLUDE_UNITS = {
 export const EXCLUDE_OPTIONS = {
   [EXCLUDE_UNITS["days"]]: () => {
     const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
+
     return [
       _.range(0, 7).map(day => {
         const date = now.day(day + 1);
         const displayName = date.format("dddd");
         const value = date.format("YYYY-MM-DD");
+
         return {
           displayName,
           value,
@@ -515,6 +539,7 @@ export const EXCLUDE_OPTIONS = {
       const date = now.month(month);
       const displayName = date.format("MMMM");
       const value = date.format("YYYY-MM-DD");
+
       return {
         displayName,
         value,
@@ -522,16 +547,19 @@ export const EXCLUDE_OPTIONS = {
         test: value => moment(value).format("MMMM") === displayName,
       };
     };
+
     return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
   },
   [EXCLUDE_UNITS["quarters"]]: () => {
     const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
     const suffix = " " + t`quarter`;
+
     return [
       _.range(1, 5).map(quarter => {
         const date = now.quarter(quarter);
         const displayName = date.format("Qo");
         const value = date.format("YYYY-MM-DD");
+
         return {
           displayName: displayName + suffix,
           value,
@@ -546,6 +574,7 @@ export const EXCLUDE_OPTIONS = {
     const func = hour => {
       const date = now.hour(hour);
       const displayName = date.format("h A");
+
       return {
         displayName,
         value: hour,
@@ -553,6 +582,7 @@ export const EXCLUDE_OPTIONS = {
         test: value => value === hour,
       };
     };
+
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
   },
 };

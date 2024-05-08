@@ -124,6 +124,7 @@ export function tokenize(expression) {
     const end = index;
     const op = source.slice(start, end);
     const error = null;
+
     return { type, op, start, end, error };
   };
 
@@ -149,6 +150,7 @@ export function tokenize(expression) {
       // just a dot?
       if (index - start <= 1) {
         index = start;
+
         return null;
       }
     } else if (index <= start) {
@@ -173,12 +175,14 @@ export function tokenize(expression) {
         const type = TOKEN.Number;
         const end = index;
         const error = t`Missing exponent`;
+
         return { type, start, end, error };
       }
     }
     const type = TOKEN.Number;
     const end = index;
     const error = null;
+
     return { type, start, end, error };
   };
 
@@ -257,6 +261,7 @@ export function tokenize(expression) {
         const type = TOKEN.Identifier;
         const end = index;
         const error = t`Bracket identifier in another bracket identifier`;
+
         return { type, start, end, error };
       } else if (ch === "\\") {
         // ignore the next char, even if it's [ or ]
@@ -267,6 +272,7 @@ export function tokenize(expression) {
     const end = index;
     const terminated = source[end - 1] === "]";
     const error = terminated ? null : t`Missing a closing bracket`;
+
     return { type, start, end, error };
   };
 
@@ -301,15 +307,18 @@ export function tokenize(expression) {
       const type = TOKEN.Operator;
       const op = id;
       const error = null;
+
       return { type, op, start, end, error };
     } else if (id === OPERATOR.True || id === OPERATOR.False) {
       const type = TOKEN.Boolean;
       const op = id;
       const error = null;
+
       return { type, op, start, end, error };
     }
     const type = TOKEN.Identifier;
     const error = null;
+
     return { type, start, end, error };
   };
 
@@ -364,6 +373,7 @@ export function tokenize(expression) {
         ++index;
       }
     }
+
     return { tokens, errors };
   };
 

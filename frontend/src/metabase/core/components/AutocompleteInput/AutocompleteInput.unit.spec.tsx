@@ -70,6 +70,7 @@ describe("AutocompleteInput", () => {
             !option.toLocaleLowerCase().includes(value.toLocaleLowerCase()),
         );
       }
+
       return [];
     };
 

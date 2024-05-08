@@ -175,6 +175,7 @@ export const getIsFormulaExpanded = (state, props) =>
 
 export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
+
   return list && resourceListToMap(list);
 };
 

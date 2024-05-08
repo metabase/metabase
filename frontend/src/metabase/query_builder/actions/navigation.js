@@ -51,6 +51,7 @@ export const popState = createThunkAction(
       } else {
         dispatch(resetRowZoom());
       }
+
       return;
     }
 

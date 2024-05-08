@@ -77,6 +77,7 @@ ToggleNativeQueryPreview.shouldRender = ({
   queryBuilderMode,
 }: ToggleNativeQueryPreviewOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
+
   return (
     !isNative &&
     question.database()?.native_permissions === "write" &&

@@ -138,6 +138,7 @@ export function NumberFilterValuePicker({
 }: FilterValuePickerProps<number>) {
   const shouldCreate = (query: string) => {
     const number = parseFloat(query);
+
     return isFinite(number) && !values.includes(number);
   };
 

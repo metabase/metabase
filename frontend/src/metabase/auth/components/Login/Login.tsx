@@ -27,6 +27,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
   const applicationName = useSelector(getApplicationName);
+
   return (
     <AuthLayout>
       <Box

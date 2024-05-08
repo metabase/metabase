@@ -62,6 +62,7 @@ const defaultConfig = {
             status: r.status,
             runId: r.metadata.test.run.id,
           });
+
           return hasCrashed || hasFailed || isFlaky || randomlyUploadAll;
         },
       });
@@ -106,6 +107,7 @@ const defaultConfig = {
     on("task", {
       log(...messages) {
         console.log(...messages);
+
         return null; // tasks must have a return value
       },
       ...dbTasks,

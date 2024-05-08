@@ -6,6 +6,7 @@ export const getColumnName = column => column.remapped_to || column.name;
 export const getRowValuesByColumns = (row, cols) =>
   cols.reduce((acc, col, index) => {
     const columnName = getColumnName(col);
+
     return {
       ...acc,
       [columnName]: row[index],
@@ -55,6 +56,7 @@ const AuditDrill = ({ question, clicked }) => {
           default: true,
           action() {
             const url = columnNameToUrl[column.name](value, clicked);
+
             return push(url);
           },
         },
@@ -85,6 +87,7 @@ const AuditDrill = ({ question, clicked }) => {
       ];
     }
   }
+
   return [];
 };
 

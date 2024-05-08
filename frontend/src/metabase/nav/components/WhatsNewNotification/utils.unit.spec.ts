@@ -8,6 +8,7 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 
 const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
   const [latest, ...older] = versions;
+
   return { latest, older };
 };
 

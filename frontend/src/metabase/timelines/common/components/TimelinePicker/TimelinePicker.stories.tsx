@@ -16,6 +16,7 @@ export default {
 
 const Template: ComponentStory<typeof TimelinePicker> = args => {
   const [value, setValue] = useState<Timeline>();
+
   return <TimelinePicker {...args} value={value} onChange={setValue} />;
 };
 

@@ -94,6 +94,7 @@ function requestStateReducerRecursive(state, action) {
     for (const [key, subState] of Object.entries(state)) {
       state = assoc(state, key, requestStateReducerRecursive(subState, action));
     }
+
     return state;
   }
 }
@@ -114,5 +115,6 @@ export default (state = {}, action) => {
       );
     }
   }
+
   return state;
 };

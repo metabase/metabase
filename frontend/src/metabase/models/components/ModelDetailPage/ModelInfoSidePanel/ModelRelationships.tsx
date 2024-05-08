@@ -20,6 +20,7 @@ function ModelRelationships({ model, mainTable }: Props) {
     const tablesMainTablePointsTo =
       model.legacyQueryTable()?.foreignTables() || [];
     const tablesPointingToMainTable = mainTable?.connectedTables() || [];
+
     return _.uniq(
       [...tablesMainTablePointsTo, ...tablesPointingToMainTable],
       table => table.id,

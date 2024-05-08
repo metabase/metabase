@@ -79,5 +79,6 @@ function EventIcon({ icon }: { icon: RevisionOrModerationEvent["icon"] }) {
   if (_.isObject(icon)) {
     return <Icon name={icon.name} color={color(icon.color)} size={16} />;
   }
+
   return <Icon name={icon} color={color("text-light")} size={16} />;
 }

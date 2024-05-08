@@ -15,6 +15,7 @@ export const refreshSiteSettings = createAsyncThunk(
       headers: locale ? { "X-Metabase-Locale": locale } : {},
     });
     MetabaseSettings.setAll(settings);
+
     return settings;
   },
 );

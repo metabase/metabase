@@ -92,6 +92,7 @@ export const useCommandPalette = () => {
         },
       },
     ];
+
     return ret;
   }, [debouncedSearchText, docsUrl]);
 
@@ -152,6 +153,7 @@ export const useCommandPalette = () => {
         ].concat(
           searchResults.data.map(result => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
+
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
@@ -183,6 +185,7 @@ export const useCommandPalette = () => {
         ];
       }
     }
+
     return [];
   }, [
     dispatch,

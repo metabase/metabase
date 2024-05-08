@@ -26,6 +26,7 @@ export default function CurrentPicker(props: CurrentPickerProps) {
     onCommit,
     filter: [operator, field, _intervals, unit],
   } = props;
+
   return (
     <div className={className} data-testid="current-date-picker">
       {DATE_PERIODS.map((periods, index) => (

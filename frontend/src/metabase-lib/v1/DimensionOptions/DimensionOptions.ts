@@ -21,6 +21,7 @@ export default class DimensionOptions {
   all(): Dimension[] {
     const dimensions = this.dimensions;
     const fksDimensions = this.fks.map(fk => fk.dimensions).flat();
+
     return [...dimensions, ...fksDimensions];
   }
 
@@ -31,6 +32,7 @@ export default class DimensionOptions {
         "attempted to call FieldDimension.hasDimension() with null dimension",
         dimension,
       );
+
       return false;
     }
 

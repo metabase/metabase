@@ -28,6 +28,7 @@ export const refreshSettingsList = createAction(
   REFRESH_SETTINGS_LIST,
   async () => {
     const settingsList = await SettingsApi.list();
+
     return settingsList.map(setting => ({
       ...setting,
       originalValue: setting.value,
@@ -92,6 +93,7 @@ export const updateEmailSettings = createThunkAction(
       try {
         const result = await EmailApi.updateSettings(settings);
         await dispatch(reloadSettings());
+
         return result;
       } catch (error) {
         console.error("error updating email settings", settings, error);
@@ -131,6 +133,7 @@ export const updateSlackSettings = createThunkAction(
     return async function (dispatch) {
       const result = await SlackApi.updateSettings(settings);
       await dispatch(reloadSettings());
+
       return result;
     };
   },
@@ -145,6 +148,7 @@ export const updateLdapSettings = createThunkAction(
     return async function (dispatch) {
       const result = await LdapApi.updateSettings(settings);
       await dispatch(reloadSettings());
+
       return result;
     };
   },
@@ -158,6 +162,7 @@ export const updateSamlSettings = createThunkAction(
     return async function (dispatch) {
       const result = await SamlApi.updateSettings(settings);
       await dispatch(reloadSettings());
+
       return result;
     };
   },
@@ -171,6 +176,7 @@ export const updateGoogleSettings = createThunkAction(
     return async function (dispatch) {
       const result = await GoogleApi.updateSettings(settings);
       await dispatch(reloadSettings());
+
       return result;
     };
   },

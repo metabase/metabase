@@ -39,6 +39,7 @@ class TokenFieldWithStateAndDefaults extends Component {
   render() {
     // allow overriding everything except value and onChange which we provide
     const { value, onChange, ...props } = this.props;
+
     return (
       <TokenField
         {...DEFAULT_TOKEN_FIELD_PROPS}

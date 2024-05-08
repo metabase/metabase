@@ -79,6 +79,7 @@ export function getDatasetMetadataCompletenessPercentage(
     .reduce((sum, fieldPoints) => sum + fieldPoints, 0);
 
   const percent = points / MAX_POINTS;
+
   return Math.round(percent * 100) / 100;
 }
 
@@ -145,6 +146,7 @@ export function checkCanRefreshModelCache(
 export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   const uuidParts = siteUUID.split("-");
   const firstLetters = uuidParts.map(part => part.charAt(0)).join("");
+
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
@@ -158,6 +160,7 @@ function getFieldFromColumnVizSetting(
   // We have some corrupted visualization settings where both names are mixed
   // We should settle on `fieldRef`, make it required and remove `field_ref`
   const fieldRef = columnVizSetting.fieldRef || columnVizSetting.field_ref;
+
   return (
     columns.find(column => isSameField(column.field_ref, fieldRef)) ||
     columnMetadata.find(column => isSameField(column.field_ref, fieldRef))

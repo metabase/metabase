@@ -22,6 +22,7 @@ export const CalendarDay = styled.div<CalendarDayProps>`
     } else if (isInRange) {
       return alpha(primaryColor, 0.1);
     }
+
     return "transparent";
   }};
   color: ${({ primaryColor = color("brand"), isSelected, isInRange }) =>

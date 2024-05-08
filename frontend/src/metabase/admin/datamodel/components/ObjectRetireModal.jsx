@@ -30,6 +30,7 @@ export default class ObjectRetireModal extends Component {
   render() {
     const { objectType } = this.props;
     const { valid } = this.state;
+
     return (
       <ModalContent
         title={t`Retire this ${objectType}?`}

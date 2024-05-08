@@ -21,6 +21,7 @@ function CustomScheduleExplainer({
   const explanation = useMemo(() => {
     try {
       const readableSchedule = explainCronExpression(cronExpression);
+
       return t`We will refresh your models ${lowerCaseFirstLetter(
         readableSchedule,
       )}`;

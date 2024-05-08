@@ -47,18 +47,21 @@ describe("scenarios > admin > license and billing", () => {
       cy.request("GET", "/api/permissions/group")
         .then(({ body: groups }) => {
           const adminGroup = groups.find(g => g.name === "Administrators");
+
           return cy
             .createUserFromRawData(harborMasterConnectedAccount)
             .then(user => Promise.resolve([adminGroup.id, user]));
         })
         .then(([adminGroupId, user]) => {
           const data = { user_id: user.id, group_id: adminGroupId };
+
           return cy
             .request("POST", "/api/permissions/membership", data)
             .then(() => Promise.resolve(user));
         })
         .then(user => {
           cy.signOut(); // stop being normal admin user and be store connected admin user
+
           return cy.request("POST", "/api/session", {
             username: user.email,
             password: harborMasterConnectedAccount.password,

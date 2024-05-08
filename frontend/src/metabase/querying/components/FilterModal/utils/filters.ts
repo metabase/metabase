@@ -19,11 +19,13 @@ export function appendStageIfAggregated(query: Lib.Query) {
 
 function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
+
   return stageCount > 1 ? [-2, -1] : [-1];
 }
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = getStageIndexes(query);
+
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -40,6 +42,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         icon: getColumnGroupIcon(groupInfo) || "sum",
         columnItems: availableColumns.map(column => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
           return {
             column,
             displayName: columnInfo.displayName,
@@ -48,6 +51,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         }),
         segmentItems: availableSegments.map(segment => {
           const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
+
           return {
             segment,
             displayName: segmentInfo.displayName,
@@ -65,11 +69,13 @@ export function hasFilters(query: Lib.Query) {
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
+
   return filters.length > 0;
 }
 
 export function removeFilters(query: Lib.Query) {
   const stageIndexes = getStageIndexes(query);
+
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,
@@ -91,6 +97,7 @@ export function removeSegmentFilters(
 ) {
   const filterGroups = segmentItems.map(({ stageIndex, filterPositions }) => {
     const filters = Lib.filters(query, stageIndex);
+
     return {
       filters: filterPositions.map(filterPosition => filters[filterPosition]),
       stageIndex,
@@ -112,6 +119,7 @@ export function findColumnFilters(
 ): Lib.FilterClause[] {
   const filters = Lib.filters(query, stageIndex);
   const { filterPositions } = Lib.displayInfo(query, stageIndex, column);
+
   return filterPositions != null
     ? filterPositions.map(index => filters[index])
     : [];

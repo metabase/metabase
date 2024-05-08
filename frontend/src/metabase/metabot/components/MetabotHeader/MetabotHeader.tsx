@@ -76,6 +76,7 @@ const MetabotHeader = ({
 
     setIsLoadedRecently(true);
     const timerId = setTimeout(() => setIsLoadedRecently(false), 5000);
+
     return () => clearTimeout(timerId);
   }, [queryStatus]);
 

@@ -17,6 +17,7 @@ const setup = ({ value = TEST_USER_LIST_RESULT, isSelected = false } = {}) => {
       onClick={onClickMock}
     />,
   );
+
   return { onClickMock };
 };
 

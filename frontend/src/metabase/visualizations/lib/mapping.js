@@ -34,6 +34,7 @@ export function getAllFeaturesPoints(features) {
       );
     }
   }
+
   return points;
 }
 

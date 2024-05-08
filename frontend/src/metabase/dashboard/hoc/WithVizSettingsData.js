@@ -29,6 +29,7 @@ export const WithVizSettingsData = ComposedComponent => {
                 .value(),
             )
             .value();
+
           return {
             ...entitiesByTypeAndId,
             location: props.location,

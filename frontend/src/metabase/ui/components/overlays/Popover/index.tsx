@@ -26,6 +26,7 @@ const PopoverDropdown = function PopoverDropdown(
       return;
     }
     setupCloseHandler(document.body, () => undefined);
+
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
 

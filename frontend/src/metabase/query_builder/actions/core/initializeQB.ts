@@ -104,6 +104,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   }
 
   const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
+
   return question.setQuery(newQuery);
 }
 
@@ -117,6 +118,7 @@ function aggregateByMetricId(question: Question, metricId: MetricId) {
   }
 
   const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
+
   return question.setQuery(newQuery);
 }
 
@@ -126,6 +128,7 @@ function deserializeCard(serializedCard: string) {
     // Ensure older MBQL is supported
     card.dataset_query = normalize(card.dataset_query);
   }
+
   return card;
 }
 
@@ -197,6 +200,7 @@ async function resolveCards({
       card: getCardForBlankQuestion(metadata, options),
     };
   }
+
   return cardId
     ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
     : fetchAndPrepareAdHocQuestionCards(
@@ -242,6 +246,7 @@ export async function updateTemplateTagNames(
           const actionResult = await dispatch(
             Questions.actions.fetch({ id }, { noEvent: true }),
           );
+
           return Questions.HACK_getObjectFromAction(actionResult);
         } catch {
           return null;
@@ -256,6 +261,7 @@ export async function updateTemplateTagNames(
     const snippets = Snippets.selectors.getList(getState());
     query = query.updateSnippetNames(snippets);
   }
+
   return query;
 }
 
@@ -290,6 +296,7 @@ async function handleQBInit(
 
   if (isSavedCard(card) && card.archived) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
+
     return;
   }
 
@@ -299,6 +306,7 @@ async function handleQBInit(
     location.pathname?.startsWith("/model")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
+
     return;
   }
 

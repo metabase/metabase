@@ -37,6 +37,7 @@ function getStatusMessage(job: ModelCacheRefreshStatus) {
     return t`Refreshing model cache`;
   }
   const lastRefreshTime = moment(job.refresh_end).fromNow();
+
   return t`Model last cached ${lastRefreshTime}`;
 }
 

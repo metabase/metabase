@@ -10,6 +10,7 @@ function getWithFallback(
   } else {
     const value = fallback();
     map.set(key, value);
+
     return value;
   }
 }
@@ -61,6 +62,7 @@ export function memoizeClass<T>(
             (map, key) => getWithFallback(map, key, createMap),
             memoized,
           );
+
           return getWithFallback(map, last, () => method.apply(this, args));
         },
       });

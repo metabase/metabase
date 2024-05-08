@@ -26,6 +26,7 @@ const getTotalTimeSeriesXValue = ({
 }: TimeSeriesXAxisModel) => {
   const [, lastDate] = range;
   const { unit, count } = interval;
+
   return lastDate.add(count, unit).toISOString();
 };
 
@@ -97,6 +98,7 @@ export const getWaterfallXAxisModel = (
   }
 
   const totalXValue = t`Total`;
+
   return {
     ...xAxisModel,
     totalXValue,

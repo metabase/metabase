@@ -91,6 +91,7 @@ describe("order by", () => {
       const productsTitle = columns.find(
         (columnMetadata: Lib.ColumnMetadata) => {
           const displayInfo = Lib.displayInfo(query, 0, columnMetadata);
+
           return (
             displayInfo.displayName === "Title" &&
             displayInfo.table?.displayName === "Product Model"

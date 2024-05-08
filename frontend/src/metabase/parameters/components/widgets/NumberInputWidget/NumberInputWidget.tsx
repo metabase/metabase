@@ -88,6 +88,7 @@ export function NumberInputWidget({
                 setUnsavedArrayValue(unsavedArrayValue => {
                   const newUnsavedValue = [...unsavedArrayValue];
                   newUnsavedValue[i] = newValue;
+
                   return newUnsavedValue;
                 });
               }}

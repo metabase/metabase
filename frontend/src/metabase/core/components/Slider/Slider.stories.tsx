@@ -12,6 +12,7 @@ export default {
 
 const Template: ComponentStory<typeof Slider> = args => {
   const value = [10, 40];
+
   return (
     <div className={CS.pt4}>
       <Slider {...args} value={value} onChange={args.onChange} />

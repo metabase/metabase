@@ -255,6 +255,7 @@ class SettingsBatchForm extends Component {
       const element = settings[key];
       if (!element) {
         console.warn("Missing setting", element);
+
         return null;
       }
       // merge together data from a couple places to provide a complete view of the Element state
@@ -281,6 +282,7 @@ class SettingsBatchForm extends Component {
     };
 
     const disabled = !valid || submitting !== "default";
+
     return (
       <div>
         {breadcrumbs && (
@@ -367,6 +369,7 @@ class CollapsibleSection extends React.Component {
   render() {
     const { title, children } = this.props;
     const { show } = this.state;
+
     return (
       <section className={CS.mb4}>
         <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>

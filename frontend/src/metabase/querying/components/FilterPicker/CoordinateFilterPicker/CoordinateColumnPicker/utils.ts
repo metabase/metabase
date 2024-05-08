@@ -11,6 +11,7 @@ export function getColumnOptions(
 ): ColumnOption[] {
   return columns.map((column, columnIndex) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
     return {
       column,
       value: String(columnIndex),
@@ -30,6 +31,7 @@ export function getInitialOption(
   }
 
   const columnInfo = Lib.displayInfo(query, stageIndex, secondColumn);
+
   return options.find(option => option.label === columnInfo?.longDisplayName);
 }
 

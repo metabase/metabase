@@ -24,6 +24,7 @@ function isDefaultLinkProtocol(protocol: string) {
 export function getUrlProtocol(url: string) {
   try {
     const { protocol } = new URL(url);
+
     return protocol;
   } catch (e) {
     return undefined;
@@ -37,6 +38,7 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
+
     return (
       <ExternalLink className={cx(CS.link, CS.linkWrappable)} href={url}>
         {text}

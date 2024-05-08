@@ -137,6 +137,7 @@ interface QueryDownloadWidgetOpts {
 
 const canEditQuestion = (question: Question) => {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
+
   return question.canWrite() && isEditable;
 };
 
@@ -165,6 +166,7 @@ DashCardMenu.shouldRender = ({
   if (isEmbed) {
     return isEmbed;
   }
+
   return (
     !isInternalQuery &&
     !isPublic &&

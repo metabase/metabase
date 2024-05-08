@@ -56,6 +56,7 @@ const Bookmarks = createEntity({
         dispatch,
         bookmarkApi.endpoints.reorderBookmarks,
       );
+
       return { type: REORDER_ACTION, payload: bookmarks };
     },
   },
@@ -105,6 +106,7 @@ const Bookmarks = createEntity({
     if (type === Bookmarks.actionTypes.REORDER) {
       const indexes = payload.reduce((indexes, bookmark, index) => {
         indexes[bookmark.id] = index;
+
         return indexes;
       }, {});
 

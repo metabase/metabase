@@ -134,6 +134,7 @@ const CypressBackend = {
           return true;
         }
       } catch (e) {}
+
       return false;
     }
   },

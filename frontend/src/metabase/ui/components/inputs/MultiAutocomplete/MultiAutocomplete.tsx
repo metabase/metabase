@@ -126,6 +126,7 @@ function getAvailableSelectItems(
     if (!map.has(option.value)) {
       map.set(option.value, option.label ?? option.value);
     }
+
     return map;
   }, new Map<string, string>());
 

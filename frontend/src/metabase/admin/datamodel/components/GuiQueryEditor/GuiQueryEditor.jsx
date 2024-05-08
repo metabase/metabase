@@ -222,6 +222,7 @@ export class GuiQueryEditor extends Component {
           );
         }
       }
+
       return aggregationList;
     } else {
       // TODO: move this into AggregationWidget?
@@ -341,6 +342,7 @@ export class GuiQueryEditor extends Component {
       ["data", "filter", "view", "groupedBy", "sortLimit"].reduce(
         (acc, ref) => {
           const node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
+
           return acc + (node ? node.offsetWidth : 0);
         },
         0,

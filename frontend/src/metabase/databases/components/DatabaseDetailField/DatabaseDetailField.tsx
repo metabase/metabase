@@ -30,6 +30,7 @@ const DatabaseDetailField = ({
 
   if (typeof type === "function") {
     const Component = type;
+
     return <Component {...props} />;
   }
 

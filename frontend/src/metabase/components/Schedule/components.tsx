@@ -68,6 +68,7 @@ export const SelectTime = ({
     : hourIn24HourFormat;
   const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
+
   return (
     <Group spacing={isClock12Hour ? "xs" : "sm"}>
       <AutoWidthSelect
@@ -148,6 +149,7 @@ export const SelectMinute = ({
   const minuteOfHour = isNaN(schedule.schedule_minute as number)
     ? 0
     : schedule.schedule_minute;
+
   return (
     <AutoWidthSelect
       value={(minuteOfHour || 0).toString()}
@@ -166,6 +168,7 @@ export const AutoWidthSelect = (props: SelectProps) => {
   );
   const maxWidth =
     longestLabel.length > 15 ? "unset" : `${longestLabel.length + 0.85}rem`;
+
   return (
     <Select
       miw="5rem"

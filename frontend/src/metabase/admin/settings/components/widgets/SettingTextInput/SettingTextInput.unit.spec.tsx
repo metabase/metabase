@@ -47,6 +47,7 @@ describe("SettingTextInput (metabase/ui)", () => {
     function normalize(value: Value) {
       if (typeof value === "string") {
         const normalizedValue = value.trim();
+
         return normalizedValue === "" ? null : normalizedValue;
       }
 

@@ -84,6 +84,7 @@ export default createEntity({
                 const collectionKey = item.collection
                   ? { collection_id: item.collection.id }
                   : {};
+
                 return {
                   ...collectionKey,
                   ...item,
@@ -104,6 +105,7 @@ export default createEntity({
       return entity.wrapEntity(object, dispatch);
     } else {
       console.warn("Couldn't find entity for object", object);
+
       return object;
     }
   },
@@ -112,6 +114,7 @@ export default createEntity({
     setArchived: (object, archived) => {
       return dispatch => {
         const entity = entityForObject(object);
+
         return entity
           ? dispatch(entity.actions.setArchived(object, archived))
           : warnEntityAndReturnObject(object);
@@ -121,6 +124,7 @@ export default createEntity({
     delete: object => {
       return dispatch => {
         const entity = entityForObject(object);
+
         return entity
           ? dispatch(entity.actions.delete(object))
           : warnEntityAndReturnObject(object);
@@ -131,6 +135,7 @@ export default createEntity({
   objectSelectors: {
     getCollection: object => {
       const entity = entityForObject(object);
+
       return entity
         ? entity?.objectSelectors?.getCollection?.(object) ??
             object?.collection ??
@@ -140,6 +145,7 @@ export default createEntity({
 
     getName: object => {
       const entity = entityForObject(object);
+
       return entity
         ? entity?.objectSelectors?.getName?.(object) ?? object?.name
         : warnEntityAndReturnObject(object);
@@ -147,6 +153,7 @@ export default createEntity({
 
     getColor: object => {
       const entity = entityForObject(object);
+
       return entity
         ? entity?.objectSelectors?.getColor?.(object) ?? null
         : warnEntityAndReturnObject(object);
@@ -154,6 +161,7 @@ export default createEntity({
 
     getIcon: object => {
       const entity = entityForObject(object);
+
       return entity
         ? entity?.objectSelectors?.getIcon?.(object) ?? null
         : warnEntityAndReturnObject(object);
@@ -178,5 +186,6 @@ export default createEntity({
 
 function warnEntityAndReturnObject(object) {
   console.warn("Couldn't find entity for object", object);
+
   return object;
 }

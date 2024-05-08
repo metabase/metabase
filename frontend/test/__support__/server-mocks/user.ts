@@ -9,6 +9,7 @@ export function setupUserEndpoints(user: UserListResult) {
 
 export function setupUsersEndpoints(users: UserListResult[]) {
   users.forEach(user => setupUserEndpoints(user));
+
   return fetchMock.get("path:/api/user", { data: users });
 }
 

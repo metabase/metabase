@@ -23,12 +23,14 @@ export const DelayedLoadingAndErrorWrapper = ({
     const timeout = setTimeout(() => {
       setShowWrapper(true);
     }, delay);
+
     return () => clearTimeout(timeout);
   }, [delay]);
 
   if (!showWrapper) {
     return null;
   }
+
   return (
     <Transition
       mounted={!!(error || loading)}

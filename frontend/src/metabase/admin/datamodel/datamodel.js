@@ -13,6 +13,7 @@ export const updatePreviewSummary = createAction(
   UPDATE_PREVIEW_SUMMARY,
   async query => {
     const result = await MetabaseApi.dataset(query);
+
     return result.data.rows[0][0];
   },
 );

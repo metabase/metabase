@@ -35,6 +35,7 @@ export function HeadBreadcrumbs({
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =
           inactiveColor || getBadgeInactiveColor({ variant, isLast });
+
         return (
           <Fragment key={index}>
             {isValidElement(part) ? (

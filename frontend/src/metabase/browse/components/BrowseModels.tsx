@@ -80,6 +80,7 @@ export const BrowseModels = ({
         <ModelGrid role="grid">
           {groupsOfModels.map(groupOfModels => {
             const collectionId = groupOfModels[0].collection.id;
+
             return (
               <ModelGroup
                 expanded={

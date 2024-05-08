@@ -26,6 +26,7 @@ class ItemsDragLayerInner extends Component {
     const items = selectedItems.length > 0 ? selectedItems : [item.item];
     const x = currentOffset.x + window.scrollX;
     const y = currentOffset.y + window.scrollY;
+
     return (
       <div
         style={{
@@ -74,6 +75,7 @@ class DraggedItems extends Component {
     const index = pinnedItems.findIndex(
       i => i.model === item.model && i.id === item.id,
     );
+
     return index >= 0;
   };
 
@@ -94,6 +96,7 @@ class DraggedItems extends Component {
         </td>
       );
     }
+
     return (
       <BaseItemsTable.Item
         key={key}
@@ -110,6 +113,7 @@ class DraggedItems extends Component {
     const { items, draggedItem } = this.props;
     const index = _.findIndex(items, draggedItem);
     const allPinned = items.every(item => this.checkIsPinned(item));
+
     return (
       <div
         style={{

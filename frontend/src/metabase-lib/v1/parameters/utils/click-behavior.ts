@@ -264,6 +264,7 @@ export function getTargetsForDashboard(
   return dashboard.parameters.map(parameter => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
+
     return {
       id,
       name,
@@ -277,6 +278,7 @@ export function getTargetsForDashboard(
           const isSameParameter =
             dashboard.id === dashcard.dashboard_id &&
             parameter.id === sourceParam.id;
+
           return parameter.type === sourceParam.type && !isSameParameter;
         },
         userAttribute: () => !parameter.type.startsWith("date"),
@@ -297,10 +299,12 @@ function baseTypeFilterForParameterType(parameterType: string) {
     // default to showing everything
     return () => true;
   }
+
   return (baseType: string | undefined) => {
     if (typeof baseType === "undefined") {
       return false;
     }
+
     return allowedTypes.some(allowedType => isa(baseType, allowedType));
   };
 }
@@ -447,8 +451,10 @@ export function getTargetForQueryParams(
 ) {
   if (target.type === "parameter") {
     const parameter = getParameter(target, { extraData, clickBehavior });
+
     return parameter && parameter.slug;
   }
+
   return target.id;
 }
 
@@ -464,6 +470,7 @@ function getParameter(
 ): Parameter | undefined {
   if (clickBehavior.type === "crossfilter") {
     const parameters = extraData.dashboard?.parameters || [];
+
     return parameters.find(parameter => parameter.id === target.id);
   }
 
@@ -476,6 +483,7 @@ function getParameter(
     const dashboard =
       extraData.dashboards?.[clickBehavior.targetId as DashboardId];
     const parameters = dashboard?.parameters || [];
+
     return parameters.find(parameter => parameter.id === target.id);
   }
 

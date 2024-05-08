@@ -64,6 +64,7 @@ const SavedQuestionLoader = ({
 
     if (!hasCardMetadataLoaded) {
       setQuestion(null);
+
       return;
     }
 

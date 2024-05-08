@@ -65,6 +65,7 @@ const ApplicationPermissionsPage = ({
     },
     [updatePermission],
   );
+
   return (
     <PermissionsPageLayout
       tab="application"

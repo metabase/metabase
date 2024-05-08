@@ -14,6 +14,7 @@ export default class QueryDiff extends Component {
       diff: { before, after },
     } = this.props;
     const definition = after || before;
+
     return <QueryDefinition className={CS.my1} object={{ definition }} />;
   }
 }

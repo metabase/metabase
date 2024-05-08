@@ -13,6 +13,7 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
   fetchMock.put(`path:/api/card/${card.id}`, async url => {
     const lastCall = fetchMock.lastCall(url);
+
     return createMockCard(await lastCall?.request?.json());
   });
   setupCardQueryMetadataEndpoint(card);
@@ -40,6 +41,7 @@ export function setupCardsEndpoints(cards: Card[]) {
 export function setupCardCreateEndpoint() {
   fetchMock.post("path:/api/card", async url => {
     const lastCall = fetchMock.lastCall(url);
+
     return createMockCard(await lastCall?.request?.json());
   });
 }

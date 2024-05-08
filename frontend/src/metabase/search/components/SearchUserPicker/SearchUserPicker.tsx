@@ -86,6 +86,7 @@ export const SearchUserPicker = ({
           >
             {selectedUserIds.map(userId => {
               const user = users.find(user => user.id === userId);
+
               return (
                 <SelectedUserButton
                   data-testid="selected-user-button"

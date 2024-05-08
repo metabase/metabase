@@ -110,6 +110,7 @@ function getParameterPanelBackgroundColor(theme?: string) {
   if (theme === "transparent") {
     return "transparent";
   }
+
   return color("white");
 }
 
@@ -120,6 +121,7 @@ function getParameterPanelBorderColor(theme?: string) {
   if (theme === "transparent") {
     return "transparent";
   }
+
   return color("border");
 }
 

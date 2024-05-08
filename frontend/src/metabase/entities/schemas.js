@@ -68,6 +68,7 @@ export default createEntity({
             dispatch,
             databaseApi.endpoints.listDatabaseSchemaTables,
           );
+
       return {
         id,
         name: schemaName,
@@ -92,6 +93,7 @@ export default createEntity({
           return state;
         }
         const virtualQuestionId = getQuestionVirtualTableId(question.id);
+
         return updateIn(state, [schema, "tables"], tables =>
           addTableAvoidingDuplicates(tables, virtualQuestionId),
         );
@@ -142,6 +144,7 @@ export default createEntity({
         if (card.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
+
         return addTableAvoidingDuplicates(tables, virtualQuestionId);
       });
     }
@@ -174,5 +177,6 @@ function addTableAvoidingDuplicates(tables, tableId) {
   if (!Array.isArray(tables)) {
     return [tableId];
   }
+
   return tables.includes(tableId) ? tables : [...tables, tableId];
 }

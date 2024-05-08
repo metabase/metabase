@@ -77,6 +77,7 @@ export function visitEmbeddedPage(
    */
   function getHiddenFilters(filters) {
     const params = filters.join(",");
+
     return filters.length > 0 ? { hide_parameters: params } : {};
   }
 

@@ -66,16 +66,19 @@ export function getExcludeValueOptionGroups(
 
 function getExcludeHourOption(hour: number): ExcludeValueOption {
   const date = dayjs().hour(hour);
+
   return { value: hour, label: date.format("h A") };
 }
 
 function getExcludeDayOption(day: number): ExcludeValueOption {
   const date = dayjs().isoWeekday(day);
+
   return { value: day, label: date.format("dddd") };
 }
 
 function getExcludeMonthOption(month: number): ExcludeValueOption {
   const date = dayjs().month(month);
+
   return { value: month, label: date.format("MMMM") };
 }
 

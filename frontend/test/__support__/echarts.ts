@@ -8,6 +8,7 @@ export const createMockSeriesModel = (
   opts?: Partial<SeriesModel>,
 ): SeriesModel => {
   const dataKey = opts?.dataKey ?? "dataKey";
+
   return {
     dataKey,
     name: `name for ${dataKey}`,

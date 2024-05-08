@@ -72,6 +72,7 @@ if (hasPremiumFeature("snippet_collections")) {
 
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
     const collection = snippetSidebar.props.snippetCollection;
+
     return (
       <CollectionOptionsButton
         {...snippetSidebar.props}

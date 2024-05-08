@@ -38,6 +38,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
 class MetricRevisionHistoryInner extends Component {
   render() {
     const { metric, ...props } = this.props;
+
     return <RevisionHistory object={metric} {...props} />;
   }
 }
@@ -49,6 +50,7 @@ const MetricRevisionHistory = Metrics.load({ id: (state, { id }) => id })(
 class SegmentRevisionHistoryInner extends Component {
   render() {
     const { segment, ...props } = this.props;
+
     return <RevisionHistory object={segment} {...props} />;
   }
 }

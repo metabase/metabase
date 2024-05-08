@@ -7,6 +7,7 @@ import ItemPicker from "./ItemPicker";
 
 const CollectionPicker = ({ value, onChange, ...props }) => {
   const [openCollectionId, setOpenCollectionId] = useState("root");
+
   return (
     <ItemPicker
       {...props}

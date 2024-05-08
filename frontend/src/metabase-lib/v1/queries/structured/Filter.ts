@@ -82,9 +82,11 @@ export default class Filter extends MBQLClause {
           ? "hour"
           : "day";
         const unit = this.dimension()?.temporalUnit() ?? detectedUnit;
+
         return [dates, unit];
       }
     }
+
     return [undefined, undefined];
   }
 
@@ -97,6 +99,7 @@ export default class Filter extends MBQLClause {
   }: FilterDisplayNameOpts = {}) {
     if (this.isSegment()) {
       const segment = this.segment();
+
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
       if (isStartingFrom(this)) {
@@ -109,6 +112,7 @@ export default class Filter extends MBQLClause {
         ["=", "between"].includes(origOp) &&
         formatDateTimeRangeWithUnit(dates, dateUnit, { type: "tooltip" });
       const op = dateRangeStr ? "=" : origOp;
+
       return [
         includeDimension && this.dimension()?.displayName(),
         includeOperator && this.operator(op)?.moreVerboseName,
@@ -229,6 +233,7 @@ export default class Filter extends MBQLClause {
 
   field() {
     const dimension = this.dimension();
+
     return dimension && dimension.field();
   }
 
@@ -238,6 +243,7 @@ export default class Filter extends MBQLClause {
 
   operator(opName = this.operatorName()): FilterOperator | null | undefined {
     const dimension = this.dimension();
+
     return dimension ? dimension.filterOperator(opName) : null;
   }
 
@@ -339,6 +345,7 @@ export default class Filter extends MBQLClause {
 
   filterOperators(selected: string): FilterOperator[] | null | undefined {
     const dimension = this.dimension();
+
     return dimension ? dimension.filterOperators(selected) : null;
   }
 
@@ -361,6 +368,7 @@ export default class Filter extends MBQLClause {
 
     if (operator && operator.multi && args.length > maxDisplayValues) {
       const n = args.length;
+
       return [ngettext(msgid`${n} selection`, `${n} selections`, n)];
     } else if (
       dimension &&
@@ -392,6 +400,7 @@ export default class Filter extends MBQLClause {
 
   isDimension(otherDimension: Dimension) {
     const dimension = this.dimension();
+
     return dimension ? dimension.isEqual(otherDimension) : false;
   }
 
@@ -401,6 +410,7 @@ export default class Filter extends MBQLClause {
       typeof otherOperator === "string"
         ? otherOperator
         : otherOperator && otherOperator.name;
+
     return operator && operator.name === operatorName;
   }
 }

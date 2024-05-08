@@ -236,9 +236,11 @@ function toggleSortingFor(columnName) {
 
 function getAllCollectionItemNames() {
   const testId = "collection-entry-name";
+
   return cy.findAllByTestId(testId).then(nodes => {
     const actualNames = _.map(nodes, "innerText");
     const sortedNames = _.sortBy(actualNames);
+
     return { actualNames, sortedNames };
   });
 }

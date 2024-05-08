@@ -69,12 +69,14 @@ function setup({
 
   function getNextFilterParts() {
     const [filter] = onChange.mock.lastCall;
+
     return Lib.stringFilterParts(query, 0, filter);
   }
 
   function getNextFilterColumnName() {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
+
     return Lib.displayInfo(query, 0, column).longDisplayName;
   }
 

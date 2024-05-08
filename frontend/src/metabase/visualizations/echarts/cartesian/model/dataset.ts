@@ -251,6 +251,7 @@ export const getNormalizedDatasetTransform = (
     return seriesDataKeys.reduce((acc, key) => {
       const numericValue = getNumberOrZero(datum[key]);
       acc[key] = numericValue / total;
+
       return acc;
     }, normalizedDatum);
   };
@@ -267,6 +268,7 @@ export const getKeyBasedDatasetTransform = (
         transformedRecord[key] = valueTransform(datum[key]);
       }
     }
+
     return transformedRecord;
   };
 };
@@ -289,6 +291,7 @@ export const getNullReplacerTransform = (
     for (const key of replaceNullsWithZeroDataKeys) {
       transformedDatum[key] = datum[key] != null ? datum[key] : 0;
     }
+
     return transformedDatum;
   };
 };
@@ -326,6 +329,7 @@ const getStackedAreasInterpolateTransform = (
       const dataKey = seriesModel.dataKey;
       transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
     }
+
     return transformedDatum;
   };
 };
@@ -355,6 +359,7 @@ function getStackedValueTransformFunction(
           if (sign === "-" && value < 0) {
             return total + value;
           }
+
           return total;
         }, 0);
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
@@ -433,6 +438,7 @@ export function filterNullDimensionValues(
   dataset.forEach((datum, originalIndex) => {
     if (datum[X_AXIS_DATA_KEY] == null) {
       showWarning?.(nullDimensionWarning().text);
+
       return;
     }
     filteredDataset.push({
@@ -654,6 +660,7 @@ export const sortDataset = (
 
       if (leftDate == null || rightDate == null) {
         showWarning?.(invalidDateWarning(leftDate == null ? left : right).text);
+
         return 0;
       }
 
@@ -665,6 +672,7 @@ export const sortDataset = (
     if (typeof left === "number" && typeof right === "number") {
       return left - right;
     }
+
     return 0;
   });
 };
@@ -719,6 +727,7 @@ export const getSortedSeriesModels = (
       }
 
       usedDataKeys.add(foundSeries.dataKey);
+
       return foundSeries;
     });
 
@@ -749,6 +758,7 @@ export const replaceValues = (
   return dataset.map(datum => {
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
+
       return updatedRow;
     }, {} as Datum);
   });
@@ -770,6 +780,7 @@ export const getDatasetExtents = (
     if (extent != null) {
       acc[key] = extent;
     }
+
     return acc;
   }, {} as SeriesExtents);
 };
@@ -817,6 +828,7 @@ export const getCardColumnByDataKeyMap = (
     } else {
       acc[getDatasetKey(column, card.id)] = column;
     }
+
     return acc;
   }, {} as Record<DataKey, DatasetColumn>);
 };

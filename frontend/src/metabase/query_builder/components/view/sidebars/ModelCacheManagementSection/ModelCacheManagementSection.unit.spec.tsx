@@ -51,6 +51,7 @@ async function setup({
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
       const { children } = props as any;
+
       return children({ persistedModel: cacheInfo });
     });
   }

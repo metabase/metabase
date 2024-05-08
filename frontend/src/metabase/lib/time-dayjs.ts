@@ -6,6 +6,7 @@ import type { DatetimeUnit } from "metabase-types/api/query";
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
     const day = dayjs.tz(value, "ddd").startOf("day");
+
     return day.isValid() ? day : dayjs.tz(value).startOf("day");
   },
 };
@@ -52,5 +53,6 @@ export function parseTimestamp(
   } else {
     result = dayjs.utc(value);
   }
+
   return isLocal ? result.local() : result;
 }

@@ -88,6 +88,7 @@ export const loadCollectionPermissions = createThunkAction(
   LOAD_COLLECTION_PERMISSIONS,
   namespace => async () => {
     const params = namespace != null ? { namespace } : {};
+
     return CollectionsApi.graph(params);
   },
 );
@@ -164,6 +165,7 @@ export const updateDataPermission = createThunkAction(
         );
         if (action) {
           dispatch(action);
+
           return;
         }
       }
@@ -237,6 +239,7 @@ export const saveCollectionPermissions = createThunkAction(
       revision: collectionPermissionsRevision,
       groups: collectionPermissions,
     });
+
     return result;
   },
 );
@@ -274,6 +277,7 @@ function getDecendentCollections(collection) {
   const subCollections = collection.children.filter(
     collection => !collection.is_personal,
   );
+
   return subCollections.concat(...subCollections.map(getDecendentCollections));
 }
 
@@ -346,6 +350,7 @@ const dataPermissions = handleActions(
             permissionInfo.permission,
             shouldDowngradeNative,
           );
+
           return inferAndUpdateEntityPermissions(
             updatedPermissions,
             groupId,
@@ -436,6 +441,7 @@ const collectionPermissions = handleActions(
             );
           }
         }
+
         return newPermissions;
       },
     },

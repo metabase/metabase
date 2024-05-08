@@ -64,6 +64,7 @@ export function GridLayout({
     const [horizontalMargin] = margin;
     const totalHorizontalMargin = marginSlotsCount * horizontalMargin;
     const freeSpace = gridWidth - totalHorizontalMargin;
+
     return {
       width: freeSpace / cols,
       height: rowHeight,
@@ -74,6 +75,7 @@ export function GridLayout({
     item => {
       const itemLayout = layout.find(l => String(l.i) === String(item.id));
       const gridItemWidth = cellSize.width * itemLayout.w;
+
       return itemRenderer({
         item,
         gridItemWidth,
@@ -91,6 +93,7 @@ export function GridLayout({
     }
     // eslint-disable-next-line no-unused-vars
     const [horizontalMargin, verticalMargin] = margin;
+
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 

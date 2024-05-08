@@ -63,6 +63,7 @@ const Slider = ({
   // calculate width percentages for the track and tooltip
   const [beforeRange, rangeWidth] = useMemo(() => {
     const totalRange = max - min;
+
     return [
       ((minValue - min) / totalRange) * 100,
       ((maxValue - minValue) / totalRange) * 100,

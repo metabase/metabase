@@ -6,6 +6,7 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 
 export const NoDatabasesEmptyState = () => {
   const applicationName = useSelector(getApplicationName);
+
   return (
     <AdminAwareEmptyState
       title={t`${applicationName} is no fun without any data`}

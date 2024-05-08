@@ -23,6 +23,7 @@ export const getCollectionName = (collection: CollectionEssentials) => {
   if (isRootCollection(collection)) {
     return t`Our analytics`;
   }
+
   return collection?.name || t`Untitled collection`;
 };
 
@@ -74,9 +75,11 @@ export const groupModels = (
 
     const name1 = getCollectionName(collection1);
     const name2 = getCollectionName(collection2);
+
     return name1.localeCompare(name2, locale);
   };
   groupsOfModels.sort(sortGroupsByCollection);
+
   return groupsOfModels;
 };
 
@@ -126,6 +129,7 @@ export const sortModels = (
   }
   const nameA = a.name.toLowerCase();
   const nameB = b.name.toLowerCase();
+
   return nameA.localeCompare(nameB, localeCode);
 };
 
@@ -189,11 +193,13 @@ export const getCollectionViewPreferences = (): CollectionPrefs => {
     return {};
   } catch (err) {
     console.error(err);
+
     return {};
   }
 };
 
 export const getIcon = (item: unknown): { name: IconName; color: string } => {
   const entity = entityForObject(item);
+
   return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };

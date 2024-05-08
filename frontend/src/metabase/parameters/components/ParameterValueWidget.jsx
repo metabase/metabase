@@ -336,6 +336,7 @@ function Widget({
 
   if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
+
     return (
       <NumberInputWidget
         value={normalizedValue}
@@ -365,6 +366,7 @@ function Widget({
       />
     );
   }
+
   return (
     <StringInputWidget
       value={normalizedValue}
@@ -391,11 +393,13 @@ function hasNoPopover(parameter) {
   if (isDateParameter(parameter)) {
     return false;
   }
+
   return isTextWidget(parameter);
 }
 
 function isTextWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
+
   return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 

@@ -142,6 +142,7 @@ describe("Reference utils.js", () => {
       if (filter != null) {
         card.dataset_query.query.filter = filter;
       }
+
       return card;
     };
 

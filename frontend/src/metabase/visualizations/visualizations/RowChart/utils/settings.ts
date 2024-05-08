@@ -57,6 +57,7 @@ export const getLabels = (settings: VisualizationSettings) => {
     (settings["graph.y_axis.title_text"]?.length ?? 0) > 0
       ? settings["graph.y_axis.title_text"]
       : undefined;
+
   return {
     xLabel,
     yLabel,

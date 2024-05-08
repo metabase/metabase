@@ -46,6 +46,7 @@ const omitOverlappingTicks = (
   }
 
   nonOverlappingTicks.sort((a, b) => a - b);
+
   return nonOverlappingTicks;
 };
 
@@ -78,6 +79,7 @@ const getMinTicksInterval = (
     tickFormatter,
     tickFont,
   );
+
   return Math.max(maxTickWidth, getWidthBasedTickInterval(innerWidth));
 };
 
@@ -90,6 +92,7 @@ const getEvenlySpacedTicks = (
 
   return _.range(ticksCount).map(i => {
     const tickCoordinate = startCoordinate + i * ticksInterval;
+
     return scale.invert(tickCoordinate);
   });
 };

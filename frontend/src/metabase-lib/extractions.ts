@@ -58,6 +58,7 @@ export function functionsUsedByExtraction(
 ): string[] {
   const expression = extractionExpression(query, stageIndex, extraction);
   const parts = expressionParts(query, stageIndex, expression);
+
   return walk(parts);
 }
 
@@ -68,6 +69,7 @@ function walk(parts: ExpressionParts): string[] {
       res.push(...walk(arg));
     }
   });
+
   return res;
 }
 

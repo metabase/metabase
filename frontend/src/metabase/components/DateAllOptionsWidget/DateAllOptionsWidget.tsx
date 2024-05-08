@@ -41,6 +41,7 @@ export const DateAllOptionsWidget = ({
 
   const isValid = filter.slice(2).every((value: unknown) => value != null);
   const unsavedValue = filterToUrlEncoded(filter);
+
   return (
     <WidgetRoot>
       <DatePicker

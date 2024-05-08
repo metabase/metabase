@@ -52,6 +52,7 @@ export const createPublicLink = createAction(
     uuid: Dashboard["public_uuid"];
   }> => {
     const { uuid } = await DashboardApi.createPublicLink({ id });
+
     return { id, uuid };
   },
 );
@@ -61,6 +62,7 @@ export const deletePublicLink = createAction(
   DELETE_PUBLIC_LINK,
   async ({ id }: DashboardIdPayload): Promise<DashboardIdPayload> => {
     await DashboardApi.deletePublicLink({ id });
+
     return { id };
   },
 );

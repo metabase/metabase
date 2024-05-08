@@ -13,6 +13,7 @@ const setup = ({ value = null }: SetupProps = {}) => {
   renderWithProviders(
     <SearchFilterDatePicker value={value} onChange={onChangeMock} />,
   );
+
   return {
     onChangeMock,
   };

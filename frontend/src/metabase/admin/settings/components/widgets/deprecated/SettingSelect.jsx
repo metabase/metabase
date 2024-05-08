@@ -29,6 +29,7 @@ const SettingSelect = ({
     {customOptions.map(option => {
       const name = typeof option === "object" ? option.name : option;
       const value = typeof option === "object" ? option.value : option;
+
       return (
         <Option key={value} name={name} value={value}>
           {name}

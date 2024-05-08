@@ -4,6 +4,7 @@ import { collection as getCollectionUrl } from "./collections";
 
 export function timelinesInCollection(collection?: Collection) {
   const collectionUrl = getCollectionUrl(collection);
+
   return `${collectionUrl}/timelines`;
 }
 
@@ -48,6 +49,7 @@ export function editEventInCollection(
   timeline: Timeline,
 ) {
   const timelineUrl = timelineInCollection(timeline);
+
   return `${timelineUrl}/events/${event.id}/edit`;
 }
 
@@ -56,6 +58,7 @@ export function moveEventInCollection(
   timeline: Timeline,
 ) {
   const timelineUrl = timelineInCollection(timeline);
+
   return `${timelineUrl}/events/${event.id}/move`;
 }
 
@@ -64,5 +67,6 @@ export function deleteEventInCollection(
   timeline: Timeline,
 ) {
   const timelineUrl = timelineInCollection(timeline);
+
   return `${timelineUrl}/events/${event.id}/delete`;
 }

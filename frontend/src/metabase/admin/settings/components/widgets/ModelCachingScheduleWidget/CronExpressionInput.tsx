@@ -37,6 +37,7 @@ function CustomScheduleInputHint() {
       href={CRON_SYNTAX_DOC_URL}
     >{t`cron syntax`}</ExternalLink>
   );
+
   return (
     <CustomScheduleLabel>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by white spaces`}</CustomScheduleLabel>
   );

@@ -39,6 +39,7 @@ const DatabaseSchemasPane = ({
     [models],
   );
   const schemas = database.getSchemas();
+
   return (
     <SidebarContent
       title={database.name}

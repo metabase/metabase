@@ -74,8 +74,10 @@ export const setParameterTypesFromFieldSettings = (
   parameters: Parameter[],
 ): Parameter[] => {
   const fields = settings.fields || {};
+
   return parameters.map(parameter => {
     const field = fields[parameter.id];
+
     return {
       ...parameter,
       type: field

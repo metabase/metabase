@@ -14,6 +14,7 @@ async function baseSetup({
 }: Partial<OptionEditorProps> = {}) {
   function UncontrolledOptionEditor() {
     const [options, setOptions] = useState(initialOptions);
+
     return (
       <OptionPopover
         fieldType={fieldType}

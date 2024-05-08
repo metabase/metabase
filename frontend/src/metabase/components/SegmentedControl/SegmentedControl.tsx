@@ -66,6 +66,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
   const selectedOptionIndex = options.findIndex(
     option => option.value === value,
   );
+
   return (
     <SegmentedList {...props} role="radiogroup">
       {options.map((option, index) => {
@@ -74,6 +75,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
         const labelId = `${name}-${option.value}`;
         const iconOnly = !option.name;
         const selectedColor = option.selectedColor || "brand";
+
         return (
           <SegmentedItem
             key={option.value}

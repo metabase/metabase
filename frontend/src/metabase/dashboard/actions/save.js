@@ -62,10 +62,12 @@ export const updateDashboardAndCards = createThunkAction(
             index,
             ...clickBehaviorPath,
           ]);
+
           return startingValue == null
             ? dissocIn(card, clickBehaviorPath)
             : assocIn(card, clickBehaviorPath, startingValue);
         }
+
         return card;
       });
 
@@ -163,6 +165,7 @@ export const updateDashboard = createThunkAction(
 
       if (!dashboard) {
         console.warn(`no dashboard with id ${dashboardId} were found`);
+
         return;
       }
 

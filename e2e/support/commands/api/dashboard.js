@@ -38,6 +38,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add("archiveDashboard", id => {
   cy.log(`Archiving a dashboard with id: ${id}`);
+
   return cy.request("PUT", `/api/dashboard/${id}`, {
     archived: true,
   });

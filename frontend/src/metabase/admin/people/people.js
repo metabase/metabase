@@ -40,6 +40,7 @@ export const createMembership = createAction(
       group_id: groupId,
     });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Added");
+
     return {
       user_id: userId,
       group_id: groupId,
@@ -54,6 +55,7 @@ export const deleteMembership = createThunkAction(
     const membership = memberships[membershipId];
     await PermissionsApi.deleteMembership({ id: membershipId });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
+
     return { membershipId, groupId: membership.group_id };
   },
 );
@@ -66,6 +68,7 @@ export const updateMembership = createAction(
       id: membership.membership_id,
     });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Updated");
+
     return membership;
   },
 );

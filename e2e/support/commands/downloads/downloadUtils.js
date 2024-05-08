@@ -8,6 +8,7 @@ const removeDirectory = path => {
   } catch (error) {
     console.log("Error while removing directory", path, error);
   }
+
   return null;
 };
 
@@ -61,6 +62,7 @@ const verifyDownload = (fileName, options) => {
     }
     cy.wait(interval, { log: false }).then(() => {
       retries--;
+
       return resolveValue();
     });
   };

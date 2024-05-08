@@ -108,6 +108,7 @@ function getInitialValues(
 
   if (columns.length === 1) {
     const column = columns[0];
+
     return {
       label: column.display_name,
       column: column.name,

@@ -32,6 +32,7 @@ class AdminAwareEmptyStateInner extends Component {
       onActionClick,
       smallDescription = false,
     } = this.props;
+
     return (
       <EmptyState
         title={title}

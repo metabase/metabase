@@ -57,6 +57,7 @@ export default class DropArea extends Component {
       enableDropTargetBackground = true,
       ...props
     } = this.props;
+
     return this.state.show
       ? connectDropTarget(
           <div className={cx(CS.relative, className)} style={style}>

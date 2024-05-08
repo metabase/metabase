@@ -162,6 +162,7 @@ function renderItemExtra(item: ColumnListItem | SegmentListItem) {
   }
 
   const { query, stageIndex, column } = item;
+
   return (
     <QueryColumnInfoIcon
       query={query}

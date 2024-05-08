@@ -37,6 +37,7 @@ const emptyStateData = {
 
 const mapStateToProps = (state, props) => {
   const data = getFieldsByTable(state, props);
+
   return {
     table: getTable(state, props),
     entities: data,

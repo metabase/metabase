@@ -160,6 +160,7 @@ export function DashCardVisualization({
           </VirtualDashCardOverlayRoot>
         );
       }
+
       return (
         <ClickBehaviorSidebarOverlay
           dashcard={dashcard}

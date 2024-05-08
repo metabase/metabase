@@ -21,6 +21,7 @@ export const PermissionsEditorBreadcrumbs = ({
     <Fragment>
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
+
         return (
           <Fragment key={index}>
             {isLast ? (

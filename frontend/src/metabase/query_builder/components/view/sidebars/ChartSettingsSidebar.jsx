@@ -33,6 +33,7 @@ export default class ChartSettingsSidebar extends Component {
           onBack: () => onOpenChartType(),
         }
       : {};
+
     return (
       result && (
         <SidebarContent

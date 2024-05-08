@@ -40,6 +40,7 @@ const getEngineOption = (engineKey: string, engine: Engine) => {
 
 export const getEngineLogo = (engine: string): string | undefined => {
   const logo = ENGINE_LOGO[engine];
+
   return logo ? `app/assets/img/drivers/${logo}` : undefined;
 };
 

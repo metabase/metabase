@@ -33,10 +33,12 @@ export function dashboard(
 
 export function publicDashboard(uuid: string) {
   const siteUrl = MetabaseSettings.get("site-url");
+
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
 export function embedDashboard(token: string) {
   const siteUrl = MetabaseSettings.get("site-url");
+
   return `${siteUrl}/embed/dashboard/${token}`;
 }

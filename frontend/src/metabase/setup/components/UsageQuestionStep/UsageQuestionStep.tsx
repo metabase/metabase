@@ -39,6 +39,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
     const title = isStepCompleted
       ? COMPLETED_STEP_TITLE[usageReason]
       : t`What will you use Metabase for?`;
+
     return (
       <InactiveStep
         title={title}

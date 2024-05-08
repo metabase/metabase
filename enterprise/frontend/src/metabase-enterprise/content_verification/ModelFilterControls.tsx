@@ -8,6 +8,7 @@ export const ModelFilterControls = ({
   handleModelFilterChange,
 }: ModelFilterControlsProps) => {
   const checked = actualModelFilters.onlyShowVerifiedModels;
+
   return (
     <Switch
       label={

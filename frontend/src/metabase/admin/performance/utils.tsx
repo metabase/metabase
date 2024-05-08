@@ -18,6 +18,7 @@ const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
   }
+
   return index + 1;
 };
 
@@ -68,6 +69,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     month,
     weekday,
   ].join(" ");
+
   return cronExpression;
 };
 
@@ -126,6 +128,7 @@ export const cronToScheduleSettings_unmemoized = (
       schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }
+
   return {
     schedule_type,
     schedule_minute: parseInt(minute),
@@ -169,6 +172,7 @@ export const resolveSmoothly = async (
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+
   return isNullOrUndefined(scheduleType)
     ? ""
     : optionNameTranslations[scheduleType];

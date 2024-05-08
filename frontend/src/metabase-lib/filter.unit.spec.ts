@@ -56,6 +56,7 @@ const METADATA = createMockMetadata({
 
 function findColumn(query: Lib.Query, tableName: string, columnName: string) {
   const columns = Lib.filterableColumns(query, 0);
+
   return columnFinder(query, columns)(tableName, columnName);
 }
 

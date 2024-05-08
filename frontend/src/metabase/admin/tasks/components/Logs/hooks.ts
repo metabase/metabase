@@ -20,6 +20,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
   const fetchLogs = async () => {
     if (isFetchingRef.current) {
       console.warn("skipping logs request as a request is currently in flight");
+
       return;
     }
 
@@ -50,6 +51,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     isMountedRef.current = true;
     fetchLogs();
     pollingInterval.start();
+
     return () => {
       isMountedRef.current = false;
       pollingInterval.stop();

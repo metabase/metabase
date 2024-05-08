@@ -63,6 +63,7 @@ function ActionForm({
 
   const submitButtonProps = useMemo(() => {
     const variant = getSubmitButtonColor(action);
+
     return {
       title: getSubmitButtonLabel(action),
       [variant]: true,

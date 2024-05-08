@@ -157,6 +157,7 @@ export const CollectionContentView = ({
           icon: "warning",
         }),
       );
+
       return;
     }
     saveFile(acceptedFiles[0]);

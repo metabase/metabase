@@ -74,6 +74,7 @@ function ActionVizForm({
     if (result.success) {
       setShowFormModal(false);
     }
+
     return result;
   };
 

@@ -42,6 +42,7 @@ export const FieldPicker = ({
     () =>
       columns.map(column => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
         return {
           column,
           columnInfo,

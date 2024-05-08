@@ -43,6 +43,7 @@ const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
         return cy.wrap(response);
       } else if (timeout > 0) {
         cy.wait(INBOX_INTERVAL);
+
         return getInboxWithRetry(timeout - INBOX_INTERVAL);
       } else {
         throw new Error("Inbox retry timeout");
@@ -125,6 +126,7 @@ export function sendEmailAndAssert(callback) {
 export function sendEmailAndVisitIt() {
   clickSend();
   const emailUrl = `http://localhost:${WEB_PORT}/email`;
+
   return cy.request("GET", emailUrl).then(({ body }) => {
     const latest = body.slice(-1)[0];
     cy.visit(`${emailUrl}/${latest.id}/html`);

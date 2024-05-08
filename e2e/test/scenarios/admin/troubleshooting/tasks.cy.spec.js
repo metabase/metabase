@@ -108,5 +108,6 @@ function stubPageRows(page) {
   const length = pageRows[page];
 
   const stubbedRows = Array.from({ length }, () => row);
+
   return stubbedRows;
 }

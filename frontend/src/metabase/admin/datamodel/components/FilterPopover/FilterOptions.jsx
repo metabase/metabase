@@ -18,6 +18,7 @@ const OPTION_NAMES = {
         {getCurrentIntervalName(filter)}
       </strong>
     );
+
     return jt`Include ${period}`;
   },
   "case-sensitive": () => t`Case sensitive`,
@@ -36,6 +37,7 @@ function getCurrentIntervalName(filter) {
   if (filter[0] === "time-interval") {
     return CURRENT_INTERVAL_NAME[filter[3]];
   }
+
   return null;
 }
 
@@ -55,6 +57,7 @@ export default class FilterOptions extends Component {
     if (OPTION_NAMES[name]) {
       return OPTION_NAMES[name](this.props.filter);
     }
+
     return name;
   }
 
@@ -68,6 +71,7 @@ export default class FilterOptions extends Component {
     if (option && option.defaultValue !== undefined) {
       return option.defaultValue;
     }
+
     // for now values are always boolean, default to false
     return false;
   }
@@ -98,6 +102,7 @@ export default class FilterOptions extends Component {
     if (options.length === 0) {
       return null;
     }
+
     return (
       <div className={cx(CS.flex, CS.alignCenter)}>
         {options.map(([name, option]) => (

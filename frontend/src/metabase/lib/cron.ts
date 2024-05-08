@@ -21,6 +21,7 @@ function translateErrorMessage(message: string) {
     "? can only be specified for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
     "Unexpected end of expression": t`Invalid cron expression`,
   };
+
   return errorMessageMap[message];
 }
 

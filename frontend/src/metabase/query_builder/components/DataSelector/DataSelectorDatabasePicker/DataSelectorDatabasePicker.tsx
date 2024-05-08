@@ -67,6 +67,7 @@ const DataSelectorDatabasePicker = ({
       if (isNavigationSection) {
         onBack();
       }
+
       return false;
     },
     [onBack],

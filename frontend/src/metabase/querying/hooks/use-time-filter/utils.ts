@@ -71,6 +71,7 @@ function getFilterParts(
 
   if (operator === "between") {
     const [startTime, endTime] = values;
+
     return {
       operator,
       column,

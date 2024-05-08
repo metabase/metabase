@@ -25,6 +25,7 @@ function useSelectedTables({
         ? new Set([...selectedTableIds, id])
         : new Set([id]);
       setSelectedTableIds(nextState);
+
       return Array.from(nextState);
     },
     [selectedTableIds, isMultiSelect],
@@ -35,8 +36,10 @@ function useSelectedTables({
       if (selectedTableIds.has(id)) {
         const nextState = new Set([...selectedTableIds].filter(i => i !== id));
         setSelectedTableIds(nextState);
+
         return Array.from(nextState);
       }
+
       return Array.from(selectedTableIds);
     },
     [selectedTableIds],

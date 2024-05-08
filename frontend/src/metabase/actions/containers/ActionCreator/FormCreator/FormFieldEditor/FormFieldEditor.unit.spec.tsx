@@ -30,6 +30,7 @@ function setup({
 }: Partial<FormFieldEditorProps> = {}) {
   function WrappedFormFieldEditor() {
     const [fieldSettings, setFieldSettings] = useState(initialFieldSettings);
+
     return (
       <FormFieldEditor
         field={field}

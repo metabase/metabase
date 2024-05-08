@@ -77,6 +77,7 @@ const getHasMetabot = (
 ) => {
   const hasModels = models.length > 0;
   const hasSupportedDatabases = databases.some(canUseMetabotOnDatabase);
+
   return hasModels && hasSupportedDatabases && isMetabotEnabled;
 };
 

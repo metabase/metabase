@@ -91,6 +91,7 @@ const getChannelMessage = channel => {
 
 const getCapitalizedMessage = message => {
   const [firstLetter, ...otherLetters] = message;
+
   return [firstLetter.toUpperCase(), ...otherLetters].join("");
 };
 

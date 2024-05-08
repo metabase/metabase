@@ -319,6 +319,7 @@ Object.assign(SmartScalar, {
         getDefaultComparison(series, vizSettings),
       getProps: (series, vizSettings) => {
         const cols = series[0].data.cols;
+
         return {
           maxComparisons: MAX_COMPARISONS,
           comparableColumns: getColumnsForComparison(cols, vizSettings),

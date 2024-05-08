@@ -134,6 +134,7 @@ class Question {
   setCard(card: CardObject): Question {
     const q = this.clone();
     q._card = card;
+
     return q;
   }
 
@@ -195,6 +196,7 @@ class Question {
     if (query instanceof StructuredQuery && !useStructuredQuery) {
       throw new Error("StructuredQuery usage is forbidden. Use MLv2");
     }
+
     return query;
   }
 
@@ -306,6 +308,7 @@ class Question {
     if (!isScalar && isOneByOne && !this.displayIsLocked()) {
       return this.setDisplay("scalar");
     }
+
     return this;
   }
 
@@ -326,6 +329,7 @@ class Question {
 
   setting(settingName, defaultValue = undefined) {
     const value = this.settings()[settingName];
+
     return value === undefined ? defaultValue : value;
   }
 
@@ -353,6 +357,7 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
+
     return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
   }
 
@@ -387,6 +392,7 @@ class Question {
 
   canAutoRun(): boolean {
     const db = this.database();
+
     return (db && db.auto_run_queries) || false;
   }
 
@@ -445,6 +451,7 @@ class Question {
     const tableId = getQuestionVirtualTableId(this.id());
     const table = Lib.tableOrCardMetadata(metadata, tableId);
     const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+
     return this.setQuery(query);
   }
 
@@ -454,6 +461,7 @@ class Question {
     }
 
     const query = this.composeQuestion().query();
+
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 
@@ -556,11 +564,13 @@ class Question {
     const metadata = this.metadata();
     const databaseId = this.databaseId();
     const database = metadata.database(databaseId);
+
     return database;
   }
 
   databaseId(): DatabaseId | null {
     const query = this.query();
+
     return Lib.databaseID(query);
   }
 
@@ -572,12 +582,14 @@ class Question {
     } else {
       const tableId = Lib.sourceTableOrCardId(query);
       const metadata = this.metadata();
+
       return metadata.table(tableId);
     }
   }
 
   legacyQueryTableId(): TableId | null {
     const table = this.legacyQueryTable();
+
     return table ? table.id : null;
   }
 
@@ -587,6 +599,7 @@ class Question {
 
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
+
     return this.setCard({
       ...this.card(),
       result_metadata: metadataColumns,
@@ -643,6 +656,7 @@ class Question {
   setParameterValues(parameterValues) {
     const question = this.clone();
     question._parameterValues = parameterValues;
+
     return question;
   }
 
@@ -689,6 +703,7 @@ class Question {
           })
       );
     });
+
     return a.isDirtyComparedTo(b);
   }
 
@@ -731,6 +746,7 @@ class Question {
       dashboardId: this._card.dashboardId,
       dashcardId: this._card.dashcardId,
     };
+
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
@@ -757,6 +773,7 @@ class Question {
       .setParameterValues(undefined);
 
     const hasQueryBeenAltered = filters.length > 0;
+
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
@@ -786,6 +803,7 @@ class Question {
       this.datasetQuery()?.database,
       this.metadata(),
     );
+
     return this.__mlv2MetadataProvider;
   }
 
@@ -795,6 +813,7 @@ class Question {
 
   generateQueryDescription() {
     const query = this.query();
+
     return Lib.suggestedName(query);
   }
 

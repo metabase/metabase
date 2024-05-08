@@ -16,12 +16,14 @@ const addZeroesToHour = (
   if (!useZero && hour === 0) {
     hour = 12;
   }
+
   return c("This is a time like 12:00pm. {0} is the hour part of the time")
     .t`${hour}:00`;
 };
 
 export const getHours = () => {
   const isClock24Hour = has24HourModeSetting();
+
   return times(isClock24Hour ? 24 : 12, n => ({
     label: addZeroesToHour(n, { useZero: isClock24Hour }),
     value: `${n}`,

@@ -27,5 +27,6 @@ export function useClickBehaviorOptionName(
   if (value === "action") {
     return t`Perform action`;
   }
+
   return t`Unknown`;
 }

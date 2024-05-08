@@ -79,6 +79,7 @@ const paths = createReducer(getAdminPaths(), builder => {
       .flat()
       .reduce((acc, pathKey) => {
         acc.add(pathKey);
+
         return acc;
       }, new Set<AdminPathKey>());
 

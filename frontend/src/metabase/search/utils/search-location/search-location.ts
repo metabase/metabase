@@ -16,6 +16,7 @@ export function getSearchTextFromLocation(
   if (isSearchPageLocation(location)) {
     return location.query.q || "";
   }
+
   return "";
 }
 
@@ -25,5 +26,6 @@ export function getFiltersFromLocation(
   if (isSearchPageLocation(location)) {
     return _.pick(location.query, Object.values(SearchFilterKeys));
   }
+
   return {};
 }

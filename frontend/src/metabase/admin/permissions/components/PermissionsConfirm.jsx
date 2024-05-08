@@ -15,6 +15,7 @@ const DatabaseName = ({ database }) => (
 
 const TableAccessChange = ({ tables, verb, colorClassName }) => {
   const tableEntries = Object.entries(tables);
+
   return (
     <span>
       {verb}

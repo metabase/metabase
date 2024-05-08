@@ -49,6 +49,7 @@ export function shouldClosePopover(
   }
 
   console.warn("Unsupported event type", e);
+
   return false;
 }
 

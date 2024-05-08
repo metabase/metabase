@@ -14,6 +14,7 @@ function _QueryDefinition({ className, object, metadata }) {
   ).legacyQuery({ useStructuredQuery: true });
   const aggregations = query.aggregations();
   const filters = query.filters();
+
   return (
     <div className={className} style={{ pointerEvents: "none" }}>
       {aggregations.map(aggregation => aggregation.displayName())}

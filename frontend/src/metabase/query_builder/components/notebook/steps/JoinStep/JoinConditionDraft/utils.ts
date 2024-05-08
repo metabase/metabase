@@ -5,5 +5,6 @@ export function getDefaultJoinConditionOperator(
   stageIndex: number,
 ): Lib.JoinConditionOperator {
   const operators = Lib.joinConditionOperators(query, stageIndex);
+
   return operators[0];
 }

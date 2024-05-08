@@ -82,6 +82,7 @@ const getName = (upload: FileUpload) => {
   if (upload.status === "complete") {
     return <Link to={`/model/${upload.modelId}`}>{upload.name}</Link>;
   }
+
   return upload.name;
 };
 
@@ -99,6 +100,7 @@ const getTitle = (
     if (isOnlyReplace) {
       return t`Data replaced in ${uploadDestination.name}`;
     }
+
     return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
     return t`Error uploading your file`;
@@ -117,6 +119,7 @@ const loadingMessages = [
 
 const getLoadingMessage = (time: number) => {
   const index = time % loadingMessages.length;
+
   return `${loadingMessages[index]} …`;
 };
 
@@ -133,6 +136,7 @@ const Description = ({ upload }: { upload: FileUpload }) => {
       </Stack>
     );
   }
+
   return "";
 };
 
@@ -141,6 +145,7 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
   if (!upload.error) {
     return null;
   }
+
   return (
     <>
       <Button onClick={() => setShowErrorModal(true)} onlyText>

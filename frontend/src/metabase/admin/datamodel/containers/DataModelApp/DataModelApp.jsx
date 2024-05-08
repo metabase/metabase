@@ -52,6 +52,7 @@ function DataModelApp({
     if (/\/metrics?/.test(pathname)) {
       return TAB.METRICS;
     }
+
     return TAB.DATABASE;
   }, [pathname]);
 

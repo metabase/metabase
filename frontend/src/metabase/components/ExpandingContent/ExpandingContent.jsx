@@ -60,6 +60,7 @@ class ExpandingContent extends Component {
     const maxHeight = isTransitioning
       ? (this._ref && this._ref.scrollHeight) || 0
       : "none";
+
     return (
       <div
         ref={ref => (this._ref = ref)}

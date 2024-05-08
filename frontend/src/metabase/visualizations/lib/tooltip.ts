@@ -19,6 +19,7 @@ function getParentWithClass(element: HTMLElement, className: string) {
     }
     element = element.parentNode as HTMLElement;
   }
+
   return null;
 }
 
@@ -49,6 +50,7 @@ export const formatValueForTooltip = ({
   settings?: VisualizationSettings;
 }) => {
   const nullableValue = formatNullable(value);
+
   return formatValue(nullableValue, {
     ...(settings && settings.column && column
       ? settings.column(column)

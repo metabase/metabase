@@ -34,6 +34,7 @@ export const updateApplicationPermission = createAction(
   UPDATE_APPLICATION_PERMISSION,
   ({ groupId, permission, value }) => {
     MetabaseAnalytics.trackStructEvent("General Permissions", "save");
+
     return {
       groupId,
       permission: permission.permission,
@@ -72,6 +73,7 @@ const applicationPermissions = handleActions(
     [UPDATE_APPLICATION_PERMISSION]: {
       next: (state, { payload }) => {
         const { groupId, permission, value } = payload;
+
         return assocIn(state, [groupId, permission], value);
       },
     },

@@ -59,6 +59,7 @@ function getCellData({
       />
     );
   }
+
   return formatValue(value, {
     ...columnSettings,
     clicked: { ...clicked, extraData },

@@ -29,6 +29,7 @@ function CollectionBadge({ className, collection, isSingleLine }) {
     ...collection.getIcon(),
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
+
   return (
     <Badge
       className={className}

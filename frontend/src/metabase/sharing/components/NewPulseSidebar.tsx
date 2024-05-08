@@ -26,6 +26,7 @@ export function NewPulseSidebar({
   onNewSlackPulse,
 }: NewPulseSidebarProps) {
   const applicationName = useSelector(getApplicationName);
+
   return (
     <Sidebar onCancel={onCancel}>
       <div className={cx(CS.mt2, CS.pt2, CS.px4)}>

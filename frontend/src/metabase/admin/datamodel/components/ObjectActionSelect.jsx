@@ -34,6 +34,7 @@ export default class ObjectActionsSelect extends Component {
 
   render() {
     const { object, objectType, objectTypeLocalized } = this.props;
+
     return (
       <div>
         <PopoverWithTrigger

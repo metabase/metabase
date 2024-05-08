@@ -138,6 +138,7 @@ class Table extends Component<TableProps, TableState> {
         const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
         const lastCol = nonPivotCols[nonPivotCols.length - 1];
         const { name } = nonPivotCols.find(isMetric) || lastCol || {};
+
         return name;
       },
       getProps: ([
@@ -369,6 +370,7 @@ class Table extends Component<TableProps, TableState> {
       return null;
     }
     const { series, settings } = this.props;
+
     return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
@@ -393,6 +395,7 @@ class Table extends Component<TableProps, TableState> {
         const orderBys = Lib.orderBys(query, stageIndex);
         const orderBy = orderBys[columnInfo.orderByPosition];
         const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+
         return orderByInfo.direction;
       }
     }

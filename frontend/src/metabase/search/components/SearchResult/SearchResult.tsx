@@ -76,6 +76,7 @@ export function SearchResult({
 
     if (onClick) {
       onClick(result);
+
       return;
     }
 

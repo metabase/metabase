@@ -88,12 +88,14 @@ export function isDateRange(value: Date[]): value is [Date, Date] {
 export function setDatePart(value: Date, date: Date) {
   const newValue = new Date(value);
   newValue.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+
   return newValue;
 }
 
 export function setTimePart(value: Date, time: Date) {
   const newValue = new Date(value);
   newValue.setHours(time.getHours(), time.getMinutes());
+
   return newValue;
 }
 

@@ -24,6 +24,7 @@ export const getSetting = <S extends State, T extends GetSettingKey<S>>(
 ): GetSettings<S>[T] => {
   const settings = getSettings(state);
   const setting = settings[key];
+
   return setting;
 };
 

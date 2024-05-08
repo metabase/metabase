@@ -127,6 +127,7 @@ export function ComparisonPicker({
         />
       );
     }
+
     return (
       <Stack spacing="sm">
         {options.map(optionArgs =>
@@ -191,6 +192,7 @@ function getTabForComparisonType(type: SmartScalarComparisonType): Tab {
   if (type === COMPARISON_TYPES.STATIC_NUMBER) {
     return "staticNumber";
   }
+
   return null;
 }
 
@@ -272,6 +274,7 @@ function DisplayName({
     const columnName = (
       <ComparisonPickerSecondaryText key="column-name">{`(${value.label})`}</ComparisonPickerSecondaryText>
     );
+
     return <span>{jt`Column ${columnName}`}</span>;
   }
 
@@ -279,6 +282,7 @@ function DisplayName({
     const label = (
       <ComparisonPickerSecondaryText key="label">{`(${value.label})`}</ComparisonPickerSecondaryText>
     );
+
     return <span>{jt`Custom value ${label}`}</span>;
   }
 

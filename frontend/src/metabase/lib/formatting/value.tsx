@@ -67,6 +67,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
         raw: value,
         json: maybeJson,
       });
+
       return (
         <ReactMarkdown components={MARKDOWN_RENDERERS}>
           {markdown}
@@ -77,6 +78,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
       console.warn(
         "formatValue: options.markdown_template not supported when options.jsx = false",
       );
+
       return formatted;
     }
   }
@@ -124,6 +126,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
       value = formatImage(value, options);
     }
   }
+
   return value;
 }
 
@@ -201,6 +204,7 @@ export function formatValueRaw(
     if (column?.semantic_type) {
       return value;
     }
+
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, column);

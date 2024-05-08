@@ -24,6 +24,7 @@ export function getPivotColumnSplit(question) {
         breakoutColumns,
         nonEmptyFieldRefs,
       );
+
       return nonEmptyFieldRefs
         .map((_, fieldIndex) => breakoutIndexes[fieldIndex])
         .filter(breakoutIndex => breakoutIndex >= 0);

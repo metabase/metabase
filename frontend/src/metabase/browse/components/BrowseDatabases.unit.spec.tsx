@@ -6,6 +6,7 @@ import { BrowseDatabases } from "./BrowseDatabases";
 
 const renderBrowseDatabases = (modelCount: number) => {
   const databases = mockDatabases.slice(0, modelCount);
+
   return renderWithProviders(
     <BrowseDatabases
       databasesResult={{ data: databases, isLoading: false, error: false }}

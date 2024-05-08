@@ -144,6 +144,7 @@ function DEPRECATED_getInitialDateValue(
 
     if (parameterType === "date/range") {
       const now = getIsoDate();
+
       return `${now}~${now}`;
     }
   }

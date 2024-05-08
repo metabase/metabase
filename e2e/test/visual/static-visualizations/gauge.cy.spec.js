@@ -63,6 +63,7 @@ describe("static visualizations", { tags: "@external" }, () => {
  */
 function createGaugeQuestion(range, labels, columnSettings) {
   const colors = ["#ED6E6E", "#F9CF48", "#84BB4C", "#509EE3"];
+
   return {
     name: `Gauge chart with range "${range}"`,
     query: {

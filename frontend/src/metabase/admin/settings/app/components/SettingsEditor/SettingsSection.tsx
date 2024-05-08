@@ -39,6 +39,7 @@ export function SettingsSection({
 
   if (tabs) {
     const activeTab = tabs.find(tab => tab.isActive);
+
     return (
       <Tabs value={activeTab?.key}>
         <Tabs.List mx="1rem" mb="1rem">

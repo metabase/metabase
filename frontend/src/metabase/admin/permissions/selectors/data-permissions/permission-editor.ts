@@ -74,6 +74,7 @@ const getRouteParams = (
   props: RouteParamsSelectorParameters,
 ) => {
   const { databaseId, schemaName, tableId } = props.params;
+
   return {
     databaseId,
     schemaName,
@@ -92,6 +93,7 @@ const getGroupRouteParams = (
   props: { params: RawGroupRouteParams },
 ) => {
   const { groupId, databaseId, schemaName } = props.params;
+
   return {
     groupId: groupId != null ? parseInt(groupId) : undefined,
     databaseId: databaseId != null ? parseInt(databaseId) : undefined,
@@ -203,6 +205,7 @@ export const getDatabasesPermissionEditor = createSelector(
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
         .map(table => {
           const entityId = getTableEntityId(table);
+
           return {
             id: table.id,
             name: table.display_name,
@@ -225,6 +228,7 @@ export const getDatabasesPermissionEditor = createSelector(
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(schema => {
           const entityId = getSchemaEntityId(schema);
+
           return {
             id: schema.id,
             name: schema.name,
@@ -248,6 +252,7 @@ export const getDatabasesPermissionEditor = createSelector(
         .databasesList({ savedQuestions: false })
         .map(database => {
           const entityId = getDatabaseEntityId(database);
+
           return {
             id: database.id,
             name: database.name,

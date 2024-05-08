@@ -32,6 +32,7 @@ function getHeaderVariant({
   if (hasOnBackHandler) {
     return "back-button";
   }
+
   return "default";
 }
 

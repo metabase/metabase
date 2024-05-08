@@ -5,6 +5,7 @@ export function searchOptions(
   searchText: string,
 ): SelectItem[] {
   const searchValue = searchText.toLowerCase();
+
   return options.filter(
     ({ label }) => label != null && label.toLowerCase().includes(searchValue),
   );

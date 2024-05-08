@@ -45,6 +45,7 @@ export function withDefaultTemporalBucket(
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
+
   return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
 }
 

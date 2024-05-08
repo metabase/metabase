@@ -54,6 +54,7 @@ export const loadUserDefaults = createAsyncThunk(
     const token = getUserToken();
     if (token) {
       const defaults = await SetupApi.user_defaults({ token });
+
       return defaults.user;
     }
   },
@@ -70,6 +71,7 @@ export const loadLocaleDefaults = createAsyncThunk<
   if (locale) {
     await loadLocalization(locale.code);
   }
+
   return locale;
 });
 
@@ -153,6 +155,7 @@ export const submitDatabase = createAsyncThunk<
     try {
       await dispatch(createDatabase(database));
       dispatch(goToNextStep());
+
       return database;
     } catch (error) {
       return rejectWithValue(error);

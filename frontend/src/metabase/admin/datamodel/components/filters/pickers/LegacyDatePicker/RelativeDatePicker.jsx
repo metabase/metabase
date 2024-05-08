@@ -29,6 +29,7 @@ export default class RelativeDatePicker extends Component {
     const { filter, onFilterChange, formatter, className } = this.props;
     const intervals = filter[2];
     const unit = filter[3];
+
     return (
       <div className={cx(className, CS.flex, CS.alignCenter)}>
         <IntervalInput

@@ -108,6 +108,7 @@ const getIsEmbeddedAppBarVisible = createSelector(
       embedOptions.logo ||
       isQuestionLineageVisible ||
       isCollectionPathVisible;
+
     return embedOptions.top_nav && anyEmbeddedAppBarElementVisible;
   },
 );
@@ -142,6 +143,7 @@ export const getIsAppBarVisible = createSelector(
     ) {
       return false;
     }
+
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
   },
 );
@@ -178,6 +180,7 @@ export const getErrorPage = (state: State) => {
 
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
+
   return errorPage?.data?.message || errorPage?.data;
 };
 

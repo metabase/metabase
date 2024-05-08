@@ -66,6 +66,7 @@ function NotebookStep({
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
+
         return {
           priority: stepUi.priority,
           button: (

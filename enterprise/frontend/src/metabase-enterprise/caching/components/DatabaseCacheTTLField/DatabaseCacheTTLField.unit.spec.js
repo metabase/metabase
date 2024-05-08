@@ -8,6 +8,7 @@ function setup({ value = null } = {}) {
   render(
     <DatabaseCacheTTLField field={{ name: "cache_ttl", value, onChange }} />,
   );
+
   return { onChange };
 }
 

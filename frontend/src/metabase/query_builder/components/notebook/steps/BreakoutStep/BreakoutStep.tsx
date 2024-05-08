@@ -110,6 +110,7 @@ const BreakoutPopover = ({
       const columnInfo = Lib.displayInfo(query, stageIndex, column);
       const isAlreadyUsed = columnInfo.breakoutPosition != null;
       const isSelected = checkColumnSelected(columnInfo, breakoutIndex);
+
       return isSelected || !isAlreadyUsed;
     });
 

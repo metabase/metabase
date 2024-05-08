@@ -133,6 +133,7 @@ const Dashboards = createEntity({
             dispatch(addUndo(notify));
           }
           dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+
           return result;
         },
     ),
@@ -146,6 +147,7 @@ const Dashboards = createEntity({
         dashboardApi.endpoints.saveDashboard,
       );
       dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+
       return {
         type: "metabase/entities/dashboards/SAVE_DASHBOARD",
         payload: savedDashboard,
@@ -157,6 +159,7 @@ const Dashboards = createEntity({
     if (type === COPY_ACTION && !error && state[""]) {
       return { ...state, "": state[""].concat([payload.result]) };
     }
+
     return state;
   },
 
@@ -171,6 +174,7 @@ const Dashboards = createEntity({
 
   getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
+
     return type && `collection=${type}`;
   },
 });

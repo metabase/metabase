@@ -55,6 +55,7 @@ export function RowToggleIcon({
           settingValue
             .filter(v => {
               const parsed = JSON.parse(v);
+
               return !(Array.isArray(parsed) && parsed.length === value);
             }) // remove any already collapsed items in this column
             .concat(ref) // add column to list

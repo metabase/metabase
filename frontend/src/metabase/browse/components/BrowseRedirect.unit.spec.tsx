@@ -33,6 +33,7 @@ const setup = ({
   } else {
     localStorage.setItem("defaultBrowseTab", defaultTab);
   }
+
   return renderWithProviders(<BrowseRedirect />);
 };
 

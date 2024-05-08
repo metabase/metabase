@@ -49,6 +49,7 @@ export function JoinTablePicker({
 
   const databases = useMemo(() => {
     const database = metadata.database(databaseId);
+
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
   }, [databaseId, metadata]);
 
@@ -148,5 +149,6 @@ function getSelectedDataBucketId(
   if (isModelDataSource) {
     return DATA_BUCKET.MODELS;
   }
+
   return undefined;
 }

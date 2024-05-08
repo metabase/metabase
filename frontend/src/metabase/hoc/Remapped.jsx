@@ -48,6 +48,7 @@ export default ComposedComponent =>
         const displayValue = field && field.remappedValue(props.value);
         const displayColumn =
           (displayValue != null && field && field.remappedField()) || null;
+
         return (
           <ComposedComponent
             {...props}

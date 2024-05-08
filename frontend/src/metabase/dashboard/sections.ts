@@ -43,6 +43,7 @@ function createHeadingDashCard({
 }: Partial<VirtualDashboardCard> &
   DashboardCardLayoutAttrs): SectionDashboardCardAttrs {
   const card = createVirtualCard("heading");
+
   return {
     ...opts,
     card,
@@ -59,6 +60,7 @@ function createPlaceholderDashCard(
   opts: Partial<VirtualDashboardCard> & DashboardCardLayoutAttrs,
 ): SectionDashboardCardAttrs {
   const card = createVirtualCard("placeholder");
+
   return {
     ...opts,
     card,

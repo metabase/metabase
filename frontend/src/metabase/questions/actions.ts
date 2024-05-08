@@ -62,5 +62,6 @@ function getDependenciesDiff(
   nextDependencies: Lib.DependentItem[],
 ) {
   const prevKeys = new Set(prevDependencies.map(getDependencyKey));
+
   return nextDependencies.filter(dep => !prevKeys.has(getDependencyKey(dep)));
 }

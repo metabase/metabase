@@ -34,6 +34,7 @@ const timeParameterValueDeserializers = [
       const unit = EXCLUDE_UNITS[matches[0]];
       const options = EXCLUDE_OPTIONS[unit]().flat();
       const values = matches[1].split("-");
+
       return [
         "!=",
         withTemporalUnit(fieldRef, unit),
@@ -54,6 +55,7 @@ const timeParameterValueDeserializers = [
         -parseInt(matches[0]),
         matches[1],
       ];
+
       return setStartingFrom(base, parseInt(matches[2]), matches[3]);
     },
   },
@@ -73,6 +75,7 @@ const timeParameterValueDeserializers = [
         parseInt(matches[0]),
         matches[1],
       ];
+
       return setStartingFrom(base, -parseInt(matches[2]), matches[3]);
     },
   },
@@ -140,6 +143,7 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
     const substringMatches = deserializer.testRegex
       .exec(parameterValue)
       .splice(1);
+
     return deserializer.deserialize(substringMatches, fieldRef);
   } else {
     return null;

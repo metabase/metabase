@@ -22,6 +22,7 @@ export const UploadInfoModal = ({
   onClose: () => void;
 }) => {
   const applicationName = useSelector(getApplicationName);
+
   return (
     <Modal small>
       <ModalContent title=" " onClose={onClose}>

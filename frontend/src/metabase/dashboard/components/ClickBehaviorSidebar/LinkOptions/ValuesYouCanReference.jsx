@@ -13,6 +13,7 @@ import { PopoverTrigger } from "./ValuesYouCanReference.styled";
 
 function prefixIfNeeded(values, prefix, otherLists) {
   const otherValues = otherLists.flat().map(s => s.toLowerCase());
+
   return values.map(value =>
     otherValues.includes(value.toLowerCase()) ? `${prefix}:${value}` : value,
   );

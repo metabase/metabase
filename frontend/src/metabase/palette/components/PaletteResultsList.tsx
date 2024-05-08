@@ -60,6 +60,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
             }
             nextIndex -= 1;
           }
+
           return nextIndex;
         });
       } else if (
@@ -78,6 +79,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
             }
             nextIndex += 1;
           }
+
           return nextIndex;
         });
       } else if (event.key === "Enter") {
@@ -91,6 +93,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       }
     };
     window.addEventListener("keydown", handler, { capture: true });
+
     return () =>
       window.removeEventListener("keydown", handler, { capture: true });
   }, [query]);

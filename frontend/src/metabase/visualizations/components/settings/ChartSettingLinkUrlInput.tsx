@@ -17,11 +17,13 @@ const filterOptions = (value: string | undefined, options: string[]) => {
     const match = value.match(linkVariablePattern);
     if (match) {
       const suggestionFilter = match[1];
+
       return options.filter(option =>
         option.toLowerCase().includes(suggestionFilter.toLowerCase()),
       );
     }
   }
+
   return [];
 };
 

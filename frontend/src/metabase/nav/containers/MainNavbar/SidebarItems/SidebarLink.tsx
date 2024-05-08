@@ -63,6 +63,7 @@ function SidebarLink({
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+
     return (
       <TreeNode.IconContainer transparent={false}>
         <SidebarIcon {...iconProps} isSelected={isSelected} />

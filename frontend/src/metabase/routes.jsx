@@ -72,6 +72,7 @@ import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
+
   return (
     <Route title={applicationName} component={App}>
       {/* SETUP */}

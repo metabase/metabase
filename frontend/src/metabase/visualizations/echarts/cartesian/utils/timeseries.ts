@@ -24,6 +24,7 @@ export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
     return null;
   }
   const date = parseTimestamp(rowValue);
+
   return date.isValid() ? date : null;
 };
 
@@ -108,6 +109,7 @@ export function computeTimeseriesDataInverval(
   // run each interval's test function on each value
   const valueLists = xValues.map(xValue => {
     const parsed = parseTimestamp(xValue);
+
     return TIMESERIES_INTERVALS.map(interval => interval.testFn(parsed));
   });
 
@@ -215,6 +217,7 @@ function maxTicksForChartWidth(
   const formattedValue = tickFormat(new Date(2019, 8, 4).toISOString());
   const pixelsPerTick =
     formattedValue.length * PIXELS_PER_CHARACTER + TICK_BUFFER_PIXELS;
+
   return Math.floor(chartWidth / pixelsPerTick); // round down so we don't end up with too many ticks
 }
 
@@ -223,6 +226,7 @@ function maxTicksForChartWidth(
 function timeRangeMilliseconds(xDomain: ContinuousDomain) {
   const startTime = xDomain[0]; // these are UNIX timestamps in milliseconds
   const endTime = xDomain[1];
+
   return endTime - startTime;
 }
 

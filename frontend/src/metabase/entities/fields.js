@@ -71,6 +71,7 @@ const Fields = createEntity({
       getMetadataUnfiltered(state).field(entityId),
     getFieldValues: (state, { entityId }) => {
       const field = state.entities.fields[entityId];
+
       return field ? getFieldValues(field) : [];
     },
   },
@@ -83,10 +84,12 @@ const Fields = createEntity({
       withCachedDataAndRequestState(
         ({ id, table_id }) => {
           const uniqueId = getUniqueFieldId({ id, table_id });
+
           return [...Fields.getObjectStatePath(uniqueId)];
         },
         ({ id, table_id }) => {
           const uniqueId = getUniqueFieldId({ id, table_id });
+
           return [...Fields.getObjectStatePath(uniqueId), "values"];
         },
         field => {
@@ -164,6 +167,7 @@ const Fields = createEntity({
             dispatch,
             fieldApi.endpoints.deleteFieldDimension,
           );
+
           return { id };
         },
     ),
@@ -194,6 +198,7 @@ const Fields = createEntity({
               fieldValues,
             );
           }
+
           return state;
         },
       },

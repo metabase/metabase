@@ -246,6 +246,7 @@ function EntityItemMenu({
   if (actions.length === 0) {
     return null;
   }
+
   return (
     <EntityMenuContainer style={{ textAlign: "center" }}>
       <EntityMenu

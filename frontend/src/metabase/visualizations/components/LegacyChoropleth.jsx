@@ -83,6 +83,7 @@ class ShouldUpdate extends Component {
     if (nextProps.shouldUpdate) {
       return nextProps.shouldUpdate(this.props, nextProps);
     }
+
     return true;
   }
   render() {

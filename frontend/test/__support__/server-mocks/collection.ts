@@ -139,6 +139,7 @@ export function setupCollectionByIdEndpoint({
 }) {
   if (error) {
     setupCollectionWithErrorById({ error });
+
     return;
   }
 

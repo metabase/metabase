@@ -55,6 +55,7 @@ export function Table<Row extends BaseRow>({
         }
       });
     }
+
     return rows;
   }, [rows, sortColumn, sortDirection]);
 

@@ -9,5 +9,6 @@ export const isWithinWeeks = (
 ): boolean => {
   const date = parseTimestamp(timestamp);
   const weeksAgo = moment().subtract(weekCount, "week");
+
   return date.isAfter(weeksAgo);
 };

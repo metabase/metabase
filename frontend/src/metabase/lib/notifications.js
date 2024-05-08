@@ -64,17 +64,20 @@ export const formatChannelSchedule = ({
       return t`hourly`;
     case "daily": {
       const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+
       return t`daily at ${ampm}`;
     }
     case "weekly": {
       const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
       const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
+
       return t`${day} at ${ampm}`;
     }
     case "monthly": {
       const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
       const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
       const frame = formatFrame(schedule_frame);
+
       return t`monthly on the ${frame} ${day} at ${ampm}`;
     }
   }

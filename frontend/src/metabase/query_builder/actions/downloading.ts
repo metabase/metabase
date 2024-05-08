@@ -113,6 +113,7 @@ const getDatasetParams = ({
     // of like ?params=<json-encoded-params-array> like the other endpoints do.
     const params = new URLSearchParams(window.location.search);
     params.set("format_rows", format_rows);
+
     return {
       method: "GET",
       url: Urls.embedCard(token, type),
@@ -172,6 +173,7 @@ const getDatasetResponse = ({
         formattedBody.append(key, JSON.stringify(body[key]));
       }
     }
+
     return POST(requestUrl, {
       formData: true,
       fetch: true,
@@ -203,6 +205,7 @@ const getDatasetFileName = (headers: Headers, type: string) => {
 const getChartFileName = (question: Question) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
+
   return `${name}-${date}.png`;
 };
 

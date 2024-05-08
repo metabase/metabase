@@ -14,6 +14,7 @@ export function useLoadingTimer(isLoading: boolean, props: LoadingTimerProps) {
           onTimeout();
         }
       }, timer);
+
       return () => clearTimeout(timeoutId);
     }
   }, [isLoading, timer, onTimeout]);

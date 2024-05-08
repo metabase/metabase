@@ -163,6 +163,7 @@ const submit = async () => {
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
   await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
+
   return fetchMock.lastCall(settingEndpoint);
 };
 

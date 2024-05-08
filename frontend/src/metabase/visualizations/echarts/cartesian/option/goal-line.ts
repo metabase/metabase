@@ -20,9 +20,11 @@ function getFirstNonNullXValue(dataset: ChartDataset) {
       if (typeof xValue === "boolean") {
         return String(xValue); // convert bool to string since echarts doesn't support null as data value
       }
+
       return xValue;
     }
   }
+
   return String(null);
 }
 

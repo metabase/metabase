@@ -105,6 +105,7 @@ const Actions = createEntity({
     update: (params: UpdateActionParams) => {
       // Changing action type is not supported
       const cleanParams = _.omit(params, "type");
+
       return ActionsApi.update(cleanParams);
     },
   },
@@ -158,12 +159,14 @@ const Actions = createEntity({
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;
+
         return updateIn(state, [id], action => {
           return { ...action, public_uuid: uuid };
         });
       }
       case DELETE_PUBLIC_LINK: {
         const { id } = payload;
+
         return updateIn(state, [id], action => {
           return { ...action, public_uuid: null };
         });

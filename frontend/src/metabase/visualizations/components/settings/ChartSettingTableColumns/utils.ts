@@ -5,5 +5,6 @@ export function canEditQuery(query?: Lib.Query) {
     return false;
   }
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
+
   return !isNative && isEditable;
 }

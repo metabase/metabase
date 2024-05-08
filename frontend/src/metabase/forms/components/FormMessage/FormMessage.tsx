@@ -28,6 +28,7 @@ const getMessage = ({
   if (formError) {
     return getErrorMessage(formError);
   }
+
   return getSuccessMessage(formSuccess);
 };
 
@@ -61,6 +62,7 @@ export function FormMessage({
   noPadding,
 }: FormMessageProps) {
   const treatedMessage = getMessage({ message, formSuccess, formError });
+
   return (
     <FormMessageStyled
       className={className}

@@ -31,6 +31,7 @@ export const useCacheConfigs = ({
     const configs = [...rootConfigsFromAPI, ...dbConfigsFromAPI].map(config =>
       translateConfigFromAPI(config),
     );
+
     return configs;
   }, []);
 

@@ -353,6 +353,7 @@ export const revertToRevision = createThunkAction(
 
 async function reduxCreateQuestion(question, dispatch) {
   const action = await dispatch(Questions.actions.create(question.card()));
+
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
 
@@ -368,5 +369,6 @@ async function reduxUpdateQuestion(
   const action = await dispatch(
     Questions.actions.update({ id: question.id() }, card),
   );
+
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }

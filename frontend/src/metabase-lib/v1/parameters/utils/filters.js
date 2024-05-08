@@ -49,6 +49,7 @@ export function columnFilterForParameter(parameter) {
 
 export function dimensionFilterForParameter(parameter) {
   const fieldFilter = fieldFilterForParameter(parameter);
+
   return dimension => fieldFilter(dimension.field());
 }
 
@@ -67,11 +68,14 @@ export function getTagOperatorFilterForParameter(parameter) {
 
 export function variableFilterForParameter(parameter) {
   const tagFilter = tagFilterForParameter(parameter);
+
   return variable => {
     if (variable instanceof TemplateTagVariable) {
       const tag = variable.tag();
+
       return tag ? tagFilter(tag) : false;
     }
+
     return false;
   };
 }
@@ -98,5 +102,6 @@ function tagFilterForParameter(parameter) {
     case "string":
       return tag => tag.type === "text";
   }
+
   return () => false;
 }

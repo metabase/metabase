@@ -75,6 +75,7 @@ ace.require(
 
     const getWrapped = function (selection, selected, opening, closing) {
       const rowDiff = selection.end.row - selection.start.row;
+
       return {
         text: opening + selected + closing,
         selection: [
@@ -100,6 +101,7 @@ ace.require(
                 return getWrapped(selection, selected, opening, closing);
               } else if (SQLBehaviour.isSaneInsertion(editor, session)) {
                 SQLBehaviour.recordAutoInsert(editor, session, closing);
+
                 return {
                   text: opening + closing,
                   selection: [1, 1],
@@ -123,6 +125,7 @@ ace.require(
                   SQLBehaviour.isAutoInsertedClosing(cursor, line, text)
                 ) {
                   SQLBehaviour.popAutoInsertedClosing();
+
                   return {
                     text: "",
                     selection: [1, 1],
@@ -147,6 +150,7 @@ ace.require(
               );
               if (rightChar === closing) {
                 range.end.column++;
+
                 return range;
               }
             }
@@ -229,6 +233,7 @@ ace.require(
                 } // there is rightChar and it isn't closing
                 pair = true;
               }
+
               return {
                 text: pair ? quote + quote : "",
                 selection: [1, 1],
@@ -252,6 +257,7 @@ ace.require(
             );
             if (rightChar === selected) {
               range.end.column++;
+
               return range;
             }
           }
@@ -288,6 +294,7 @@ ace.require(
 
       // Only insert in front of whitespace/comments
       iterator.stepForward();
+
       return (
         iterator.getCurrentTokenRow() !== cursor.row ||
         this.$matchTokenType(

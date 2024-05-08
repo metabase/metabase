@@ -9,6 +9,7 @@ export const getPolicyRequestState = (
 ) => {
   const { groupId, tableId } = params;
   const key = getPolicyKeyFromParams({ groupId, tableId });
+
   return state.requests?.plugins?.sandboxesPlugin?.policies?.[key];
 };
 

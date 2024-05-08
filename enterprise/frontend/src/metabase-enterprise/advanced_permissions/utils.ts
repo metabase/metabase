@@ -29,6 +29,7 @@ const getDatabaseViewImpersonationModalUrl = (
   groupId: GroupId,
 ) => {
   const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
+
   return `${baseUrl}/impersonated/group/${groupId}`;
 };
 

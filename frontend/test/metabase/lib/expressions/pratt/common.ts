@@ -26,6 +26,7 @@ interface Opts {
 export function compile(source: string, type: Type, opts: Opts = {}) {
   const { throwOnError } = opts;
   const passes = [adjustOptions, useShorthands, adjustCase, adjustOffset];
+
   return newCompile(
     parse(lexify(source), {
       throwOnError,
@@ -60,6 +61,7 @@ export function oracle(source: string, type: Type) {
     }
     throw err;
   }
+
   return resolve({ expression: mbql, type, fn: mockResolve });
 }
 
@@ -70,6 +72,7 @@ export function compare(
 ): { oracle: any; compiled: any } {
   const _oracle = oracle(source, type);
   const compiled = compile(source, type, opts);
+
   return { oracle: _oracle, compiled };
 }
 
@@ -81,5 +84,6 @@ export function compareSeed(
   const { expression } = generateExpression(seed, type);
   const _oracle = oracle(expression, type);
   const compiled = compile(expression, type, opts);
+
   return { oracle: _oracle, compiled };
 }

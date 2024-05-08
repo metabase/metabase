@@ -111,6 +111,7 @@ export function PermissionsTable({
                 )}
               </span>
             );
+
             return (
               <PermissionsTableRow key={entity.id}>
                 <PermissionsTableCell>

@@ -25,6 +25,7 @@ function setup(step = createMockNotebookStep()) {
 
   function getNextQuery() {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 

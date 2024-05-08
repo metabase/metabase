@@ -38,6 +38,7 @@ const getTimePassedSince = (timestamp: string) => {
     dayjs.updateLocale(locale, { relativeTime: timeFormattingRules });
     const timePassed = date.fromNow();
     dayjs.updateLocale(locale, { relativeTime: cachedRules });
+
     return timePassed;
   } else {
     return t`(invalid date)`;

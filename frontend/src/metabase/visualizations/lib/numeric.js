@@ -18,6 +18,7 @@ export const isMultipleOf = (value, base) => {
   // However, we sometimes see very small errors that are bigger than EPSILON.
   // For example, when called 1.23456789 and 1e-8 we see a diff of ~1e-16.
   const diffThreshold = Math.pow(10, SMALLEST_PRECISION_EXP);
+
   return Math.abs(value - Math.round(value / base) * base) < diffThreshold;
 };
 
@@ -39,6 +40,7 @@ export function precision(a) {
   while (e > SMALLEST_PRECISION_EXP && !isMultipleOf(a, Math.pow(10, e))) {
     e--;
   }
+
   return Math.pow(10, e);
 }
 
@@ -52,6 +54,7 @@ export function decimalCount(a) {
     e *= 10;
     p++;
   }
+
   return p;
 }
 
@@ -63,6 +66,7 @@ export function computeNumericDataInverval(xValues) {
       bestPrecision = p;
     }
   }
+
   return bestPrecision;
 }
 

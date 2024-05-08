@@ -42,6 +42,7 @@ function shouldPropagateDashboardParameters({
       deserializedCard,
       originalCard,
     );
+
     return equivalentCards && differentParameters;
   }
 }
@@ -86,6 +87,7 @@ export function getParameterValuesForQuestion({
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);
+
   return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
 }
 
@@ -128,5 +130,6 @@ export async function propagateDashboardParameters({
     card.dashboardId = dashboardId;
     card.dashcardId = dashcardId;
   }
+
   return card;
 }

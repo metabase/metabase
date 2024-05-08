@@ -32,5 +32,6 @@ export function getFilterDimension(
   query?: StructuredQuery | NativeQuery | null | undefined,
 ) {
   const fieldRef = filterClause[1] as ConcreteFieldReference;
+
   return getDimension(fieldRef, metadata, query);
 }

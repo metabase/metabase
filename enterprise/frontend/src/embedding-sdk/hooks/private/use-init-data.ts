@@ -88,6 +88,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
                 ),
               }),
             );
+
             return;
           }
 

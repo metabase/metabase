@@ -50,6 +50,7 @@ const ChartSettingsWidget = ({
   ...extraWidgetProps
 }: Props) => {
   const isFormField = variant === "form-field";
+
   return (
     <Root
       hidden={hidden}

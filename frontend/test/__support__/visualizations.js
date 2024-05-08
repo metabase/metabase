@@ -160,6 +160,7 @@ function deepExtend(target, ...sources) {
       }
     }
   }
+
   return target;
 }
 
@@ -197,6 +198,7 @@ export function getFormattedTooltips(hover, settings) {
       data.push({ value: hover.value, col: hover.column });
     }
   }
+
   return data.map(({ value, col: column }) =>
     formatValueForTooltip({ value, column, settings }),
   );
@@ -207,6 +209,7 @@ export function createFixture() {
     "afterbegin",
     '<div id="fixture" style="height: 800px; width: 1200px;">',
   );
+
   return document.getElementById("fixture");
 }
 

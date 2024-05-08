@@ -34,6 +34,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
     const logText = noResults
       ? t`There's nothing here, yet.`
       : filteredLogs.map(formatLog).join("\n");
+
     return reactAnsiStyle(React, logText);
   }, [filteredLogs]);
 

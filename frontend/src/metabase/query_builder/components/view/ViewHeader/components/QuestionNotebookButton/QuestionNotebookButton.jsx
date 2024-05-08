@@ -36,5 +36,6 @@ export function QuestionNotebookButton({
 
 QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+
   return !isNative && isEditable && isActionListVisible;
 };

@@ -63,6 +63,7 @@ export default (PickerComponent, NameComponent, type) =>
         inheritWidth,
         ...props
       } = this.props;
+
       return (
         <PopoverWithTrigger
           pinInitialAttachment // keep the popover from jumping if content height changes

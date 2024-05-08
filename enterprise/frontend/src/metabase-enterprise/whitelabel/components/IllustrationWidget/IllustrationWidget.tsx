@@ -103,6 +103,7 @@ export function IllustrationWidget({
         setErrorMessage(
           t`The image you chose is larger than 2MB. Please choose another one.`,
         );
+
         return;
       }
 
@@ -113,6 +114,7 @@ export function IllustrationWidget({
           setErrorMessage(
             t`The image you chose is corrupted. Please choose another one.`,
           );
+
           return;
         }
         setErrorMessage("");

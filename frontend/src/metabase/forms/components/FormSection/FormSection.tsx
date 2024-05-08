@@ -22,6 +22,7 @@ function StandardSection({ title, children, ...props }: SectionProps) {
 
 function CollapsibleSection({ title, children, ...props }: SectionProps) {
   const [isExpanded, { toggle: handleToggle }] = useToggle(false);
+
   return (
     <section className={CS.mb4} {...props}>
       <CollapsibleSectionContent onClick={handleToggle}>
@@ -39,5 +40,6 @@ interface CustomFormSectionProps extends SectionProps {
 
 export function FormSection({ collapsible, ...props }: CustomFormSectionProps) {
   const Section = collapsible ? CollapsibleSection : StandardSection;
+
   return <Section {...props} />;
 }

@@ -52,6 +52,7 @@ export function getFilterOperators(field, table, selected) {
     .map(operatorForType => {
       const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
       const verboseNameLower = operatorForType.verboseName.toLowerCase();
+
       return {
         ...operator,
         ...operatorForType,
@@ -78,6 +79,7 @@ export function getFilterOperators(field, table, selected) {
           );
         }
       }
+
       return true;
     });
 }
@@ -87,6 +89,7 @@ export function getSupportedAggregationOperators(database) {
     if (!operator.requiredDriverFeature) {
       return true;
     }
+
     return database?.features.includes(operator.requiredDriverFeature);
   });
 }
@@ -116,6 +119,7 @@ export function isEqualsOperator(operator) {
 
 export function isFuzzyOperator(operator) {
   const { name } = operator || {};
+
   return !["=", "!="].includes(name);
 }
 

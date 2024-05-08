@@ -23,6 +23,7 @@ export function generateMobileLayout({
       w: 1,
     });
   });
+
   return mobile;
 }
 
@@ -38,6 +39,7 @@ export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
 
   const rectangles = _(cols).times(i => {
     const x = i * (cellSize.width + horizontalMargin);
+
     return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
   });
 

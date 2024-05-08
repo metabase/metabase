@@ -37,6 +37,7 @@ function schemaToTreeItem(schema: Schema): ITreeNodeItem {
 function dbToTreeItem(database: Database): ITreeNodeItem {
   const schemas = database.getSchemas();
   const hasSingleSchema = schemas.length === 1;
+
   return {
     id: database.id,
     name: database.name,
@@ -59,6 +60,7 @@ function TableSelectListItem({
   onSelect: (id: Table["id"]) => void;
 }) {
   const name = table.displayName();
+
   return (
     <SelectList.Item
       id={table.id}
@@ -118,6 +120,7 @@ function RawDataPickerView({
         ? selectedDatabaseId
         : selectedSchemaId;
     }
+
     return selectedDatabaseId;
   }, [selectedDatabaseId, selectedSchemaId, isSelectedDatabaseSingleSchema]);
 

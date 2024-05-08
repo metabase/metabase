@@ -358,6 +358,7 @@ function mockUploadServiceAccountJSON(fileContents) {
 
       dataTransfer.items.add(file);
       input[0].files = dataTransfer.files;
+
       return input;
     })
     .trigger("change", { force: true })
@@ -370,6 +371,7 @@ function mockSuccessfulDatabaseSave() {
   }).as("createDatabase");
 
   cy.button("Save").click();
+
   return cy.wait("@createDatabase");
 }
 

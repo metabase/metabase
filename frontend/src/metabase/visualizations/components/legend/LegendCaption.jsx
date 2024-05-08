@@ -29,6 +29,7 @@ const propTypes = {
 
 function shouldHideDescription(width) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
+
   return width != null && width < HIDE_DESCRIPTION_THRESHOLD;
 }
 

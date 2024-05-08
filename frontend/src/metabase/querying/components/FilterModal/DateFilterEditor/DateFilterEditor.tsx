@@ -73,6 +73,7 @@ export function DateFilterEditor({
           <Flex gap="0.5rem">
             {visibleOptions.map(option => {
               const isSelected = option.shortcut === selectedOption?.shortcut;
+
               return (
                 <Button
                   key={option.shortcut}

@@ -51,6 +51,7 @@ export function getCollectionType(
   if (collectionId === getUserPersonalCollectionId(state)) {
     return "personal";
   }
+
   return collectionId !== undefined ? "other" : null;
 }
 

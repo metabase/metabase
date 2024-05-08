@@ -155,6 +155,7 @@ export default class PulseEditChannels extends Component {
     const previews = _.map(cards, id => _.findWhere(cardPreviews, { id }));
     const types = _.pluck(previews, "pulse_card_type");
     const empty = _.isEqual(_.uniq(types), ["empty"]);
+
     return empty && this.props.pulse.skip_if_empty;
   };
 
@@ -252,6 +253,7 @@ export default class PulseEditChannels extends Component {
       .map(([channel, index]) =>
         this.renderChannel(channel, index, channelSpec),
       );
+
     return (
       <li key={channelSpec.type} className={CS.borderRowDivider}>
         <div
@@ -292,6 +294,7 @@ export default class PulseEditChannels extends Component {
       email: { name: t`Email`, type: "email" },
       slack: { name: t`Slack`, type: "slack" },
     };
+
     return (
       <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
         {Object.values(channels).map(channelSpec =>

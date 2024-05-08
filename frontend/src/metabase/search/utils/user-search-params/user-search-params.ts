@@ -9,6 +9,7 @@ export const parseUserIdArray = (value: SearchQueryParamValue): UserId[] => {
 
   if (typeof value === "string") {
     const parsedValue = parseUserId(value);
+
     return parsedValue ? [parsedValue] : [];
   }
 
@@ -16,6 +17,7 @@ export const parseUserIdArray = (value: SearchQueryParamValue): UserId[] => {
     const parsedIds: (number | null)[] = value.map(idString =>
       parseUserId(idString),
     );
+
     return parsedIds.filter(isNotNull);
   }
 

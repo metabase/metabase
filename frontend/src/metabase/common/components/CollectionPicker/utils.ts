@@ -27,6 +27,7 @@ export const getCollectionIdPath = (
 
   if (typeof collection.id === "string") {
     console.error("Invalid collection id", collection.id);
+
     return [];
   }
 
@@ -107,6 +108,7 @@ export const getParentCollectionId = (
   location?: string | null,
 ): CollectionId => {
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
+
   return parentCollectionId ? Number(parentCollectionId) : "root";
 };
 

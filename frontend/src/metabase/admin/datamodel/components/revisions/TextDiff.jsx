@@ -13,6 +13,7 @@ export default class TextDiff extends Component {
     const {
       diff: { before, after },
     } = this.props;
+
     return (
       <div>
         &quot;

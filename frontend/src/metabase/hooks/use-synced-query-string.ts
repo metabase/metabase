@@ -48,5 +48,6 @@ function buildSearchString(object: Record<string, any>) {
     ...filteredSearchParams,
     ...object,
   });
+
   return search ? `?${search}` : "";
 }

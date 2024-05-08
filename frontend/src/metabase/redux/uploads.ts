@@ -82,6 +82,7 @@ export const uploadFile = createThunkAction(
           }),
         );
         clear();
+
         return;
       }
 

@@ -79,5 +79,6 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
       </Modal>
     );
   }
+
   return null;
 };

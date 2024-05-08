@@ -61,6 +61,7 @@ function emailInitials(user: User) {
   );
   if (email) {
     const emailUsername = email.split("@")[0];
+
     return emailUsername.slice(0, 2).toUpperCase();
   }
 

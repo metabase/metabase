@@ -7,6 +7,7 @@ import type { ColumnGroupItem, ColumnItem } from "./types";
 function getColumns(query: Lib.Query, stageIndex: number) {
   const aggregations = Lib.aggregations(query, stageIndex);
   const breakouts = Lib.breakouts(query, stageIndex);
+
   return aggregations.length > 0 || breakouts.length > 0
     ? Lib.returnedColumns(query, stageIndex)
     : Lib.visibleColumns(query, stageIndex);
@@ -38,6 +39,7 @@ function getGroupsWithColumns(
   columns: Lib.ColumnMetadata[],
 ) {
   const groups = Lib.groupColumns(columns);
+
   return groups.map(group => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
     const columnItems = getColumnItems(query, stageIndex, group);
@@ -97,6 +99,7 @@ export function getColumnGroupItems(
 ): ColumnGroupItem[] {
   const columns = getColumns(query, stageIndex);
   const groupItems = getGroupsWithColumns(query, stageIndex, columns);
+
   return deduplicateGroupNames(disableLastSelectedQueryColumn(groupItems));
 }
 

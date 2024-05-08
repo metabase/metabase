@@ -55,6 +55,7 @@ const SelectButton = forwardRef(function SelectButton(
     if (hasValue && onClear) {
       return "close";
     }
+
     return "chevrondown";
   }, [hasValue, onClear]);
 

@@ -45,6 +45,7 @@ const ResetAllToDefaultButtonFormBody = () => {
             onClick={e => {
               confirmResetAllToDefault();
               e.preventDefault();
+
               return false;
             }}
             label={

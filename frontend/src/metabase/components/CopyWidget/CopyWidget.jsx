@@ -10,6 +10,7 @@ import { CopyWidgetButton } from "./CopyWidget.styled";
 export default class CopyWidget extends Component {
   render() {
     const { value, onChange, style, ...props } = this.props;
+
     return (
       <div className={cx(CS.flex, CS.relative)} style={style}>
         <input

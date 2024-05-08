@@ -40,6 +40,7 @@ function createMockMetadata(card?: Card) {
       questions: card ? [card] : [],
     }),
   });
+
   return getMetadata(state);
 }
 
@@ -50,6 +51,7 @@ type DashboardAwareCard = Card & {
 
 function createMockSavedQuestion(card?: Partial<DashboardAwareCard>) {
   const savedCard = createMockCard({ dataset_query: MOCK_QUERY, ...card });
+
   return createMockMetadata(savedCard).question(savedCard.id) as Question;
 }
 
@@ -58,6 +60,7 @@ function createMockAdHocQuestion(card?: Partial<UnsavedCard>) {
     dataset_query: MOCK_QUERY,
     ...card,
   });
+
   return new Question(unsavedCard, createMockMetadata());
 }
 
@@ -87,6 +90,7 @@ async function setupRunQuestionQuery(question: Question) {
   const mockResult = createMockDataset();
   fetchMock.post(getQueryEndpointPath(question), mockResult);
   const result = await runQuestionQuery(question, { cancelDeferred: defer() });
+
   return { result, mockResult };
 }
 

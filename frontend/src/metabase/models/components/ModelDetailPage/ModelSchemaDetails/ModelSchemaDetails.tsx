@@ -38,6 +38,7 @@ function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
   const renderField = useCallback((field: Field) => {
     const icon = getSemanticTypeIcon(field.semantic_type, "warning");
     const tooltip = field.semantic_type ? null : t`Unknown type`;
+
     return (
       <FieldListItem key={field.getUniqueId()}>
         <FieldIcon name={icon} tooltip={tooltip} />

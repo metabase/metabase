@@ -74,6 +74,7 @@ const ChartTypeSidebar = ({
       ).filter(vizType => !visualizations?.get(vizType)?.hidden),
       vizType => {
         const visualization = visualizations.get(vizType);
+
         return (
           result &&
           result.data &&
@@ -128,6 +129,7 @@ const ChartTypeSidebar = ({
       <OptionList data-testid="display-options-sensible">
         {makesSense.map(type => {
           const visualization = visualizations.get(type);
+
           return (
             visualization && (
               <ChartTypeOption
@@ -146,6 +148,7 @@ const ChartTypeSidebar = ({
       <OptionList data-testid="display-options-not-sensible">
         {nonSense.map(type => {
           const visualization = visualizations.get(type);
+
           return (
             visualization && (
               <ChartTypeOption

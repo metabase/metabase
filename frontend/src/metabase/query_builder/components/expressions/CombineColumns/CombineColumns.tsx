@@ -105,6 +105,7 @@ export function CombineColumns({
     setState(state => {
       const lastSeparator =
         state.columnsAndSeparators.at(-1)?.separator ?? state.defaultSeparator;
+
       return {
         ...state,
         columnsAndSeparators: [

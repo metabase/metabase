@@ -15,6 +15,7 @@ export function parseXValue(xValue, options, warn) {
   if (warning !== undefined) {
     warn(warning);
   }
+
   return parsedValue;
 }
 
@@ -26,6 +27,7 @@ const memoizedParseXValue = _.memoize(
       return parseTimestampAndWarn(xValue, unit);
     }
     const parsedValue = isNumeric ? xValue : String(formatNullable(xValue));
+
     return { parsedValue };
   },
   // create cache key from args
@@ -35,6 +37,7 @@ const memoizedParseXValue = _.memoize(
 
 function getParseOptions({ settings, data }) {
   const columnIndex = getColumnIndex({ settings, data });
+
   return {
     isNumeric: dimensionIsNumeric(data, columnIndex),
     isTimeseries:
@@ -92,12 +95,14 @@ export function getXValues({ settings, series }) {
     // default line/area charts to ascending since otherwise lines could be wonky
     xValues = _.sortBy(xValues, x => x);
   }
+
   return xValues;
 }
 
 function getColumnIndex({ settings, data: { cols } }) {
   const [dim] = settings["graph.dimensions"] || [];
   const i = cols.findIndex(c => c.name === dim);
+
   return i === -1 ? 0 : i;
 }
 
@@ -117,6 +122,7 @@ function parseTimestampAndWarn(value, unit) {
     return { parsedValue: null, warning: invalidDateWarning(value) };
   }
   m.toString = moment_fast_toString;
+
   return { parsedValue: m };
 }
 

@@ -269,6 +269,7 @@ function computeBarHeight({ cardHeight, componentHeight, isMobile }) {
   if (isSmallCard && !isMobile) {
     const computedHeight =
       MIN_BAR_HEIGHT + (componentHeight - COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT);
+
     return `${Math.min(MAX_BAR_HEIGHT, computedHeight)}px`;
   }
 

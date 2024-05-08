@@ -14,6 +14,7 @@ function createQueryWithFilter() {
   const clause = Lib.expressionClause(">", [totalColumn, 20], null);
   const query = Lib.filter(initialQuery, 0, clause);
   const [filter] = Lib.filters(query, 0);
+
   return { query, filter };
 }
 

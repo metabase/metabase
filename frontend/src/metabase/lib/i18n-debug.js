@@ -47,6 +47,7 @@ export function enableTranslatedStringReplacement() {
   };
   c3po.jt = (...args) => {
     const elements = _jt(...args);
+
     return <span style={{ backgroundColor: "currentcolor" }}>{elements}</span>;
   };
 }

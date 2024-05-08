@@ -244,6 +244,7 @@ export const removeCardFromDashboard = createThunkAction<
 >(REMOVE_CARD_FROM_DASH, ({ dashcardId, cardId }) => dispatch => {
   // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
   dispatch(cancelFetchCardData(cardId, dashcardId));
+
   return { dashcardId };
 });
 

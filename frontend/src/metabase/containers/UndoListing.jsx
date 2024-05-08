@@ -43,6 +43,7 @@ function renderMessage(undo) {
   if (!message) {
     return <DefaultMessage undo={undo || {}} />;
   }
+
   return typeof message === "function" ? message(undo) : message;
 }
 

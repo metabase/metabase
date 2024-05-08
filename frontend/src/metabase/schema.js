@@ -54,6 +54,7 @@ export const TableSchema = new schema.Entity(
 export const FieldSchema = new schema.Entity("fields", undefined, {
   processStrategy(field) {
     const uniqueId = getUniqueFieldId(field);
+
     return {
       ...field,
       uniqueId,

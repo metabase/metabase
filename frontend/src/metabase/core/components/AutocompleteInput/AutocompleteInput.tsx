@@ -26,6 +26,7 @@ const filterOptionsByValue = (value: string | undefined, options: string[]) => {
   return options.filter(option => {
     const optionLowerCase = option.toLowerCase().trim();
     const valueLowerCase = value.toLowerCase().trim();
+
     return (
       optionLowerCase.includes(valueLowerCase) &&
       !(optionLowerCase === valueLowerCase)

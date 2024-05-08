@@ -25,6 +25,7 @@ function createOptionsFromValuesWithoutOptions(
   options: Option[],
 ): Option {
   const optionsMap = _.indexBy(options, "0");
+
   return values.filter(value => !optionsMap[value]).map(value => [value]);
 }
 

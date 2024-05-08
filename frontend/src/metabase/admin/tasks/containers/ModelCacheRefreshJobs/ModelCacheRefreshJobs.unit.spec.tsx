@@ -12,6 +12,7 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
 
   jest.spyOn(PersistedModels, "ListLoader").mockImplementation(props => {
     const { children } = props as any;
+
     return children({
       persistedModels: logs,
       metadata: {

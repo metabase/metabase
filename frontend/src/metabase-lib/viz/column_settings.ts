@@ -69,6 +69,7 @@ function syncTableColumnSettings(
   );
   const addedColumns = cols.filter((col, colIndex) => {
     const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
+
     return !hasVizSettings;
   });
   const existingColumnSettings = columnSettings.filter(
@@ -87,6 +88,7 @@ function syncTableColumnSettings(
     fieldRef: col.field_ref,
     enabled: true,
   }));
+
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],

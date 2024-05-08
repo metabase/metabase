@@ -16,6 +16,7 @@ const SettingToggle = ({
 }) => {
   const value = setting.value == null ? setting.default : setting.value;
   const on = value === true || value === "true";
+
   return (
     <div className={cx(CS.flex, CS.alignCenter, CS.pt1)}>
       <Tooltip tooltip={tooltip} isEnabled={!!tooltip}>

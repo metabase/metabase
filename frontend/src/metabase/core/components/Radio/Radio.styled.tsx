@@ -151,5 +151,6 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
 
 const getContrastSchemeColor = (colorScheme: RadioColorScheme) => {
   const schemeColor = getSchemeColor(colorScheme);
+
   return isDark(schemeColor) ? tint(schemeColor, 0.5) : schemeColor;
 };

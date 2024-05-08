@@ -70,6 +70,7 @@ export function TableClickBehaviorView({
     );
 
     const pairs = _.pairs(groupedByClickBehavior);
+
     return _.sortBy(pairs, ([type]) =>
       COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
     );
@@ -92,6 +93,7 @@ export function TableClickBehaviorView({
   const renderColumnGroup = useCallback(
     (group: ColumnGroup) => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
+
       return (
         <div key={clickBehaviorType} className={cx(CS.mb2, CS.px4)}>
           <h5 className={cx(CS.textUppercase, CS.textMedium, CS.my1)}>

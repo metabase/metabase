@@ -7,6 +7,7 @@ export const canRunAction = (
   databases: Database[],
 ) => {
   const database = databases.find(({ id }) => id === action.database_id);
+
   return database != null && database.hasActionsEnabled();
 };
 

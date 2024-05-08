@@ -107,6 +107,7 @@ export default class Gauge extends Component {
           ...segments.map(s => s.max),
           ...segments.map(s => s.min),
         ];
+
         return values.length > 0
           ? [Math.min(...values), Math.max(...values)]
           : [0, 1];
@@ -121,6 +122,7 @@ export default class Gauge extends Component {
         try {
           value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
+
         return [
           { min: 0, max: value / 2, color: color("error"), label: "" },
           { min: value / 2, max: value, color: color("warning"), label: "" },

@@ -55,6 +55,7 @@ const LoginHistoryGroup = ({ items, date }) => (
 const formatItems = items =>
   items.map(item => {
     const parsedTimestamp = moment.parseZone(item.timestamp);
+
     return {
       ...item,
       date: parsedTimestamp.format("LL"),

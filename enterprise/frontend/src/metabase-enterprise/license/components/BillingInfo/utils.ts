@@ -31,6 +31,7 @@ export const formatBillingValue = (lineItem: BillingInfoLineItem): string => {
     case "datetime": {
       const dow = formatDateTimeWithUnit(lineItem.value, "day-of-week");
       const day = formatDateTimeWithUnit(lineItem.value, "day");
+
       return `${dow}, ${day}`;
     }
     case "currency":
@@ -40,6 +41,7 @@ export const formatBillingValue = (lineItem: BillingInfoLineItem): string => {
       });
     default: {
       const _exhaustiveCheck: never = lineItem;
+
       return "";
     }
   }

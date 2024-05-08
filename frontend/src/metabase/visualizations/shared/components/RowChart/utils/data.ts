@@ -21,6 +21,7 @@ export const calculateNonStackedBars = <TDatum>(
   xScaleType: ContinuousScaleType,
 ) => {
   const defaultXValue = xScaleType === "log" ? 1 : 0;
+
   return multipleSeries.map((series, seriesIndex) => {
     const bars: BarData<TDatum, SeriesInfo>[] = data.map(
       (datum, datumIndex) => {
@@ -78,6 +79,7 @@ export const calculateStackedBars = <TDatum>(
   const seriesByKey = multipleSeries.reduce<Record<string, Series<TDatum>>>(
     (acc, series) => {
       acc[series.seriesKey] = series;
+
       return acc;
     },
     {},

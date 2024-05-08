@@ -157,6 +157,7 @@ export function isActionDashCard(
   dashCard: BaseDashboardCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
+
   return isActionCard(virtualCard);
 }
 
@@ -172,6 +173,7 @@ function hasDataFromExplicitAction(result: any) {
   const isUpdate =
     result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
   const isDelete = result["rows-deleted"]?.[0] > 0;
+
   return !isInsert && !isUpdate && !isDelete;
 }
 
@@ -187,6 +189,7 @@ function getImplicitActionExecutionMessage(
   if (action.kind === "row/delete") {
     return t`Successfully deleted`;
   }
+
   return t`Successfully ran the action`;
 }
 
@@ -200,6 +203,7 @@ export function getActionExecutionMessage(
   if (hasDataFromExplicitAction(result)) {
     return t`Success! The action returned: ${JSON.stringify(result)}`;
   }
+
   return getSuccessMessage(action);
 }
 
@@ -251,6 +255,7 @@ export const getForm = (
   const sortedParams = [...parameters].sort(
     sortActionParams({ fields: fieldSettings } as ActionFormSettings),
   );
+
   return {
     fields: sortedParams
       .map(param => getFormField(param, fieldSettings[param.id] ?? {}))
@@ -302,6 +307,7 @@ export const getFormValidationSchema = (
 
       return [fieldSetting.id, yupType];
     });
+
   return Yup.object(Object.fromEntries(schema));
 };
 
@@ -309,6 +315,7 @@ export const getSubmitButtonColor = (action: WritebackAction): string => {
   if (isImplicitDeleteAction(action)) {
     return "danger";
   }
+
   return action.visualization_settings?.submitButtonColor ?? "primary";
 };
 

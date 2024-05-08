@@ -94,6 +94,7 @@ export const setFieldMetadata =
 
     const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
       const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
+
       return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
     });
 

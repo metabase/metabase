@@ -38,6 +38,7 @@ export function getDefaultColumn(
   fieldFilter = DEFAULT_FIELD_FILTER,
 ) {
   const [{ data }] = series;
+
   return data.cols.find(fieldFilter)?.name;
 }
 

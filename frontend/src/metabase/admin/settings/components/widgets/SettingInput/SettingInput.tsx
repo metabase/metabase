@@ -7,6 +7,7 @@ import { SettingInputBlurChange } from "./SettingInput.styled";
 const getValue = (value: string, type: string) => {
   if (type === "number") {
     const numericValue = parseFloat(value);
+
     return isNaN(numericValue) ? null : numericValue;
   }
 

@@ -127,6 +127,7 @@ export function publicQuestion({
 }) {
   const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
+
   return (
     `${siteUrl}/public/question/${uuid}` +
     (type ? `.${type}` : "") +

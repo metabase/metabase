@@ -14,6 +14,7 @@ const getGroupRouteParams = (
   props: { params: RawGroupRouteParams },
 ) => {
   const { groupId, databaseId, schemaName } = props.params;
+
   return {
     groupId: groupId != null ? parseInt(groupId) : null,
     databaseId,

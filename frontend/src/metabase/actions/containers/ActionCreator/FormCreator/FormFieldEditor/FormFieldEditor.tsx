@@ -45,6 +45,7 @@ function cleanFieldValue(
     return String(value);
   } else if (fieldType === "number") {
     const number = Number(value);
+
     return !Number.isNaN(number) ? number : undefined;
   } else {
     return undefined;

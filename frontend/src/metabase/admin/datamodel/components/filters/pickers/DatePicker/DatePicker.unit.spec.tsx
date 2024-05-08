@@ -36,6 +36,7 @@ const DatePickerStateWrapper = ({
   onChange?: (arg: any) => void;
 }) => {
   const [filterValue, setFilterValue] = useState(filter);
+
   return (
     <DatePicker
       filter={filterValue}

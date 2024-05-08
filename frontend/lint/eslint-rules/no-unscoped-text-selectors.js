@@ -37,6 +37,7 @@ const findNearestBlockStatement = node => {
   if (node.parent.type === "BlockStatement") {
     return node.parent;
   }
+
   return findNearestBlockStatement(node.parent);
 };
 

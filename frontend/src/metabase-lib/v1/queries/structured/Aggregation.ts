@@ -242,6 +242,7 @@ export default class Aggregation extends MBQLClause {
       const dimension = this._query.parseFieldReference(
         this.getFieldReference(),
       );
+
       return dimension?.getMLv1CompatibleDimension?.();
     }
   }
@@ -295,11 +296,13 @@ export default class Aggregation extends MBQLClause {
   filters(): Filter[] {
     if (this.isCustom()) {
       const filter = this.customFilter();
+
       return filter ? [filter] : [];
     }
 
     if (this.isMetric()) {
       const filters = this.metricFilters();
+
       return filters ?? [];
     }
 
@@ -331,6 +334,7 @@ export default class Aggregation extends MBQLClause {
   metricFilters(): Filter[] | null {
     if (this.isMetric()) {
       const metric = this.metric();
+
       return metric
         ?.filters()
         .map(filter =>

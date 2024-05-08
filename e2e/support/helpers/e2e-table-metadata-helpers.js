@@ -5,6 +5,7 @@ export const createMetric = ({
   description = null,
 }) => {
   cy.log(`Create a metric: ${name}`);
+
   return cy.request("POST", "/api/legacy-metric", {
     name,
     description,
@@ -20,6 +21,7 @@ export const createSegment = ({
   description = null,
 }) => {
   cy.log(`Create a segment: ${name}`);
+
   return cy.request("POST", "/api/segment", {
     name,
     description,

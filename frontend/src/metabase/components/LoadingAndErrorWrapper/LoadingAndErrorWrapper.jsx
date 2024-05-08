@@ -69,6 +69,7 @@ export default class LoadingAndErrorWrapper extends Component {
     if (!errorMessage || typeof errorMessage !== "string") {
       errorMessage = t`An error occurred`;
     }
+
     return errorMessage;
   }
 
@@ -143,8 +144,10 @@ export default class LoadingAndErrorWrapper extends Component {
       if (children == null) {
         return null;
       }
+
       return Children.only(children);
     }
+
     return (
       <div className={className} style={style} data-testid={testId}>
         {error ? (

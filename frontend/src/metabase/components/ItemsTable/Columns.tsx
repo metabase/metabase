@@ -223,6 +223,7 @@ export const Columns = {
       item: CollectionItem;
     }) => {
       const lastEditInfo = item["last-edit-info"];
+
       return (
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-at`}
@@ -286,5 +287,6 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
     return "";
   }
   const name = getFullName(lastEditInfo);
+
   return name || lastEditInfo.email;
 };

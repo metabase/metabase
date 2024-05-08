@@ -132,6 +132,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       subtle: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
+
         return {
           root: {
             color: primaryColor,

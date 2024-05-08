@@ -17,6 +17,7 @@ const compatibleCardsFirstPage = _.range(50).map(index =>
 
 const compatibleCardsSecondPage = _.range(10).map(index => {
   const id = index + 50;
+
   return createMockCard({
     id,
     name: `compatible card ${id} page 2`,

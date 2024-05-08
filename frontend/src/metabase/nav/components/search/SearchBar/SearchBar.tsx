@@ -128,6 +128,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     }
 
     window.addEventListener("keyup", focusOnForwardSlashPress);
+
     return () => window.removeEventListener("keyup", focusOnForwardSlashPress);
   }, [setActive]);
 

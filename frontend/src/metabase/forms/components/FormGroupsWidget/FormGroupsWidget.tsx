@@ -39,6 +39,7 @@ export const FormGroupsWidget = ({
     if (id != null) {
       acc.set(id, membershipData);
     }
+
     return acc;
   }, new Map());
 
@@ -81,6 +82,7 @@ export const FormGroupsWidget = ({
     const updatedValue = Array.from(memberships.entries()).map(
       ([id, membershipData]) => {
         const data = groupId === id ? newMembershipData : membershipData;
+
         return {
           id,
           ...data,

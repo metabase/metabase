@@ -62,6 +62,7 @@ function setup({
 
   function getNextQuery() {
     const [nextQuery] = onChange.mock.lastCall;
+
     return nextQuery;
   }
 
@@ -70,6 +71,7 @@ function setup({
     const [filter] = Lib.filters(query, stageIndex);
     const parts = Lib.filterParts(query, stageIndex, filter);
     const column = checkNotNull(parts?.column);
+
     return Lib.displayInfo(query, stageIndex, column).longDisplayName;
   }
 

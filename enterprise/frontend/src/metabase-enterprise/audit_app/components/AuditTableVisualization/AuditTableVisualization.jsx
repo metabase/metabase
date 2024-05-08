@@ -122,6 +122,7 @@ export class AuditTableVisualization extends Component {
         />
       );
     }
+
     return (
       <table className={AdminS.ContentTable}>
         <thead>

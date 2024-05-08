@@ -102,12 +102,14 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
     dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
   ];
   const seen = new Set();
+
   return options.filter(option => {
     const format = getDateFormatFromStyle(option.value, unit);
     if (seen.has(format)) {
       return false;
     } else {
       seen.add(format);
+
       return true;
     }
   });
@@ -118,6 +120,7 @@ function dateStyleOption(style, unit, abbreviate = false, separator) {
   if (abbreviate) {
     format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
   }
+
   return {
     name: EXAMPLE_DATE.format(format),
     value: style,
@@ -126,6 +129,7 @@ function dateStyleOption(style, unit, abbreviate = false, separator) {
 
 function timeStyleOption(style, description) {
   const format = style;
+
   return {
     name:
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
@@ -167,10 +171,12 @@ export const DATE_COLUMN_SETTINGS = {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
+
       return value;
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit);
+
       return !!_.findWhere(options, { value: settings["date_style"] });
     },
     getProps: ({ unit }, settings) => ({
@@ -190,6 +196,7 @@ export const DATE_COLUMN_SETTINGS = {
       const style = /\//.test(settings["date_style"])
         ? settings["date_style"]
         : "M/D/YYYY";
+
       return {
         options: [
           { name: style, value: "/" },
@@ -207,6 +214,7 @@ export const DATE_COLUMN_SETTINGS = {
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(settings["date_style"], unit);
+
       return !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
@@ -216,10 +224,12 @@ export const DATE_COLUMN_SETTINGS = {
     widget: "radio",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
+
       return !!_.findWhere(options, { value: settings["time_enabled"] });
     },
     getProps: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
+
       return { options };
     },
     getHidden: (column, settings) =>
@@ -307,6 +317,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
       const name = getCurrency(c, "name");
+
       return {
         options: [
           ...(symbol !== code
@@ -330,6 +341,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     getDefault: (column, settings) => {
       const c = settings["currency"] || "USD";
+
       return getCurrencySymbol(c) !== getCurrency(c, "code")
         ? "symbol"
         : "code";
@@ -422,8 +434,10 @@ export const NUMBER_COLUMN_SETTINGS = {
         if (settings["currency_style"] === "symbol") {
           return getCurrencySymbol(settings["currency"]);
         }
+
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
+
       return null;
     },
     readDependencies: [
@@ -453,6 +467,7 @@ const COMMON_COLUMN_SETTINGS = {
       if (headerUnit) {
         columnTitle += ` (${headerUnit})`;
       }
+
       return columnTitle;
     },
     readDependencies: ["column_title", "_header_unit"],
@@ -539,6 +554,7 @@ export const buildTableColumnSettings = ({
           cols,
           columnSettings.filter(({ enabled }) => enabled),
         );
+
         return columnIndexes.every(columnIndex => columnIndex >= 0);
       }
 

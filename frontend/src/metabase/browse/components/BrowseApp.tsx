@@ -64,6 +64,7 @@ export const BrowseApp = ({
           storedFilterStatus === null
             ? filter.activeByDefault
             : storedFilterStatus === "on";
+
         return {
           ...acc,
           [filterName]: shouldFilterBeActive,

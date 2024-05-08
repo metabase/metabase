@@ -64,6 +64,7 @@ export const useEntityUpdate = <
     async (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => {
       await store.dispatch(update(entityInfo, updates));
       const entity = getObject(store.getState(), { entityId: entityInfo.id });
+
       return checkNotNull(entity);
     },
     [store, update, getObject],

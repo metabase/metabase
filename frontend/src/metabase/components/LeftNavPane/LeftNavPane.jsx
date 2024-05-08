@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   const isSelected = path === window.location.pathname;
+
   return (
     <li data-testid="left-nav-pane-item">
       {index ? (

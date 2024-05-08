@@ -21,6 +21,7 @@ function createQueryWithBreakout() {
   );
   const column = findColumn("ORDERS", "TAX");
   const query = Lib.breakout(initialQuery, 0, column);
+
   return { query, columnInfo: Lib.displayInfo(query, 0, column), initialQuery };
 }
 
@@ -34,6 +35,7 @@ function createQueryWithBinning(bucketName = "10 bins") {
   const bucket = findBinningStrategy(initialQuery, column, bucketName);
   const columnWithBinning = Lib.withBinning(column, bucket);
   const query = Lib.breakout(initialQuery, 0, columnWithBinning);
+
   return { query, columnInfo: Lib.displayInfo(query, 0, columnWithBinning) };
 }
 
@@ -47,6 +49,7 @@ function createQueryWithTemporalBreakout(bucketName: string) {
   const bucket = findTemporalBucket(initialQuery, column, bucketName);
   const columnWithTemporalBucket = Lib.withTemporalBucket(column, bucket);
   const query = Lib.breakout(initialQuery, 0, columnWithTemporalBucket);
+
   return {
     query,
     columnInfo: Lib.displayInfo(query, 0, column),
@@ -70,12 +73,14 @@ function setup(step = createMockNotebookStep()) {
 
   function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 
   function getRecentBreakoutClause() {
     const query = getNextQuery();
     const clause = Lib.breakouts(query, 0)[0];
+
     return Lib.displayInfo(query, 0, clause);
   }
 

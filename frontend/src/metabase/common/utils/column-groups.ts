@@ -18,5 +18,6 @@ export function getColumnGroupIcon(
   if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
+
   return;
 }

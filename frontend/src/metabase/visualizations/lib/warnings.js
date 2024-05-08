@@ -42,6 +42,7 @@ export function unexpectedTimezoneWarning({
 export const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
 export function multipleTimezoneWarning(timezones) {
   const tzList = timezones.join(", ");
+
   return {
     key: MULTIPLE_TIMEZONES,
     text: t`This chart contains queries run in multiple timezones: ${tzList}`,

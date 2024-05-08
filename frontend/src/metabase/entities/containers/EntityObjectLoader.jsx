@@ -61,6 +61,7 @@ class EntityObjectLoaderInner extends Component {
 
   fetch = (query, options) => {
     const fetch = this.props[this.props.fetchType];
+
     // errors are handled in redux actions
     return fetch(query, options).catch(() => {});
   };

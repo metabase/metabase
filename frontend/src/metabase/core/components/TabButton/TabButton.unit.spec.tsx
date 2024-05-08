@@ -26,6 +26,7 @@ function setup(props?: Partial<RenameableTabButtonProps>) {
       />
     </TabRow>,
   );
+
   return { action, onRename, value };
 }
 

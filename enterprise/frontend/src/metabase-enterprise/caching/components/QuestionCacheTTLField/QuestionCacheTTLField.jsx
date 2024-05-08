@@ -31,6 +31,7 @@ function getInitialMode(question, implicitCacheTTL) {
   if (question.card().cache_ttl > 0 || !implicitCacheTTL) {
     return MODE.CUSTOM;
   }
+
   return MODE.DEFAULT;
 }
 

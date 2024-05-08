@@ -27,6 +27,7 @@ export const ModerationStatusIcon = ({
         ? parseInt(iconProps.size)
         : iconProps.size,
   };
+
   return (
     <FixedSizeIcon
       name={iconName}

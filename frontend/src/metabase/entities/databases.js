@@ -87,6 +87,7 @@ const Databases = createEntity({
                 dispatch,
                 databaseApi.endpoints.getDatabaseMetadata,
               );
+
               return normalize(databaseMetadata, DatabaseSchema);
             },
             reload,
@@ -106,6 +107,7 @@ const Databases = createEntity({
         dispatch,
         databaseApi.endpoints.listDatabaseIdFields,
       );
+
       return { id, idFields };
     }),
   },
@@ -127,6 +129,7 @@ const Databases = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Databases.selectors.getEntityIds(state, { entityQuery }) ?? [];
+
       return entityIds.map(entityId =>
         Databases.selectors.getObjectUnfiltered(state, { entityId }),
       );
@@ -144,6 +147,7 @@ const Databases = createEntity({
         fields.filter(field => {
           const dbId = field?.table?.db_id;
           const isRealField = !isVirtualCardId(field.table_id);
+
           return dbId === databaseId && isRealField && field.isPK();
         }),
     ),

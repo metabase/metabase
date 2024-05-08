@@ -36,6 +36,7 @@ export const SearchInputContainer = styled.div<{
         background-color: ${color("bg-medium")};
       `;
     }
+
     return css`
       background-color: ${color("white")};
 

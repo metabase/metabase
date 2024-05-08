@@ -40,6 +40,7 @@ export const getTicksOptions = (
     if (!adjustedDate) {
       throw new Error(`Invalid range dates: ${JSON.stringify(range)}`);
     }
+
     return adjustedDate.valueOf();
   }) as ContinuousDomain;
 

@@ -9,6 +9,7 @@ type ParentModelProps = {
 
 export function newAction(parentModel: ParentModelProps) {
   const baseUrl = modelDetail(parentModel, "actions");
+
   return `${baseUrl}/new`;
 }
 
@@ -17,6 +18,7 @@ export function action(
   actionId: WritebackActionId,
 ) {
   const baseUrl = modelDetail(parentModel, "actions");
+
   return `${baseUrl}/${actionId}`;
 }
 

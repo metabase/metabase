@@ -28,6 +28,7 @@ interface LocationChangeAction {
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
+
   return {
     type: SET_ERROR_PAGE,
     payload: error,

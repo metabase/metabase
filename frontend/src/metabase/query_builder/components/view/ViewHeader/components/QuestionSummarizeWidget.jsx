@@ -39,6 +39,7 @@ QuestionSummarizeWidget.shouldRender = ({
   isActionListVisible,
 }) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+
   return (
     queryBuilderMode === "view" &&
     question &&

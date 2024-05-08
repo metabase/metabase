@@ -14,6 +14,7 @@ function getQuestion() {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
   });
+
   return new Question(createEmptyAdHocNativeCard(), metadata);
 }
 

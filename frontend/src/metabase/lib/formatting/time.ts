@@ -18,10 +18,12 @@ export function duration(milliseconds: number) {
 
   if (milliseconds >= HOUR) {
     const hours = Math.round(milliseconds / HOUR);
+
     return ngettext(msgid`${hours} hour`, `${hours} hours`, hours);
   }
   if (milliseconds >= MINUTE) {
     const minutes = Math.round(milliseconds / MINUTE);
+
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
   const seconds = Math.round(milliseconds / SECOND);

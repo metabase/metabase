@@ -96,6 +96,7 @@ const defaultProps = {
 
 const setup = (options?: Partial<AddSeriesModalProps>) => {
   setupCardsEndpoints([baseCard, firstCard, secondCard]);
+
   return renderWithProviders(<AddSeriesModal {...defaultProps} {...options} />);
 };
 

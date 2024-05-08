@@ -83,6 +83,7 @@ function Content({
   if (parameter.values_query_type === "none") {
     return <ParameterIsInputBoxType />;
   }
+
   return (
     <UsableParameters
       parameter={parameter}

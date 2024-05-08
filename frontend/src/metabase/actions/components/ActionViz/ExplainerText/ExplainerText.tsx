@@ -11,6 +11,7 @@ import {
 
 export function ExplainerText() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
   return (
     <ExplainerTextContainer>
       {t`You can either ask users to enter values, or use the value of a dashboard filter.`}

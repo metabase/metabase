@@ -56,8 +56,10 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     if (isOpen && parameter.values_source_type !== "static-list") {
       const res = await fetchValues(searchQuery);
       setHasMoreValues(res.has_more_values);
+
       return res.values;
     }
+
     return undefined;
   }, [
     isOpen,

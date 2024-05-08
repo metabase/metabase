@@ -63,5 +63,6 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isStringOrStringLike(column)) {
     return StringFilterPicker;
   }
+
   return null;
 }

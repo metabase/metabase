@@ -89,6 +89,7 @@ export class FullPageModal extends Component<
 
   render() {
     const open = this.state.isOpen;
+
     return (
       <Transition mounted={open} transition={slideIn} duration={300}>
         {styles => (

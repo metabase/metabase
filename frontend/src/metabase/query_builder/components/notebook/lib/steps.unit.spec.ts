@@ -51,6 +51,7 @@ const postAggregationFilterQuery: StructuredQueryObject = {
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
   const question = database.question(query);
+
   return getQuestionSteps(question, metadata, {});
 };
 

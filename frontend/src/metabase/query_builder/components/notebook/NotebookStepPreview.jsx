@@ -112,6 +112,7 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
 
 function getPreviewHeightForResult(result) {
   const rowCount = result ? result.data.rows.length : 1;
+
   return rowCount * 36 + 36 + 2;
 }
 

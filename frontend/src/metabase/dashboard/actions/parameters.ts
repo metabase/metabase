@@ -124,6 +124,7 @@ export const addParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters => {
       const parameter = createParameter(option, parameters);
       newId = parameter.id;
+
       return [...parameters, parameter];
     });
 
@@ -147,6 +148,7 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
+
     return { id: parameterId };
   },
 );
@@ -267,6 +269,7 @@ export const setParameterName = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter =>
       setParamName(parameter, name),
     );
+
     return { id: parameterId, name };
   },
 );
@@ -372,6 +375,7 @@ export const setParameterFilteringParameters = createThunkAction(
         ...parameter,
         filteringParameters,
       }));
+
       return { id: parameterId, filteringParameters };
     },
 );
@@ -413,6 +417,7 @@ export const setParameterDefaultValue = createThunkAction(
       ...parameter,
       default: defaultValue,
     }));
+
     return { id: parameterId, defaultValue };
   },
 );
@@ -466,6 +471,7 @@ export const setParameterIsMultiSelect = createThunkAction(
       ...parameter,
       isMultiSelect: isMultiSelect,
     }));
+
     return { id: parameterId, isMultiSelect };
   },
 );
@@ -480,6 +486,7 @@ export const setParameterQueryType = createThunkAction(
         ...parameter,
         values_query_type: queryType,
       }));
+
       return { id: parameterId, queryType };
     },
 );
@@ -494,6 +501,7 @@ export const setParameterSourceType = createThunkAction(
         ...parameter,
         values_source_type: sourceType,
       }));
+
       return { id: parameterId, sourceType };
     },
 );
@@ -508,6 +516,7 @@ export const setParameterSourceConfig = createThunkAction(
         ...parameter,
         values_source_config: sourceConfig,
       }));
+
       return { id: parameterId, sourceConfig };
     },
 );
@@ -536,6 +545,7 @@ export const setParameterIndex = createThunkAction(
         }),
       );
     }
+
     return { id: parameterId, index };
   },
 );

@@ -64,6 +64,7 @@ function dependencies() {
         const realPath = ALIAS[parts[0]];
         parts[0] = realPath ? realPath : parts[0];
         const realName = parts.join(path.sep);
+
         return realName;
       })
       .map(getFilePathFromImportPath)
@@ -71,6 +72,7 @@ function dependencies() {
 
     return { source: filename, dependencies: absoluteImportList.sort() };
   });
+
   return deps;
 }
 
@@ -110,6 +112,7 @@ function dependents() {
       dependents[d].push(source);
     });
   });
+
   return dependents;
 }
 
@@ -192,6 +195,7 @@ function countAllDependents() {
         list.push(...newAddition);
       }
     }
+
     return { name, count: list.length };
   });
   console.log(tally.map(({ name, count }) => `${count} ${name}`).join("\n"));
@@ -204,6 +208,7 @@ function matrix() {
   const rows = sources.map(name => {
     const list = allDependents[name];
     const checks = sources.map(dep => (list.indexOf(dep) < 0 ? " " : "x"));
+
     return name.padEnd(width) + " | " + checks.join("");
   });
   console.log(rows.join("\n"));

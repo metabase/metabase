@@ -23,6 +23,7 @@ export function getParameterValueFromQueryParams(
     return parameter.default ?? null;
   }
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
+
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 

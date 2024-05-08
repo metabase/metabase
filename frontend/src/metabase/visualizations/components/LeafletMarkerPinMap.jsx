@@ -105,6 +105,7 @@ export default class LeafletMarkerPinMap extends LeafletMap {
         });
       });
     }
+
     return marker;
   };
 }

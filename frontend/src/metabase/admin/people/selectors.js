@@ -24,6 +24,7 @@ export const getMembershipsByUser = createSelector(
     membershipsList?.reduce((acc, membership) => {
       acc[membership.user_id] ??= [];
       acc[membership.user_id].push(membership);
+
       return acc;
     }, {}),
 );

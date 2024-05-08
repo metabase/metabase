@@ -216,6 +216,7 @@ function NoActionsState({
 
 function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
+
   return -createdAt.valueOf();
 }
 

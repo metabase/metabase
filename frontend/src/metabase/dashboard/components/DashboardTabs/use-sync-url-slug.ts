@@ -14,6 +14,7 @@ export function parseSlug({ location }: { location: Location }) {
   if (typeof slug === "string" && slug.length > 0) {
     return slug;
   }
+
   return undefined;
 }
 
@@ -27,6 +28,7 @@ export function getSlug({
   if (tabId === null || tabId < 0 || !name) {
     return "";
   }
+
   return [tabId, ...name.toLowerCase().split(" ")].join("-");
 }
 
@@ -76,6 +78,7 @@ export function useSyncURLSlug({ location }: { location: Location }) {
         const [tab] = tabs;
         updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
       }
+
       return;
     }
 

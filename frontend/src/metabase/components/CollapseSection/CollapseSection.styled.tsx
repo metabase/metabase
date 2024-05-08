@@ -48,6 +48,7 @@ export const ToggleIcon = styled(
   }: ToggleIconProps & IconProps) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     const name = isExpanded ? expanded : collapsed;
+
     return <Icon name={name as IconName} size={size} {...props} />;
   },
 )`

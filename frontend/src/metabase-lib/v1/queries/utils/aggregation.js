@@ -17,6 +17,7 @@ export function getAggregations(aggregation) {
   } else {
     aggregations = [];
   }
+
   return aggregations.filter(agg => agg && agg[0] && agg[0] !== "rows");
 }
 

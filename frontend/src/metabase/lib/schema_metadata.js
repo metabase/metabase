@@ -22,10 +22,12 @@ export function foreignKeyCountsByOriginTable(fks) {
 
 export function getSemanticTypeIcon(semanticType, fallback) {
   const semanticTypeMetadata = field_semantic_types_map[semanticType];
+
   return semanticTypeMetadata?.icon ?? fallback;
 }
 
 export function getSemanticTypeName(semanticType) {
   const semanticTypeMetadata = field_semantic_types_map[semanticType];
+
   return semanticTypeMetadata?.name;
 }

@@ -49,6 +49,7 @@ export const refreshTokenAsync = createAsyncThunk(
       method: "GET",
       credentials: "include",
     });
+
     return await response.json();
   },
 );

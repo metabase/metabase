@@ -6,6 +6,7 @@ export const getIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
 ) => {
   const entity = entityForObject(item);
+
   return entity?.objectSelectors?.getIcon?.(item) || { name: "table" };
 };
 

@@ -72,6 +72,7 @@ export const SortableList = <T,>({
       setItemIds(ids => {
         const oldIndex = ids.indexOf(active.id);
         const newIndex = ids.indexOf(over.id);
+
         return arrayMove(ids, oldIndex, newIndex);
       });
     }

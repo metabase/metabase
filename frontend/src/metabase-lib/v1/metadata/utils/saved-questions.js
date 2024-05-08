@@ -10,6 +10,7 @@ export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
 export function getCollectionVirtualSchemaName(collection) {
   const isRoot =
     !collection || collection.id === null || collection.id === "root";
+
   return isRoot
     ? ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME
     : collection.schemaName || collection.name;
@@ -17,6 +18,7 @@ export function getCollectionVirtualSchemaName(collection) {
 
 export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
   const collectionName = getCollectionVirtualSchemaName(collection);
+
   return generateSchemaId(
     SAVED_QUESTIONS_VIRTUAL_DB_ID,
     collectionName,
@@ -41,6 +43,7 @@ export function getQuestionIdFromVirtualTableId(tableId) {
     return null;
   }
   const id = parseInt(tableId.replace("card__", ""));
+
   return Number.isSafeInteger(id) ? id : null;
 }
 

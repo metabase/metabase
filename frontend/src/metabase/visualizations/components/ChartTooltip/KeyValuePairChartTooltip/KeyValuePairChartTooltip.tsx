@@ -103,6 +103,7 @@ const getRows = (hovered: HoveredObject) => {
         column: hovered.column,
       } as HoveredDimension);
     }
+
     return dimensions.map(getRowFromDimension);
   }
 

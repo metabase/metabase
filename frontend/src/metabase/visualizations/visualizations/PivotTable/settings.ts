@@ -41,6 +41,7 @@ export const getTitleForColumn = (
 ) => {
   const { column: _column, column_title: columnTitle } =
     settings.column(column);
+
   return columnTitle || formatColumn(_column);
 };
 
@@ -63,6 +64,7 @@ export const settings = {
       if (!_.isEqual(rows, currentRows)) {
         return { value: [], rows: currentRows };
       }
+
       return { rows, value };
     },
   },
@@ -238,6 +240,7 @@ export const _columnSettings = {
     ) => {
       //Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+
       return rows
         .slice(0, -1)
         .some((row: RowValue) => _.isEqual(row, column.field_ref));
@@ -248,6 +251,7 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column

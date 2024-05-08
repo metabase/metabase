@@ -91,6 +91,7 @@ function cleanAlert(alert) {
   if (alert.alert_above_goal == null) {
     delete alert.alert_above_goal;
   }
+
   return alert;
 }
 

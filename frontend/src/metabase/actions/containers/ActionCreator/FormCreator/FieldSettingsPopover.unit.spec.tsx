@@ -33,6 +33,7 @@ function setup({ settings = getDefaultFieldSettings() } = {}) {
       onChange={onChange}
     />,
   );
+
   return { settings, onChange };
 }
 

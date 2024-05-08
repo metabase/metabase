@@ -16,6 +16,7 @@ import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   const dashboard = getDashboardComplete(state, props);
+
   return {
     dashboard,
     initialCollectionId: Collections.selectors.getInitialCollectionId(state, {

@@ -82,6 +82,7 @@ module.exports = {
     ],
     "prefer-const": [1, { destructuring: "all" }],
     "no-useless-escape": 0,
+    "newline-before-return": 2,
     "no-only-tests/no-only-tests": [
       "error",
       {

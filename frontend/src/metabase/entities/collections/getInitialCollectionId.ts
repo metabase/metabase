@@ -29,6 +29,7 @@ function byCollectionUrlId(state: State, { params, location }: Props) {
     params.slug &&
     location &&
     Urls.isCollectionPath(location.pathname);
+
   return isCollectionPath && Urls.extractCollectionId(params.slug);
 }
 
@@ -40,6 +41,7 @@ const getInitialCollectionId = createSelector(
   [
     state => {
       const collections = state.entities.collections || {};
+
       return collections as Record<CollectionId, Collection>;
     },
     getUserPersonalCollectionId,

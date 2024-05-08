@@ -44,6 +44,7 @@ export const updateTableSandboxingPermission = createThunkAction(
   UPDATE_TABLE_SANDBOXING_PERMISSION,
   params => async dispatch => {
     const { groupId, ...entityId } = params;
+
     return dispatch(
       updateDataPermission({
         groupId,
@@ -72,6 +73,7 @@ const groupTableAccessPolicies = handleActions(
     [UPDATE_POLICY]: {
       next: (state, { payload }) => {
         const key = getPolicyKey(payload);
+
         return {
           ...state,
           [key]: payload,
@@ -117,6 +119,7 @@ const groupTableAccessPolicies = handleActions(
           const policyKeys = entityTables.map(table =>
             getPolicyKeyFromParams({ groupId, tableId: table.id }),
           );
+
           return _.omit(state, policyKeys);
         }
 
@@ -132,6 +135,7 @@ const originalGroupTableAccessPolicies = handleActions(
     [FETCH_POLICY]: {
       next: (state, { payload }) => {
         const key = getPolicyKey(payload);
+
         return {
           ...state,
           [key]: payload,

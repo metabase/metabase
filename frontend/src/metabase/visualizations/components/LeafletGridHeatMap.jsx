@@ -20,6 +20,7 @@ const computeValueRange = (value, values) => [
 
 const getValueRange = (value, column, values) => {
   const binningBasedResult = rangeForValue(value, column);
+
   return binningBasedResult || computeValueRange(value, values);
 };
 
@@ -120,6 +121,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
     gridSquare.on("click", this._onVisualizationClick.bind(this, index));
     gridSquare.on("mousemove", this._onHoverChange.bind(this, index));
     gridSquare.on("mouseout", this._onHoverChange.bind(this, null));
+
     return gridSquare;
   };
 
@@ -136,6 +138,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
     const point = points[index];
     const metricColumn = this._getMetricColumn();
     const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
+
     return {
       value: point[2],
       column: metricColumn,

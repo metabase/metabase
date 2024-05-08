@@ -34,8 +34,10 @@ const getMetricValue = (value: RowValue): MetricValue => {
 
 const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+
   return Array.from(keys).reduce<MetricDatum>((datum, metricKey) => {
     datum[metricKey] = sumMetric(left[metricKey], right[metricKey]);
+
     return datum;
   }, {});
 };
@@ -62,6 +64,7 @@ export const getGroupedDataset = (
     const rowMetrics = getChartMetrics(chartColumns).reduce<MetricDatum>(
       (datum, metric) => {
         datum[metric.column.name] = getMetricValue(row[metric.index]);
+
         return datum;
       },
       {},
@@ -182,6 +185,7 @@ const getBreakoutSeries = (
 ): Series<GroupedDatum, SeriesInfo>[] => {
   return breakoutValues.map(breakoutValue => {
     const breakoutName = String(breakoutValue);
+
     return {
       seriesKey: breakoutName,
       seriesName: breakoutName,
@@ -254,6 +258,7 @@ export const getOrderedSeries = (
       if (foundSeries === undefined) {
         throw new TypeError("Series not found");
       }
+
       return foundSeries;
     });
 };

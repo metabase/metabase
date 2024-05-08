@@ -75,6 +75,7 @@ export class WindowModal extends Component<WindowModalProps> {
         .filter(type => this.props[type])
         .map(type => MODAL_CLASSES[type]),
     );
+
     return (
       <MaybeOnClickOutsideWrapper
         backdropElement={this._modalElement}

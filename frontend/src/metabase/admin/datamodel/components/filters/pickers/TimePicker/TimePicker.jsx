@@ -16,6 +16,7 @@ import {
 
 const TimeInput = ({ value, onChange }) => {
   const time = parseTime(value);
+
   return (
     <HoursMinutesInput
       hours={time.hour()}

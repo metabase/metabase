@@ -87,6 +87,7 @@ export const FilterableTree = ({
         {!filteredList &&
           itemGroups.map((items, index) => {
             const isLastGroup = index === itemGroups.length - 1;
+
             return (
               <Fragment key={index}>
                 <Tree

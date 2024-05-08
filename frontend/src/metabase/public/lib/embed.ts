@@ -23,6 +23,7 @@ function getSignedToken(
   if (previewEmbeddingParams) {
     unsignedToken._embedding_params = previewEmbeddingParams;
   }
+
   return KJUR.jws.JWS.sign(null, { alg: "HS256" }, unsignedToken, {
     utf8: secretKey,
   });
@@ -43,6 +44,7 @@ export function getSignedPreviewUrlWithoutHash(
     secretKey,
     previewEmbeddingParams,
   );
+
   return `${siteUrl}/embed/${resourceType}/${token}`;
 }
 
@@ -57,5 +59,6 @@ export function optionsToHashParams(
     }
   }
   const query = querystring.stringify(options);
+
   return query ? `#${query}` : ``;
 }

@@ -31,6 +31,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     const len = randomInt(9);
     const start = oneOf(charset)();
     const part = listOf(len, charset)();
+
     return [start, ...part].join("");
   };
 
@@ -38,6 +39,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     const len = randomInt(7);
     const start = oneOf([uppercase, lowercase, underscore])();
     const part = listOf(len, [uppercase, lowercase, underscore, digit])();
+
     return [start, ...part].join("");
   };
 
@@ -87,6 +89,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     if (str === null) {
       throw new Error(`Unknown AST node ${type}`);
     }
+
     return String(str);
   };
 
@@ -107,6 +110,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     if (randomInt(10) < 3) {
       params.push(fn());
     }
+
     return {
       type: NODE.FunctionCall,
       value: "case",
@@ -132,6 +136,7 @@ export function generateExpression(seed, resultType, depth = 13) {
             caseNumber,
           ])();
     ++depth;
+
     return node;
   };
 
@@ -139,6 +144,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     const exp = () => randomItem(["", "-", "+"]) + randomInt(1e2);
     const number = () => oneOf([zero, one, integer, float1, float2, float3])();
     const sci = () => number() + randomItem(["e", "E"]) + exp();
+
     return {
       type: NODE.Literal,
       value: oneOf([number, sci])(),
@@ -149,6 +155,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     const fk = () => "[" + identifier() + " → " + identifier() + "]";
     const bracketedName = () => "[" + identifier() + "]";
     const name = oneOf([fk, bracketedName])();
+
     return {
       type: NODE.Field,
       value: name,
@@ -231,6 +238,7 @@ export function generateExpression(seed, resultType, depth = 13) {
             logicalGroup,
           ])();
     ++depth;
+
     return node;
   };
 
@@ -267,6 +275,7 @@ export function generateExpression(seed, resultType, depth = 13) {
       if (type === NODE.Group) {
         return isValidLHS(child);
       }
+
       return true;
     };
 
@@ -342,6 +351,7 @@ export function generateExpression(seed, resultType, depth = 13) {
             caseString,
           ])();
     ++depth;
+
     return node;
   };
 
@@ -354,6 +364,7 @@ export function generateExpression(seed, resultType, depth = 13) {
 
   const stringConcat = () => {
     const count = 1 + randomInt(5);
+
     return {
       type: NODE.FunctionCall,
       value: "concat",

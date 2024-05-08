@@ -59,6 +59,7 @@ export class DateQuarterYearWidget extends Component<Props, State> {
   render() {
     const { onClose } = this.props;
     const { quarter, year } = this.state;
+
     return (
       <div className={CS.py2}>
         <div className={cx(CS.flex, CS.flexColumn, CS.alignCenter, CS.py1)}>

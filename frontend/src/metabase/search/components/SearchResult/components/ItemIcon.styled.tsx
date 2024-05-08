@@ -16,6 +16,7 @@ function getColorForIconWrapper({
   if (type === "collection") {
     return lighten("brand", 0.35);
   }
+
   return color("brand");
 }
 

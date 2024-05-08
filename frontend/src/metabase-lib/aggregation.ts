@@ -42,6 +42,7 @@ export function aggregateByCount(query: Query): Query {
   const operators = availableAggregationOperators(query, stageIndex);
   const countOperator = operators.find(operator => {
     const info = displayInfo(query, stageIndex, operator);
+
     return info.shortName === "count";
   });
 
@@ -50,6 +51,7 @@ export function aggregateByCount(query: Query): Query {
   }
 
   const aggregation = aggregationClause(countOperator);
+
   return aggregate(query, stageIndex, aggregation);
 }
 

@@ -8,6 +8,7 @@ export const zoomInTimeseriesDrill: Drill<Lib.ZoomTimeseriesDrillThruInfo> = ({
   applyDrill,
 }) => {
   const isDashboard = clicked?.extraData?.dashboard != null;
+
   return [
     {
       name: "zoom-in.timeseries",
@@ -17,6 +18,7 @@ export const zoomInTimeseriesDrill: Drill<Lib.ZoomTimeseriesDrillThruInfo> = ({
       buttonType: "horizontal",
       question: () => {
         const question = applyDrill(drill);
+
         return isDashboard
           ? question.lockDisplay()
           : question.setDefaultDisplay();

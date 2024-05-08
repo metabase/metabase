@@ -31,6 +31,7 @@ export const DashboardSelector = ({
     error,
     isLoading,
   } = useDashboardQuery({ id: value });
+
   return (
     <LoadingAndErrorWrapper loading={isLoading}>
       <TippyPopoverWithTrigger

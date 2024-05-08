@@ -22,6 +22,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = {
     if (Array.isArray(value)) {
       return filterEnabledSearchTypes(value);
     }
+
     return isEnabledSearchModelType(value) ? [value] : [];
   },
   toUrl: (value: TypeFilterProps | null) => {

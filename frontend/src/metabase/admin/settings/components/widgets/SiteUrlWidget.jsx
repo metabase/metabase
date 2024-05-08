@@ -11,6 +11,7 @@ const propTypes = {
 export default class SiteUrlWidget extends Component {
   render() {
     const { setting, onChange } = this.props;
+
     return (
       <InputWithSelectPrefix
         value={setting.value}

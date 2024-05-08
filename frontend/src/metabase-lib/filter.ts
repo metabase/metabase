@@ -210,6 +210,7 @@ export function coordinateFilterClause({
     operator === "inside"
       ? [column, longitudeColumn ?? column, ...values]
       : [column, ...values];
+
   return expressionClause(operator, args);
 }
 
@@ -390,6 +391,7 @@ export function relativeDateFilterParts(
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
   const filterParts = expressionParts(query, stageIndex, filterClause);
+
   return (
     relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts) ??
     relativeDateFilterPartsWithOffset(query, stageIndex, filterParts)
@@ -411,6 +413,7 @@ export function excludeDateFilterClause(
 ): ExpressionClause {
   if (!bucketName) {
     const columnWithoutBucket = withTemporalBucket(column, null);
+
     return expressionClause(operator, [columnWithoutBucket]);
   }
 
@@ -479,6 +482,7 @@ export function timeFilterClause({
   values,
 }: TimeFilterParts): ExpressionClause {
   const serializedValues = values.map(value => serializeTime(value));
+
   return expressionClause(operator, [column, ...serializedValues]);
 }
 
@@ -552,6 +556,7 @@ export function isSegmentFilter(
   filter: FilterClause,
 ) {
   const { operator } = expressionParts(query, stageIndex, filter);
+
   return operator === "segment";
 }
 
@@ -563,6 +568,7 @@ function findTemporalBucket(
 ): Bucket | undefined {
   return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
     const bucketInfo = displayInfo(query, stageIndex, bucket);
+
     return bucketInfo.shortName === bucketName;
   });
 }
@@ -611,6 +617,7 @@ function isStringOperator(
   operator: ExpressionOperatorName,
 ): operator is StringFilterOperatorName {
   const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -620,6 +627,7 @@ function getStringFilterOptions(
 ): StringFilterOptions {
   const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
   const supportsOptions = operators.includes(operator);
+
   return supportsOptions ? { "case-sensitive": false, ...options } : {};
 }
 
@@ -627,6 +635,7 @@ function isNumberOperator(
   operator: ExpressionOperatorName,
 ): operator is NumberFilterOperatorName {
   const operators: ReadonlyArray<string> = NUMBER_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -634,6 +643,7 @@ function isCoordinateOperator(
   operator: ExpressionOperatorName,
 ): operator is CoordinateFilterOperatorName {
   const operators: ReadonlyArray<string> = COORDINATE_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -641,6 +651,7 @@ function isBooleanOperator(
   operator: ExpressionOperatorName,
 ): operator is BooleanFilterOperatorName {
   const operators: ReadonlyArray<string> = BOOLEAN_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -648,6 +659,7 @@ function isSpecificDateOperator(
   operator: ExpressionOperatorName,
 ): operator is SpecificDateFilterOperatorName {
   const operators: ReadonlyArray<string> = SPECIFIC_DATE_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -655,6 +667,7 @@ function isExcludeDateOperator(
   operator: ExpressionOperatorName,
 ): operator is ExcludeDateFilterOperatorName {
   const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -662,6 +675,7 @@ function isTimeOperator(
   operator: ExpressionOperatorName,
 ): operator is TimeFilterOperatorName {
   const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
+
   return operators.includes(operator);
 }
 
@@ -669,6 +683,7 @@ function isRelativeDateBucket(
   bucketName: string,
 ): bucketName is RelativeDateBucketName {
   const buckets: ReadonlyArray<string> = RELATIVE_DATE_BUCKETS;
+
   return buckets.includes(bucketName);
 }
 
@@ -676,6 +691,7 @@ function isExcludeDateBucket(
   bucketName: string,
 ): bucketName is ExcludeDateBucketName {
   const buckets: ReadonlyArray<string> = EXCLUDE_DATE_BUCKETS;
+
   return buckets.includes(bucketName);
 }
 

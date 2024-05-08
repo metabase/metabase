@@ -25,6 +25,7 @@ const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
   const columns = columnNames.map(name => findColumn("ORDERS", name));
+
   return Lib.withFields(query, 0, columns);
 };
 
@@ -32,6 +33,7 @@ const createQueryWithAggregation = () => {
   const query = createQuery();
   const count = findAggregationOperator(query, "count");
   const aggregation = Lib.aggregationClause(count);
+
   return Lib.aggregate(query, 0, aggregation);
 };
 
@@ -40,6 +42,7 @@ const createQueryWithBreakout = () => {
   const columns = Lib.breakoutableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const column = findColumn("ORDERS", "TAX");
+
   return Lib.breakout(query, 0, column);
 };
 
@@ -66,12 +69,14 @@ const setup = async (
 
   const getNextQuery = (): Lib.Query => {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   };
 
   const getNextTableName = () => {
     const query = getNextQuery();
     const [sampleColumn] = Lib.visibleColumns(query, 0);
+
     return Lib.displayInfo(query, 0, sampleColumn).table?.displayName;
   };
 
@@ -80,6 +85,7 @@ const setup = async (
     const nextFields = Lib.fieldableColumns(nextQuery, 0);
     const findColumn = columnFinder(nextQuery, nextFields);
     const column = findColumn("ORDERS", columnName);
+
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
@@ -91,6 +97,7 @@ const setup = async (
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
   const query = question.query();
+
   return setup(createMockNotebookStep({ query }));
 };
 

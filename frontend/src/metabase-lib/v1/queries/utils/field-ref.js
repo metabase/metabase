@@ -43,6 +43,7 @@ export function isSameField(
 export function getFieldTargetId(field) {
   if (isLocalField(field)) {
     const type = typeof field[1];
+
     return type === "number" || type === "string" ? field[1] : field;
   }
   if (isExpressionField(field) && _.isString(field[1])) {

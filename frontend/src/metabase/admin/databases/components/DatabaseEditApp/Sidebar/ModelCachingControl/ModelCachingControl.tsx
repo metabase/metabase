@@ -41,6 +41,7 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
       href={MetabaseSettings.docsUrl("data-modeling/models")}
     >{t`Learn more.`}</ExternalLink>
   );
+
   return (
     <PopoverContent>
       <FeatureTitle>{t`Cache models`}</FeatureTitle>

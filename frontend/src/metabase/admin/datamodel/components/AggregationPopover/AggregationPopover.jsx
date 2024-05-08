@@ -146,6 +146,7 @@ export class AggregationPopover extends Component {
 
   _getAvailableAggregations() {
     const { aggregationOperators, query, dimension, showRawData } = this.props;
+
     return (
       aggregationOperators ||
       dimension?.aggregationOperators() ||
@@ -158,6 +159,7 @@ export class AggregationPopover extends Component {
 
   itemIsSelected(item) {
     const { aggregation } = this.props;
+
     return item.isSelected(AGGREGATION.getContent(aggregation));
   }
 
@@ -349,6 +351,7 @@ export class AggregationPopover extends Component {
 
     if (choosingField) {
       const [agg, fieldId] = aggregation;
+
       return (
         <div style={{ minWidth: 300 }}>
           <div

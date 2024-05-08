@@ -25,6 +25,7 @@ const MetabaseCookies = {
       return Cookies.get(METABASE_SEEN_ALERT_SPLASH_COOKIE) || false;
     } catch (e) {
       console.error("getSeenAlertSplash:", e);
+
       return false;
     }
   },

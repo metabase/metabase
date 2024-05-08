@@ -74,6 +74,7 @@ export const advancedPermissionsSlice = createSlice({
             impersonation.group_id !== payload.groupId &&
             impersonation.db_id !== payload.entityId.databaseId,
         );
+
         return state;
       });
   },

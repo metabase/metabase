@@ -53,6 +53,7 @@ export const EChartsRenderer = ({
     eventHandlers?.forEach(h => {
       if (h.query) {
         chartRef.current?.on(h.eventName, h.query, h.handler);
+
         return;
       }
       chartRef.current?.on(h.eventName, h.handler);

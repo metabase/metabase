@@ -9,6 +9,7 @@ function cleanDatabaseValue({ type, databaseId }: Partial<DataPickerValue>) {
   if (isUsingVirtualTables) {
     return SAVED_QUESTIONS_VIRTUAL_DB_ID;
   }
+
   return databaseId;
 }
 
@@ -24,6 +25,7 @@ function cleanTablesValue({
   if (!tableIds) {
     return [];
   }
+
   return databaseId && schemaId ? tableIds : [];
 }
 
@@ -36,6 +38,7 @@ function cleanCollectionValue({
   if (isUsingVirtualTables && databaseId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return collectionId;
   }
+
   return undefined;
 }
 

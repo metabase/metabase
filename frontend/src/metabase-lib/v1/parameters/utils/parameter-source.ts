@@ -26,6 +26,7 @@ const getDefaultQueryType = (
     return "none";
   } else {
     const operator = deriveFieldOperatorFromParameter(parameter);
+
     return operator != null && isFuzzyOperator(operator) ? "none" : "list";
   }
 };

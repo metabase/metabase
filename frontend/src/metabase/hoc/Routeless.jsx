@@ -86,6 +86,7 @@ export default (
           "_routeless_goBack",
           "_routeless_push",
         );
+
         return <ComposedComponent {...props} />;
       }
     },

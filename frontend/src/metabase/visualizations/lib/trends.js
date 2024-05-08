@@ -19,6 +19,7 @@ function computeExpression(node, x) {
     if (EXPRESSION_OPERATORS.has(operator)) {
       const operatorFn = EXPRESSION_OPERATORS.get(operator);
       const argValues = args.map(arg => computeExpression(arg, x));
+
       return operatorFn(...argValues);
     }
   } else if (typeof node === "number") {
@@ -33,5 +34,6 @@ export const getTrendLineFunction = insight => {
   if (insight["best-fit"]) {
     return x => computeExpression(insight["best-fit"], x);
   }
+
   return x => x * insight.slope + insight.offset;
 };

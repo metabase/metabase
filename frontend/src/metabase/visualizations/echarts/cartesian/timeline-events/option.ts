@@ -20,11 +20,13 @@ export const setSvgColor = (svgString: string, color: string) => {
 
   // Serialize the SVG back to a string
   const serializer = new XMLSerializer();
+
   return serializer.serializeToString(svg);
 };
 
 export function svgToDataUri(svgString: string) {
   const base64Encoded = btoa(svgString);
+
   return `data:image/svg+xml;base64,${base64Encoded}`;
 }
 

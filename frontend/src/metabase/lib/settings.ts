@@ -264,6 +264,7 @@ class MetabaseSettings {
    */
   formattingOptions() {
     const opts = this.get("custom-formatting");
+
     return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
   }
 
@@ -309,11 +310,13 @@ class MetabaseSettings {
 
   newVersionAvailable() {
     const result = compareVersions(this.currentVersion(), this.latestVersion());
+
     return result != null && result < 0;
   }
 
   versionIsLatest() {
     const result = compareVersions(this.currentVersion(), this.latestVersion());
+
     return result != null && result >= 0;
   }
 
@@ -329,6 +332,7 @@ class MetabaseSettings {
    */
   currentVersion() {
     const version = this.get("version") || {};
+
     return version.tag;
   }
 
@@ -337,6 +341,7 @@ class MetabaseSettings {
    */
   latestVersion() {
     const { latest } = this.versionInfo();
+
     return latest && latest.version;
   }
 
@@ -387,6 +392,7 @@ class MetabaseSettings {
    */
   subscriptionAllowedDomains(): string[] {
     const setting = this.get("subscription-allowed-domains") || "";
+
     return setting ? setting.split(",") : [];
   }
 }

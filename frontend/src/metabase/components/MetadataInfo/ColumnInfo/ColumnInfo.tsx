@@ -98,5 +98,6 @@ function ColumnDescription({ description }: ColumnDescriptionProps) {
   if (!description) {
     return <EmptyDescription>{t`No description`}</EmptyDescription>;
   }
+
   return <Description>{description}</Description>;
 }

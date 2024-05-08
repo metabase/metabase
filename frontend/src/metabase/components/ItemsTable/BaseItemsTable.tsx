@@ -144,6 +144,7 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
+
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
@@ -199,6 +200,7 @@ export const BaseItemsTable = ({
 
           const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
           const key = `${item.model}-${item.id}`;
+
           return (
             <ItemDragSource
               item={item}

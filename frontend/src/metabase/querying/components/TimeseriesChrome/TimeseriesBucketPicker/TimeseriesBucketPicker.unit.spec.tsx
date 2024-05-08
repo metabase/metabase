@@ -13,6 +13,7 @@ import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 function findBreakoutColumn(query: Lib.Query) {
   const columns = Lib.breakoutableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
+
   return findColumn("ORDERS", "CREATED_AT");
 }
 
@@ -60,6 +61,7 @@ function setup({ query, column }: SetupOpts) {
   const getNextBucketName = () => {
     const [column] = onChange.mock.lastCall;
     const breakout = Lib.temporalBucket(column);
+
     return breakout ? Lib.displayInfo(query, 0, breakout).displayName : null;
   };
 

@@ -38,6 +38,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
     dashboardState.dashcards,
     dashboardId,
   );
+
   return dashCards.filter(
     (dashcard): dashcard is QuestionDashboardCard =>
       isQuestionDashCard(dashcard) &&
@@ -120,6 +121,7 @@ export function getAutoWiredMappingsForDashcards(
       });
     }
   }
+
   return targetDashcardMappings;
 }
 

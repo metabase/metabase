@@ -209,18 +209,21 @@ function createDatabase(
 ): Database {
   const instance = new Database(database);
   instance.metadata = metadata;
+
   return instance;
 }
 
 function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
   const instance = new Schema(schema);
   instance.metadata = metadata;
+
   return instance;
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata): Table {
   const instance = new Table(table);
   instance.metadata = metadata;
+
   return instance;
 }
 
@@ -232,6 +235,7 @@ function createField(field: NormalizedField, metadata: Metadata): Field {
   // and as a safeguard we instantiate a new Field that is missing most of its properties.
   const instance = new Field({ ...field, _comesFromEndpoint: true });
   instance.metadata = metadata;
+
   return instance;
 }
 
@@ -241,12 +245,14 @@ function createForeignKey(
 ): ForeignKey {
   const instance = new ForeignKey(foreignKey);
   instance.metadata = metadata;
+
   return instance;
 }
 
 function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
   const instance = new Metric(metric);
   instance.metadata = metadata;
+
   return instance;
 }
 
@@ -256,6 +262,7 @@ function createSegment(
 ): Segment {
   const instance = new Segment(segment);
   instance.metadata = metadata;
+
   return instance;
 }
 
@@ -297,6 +304,7 @@ function hydrateSchemaDatabase(
   metadata: Metadata,
 ): Database | undefined {
   const databaseId = schema.getPlainObject().database;
+
   return metadata.database(databaseId) ?? undefined;
 }
 
@@ -320,6 +328,7 @@ function hydrateTableDatabase(
   metadata: Metadata,
 ): Database | undefined {
   const { db, db_id } = table.getPlainObject();
+
   return metadata.database(db ?? db_id) ?? undefined;
 }
 
@@ -328,11 +337,13 @@ function hydrateTableSchema(
   metadata: Metadata,
 ): Schema | undefined {
   const schemaId = table.getPlainObject().schema;
+
   return metadata.schema(schemaId) ?? undefined;
 }
 
 function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
   const fieldIds = table.getPlainObject().fields ?? [];
+
   return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
 }
 
@@ -344,17 +355,20 @@ function hydrateTableForeignKeys(
     const instance = createForeignKey(fk, metadata);
     instance.origin = metadata.field(fk.origin_id) ?? undefined;
     instance.destination = metadata.field(fk.destination_id) ?? undefined;
+
     return instance;
   });
 }
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
+
   return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
 }
 
 function hydrateTableMetrics(table: Table, metadata: Metadata): Metric[] {
   const metricIds = table.getPlainObject().metrics ?? [];
+
   return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
 }
 

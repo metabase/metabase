@@ -312,6 +312,7 @@ const editQuestionForApiKey = (
   newQuestionName: string,
 ) => {
   cy.signOut();
+
   return cy
     .request({
       method: "GET",
@@ -341,6 +342,7 @@ const editDashboardForApiKey = (
   newDashboardName: string,
 ) => {
   cy.signOut();
+
   return cy
     .request({
       method: "GET",

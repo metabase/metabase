@@ -14,6 +14,7 @@ const mockOnFilterChange = jest.fn();
 
 function setup(filter: Filter) {
   mockOnFilterChange.mockReset();
+
   return render(
     <BooleanPicker filter={filter} onFilterChange={mockOnFilterChange} />,
   );

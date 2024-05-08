@@ -56,6 +56,7 @@ export function PeriodsAgoMenuOption({
       if (value < 1) {
         onChange({ type, value: MIN_VALUE });
         reSelectInput();
+
         return;
       }
 
@@ -65,12 +66,14 @@ export function PeriodsAgoMenuOption({
           t`${value} is beyond the date range. Auto-adjusted to the max.`,
         );
         reSelectInput();
+
         return;
       }
 
       if (!Number.isInteger(value)) {
         onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
         reSelectInput();
+
         return;
       }
 

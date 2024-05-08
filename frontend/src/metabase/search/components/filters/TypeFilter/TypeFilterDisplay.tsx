@@ -16,6 +16,7 @@ export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"]
     } else {
       titleText = value.length + t` types selected`;
     }
+
     return (
       <Text c="inherit" weight={700} truncate>
         {titleText}

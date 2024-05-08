@@ -98,6 +98,7 @@ class View extends Component {
 
     if (isShowingSummarySidebar) {
       const query = question.query();
+
       return (
         <SummarizeSidebar
           query={query}

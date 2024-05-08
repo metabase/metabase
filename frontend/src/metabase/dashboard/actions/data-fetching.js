@@ -103,6 +103,7 @@ const updateLoadingTitle = createThunkAction(
   totalCards => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
+
     return `${loadingComplete}/${totalCards} loaded`;
   },
 );
@@ -286,6 +287,7 @@ export const fetchDashboard = createAsyncThunk(
       if (!error.isCancelled) {
         console.error(error);
       }
+
       return rejectWithValue(error);
     }
   },
@@ -602,6 +604,7 @@ export const cancelFetchCardData = createAction(
       deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
     }
+
     return { dashcard_id, card_id };
   },
 );
@@ -618,6 +621,7 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
 
 function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;
+
   return {
     type,
     query,

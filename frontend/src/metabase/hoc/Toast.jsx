@@ -27,6 +27,7 @@ const withToaster = ComposedComponent => {
       );
     }
   }
+
   return connect(null, mapDispatchToProps)(ToastedComponent);
 };
 

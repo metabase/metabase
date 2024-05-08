@@ -221,6 +221,7 @@ export class NativeQueryEditor extends Component<
 
     if (typeof isInitiallyOpen !== "undefined") {
       setIsNativeEditorOpen?.(isInitiallyOpen);
+
       return;
     }
 
@@ -478,6 +479,7 @@ export class NativeQueryEditor extends Component<
             };
 
             callback(null, prepareResultsForAce(lastAutoComplete.results));
+
             return;
           }
 
@@ -561,6 +563,7 @@ export class NativeQueryEditor extends Component<
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
+
     return match?.[1] || null;
   };
 
@@ -571,6 +574,7 @@ export class NativeQueryEditor extends Component<
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
+
     return match?.[1] || null;
   };
 
@@ -585,6 +589,7 @@ export class NativeQueryEditor extends Component<
 
     if (!name) {
       callback(null, []);
+
       return;
     }
 
@@ -623,6 +628,7 @@ export class NativeQueryEditor extends Component<
     const resultsForAce = apiResults.map(
       ({ id, name, type, collection_name }) => {
         const collectionName = collection_name || t`Our analytics`;
+
         return {
           name: `${id}-${slugg(name)}`,
           value: `${id}-${slugg(name)}`,
@@ -913,6 +919,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
         { noEvent: true, useCachedForbiddenError: true },
       ),
     );
+
     return Questions.HACK_getObjectFromAction(action);
   },
 });

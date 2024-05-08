@@ -61,6 +61,7 @@ export function updateValueWithCurrentColumns(
       }
     }
   }
+
   return value;
 }
 
@@ -77,6 +78,7 @@ export function addMissingCardBreakouts(setting: PivotSetting, card: Card) {
     setting,
     breakoutFieldRefs,
   );
+
   return { ...setting, columns, rows };
 }
 
@@ -278,6 +280,7 @@ export const getWidthForRange = (
   for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {
     total += widths[i] ?? DEFAULT_CELL_WIDTH;
   }
+
   return total;
 };
 
@@ -292,5 +295,6 @@ export const getCellWidthsForSection = (
   for (let i = startCol; i < endCol; i++) {
     widths.push(valueHeaderWidths[i] ?? DEFAULT_CELL_WIDTH);
   }
+
   return widths;
 };

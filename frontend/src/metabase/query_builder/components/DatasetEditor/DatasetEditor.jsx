@@ -136,6 +136,7 @@ function getSidebar(
     }
     const isLastField =
       focusedFieldIndex === dataset.getResultMetadata().length - 1;
+
     return (
       <DatasetFieldMetadataSidebar
         dataset={dataset}
@@ -231,6 +232,7 @@ function DatasetEditor(props) {
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
+
     return calcInitialEditorHeight({
       query: dataset.legacyQuery(),
       viewHeight: height,
@@ -247,6 +249,7 @@ function DatasetEditor(props) {
     if (!focusedFieldRef) {
       return -1;
     }
+
     return fields.findIndex(field =>
       isSameField(focusedFieldRef, field.field_ref),
     );
@@ -258,6 +261,7 @@ function DatasetEditor(props) {
     const field = fields[focusedFieldIndex];
     if (field) {
       const fieldMetadata = metadata?.field?.(field.id, field.table_id);
+
       return {
         ...fieldMetadata,
         ...field,
@@ -283,6 +287,7 @@ function DatasetEditor(props) {
     changes => {
       const mappedField = metadata.field?.(changes.id)?.getPlainObject();
       const inheritedProperties = _.pick(mappedField, ...FIELDS);
+
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
     [metadata],
@@ -311,6 +316,7 @@ function DatasetEditor(props) {
     if (result) {
       timeoutId = setTimeout(() => showTabHint(), 500);
     }
+
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
@@ -394,12 +400,14 @@ function DatasetEditor(props) {
       return 0;
     }
     const isGoingForward = focusedFieldIndex >= previousFocusedFieldIndex;
+
     return isGoingForward ? 1 : -1;
   }, [focusedFieldIndex, previousFocusedFieldIndex]);
 
   const renderSelectableTableColumnHeader = useCallback(
     (element, column, columnIndex) => {
       const isSelected = columnIndex === focusedFieldIndex;
+
       return (
         <TableHeaderColumnName
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}

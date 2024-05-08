@@ -86,6 +86,7 @@ export default class EmailAttachmentPicker extends Component {
         card.include_csv = selectedCardIds.has(card.id) && isCsv;
         card.include_xls = selectedCardIds.has(card.id) && isXls;
         card.format_rows = isCsv && isFormattingEnabled; // Excel always uses formatting
+
         return card;
       }),
     });
@@ -146,6 +147,7 @@ export default class EmailAttachmentPicker extends Component {
       }
 
       this.updatePulseCards(attachmentType, selectedCardIds);
+
       return { selectedCardIds };
     });
   }
@@ -166,6 +168,7 @@ export default class EmailAttachmentPicker extends Component {
       }
 
       this.updatePulseCards(attachmentType, newSelectedCardIds);
+
       return { selectedCardIds: newSelectedCardIds };
     });
   };
@@ -303,5 +306,6 @@ function getInitialFormattingState(cards) {
   if (cards.length > 0) {
     return cards.some(card => !!card.format_rows);
   }
+
   return true;
 }

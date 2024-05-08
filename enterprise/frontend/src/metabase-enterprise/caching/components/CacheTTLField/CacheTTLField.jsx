@@ -20,6 +20,7 @@ const propTypes = {
 
 function CacheTTLField({ field, message, ...props }) {
   const hasError = !!field.error;
+
   return (
     <CacheTTLFieldContainer {...props} data-testid="cache-ttl-field">
       {message && (

@@ -94,6 +94,7 @@ export function getDashboardDrillUrl(clicked) {
       : { ...baseQueryParams, tab: clickBehavior.tabId };
 
   const path = Urls.dashboard({ id: targetId });
+
   return `${path}?${querystring.stringify(queryParams)}`;
 }
 
@@ -189,6 +190,7 @@ function getTypeForSource(source, data, extraData) {
   if (source.type === "parameter") {
     const parameters = getIn(extraData, ["dashboard", "parameters"]) || [];
     const { type = "text" } = parameters.find(p => p.id === source.id) || {};
+
     return type;
   }
 
@@ -207,5 +209,6 @@ function hasLinkTargetData(clickBehavior, extraData) {
   } else if (linkType === "dashboard") {
     return getIn(extraData, ["dashboards", targetId]) != null;
   }
+
   return true;
 }

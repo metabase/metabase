@@ -10,6 +10,7 @@ registerVisualizations();
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];
+
   return [
     {
       card: {

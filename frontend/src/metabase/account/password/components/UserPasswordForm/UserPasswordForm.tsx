@@ -24,6 +24,7 @@ const USER_PASSWORD_SCHEMA = Yup.object({
     .required(requiredErrorMessage)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
+
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
@@ -55,6 +56,7 @@ export const UserPasswordForm = ({
   const handleSubmit = useCallback(
     async (data: UserPasswordData) => {
       const { old_password, password } = data;
+
       return await updatePassword({
         id: user.id,
         old_password,

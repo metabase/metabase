@@ -18,6 +18,7 @@ export function getTimelineEvents({
     // If only one field is changed, we just show everything in the title
     // like "John added a description"
     const titleText = r.has_multiple_changes ? t`edited this.` : r.description;
+
     return {
       title: `${
         r.user.id === currentUser?.id ? t`You` : r.user.common_name

@@ -186,6 +186,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   function getRecentExpressionClause(): Lib.Clause {
     expect(onChangeClause).toHaveBeenCalled();
     const [_name, clause] = onChangeClause.mock.lastCall;
+
     return clause;
   }
 

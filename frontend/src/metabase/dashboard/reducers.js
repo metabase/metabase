@@ -127,6 +127,7 @@ const dashboards = handleActions(
     [ADD_MANY_CARDS_TO_DASH]: (state, { payload: dashcards }) => {
       const [{ dashboard_id }] = dashcards;
       const dashcardIds = dashcards.map(({ id }) => id);
+
       return {
         ...state,
         [dashboard_id]: {
@@ -198,6 +199,7 @@ const dashcards = handleActions(
             isDirty: true,
           };
         });
+
         return nextState;
       },
     },
@@ -245,6 +247,7 @@ const dashcards = handleActions(
         justAdded: index === 0,
       }));
       const storeDashCardsMap = _.indexBy(storeDashcards, "id");
+
       return {
         ...state,
         ...storeDashCardsMap,
@@ -424,6 +427,7 @@ const loadingDashCards = handleActions(
         const loadingIds = !state.loadingIds.includes(dashcard_id)
           ? state.loadingIds.concat(dashcard_id)
           : state.loadingIds;
+
         return {
           ...state,
           loadingIds,
@@ -433,6 +437,7 @@ const loadingDashCards = handleActions(
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+
         return {
           ...state,
           loadingIds,
@@ -445,6 +450,7 @@ const loadingDashCards = handleActions(
     [CANCEL_FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+
         return {
           ...state,
           loadingIds,

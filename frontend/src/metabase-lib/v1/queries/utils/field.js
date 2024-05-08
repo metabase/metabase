@@ -33,5 +33,6 @@ export function getFieldValues(field) {
 export function getRemappings(field) {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
+
   return [...fieldValues, ...remappings];
 }

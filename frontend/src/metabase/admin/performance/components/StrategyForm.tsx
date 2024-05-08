@@ -277,6 +277,7 @@ const ScheduleStrategyFormFields = () => {
       />
     );
   }
+
   return (
     <Schedule
       schedule={schedule}
@@ -347,6 +348,7 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
                   <strong>{optionLabelParts[0]}</strong>:{optionLabelParts[1]}
                 </>
               );
+
             return (
               <Radio
                 value={name}

@@ -10,6 +10,7 @@ const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 const defaultGetTooltip = ({ isDirty, result }) => {
   const { cached, average_execution_time } = result || {};
+
   return !isDirty &&
     cached &&
     average_execution_time > REFRESH_TOOLTIP_THRESHOLD

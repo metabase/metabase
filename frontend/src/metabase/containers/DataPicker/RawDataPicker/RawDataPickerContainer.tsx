@@ -57,6 +57,7 @@ function RawDataPicker({
     if (!selectedDatabaseId) {
       return;
     }
+
     return databases.find(db => db.id === selectedDatabaseId);
   }, [databases, selectedDatabaseId]);
 
@@ -65,6 +66,7 @@ function RawDataPicker({
       return;
     }
     const schemas = selectedDatabase.getSchemas();
+
     return schemas.find(schema => schema.id === selectedSchemaId);
   }, [selectedDatabase, selectedSchemaId]);
 
@@ -176,6 +178,7 @@ function RawDataPicker({
           if (!selectedSchema) {
             return renderPicker({ isLoading: allLoading });
           }
+
           return (
             <Tables.ListLoader
               query={{

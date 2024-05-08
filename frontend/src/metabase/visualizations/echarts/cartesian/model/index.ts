@@ -73,6 +73,7 @@ export const getCardsColumns = (
     }
 
     const cardSettings = getSettingsWithDefaultMetricsAndDimensions(series);
+
     return getCartesianChartColumns(data.cols, cardSettings);
   });
 };

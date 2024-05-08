@@ -24,6 +24,7 @@ function createAggregatedQuery({
   );
   const quantity = findColumn(table, column);
   const clause = Lib.aggregationClause(average, quantity);
+
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
@@ -44,12 +45,14 @@ function setup(step = createMockNotebookStep()) {
 
   function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 
   function getRecentAggregationClause() {
     const query = getNextQuery();
     const [clause] = Lib.aggregations(query, 0);
+
     return Lib.displayInfo(query, 0, clause);
   }
 

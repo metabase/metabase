@@ -56,6 +56,7 @@ export const formatChange = (
   { maximumFractionDigits = 2 } = {},
 ): string => {
   const n = Math.abs(change);
+
   return n === Infinity
     ? "∞%"
     : formatNumber(n, { number_style: "percent", maximumFractionDigits });
@@ -260,6 +261,7 @@ export function validateComparisons(
   settings: VisualizationSettings,
 ) {
   const comparisons = settings["scalar.comparisons"] || [];
+
   return comparisons.every(comparison =>
     isComparisonValid(comparison, series, settings),
   );
@@ -273,6 +275,7 @@ export function getComparisons(
   const filteredComparisons = comparisons.filter(comparison =>
     isComparisonValid(comparison, series, settings),
   );
+
   return filteredComparisons.length > 0
     ? filteredComparisons
     : getDefaultComparison(series, settings);
@@ -389,6 +392,7 @@ function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
     case "year":
       return t`Previous year`;
   }
+
   return "";
 }
 
@@ -409,5 +413,6 @@ function formatPeriodsAgoOptionName(dateUnit: DateTimeAbsoluteUnit) {
     case "year":
       return t`years ago`;
   }
+
   return "";
 }

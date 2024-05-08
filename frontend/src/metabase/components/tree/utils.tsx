@@ -12,6 +12,7 @@ export const getInitialExpandedIds = (
 
       if (node.children) {
         const path = getInitialExpandedIds(selectedId, node.children);
+
         return path.length > 0 ? [node.id, ...path] : [];
       }
 

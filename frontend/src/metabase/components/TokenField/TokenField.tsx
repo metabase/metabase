@@ -199,6 +199,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     if (parseFreeformValue && updateOnInputChange) {
       const freeformValue = parseFreeformValue(inputValue);
       const currentLastValue = value[value.length - 1];
+
       // check to see if the current last value is the same as the inputValue, in which case we should replace it or remove it
       return currentLastValue === freeformValue;
     }
@@ -228,6 +229,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       if (isSelected) {
         selectedCount++;
       }
+
       // filter out options who have already been selected, unless:
       return (
         // remove selected is disabled
@@ -419,6 +421,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // only clear the search if this was the last option
         this.clearInputValue(filteredOptions.length === 1);
       }
+
       return true;
     } else if (this.props.parseFreeformValue) {
       // if we previously updated on input change then we don't need to do it again,
@@ -430,6 +433,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         }
         // and clear the input
         this.clearInputValue();
+
         // return false so we don't stop the keyDown from propagating in case we're listening
         // for it, e.x. in the filter popover this allows enter to commit the filter
         return false;
@@ -438,6 +442,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         if (value != null && (multi || value !== this.props.value[0])) {
           this.addValue(value);
           this.clearInputValue();
+
           return true;
         }
       }

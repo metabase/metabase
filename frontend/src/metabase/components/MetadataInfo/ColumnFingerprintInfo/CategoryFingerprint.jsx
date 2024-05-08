@@ -101,6 +101,7 @@ function ExtendedFieldValuesList({ fieldValues }) {
         if (value === null) {
           return null;
         }
+
         return <Li key={i}>{value}</Li>;
       })}
     </ul>

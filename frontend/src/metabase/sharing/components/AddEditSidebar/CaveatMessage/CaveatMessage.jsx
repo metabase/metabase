@@ -10,6 +10,7 @@ import { CaveatText } from "./CaveatMessage.styled";
 
 export function CaveatMessage() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
   return (
     <CaveatText>
       {t`Recipients will see this data just as you see it, regardless of their permissions.`}

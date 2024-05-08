@@ -11,6 +11,7 @@ function RedirectWidget({ to, replace }: RedirectWidgetProps) {
   useEffect(() => {
     replace(to);
   }, [replace, to]);
+
   return null;
 }
 

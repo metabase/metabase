@@ -23,6 +23,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
             metrics.push(name);
             break;
         }
+
         return [kind, name];
       },
     });

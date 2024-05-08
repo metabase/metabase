@@ -79,6 +79,7 @@ export function isFieldType(type, field) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -209,6 +210,7 @@ export function hasLatitudeAndLongitudeColumns(cols) {
       hasLongitude = true;
     }
   }
+
   return hasLatitude && hasLongitude;
 }
 

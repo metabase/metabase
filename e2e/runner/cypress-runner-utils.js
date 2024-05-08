@@ -23,6 +23,7 @@ function executeYarnCommand({ command, message } = {}) {
         console.error(stderr);
 
         reject(error);
+
         return;
       }
 

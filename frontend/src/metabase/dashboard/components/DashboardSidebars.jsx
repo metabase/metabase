@@ -139,6 +139,7 @@ export function DashboardSidebars({
         parameters,
         p => p.id === editingParameterId,
       );
+
       return (
         <ParameterSidebar
           getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}

@@ -77,6 +77,7 @@ function formatSelected({
     // for native question variables or field literals we just display the name
     return name;
   }
+
   return `${sectionName}.${name}`;
 }
 
@@ -192,6 +193,7 @@ export function DashCardCardParameterMapper({
     }
 
     const { isEditable } = Lib.queryDisplayInfo(question.query());
+
     return isEditable;
   }, [isVirtual, dashcard, card.dataset_query, question]);
 
@@ -270,6 +272,7 @@ export function DashCardCardParameterMapper({
         return t`Variable to map to`;
       }
     }
+
     return null;
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 

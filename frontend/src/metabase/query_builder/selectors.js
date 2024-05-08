@@ -120,6 +120,7 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff(column) {
       const columnDiff = metadataDiff[column.field_ref];
+
       return columnDiff ? merge(column, columnDiff) : column;
     }
 
@@ -161,6 +162,7 @@ export const getPKColumnIndex = createSelector(
     if (hasMultiplePks) {
       return -1;
     }
+
     return cols.findIndex(getIsPKFromTablePredicate(tableId));
   },
 );
@@ -180,6 +182,7 @@ export const getPKRowIndexMap = createSelector(
       const PKValue = row[PKColumnIndex];
       map[PKValue] = index;
     });
+
     return map;
   },
 );
@@ -203,6 +206,7 @@ export const getRowIndexToPKMap = createSelector(
       const PKValue = row[PKColumnIndex];
       map[index] = PKValue;
     });
+
     return map;
   },
 );
@@ -254,6 +258,7 @@ export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
   databases => {
     const sampleDatabase = _.findWhere(databases, { is_sample: true });
+
     return sampleDatabase && sampleDatabase.id;
   },
 );
@@ -342,6 +347,7 @@ export const getQuestionWithParameters = createSelector(
     if (!card || !metadata) {
       return;
     }
+
     return new Question(card, metadata, parameterValues);
   },
 );
@@ -488,6 +494,7 @@ const getZoomedObjectRowIndex = createSelector(
     if (!PKRowIndexMap) {
       return;
     }
+
     return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
 );
@@ -502,6 +509,7 @@ export const getPreviousRowPKValue = createSelector(
       return rowIndex - 1;
     }
     const { rows } = result.data;
+
     return rows[rowIndex - 1][PKColumnIndex];
   },
 );
@@ -516,6 +524,7 @@ export const getNextRowPKValue = createSelector(
       return rowIndex + 1;
     }
     const { rows } = result.data;
+
     return rows[rowIndex + 1][PKColumnIndex];
   },
 );
@@ -532,6 +541,7 @@ export const getCanZoomNextRow = createSelector(
       return;
     }
     const rowCount = queryResults[0].data.rows.length;
+
     return rowIndex !== rowCount - 1;
   },
 );
@@ -542,6 +552,7 @@ export const getZoomRow = createSelector(
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return;
     }
+
     return queryResults[0].data.rows[rowIndex];
   },
 );
@@ -572,6 +583,7 @@ export const getIsDirty = createSelector(
     if (!question || isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
+
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
   },
 );
@@ -600,8 +612,10 @@ export const getIsRunnable = createSelector(
     }
     if (!question.isSaved() || isDirty) {
       const { isEditable } = Lib.queryDisplayInfo(question.query());
+
       return question.canRun() && isEditable;
     }
+
     return question.canRun();
   },
 );
@@ -661,6 +675,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
       const hasQueryChanged = rawQuery !== rawOriginalQuery;
+
       return hasQueryChanged;
     }
 
@@ -780,6 +795,7 @@ export const getTimeseriesXDomain = createSelector(
 
 export const getFetchedTimelines = createSelector([getEntities], entities => {
   const entityQuery = { include: "events" };
+
   return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
 });
 
@@ -827,6 +843,7 @@ export const getVisibleTimelineEvents = createSelector(
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {
   const queryLines = queryText.split("\n");
+
   return (
     // the total length of the previous rows
     queryLines
@@ -845,6 +862,7 @@ export const getNativeEditorCursorOffset = createSelector(
     if (selectedRange == null || query == null || query.native == null) {
       return null;
     }
+
     return getOffsetForQueryAndPosition(query.native.query, selectedRange.end);
   },
 );
@@ -858,6 +876,7 @@ export const getNativeEditorSelectedText = createSelector(
     const queryText = query.native.query;
     const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
     const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
+
     return queryText.slice(start, end);
   },
 );
@@ -896,6 +915,7 @@ export const getIsLiveResizable = createSelector(
       );
     } catch (e) {
       console.error(e);
+
       return false;
     }
   },
@@ -957,6 +977,7 @@ export const getCardAutocompleteResultsFn = state => {
       dbId,
       query,
     });
+
     return apiCall;
   };
 };
@@ -979,6 +1000,7 @@ export const getAutocompleteResultsFn = state => {
       query,
       matchStyle,
     });
+
     return apiCall;
   };
 };
@@ -1018,6 +1040,7 @@ export const canUploadToQuestion = question => state => {
         entityId: uploadsDbId,
       })
       ?.canUpload();
+
   return canUploadToDb;
 };
 
@@ -1043,6 +1066,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
   }
 
   const embeddingParams = card.embedding_params ?? {};
+
   return embeddingParams[slug] ?? "disabled";
 }
 

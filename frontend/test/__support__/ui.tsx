@@ -229,6 +229,7 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
+
   return <Router history={history}>{children}</Router>;
 }
 
@@ -242,6 +243,7 @@ function MaybeKBar({
   if (!hasKBar) {
     return children;
   }
+
   return <KBarProvider>{children}</KBarProvider>;
 }
 
@@ -255,6 +257,7 @@ function MaybeDNDProvider({
   if (!hasDND) {
     return children;
   }
+
   return (
     <DragDropContextProvider backend={HTML5Backend}>
       {children}
@@ -370,6 +373,7 @@ export function createMockClipboardData(
   opts?: Partial<DataTransfer>,
 ): DataTransfer {
   const clipboardData = { ...opts };
+
   return clipboardData as unknown as DataTransfer;
 }
 

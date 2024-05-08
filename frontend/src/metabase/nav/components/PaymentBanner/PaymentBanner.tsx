@@ -60,5 +60,6 @@ export function shouldRenderPaymentBanner({
     "unpaid",
     "invalid",
   ];
+
   return isAdmin && shouldRenderStatuses.includes(tokenStatus?.status);
 }

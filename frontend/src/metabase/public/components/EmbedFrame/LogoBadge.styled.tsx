@@ -46,6 +46,7 @@ export const MetabaseName = styled.span<{ isDark: boolean; variant: Variant }>`
     if (props.isDark) {
       return color("white");
     }
+
     return color(props.variant === "large" ? "text-dark" : "brand");
   }};
 `;

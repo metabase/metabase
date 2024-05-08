@@ -37,6 +37,7 @@ function getTableIcon({
   if (isSelected) {
     return "check";
   }
+
   return targetModel === "model" ? "model" : "table2";
 }
 
@@ -66,6 +67,7 @@ function TableSelectListItem({
 
 function formatCollectionId(id: string | number | null) {
   const canonicalId = canonicalCollectionId(id);
+
   return canonicalId === null ? "root" : canonicalId;
 }
 

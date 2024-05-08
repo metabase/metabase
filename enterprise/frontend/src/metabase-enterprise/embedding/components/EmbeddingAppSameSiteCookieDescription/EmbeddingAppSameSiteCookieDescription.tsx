@@ -64,5 +64,6 @@ function authorizedOriginsContainsNonInstanceDomain(
   }
 
   const origins = authorizedOriginsString.split(" ");
+
   return origins.some(origin => !isSameOrigin(origin));
 }

@@ -8,6 +8,7 @@ export function getFilterItems(query: Lib.Query): FilterItem[] {
 
   return stageIndexes.flatMap(stageIndex => {
     const filters = Lib.filters(query, stageIndex);
+
     return filters.map(filter => ({ filter, stageIndex }));
   });
 }

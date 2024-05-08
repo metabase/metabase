@@ -9,6 +9,7 @@ const parseOffset = dateString =>
 const formatOffset = parsedOffset => {
   const [, , sign, tzHour, tzMinute] = parsedOffset;
   const uOffset = parseInt(tzHour, 10) * 60 + parseInt(tzMinute, 10);
+
   return sign === "+" ? uOffset : -uOffset;
 };
 

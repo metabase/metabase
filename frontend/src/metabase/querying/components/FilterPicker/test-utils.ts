@@ -118,6 +118,7 @@ export function createFilteredQuery(
   const query = Lib.filter(initialQuery, 0, clause);
   const [filter] = Lib.filters(query, 0);
   const column = Lib.filterParts(query, 0, filter)?.column;
+
   return { query, filter, column };
 }
 
@@ -128,6 +129,7 @@ function findFilteredColumn(
 ) {
   const columns = Lib.filterableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
+
   return findColumn(tableName, columnName);
 }
 
@@ -147,6 +149,7 @@ export function createQueryWithBooleanFilter({
   values = [true],
 }: BooleanFilterQueryOpts = {}) {
   const clause = Lib.booleanFilterClause({ operator, column, values });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -176,6 +179,7 @@ export function createQueryWithCoordinateFilter({
     values,
     ...parts,
   });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -195,6 +199,7 @@ export function createQueryWithNumberFilter({
   values = [0],
 }: NumberFilterQueryOpts = {}) {
   const clause = Lib.numberFilterClause({ operator, column, values });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -219,6 +224,7 @@ export function createQueryWithStringFilter({
   options = {},
 }: StringFilterOpts = {}) {
   const clause = Lib.stringFilterClause({ operator, column, values, options });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -246,6 +252,7 @@ export function createQueryWithSpecificDateFilter({
     column,
     values,
   });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -271,6 +278,7 @@ export function createQueryWithRelativeDateFilter({
     offsetBucket,
     options,
   });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -292,6 +300,7 @@ export function createQueryWithExcludeDateFilter({
     values,
     bucket,
   });
+
   return createFilteredQuery(query, clause);
 }
 
@@ -311,5 +320,6 @@ export function createQueryWithTimeFilter({
   values = [dayjs().startOf("day").toDate()],
 }: TimeFilterOpts = {}) {
   const clause = Lib.timeFilterClause({ operator, column, values });
+
   return createFilteredQuery(query, clause);
 }

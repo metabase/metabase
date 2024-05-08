@@ -83,6 +83,7 @@ export function interceptPromise(method, path) {
       req.continue();
     });
   });
+
   return state;
 }
 

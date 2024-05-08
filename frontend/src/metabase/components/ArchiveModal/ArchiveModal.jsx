@@ -28,6 +28,7 @@ class ArchiveModal extends Component {
   render() {
     const { title, message, onClose } = this.props;
     const { error } = this.state;
+
     return (
       <ModalContent
         title={title || t`Archive this?`}

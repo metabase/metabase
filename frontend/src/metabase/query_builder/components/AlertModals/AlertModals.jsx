@@ -609,6 +609,7 @@ class AlertEditChannelsInner extends Component {
 
   render() {
     const { alert, user, users, formInput } = this.props;
+
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
         <h3

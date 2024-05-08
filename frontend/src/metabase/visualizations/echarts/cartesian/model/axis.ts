@@ -80,6 +80,7 @@ function getLineAreaBarComparisonSettings(
     if ((key === "prefix" || key === "suffix") && value === "") {
       return false;
     }
+
     return true;
   });
 }
@@ -261,6 +262,7 @@ const getYAxisSplit = (
     );
 
     acc[seriesModel.dataKey] = seriesSettings?.["axis"];
+
     return acc;
   }, {} as Record<DataKey, string | undefined>);
 
@@ -288,6 +290,7 @@ const getYAxisSplit = (
   // computes a split with all axis unassigned, then moves
   // assigned ones to their correct axis
   const [autoLeft, autoRight] = computeSplit(seriesExtents);
+
   return [
     new Set(
       _.uniq([
@@ -554,6 +557,7 @@ export function getTimeSeriesXAxisModel(
     if (!date) {
       return null;
     }
+
     return date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {

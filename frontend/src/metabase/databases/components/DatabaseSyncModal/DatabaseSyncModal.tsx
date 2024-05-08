@@ -22,6 +22,7 @@ const getSampleUrl = (candidates: DatabaseCandidate[]) => {
   const tables = candidates.flatMap(d => d.tables);
   const table =
     tables.find((t: TableCandidate) => t.title.includes("Orders")) ?? tables[0];
+
   return table?.url;
 };
 

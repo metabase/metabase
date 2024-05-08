@@ -289,6 +289,7 @@ if (hasPremiumFeature("whitelabel")) {
         const customHomepageIndex = settings.findIndex(
           setting => setting.key === "custom-homepage-dashboard",
         );
+
         return [
           ...settings.slice(0, customHomepageIndex + 1),
           {

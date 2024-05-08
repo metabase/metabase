@@ -9,6 +9,7 @@ export const parseSchemaId = id => {
   if (encodedPayload) {
     result.push(JSON.parse(decodeURIComponent(encodedPayload)));
   }
+
   return result;
 };
 
@@ -23,5 +24,6 @@ export const generateSchemaId = (dbId, schemaName, payload) => {
     const encodedPayload = encodeURIComponent(json);
     id += `:${encodedPayload}`;
   }
+
   return id;
 };

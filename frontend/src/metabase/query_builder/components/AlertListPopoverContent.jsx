@@ -42,6 +42,7 @@ class AlertListPopoverContent extends Component {
 
   isCreatedByCurrentUser = alert => {
     const { user } = this.props;
+
     return alert.creator.id === user.id;
   };
 

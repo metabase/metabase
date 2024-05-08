@@ -9,6 +9,7 @@ export const getColorScale = (
     return d3.scale.quantile<string>().domain(extent).range(colors);
   } else {
     const [start, end] = extent;
+
     return d3.scale
       .linear<string>()
       .domain(

@@ -20,6 +20,7 @@ export const editQuestion = createThunkAction(
     const url = Urls.question(question.card(), { mode });
 
     dispatch(openUrl(url));
+
     return { dashboardId };
   },
 );
@@ -94,6 +95,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       dispatch(openUrl(url));
+
       return { dashboardId };
     },
 );

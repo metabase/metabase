@@ -34,6 +34,7 @@ const SchemaPane = ({
     () => schema.getTables().sort((a, b) => a.name.localeCompare(b.name)),
     [schema],
   );
+
   return (
     <SidebarContent
       title={schema.name}

@@ -37,6 +37,7 @@ export default class Revision extends Component {
           return t`edited the ` + objectName;
       }
     }
+
     return t`made some changes`;
   }
 

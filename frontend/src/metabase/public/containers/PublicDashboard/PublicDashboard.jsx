@@ -86,6 +86,7 @@ class PublicDashboardInner extends Component {
 
     if (result.error) {
       setErrorPage(result.payload);
+
       return;
     }
 
@@ -115,6 +116,7 @@ class PublicDashboardInner extends Component {
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
       this.props.fetchDashboardCardMetadata();
+
       return;
     }
 
@@ -131,6 +133,7 @@ class PublicDashboardInner extends Component {
     if (!selectedTabId) {
       return dashboard.dashcards;
     }
+
     return dashboard.dashcards.filter(
       dashcard => dashcard.dashboard_tab_id === selectedTabId,
     );
@@ -145,6 +148,7 @@ class PublicDashboardInner extends Component {
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
+
     return hiddenParameters.map(parameter => parameter.slug).join(",");
   };
 

@@ -47,6 +47,7 @@ const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
   Object.values(embeddingParams).reduce(
     (acc, value) => {
       acc[value] += 1;
+
       return acc;
     },
     { disabled: 0, locked: 0, enabled: 0 } as Record<
@@ -240,6 +241,7 @@ export const StaticEmbedSetupPane = ({
   const [activeTab, setActiveTab] = useState<
     typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
   >(EMBED_MODAL_TABS.Overview);
+
   return (
     <Stack spacing={0}>
       <EmbedModalContentStatusBar
@@ -384,6 +386,7 @@ function getDefaultEmbeddingParams(
     if (!acc[param.slug] || acc[param.slug] === "disabled") {
       acc[param.slug] = "enabled";
     }
+
     return acc;
   }, defaultParams);
 }

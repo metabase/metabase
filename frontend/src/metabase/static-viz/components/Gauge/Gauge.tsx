@@ -98,6 +98,7 @@ export default function Gauge({
                   startAngle: START_ANGLE,
                   endAngle: END_ANGLE,
                 } as unknown as PieArcDatum<GaugeSegment>);
+
                 return (
                   <Group className="visx-pie-arcs-group">
                     {baseArcPath && (
@@ -123,6 +124,7 @@ export default function Gauge({
                             segmentMaxValue,
                           ),
                       });
+
                       return (
                         arcPath && (
                           <g key={`pie-arc-${index}`}>

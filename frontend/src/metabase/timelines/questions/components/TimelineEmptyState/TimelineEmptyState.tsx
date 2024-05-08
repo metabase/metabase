@@ -27,6 +27,7 @@ const TimelineEmptyState = ({
     collection.can_write;
 
   const applicationName = useSelector(getApplicationName);
+
   return (
     <EmptyStateRoot>
       <EmptyStateIcon name="star" />

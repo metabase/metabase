@@ -80,6 +80,7 @@ const PersistedModels = createEntity({
         },
       };
     }
+
     return state;
   },
 });

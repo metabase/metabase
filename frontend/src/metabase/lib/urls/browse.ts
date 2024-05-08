@@ -21,6 +21,7 @@ export function browseSchema(table: {
   db?: Pick<Database, "id">;
 }) {
   const databaseId = table.db?.id || table.db_id;
+
   return `/browse/databases/${databaseId}/schema/${encodeURIComponent(
     table.schema_name ?? "",
   )}`;
@@ -28,5 +29,6 @@ export function browseSchema(table: {
 
 export function browseTable(table: Table) {
   const databaseId = table.db?.id || table.db_id;
+
   return `/browse/databases/${databaseId}/schema/${table.schema_name}`;
 }

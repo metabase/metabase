@@ -39,6 +39,7 @@ function getHeaderTitleContainerVariantStyle(
   if (variant === "default") {
     return;
   }
+
   return variant === "default-back-button"
     ? defaultBackButtonStyle()
     : backButtonStyle();

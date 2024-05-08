@@ -18,38 +18,45 @@ const deprecated = message => console.warn("DEPRECATED: " + message);
 export const FETCH_METRICS = Metrics.actions.fetchList.toString();
 export const fetchMetrics = (reload = false) => {
   deprecated("metabase/redux/metadata fetchMetrics");
+
   return Metrics.actions.fetchList(null, { reload });
 };
 
 export const updateMetric = metric => {
   deprecated("metabase/redux/metadata updateMetric");
+
   return Metrics.actions.update(metric);
 };
 
 export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
 export const fetchSegments = (reload = false) => {
   deprecated("metabase/redux/metadata fetchSegments");
+
   return Segments.actions.fetchList(null, { reload });
 };
 
 export const updateSegment = segment => {
   deprecated("metabase/redux/metadata updateSegment");
+
   return Segments.actions.update(segment);
 };
 
 export const fetchRealDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchRealDatabases");
+
   return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
+
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
 };
 
 export const updateDatabase = database => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
+
   return Databases.actions.update(slimDatabase);
 };
 
@@ -63,17 +70,20 @@ export const updateTable = table => {
     "metrics",
     "segments",
   );
+
   return Tables.actions.update(slimTable);
 };
 
 export const fetchTables = (reload = false) => {
   deprecated("metabase/redux/metadata fetchTables");
+
   return Tables.actions.fetchList(null, { reload });
 };
 
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
+
   return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
@@ -82,6 +92,7 @@ export const fetchField = createThunkAction(
   METADATA_FETCH_FIELD,
   (id, reload = false) => {
     deprecated("metabase/redux/metadata fetchField");
+
     return async dispatch => {
       const action = await dispatch(Fields.actions.fetch({ id }, { reload }));
       const field = Fields.HACK_getObjectFromAction(action);
@@ -99,34 +110,40 @@ export const fetchField = createThunkAction(
 
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
+
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
 export { ADD_PARAM_VALUES } from "metabase/entities/fields";
 export const addParamValues = paramValues => {
   deprecated("metabase/redux/metadata addParamValues");
+
   return Fields.actions.addParamValues(paramValues);
 };
 
 export { ADD_FIELDS } from "metabase/entities/fields";
 export const addFields = fieldMaps => {
   deprecated("metabase/redux/metadata addFields");
+
   return Fields.actions.addFields(fieldMaps);
 };
 
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
+
   return Fields.actions.update(slimField);
 };
 
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
+
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
+
   return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
 };
 
@@ -236,6 +253,7 @@ export const fetchSegmentRevisions = createThunkAction(
 
 export const addRemappings = (fieldId, remappings) => {
   deprecated("metabase/redux/metadata addRemappings");
+
   return Fields.actions.addRemappings({ id: fieldId }, remappings);
 };
 

@@ -90,6 +90,7 @@ export const InfoTextEditedInfo = ({
   const getEditedInfoText = () => {
     if (isCompact) {
       const formattedDuration = timestamp && getRelativeTime(timestamp);
+
       return (
         <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
           <Text span size="sm" c="text-medium" truncate>
@@ -98,6 +99,7 @@ export const InfoTextEditedInfo = ({
         </Tooltip>
       );
     }
+
     return <LastEditedInfoText {...lastEditedInfoData} />;
   };
 

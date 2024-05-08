@@ -89,6 +89,7 @@ class Table {
 
   savedQuestionId() {
     const match = String(this.id).match(/card__(\d+)/);
+
     return match ? parseInt(match[1]) : null;
   }
 
@@ -158,6 +159,7 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
+
     return fks
       .map(fk => fk.origin?.table)
       .filter(table => table != null) as Table[];
@@ -168,6 +170,7 @@ class Table {
     if (!fields) {
       return [];
     }
+
     return fields
       .filter(field => field.isFK() && field.fk_target_field_id)
       .map(field => this.metadata?.field(field.fk_target_field_id)?.table)
@@ -177,6 +180,7 @@ class Table {
   clone() {
     const table = new Table(this.getPlainObject());
     Object.assign(table, this);
+
     return table;
   }
 }

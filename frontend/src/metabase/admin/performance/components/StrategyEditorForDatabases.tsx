@@ -171,6 +171,7 @@ const StrategyEditorForDatabases_Base = ({
     const rootConfig = findWhere(configs, { model_id: rootId });
     const inheritingDoNotCache =
       inheritingRootStrategy && !rootConfig?.strategy;
+
     return !inheritingDoNotCache;
   }, [configs, savedStrategy?.type, targetId]);
 

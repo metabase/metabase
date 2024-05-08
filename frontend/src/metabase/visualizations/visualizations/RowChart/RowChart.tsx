@@ -177,6 +177,7 @@ const RowChartVisualization = ({
   ) => {
     if (bar == null) {
       onHoverChange?.(null);
+
       return;
     }
     const hoverData = getHoverData(
@@ -341,6 +342,7 @@ RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
 
 RowChartVisualization.isLiveResizable = (series: any[]) => {
   const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+
   return totalRows < 10;
 };
 

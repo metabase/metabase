@@ -11,6 +11,7 @@ export function useKeyboardShortcut(
       }
     }
     document.addEventListener("keyup", keyboardListener);
+
     return () => {
       document.removeEventListener("keyup", keyboardListener);
     };

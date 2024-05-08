@@ -104,6 +104,7 @@ function ModelDetailPage({
 
     const sourceTableId = Lib.sourceTableOrCardId(query);
     const table = model.metadata().table(sourceTableId);
+
     return table;
   }, [model]);
 
@@ -115,6 +116,7 @@ function ModelDetailPage({
     }
 
     const [tab] = pathname.split("/").reverse();
+
     return tab ?? FALLBACK_TAB;
   }, [location.pathname]);
 

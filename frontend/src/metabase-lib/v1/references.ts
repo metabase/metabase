@@ -62,6 +62,7 @@ export const normalizeReferenceOptions = (
   );
   // remove null/undefined options from map.
   options = _.omit(options, value => value == null);
+
   return _.isEmpty(options) ? null : options;
 };
 

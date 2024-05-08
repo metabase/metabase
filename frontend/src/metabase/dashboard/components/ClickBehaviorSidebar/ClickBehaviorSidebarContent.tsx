@@ -48,12 +48,14 @@ export function ClickBehaviorSidebarContent({
     if (clickBehavior) {
       return clickBehavior;
     }
+
     // drill-through menu
     return { type: "actionMenu" };
   }, [clickBehavior]);
 
   if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
+
     return (
       <TableClickBehaviorView
         columns={columns}

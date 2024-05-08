@@ -66,6 +66,7 @@ const Collections = createEntity({
   api: {
     list: async (params: ListParams, dispatch: Dispatch) => {
       const { tree, ...entityQuery } = params;
+
       return tree
         ? listCollectionsTree(entityQuery, dispatch)
         : listCollections(entityQuery, dispatch);
@@ -126,6 +127,7 @@ const Collections = createEntity({
     ) => {
       const collection =
         (item as EntityInCollection).collection || (item as Collection);
+
       return getCollectionIcon(collection, opts);
     },
   },
@@ -153,6 +155,7 @@ const Collections = createEntity({
     getState: GetState,
   ) {
     const type = object && getCollectionType(object.parent_id, getState());
+
     return type && `collection=${type}`;
   },
 });

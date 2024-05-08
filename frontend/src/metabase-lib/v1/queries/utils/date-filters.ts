@@ -18,6 +18,7 @@ const testTemporalUnit = (unit: string) => (filter: Filter) => {
   if (dimension) {
     return dimension.temporalUnit() === unit;
   }
+
   return filter[1]?.[2]?.["temporal-unit"] === unit;
 };
 
@@ -29,6 +30,7 @@ function getIntervals([op, _field, value, _unit]: Filter) {
 
 function getUnit([op, _field, _value, unit]: Filter) {
   const result = op === "time-interval" && unit ? unit : "day";
+
   return result;
 }
 
@@ -44,6 +46,7 @@ function getDate(value: string): string {
   if (value === "none") {
     return "day";
   }
+
   return value;
 }
 
@@ -70,6 +73,7 @@ function getDateTimeDimensionFromFilter(
       return dimension.withoutTemporalBucketing().mbql();
     }
   }
+
   return null;
 }
 
@@ -83,6 +87,7 @@ function getDateTimeDimensionFromMbql(mbql: any, bucketing?: string) {
       return dimension.withoutTemporalBucketing().mbql();
     }
   }
+
   return mbql;
 }
 
@@ -117,6 +122,7 @@ function getDateTimeDimensionFromFilterAndValues(filter: Filter) {
       ];
     }
   }
+
   return [dimension, ...values.filter(value => value !== undefined)];
 }
 
@@ -146,6 +152,7 @@ function getBeforeFilterDimensionAndValues(filter: Filter) {
 
 function getAfterFilterDimensionAndValues(filter: Filter) {
   const [field, ...values] = getDateTimeDimensionFromFilterAndValues(filter);
+
   return [field, values[0]];
 }
 
@@ -157,10 +164,12 @@ function getBetweenFilterDimensionAndValues(filter: Filter) {
   if (op === "=" || op === "<") {
     const beforeDate = moment(values[0]).subtract(30, "day");
     const beforeValue = beforeDate.format("YYYY-MM-DD");
+
     return [dimension, beforeValue, values[0]];
   } else if (op === ">") {
     const afterDate = moment(values[0]).add(30, "day");
     const afterValue = afterDate.format("YYYY-MM-DD");
+
     return [dimension, values[0], afterValue];
   } else {
     return [dimension, ...values];
@@ -185,6 +194,7 @@ export function isPreviousDateFilter(filter: Filter) {
     return true;
   }
   const [value] = getRelativeDatetimeInterval(filter);
+
   return typeof value === "number" && value <= 0;
 }
 
@@ -194,6 +204,7 @@ export function getCurrentDateFilter(filter: Filter) {
 
 export function isCurrentDateFilter(filter: Filter) {
   const [op, , value] = filter;
+
   return op === "time-interval" && (value === "current" || value === null);
 }
 
@@ -215,6 +226,7 @@ export function isNextDateFilter(filter: Filter) {
     return true;
   }
   const [value] = getRelativeDatetimeInterval(filter);
+
   return typeof value === "number" && value > 0;
 }
 
@@ -224,6 +236,7 @@ export function getBetweenDateFilter(filter: Filter) {
 
 export function isBetweenFilter(filter: Filter) {
   const [op, , left, right] = filter;
+
   return (
     op === "between" && !isRelativeDatetime(left) && !isRelativeDatetime(right)
   );
@@ -235,6 +248,7 @@ export function getBeforeDateFilter(filter: Filter) {
 
 export function isBeforeDateFilter(filter: Filter) {
   const [op] = filter;
+
   return op === "<";
 }
 
@@ -244,6 +258,7 @@ export function getOnDateFilter(filter: Filter) {
 
 export function isOnDateFilter(filter: Filter) {
   const [op] = filter;
+
   return op === "=";
 }
 
@@ -253,16 +268,19 @@ export function getAfterDateFilter(filter: Filter) {
 
 export function isAfterDateFilter(filter: Filter) {
   const [op] = filter;
+
   return op === ">";
 }
 
 export function getExcludeDateFilter(filter: Filter) {
   const [op, field, ...values] = filter;
+
   return op === "!=" ? [op, field, ...values] : [op, field];
 }
 
 export function isExcludeDateFilter(filter: Filter) {
   const [op] = filter;
+
   return ["!=", "is-null", "not-null"].indexOf(op) > -1;
 }
 
@@ -394,11 +412,13 @@ export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");
 
 export function getDateFilterValue(mbql: any[]) {
   const [_op, _field, value] = mbql;
+
   return value;
 }
 
 export function setDateFilterValue(mbql: any[], newValue: string | null) {
   const [op, field] = mbql;
+
   return [op, field, newValue];
 }
 
@@ -408,6 +428,7 @@ export function clearDateFilterTime(mbql: any[]) {
 
 export function getDateRangeFilterValue(mbql: any[]) {
   const [_op, _field, startValue, endValue] = mbql;
+
   return [startValue, endValue];
 }
 
@@ -416,6 +437,7 @@ export function setDateRangeFilterValue(
   [startValue, endValue]: [string | null, string | null],
 ) {
   const [op, field] = mbql;
+
   return [op, field, startValue, endValue];
 }
 

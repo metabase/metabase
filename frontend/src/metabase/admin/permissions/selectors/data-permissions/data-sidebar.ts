@@ -38,6 +38,7 @@ const getRouteParams = (
   props: { params: RawDataRouteParams },
 ) => {
   const { databaseId, schemaName, tableId } = props.params;
+
   return {
     databaseId,
     schemaName,

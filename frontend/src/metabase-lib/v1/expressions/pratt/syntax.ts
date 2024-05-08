@@ -161,6 +161,7 @@ function childConstraintByPosition(...positions: NodeType[][]) {
         return { position: i, child: node.children[i], expected: positions };
       }
     }
+
     return null;
   };
 }
@@ -211,6 +212,7 @@ function anyChildConstraint(...acceptableTypes: NodeType[]) {
         return { child };
       }
     }
+
     return null;
   };
 }

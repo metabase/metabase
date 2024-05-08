@@ -59,6 +59,7 @@ export function calculateValueFontSize(displayValue: string, maxWidth: number) {
   ) {
     dynamicValueFontSize -= 1;
   }
+
   return dynamicValueFontSize;
 }
 

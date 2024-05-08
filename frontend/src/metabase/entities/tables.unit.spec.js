@@ -18,6 +18,7 @@ describe("table entity", () => {
         dataset_query,
         archived,
       };
+
       return {
         question,
         virtualTable: convertSavedQuestionToVirtualTable(question),

@@ -164,11 +164,13 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
     } else if (sections) {
       return sections;
     }
+
     return [];
   }
 
   itemIsSelected = (option: TOption) => {
     const optionValue = this.props.optionValueFn!(option);
+
     return this._getValuesSet().has(optionValue);
   };
 

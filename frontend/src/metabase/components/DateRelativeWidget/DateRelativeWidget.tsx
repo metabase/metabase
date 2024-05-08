@@ -59,6 +59,7 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
 
   isSelectedShortcut(shortcut: Shortcut) {
     const { filter } = this.props;
+
     return (
       (Array.isArray(shortcut.operator)
         ? _.contains(shortcut.operator, filter[0])
@@ -175,6 +176,7 @@ type DateRelativeWidgetProps = {
 export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
+
     return (
       <div className={CS.px1} style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker

@@ -10,6 +10,7 @@ export default {
 
 const Template: ComponentStory<typeof NumericInput> = args => {
   const [value, setValue] = useState<number>();
+
   return <NumericInput {...args} value={value} onChange={setValue} />;
 };
 

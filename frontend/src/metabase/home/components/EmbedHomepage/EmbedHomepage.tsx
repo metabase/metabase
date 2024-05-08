@@ -55,6 +55,7 @@ export const EmbedHomepage = () => {
     if (isEEBuild()) {
       return plan === "starter" ? "static" : "interactive";
     }
+
     return "static";
   }, [plan]);
 

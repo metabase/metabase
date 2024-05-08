@@ -34,6 +34,7 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
   const series = new Array(numberOfSeries)
     .fill(1)
     .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
+
   return renderWithProviders(
     <ChartSettings
       series={series}

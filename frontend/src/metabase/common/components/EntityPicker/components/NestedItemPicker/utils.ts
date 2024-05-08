@@ -9,5 +9,6 @@ export const findLastSelectedItem = <Item, Query>(
       return statePath[i].selectedItem;
     }
   }
+
   return undefined;
 };

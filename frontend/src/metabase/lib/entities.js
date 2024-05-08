@@ -295,6 +295,7 @@ export function createEntity(def) {
               dispatch(addUndo(notify));
             }
           }
+
           return result;
         },
     ),
@@ -306,6 +307,7 @@ export function createEntity(def) {
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
       await entity.api.delete(entityObject, dispatch, getState);
+
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -348,6 +350,7 @@ export function createEntity(def) {
       if (!Array.isArray(results)) {
         throw `Invalid response listing ${entity.name}`;
       }
+
       return {
         ...entity.normalizeList(results),
         metadata,
@@ -545,6 +548,7 @@ export function createEntity(def) {
     if (type === FETCH_LIST_ACTION) {
       if (payload && payload.result) {
         const { entityQuery, metadata, result: list } = payload;
+
         return {
           ...state,
           [getQueryKey(entityQuery)]: {
@@ -563,6 +567,7 @@ export function createEntity(def) {
         "": state[""].filter(id => id !== payload.result),
       };
     }
+
     return state;
   };
 
@@ -589,6 +594,7 @@ export function createEntity(def) {
         setRequestUnloaded(["entities", entity.name + "_list"]),
       );
     }
+
     return state;
   };
 
@@ -662,6 +668,7 @@ export function combineEntities(entities) {
         state = entity.requestsReducer(state, action);
       }
     }
+
     return state;
   };
 

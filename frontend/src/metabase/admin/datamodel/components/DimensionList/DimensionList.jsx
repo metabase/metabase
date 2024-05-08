@@ -67,6 +67,7 @@ export class DimensionList extends Component {
 
   itemIsSelected = item => {
     const dimensions = this.getDimensions();
+
     return (
       item.dimension &&
       _.any(dimensions, dimension => {

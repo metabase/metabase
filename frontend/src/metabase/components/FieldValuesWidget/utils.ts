@@ -60,6 +60,7 @@ export function getNonVirtualFields(fields: Field[]) {
 
 export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
   const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
+
   return Array.from(uniqueValueMap.values());
 }
 
@@ -169,6 +170,7 @@ function getSearchableTokenFieldPlaceholder(
       placeholder += t` or enter an ID`;
     }
   }
+
   return placeholder;
 }
 

@@ -313,5 +313,6 @@ export const entityListLoader = ellProps => ComposedComponent => {
     );
   }
   WrappedComponent.displayName = ComposedComponent.displayName;
+
   return WrappedComponent;
 };

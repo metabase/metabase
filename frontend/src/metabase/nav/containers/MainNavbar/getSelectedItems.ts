@@ -77,6 +77,7 @@ function getSelectedItems({
       },
     ];
   }
+
   return [{ url: pathname, type: "non-entity" }];
 }
 

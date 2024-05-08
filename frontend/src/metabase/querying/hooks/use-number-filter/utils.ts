@@ -67,6 +67,7 @@ export function getFilterClause(
   values: NumberValue[],
 ) {
   const filterParts = getFilterParts(operator, column, values);
+
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
 }
 

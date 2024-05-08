@@ -128,6 +128,7 @@ const PeopleList = ({
     if (!confirmation) {
       await updateMembership(updatedMembership);
       reloadGroups();
+
       return;
     }
 
@@ -158,6 +159,7 @@ const PeopleList = ({
     if (!confirmation) {
       await deleteMembership(membershipId);
       reloadGroups();
+
       return;
     }
 

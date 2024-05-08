@@ -138,6 +138,7 @@ export function formatNumber(
       return formatted;
     } catch (e) {
       console.warn("Error formatting number", e);
+
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
       return FIXED_NUMBER_FORMATTER(
@@ -161,6 +162,7 @@ export function formatChangeWithSign(
 
 export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   options = { ...getDefaultNumberOptions(options), ...options };
+
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
@@ -215,6 +217,7 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       minimumFractionDigits: 1,
     });
   }
+
   return formatNumberCompactWithoutOptions(value);
 }
 
@@ -260,6 +263,7 @@ function formatNumberScientific(
   );
   if (options.jsx) {
     const [m, n] = exp.split("e");
+
     return (
       <span>
         {m}×10<sup>{n.replace(/^\+/, "")}</sup>

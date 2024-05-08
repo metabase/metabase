@@ -13,6 +13,7 @@ export function adhocQuestionHash(question) {
     // without "locking" the display, the QB will run its picking logic and override the setting
     question = Object.assign({}, question, { displayIsLocked: true });
   }
+
   return btoa(decodeURIComponent(encodeURIComponent(JSON.stringify(question))));
 }
 
@@ -55,6 +56,7 @@ export function startNewNativeQuestion(alias = "editor") {
   const hash = adhocQuestionHash(newNativeQuestionQuery);
 
   cy.visit("/question#" + hash);
+
   return cy.get(".ace_content").as(alias).should("be.visible");
 }
 

@@ -9,6 +9,7 @@ import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";
 function findDateColumn(query: Lib.Query) {
   const columns = Lib.filterableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
+
   return findColumn("ORDERS", "CREATED_AT");
 }
 
@@ -27,6 +28,7 @@ function createQueryWithFilter(
   const query = Lib.filter(initialQuery, 0, clause);
   const [filter] = Lib.filters(query, 0);
   const column = Lib.filterParts(query, 0, filter)?.column;
+
   return { query, column, filter };
 }
 
@@ -59,6 +61,7 @@ function setup({
 
   const getNextFilterParts = () => {
     const [nextFilter] = onChange.mock.lastCall;
+
     return nextFilter ? Lib.filterParts(query, 0, nextFilter) : null;
   };
 

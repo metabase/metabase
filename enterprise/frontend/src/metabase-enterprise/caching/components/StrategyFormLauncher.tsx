@@ -58,6 +58,7 @@ export const StrategyFormLauncher = ({
         rootStrategy,
       )})`
     : t`Edit policy for database '${title}' (currently: ${shortStrategyLabel})`;
+
   return (
     <Flex
       w="100%"

@@ -34,6 +34,7 @@ function setup({ query }: SetupOpts) {
 
   const getNextQuery = () => {
     const [nextQuery] = onSubmit.mock.lastCall;
+
     return nextQuery;
   };
 

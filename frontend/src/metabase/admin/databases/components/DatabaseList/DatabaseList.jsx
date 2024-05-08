@@ -108,6 +108,7 @@ export default class DatabaseList extends Component {
                   databases.map(database => {
                     const isDeleting =
                       this.props.deletes.indexOf(database.id) !== -1;
+
                     return (
                       <tr
                         key={database.id}

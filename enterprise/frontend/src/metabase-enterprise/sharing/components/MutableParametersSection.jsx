@@ -24,6 +24,7 @@ function MutableParametersSection({
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
+
     return map;
   }, {});
 

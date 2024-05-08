@@ -418,6 +418,7 @@ export class UnconnectedDataSelector extends Component {
 
   hasDatasets = () => {
     const { search, loaded } = this.props;
+
     return loaded && search?.length > 0;
   };
 
@@ -505,6 +506,7 @@ export class UnconnectedDataSelector extends Component {
   getNextStep() {
     const { steps } = this.props;
     const index = steps.indexOf(this.state.activeStep);
+
     return index < steps.length - 1 ? steps[index + 1] : null;
   }
 
@@ -518,6 +520,7 @@ export class UnconnectedDataSelector extends Component {
     let index = steps.indexOf(activeStep);
     if (index === -1) {
       console.error(`Step ${activeStep} not found in ${steps}.`);
+
       return null;
     }
 
@@ -542,6 +545,7 @@ export class UnconnectedDataSelector extends Component {
     if (index < 0) {
       return null;
     }
+
     return steps[index];
   }
 
@@ -595,6 +599,7 @@ export class UnconnectedDataSelector extends Component {
         selectedFieldId: null,
       };
     }
+
     return {};
   }
 
@@ -694,6 +699,7 @@ export class UnconnectedDataSelector extends Component {
   onChangeDataBucket = async selectedDataBucketId => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
       await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+
       return;
     }
     await this.switchToStep(
@@ -712,6 +718,7 @@ export class UnconnectedDataSelector extends Component {
   onChangeDatabase = async database => {
     if (database.is_saved_questions) {
       this.showSavedEntityPicker({ entityType: "question" });
+
       return;
     }
 
@@ -784,6 +791,7 @@ export class UnconnectedDataSelector extends Component {
 
   getTriggerClasses() {
     const { readOnly, triggerClasses } = this.props;
+
     return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
       disabled: readOnly,
     });
@@ -918,6 +926,7 @@ export class UnconnectedDataSelector extends Component {
     if (selectedDataBucketId === DATA_BUCKET.MODELS) {
       return t`Search for a model…`;
     }
+
     return isSavedEntityPickerShown
       ? t`Search for a question…`
       : t`Search for a table…`;
@@ -934,6 +943,7 @@ export class UnconnectedDataSelector extends Component {
     if (!selectedDataBucketId) {
       return ["card", "dataset", "table"];
     }
+
     return {
       [DATA_BUCKET.MODELS]: ["dataset"],
       [DATA_BUCKET.RAW_DATA]: ["table"],
@@ -943,6 +953,7 @@ export class UnconnectedDataSelector extends Component {
 
   hasDataAccess = () => {
     const { hasDataAccess, databases } = this.props;
+
     return hasDataAccess || databases?.length > 0;
   };
 
@@ -1046,6 +1057,7 @@ export class UnconnectedDataSelector extends Component {
         </PopoverWithTrigger>
       );
     }
+
     return this.renderContent();
   }
 }

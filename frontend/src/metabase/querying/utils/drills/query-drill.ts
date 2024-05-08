@@ -24,6 +24,7 @@ export function queryDrill(
 
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
     const newQuery = Lib.drillThru(query, stageIndex, drill, ...args);
+
     return question.setQuery(newQuery);
   };
 

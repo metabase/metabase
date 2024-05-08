@@ -17,6 +17,7 @@ function normalizeArray(array?: ReactNode) {
       array = Children.toArray(array);
     }
   }
+
   return array;
 }
 

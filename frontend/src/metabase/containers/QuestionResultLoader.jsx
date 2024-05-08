@@ -115,6 +115,7 @@ export class QuestionResultLoader extends Component {
   render() {
     const { question, children } = this.props;
     const { results, loading, error } = this.state;
+
     return (
       children &&
       children({

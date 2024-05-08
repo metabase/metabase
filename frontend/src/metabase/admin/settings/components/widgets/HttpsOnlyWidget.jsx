@@ -42,6 +42,7 @@ export default class HttpsOnlyWidget extends Component {
 
   render() {
     const { status } = this.state;
+
     return (
       <div>
         {

@@ -14,6 +14,7 @@ const UncontrolledTemplate: ComponentStory<typeof Input> = args => {
 
 const ControlledTemplate: ComponentStory<typeof Input> = args => {
   const [value, setValue] = useState("");
+
   return (
     <Input
       {...args}

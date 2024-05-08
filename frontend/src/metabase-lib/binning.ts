@@ -39,5 +39,6 @@ export function withDefaultBinning(
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
+
   return defaultBucket ? withBinning(column, defaultBucket) : column;
 }

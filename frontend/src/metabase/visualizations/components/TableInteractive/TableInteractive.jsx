@@ -76,6 +76,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
       rowIndexes.push(rowIndex);
     }
   }
+
   return rowIndexes;
 }
 
@@ -122,6 +123,7 @@ class TableInteractive extends Component {
     ),
     renderTableCellWrapper: children => {
       const hasChildren = children != null && children !== "";
+
       return (
         <div
           className={cx({
@@ -244,6 +246,7 @@ class TableInteractive extends Component {
       "renderTableHeaderWrapper",
       "scrollToColumn",
     ];
+
     // compare specific props and state to determine if we should re-render
     return (
       !_.isEqual(
@@ -327,6 +330,7 @@ class TableInteractive extends Component {
               !this.columnHasResized[index]
             ) {
               this.columnHasResized[index] = true;
+
               return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
             } else if (this.state.columnWidths[index]) {
               return this.state.columnWidths[index];
@@ -670,11 +674,13 @@ class TableInteractive extends Component {
         }
       }
     }
+
     return dragColNewIndex;
   }
 
   getColumnPositions = () => {
     let left = this.state.showDetailShortcut ? SIDEBAR_WIDTH : 0;
+
     return this.props.data.cols.map((col, index) => {
       const width = this.getColumnWidth({ index });
       const pos = {
@@ -684,6 +690,7 @@ class TableInteractive extends Component {
         width,
       };
       left += width;
+
       return pos;
     });
   };
@@ -697,9 +704,11 @@ class TableInteractive extends Component {
     const lefts = indexes.map(index => {
       const thisLeft = left;
       left += columnPositions[index].width;
+
       return { index, left: thisLeft };
     });
     lefts.sort((a, b) => a.index - b.index);
+
     return lefts.map(p => p.left);
   };
 
@@ -708,6 +717,7 @@ class TableInteractive extends Component {
     if (dragColNewIndex != null && dragColNewLefts) {
       return dragColNewLefts[index];
     }
+
     return style.left;
   }
 
@@ -940,6 +950,7 @@ class TableInteractive extends Component {
       prevState => {
         const columnIsExpanded = prevState.columnIsExpanded.slice();
         columnIsExpanded[index] = true;
+
         return { columnIsExpanded };
       },
       () => this.recomputeGridSize(),
@@ -986,6 +997,7 @@ class TableInteractive extends Component {
       hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
       hoverDetailEl.dataset.showDetailRowindex = newIndex;
       hoverDetailEl.onclick = this.pkClick(newIndex);
+
       return;
     }
 
@@ -1039,6 +1051,7 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
+
             return (
               <TableInteractiveRoot
                 className={cx(
@@ -1152,6 +1165,7 @@ class TableInteractive extends Component {
                   scrollTop={scrollTop}
                   onScroll={({ scrollLeft, scrollTop }) => {
                     this.props.onActionDismissal();
+
                     return onScroll({ scrollLeft, scrollTop });
                   }}
                   {...mainGridProps}

@@ -69,6 +69,7 @@ const Groups = createEntity({
       const members = state[group_id]?.members;
       if (members) {
         const updatedMembers = [...members, membership];
+
         return assocIn(state, [group_id, "members"], updatedMembers);
       } else {
         return state;
@@ -91,6 +92,7 @@ const Groups = createEntity({
 
     if (type === CLEAR_MEMBERSHIPS && !error) {
       const { groupId } = payload;
+
       return assocIn(state, [groupId, "members"], []);
     }
 

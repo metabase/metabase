@@ -41,6 +41,7 @@ export class FilterWidgetList extends Component {
 
   render() {
     const { query, filters } = this.props;
+
     return (
       <div
         className={cx(

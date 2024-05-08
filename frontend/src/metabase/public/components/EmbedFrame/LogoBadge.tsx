@@ -19,6 +19,7 @@ function LogoBadge({
       Metabase
     </MetabaseName>
   );
+
   return (
     <MetabaseLink
       href="https://metabase.com/"

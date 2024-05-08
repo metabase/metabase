@@ -119,6 +119,7 @@ const SortPopover = ({
       const columnInfo = Lib.displayInfo(query, stageIndex, column);
       const isAlreadyUsed = columnInfo.orderByPosition != null;
       const isSelected = checkColumnSelected(columnInfo, orderByIndex);
+
       return isSelected || !isAlreadyUsed;
     });
 
@@ -165,6 +166,7 @@ function SortDisplayName({
   onToggleSortDirection,
 }: SortDisplayNameProps) {
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
+
   return (
     <SortDirectionButton
       aria-label={t`Change direction`}

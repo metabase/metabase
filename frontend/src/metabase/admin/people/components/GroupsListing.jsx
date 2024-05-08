@@ -35,6 +35,7 @@ import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
   const textIsValid = text?.trim().length;
+
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
@@ -151,6 +152,7 @@ function EditingGroupRow({
   onDoneClicked,
 }) {
   const textIsValid = group.name && group.name.length;
+
   return (
     <tr className={cx(CS.bordered, CS.borderBrand, CS.rounded)}>
       <td>
@@ -245,6 +247,7 @@ const ApiKeyCount = ({ apiKeys }) => {
   if (!apiKeys?.length) {
     return null;
   }
+
   return (
     <span className={CS.textLight}>
       {apiKeys.length === 1

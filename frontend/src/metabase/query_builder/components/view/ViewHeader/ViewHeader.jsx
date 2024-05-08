@@ -242,6 +242,7 @@ function SavedQuestionLeftSide(props) {
         setShowSubHeader(false);
       }
     }, 4000);
+
     return () => clearTimeout(timerId);
   }, [isAdditionalInfoVisible, renderDataSource, renderLastEdit]);
 
@@ -357,6 +358,7 @@ DatasetCollectionBadge.propTypes = {
 
 function DatasetCollectionBadge({ dataset }) {
   const { collection } = dataset.card();
+
   return (
     <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
       {collection?.name || t`Our analytics`}

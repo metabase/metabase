@@ -44,12 +44,14 @@ class Metric {
   /** Underlying filter clauses for this metric */
   filters(): Filter[] {
     const query = this.definitionQuery();
+
     return query ? query.filters() : [];
   }
 
   /** Underlying aggregation clause for this metric */
   aggregation() {
     const query = this.definitionQuery();
+
     return query?.aggregations()[0];
   }
 

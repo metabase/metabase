@@ -116,6 +116,7 @@ const Questions = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Questions.selectors.getEntityIds(state, { entityQuery }) ?? [];
+
       return entityIds.map(entityId =>
         Questions.selectors.getObjectUnfiltered(state, { entityId }),
       );
@@ -142,6 +143,7 @@ const Questions = createEntity({
         }));
       }
     }
+
     return state;
   },
 
@@ -167,6 +169,7 @@ const Questions = createEntity({
 
   getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
+
     return type && `collection=${type}`;
   },
 });
@@ -203,6 +206,7 @@ export function getIcon(card) {
   const visualization = require("metabase/visualizations").default.get(
     card.display,
   );
+
   return {
     name: visualization?.iconName ?? "beaker",
   };

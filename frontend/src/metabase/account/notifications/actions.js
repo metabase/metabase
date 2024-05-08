@@ -8,6 +8,7 @@ export const navigateToUnsubscribe = (item, type) => {
 
 export const navigateToArchive = (item, type, hasUnsubscribed) => {
   const query = hasUnsubscribed ? "?unsubscribed=true" : "";
+
   return push(`${PREFIX}/${type}/${item.id}/archive${query}`);
 };
 

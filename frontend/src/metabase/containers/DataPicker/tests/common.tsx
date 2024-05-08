@@ -148,6 +148,7 @@ function DataPickerWrapper({
   onChange: (value: DataPickerValue) => void;
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
+
   return (
     <DataPicker.Provider>
       <DataPickerSearchInput />

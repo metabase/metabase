@@ -23,6 +23,7 @@ function escapeString(string: string) {
     }
     str += ch;
   }
+
   return str;
 }
 
@@ -38,6 +39,7 @@ export function unescapeString(string: string) {
       str += ch1;
     }
   }
+
   return str;
 }
 
@@ -55,6 +57,7 @@ export function formatIdentifier(
   ) {
     return name;
   }
+
   return quoteString(name, quotes.identifierQuoteDefault);
 }
 
@@ -105,6 +108,7 @@ export function parseSegment(
 
   const column = Lib.fieldableColumns(query, stageIndex).find(field => {
     const displayInfo = Lib.displayInfo(query, stageIndex, field);
+
     return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
   });
 
@@ -237,6 +241,7 @@ export function quoteString(string: string, quote: string) {
         str += sub ? sub : ch;
       }
     }
+
     return quote + str + quote;
   } else if (quote === "[") {
     return "[" + escapeString(string) + "]";
@@ -265,6 +270,7 @@ export function unquoteString(string: string) {
       }
       str += ch;
     }
+
     return str;
   } else if (quote === "[") {
     return unescapeString(string).slice(1, -1);

@@ -18,6 +18,7 @@ const maybeSerializeError = (key: string, value: any) => {
       cause: value.cause,
     };
   }
+
   return value;
 };
 

@@ -506,6 +506,7 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   await userEvent.click(actionsMenu);
   const popover = await screen.findByRole("dialog");
   const action = within(popover).queryByText(name);
+
   return action;
 }
 

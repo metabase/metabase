@@ -19,6 +19,7 @@ export class QueryDefinitionTooltip extends Component {
 
   render() {
     const { type, object } = this.props;
+
     return (
       <div className={CS.p2} style={{ width: 250 }}>
         <div>

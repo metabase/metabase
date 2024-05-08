@@ -19,6 +19,7 @@ export function fillParametersInText({
 
       if (parameter) {
         const parameterValue = parameterValues[parameter.id];
+
         return {
           ...acc,
           [tagId]: { ...parameter, value: parameterValue },

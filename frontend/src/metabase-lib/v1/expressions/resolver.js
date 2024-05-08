@@ -37,6 +37,7 @@ function findMBQL(op) {
       clause = MBQL_CLAUSES[alt];
     }
   }
+
   return clause;
 }
 
@@ -68,6 +69,7 @@ const isCompatible = (a, b) => {
   if (a === "number" && b === "aggregation") {
     return true;
   }
+
   return false;
 };
 
@@ -104,6 +106,7 @@ export function resolve({
           throw err;
         }
       }
+
       return [kind, name];
     }
 
@@ -145,6 +148,7 @@ export function resolve({
         const resolvedOptions = {
           default: resolve({ expression: options.default, type, fn, database }),
         };
+
         return [op, resolvedPairs, resolvedOptions];
       }
 
@@ -210,8 +214,10 @@ export function resolve({
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
+
       return resolve({ expression: operand, type: args[i], fn, database });
     });
+
     return [op, ...resolvedOperands];
   } else if (
     !isCompatible(
@@ -223,5 +229,6 @@ export function resolve({
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );
   }
+
   return expression;
 }

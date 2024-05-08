@@ -61,6 +61,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   const handleSubmit = useCallback(
     values => {
       const { [FAKE_ACS_URL_KEY]: _, ...realValues } = values;
+
       return onSubmit({ ...realValues, "saml-enabled": true });
     },
     [onSubmit],

@@ -48,6 +48,7 @@ class DebouncedFrame extends Component {
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (!nextProps.enabled) {
       this._updateTransitionStyle();
+
       return;
     }
     if (
@@ -87,6 +88,7 @@ class DebouncedFrame extends Component {
       enabled && this.state.width != null && this.state.height != null
         ? this.state
         : this.props;
+
     return (
       <div
         ref={r => (this._container = r)}

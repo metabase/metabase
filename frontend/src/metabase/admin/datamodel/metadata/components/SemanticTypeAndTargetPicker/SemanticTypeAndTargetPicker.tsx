@@ -220,6 +220,7 @@ const getTypeOptionSection = (option: TypeOption) => {
 
 const hasMultipleSchemas = (field: Field[]) => {
   const schemas = new Set(field.map(field => field.table?.schema));
+
   return schemas.size > 1;
 };
 

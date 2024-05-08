@@ -87,6 +87,7 @@ export class AdHocQuestionLoader extends Component {
         question: null,
         card: null,
       });
+
       return;
     }
     try {
@@ -116,6 +117,7 @@ export class AdHocQuestionLoader extends Component {
   render() {
     const { children } = this.props;
     const { question, loading, error } = this.state;
+
     // call the child function with our loaded question
     return children && children({ question, loading, error });
   }

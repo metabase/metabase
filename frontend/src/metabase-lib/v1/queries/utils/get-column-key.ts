@@ -21,6 +21,7 @@ export const getColumnKey = (
 
   if (!isValidDimensionReference(fieldRef)) {
     console.warn("Unknown field_ref", fieldRef);
+
     return JSON.stringify(fieldRef);
   }
 

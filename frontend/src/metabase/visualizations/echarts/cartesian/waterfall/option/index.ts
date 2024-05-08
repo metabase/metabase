@@ -83,6 +83,7 @@ const computeWaterfallBarWidth = (
       CHART_STYLE.series.barWidth
     );
   }
+
   return computeContinuousScaleBarWidth(
     chartModel.xAxisModel,
     boundaryWidth,

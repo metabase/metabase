@@ -22,6 +22,7 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     if (timeout) {
       timeoutId = setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
     }
+
     return { ...undo, id, _domId: id, icon, canDismiss, timeoutId };
   };
 });
@@ -42,6 +43,7 @@ export const dismissUndo = createThunkAction(
       if (track) {
         MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
       }
+
       return undoId;
     };
   },
@@ -66,6 +68,7 @@ export default function (state = [], { type, payload, error }) {
   if (type === ADD_UNDO) {
     if (error) {
       console.warn("ADD_UNDO", payload);
+
       return state;
     }
 
@@ -104,15 +107,19 @@ export default function (state = [], { type, payload, error }) {
     clearTimeoutForUndo(dismissedUndo);
     if (error) {
       console.warn("DISMISS_UNDO", payload);
+
       return state;
     }
+
     return state.filter(undo => undo.id !== payload);
   } else if (type === DISMISS_ALL_UNDO) {
     for (const undo of state) {
       clearTimeoutForUndo(undo);
     }
+
     return [];
   }
+
   return state;
 }
 

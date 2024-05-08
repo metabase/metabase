@@ -144,6 +144,7 @@ function DashCardInner({
     if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
+
     return [mainCard];
   }, [mainCard, dashcard]);
 
@@ -184,6 +185,7 @@ function DashCardInner({
     if (isLoading && series.some(s => s.isSlow)) {
       isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
     }
+
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 

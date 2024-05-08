@@ -16,6 +16,7 @@ const { ICON_SIZE } = DashCardActionButton;
 
 function getSeriesIconName(series: Series) {
   const display = series[0]?.card.display;
+
   return (
     visualizations.get(display === "scalar" ? "bar" : display)?.iconName ??
     "bar"

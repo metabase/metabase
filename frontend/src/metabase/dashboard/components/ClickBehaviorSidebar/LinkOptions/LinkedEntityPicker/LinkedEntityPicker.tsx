@@ -71,6 +71,7 @@ function PickerControl({
     if (hasSelectedTarget) {
       return <Entity.Name id={clickBehavior.targetId} />;
     }
+
     return getPickerButtonLabel();
   }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
 
@@ -108,6 +109,7 @@ function TargetClickMappings({
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDashboard ? Dashboards : Questions;
+
   return (
     <Entity.Loader id={clickBehavior.targetId}>
       {({ object }: { object: Question | Dashboard }) => (

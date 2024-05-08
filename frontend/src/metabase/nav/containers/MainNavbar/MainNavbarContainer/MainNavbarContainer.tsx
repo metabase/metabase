@@ -112,6 +112,7 @@ function MainNavbarContainer({
         icon: getCollectionIcon(rootCollection),
         children: [],
       };
+
       return [root, ...tree];
     } else {
       return tree;
@@ -149,6 +150,7 @@ function MainNavbarContainer({
         />
       );
     }
+
     return null;
   }, [modal, closeModal, onChangeLocation]);
 

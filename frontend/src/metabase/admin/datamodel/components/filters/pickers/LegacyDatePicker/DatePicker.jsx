@@ -110,6 +110,7 @@ class CurrentPicker extends Component {
       filter: [operator, field, intervals, unit],
       onFilterChange,
     } = this.props;
+
     return (
       <DateUnitSelector
         className={className}
@@ -138,6 +139,7 @@ const getDate = value => {
   if (typeof value !== "string" || !moment(value).isValid()) {
     value = moment().format("YYYY-MM-DD");
   }
+
   return value;
 };
 
@@ -157,6 +159,7 @@ function getDateTimeField(field, bucketing) {
       return dimension.withoutTemporalBucketing().mbql();
     }
   }
+
   return field;
 }
 
@@ -176,6 +179,7 @@ function getDateTimeFieldAndValues(filter, count) {
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
+
   return [field, ...values];
 }
 

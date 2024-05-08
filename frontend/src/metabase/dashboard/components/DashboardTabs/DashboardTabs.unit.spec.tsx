@@ -75,6 +75,7 @@ function setup({
       withRouter: true,
     },
   );
+
   return {
     getDashcards: () =>
       Object.values((store.getState() as unknown as State).dashboard.dashcards),
@@ -83,12 +84,14 @@ function setup({
 
 function queryTab(numOrName: number | string) {
   const name = typeof numOrName === "string" ? numOrName : `Tab ${numOrName}`;
+
   return screen.queryByRole("tab", { name, hidden: true });
 }
 
 async function selectTab(num: number) {
   const selectedTab = queryTab(num) as HTMLElement;
   await userEvent.click(selectedTab);
+
   return selectedTab;
 }
 

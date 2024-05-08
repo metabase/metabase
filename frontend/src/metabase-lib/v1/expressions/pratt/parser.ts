@@ -299,6 +299,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
     }
     errors.push(err);
   }
+
   return { root, errors };
 }
 
@@ -337,6 +338,7 @@ function place(node: Node, errors: CompileError[], opts: ParserOptions) {
   assert(parent, "Tried to place a node without a parent", node);
   parent.children.push(node);
   hooks.onPlaceNode?.(node, parent);
+
   return parent;
 }
 
@@ -358,5 +360,6 @@ function getASType(type: NodeType, parentType: NodeType) {
       return ARG_LIST;
     }
   }
+
   return type;
 }

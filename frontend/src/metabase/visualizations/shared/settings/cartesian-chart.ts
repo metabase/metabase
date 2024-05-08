@@ -36,6 +36,7 @@ export const isStackingValueValid = (
   const stackableDisplays = seriesDisplays.filter(display =>
     STACKABLE_DISPLAY_TYPES.has(display),
   );
+
   return stackableDisplays.length > 1;
 };
 
@@ -69,6 +70,7 @@ export const getDefaultStackDisplayValue = (
   if (STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
     return cardDisplay;
   }
+
   return "bar";
 };
 
@@ -128,6 +130,7 @@ export const getSeriesOrderVisibilitySettings = (
 
 export const getDefaultYAxisTitle = (metricNames: string[]) => {
   const metricsCount = new Set(metricNames).size;
+
   return metricsCount === 1 ? metricNames[0] : null;
 };
 
@@ -199,6 +202,7 @@ export const getDefaultXAxisScale = (
   if (vizSettings["graph.x_axis._is_numeric"]) {
     return "linear";
   }
+
   return "ordinal";
 };
 
@@ -218,6 +222,7 @@ export const isXAxisScaleValid = (
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
+
   return (
     !isWaterfall ||
     xAxisScale == null ||
@@ -277,6 +282,7 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
       card: { display },
     },
   ] = series;
+
   return getDefaultDimensionsAndMetrics(
     series,
     getMaxDimensionsSupported(display),

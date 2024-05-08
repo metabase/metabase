@@ -37,6 +37,7 @@ export const BehaviorOption = ({
   disabled,
 }: BehaviorOptionProps) => {
   const behaviorOptionName = useClickBehaviorOptionName(value, dashcard);
+
   return (
     <SidebarItem.Selectable
       isSelected={selected}

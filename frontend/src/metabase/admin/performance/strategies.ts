@@ -81,6 +81,7 @@ export const strategyValidationSchema = Yup.object().test(
     const schema = Strategies[type].validateWith;
     try {
       schema.validateSync(value);
+
       return true;
     } catch (error: unknown) {
       if (error instanceof Yup.ValidationError) {
@@ -90,6 +91,7 @@ export const strategyValidationSchema = Yup.object().test(
         });
       } else {
         console.error("Unhandled error:", error);
+
         return false;
       }
     }
@@ -136,6 +138,7 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
   const mainLabel = type.shortLabel ?? type.label;
   if (strategy.type === "schedule") {
     const frequency = getFrequencyFromCron(strategy.schedule);
+
     return `${mainLabel}: ${frequency}`;
   } else {
     return mainLabel;
@@ -148,6 +151,7 @@ export const getFieldsForStrategyType = (strategyType: StrategyType) => {
     strategy.validateWith.describe() as SchemaObjectDescription;
   const fieldRecord = validationSchemaDescription.fields;
   const fields = Object.keys(fieldRecord);
+
   return fields;
 };
 
@@ -176,6 +180,7 @@ export const translateConfig = (
       delete translated.strategy.min_duration_seconds;
     }
   }
+
   return translated;
 };
 

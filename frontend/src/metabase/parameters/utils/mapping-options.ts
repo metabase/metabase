@@ -131,6 +131,7 @@ export function getParameterMappingOptions(
     ["heading", "text"].includes(card.display)
   ) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
+
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 

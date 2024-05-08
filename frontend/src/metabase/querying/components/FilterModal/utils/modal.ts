@@ -10,5 +10,6 @@ export function getModalTitle(groupItems: GroupItem[]) {
 
 export function getModalWidth(groupItems: GroupItem[]) {
   const maxWidth = groupItems.length > 1 ? "70rem" : "55rem";
+
   return `min(98vw, ${maxWidth})`;
 }

@@ -17,6 +17,7 @@ export const generatePassword = complexity => {
     password = passwordGenerator(len, false, /[\w\d\?\-]/);
     tries++;
   }
+
   return password;
 
   function isStrongEnough(password) {

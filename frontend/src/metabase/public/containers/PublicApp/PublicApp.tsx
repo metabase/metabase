@@ -25,6 +25,7 @@ function PublicApp({ errorPage, children }: Props) {
   if (errorPage) {
     return errorPage.status === 404 ? <PublicNotFound /> : <PublicError />;
   }
+
   return children;
 }
 

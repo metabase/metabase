@@ -185,6 +185,7 @@ export const getLabelsStaticFormatter = (
 export const getColumnValueStaticFormatter = () => {
   return (value: RowValue, column: DatasetColumn) => {
     const valueToFormat = getRemappedValue(value, column);
+
     return String(formatStaticValue(valueToFormat, { column }));
   };
 };

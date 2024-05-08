@@ -364,5 +364,6 @@ function urlSearchParamsToObject(
     const value = searchParams.getAll(key);
     object[key] = value.length > 1 ? value : value[0];
   }
+
   return object;
 }

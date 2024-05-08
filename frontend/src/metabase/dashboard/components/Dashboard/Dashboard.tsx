@@ -254,6 +254,7 @@ function DashboardInner(props: DashboardProps) {
     if (!selectedTabId) {
       return dashboard.dashcards;
     }
+
     return dashboard.dashcards.filter(
       dc => dc.dashboard_tab_id === selectedTabId,
     );
@@ -331,6 +332,7 @@ function DashboardInner(props: DashboardProps) {
 
       if (!isSuccessfulFetchDashboardResult(result)) {
         setErrorPage(result.payload);
+
         return;
       }
 
@@ -374,11 +376,13 @@ function DashboardInner(props: DashboardProps) {
       handleLoadDashboard(dashboardId).then(() => {
         setIsInitialized(true);
       });
+
       return;
     }
     if (previousTabId !== selectedTabId) {
       fetchDashboardCardData();
       fetchDashboardCardMetadata();
+
       return;
     }
     const didDashboardLoad = !previousDashboard && dashboard;
@@ -451,6 +455,7 @@ function DashboardInner(props: DashboardProps) {
         />
       );
     }
+
     return (
       <DashboardGridConnected
         {...props}
@@ -594,6 +599,7 @@ function isSuccessfulFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is SuccessfulFetchDashboardResult {
   const hasError = "error" in result;
+
   return !hasError;
 }
 

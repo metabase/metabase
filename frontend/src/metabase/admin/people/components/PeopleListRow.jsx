@@ -37,6 +37,7 @@ const PeopleListRow = ({
     () =>
       userMemberships?.reduce((acc, membership) => {
         acc.set(membership.group_id, membership);
+
         return acc;
       }, new Map()),
     [userMemberships],

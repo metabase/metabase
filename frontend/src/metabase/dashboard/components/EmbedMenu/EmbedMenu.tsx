@@ -24,5 +24,6 @@ export const EmbedMenu = (props: EmbedMenuProps) => {
   if (isAdmin) {
     return <AdminEmbedMenu {...props} />;
   }
+
   return <NonAdminEmbedMenu {...props} />;
 };

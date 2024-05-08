@@ -11,6 +11,7 @@ describe("useSelector", () => {
   it("should allow access to redux store", () => {
     const Component = () => {
       const email = useSelector(state => state.currentUser?.email);
+
       return <>{email || "No email found"}</>;
     };
 
@@ -34,6 +35,7 @@ describe("useDispatch", () => {
       const Component = () => {
         const dispatch = useDispatch();
         dispatch(thunk());
+
         return <></>;
       };
 

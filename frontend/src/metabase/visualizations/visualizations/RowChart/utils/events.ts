@@ -122,6 +122,7 @@ const getColumnsData = (
   );
 
   data.push(...getColumnData(otherColumnsDescriptiors, datum));
+
   return data;
 };
 
@@ -199,6 +200,7 @@ const getBreakoutsTooltipRows = <TDatum>(
 ): TooltipRowModel[] =>
   multipleSeries.map(series => {
     const value = series.xAccessor(bar.datum);
+
     return {
       name: series.seriesName,
       color: seriesColors[series.seriesKey],

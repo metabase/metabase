@@ -27,6 +27,7 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   const column = {
     base_type: inferredType,
   };
+
   return formatValue(value, {
     column,
     maximumFractionDigits: 20,
@@ -62,6 +63,7 @@ export function formatParameterValue(
       // which parameter the value is associated with, meaning we
       // are unable to remap the value to the correct field
       const remap = fields.length === 1;
+
       return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,

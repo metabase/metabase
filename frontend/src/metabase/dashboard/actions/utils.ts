@@ -29,6 +29,7 @@ export function getExistingDashCards(
       if (tabId != null) {
         return dc.dashboard_tab_id === tabId;
       }
+
       return true;
     });
 }

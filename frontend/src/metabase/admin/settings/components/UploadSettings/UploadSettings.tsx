@@ -124,6 +124,7 @@ export function UploadSettingsView({
 
   const handleEnableUploads = async () => {
     showSaving();
+
     return updateSettings({
       "uploads-enabled": true,
       "uploads-database-id": dbId,
@@ -141,6 +142,7 @@ export function UploadSettingsView({
 
   const handleDisableUploads = () => {
     showSaving();
+
     return updateSettings({
       "uploads-enabled": false,
       "uploads-database-id": null,

@@ -52,6 +52,7 @@ export function NotebookSteps({
     if (!question) {
       return [];
     }
+
     return getQuestionSteps(question, metadata, openSteps);
   }, [metadata, question, openSteps]);
 

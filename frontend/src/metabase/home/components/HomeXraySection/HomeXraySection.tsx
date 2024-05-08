@@ -152,6 +152,7 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
 const getXrayDatabase = (databases: Database[] = []) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
+
   return userDatabase ?? sampleDatabase;
 };
 

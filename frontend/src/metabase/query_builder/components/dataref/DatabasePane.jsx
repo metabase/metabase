@@ -11,6 +11,7 @@ import DatabaseTablesPane from "./DatabaseTablesPane";
 const DatabasePane = ({ database, ...props }) => {
   const Component =
     database.schemas.length > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
+
   return <Component {...props} database={database} />;
 };
 

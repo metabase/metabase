@@ -126,6 +126,7 @@ const getCommonQuestionFields = vizType => ({
 // covers table, bar, line, pie, row, area, combo, pivot, funnel, detail, and waterfall questions
 const createMockChartQuestion = vizType => {
   const question = getCommonQuestionFields(vizType);
+
   return {
     ...question,
     query: {
@@ -147,6 +148,7 @@ const createMockChartQuestion = vizType => {
 // covers scalar, gauge, and progress questions
 const createMockScalarQuestion = vizType => {
   const question = getCommonQuestionFields(vizType);
+
   return {
     ...question,
     display: vizType,
@@ -156,6 +158,7 @@ const createMockScalarQuestion = vizType => {
 // covers map questions
 const createMockMapQuestion = () => {
   const question = getCommonQuestionFields("map");
+
   return {
     ...question,
     query: {

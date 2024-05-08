@@ -19,6 +19,7 @@ class ItemDragSource extends Component {
   }
   render() {
     const { connectDragSource, children, ...props } = this.props;
+
     return connectDragSource(
       // must be a native DOM element or use innerRef which appears to be broken
       // https://github.com/react-dnd/react-dnd/issues/1021

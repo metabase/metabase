@@ -35,6 +35,7 @@ const OPTION_SEGMENTED = {
 
 const getDatabaseViewSandboxModalUrl = (entityId, groupId) => {
   const baseUrl = getDatabaseFocusPermissionsUrl(entityId, groupId);
+
   return `${baseUrl}/segmented/group/${groupId}`;
 };
 
@@ -43,6 +44,7 @@ const getGroupViewSandboxModalUrl = (entityId, groupId) => {
     ...entityId,
     tableId: null,
   });
+
   return `${baseUrl}/${entityId.tableId}/segmented`;
 };
 
@@ -88,6 +90,7 @@ if (hasPremiumFeature("sandboxes")) {
 
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
     const sandboxes = getDraftPolicies(state);
+
     return {
       sandboxes,
     };

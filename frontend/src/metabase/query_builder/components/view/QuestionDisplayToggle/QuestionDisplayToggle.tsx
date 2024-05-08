@@ -20,6 +20,7 @@ const QuestionDisplayToggle = ({
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
   const vizIcon = getIconForVisualizationType(question.display());
+
   return (
     <Well
       className={className}

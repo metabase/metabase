@@ -127,6 +127,7 @@ export class Scalar extends Component {
       cols,
       col => col.name === settings["scalar.field"],
     );
+
     return columnIndex < 0 ? 0 : columnIndex;
   }
 

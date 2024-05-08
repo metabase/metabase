@@ -62,6 +62,7 @@ const SlackChannelField = ({
   };
 
   const applicationName = useSelector(getApplicationName);
+
   return (
     <div>
       <span className={cx(CS.block, CS.textBold, CS.pb2)}>

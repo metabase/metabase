@@ -71,6 +71,7 @@ export class AddSeriesModal extends Component<Props, State> {
       });
 
       MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
+
       return;
     }
 

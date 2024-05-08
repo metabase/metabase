@@ -49,6 +49,7 @@ const GoogleAuthForm = ({
 
   const initialValues = useMemo(() => {
     const values = GOOGLE_SCHEMA.cast(settingValues, { stripUnknown: true });
+
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 

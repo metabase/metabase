@@ -13,6 +13,7 @@ export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent
       return null;
     }
     const level = AUTHORITY_LEVELS[String(collection.authority_level)];
+
     return (
       <Icon
         {...iconProps}

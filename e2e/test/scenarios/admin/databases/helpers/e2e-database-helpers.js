@@ -14,5 +14,6 @@
 export function visitDatabase(id) {
   cy.intercept("GET", `/api/database/${id}`).as("loadDatabase");
   cy.visit(`/admin/databases/${id}`);
+
   return cy.wait("@loadDatabase");
 }

@@ -50,6 +50,7 @@ export function createQuery({
   query = DEFAULT_QUERY,
 }: QueryOpts = {}) {
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
+
   return Lib.fromLegacyQuery(databaseId, metadataProvider, query);
 }
 
@@ -92,6 +93,7 @@ export const findBinningStrategy = (
   if (!bucket) {
     throw new Error(`Could not find binning strategy ${bucketName}`);
   }
+
   return bucket;
 };
 
@@ -111,6 +113,7 @@ export const findTemporalBucket = (
   if (!bucket) {
     throw new Error(`Could not find temporal bucket ${bucketName}`);
   }
+
   return bucket;
 };
 
@@ -126,6 +129,7 @@ export const findAggregationOperator = (
   if (!operator) {
     throw new Error(`Could not find aggregation operator ${operatorShortName}`);
   }
+
   return operator;
 };
 
@@ -138,6 +142,7 @@ export const findSegment = (query: Lib.Query, segmentName: string) => {
   if (!segment) {
     throw new Error(`Could not find segment ${segmentName}`);
   }
+
   return segment;
 };
 
@@ -223,6 +228,7 @@ export function createQueryWithClauses({
       query,
       Lib.breakoutableColumns(query, -1),
     )(breakout.tableName, breakout.columnName);
+
     return Lib.breakout(
       query,
       -1,
@@ -240,6 +246,7 @@ export function createQueryWithClauses({
       orderBy.tableName,
       orderBy.columnName,
     );
+
     return Lib.orderBy(query, -1, orderByColumn, orderBy.direction);
   }, queryWithBreakouts);
 }
@@ -260,6 +267,7 @@ export const queryDrillThru = (
   );
   const drill = drills.find(drill => {
     const drillInfo = Lib.displayInfo(query, stageIndex, drill);
+
     return drillInfo.type === drillType;
   });
 
@@ -278,6 +286,7 @@ export const findDrillThru = (
   }
 
   const drillInfo = Lib.displayInfo(query, stageIndex, drill);
+
   return { drill, drillInfo };
 };
 

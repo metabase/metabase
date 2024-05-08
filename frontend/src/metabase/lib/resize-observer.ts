@@ -28,6 +28,7 @@ function createResizeObserver() {
       if (callbacks.length === 1) {
         observer.unobserve(target);
         callbacksMap.delete(target);
+
         return;
       }
       const cbIndex = callbacks.indexOf(callback);

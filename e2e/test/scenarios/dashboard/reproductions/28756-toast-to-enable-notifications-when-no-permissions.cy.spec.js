@@ -69,6 +69,7 @@ function restrictCollectionForNonAdmins(collectionId) {
         revision,
         groups: _.mapObject(groups, (groupPermissions, groupId) => {
           const permission = groupId === ADMIN_GROUP_ID ? "write" : "none";
+
           return assoc(groupPermissions, collectionId, permission);
         }),
       });

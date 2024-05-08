@@ -12,9 +12,11 @@ export const addScheduleComponents = (
   const segments = str.split(/(?=\{)|(?<=\})/g).filter(part => part.trim());
   const arr = segments.map(segment => {
     const match = segment.match(placeholderRegex);
+
     return match ? components[parseInt(match[1])] : segment;
   });
   const withBlanks = addBlanks(arr);
+
   return withBlanks;
 };
 
@@ -57,11 +59,13 @@ const addBlanks = (arr: ReactNode[]) => {
       }
     }
   }
+
   return <>{result}</>;
 };
 
 export const getLongestSelectLabel = (data: SelectProps["data"]) =>
   data.reduce((acc, option) => {
     const label = typeof option === "string" ? option : option.label || "";
+
     return label.length > acc.length ? label : acc;
   }, "");

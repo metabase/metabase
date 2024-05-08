@@ -208,6 +208,7 @@ export const ErrorDiagnosticModalWrapper = ({
 
   if (error) {
     console.error(error);
+
     return null;
   }
 
@@ -295,6 +296,7 @@ export const KeyboardTriggeredErrorModal = () => {
       }
     };
     window.addEventListener("keydown", keyboardListener);
+
     return () => {
       window.removeEventListener("keydown", keyboardListener);
     };

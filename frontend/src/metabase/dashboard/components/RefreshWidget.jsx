@@ -53,6 +53,7 @@ export class RefreshWidget extends Component {
     const { period, onChangePeriod } = this.props;
     const { elapsed } = this.state;
     const remaining = period - elapsed;
+
     return (
       <PopoverWithTrigger
         ref={this.popover}

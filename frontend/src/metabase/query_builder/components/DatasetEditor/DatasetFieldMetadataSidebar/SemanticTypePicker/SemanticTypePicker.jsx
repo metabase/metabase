@@ -49,11 +49,13 @@ function SemanticTypePicker({
 
   const pickerLabel = useMemo(() => {
     const item = options.find(item => item.id === field.value);
+
     return item?.name ?? t`None`;
   }, [field, options]);
 
   const renderSelectButton = useCallback(() => {
     const icon = getSemanticTypeIcon(field.value, "ellipsis");
+
     return (
       <SelectButon
         hasValue={!!field.value}

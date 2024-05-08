@@ -50,6 +50,7 @@ export const getIsStepActive = (state: State, step: SetupStep): boolean => {
 
 export const getIsStepCompleted = (state: State, step: SetupStep): boolean => {
   const steps = getSteps(state);
+
   return (
     steps.findIndex(s => s.key === step) < steps.findIndex(s => s.isActiveStep)
   );
@@ -116,5 +117,6 @@ export const getSteps = (state: State) => {
 export const getNextStep = (state: State) => {
   const steps = getSteps(state);
   const activeStepIndex = steps.findIndex(step => step.isActiveStep);
+
   return steps[activeStepIndex + 1].key;
 };

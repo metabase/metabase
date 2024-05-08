@@ -44,6 +44,7 @@ export function dataModelDatabase(databaseId: DatabaseId) {
 
 export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
   const databaseUrl = dataModelDatabase(databaseId);
+
   return `${databaseUrl}/schema/${schemaId}`;
 }
 
@@ -53,6 +54,7 @@ export function dataModelTable(
   tableId: TableId,
 ) {
   const schemaUrl = dataModelSchema(databaseId, schemaId);
+
   return `${schemaUrl}/table/${tableId}`;
 }
 
@@ -62,6 +64,7 @@ export function dataModelTableSettings(
   tableId: TableId,
 ) {
   const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+
   return `${tableUrl}/settings`;
 }
 
@@ -72,6 +75,7 @@ export function dataModelField(
   fieldId: FieldId,
 ) {
   const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+
   return `${tableUrl}/field/${fieldId}/general`;
 }
 
@@ -82,5 +86,6 @@ export function dataModelFieldFormatting(
   fieldId: FieldId,
 ) {
   const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+
   return `${tableUrl}/field/${fieldId}/formatting`;
 }

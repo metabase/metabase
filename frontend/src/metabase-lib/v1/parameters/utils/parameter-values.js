@@ -21,6 +21,7 @@ export function getParameterValue({
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
+
   return value ?? (useDefault ? parameter.default : null);
 }
 
@@ -57,6 +58,7 @@ export function getDefaultValuePopulatedParameters(
 ) {
   return parameters.map(parameter => {
     const value = parameterValues?.[parameter.id];
+
     return {
       ...parameter,
       value: value === PULSE_PARAM_USE_DEFAULT ? parameter.default : value,
@@ -133,6 +135,7 @@ export function normalizeParameterValue(type, value) {
 export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
+
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,

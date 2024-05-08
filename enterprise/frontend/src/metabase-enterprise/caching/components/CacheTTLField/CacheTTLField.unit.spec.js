@@ -16,6 +16,7 @@ function setup({ name = "cache_ttl", message, value }) {
     </form>,
   );
   const field = screen.getByLabelText("Label");
+
   return { field, onChange };
 }
 

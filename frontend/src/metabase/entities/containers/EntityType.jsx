@@ -16,6 +16,7 @@ export default () => ComposedComponent => {
           : props.entityType
       ],
   });
+
   return connect(mapStateToProps)(
     class extends Component {
       static displayName = "EntityType";

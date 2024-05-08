@@ -9,6 +9,7 @@ interface ImplicitActionIconProps {
 function ImplicitActionIcon({ size = 14 }: ImplicitActionIconProps) {
   const sizeSmall = size * 0.375;
   const marginLeft = size * 0.75;
+
   return (
     <Root>
       <Icon name="insight" size={sizeSmall} style={{ marginLeft }} />

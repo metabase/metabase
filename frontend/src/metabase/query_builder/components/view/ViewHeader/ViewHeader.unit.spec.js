@@ -93,6 +93,7 @@ function mockSettings({ enableNestedQueries = true } = {}) {
     if (key === "enable-nested-queries") {
       return enableNestedQueries;
     }
+
     return false;
   });
 }

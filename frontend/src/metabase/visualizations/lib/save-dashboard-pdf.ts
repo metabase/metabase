@@ -11,6 +11,7 @@ export const saveDashboardPdf = async (
 
   if (!node || !(node instanceof HTMLElement)) {
     console.warn("No node found for selector", selector);
+
     return;
   }
 

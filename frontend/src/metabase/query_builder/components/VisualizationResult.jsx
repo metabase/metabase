@@ -116,6 +116,7 @@ export default class VisualizationResult extends Component {
       );
       const { isEditable } = Lib.queryDisplayInfo(question.query());
       const hasDrills = isEditable;
+
       return (
         <>
           <Visualization

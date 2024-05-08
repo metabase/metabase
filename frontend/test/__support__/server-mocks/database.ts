@@ -20,6 +20,7 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async url => {
     const call = fetchMock.lastCall(url);
     const body = await call?.request?.json();
+
     return { ...db, ...body };
   });
 }
@@ -56,6 +57,7 @@ export function setupDatabasesEndpoints(
   );
   fetchMock.post("path:/api/database", async url => {
     const lastCall = fetchMock.lastCall(url);
+
     return await lastCall?.request?.json();
   });
 

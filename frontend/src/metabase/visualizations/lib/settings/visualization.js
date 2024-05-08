@@ -57,6 +57,7 @@ function getSettingDefintionsForSeries(series) {
   for (const id in definitions) {
     definitions[id].id = id;
   }
+
   return definitions;
 }
 
@@ -71,6 +72,7 @@ function normalizeColumnSettings(columnSettings) {
         : oldColumnKey;
     newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
   }
+
   return newColumnSettings;
 }
 
@@ -85,6 +87,7 @@ export function getStoredSettingsForSeries(series) {
       normalizeColumnSettings(storedSettings.column_settings),
     );
   }
+
   return storedSettings;
 }
 
@@ -94,6 +97,7 @@ export function getComputedSettingsForSeries(series) {
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
+
   return getComputedSettings(settingsDefs, series, storedSettings);
 }
 
@@ -102,6 +106,7 @@ export function getPersistableDefaultSettingsForSeries(series) {
   // some persistable default settings need other settings as dependency for calculating the default value
   const settingsDefs = getSettingDefintionsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
+
   return getPersistableDefaultSettings(settingsDefs, computedSettings);
 }
 

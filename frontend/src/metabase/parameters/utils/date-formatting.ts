@@ -25,6 +25,7 @@ function getFilterValueSerializer(func: (...args: any[]) => string) {
     const startingFrom = getStartingFrom(filter);
     if (startingFrom) {
       const [value, unit] = getRelativeDatetimeInterval(filter);
+
       return func(value, unit, { startingFrom });
     } else {
       return func(filter[2], filter[3], filter[4] || {});
@@ -39,15 +40,19 @@ const serializersByOperatorName: Record<
   previous: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
+
       return `past${-value}${unit}s-from-${fromValue}${fromUnit}s`;
     }
+
     return `past${-value}${unit}s${options["include-current"] ? "~" : ""}`;
   }),
   next: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
+
       return `next${value}${unit}s-from-${-fromValue}${fromUnit}s`;
     }
+
     return `next${value}${unit}s${options["include-current"] ? "~" : ""}`;
   }),
   current: getFilterValueSerializer((_, unit) => `this${unit}`),
@@ -67,6 +72,7 @@ const serializersByOperatorName: Record<
       .filter(
         ({ test }) => _.find(values, (value: string) => test(value)) != null,
       );
+
     return `exclude-${operator.name}-${options
       .map(({ serialized }) => serialized)
       .join("-")}`;
@@ -110,6 +116,7 @@ export function getFilterTitle(filter: any[]) {
     op && prefixedOperators.has(op.name)
       ? `${op.displayPrefix ?? op.displayName} `
       : "";
+
   return prefix + desc;
 }
 
@@ -118,16 +125,19 @@ export function formatAllOptionsWidget(urlEncoded: string): string | null {
     return null;
   }
   const filter = dateParameterValueToMBQL(urlEncoded, noopRef);
+
   return filter ? getFilterTitle(filter) : null;
 }
 
 function parseDateRangeValue(value: string) {
   const [start, end] = (value || "").split(RANGE_SEPARATOR);
+
   return { start: moment(start, true), end: moment(end, true) };
 }
 
 export function formatRangeWidget(value: string): string | null {
   const { start, end } = parseDateRangeValue(value);
+
   return start.isValid() && end.isValid()
     ? start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY")
     : null;
@@ -135,16 +145,19 @@ export function formatRangeWidget(value: string): string | null {
 
 function formatSingleWidget(value: string): string | null {
   const m = moment(value, true);
+
   return m.isValid() ? m.format("MMMM D, YYYY") : null;
 }
 
 function formatMonthYearWidget(value: string): string | null {
   const m = moment(value, "YYYY-MM", true);
+
   return m.isValid() ? m.format("MMMM YYYY") : null;
 }
 
 function formatQuarterYearWidget(value: string): string | null {
   const m = moment(value, "[Q]Q-YYYY", true);
+
   return m.isValid() ? m.format("[Q]Q YYYY") : null;
 }
 

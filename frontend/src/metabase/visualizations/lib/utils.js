@@ -25,6 +25,7 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   for (const col of data.cols) {
     colsByName[col.name] = col;
   }
+
   return colNames.reduce(
     (acc, name) =>
       acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
@@ -37,6 +38,7 @@ function getComputedSizeProperty(prop, element) {
   const val = document.defaultView
     .getComputedStyle(element, null)
     .getPropertyValue(prop);
+
   return val ? parseFloat(val.replace("px", "")) : 0;
 }
 
@@ -163,6 +165,7 @@ export function getFriendlyName(column) {
       return friendly;
     }
   }
+
   return column.display_name;
 }
 
@@ -176,6 +179,7 @@ export function isSameSeries(seriesA, seriesB) {
       const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
+
       return acc && sameData && sameDisplay && sameVizSettings;
     }, true)
   );
@@ -197,6 +201,7 @@ export function colorShade(hex, shade = 0) {
   ).map(d => parseInt(d, 16));
   const min = Math.min(...components);
   const max = Math.max(...components);
+
   return (
     "#" +
     components
@@ -220,6 +225,7 @@ export function getColumnCardinality(cols, rows, index) {
         .size(),
     );
   }
+
   return cardinalityCache.get(col);
 }
 
@@ -233,6 +239,7 @@ export function getColumnExtent(cols, rows, index) {
       d3.extent(rows, row => row[index]),
     );
   }
+
   return extentCache.get(col);
 }
 
@@ -271,6 +278,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
 
 export function getDefaultDimensionAndMetric(series) {
   const columns = getDefaultDimensionsAndMetrics(series, 1, 1);
+
   return {
     dimension: columns.dimensions[0],
     metric: columns.metrics[0],
@@ -368,6 +376,7 @@ export function computeMaxDecimalsForValues(values, options) {
         maxDecimalCount = decimalCount;
       }
     }
+
     return maxDecimalCount;
   } catch (e) {
     return undefined;

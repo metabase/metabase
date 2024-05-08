@@ -43,12 +43,14 @@ function formatCellValueForSorting(value: RowValue, column: DatasetColumn) {
     if (isID(column) && isPositiveInteger(value)) {
       return parseInt(value, 10);
     }
+
     // for strings we should be case insensitive
     return value.toLowerCase();
   }
   if (value === null) {
     return undefined;
   }
+
   return value;
 }
 
@@ -147,6 +149,7 @@ function TableSimpleInner({
       indexes = _.sortBy(indexes, rowIndex => {
         const value = rows[rowIndex][sortColumn];
         const column = cols[sortColumn];
+
         return formatCellValueForSorting(value, column);
       });
     }
@@ -167,6 +170,7 @@ function TableSimpleInner({
     (col, colIndex: number) => {
       const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
       const onClick = () => setSort(colIndex);
+
       return (
         <th key={colIndex} data-testid="column-header">
           <TableHeaderCellContent
@@ -186,6 +190,7 @@ function TableSimpleInner({
   const renderRow = useCallback(
     (rowIndex: number, index: number) => {
       const ref = index === 0 ? firstRowRef : null;
+
       return (
         <tr key={rowIndex} ref={ref} data-testid="table-row">
           {data.rows[rowIndex].map((value, columnIndex) => (

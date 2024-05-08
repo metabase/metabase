@@ -16,6 +16,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   if (!node || !(node instanceof HTMLElement)) {
     console.warn("No node found for selector", selector);
+
     return;
   }
 

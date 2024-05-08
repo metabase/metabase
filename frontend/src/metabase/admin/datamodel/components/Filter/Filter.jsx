@@ -16,6 +16,7 @@ const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   if (values.length > 1) {
     items.splice(items.length - 1, 0, "and");
   }
+
   return (
     <span>
       {items
@@ -73,6 +74,7 @@ export const SimpleOperatorFilter = ({
         />
       ));
   }
+
   return children({
     field: dimension.displayName(),
     operator: operator && operator.moreVerboseName,
@@ -101,6 +103,7 @@ export const SegmentFilter = ({
   children = DEFAULT_FILTER_RENDERER,
 }) => {
   const segment = metadata.segment(filter[1]);
+
   return children({
     operator: t`Matches`,
     values: segment ? [segment.name] : [],

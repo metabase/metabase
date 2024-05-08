@@ -11,6 +11,7 @@ export const NudgeToPro = () => {
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, { utm_media: "people" }),
   );
+
   return (
     <NudgeCard>
       <Icon name="group" size={40} color={color("brand")} />

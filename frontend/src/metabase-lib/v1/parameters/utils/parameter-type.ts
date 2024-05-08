@@ -11,6 +11,7 @@ export function getParameterType(parameter: Parameter | string) {
 
 export function getParameterSubType(parameter: Parameter) {
   const [, subtype] = splitType(parameter);
+
   return subtype;
 }
 
@@ -24,21 +25,25 @@ function splitType(parameterOrType: Parameter | string) {
 
 export function isIdParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
+
   return type === "id";
 }
 
 export function isDateParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
+
   return type === "date";
 }
 
 export function isNumberParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
+
   return type === "number";
 }
 
 export function isStringParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
+
   return type === "string";
 }
 
@@ -46,5 +51,6 @@ export function isStringParameter(parameter: Parameter) {
 // for parameters without fields
 export function isFieldFilterParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
+
   return FIELD_FILTER_PARAMETER_TYPES.includes(type);
 }

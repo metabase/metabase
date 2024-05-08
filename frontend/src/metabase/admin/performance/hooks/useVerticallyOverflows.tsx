@@ -9,5 +9,6 @@ export const useVerticallyOverflows = () => {
       setVerticallyOverflows(el.scrollHeight > el.clientHeight);
     }
   }, [el?.scrollHeight, el?.clientHeight, el, setVerticallyOverflows]);
+
   return { verticallyOverflows, ref };
 };

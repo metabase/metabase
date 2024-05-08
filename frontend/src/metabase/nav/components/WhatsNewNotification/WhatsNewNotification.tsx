@@ -51,6 +51,7 @@ export function WhatsNewNotification() {
   if (!url) {
     return null;
   }
+
   return (
     <Paper my="lg" mx="auto" p="md" shadow="md" withBorder w={244}>
       <Stack spacing="sm">

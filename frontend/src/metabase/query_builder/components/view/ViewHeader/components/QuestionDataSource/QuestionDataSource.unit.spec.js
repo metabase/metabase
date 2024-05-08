@@ -252,6 +252,7 @@ function setup({
       />
     </ErrorBoundary>,
   );
+
   return { onError, question };
 }
 

@@ -40,6 +40,7 @@ export const setupCollectionPermissionsGraphEndpoint = (
     (url: string, opts: any, req: { body: any }) => {
       const body = JSON.parse(req.body);
       body.revision += 1;
+
       return body;
     },
   );

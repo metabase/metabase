@@ -50,6 +50,7 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
     if (!action) {
       return null;
     }
+
     return (
       <ContentContainer>
         <PublicAction

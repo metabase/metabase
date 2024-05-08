@@ -52,6 +52,7 @@ const DirtyNotifier = ({
   useEffect(() => {
     onIsDirtyChange(dirty);
   }, [dirty, onIsDirtyChange]);
+
   return null;
 };
 

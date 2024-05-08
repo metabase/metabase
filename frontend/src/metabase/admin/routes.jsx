@@ -68,6 +68,7 @@ const UserCanAccessTools = connectedReduxRedirect({
       "persisted-models-enabled",
     );
     const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
+
     return !hasLoadedSettings || isModelPersistenceEnabled;
   },
   redirectAction: routerActions.replace,

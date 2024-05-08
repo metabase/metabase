@@ -43,6 +43,7 @@ export function getTableCellClickedObject(
     // if it's a pivot table, the first column is
     if (columnIndex === 0) {
       const { value, column: col } = row._dimension;
+
       return { value, column: col, settings, data: [{ value, col }] };
     } else {
       return {
@@ -100,5 +101,6 @@ export function isColumnRightAligned(column) {
   if (column && column.remapped_to_column) {
     column = column.remapped_to_column;
   }
+
   return isNumber(column) || isCoordinate(column);
 }

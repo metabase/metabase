@@ -12,6 +12,7 @@ export const useRecentlyTrue = (booleanVariable: boolean, delay = 500) => {
       const timeout = setTimeout(() => {
         setWasRecentlyTrue(false);
       }, delay);
+
       return () => clearTimeout(timeout);
     }
   }, [booleanVariable, wasEverTrue, delay]);

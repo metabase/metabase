@@ -40,6 +40,7 @@ function createQueryWithCountAggregation({
   const initialQuery = createQuery({ metadata });
   const count = findAggregationOperator(initialQuery, "count");
   const clause = Lib.aggregationClause(count);
+
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
@@ -54,6 +55,7 @@ function createQueryWithMaxAggregation({
   );
   const quantity = findColumn("ORDERS", "QUANTITY");
   const clause = Lib.aggregationClause(max, quantity);
+
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
@@ -178,6 +180,7 @@ function setup({
   function getRecentClause(): Lib.Clause {
     expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [clause] = onSelect.mock.lastCall;
+
     return clause;
   }
 

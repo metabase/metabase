@@ -47,6 +47,7 @@ export function getComputedSettings(
       extra,
     );
   }
+
   return computedSettings;
 }
 
@@ -108,6 +109,7 @@ function getComputedSetting(
   } catch (e) {
     console.warn("Error getting setting", settingId, e);
   }
+
   return (computedSettings[settingId] = undefined);
 }
 
@@ -137,6 +139,7 @@ function getSettingWidget(
     extra.transformedSeries = object;
     object = object._raw;
   }
+
   return {
     ...settingDef,
     id: settingId,
@@ -203,6 +206,7 @@ export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];
     }
   }
+
   return persistableDefaultSettings;
 }
 
@@ -220,6 +224,7 @@ export function updateSettings(storedSettings, changedSettings) {
       delete newSettings[key];
     }
   }
+
   return newSettings;
 }
 
@@ -321,6 +326,7 @@ export function getLineAreaBarComparisonSettings(columnSettings) {
     if ((key === "prefix" || key === "suffix") && value === "") {
       return false;
     }
+
     return true;
   });
 }

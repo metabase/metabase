@@ -62,6 +62,7 @@ function getWidgets({
 
 export function hasColumnSettingsWidgets({ value, ...props }) {
   const storedSettings = value || {};
+
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 

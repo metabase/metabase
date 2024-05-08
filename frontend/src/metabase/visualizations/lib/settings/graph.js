@@ -111,6 +111,7 @@ export const GRAPH_DATA_SETTINGS = {
       const options = data.cols
         .filter(vizSettings["graph._dimension_filter"])
         .map(getOptionFromColumn);
+
       return {
         options,
         addAnother:
@@ -147,6 +148,7 @@ export const GRAPH_DATA_SETTINGS = {
 
     getValue: (series, settings) => {
       const seriesKeys = series.map(s => keyForSingleSeries(s));
+
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
     getHidden: (series, settings) => {
@@ -233,6 +235,7 @@ export const GRAPH_BUBBLE_SETTINGS = {
     getDefault: series => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {
       const options = data.cols.filter(isNumeric).map(getOptionFromColumn);
+
       return {
         options,
         onRemove: vizSettings["scatter.bubble"] ? () => onChange(null) : null,
@@ -303,6 +306,7 @@ export const STACKABLE_SETTINGS = {
     },
     getDefault: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
+
       return getDefaultStackDisplayValue(series[0].card.display, displays);
     },
     getHidden: (series, settings) => settings["stackable.stack_type"] == null,
@@ -324,6 +328,7 @@ export const TOOLTIP_SETTINGS = {
       const shouldShowComparisonTooltip =
         settings["stackable.stack_display"] != null &&
         settings["stackable.stack_type"] != null;
+
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
@@ -339,6 +344,7 @@ export const GRAPH_TREND_SETTINGS = {
     default: false,
     getHidden: (series, vizSettings) => {
       const { insights } = series[0].data;
+
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
@@ -465,6 +471,7 @@ export const GRAPH_AXIS_SETTINGS = {
         }
       }
       options.push({ name: t`Ordinal`, value: "ordinal" });
+
       return { options };
     },
   },
@@ -523,10 +530,12 @@ export const GRAPH_AXIS_SETTINGS = {
     inline: true,
     isValid: (series, settings) => {
       const seriesDisplays = getSeriesDisplays(series, settings);
+
       return isYAxisUnpinFromZeroValid(seriesDisplays, settings);
     },
     getHidden: (series, settings) => {
       const seriesDisplays = getSeriesDisplays(series, settings);
+
       return !isYAxisUnpinFromZeroValid(seriesDisplays, settings);
     },
     getDefault: series => {
@@ -618,6 +627,7 @@ export const GRAPH_AXIS_SETTINGS = {
       const [metric] = vizSettings["graph.metrics"];
       const metricNames = series.map(({ data: { cols } }) => {
         const metricCol = cols.find(c => c.name === metric);
+
         return metricCol && metricCol.display_name;
       });
 

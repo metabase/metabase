@@ -41,6 +41,7 @@ const series = ({
     NumberColumn({ name: "Count" }),
     NumberColumn({ name: "Sum" }),
   ];
+
   return [
     {
       card: {

@@ -3,6 +3,7 @@ import Settings from "metabase/lib/settings";
 
 export function getDefaultEngine() {
   const engines = Object.keys(Settings.get("engines"));
+
   return engines.includes("postgres") ? "postgres" : engines[0];
 }
 
@@ -93,6 +94,7 @@ export function formatNativeQuery(query, engine) {
 
 export function isDeprecatedEngine(engine) {
   const engines = Settings.get("engines", {});
+
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
@@ -122,5 +124,6 @@ function formatGAQuery(query) {
       object[param] = query[param];
     }
   }
+
   return JSON.stringify(object, null, 2);
 }

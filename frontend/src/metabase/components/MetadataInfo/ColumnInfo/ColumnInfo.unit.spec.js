@@ -23,6 +23,7 @@ const metadata = getMetadata(state);
 
 function setup(field) {
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
+
   return renderWithProviders(<TableColumnInfo field={field} />, {
     storeInitialState: state,
   });

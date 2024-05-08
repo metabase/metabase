@@ -46,6 +46,7 @@ export function SidebarItem({
   ...props
 }: SidebarItemProps) {
   const Element = as;
+
   return <Element {...props} />;
 }
 

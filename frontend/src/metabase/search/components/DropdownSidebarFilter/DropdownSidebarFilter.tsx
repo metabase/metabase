@@ -58,6 +58,7 @@ export const DropdownSidebarFilter = ({
       handleResize();
     }
     window.addEventListener("resize", handleResize, false);
+
     return () => window.removeEventListener("resize", handleResize, false);
   }, [dropdownRef, popoverWidth]);
 

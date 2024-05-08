@@ -28,6 +28,7 @@ export function shouldShowParameterMapper({
   isEditingParameter?: boolean;
 }) {
   const display = getVirtualCardType(dashcard);
+
   return (
     isEditingParameter &&
     !(display && VIZ_WITH_CUSTOM_MAPPING_UI.includes(display))

@@ -7,6 +7,7 @@ export const entityTypeForModel = model => {
     // handle non-standard plural 🙃
     return "indexedEntities";
   }
+
   return `${model}s`;
 };
 
@@ -15,5 +16,6 @@ export const entityTypeForObject = object =>
 
 export const entityForObject = object => {
   const entities = require("metabase/entities");
+
   return entities[entityTypeForObject(object)];
 };

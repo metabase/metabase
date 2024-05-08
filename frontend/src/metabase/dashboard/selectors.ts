@@ -55,6 +55,7 @@ export const getIsEditing = (state: State) =>
 
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
+
   return isClickBehaviorSidebar(sidebar)
     ? dashcards[sidebar.props?.dashcardId]
     : null;
@@ -125,11 +126,13 @@ export const getDashcards = (state: State) => state.dashboard.dashcards;
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
+
   return dashcards[dashcardId];
 };
 
 export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
   const dashboard = getDashboardBeforeEditing(state);
+
   return dashboard?.dashcards?.find?.(dashcard => dashcard.id === dashcardId);
 }
 
@@ -138,6 +141,7 @@ export const getLoadingDashCards = (state: State) =>
 
 export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
+
   return dashboards[dashboardId];
 };
 
@@ -245,6 +249,7 @@ export const getIsDirty = createSelector(
 
     return dashboard.dashcards.some(id => {
       const dc = dashcards[id];
+
       return (
         !(dc.isAdded && dc.isRemoved) &&
         (dc.isDirty || dc.isAdded || dc.isRemoved)
@@ -270,6 +275,7 @@ export const getEditingParameter = createSelector(
   [getDashboard, getEditingParameterId],
   (dashboard, editingParameterId) => {
     const parameters = dashboard?.parameters || [];
+
     return editingParameterId != null
       ? _.findWhere(parameters, { id: editingParameterId })
       : null;
@@ -294,6 +300,7 @@ export const getParameterTarget = createSelector(
       : { parameter_id: parameter.id };
 
     const mapping = _.findWhere(parameterMappings, lookupProperties);
+
     return mapping?.target;
   },
 );
@@ -399,6 +406,7 @@ export function getEmbeddedParameterVisibility(
   }
 
   const embeddingParams = dashboard.embedding_params ?? {};
+
   return embeddingParams[slug] ?? "disabled";
 }
 
@@ -416,6 +424,7 @@ export const getTabs = createSelector([getDashboard], dashboard => {
   if (!dashboard) {
     return [];
   }
+
   return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
 });
 

@@ -689,6 +689,7 @@ export const getSettingValues = createSelector(getSettings, settings => {
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;
   }
+
   return settingValues;
 });
 
@@ -723,6 +724,7 @@ export const getSections = createSelector(
           const value = setting.showActualValue
             ? derivedSettingValues[setting.key]
             : apiSetting.value;
+
           return {
             placeholder: apiSetting.default,
             ...apiSetting,
@@ -735,6 +737,7 @@ export const getSections = createSelector(
       });
       sectionsWithAPISettings[slug] = { ...section, settings };
     }
+
     return sectionsWithAPISettings;
   },
 );

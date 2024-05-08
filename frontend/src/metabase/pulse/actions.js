@@ -44,6 +44,7 @@ export const setEditingPulse = createThunkAction(
           getPulseFormInput(getState()).channels ||
           (await PulseApi.form_input()).channels;
         const defaultChannelSpec = getDefaultChannel(channels);
+
         return {
           ...NEW_PULSE_TEMPLATE,
           channels: defaultChannelSpec

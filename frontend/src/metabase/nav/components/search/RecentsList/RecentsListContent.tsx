@@ -126,5 +126,6 @@ const isItemLoading = ({ model, model_object }: RecentItem) => {
   if (model !== "table") {
     return false;
   }
+
   return !isSyncCompleted(model_object);
 };

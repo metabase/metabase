@@ -18,6 +18,7 @@ async function setup({
   ...opts
 }: SetupOpts = {}) {
   await baseSetup({ action, ...opts });
+
   return { action };
 }
 

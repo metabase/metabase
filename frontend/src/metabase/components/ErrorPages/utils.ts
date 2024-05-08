@@ -38,11 +38,13 @@ export const getEntityDetails = ({
       if (isAdHoc) {
         try {
           const adhocQuestion = JSON.parse(b64url_to_utf8(id));
+
           return Promise.resolve(adhocQuestion);
         } catch (e) {
           return Promise.resolve("unable to decode ad-hoc question");
         }
       }
+
       return CardApi.get({ cardId: id }).catch(nullOnCatch);
     case "dashboard":
       return DashboardApi.get({ id }).catch(nullOnCatch);

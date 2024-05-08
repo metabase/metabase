@@ -30,6 +30,7 @@ export const DelayedLoadingSpinner = ({
     const timeout = setTimeout(() => {
       setShow(true);
     }, delay);
+
     return () => clearTimeout(timeout);
   });
 

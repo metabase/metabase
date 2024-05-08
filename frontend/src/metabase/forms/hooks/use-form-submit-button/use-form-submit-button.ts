@@ -33,6 +33,7 @@ const useIsRecent = (value: unknown, timeout: number) => {
 
   useEffect(() => {
     const timerId = setTimeout(() => setIsRecent(false), timeout);
+
     return () => clearTimeout(timerId);
   }, [value, timeout]);
 

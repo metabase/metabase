@@ -134,6 +134,7 @@ export function DefaultPicker({
         while ((sourceField = underlyingField?.sourceField())) {
           underlyingField = sourceField;
         }
+
         return (
           <FieldValuesWidget
             key={index}
@@ -180,6 +181,7 @@ export function DefaultPicker({
           />
         );
       }
+
       return null;
     })
     .filter(f => f);

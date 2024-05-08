@@ -34,6 +34,7 @@ export default class Confirm extends Component {
       cancelButtonText,
       triggerClasses,
     } = this.props;
+
     return (
       <ModalWithTrigger
         ref={this.modal}

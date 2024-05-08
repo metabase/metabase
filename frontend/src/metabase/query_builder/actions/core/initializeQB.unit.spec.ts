@@ -102,6 +102,7 @@ function getLocationForCard(
   extra: LocationDescriptorObject = {},
 ): LocationDescriptorObject {
   const isSaved = "id" in card;
+
   return {
     pathname: isSaved ? Urls.question(card) : Urls.serializedQuestion(card),
     hash: !isSaved ? CardLib.serializeCardForUrl(card) : "",
@@ -119,6 +120,7 @@ function getQueryParamsForCard(
     return extra;
   }
   const nameSlug = card.name.toLowerCase().replaceAll(/ /g, "-");
+
   return {
     slug: `${card.id}-${nameSlug}`,
     ...extra,

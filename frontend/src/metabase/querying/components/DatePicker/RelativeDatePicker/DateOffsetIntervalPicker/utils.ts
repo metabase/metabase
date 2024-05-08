@@ -12,6 +12,7 @@ import { getDirection } from "../utils";
 
 export function getDirectionText(value: DateOffsetIntervalValue): string {
   const direction = getDirection(value);
+
   return direction === "last" ? t`Past` : t`Next`;
 }
 
@@ -34,6 +35,7 @@ export function setOffsetInterval(
     return { ...value, offsetValue: 0 };
   } else {
     const sign = Math.sign(value.value);
+
     return { ...value, offsetValue: Math.max(Math.abs(offsetValue), 0) * sign };
   }
 }
@@ -69,5 +71,6 @@ function getOffsetUnitText(
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();
+
   return direction === "last" ? t`${unitText} ago` : t`${unitText} from now`;
 }

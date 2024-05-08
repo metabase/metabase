@@ -131,6 +131,7 @@ class Visualization extends PureComponent {
           ),
       );
     }
+
     return warnings;
   }
 
@@ -259,6 +260,7 @@ class Visualization extends PureComponent {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
       console.warn(e);
+
       return false;
     }
   };
@@ -278,6 +280,7 @@ class Visualization extends PureComponent {
 
     if (typeof handleVisualizationClick === "function") {
       handleVisualizationClick(clicked);
+
       return;
     }
 

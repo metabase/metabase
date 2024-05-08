@@ -42,6 +42,7 @@ function setup({
       />
     </form>,
   );
+
   return { onChange, avgQueryDuration };
 }
 

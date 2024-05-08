@@ -17,6 +17,7 @@ export const AdminPaneTitle = ({
   headingContent,
 }: AdminPaneProps) => {
   const buttonClassName = cx(CS.mlAuto, CS.flexNoShrink);
+
   return (
     <Container>
       <HeadingContainer>

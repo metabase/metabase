@@ -33,6 +33,7 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   }
 
   const [, [type, tag]] = target;
+
   return type === "template-tag" ? tag : null;
 }
 
@@ -55,12 +56,14 @@ export function getParameterTargetField(
       metadata,
       question.legacyQuery() as NativeQuery,
     );
+
     return dimension?.field();
   }
 
   if (isConcreteFieldReference(fieldRef)) {
     const fieldId = fieldRef[1];
     const tableId = Lib.sourceTableOrCardId(query);
+
     return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
   }
 

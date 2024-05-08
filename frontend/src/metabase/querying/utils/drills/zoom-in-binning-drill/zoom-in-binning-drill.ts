@@ -9,6 +9,7 @@ export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   applyDrill,
 }) => {
   const isDashboard = clicked?.extraData?.dashboard != null;
+
   return [
     {
       name: "zoom-in.binning",
@@ -18,6 +19,7 @@ export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
       buttonType: "horizontal",
       question: () => {
         const question = applyDrill(drill);
+
         return isDashboard
           ? question.lockDisplay()
           : question.setDefaultDisplay();

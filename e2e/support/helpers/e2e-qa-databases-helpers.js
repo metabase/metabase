@@ -109,6 +109,7 @@ function recursiveCheck(id, i = 0) {
       "log",
       "The DB sync isn't complete yet, but let's be optimistic about it",
     );
+
     return;
   }
 
@@ -194,6 +195,7 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
       const table = body?.tables?.find(table => table.name === name);
+
       return table ? table.id : null;
     });
 }
@@ -203,6 +205,7 @@ export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
       const table = body?.tables?.find(table => table.name === name);
+
       return table || null;
     });
 }

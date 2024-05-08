@@ -57,6 +57,7 @@ export const useListKeyboardNavigation = <
   useEffect(() => {
     const element = ref?.current ?? window;
     element.addEventListener("keydown", handleKeyDown);
+
     return () => element.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown, ref]);
 

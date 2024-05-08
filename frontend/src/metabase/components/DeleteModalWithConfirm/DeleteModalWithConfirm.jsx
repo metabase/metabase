@@ -42,6 +42,7 @@ export default class DeleteModalWithConfirm extends Component {
       (acc, item, index) => acc && checked[index],
       true,
     );
+
     return (
       <ModalContent title={title} onClose={this.props.onClose}>
         <div>

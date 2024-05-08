@@ -77,6 +77,7 @@ export const BulkMoveModal = ({
     ? (item: CollectionPickerItem) => {
         const collectionItemFullPath =
           item?.location?.split("/").map(String).concat(String(item.id)) ?? [];
+
         return (
           _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
         );

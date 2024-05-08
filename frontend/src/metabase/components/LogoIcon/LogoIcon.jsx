@@ -17,6 +17,7 @@ class DefaultLogoIcon extends Component {
 
   render() {
     const { dark, height, width } = this.props;
+
     return (
       <svg
         className={cx(
@@ -42,5 +43,6 @@ class DefaultLogoIcon extends Component {
 
 export default function LogoIcon(props) {
   const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
+
   return <Component {...props} />;
 }

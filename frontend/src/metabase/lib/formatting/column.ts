@@ -14,6 +14,7 @@ export function formatColumn(column: DatasetColumn): string {
     if (column.unit && column.unit !== "default") {
       columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "));
     }
+
     return columnTitle;
   }
 }

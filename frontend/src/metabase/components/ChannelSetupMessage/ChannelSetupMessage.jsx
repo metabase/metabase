@@ -48,6 +48,7 @@ export default class ChannelSetupMessage extends Component {
         </div>
       );
     }
+
     return content;
   }
 }

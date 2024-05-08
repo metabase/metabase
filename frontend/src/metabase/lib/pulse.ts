@@ -99,6 +99,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
 
   const recipientDomain = getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+
   return (
     _.isEmpty(allowedDomains) ||
     (recipientDomain && allowedDomains.includes(recipientDomain))
@@ -205,8 +206,10 @@ export function getActivePulseParameters(
 ) {
   const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
+
     return map;
   }, {});
+
   return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
     (parameter: any) => parameter.value != null,
   );

@@ -12,6 +12,7 @@ import {
 
 const setup = (databases: Database[]) => {
   const metadata = createMockMetadata({ databases });
+
   return databases.map(({ id }) => checkNotNull(metadata.database(id)));
 };
 

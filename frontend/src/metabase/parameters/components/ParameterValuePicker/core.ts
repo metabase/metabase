@@ -15,6 +15,7 @@ export function shouldUsePlainInput(parameter: Parameter) {
   // allow picking multiple values, so it should eventually take arity into account
   if (isNumberParameter(parameter)) {
     const subtype = getParameterSubType(parameter);
+
     return subtype === "=";
   }
 
@@ -55,6 +56,7 @@ export function getListParameterStaticValues(
   if (isStaticListParam(parameter)) {
     return parameter.values_source_config?.values ?? null;
   }
+
   return null;
 }
 
@@ -71,11 +73,13 @@ export function shouldEnableSearch(
     return true;
   }
   const staticValues = getListParameterStaticValues(parameter);
+
   return !staticValues || staticValues.length > maxCount;
 }
 
 // TODO Change this (metabase#40226)
 export function getSingleStringOrNull(value: unknown): null | string {
   const single = Array.isArray(value) ? value[0] : value;
+
   return single == null ? single : String(single);
 }

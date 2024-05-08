@@ -104,6 +104,7 @@ class FieldRemappingSettings extends Component {
 
     if (fkTargetFields) {
       const nameField = fkTargetFields.find(field => isEntityName(field));
+
       return nameField ? nameField.id : null;
     } else {
       throw new Error(
@@ -204,11 +205,13 @@ class FieldRemappingSettings extends Component {
 
   onUpdateRemappings = remappings => {
     const { field, updateFieldValues } = this.props;
+
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
   getForeignKeys = () => {
     const { field, metadata } = this.props;
+
     return metadata.field(field.id).remappingOptions();
   };
 
@@ -382,6 +385,7 @@ class ValueRemappings extends Component {
       "Data Model",
       "Update Custom Remappings",
     );
+
     // Returns the promise so that ButtonWithStatus can show the saving status
     return this.props.updateRemappings(this.state.editingRemappings);
   };
@@ -443,6 +447,7 @@ class FieldValueMapping extends Component {
 
   render() {
     const { original, mapped } = this.props;
+
     return (
       <div className={cx(CS.flex, CS.alignCenter)}>
         <h3>{original}</h3>

@@ -66,6 +66,7 @@ const shouldRender = ({
   isObjectDetail,
 }: RenderCheckOpts) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+
   return (
     queryBuilderMode === "view" && !isNative && isEditable && !isObjectDetail
   );

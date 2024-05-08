@@ -96,6 +96,7 @@ function getCurrentIntervalName(filter: Filter) {
       filter[3] as keyof typeof CURRENT_INTERVAL_NAME
     ];
   }
+
   return null;
 }
 

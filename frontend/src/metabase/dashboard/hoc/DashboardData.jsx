@@ -66,6 +66,7 @@ export const DashboardData = ComposedComponent =>
 
         if (result.error) {
           setErrorPage(result.payload);
+
           return;
         }
 
@@ -91,6 +92,7 @@ export const DashboardData = ComposedComponent =>
       UNSAFE_componentWillReceiveProps(nextProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
+
           return;
         }
 
@@ -105,18 +107,21 @@ export const DashboardData = ComposedComponent =>
             reload: false,
             clearCache: true,
           });
+
           return;
         }
 
         if (!_.isEqual(nextProps.selectedTabId, this.props.selectedTabId)) {
           this.props.fetchDashboardCardData();
           this.props.fetchDashboardCardMetadata();
+
           return;
         }
       }
 
       render() {
         const { navigateToNewCardFromDashboard, ...props } = this.props;
+
         return (
           <ComposedComponent
             {...props}

@@ -28,6 +28,7 @@ export function getQuestionsImplicitCacheTTL(question) {
   if (checkQuestionWillBeCached(avgQueryDurationInSeconds)) {
     return calcQuestionMagicCacheDuration(avgQueryDurationInSeconds);
   }
+
   return null;
 }
 
@@ -35,11 +36,13 @@ function checkQuestionWillBeCached(avgQueryDurationInSeconds) {
   const minQueryDurationThresholdSeconds = MetabaseSettings.get(
     "query-caching-min-ttl",
   );
+
   return avgQueryDurationInSeconds > minQueryDurationThresholdSeconds;
 }
 
 function calcQuestionMagicCacheDuration(avgQueryDurationInSeconds) {
   const cacheTTLMultiplier = MetabaseSettings.get("query-caching-ttl-ratio");
+
   return avgQueryDurationInSeconds * cacheTTLMultiplier;
 }
 

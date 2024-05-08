@@ -49,6 +49,7 @@ export const getScrollBarSize = _.memoize(() => {
   document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
   document.body.removeChild(scrollableElem);
+
   return diff;
 });
 
@@ -57,9 +58,11 @@ export const getScrollBarSize = _.memoize(() => {
 export const HAS_LOCAL_STORAGE = (function () {
   try {
     window.localStorage; // This will trigger an exception if access is denied.
+
     return true;
   } catch (e) {
     console.warn("localStorage not available:", e);
+
     return false;
   }
 })();
@@ -79,6 +82,7 @@ export function isObscured(element, offset) {
     top: box.y + offset.top,
   };
   const elem = document.elementFromPoint(position.left, position.top);
+
   return !element.contains(elem);
 }
 
@@ -103,6 +107,7 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
       Math.max(elementRect.top, parentRect.top);
     const visiblePercentageX = visiblePixelX / elementRect.width;
     const visiblePercentageY = visiblePixelY / elementRect.height;
+
     return (
       visiblePercentageX + tolerance > percentX &&
       visiblePercentageY + tolerance > percentY
@@ -160,6 +165,7 @@ export function setSelectionPosition(element, [start, end]) {
 
 export function saveSelection(element) {
   const range = getSelectionPosition(element);
+
   return () => setSelectionPosition(element, range);
 }
 
@@ -173,6 +179,7 @@ export function setCaretPosition(element, position) {
 
 export function saveCaretPosition(element) {
   const position = getCaretPosition(element);
+
   return () => setCaretPosition(element, position);
 }
 
@@ -183,12 +190,15 @@ function getTextNodeAtPosition(root, index) {
     elem => {
       if (index > elem.textContent.length) {
         index -= elem.textContent.length;
+
         return NodeFilter.FILTER_REJECT;
       }
+
       return NodeFilter.FILTER_ACCEPT;
     },
   );
   const c = treeWalker.nextNode();
+
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -205,6 +215,7 @@ export function constrainToScreen(element, direction, padding) {
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
+
       return true;
     }
   } else if (direction === "top") {
@@ -213,11 +224,13 @@ export function constrainToScreen(element, direction, padding) {
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
+
       return true;
     }
   } else {
     throw new Error("Direction " + direction + " not implemented");
   }
+
   return false;
 }
 
@@ -254,6 +267,7 @@ function isAbsoluteUrl(url) {
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
+
   return url.startsWith("/") ? siteUrl + url : url;
 }
 
@@ -364,6 +378,7 @@ export function shouldOpenInBlankWindow(
   } else if (blankOnDifferentOrigin && !isSameOrSiteUrlOrigin(url)) {
     return true;
   }
+
   return false;
 }
 
@@ -379,6 +394,7 @@ const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
+
     return {
       pathname: getPathnameWithoutSubPath(pathname),
       search,
@@ -414,12 +430,14 @@ function isPathnameContainSitePath(pathnameSections, sitePathSections) {
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
+
   return origin == null || origin === window.location.origin;
 }
 
 function isSiteUrlOrigin(url) {
   const siteUrl = getOrigin(MetabaseSettings.get("site-url"));
   const urlOrigin = getOrigin(url);
+
   return siteUrl === urlOrigin;
 }
 
@@ -448,6 +466,7 @@ export function parseDataUri(url) {
       base64 = charset;
       charset = undefined;
     }
+
     return {
       mimeType,
       charset,
@@ -455,6 +474,7 @@ export function parseDataUri(url) {
       base64: base64 ? data : btoa(data),
     };
   }
+
   return null;
 }
 
@@ -465,6 +485,7 @@ export function clipPathReference(id) {
   // add the current page URL (with fragment removed) to support pages with <base> tag.
   // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
   const url = window.location.href.replace(/#.*$/, "") + "#" + id;
+
   return `url(${url})`;
 }
 
@@ -514,16 +535,19 @@ export function isEventOverElement(event, element) {
 
 export function isReducedMotionPreferred() {
   const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+
   return mediaQuery && mediaQuery.matches;
 }
 
 export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
+
   return main;
 }
 
 export function isSmallScreen() {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
+
   return mediaQuery && mediaQuery.matches;
 }
 

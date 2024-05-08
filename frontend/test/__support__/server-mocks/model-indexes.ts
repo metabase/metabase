@@ -22,6 +22,7 @@ export function setupModelIndexEndpoints(
 
   fetchMock.post(`path:/api/model-index`, async url => {
     const lastCall = fetchMock.lastCall(url);
+
     return createMockModelIndex(await lastCall?.request?.json());
   });
 }

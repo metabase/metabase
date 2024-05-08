@@ -35,6 +35,7 @@ function makePivotData(rows, cols) {
   cols = cols || [D1, D2, M];
 
   const primaryGroup = 0;
+
   return {
     rows: rows.map(row => [...row, primaryGroup]),
     cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
@@ -179,6 +180,7 @@ describe("data_grid", () => {
       const settings = {
         column: column => {
           const columnIndex = column.field_ref[1];
+
           return {
             column,
             [COLUMN_SHOW_TOTALS]: columnShowTotals[columnIndex],
@@ -200,6 +202,7 @@ describe("data_grid", () => {
           field_ref: ["fake field ref", index],
         })),
       };
+
       return multiLevelPivot(data, settings);
     };
 

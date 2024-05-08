@@ -111,6 +111,7 @@ export default class Popover extends Component {
         }
       }, resizeTimer);
     }
+
     return this._popoverElement;
   }
 
@@ -354,6 +355,7 @@ export default class Popover extends Component {
         bestOffScreen = offScreen;
       }
     }
+
     return best;
   }
 

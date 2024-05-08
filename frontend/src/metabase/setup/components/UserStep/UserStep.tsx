@@ -54,6 +54,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
 const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
   const namePart = user?.first_name ? `, ${user.first_name}` : "";
+
   return isStepCompleted
     ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;

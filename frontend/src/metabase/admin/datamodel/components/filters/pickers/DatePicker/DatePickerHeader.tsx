@@ -33,6 +33,7 @@ export default function DatePickerHeader({
 
   if (operator?.name === "exclude") {
     const hasTemporalUnit = dimension?.temporalUnit();
+
     return onBack || hasTemporalUnit ? (
       <Container>
         <BackButton

@@ -28,6 +28,7 @@ export const getCollectionIdPath = (
 
   if (typeof collection.id === "string") {
     console.error("Invalid collection id", collection.id);
+
     return [];
   }
 

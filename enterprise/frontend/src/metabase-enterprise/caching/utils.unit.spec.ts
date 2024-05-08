@@ -131,6 +131,7 @@ describe("hasQuestionCacheSection", () => {
       "enable-query-caching": isCachingEnabled,
     });
     const metadata = createMockMetadata({ questions: [card] }, settings);
+
     return checkNotNull(metadata.question(card.id));
   }
 

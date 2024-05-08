@@ -87,6 +87,7 @@ function PivotTableWrapper(props?: any) {
   const [vizSettings, setVizSettings] = useState(
     props.initialSettings ?? settings,
   );
+
   return (
     <PivotTable
       settings={vizSettings}

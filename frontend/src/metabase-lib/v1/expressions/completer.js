@@ -21,6 +21,7 @@ export function partialMatch(expression) {
           return null;
         }
       }
+
       return expression.slice(lastToken.start, lastToken.end);
     }
   }

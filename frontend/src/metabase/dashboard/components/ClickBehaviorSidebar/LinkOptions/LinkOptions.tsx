@@ -38,6 +38,7 @@ function LinkTypeOptions({
     { type: "question", icon: "bar", name: t`Saved question` },
     { type: "url", icon: "link", name: t`URL` },
   ];
+
   return (
     <>
       {linkTypeOptions.map(({ type, icon, name }) => (

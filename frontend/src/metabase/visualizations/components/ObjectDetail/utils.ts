@@ -51,6 +51,7 @@ export const getObjectName = ({
   if (questionName) {
     return singularize(questionName);
   }
+
   return t`Item Detail`;
 };
 
@@ -116,6 +117,7 @@ export const getIdValue = ({
 
   const { cols, rows } = data;
   const columnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+
   return rows[0][columnIndex] as number;
 };
 

@@ -249,6 +249,7 @@ describe("scenarios > admin > settings", () => {
 
           return STUBBED_SITE_URL;
         }
+
         return setting;
       });
 

@@ -89,6 +89,7 @@ function SnippetCollectionForm({
   const handleCreate = useCallback(
     async (values: SnippetCollectionFormValues) => {
       const action = await handleCreateSnippetCollection(values);
+
       return SnippetCollections.HACK_getObjectFromAction(action);
     },
     [handleCreateSnippetCollection],
@@ -97,6 +98,7 @@ function SnippetCollectionForm({
   const handleUpdate = useCallback(
     async (values: UpdateSnippetCollectionFormValues) => {
       const action = await handleUpdateSnippetCollection(values);
+
       return SnippetCollections.HACK_getObjectFromAction(action);
     },
     [handleUpdateSnippetCollection],

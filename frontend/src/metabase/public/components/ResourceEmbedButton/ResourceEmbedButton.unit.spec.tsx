@@ -32,6 +32,7 @@ const setup = ({
       }),
     },
   );
+
   return { onClick };
 };
 

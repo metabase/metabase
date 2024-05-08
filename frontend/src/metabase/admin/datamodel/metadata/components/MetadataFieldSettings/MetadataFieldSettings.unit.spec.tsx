@@ -146,6 +146,7 @@ const setup = async ({
 
 const fieldLink = (field: Field) => {
   const section = within(screen.getByLabelText(field.name));
+
   return section.getByLabelText("Field settings");
 };
 

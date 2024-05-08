@@ -39,6 +39,7 @@ class ArchiveDashboardModal extends Component {
 
   render() {
     const { dashboard } = this.props;
+
     return (
       <ArchiveModal
         title={

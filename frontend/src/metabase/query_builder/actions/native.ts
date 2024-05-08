@@ -68,6 +68,7 @@ export const openDataReferenceAtQuestion = createThunkAction(
     const question = Questions.HACK_getObjectFromAction(action);
     if (question) {
       const database = getMetadata(getState()).database(question.database_id);
+
       return [
         { type: "database", item: database },
         { type: "question", item: question },

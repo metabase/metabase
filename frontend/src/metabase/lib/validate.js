@@ -28,6 +28,7 @@ function makeValidate(steps = []) {
   for (const [name, validator] of Object.entries(validators)) {
     validate[name] = (...args) => makeValidate([...steps, validator(...args)]);
   }
+
   return validate;
 }
 

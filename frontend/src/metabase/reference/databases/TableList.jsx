@@ -73,6 +73,7 @@ export const separateTablesBySchema = (
     }
     // add schema header for first element and if schema is different from previous
     const previousTableId = Object.keys(sortedTables)[index - 1];
+
     return index === 0 ||
       sortedTables[previousTableId].schema_name !== table.schema_name
       ? [createSchemaSeparator(table), createListItem(table)]

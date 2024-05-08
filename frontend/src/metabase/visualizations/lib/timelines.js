@@ -153,6 +153,7 @@ function renderEventTicks({
     .attr("transform", getIconTransform())
     .html(d => {
       const icon = getIcon(d);
+
       return Icons[icon].source;
     })
     .select("svg")

@@ -30,6 +30,7 @@ export const getCartesianChartDefinition = (
 
     isLiveResizable: series => {
       const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+
       return totalRows < 10;
     },
 

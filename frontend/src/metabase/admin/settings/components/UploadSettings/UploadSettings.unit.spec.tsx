@@ -93,6 +93,7 @@ function setup({
     />,
     { storeInitialState: {} },
   );
+
   return { updateSpy, savingSpy, savedSpy, clearSpy };
 }
 

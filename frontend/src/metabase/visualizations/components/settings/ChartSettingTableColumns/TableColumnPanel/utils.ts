@@ -42,6 +42,7 @@ export function toggleColumnInSettings(
 ): TableColumnOrderSetting[] {
   const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
   newSettings[index] = { ...columnSetting, enabled: isEnabled };
+
   return newSettings;
 }
 
@@ -53,6 +54,7 @@ export const moveColumnInSettings = (
   // delete a setting from the old index and put it to the new index, shifting all elements
   const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
   newSettings.splice(newIndex, 0, newSettings.splice(oldIndex, 1)[0]);
+
   return newSettings;
 };
 

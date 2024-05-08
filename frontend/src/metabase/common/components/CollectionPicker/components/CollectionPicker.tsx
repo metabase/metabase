@@ -134,6 +134,7 @@ export const CollectionPickerInner = (
           },
         ]);
         onItemSelect(newCollectionItem);
+
         return;
       }
 

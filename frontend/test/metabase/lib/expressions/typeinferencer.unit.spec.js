@@ -15,6 +15,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
         fn: mockResolve,
       });
     } catch (e) {}
+
     return mbql;
   }
 
@@ -24,6 +25,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     if (mbql === null) {
       mbql = compileAs(source, "boolean");
     }
+
     return mbql;
   }
 

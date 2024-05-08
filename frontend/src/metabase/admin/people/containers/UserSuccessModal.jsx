@@ -29,6 +29,7 @@ class UserSuccessModal extends Component {
     const isSsoEnabled =
       MetabaseSettings.isSsoEnabled() &&
       !MetabaseSettings.isPasswordLoginEnabled();
+
     return (
       <ModalContent
         title={t`${user.common_name} has been added`}
@@ -58,6 +59,7 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
       )}`}</div>
     );
   }
+
   return (
     <div>{jt`We’ve sent an invite to ${(
       <strong>{user.email}</strong>

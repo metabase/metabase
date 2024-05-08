@@ -22,6 +22,7 @@ export const funnelToBarTransform: TransformSeries = (
     const name = renderingContext.formatValue(row[dimensionIndex], {
       column: cols[dimensionIndex],
     });
+
     return {
       card: {
         ...card,

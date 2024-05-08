@@ -310,6 +310,7 @@ function QueryBuilder(props) {
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
+
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
 

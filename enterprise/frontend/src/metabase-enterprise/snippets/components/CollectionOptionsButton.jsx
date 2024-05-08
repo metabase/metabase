@@ -83,6 +83,7 @@ export default class CollectionOptionsButton extends Component {
         onClick: () => collection.setArchived(true),
       });
     }
+
     return options;
   };
 }

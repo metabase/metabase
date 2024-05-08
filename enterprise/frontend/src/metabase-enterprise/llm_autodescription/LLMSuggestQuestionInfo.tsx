@@ -23,6 +23,7 @@ export const LLMSuggestQuestionInfo = ({
       return { name: undefined, description: undefined };
     }
     const response = await AutoDescribeApi.summarizeCard(question.card());
+
     return {
       name: response?.summary?.title ?? undefined,
       description: response?.summary?.description ?? undefined,

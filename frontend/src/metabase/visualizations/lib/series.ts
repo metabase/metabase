@@ -44,6 +44,7 @@ export const getOrderedSeries = (
   if ("_raw" in series) {
     const transformedOrderedSeries = [...orderedSeries] as TransformedSeries;
     transformedOrderedSeries._raw = series._raw;
+
     return transformedOrderedSeries;
   }
 

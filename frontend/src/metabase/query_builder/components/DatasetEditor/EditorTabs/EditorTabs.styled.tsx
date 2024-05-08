@@ -17,6 +17,7 @@ function getActiveTabColor() {
 
 function getInactiveTabColor() {
   const active = getActiveTabColor();
+
   return alpha(active, 0.3);
 }
 

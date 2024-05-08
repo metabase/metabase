@@ -77,6 +77,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
   const handleUpdateQuestion = (question: Question): Promise<void> => {
     dispatch(setUIControls({ isModifiedFromNotebook: true }));
+
     return updateQuestion(question);
   };
 

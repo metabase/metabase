@@ -29,6 +29,7 @@ const FULL_HEIGHT = 400;
 // - When the editor grows during typing this is the max height
 export function getMaxAutoSizeLines(viewHeight: number) {
   const pixelHeight = viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
+
   return Math.ceil(getLinesForHeight(pixelHeight));
 }
 
@@ -46,6 +47,7 @@ function getVisibleLinesCount({
 }) {
   const maxAutoSizeLines = getMaxAutoSizeLines(viewHeight);
   const queryLineCount = query?.lineCount() || maxAutoSizeLines;
+
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
@@ -58,11 +60,13 @@ export function calcInitialEditorHeight({
     return FULL_HEIGHT;
   }
   const lines = getVisibleLinesCount({ query, viewHeight });
+
   return getEditorLineHeight(lines);
 }
 
 const formatSql = async (sql: string, options: FormatOptionsWithLanguage) => {
   const sqlFormatter = await import("sql-formatter");
+
   return sqlFormatter.format(sql, options);
 };
 

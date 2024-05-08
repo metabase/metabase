@@ -14,6 +14,7 @@ export function capitalize(str: string, { lowercase = true } = {}) {
   if (lowercase) {
     rest = rest.toLowerCase();
   }
+
   return firstChar + rest;
 }
 

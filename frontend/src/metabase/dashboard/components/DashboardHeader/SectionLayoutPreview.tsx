@@ -17,18 +17,21 @@ interface SectionLayoutPreviewProps {
 export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   const layoutItems = useMemo(() => {
     const items = layout.getLayout({ col: 0, row: 0 });
+
     return items.map((item, index) => {
       // Makes the first "heading" item taller to look better,
       // and moves the rest of the items down
       if (index === 0) {
         return { ...item, size_y: 2 };
       }
+
       return { ...item, row: item.row + 1 };
     });
   }, [layout]);
 
   const height = useMemo(() => {
     const maxY = _.max(layoutItems.map(item => item.row + item.size_y));
+
     return maxY * (CELL_HEIGHT + SPACING);
   }, [layoutItems]);
 

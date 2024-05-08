@@ -22,6 +22,7 @@ const USER_SCHEMA = Yup.object({
     .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
+
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()

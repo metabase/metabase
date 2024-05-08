@@ -48,6 +48,7 @@ const setup = () => {
     const onChange = update => {
       setQuestion(q => {
         const newQuestion = q.updateSettings(update);
+
         return new Question(thaw(newQuestion.card()), metadata);
       });
     };

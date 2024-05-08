@@ -20,6 +20,7 @@ class SnippetRowInner extends Component {
 
     const { description, content } = snippet;
     const { isOpen } = this.state;
+
     return (
       <div
         className={cx(

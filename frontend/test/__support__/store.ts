@@ -74,6 +74,7 @@ export const createMockEntitiesState = (
   opts: EntitiesStateOpts,
 ): EntitiesState => {
   const schema = normalize(opts, EntitiesSchema);
+
   return {
     ...createMockNormalizedEntitiesState(),
     ...schema.entities,

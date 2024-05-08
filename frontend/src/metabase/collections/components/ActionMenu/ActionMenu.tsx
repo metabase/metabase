@@ -109,6 +109,7 @@ function ActionMenu({
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
     };
+
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 

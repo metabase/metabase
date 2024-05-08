@@ -183,6 +183,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
     const minuteOfHour = isNaN(schedule.schedule_minute as number)
       ? 0
       : schedule.schedule_minute;
+
     return (
       <PickerSpacedRow>
         <PickerText>{t`at`}</PickerText>
@@ -280,6 +281,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
 
 function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
+
   return <>{t`your ${applicationName} timezone`}</>;
 }
 

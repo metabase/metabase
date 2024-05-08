@@ -26,6 +26,7 @@ function formatValueForLinkTemplate(value: Value, column: DatasetColumn) {
   if (isDate(column) && column.unit && typeof value === "string") {
     return formatDateTimeForParameter(value, column.unit);
   }
+
   return value;
 }
 
@@ -73,6 +74,7 @@ function renderTemplateForClick(
       if (valueAndColumn) {
         return formatFunction(valueAndColumn);
       }
+
       return "";
     },
   );
@@ -106,5 +108,6 @@ function getValueAndColumnForColumnName(
       return data[name];
     }
   }
+
   return "";
 }

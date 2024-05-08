@@ -53,6 +53,7 @@ function getVisibilityTypeName(visibilityType) {
   if (visibilityType.id === "details-only") {
     return t`Detail views only`;
   }
+
   return visibilityType.name;
 }
 
@@ -123,6 +124,7 @@ function DatasetFieldMetadataSidebar({
     if (isNative) {
       values.id = field.id;
     }
+
     return values;
   }, [field, dataset, modelIndexes]);
 

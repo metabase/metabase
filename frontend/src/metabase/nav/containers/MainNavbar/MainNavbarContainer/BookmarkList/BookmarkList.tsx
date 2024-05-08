@@ -63,6 +63,7 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
   if (!selectedItem) {
     return false;
   }
+
   return (
     bookmark.type === selectedItem.type && bookmark.item_id === selectedItem.id
   );

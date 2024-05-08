@@ -53,6 +53,7 @@ function filterByFk(query, field, objectId) {
           values: [objectId],
           options: {},
         });
+
   return Lib.filter(query, stageIndex, filterClause);
 }
 
@@ -162,6 +163,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       if (!_.isEqual(queryResult.json_query, updatedQueryResult.json_query)) {
         return null;
       }
+
       return fkReferences;
     };
   },

@@ -45,6 +45,7 @@ function getPermissionPath(
   if (isFlatPermValue) {
     return [groupId, databaseId, permission, ...(nestedPath || [])];
   }
+
   return [groupId, databaseId, permission, "schemas", ...(nestedPath || [])];
 }
 
@@ -82,6 +83,7 @@ function getRawPermissionsGraphValue(
     permission,
     nestedPath,
   );
+
   return getIn(permissions, path);
 }
 
@@ -107,6 +109,7 @@ const getPermission = ({
   if (isControlledType && typeof value === "object") {
     return DataPermissionValue.CONTROLLED;
   }
+
   return value ? value : getOmittedPermissionValue(permission);
 };
 
@@ -146,6 +149,7 @@ export function updatePermission(
       permissions = setIn(permissions, fullPath.slice(0, i), {});
     }
   }
+
   return setIn(permissions, fullPath, newValue);
 }
 
@@ -309,6 +313,7 @@ export function hasPermissionValueInEntityGraphs(
       entityId,
       permission,
     );
+
     return entityPermission === permissionValue;
   });
 }

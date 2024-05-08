@@ -46,6 +46,7 @@ export default class NumberPicker extends Component {
 
   render() {
     const values = this.state.stringValues.slice(0, this.props.values.length);
+
     return (
       <TextPicker
         {...this.props}

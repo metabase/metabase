@@ -11,6 +11,7 @@ function SnippetCollectionName({ id }: { id: CollectionId }) {
   if (!Number.isSafeInteger(id)) {
     return null;
   }
+
   return <SnippetCollections.Name id={id} />;
 }
 

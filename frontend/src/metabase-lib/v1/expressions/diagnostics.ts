@@ -42,6 +42,7 @@ export function countMatchingParentheses(tokens: Token[]) {
   const isClose = (t: Token) => t.op === OPERATOR.CloseParenthesis;
   const count = (c: number, token: Token) =>
     isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
+
   return tokens.reduce(count, 0);
 }
 
@@ -263,5 +264,6 @@ function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
 
 function getDatabase(query: Lib.Query, metadata?: Metadata) {
   const databaseId = Lib.databaseID(query);
+
   return metadata?.database(databaseId);
 }

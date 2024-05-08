@@ -186,6 +186,7 @@ export default class LeafletMap extends Component {
 
   render() {
     const { className } = this.props;
+
     return <div className={className} ref={this.mapRef} />;
   }
 
@@ -198,6 +199,7 @@ export default class LeafletMap extends Component {
         },
       ],
     } = this.props;
+
     return {
       latitudeIndex: _.findIndex(
         cols,
@@ -219,6 +221,7 @@ export default class LeafletMap extends Component {
       ],
     } = this.props;
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
+
     return {
       latitudeColumn: cols[latitudeIndex],
       longitudeColumn: cols[longitudeIndex],
@@ -234,6 +237,7 @@ export default class LeafletMap extends Component {
         },
       ],
     } = this.props;
+
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
 }

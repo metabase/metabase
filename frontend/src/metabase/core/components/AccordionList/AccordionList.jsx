@@ -232,6 +232,7 @@ export default class AccordionList extends Component {
         }
       }
     }
+
     return openSection;
   }
 
@@ -244,6 +245,7 @@ export default class AccordionList extends Component {
         break;
       }
     }
+
     return selectedSection === sectionIndex;
   }
 
@@ -292,6 +294,7 @@ export default class AccordionList extends Component {
         }
       }
     }
+
     return null;
   };
 
@@ -353,6 +356,7 @@ export default class AccordionList extends Component {
         const item = sections[cursor.sectionIndex].items[cursor.itemIndex];
 
         this.props.onChange(item);
+
         return;
       }
 
@@ -380,6 +384,7 @@ export default class AccordionList extends Component {
       const searchResults = searchProp.map(member =>
         this.searchPredicate(item, member),
       );
+
       return searchResults.reduce((acc, curr) => acc || curr);
     }
   };
@@ -558,6 +563,7 @@ export default class AccordionList extends Component {
 
   canToggleSections = () => {
     const { alwaysTogglable, sections } = this.props;
+
     return alwaysTogglable || sections.length > 1;
   };
 
@@ -567,6 +573,7 @@ export default class AccordionList extends Component {
     }
 
     const { sectionIndex, itemIndex } = this.state.cursor;
+
     return (
       row.sectionIndex === sectionIndex &&
       (row.itemIndex === itemIndex ||

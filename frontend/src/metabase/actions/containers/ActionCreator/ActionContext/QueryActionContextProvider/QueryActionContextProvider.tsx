@@ -86,6 +86,7 @@ function convertActionToQuestion(
   metadata: Metadata,
 ) {
   const question = new Question(convertActionToQuestionCard(action), metadata);
+
   return question.setParameters(action.parameters);
 }
 
@@ -147,6 +148,7 @@ function QueryActionContextProvider({
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
+
     return {
       ...initialAction,
       ...action,
@@ -207,6 +209,7 @@ function QueryActionContextProvider({
   const isDirty = useMemo(() => {
     const isQuestionDirty = question.isDirtyComparedTo(initialQuestion);
     const areFormSettingsDirty = !_.isEqual(formSettings, initialFormSettings);
+
     return isQuestionDirty || areFormSettingsDirty;
   }, [question, initialQuestion, formSettings, initialFormSettings]);
 

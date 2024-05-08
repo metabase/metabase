@@ -61,6 +61,7 @@ export function getEffectiveOptions(
     } else if (!map.has(option.value)) {
       map.set(option.value, option.value);
     }
+
     return map;
   }, new Map<string, string>());
 

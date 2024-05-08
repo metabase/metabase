@@ -168,6 +168,7 @@ function JoinColumnDropdown({
       lhsColumn,
       rhsColumn,
     );
+
     return Lib.groupColumns(columns);
   }, [query, stageIndex, joinable, lhsColumn, rhsColumn, isLhsColumn]);
 

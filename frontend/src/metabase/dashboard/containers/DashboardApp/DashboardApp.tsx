@@ -131,6 +131,7 @@ type DashboardAppProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => {
   const metadata = getMetadata(state);
+
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
@@ -265,6 +266,7 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
   if (dashboardId) {
     return dashboardId;
   }
+
   return Urls.extractEntityId(params.slug);
 }
 

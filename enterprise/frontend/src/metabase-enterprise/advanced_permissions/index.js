@@ -148,6 +148,7 @@ if (hasPremiumFeature("advanced_permissions")) {
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {
   const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
+
   return `${baseUrl}/impersonated/group/${groupId}`;
 };
 

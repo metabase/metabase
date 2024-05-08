@@ -7,6 +7,7 @@ export function getCurrencySymbol(currencyCode) {
     // only turn the array into a map if we call this function
     currencyMapCache = Object.fromEntries(currency);
   }
+
   return currencyMapCache[currencyCode]?.symbol || currencyCode || "$";
 }
 

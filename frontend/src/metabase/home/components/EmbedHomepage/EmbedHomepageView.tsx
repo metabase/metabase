@@ -41,6 +41,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     analyticsDocsUrl,
     onDismiss,
   } = props;
+
   return (
     <Stack maw={550}>
       <Group position="apart">

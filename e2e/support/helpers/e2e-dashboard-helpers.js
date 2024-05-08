@@ -60,6 +60,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
  */
 export function updateDashboardCards({ dashboard_id, cards }) {
   let id = -1;
+
   return cy.request("PUT", getDashboardApiUrl(dashboard_id), {
     dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
@@ -407,6 +408,7 @@ export function getActionCardDetails({
 
 export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
+
   return () => --id;
 })();
 

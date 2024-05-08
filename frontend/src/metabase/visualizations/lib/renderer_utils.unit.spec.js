@@ -9,6 +9,7 @@ describe("getXValues", () => {
   function getXValuesForRows(listOfRows, settings = {}) {
     const series = listOfRows.map(rows => ({ data: { rows, cols: [{}] } }));
     series._raw = series;
+
     return getXValues({ settings, series });
   }
 

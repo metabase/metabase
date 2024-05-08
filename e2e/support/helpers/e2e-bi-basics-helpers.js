@@ -70,6 +70,7 @@ export function filterFieldPopover(
   if (value) {
     changeValue(popover(), value, placeholder);
   }
+
   return popover();
 }
 

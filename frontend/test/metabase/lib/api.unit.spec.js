@@ -33,6 +33,7 @@ describe("api", () => {
     fetchMock.put("path:/hello/123", async uri => {
       const body = await fetchMock.lastCall(uri).request.json();
       expect(body).toEqual({ other: "stuff" });
+
       return 200;
     });
     await PUT("/hello/:id")({ id: 123, other: "stuff" });
@@ -43,6 +44,7 @@ describe("api", () => {
     fetchMock.put("path:/hello/123", async uri => {
       const body = await fetchMock.lastCall(uri).request.json();
       expect(body).toEqual(["i", "am", "an", "array"]);
+
       return 200;
     });
     await PUT("/hello/:id")(

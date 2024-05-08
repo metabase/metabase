@@ -38,6 +38,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       settings,
       s => s.key === "api-keys",
     );
+
     return [
       ...otherSettings,
       {
@@ -264,6 +265,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   ) {
     providers = providers.filter(p => p.name !== "password");
   }
+
   return providers;
 });
 

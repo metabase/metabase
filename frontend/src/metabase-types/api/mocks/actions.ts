@@ -24,6 +24,7 @@ export const createMockActionParameter = ({
     slug: "id",
     ...opts,
   });
+
   return { ...parameter, target };
 };
 

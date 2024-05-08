@@ -144,6 +144,7 @@ export const ManageApiKeys = () => {
     if (!apiKeys) {
       return;
     }
+
     return [...apiKeys].sort((a, b) => a.name.localeCompare(b.name));
   }, [apiKeys]);
 

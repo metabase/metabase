@@ -59,6 +59,7 @@ export class DateMonthYearWidget extends Component<Props, State> {
   render() {
     const { onClose } = this.props;
     const { month, year } = this.state;
+
     return (
       <div style={{ maxWidth: 320 }}>
         <div className={cx(CS.borderBottom, CS.flex, CS.justifyCenter, CS.py1)}>

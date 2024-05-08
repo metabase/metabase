@@ -12,6 +12,7 @@ const TIME_FORMAT_24_HOUR = "HH:mm";
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
     const day = moment.parseZone(value, "ddd").startOf("day");
+
     return day.isValid() ? day : moment.parseZone(value).startOf("day");
   },
 };
@@ -99,6 +100,7 @@ export function formatFrame(frame: "first" | "last" | "mid") {
 
 export function getDateStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
@@ -112,6 +114,7 @@ export function getRelativeTimeAbbreviated(timestamp: string) {
   if (locale === "en") {
     const ts = moment(timestamp);
     ts.locale("en-abbreviated");
+
     return ts.fromNow();
   }
 
@@ -120,11 +123,13 @@ export function getRelativeTimeAbbreviated(timestamp: string) {
 
 export function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+
   return customFormattingSettings?.["type/Temporal"]?.time_style;
 }
 
 export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
+
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
@@ -134,6 +139,7 @@ export function hoursToSeconds(hours: number) {
 
 export function msToHours(ms: number) {
   const hours = msToMinutes(ms) / 60;
+
   return hours;
 }
 
@@ -195,5 +201,6 @@ export function parseTimestamp(
   } else {
     m = moment.utc(value);
   }
+
   return isLocal ? m.local() : m;
 }

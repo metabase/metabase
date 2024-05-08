@@ -110,6 +110,7 @@ export const createMockVirtualDashCard = (
   const card = createMockVirtualCard(
     opts?.card || opts?.visualization_settings?.virtual_card,
   );
+
   return {
     id: 1,
     dashboard_id: 1,

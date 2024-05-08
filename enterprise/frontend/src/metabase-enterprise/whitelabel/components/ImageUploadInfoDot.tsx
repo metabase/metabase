@@ -27,6 +27,7 @@ const DESCRIPTIONS: Record<IllustrationType, string[]> = {
 
 export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
   const theme = useTheme();
+
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>

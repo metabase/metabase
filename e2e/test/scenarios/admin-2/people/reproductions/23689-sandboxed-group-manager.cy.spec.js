@@ -73,6 +73,7 @@ describeEE("issue 23689", () => {
 
 function findUserByFullName(user) {
   const { first_name, last_name } = user;
+
   return cy.findByText(`${first_name} ${last_name}`);
 }
 

@@ -349,6 +349,7 @@ class FieldInner extends Base {
 
   sourceField() {
     const d = this.dimension().sourceDimension();
+
     return d && d.field();
   }
 
@@ -510,6 +511,7 @@ class FieldInner extends Base {
     const { fks } = table
       .legacyQuery({ useStructuredQuery: true })
       .fieldOptions();
+
     return fks
       .filter(({ field }) => field.id === this.id)
       .map(({ field, dimension, dimensions }) => ({
@@ -546,6 +548,7 @@ class FieldInner extends Base {
 
   isJsonUnfolded() {
     const database = this.table?.database;
+
     return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
   }
 

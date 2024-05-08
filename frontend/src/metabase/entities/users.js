@@ -84,6 +84,7 @@ const Users = createEntity({
       const result = await thunkCreator(user)(dispatch, getState);
 
       dispatch(loadMemberships());
+
       return {
         // HACK: include user ID and password for temporaryPasswords reducer
         id: result.result,
@@ -97,6 +98,7 @@ const Users = createEntity({
         // group ids were just updated
         dispatch(loadMemberships());
       }
+
       return result;
     },
   },

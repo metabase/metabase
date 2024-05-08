@@ -44,6 +44,7 @@ export function deriveFieldOperatorFromParameter(parameter: Parameter) {
   const operatorType = getParameterOperatorType(type);
   const operatorName = getParameterOperatorName(subtype);
   const operator = getOperatorByTypeAndName(operatorType, operatorName);
+
   return (
     operator && {
       ...operator,

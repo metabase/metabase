@@ -72,6 +72,7 @@ export const getCurrentCollectionId = (
 
 const getRootCollectionTreeItem = () => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
+
   return {
     ...ROOT_COLLECTION,
     icon: rootCollectionIcon.name,
@@ -96,6 +97,7 @@ export function buildCollectionTree(
   if (collections == null) {
     return [];
   }
+
   return collections.map((collection: Collection) => {
     return {
       id: collection.id,
@@ -309,6 +311,7 @@ function getDescendentCollections(
 ): ExpandedCollection[] {
   const subCollections =
     collection.children?.filter(permissionsCollectionFilter) || [];
+
   return subCollections.concat(...subCollections.map(getDescendentCollections));
 }
 
@@ -320,6 +323,7 @@ function getPermissionsSet(
   const perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, collection.id),
   );
+
   return new Set(perms);
 }
 

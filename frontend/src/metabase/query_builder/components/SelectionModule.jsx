@@ -79,6 +79,7 @@ export default class SelectionModule extends Component {
         return true;
       }
     }
+
     return false;
   }
 
@@ -89,6 +90,7 @@ export default class SelectionModule extends Component {
       newElement.props.children = values[newElement.props.content];
       custom.push(element);
     });
+
     return custom;
   }
 
@@ -118,6 +120,7 @@ export default class SelectionModule extends Component {
             </div>
           );
         }
+
         // if children are provided, use the custom layout display
         return (
           <li

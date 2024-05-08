@@ -8,6 +8,7 @@ export function useWebNotification() {
       return "denied";
     }
     const permission = await Notification.requestPermission();
+
     return permission;
   }, []);
 

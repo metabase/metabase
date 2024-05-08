@@ -1437,6 +1437,7 @@ describe("Question", () => {
 
 function parseUrl(url) {
   const parsed = parse(url, true);
+
   return {
     card: parsed.hash && deserializeCardFromUrl(parsed.hash),
     query: parsed.query,

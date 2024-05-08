@@ -28,6 +28,7 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
       { ...args?.body, ...args?.params },
       { signal: ctx.signal, bodyParamName, noEvent },
     );
+
     return { data: response };
   } catch (error) {
     return { error };

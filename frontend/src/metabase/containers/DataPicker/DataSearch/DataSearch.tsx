@@ -63,6 +63,7 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
   const schemaId = getCollectionVirtualSchemaId(table.collection, {
     isDatasets: type === "models",
   });
+
   return {
     type,
     databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -75,6 +76,7 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
 function getNextValue(table: TableSearchResult): DataPickerValue {
   const type = getDataTypeForSearchResult(table);
   const isVirtualTable = type === "models" || type === "questions";
+
   return isVirtualTable
     ? getValueForVirtualTable(table)
     : getValueForRawTable(table);

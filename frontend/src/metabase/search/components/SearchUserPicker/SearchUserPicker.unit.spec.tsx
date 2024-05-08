@@ -26,6 +26,7 @@ const TestSearchUserPicker = ({
     setSelectedUserIds(userIds);
     onChange(userIds);
   };
+
   return <SearchUserPicker value={selectedUserIds} onChange={onUserChange} />;
 };
 

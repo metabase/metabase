@@ -128,6 +128,7 @@ function PivotTable({
       const column = data.cols.filter(col => !isPivotGroupColumn(col))[
         columnIndex
       ];
+
       return getTitleForColumn(column, settings);
     },
     [data, settings],
@@ -138,6 +139,7 @@ function PivotTable({
     const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
       columns[columnIndex],
     );
+
     return showTotals;
   }
   useEffect(() => {
@@ -165,6 +167,7 @@ function PivotTable({
     } catch (e) {
       console.warn(e);
     }
+
     return null;
   }, [data, settings]);
 
@@ -203,6 +206,7 @@ function PivotTable({
         totalLeftHeaderWidths: null,
         valueHeaderWidths,
       });
+
       return;
     }
 
@@ -298,6 +302,7 @@ function PivotTable({
     if (!clicked) {
       return undefined;
     }
+
     return (e: React.SyntheticEvent) =>
       onVisualizationClick({
         ...clicked,
@@ -456,6 +461,7 @@ function PivotTable({
                           valueIndexes,
                           index,
                         );
+
                         return sumArray(subColumnWidths);
                       }}
                       estimatedColumnSize={DEFAULT_CELL_WIDTH}

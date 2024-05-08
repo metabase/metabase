@@ -42,6 +42,7 @@ export type Suggestion = {
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
   const { displayName, args } = func;
   const suffix = args.length > 0 ? "(" : " ";
+
   return displayName + suffix;
 };
 
@@ -342,6 +343,7 @@ export function suggest({
       if (!name) {
         return suggestion;
       }
+
       return {
         ...suggestion,
         helpText: getHelpText(name, database, reportTimezone),

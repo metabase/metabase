@@ -18,6 +18,7 @@ const Template: ComponentStory<typeof Schedule> = args => {
     updateArgs,
   ] = useArgs();
   const handleChange = (schedule: unknown) => updateArgs({ schedule });
+
   return (
     <Schedule
       {...args}

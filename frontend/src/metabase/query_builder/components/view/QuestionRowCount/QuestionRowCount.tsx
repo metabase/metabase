@@ -76,6 +76,7 @@ function QuestionRowCount({
     if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result);
     }
+
     return isResultDirty
       ? getLimitMessage(question, result)
       : getRowCountMessage(result);
@@ -131,6 +132,7 @@ function RowCountLabel({
   className?: string;
 }) {
   const label = t`Row count`;
+
   return disabled ? (
     <RowCountStaticLabel {...props} aria-label={label} />
   ) : (
@@ -145,6 +147,7 @@ function RowCountLabel({
 
 const formatRowCount = (count: number) => {
   const countString = formatNumber(count);
+
   return ngettext(msgid`${countString} row`, `${countString} rows`, count);
 };
 
@@ -176,6 +179,7 @@ function getRowCountMessage(result: Dataset): string {
   if (result.row_count === HARD_ROW_LIMIT) {
     return t`Showing first ${HARD_ROW_LIMIT} rows`;
   }
+
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
 

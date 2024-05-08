@@ -67,6 +67,7 @@ const QUERY = createQuery({
 function getColumn(name: string) {
   const columns = Lib.expressionableColumns(QUERY, -1);
   const find = columnFinder(QUERY, columns);
+
   return find(TABLE.name, name);
 }
 

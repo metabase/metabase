@@ -80,6 +80,7 @@ function ModelDetailHeader({
     if (modal === "archive") {
       return <ArchiveModelModal question={model} onClose={handleCloseModal} />;
     }
+
     return null;
   }, [modal, model, handleCollectionChange, handleCloseModal]);
 

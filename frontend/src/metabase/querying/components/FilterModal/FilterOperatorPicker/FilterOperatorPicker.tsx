@@ -23,6 +23,7 @@ export function FilterOperatorPicker<T extends string>({
 }: FilterOperatorPickerProps<T>) {
   const label = useMemo(() => {
     const option = options.find(option => option.operator === value);
+
     return option ? option.name.toLowerCase() : t`operator`;
   }, [value, options]);
 

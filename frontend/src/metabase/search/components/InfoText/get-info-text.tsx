@@ -52,6 +52,7 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
     };
   }
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+
   return {
     label: `${type.name} ${t`Collection`}`,
   };
@@ -61,6 +62,7 @@ const getCollectionResult = (result: WrappedResult): InfoTextData => {
   const collection = result.getCollection();
   const colUrl = collectionUrl(collection);
   const collectionName = collection.name;
+
   return collectionName
     ? {
         icon: collection.authority_level ? (

@@ -18,6 +18,7 @@ export const getNextColumnAndSeparator = (
   );
 
   const result = nextUnusedColumn ?? expressionableColumns[0];
+
   return { column: result, separator };
 };
 
@@ -158,6 +159,7 @@ function getNextName(names: string[], name: string, index: number): string {
   if (!names.includes(suffixed)) {
     return suffixed;
   }
+
   return getNextName(names, name, index + 1);
 }
 
@@ -171,5 +173,6 @@ function getCombinedColumnName(
   const names = columns.map(
     column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
+
   return names.join(" ");
 }

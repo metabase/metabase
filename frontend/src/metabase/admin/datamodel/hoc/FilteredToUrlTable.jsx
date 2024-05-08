@@ -44,6 +44,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
           ),
           ...otherProps,
         };
+
         return <ComposedComponent {...props} />;
       }
     },
@@ -54,6 +55,7 @@ export default FilteredToUrlTable;
 class TableSelectorInner extends Component {
   render() {
     const { table, tableId, setTableId } = this.props;
+
     return (
       <FieldSet
         noPadding

@@ -86,6 +86,7 @@ export function ColumnInput({
       return t`Select a column...`;
     }
     const info = Lib.displayInfo(query, stageIndex, value);
+
     return info.longDisplayName;
   }, [value, query, stageIndex]);
 

@@ -83,6 +83,7 @@ const setup = ({
       }),
     },
   );
+
   return {
     createPublicLink,
     deletePublicLink,

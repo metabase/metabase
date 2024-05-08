@@ -52,6 +52,7 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   }
 
   const validUntil = moment(tokenStatus.validUntil).format("MMM D, YYYY");
+
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 

@@ -11,6 +11,7 @@ import {
 describe("saved question helpers", () => {
   function getEncodedPayload(object) {
     const json = JSON.stringify(object);
+
     return encodeURIComponent(json);
   }
 

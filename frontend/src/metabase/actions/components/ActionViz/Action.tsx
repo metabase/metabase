@@ -72,6 +72,7 @@ const ActionComponent = ({
     if (!dashcard.action) {
       return [];
     }
+
     return getNotProvidedActionParameters(
       dashcard.action,
       dashcardParamValues ?? [],
@@ -82,6 +83,7 @@ const ActionComponent = ({
     if (!dashcard.action) {
       return [];
     }
+
     return getMappedActionParameters(
       dashcard.action,
       dashcardParamValues ?? [],

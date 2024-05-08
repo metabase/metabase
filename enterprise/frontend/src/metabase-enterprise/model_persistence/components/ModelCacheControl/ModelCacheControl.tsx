@@ -62,6 +62,7 @@ function ModelCacheControl({
         if (!database || !database["can-manage"]) {
           return null;
         }
+
         return isLoading ? (
           <SpinnerContainer>
             <LoadingSpinner size={size} />

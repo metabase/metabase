@@ -14,6 +14,7 @@ export const SelectDropdown = forwardRef(function SelectDropdown(
 
   useEffect(() => {
     setupCloseHandler(document.body, () => undefined);
+
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler]);
 

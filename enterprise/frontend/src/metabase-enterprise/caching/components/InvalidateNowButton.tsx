@@ -80,6 +80,7 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           onClick={e => {
             confirmInvalidation();
             e.preventDefault();
+
             return false;
           }}
           disabled={wasFormRecentlyPending}

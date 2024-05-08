@@ -57,6 +57,7 @@ function setup({
 
   const getNextFilterName = () => {
     const [nextFilter] = onChange.mock.lastCall;
+
     return nextFilter
       ? Lib.displayInfo(query, stageIndex, nextFilter).displayName
       : null;

@@ -43,6 +43,7 @@ export function getDefaultValues(
   values: string[],
 ): string[] {
   const { type } = OPERATOR_OPTIONS[operator];
+
   return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
@@ -62,6 +63,7 @@ export function getFilterClause(
   options: Lib.StringFilterOptions,
 ) {
   const filterParts = getFilterParts(operator, column, values, options);
+
   return filterParts != null ? Lib.stringFilterClause(filterParts) : undefined;
 }
 

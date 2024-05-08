@@ -101,6 +101,7 @@ const importDatasetQueryEditor = async () => {
   const { default: DatasetQueryEditor } = await import(
     "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
   );
+
   return DatasetQueryEditor;
 };
 

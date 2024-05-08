@@ -86,6 +86,7 @@ function MainNavbar({
     }
 
     window.addEventListener("keydown", handleSidebarKeyboardShortcut);
+
     return () => {
       window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
     };
@@ -131,6 +132,7 @@ function maybeGetQuestionId(
 ) {
   const { pathname } = location;
   const canFetchQuestion = isQuestionPath(pathname) || isModelPath(pathname);
+
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 

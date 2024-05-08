@@ -16,6 +16,7 @@ export function isEmpty(str: string | null) {
   if (str != null) {
     str = String(str);
   } // make sure 'str' is actually a string
+
   return str == null || 0 === str.length || str.match(/^\s+$/) != null;
 }
 
@@ -76,11 +77,13 @@ export function isEmail(email: string | undefined | null) {
   if (email === null || email === undefined) {
     return false;
   }
+
   return EMAIL_REGEX.test(email);
 }
 
 export function getEmailDomain(email: string) {
   const match = EMAIL_REGEX.exec(email);
+
   return match && match[5];
 }
 
@@ -98,6 +101,7 @@ export function propertiesEqual(
       return false;
     }
   }
+
   return true;
 }
 
@@ -180,6 +184,7 @@ export function compareVersions(
       return 1;
     }
   }
+
   return 0;
 }
 
@@ -194,6 +199,7 @@ export const safeJsonParse = (value: string | null | undefined) => {
     return JSON.parse(value);
   } catch (e) {
     console.error("Unable to parse JSON: ", value, e);
+
     return null;
   }
 };

@@ -165,6 +165,7 @@ export default function ExcludeDatePicker({
           <ExcludeColumn key={index}>
             {inner.map(({ displayName, value, test }) => {
               const isValueExcluded = values.find(value => test(value)) != null;
+
               return (
                 <ExcludeCheckBox
                   key={value}

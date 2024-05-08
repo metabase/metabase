@@ -56,6 +56,7 @@ export function buildEChartsScatterSeries(
     "bubbleSizeDataKey" in seriesModel
       ? seriesModel.bubbleSizeDataKey
       : undefined;
+
   return {
     id: seriesModel.dataKey,
     type: "scatter",

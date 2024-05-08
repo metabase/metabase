@@ -45,6 +45,7 @@ export function getPositionForNewDashCard(
     col = 0;
     row++;
   }
+
   // this should never happen but flow complains if we return undefined
   return { col, row, size_x, size_y };
 }

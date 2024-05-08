@@ -39,8 +39,10 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
         </ColumnClickBehaviorHeader>
       );
     }
+
     return <Heading>{t`On-click behavior for each column`}</Heading>;
   }
+
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
 }
 

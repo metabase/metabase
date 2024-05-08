@@ -79,6 +79,7 @@ export const getBarLabelLayout =
       barHeight / 2 +
       CHART_STYLE.seriesLabels.size / 2 +
       CHART_STYLE.seriesLabels.offset;
+
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       dy: labelValue < 0 ? labelOffset : -labelOffset,
@@ -116,6 +117,7 @@ export function getDataLabelFormatter(
     if (typeof value !== "number") {
       return " ";
     }
+
     return valueFormatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
   };
 }
@@ -145,6 +147,7 @@ function shouldRenderCompact({
   const getAvgLength = (compact: boolean) => {
     const lengths = dataset.map(datum => {
       const value = getValue(datum);
+
       return renderingContext.formatValue(value, {
         ...(settings.column?.(seriesModel.column) ?? {}),
         jsx: false,
@@ -607,6 +610,7 @@ const getDisplaySeriesSettingsByDataKey = (
     acc[seriesModel.dataKey] = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
     );
+
     return acc;
   }, {} as Record<DataKey, SeriesSettings>);
 
@@ -639,6 +643,7 @@ export const buildEChartsSeries = (
         seriesModel.dataKey,
         chartModel,
       );
+
       return acc;
     },
     {} as Record<DataKey, number>,

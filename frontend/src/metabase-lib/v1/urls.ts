@@ -75,6 +75,7 @@ export function getUrlWithParameters(
     }
 
     const query = getParameterValuesBySlug(parameters, parameterValues);
+
     return getUrl(questionWithParameters.markDirty(), {
       clean,
       query,
@@ -83,6 +84,7 @@ export function getUrlWithParameters(
   }
 
   const query = question.legacyQuery() as NativeQuery;
+
   return getUrl(question, {
     clean,
     query: remapParameterValuesToTemplateTags(
@@ -110,6 +112,7 @@ export function getAutomaticDashboardUrl(
     return `auto/dashboard/question/${questionId}${cellQuery}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
+
     return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
   }
 }
@@ -131,6 +134,7 @@ export function getComparisonDashboardUrl(
     return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
+
     return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
   }
 }

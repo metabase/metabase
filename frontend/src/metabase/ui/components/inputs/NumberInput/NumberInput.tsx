@@ -56,6 +56,7 @@ export const NumberInput = forwardRef(function NumberInput(
 
 function parseValue(value: string) {
   const number = parseFloat(value);
+
   return Number.isNaN(number) ? "" : number;
 }
 

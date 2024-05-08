@@ -256,6 +256,7 @@ export function FieldValuesWidgetInner({
       );
 
       _cancel.current = null;
+
       return options;
     }
   };
@@ -342,6 +343,7 @@ export function FieldValuesWidgetInner({
     _.debounce(async (value: string) => {
       if (!value) {
         setLoadingState("LOADED");
+
         return;
       }
 
@@ -490,6 +492,7 @@ export function FieldValuesWidgetInner({
             layoutRenderer={layoutRenderer}
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
+
               return option?.some?.(
                 value =>
                   value != null &&

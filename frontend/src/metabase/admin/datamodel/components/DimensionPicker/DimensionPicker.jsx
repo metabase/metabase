@@ -28,6 +28,7 @@ export const DimensionPicker = ({
     <ul className={cx(className, CS.px2, CS.py1)} style={style}>
       {dimensions.map((d, index) => {
         const isSelected = d.isEqual(dimension);
+
         return (
           <DimensionListItem
             aria-selected={isSelected}

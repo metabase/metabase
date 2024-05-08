@@ -9,6 +9,7 @@ export const getChartWarnings = (
   const chartValuesKeys = new Set(
     rows.map(row => {
       const dimensionValue = row[chartColumns.dimension.index];
+
       return "breakout" in chartColumns
         ? `${row[chartColumns.breakout.index]}:${dimensionValue}`
         : String(dimensionValue);

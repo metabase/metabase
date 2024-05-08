@@ -39,6 +39,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   function wrap(api) {
     return (params, ...rest) => {
       const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
+
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
@@ -66,6 +67,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
       return wrap(to);
     }
   }
+
   return api;
 }
 
@@ -109,6 +111,7 @@ export async function runQuestionQuery(
 
   const getDatasetQueryResult = datasetQuery => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
+
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
       card,

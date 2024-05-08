@@ -81,6 +81,7 @@ const DataSelectorDatabaseSchemaPicker = ({
 
     if (isNavigationSection) {
       onBack();
+
       return false;
     }
 

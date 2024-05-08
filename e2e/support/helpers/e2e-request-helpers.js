@@ -23,6 +23,7 @@
  */
 export function spyRequestFinished(name = "requestFinishedSpy") {
   const spy = cy.spy().as(name);
+
   return {
     interceptor: req => req.continue(res => spy(req, res)),
     spy,

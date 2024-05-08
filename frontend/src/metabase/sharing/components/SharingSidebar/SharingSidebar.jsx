@@ -75,6 +75,7 @@ const getSupportedCardsForSubscriptions = dashboard => {
 const cardsToPulseCards = (cards, pulseCards) => {
   return cards.map(card => {
     const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
+
     return {
       ...card,
       format_rows: pulseCard.format_rows,
@@ -422,6 +423,7 @@ class SharingSidebarInner extends Component {
 
       const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.slack;
+
       return (
         <AddEditSlackSidebar
           pulse={pulse}

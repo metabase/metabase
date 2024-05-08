@@ -62,6 +62,7 @@ const getSeriesModelsWithTrends = (
       const trendFunction = getTrendLineFunction(insight);
 
       const resultTuple: [SeriesModel, TrendFn] = [seriesModel, trendFunction];
+
       return resultTuple;
     })
     .filter(isNotNull);

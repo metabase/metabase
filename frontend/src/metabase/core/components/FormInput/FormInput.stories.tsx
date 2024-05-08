@@ -9,6 +9,7 @@ import FormInput from "./FormInput";
 
 const TitleActions = () => {
   const [checked, setChecked] = useState(true);
+
   return (
     <CheckBox
       onChange={() => setChecked(checked => !checked)}

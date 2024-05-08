@@ -74,6 +74,7 @@ export function ModelUploadModal({
       const modelForTableId = uploadableModels.find(
         model => model.based_on_upload === Number(tableId),
       );
+
       return onUpload({
         tableId: Number(tableId),
         modelId: modelForTableId?.id,

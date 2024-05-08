@@ -11,6 +11,7 @@ import { LeftNavWrapper } from "./AdminPeopleApp.styled";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   const shouldNudge = useSelector(shouldNudgeToPro);
+
   return (
     <AdminLayout
       sidebar={

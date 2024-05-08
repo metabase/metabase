@@ -159,6 +159,7 @@ class SettingsEditor extends Component {
       console.error(`Attempted to change unknown setting ${key}`);
       throw new Error(t`Unknown setting ${key}`);
     }
+
     return updateSetting({ ...setting, value });
   };
 
@@ -188,6 +189,7 @@ class SettingsEditor extends Component {
         />
       );
     }
+
     return (
       <SettingsSection
         tabs={activeSection.tabs}

@@ -12,6 +12,7 @@ const sfc32 = (a, b, c, d) => {
     d = (d + 1) | 0;
     t = (t + d) | 0;
     c = (c + t) | 0;
+
     return (t >>> 0) / 4294967296;
   };
 };
@@ -20,5 +21,6 @@ export function createRandom(seed) {
   const u32seed = seed ^ 0xc0fefe;
   const mathRandom = sfc32(0x9e3779b9, 0x243f6a88, 0xb7e15162, u32seed);
   [...Array(15)].forEach(mathRandom);
+
   return mathRandom;
 }

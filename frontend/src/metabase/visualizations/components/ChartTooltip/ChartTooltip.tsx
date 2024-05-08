@@ -38,6 +38,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     if (!hovered) {
       return false;
     }
+
     return (
       hovered.value !== undefined ||
       !_.isEmpty(hovered.timelineEvents) ||

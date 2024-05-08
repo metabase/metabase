@@ -18,6 +18,7 @@ export const StaticEmbedSetupPaneSettingsContentSection = ({
   ...restProps
 }: StaticEmbedSetupPaneSettingsContentSectionProps): JSX.Element => {
   const sectionId = useUniqueId();
+
   return (
     <Box className={className} aria-labelledby={sectionId} {...restProps}>
       {title && (

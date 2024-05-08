@@ -24,6 +24,7 @@ export default function GaugeNeedle({
 }: GaugeNeedleProps) {
   const translationYOffset =
     GAUGE_NEEDLE_RADIUS * Math.tan(EQUILATERAL_TRIANGLE_ANGLE / 2);
+
   return (
     <g
       transform={`rotate(${toDegree(valueAngle)} ${toSvgPositionString(

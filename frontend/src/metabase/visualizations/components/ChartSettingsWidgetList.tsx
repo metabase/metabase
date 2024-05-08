@@ -26,6 +26,7 @@ const ChartSettingsWidgetList = ({
       (memo, widget) => {
         const group = widget.group || "";
         (memo[group] = memo[group] || []).push(widget);
+
         return memo;
       },
       {},
@@ -33,6 +34,7 @@ const ChartSettingsWidgetList = ({
 
     return Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
       const lastGroup = groupIndex === groups.length - 1;
+
       return (
         <div key={`group-${groupIndex}`}>
           {group && (

@@ -35,6 +35,7 @@ export const createAdminRedirect = (adminPath, nonAdminPath) => {
       user.is_superuser ? adminPath : nonAdminPath
     }`;
     replace(path);
+
     return null;
   });
 

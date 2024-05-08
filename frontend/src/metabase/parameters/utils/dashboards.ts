@@ -60,6 +60,7 @@ export function setParameterName(
   name: string,
 ): Parameter {
   const slug = slugify(name);
+
   return {
     ...parameter,
     name: name,
@@ -101,6 +102,7 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
     const extendedParameterMappings = (parameter_mappings || [])
       .map(parameter_mapping => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
+
         return card
           ? {
               ...parameter_mapping,
@@ -216,6 +218,7 @@ export function getParametersMappedToDashcard(
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
+
   return (parameters || [])
     .map(parameter => {
       const mapping = _.findWhere(parameter_mappings || [], {

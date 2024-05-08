@@ -116,6 +116,7 @@ const flattenCollectionTree = (
   if (!nodes) {
     return [];
   }
+
   return nodes.flatMap(({ descendants, ...node }) => [
     node,
     ...flattenCollectionTree(descendants),

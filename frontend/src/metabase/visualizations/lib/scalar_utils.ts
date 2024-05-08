@@ -7,6 +7,7 @@ export const COMPACT_MIN_LENGTH = 6;
 
 function checkShouldCompact(fullValue: string, width: number) {
   const expectedCompactWidth = fullValue.length * COMPACT_WIDTH_PER_DIGIT;
+
   return (
     fullValue.length > COMPACT_MIN_LENGTH &&
     (width < COMPACT_MAX_WIDTH || width < expectedCompactWidth)

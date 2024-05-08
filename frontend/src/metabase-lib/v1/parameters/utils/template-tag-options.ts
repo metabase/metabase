@@ -77,5 +77,6 @@ export function getDefaultParameterOptions(
 ): ParameterOptions | undefined {
   const parameter = getTemplateTagParameter(tag);
   const operator = deriveFieldOperatorFromParameter(parameter);
+
   return operator?.optionsDefaults;
 }

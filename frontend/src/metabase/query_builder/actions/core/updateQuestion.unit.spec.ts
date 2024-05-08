@@ -84,6 +84,7 @@ function getDefaultOriginalQuestion(card: TestCard) {
       }),
     });
   }
+
   return createSavedStructuredCard({
     ...card,
     dataset_query: createMockStructuredDatasetQuery({

@@ -55,6 +55,7 @@ function createQueryWithMultipleValuesFilter() {
 function createQueryWithSegmentFilter() {
   const query = createQuery();
   const [segment] = Lib.availableSegments(query, 0);
+
   return createFilteredQuery(query, segment);
 }
 
@@ -154,6 +155,7 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   function getNextFilter() {
     expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [filter] = onSelect.mock.lastCall;
+
     return filter;
   }
 
@@ -161,6 +163,7 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
     const filter = getNextFilter();
     const parts = Lib.filterParts(query, 0, filter);
     const column = checkNotNull(parts?.column);
+
     return Lib.displayInfo(query, 0, column).longDisplayName;
   }
 

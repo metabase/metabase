@@ -239,6 +239,7 @@ const nativeSQL = values => {
 
   const queries = values.map(value => {
     const date = moment(value).utc();
+
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 

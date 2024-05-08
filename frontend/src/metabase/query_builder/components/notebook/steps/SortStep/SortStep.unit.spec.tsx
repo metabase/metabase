@@ -12,6 +12,7 @@ function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
   const initialQuery = createQuery();
   const [column] = Lib.orderableColumns(initialQuery, 0);
   const query = Lib.orderBy(initialQuery, 0, column, direction);
+
   return { query, columnInfo: Lib.displayInfo(query, 0, column) };
 }
 
@@ -32,12 +33,14 @@ function setup(step = createMockNotebookStep()) {
 
   function getNextQuery() {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
+
     return lastCall[0];
   }
 
   function gerRecentOrderByClause() {
     const query = getNextQuery();
     const clause = Lib.orderBys(query, 0)[0];
+
     return Lib.displayInfo(query, 0, clause);
   }
 

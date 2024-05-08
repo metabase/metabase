@@ -61,6 +61,7 @@ export function TableInfoLoader({
     fetchForeignKeys,
     fetchMetadata,
   });
+
   return hasFetchedMetadata ? <> {children} </> : null;
 }
 

@@ -23,6 +23,7 @@ function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
         const selected = currentTab === option.id;
         const id = `${inputId}-${option.id}`;
         const labelId = `${id}-label`;
+
         return (
           <li key={option.id}>
             <Tab

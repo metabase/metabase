@@ -209,6 +209,7 @@ function formatLegacySegment(
   if (!segment) {
     throw new Error("segment with ID does not exist: " + segmentId);
   }
+
   return formatSegmentName(segment.name, options);
 }
 
@@ -237,6 +238,7 @@ function formatFunction([fn, ...args]: any[], options: Options) {
   }
   const formattedName = getExpressionName(fn) ?? "";
   const formattedArgs = args.map(arg => format(arg, options));
+
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
@@ -275,6 +277,7 @@ function formatOperator([op, ...args]: any[], options: Options) {
       ? // unary operator
         `${formattedOperator} ${formattedArgs[0]}`
       : formattedArgs.join(` ${formattedOperator} `);
+
   return options.parens ? `(${formatted})` : formatted;
 }
 
@@ -290,6 +293,7 @@ function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
     caseOptions.default !== undefined
       ? ", " + format(caseOptions.default, options)
       : "";
+
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
@@ -312,11 +316,13 @@ function isNegativeFilter(expr: Filter) {
   }
 
   const [fn, ...args] = expr;
+
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
 function formatNegativeFilter(mbql: Filter, options: Options) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
+
   return "NOT " + format([baseFn, ...args], options);
 }

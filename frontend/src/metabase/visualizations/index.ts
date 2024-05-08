@@ -97,6 +97,7 @@ export function getVisualizationTransformed(series: TransformedSeries) {
 
 export function getIconForVisualizationType(display: string) {
   const viz = visualizations.get(display);
+
   return viz?.iconName ?? "unknown";
 }
 
@@ -105,26 +106,31 @@ export const extractRemappings = (series: Series) => {
     ...s,
     data: s.data && extractRemappedColumns(s.data),
   }));
+
   return se;
 };
 
 export function getMaxMetricsSupported(display: string) {
   const visualization = visualizations.get(display);
+
   return visualization?.maxMetricsSupported || Infinity;
 }
 
 export function getMaxDimensionsSupported(display: string) {
   const visualization = visualizations.get(display);
+
   return visualization?.maxDimensionsSupported || 2;
 }
 
 export function canSavePng(display: string) {
   const visualization = visualizations.get(display);
+
   return visualization?.canSavePng ?? true;
 }
 
 export function getDefaultSize(display: string) {
   const visualization = visualizations.get(display);
+
   return visualization?.defaultSize;
 }
 
@@ -149,6 +155,7 @@ export const extractRemappedColumns = (data: DatasetData) => {
           !cols[col.remapped_from_index].remapping
         ) {
           console.warn("Invalid remapped_from", col);
+
           return true;
         }
         cols[col.remapped_from_index].remapped_to_column = col;
@@ -156,12 +163,14 @@ export const extractRemappedColumns = (data: DatasetData) => {
           row[col.remapped_from_index],
           row[colIndex],
         );
+
         return false;
       } else {
         return true;
       }
     }),
   );
+
   return {
     ...data,
     rows,

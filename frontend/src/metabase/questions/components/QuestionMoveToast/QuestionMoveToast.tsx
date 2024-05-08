@@ -32,6 +32,7 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
 function QuestionMoveToast({ collectionId, question }: QuestionMoveToastProps) {
   const id = coerceCollectionId(collectionId);
   const collectionLink = <CollectionLink key="collection-link" id={id} />;
+
   return (
     <ToastRoot>
       <StyledIcon name="collection" />

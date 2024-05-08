@@ -38,6 +38,7 @@ const DataReference = ({
   if (dataReferenceStack.length) {
     const page = dataReferenceStack[dataReferenceStack.length - 1];
     const Pane = PANES[page.type];
+
     return (
       <Pane
         {...{ [page.type]: page.item }}

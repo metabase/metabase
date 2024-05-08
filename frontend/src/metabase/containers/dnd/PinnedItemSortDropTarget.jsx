@@ -31,9 +31,11 @@ const PinnedItemSortDropTarget = DropTarget(
 
       if (isFrontTarget) {
         const isInFrontOfItem = pinIndex < item.collection_position;
+
         return isInFrontOfItem;
       } else if (isBackTarget) {
         const isBehindItem = pinIndex > item.collection_position;
+
         return isBehindItem;
       }
 

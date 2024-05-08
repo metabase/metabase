@@ -106,6 +106,7 @@ export class FilterWidget extends Component<Props, State> {
 
   renderFilter() {
     const { query } = this.props;
+
     return (
       <FilterComponent
         metadata={query && query.metadata && query.metadata()}
@@ -119,6 +120,7 @@ export class FilterWidget extends Component<Props, State> {
   renderPopover() {
     if (this.state.isOpen) {
       const { query, filter } = this.props;
+
       return (
         <Popover
           id="FilterPopover"

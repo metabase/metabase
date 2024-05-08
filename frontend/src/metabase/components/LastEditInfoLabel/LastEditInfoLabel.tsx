@@ -43,6 +43,7 @@ function mapStateToProps(state: any, props: any) {
 
 function formatEditorName(lastEditInfo: NamedUser) {
   const name = getFullName(lastEditInfo);
+
   return name || lastEditInfo.email;
 }
 

@@ -139,6 +139,7 @@ function DataFieldPicker({
 
   const isColumnSelected = (column: Lib.ColumnMetadata) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
     return Boolean(columnInfo.selected);
   };
 
