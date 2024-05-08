@@ -851,10 +851,9 @@
                                                         :most_recent true
                                                         :timestamp   now})]
          (migrate!)
-         (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
-                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old]])))
-         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
-                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new]]))))))))
+         (is (= {false #{rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old}
+                 true  #{rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new}}
+                (update-vals (group-by :most_recent (t2/select (t2/table-name :model/Revision))) #(set (map :id %))))))))))
 
 (defn- clear-permissions!
   []

@@ -5818,7 +5818,7 @@ databaseChangeLog:
                     JOIN (
                           SELECT model, model_id
                           FROM revision
-                          WHERE most_recent = 't'
+                          WHERE most_recent = true
                           GROUP BY model, model_id
                           HAVING count(*) > 1
                         ) AS i ON r.model = i.model AND r.model_id = i.model_id
