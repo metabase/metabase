@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
@@ -189,7 +190,7 @@
      :name (:name card)
      :display (when-let [display (:display card)] (name display))
      :model :card
-     :can_write (mi/can-write? :model/Card model_id)
+     :can_write (mi/can-write? card)
      :timestamp (str timestamp)
      :moderated_status (get-moderated-status :card model_id)
      :parent_collection (get-parent-coll (:collection_id card))}))
@@ -199,7 +200,7 @@
     {:id model_id
      :name (:name dataset)
      :model :dataset
-     :can_write (mi/can-write? :model/Card model_id)
+     :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
       ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (get-moderated-status :card model_id)
@@ -210,7 +211,7 @@
     {:id model_id
      :name (:name dashboard)
      :model :dashboard
-     :can_write (mi/can-write? :model/Dashboard model_id)
+     :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dashboard))}))
 
@@ -220,7 +221,7 @@
      :name (:name table)
      :model :table
      :display_name (:display_name table)
-     :can_write (mi/can-write? :model/Table model_id)
+     :can_write (mi/can-write? table)
      :timestamp (str timestamp)
      :database (let [{:keys [name initial_sync_status]}
                      (t2/select-one [:model/Database :name :initial_sync_status]
@@ -234,7 +235,7 @@
     {:id model_id
      :name (:name collection)
      :model :collection
-     :can_write (mi/can-write? :model/Collection model_id)
+     :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (:authority_level collection)
      :parent_collection (get-parent-coll collection)}))
@@ -254,6 +255,7 @@
                                  :order-by [[:rv.timestamp :desc]]}))
 
 (defn- post-process [recent-view]
+  (log/fatal (pr-str ["RV" recent-view]))
   (-> recent-view
       fill-recent-view-info
       (dissoc :card_type)
