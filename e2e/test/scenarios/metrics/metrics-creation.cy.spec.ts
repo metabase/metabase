@@ -189,7 +189,7 @@ describe("scenarios > metrics", () => {
       addBreakout({ columnName: "Created At" });
       saveMetric();
       runQuery();
-      verifyLineChart("Created At", "Sum of Total");
+      verifyLineChart({ xAxis: "Created At", yAxis: "Sum of Total" });
     });
 
     it("should create a geo metric", () => {
@@ -222,7 +222,7 @@ describe("scenarios > metrics", () => {
       });
       saveMetric();
       runQuery();
-      verifyLineChart("Created At", "Average of Count");
+      verifyLineChart({ xAxis: "Created At", yAxis: "Average of Count" });
     });
   });
 
@@ -480,7 +480,7 @@ function verifyScalarValue(value: string) {
   cy.findByTestId("scalar-container").findByText(value).should("be.visible");
 }
 
-function verifyLineChart(xAxis: string, yAxis: string) {
+function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
   echartsContainer().within(() => {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
