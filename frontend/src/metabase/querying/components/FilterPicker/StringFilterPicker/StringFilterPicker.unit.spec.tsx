@@ -204,25 +204,6 @@ describe("StringFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
 
-    it("should add a filter with one value via keyboard", async () => {
-      const { onChange, getNextFilterParts, getNextFilterColumnName } = setup();
-
-      await setOperator("Contains");
-      const input = screen.getByPlaceholderText("Enter some text");
-      await userEvent.type(input, "{enter}");
-      expect(onChange).not.toHaveBeenCalled();
-
-      await userEvent.type(input, "green{enter}");
-      expect(onChange).toHaveBeenCalled();
-      expect(getNextFilterParts()).toMatchObject({
-        operator: "contains",
-        column: expect.anything(),
-        values: ["green"],
-        options: { "case-sensitive": false },
-      });
-      expect(getNextFilterColumnName()).toBe("Product → Description");
-    });
-
     it("should add a case-sensitive filter", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
@@ -391,8 +372,10 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        const input = screen.getByRole("textbox", { name: "Filter value" });
-        await userEvent.clear(input);
+        const input = screen.getByLabelText("Filter value");
+        expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
+        await userEvent.type(input, "{backspace}");
+        expect(screen.queryByDisplayValue("abc")).not.toBeInTheDocument();
 
         await userEvent.type(input, "foo");
         await userEvent.click(screen.getByLabelText("Case sensitive"));
@@ -539,8 +522,7 @@ describe("StringFilterPicker", () => {
 
       await setOperator("Contains");
 
-      expect(screen.getByDisplayValue("Gadget")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("Gizmo")).not.toBeInTheDocument();
+      expect(screen.getByDisplayValue("Gadget,Gizmo")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
       await setOperator("Is empty");
