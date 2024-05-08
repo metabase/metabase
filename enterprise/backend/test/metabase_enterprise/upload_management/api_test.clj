@@ -8,7 +8,7 @@
    [metabase.upload :as upload]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def list-url "ee/upload-management/tables/")
+(def list-url "ee/upload-management/tables")
 
 (deftest list-uploaded-tables-test
   (testing "GET ee/upload-management/tables"
