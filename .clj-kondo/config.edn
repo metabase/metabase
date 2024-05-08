@@ -126,23 +126,104 @@
   :metabase/ns-module-checker
   {:level :warning
 
-   ;; map of module name => the "core" external public-facing API namespace
+   ;; Map of module name => the "core" external public-facing API namespace(s).
+   ;;
+   ;; `nil` or an empty set means this module does not (yet) have an external public-facing API namespace. Go create
+   ;; one. Otherwise this should be a set of namespace symbols. All namespaces in other modules will only be allowed
+   ;; to use namespaces from this set.
    :api-namespaces
-   {metabase.driver      #{metabase.driver}
-    metabase.legacy-mbql #{metabase.legacy-mbql.schema
-                           metabase.legacy-mbql.util}
-    metabase.lib         #{metabase.lib.core}
-    metabase.util        #{metabase.util
-                           metabase.util.i18n
-                           metabase.util.malli}}
+   {metabase.actions               nil
+    metabase.analytics             nil
+    metabase.analyze               nil
+    metabase.api                   nil
+    metabase.async                 nil
+    metabase.automagic-dashboards  nil
+    metabase.cmd                   nil
+    metabase.core                  nil
+    metabase.db                    #{metabase.db
+                                     metabase.db.metadata-queries ; FIXME, this should probably be separate from metabase.db
+                                     metabase.db.query}           ; FIXME, this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+    metabase.domain-entities       nil
+    metabase.driver                nil
+    metabase.email                 nil
+    metabase.embed                 nil
+    metabase.events                nil
+    metabase.formatter             nil
+    metabase.integrations          nil
+    metabase.legacy-mbql           nil
+    metabase.lib                   nil
+    metabase.metabot               nil
+    metabase.models                nil
+    metabase.native-query-analyzer nil
+    metabase.permissions           nil
+    metabase.plugins               nil
+    metabase.public-settings       nil
+    metabase.pulse                 nil
+    metabase.query-processor       nil
+    metabase.search                nil
+    metabase.server                nil
+    metabase.shared                nil
+    metabase.sync                  nil
+    metabase.task                  nil
+    metabase.transforms            nil
+    metabase.types                 #{metabase.types}
+    metabase.upload                nil
+    metabase.util                  nil}
 
-   ;; map of module => other modules you're allowed to use there
+   ;; Map of module => other modules you're allowed to use there.
+   ;;
+   ;; Not including a module in this list or giving it a value of `nil` means allowed modules are not enforced for
+   ;; this module. Module API namespaces for modules that have them defined are still enforced. For ones that are
+   ;; `nil`, please go in and add a list of allowed modules.
+   ;;
+   ;; Non-`nil` values should be a sets of module symbols. An empty set means no other modules are allowed to be
+   ;; referenced.
    :allowed-modules
-   {metabase.query-processor
-    #{metabase.driver
-      metabase.legacy-mbql
-      metabase.lib
-      metabase.util}}}
+   {metabase.actions               nil
+    metabase.analytics             nil
+    metabase.analyze               nil
+    metabase.api                   nil
+    metabase.async                 nil
+    metabase.automagic-dashboards  nil
+    metabase.cmd                   nil
+    metabase.core                  nil
+    metabase.db                    nil
+    metabase.domain-entities       nil
+    metabase.driver                nil
+    metabase.email                 nil
+    metabase.embed                 nil
+    metabase.events                nil
+    metabase.formatter             nil
+    metabase.integrations          nil
+    metabase.legacy-mbql           nil
+    metabase.lib                   nil
+    metabase.metabot               nil
+    metabase.models                nil
+    metabase.native-query-analyzer nil
+    metabase.permissions           nil
+    metabase.plugins               nil
+    metabase.public-settings       nil
+    metabase.pulse                 nil
+    metabase.query-processor       nil
+    metabase.search                nil
+    metabase.server                nil
+    metabase.shared                nil
+    metabase.sync                  nil
+    metabase.task                  nil
+    metabase.transforms            nil
+    metabase.types                 #{metabase.util}
+    metabase.upload                nil
+    metabase.util                  nil}
+
+   ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
+   ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
+   ;;
+   ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
+   ;; together, e.g. `metabase.lib.metadata.jvm`.
+   :ignored-namespace-patterns
+   #{"-test$"
+     "test-util$"
+     "^metabase\\.test.*"}}
 
   :consistent-alias
   {:aliases

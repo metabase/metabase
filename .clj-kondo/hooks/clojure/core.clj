@@ -245,30 +245,49 @@
                     (printf "Don't know how to figure out what namespace is being required in %s\n" (pr-str node)))))
           args)))
 
-(defn- lint-required-namespaces [ns-form-node config]
-  (let [ns-symb         (ns-form-node->ns-symb ns-form-node)
-        current-module  (module ns-symb)
-        allowed-modules (some-> (get-in config [:allowed-modules current-module]) set)]
-    (when allowed-modules
-      (let [namespace-symb-nodes (-> ns-form-node
-                                     ns-form-node->require-node
-                                     require-node->namespace-symb-nodes)]
-        (doseq [node  namespace-symb-nodes
-                :let  [ns-symb         (hooks/sexpr node)
-                       required-module (module ns-symb)]
+(defn- ignored-namespace? [ns-symb config]
+  (some
+   (fn [pattern-str]
+     (re-find (re-pattern pattern-str) (str ns-symb)))
+   (:ignored-namespace-patterns config)))
+
+(defn- lint-modules [ns-form-node config]
+  (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
+    (when-not (ignored-namespace? ns-symb config)
+      (let [current-module                (module ns-symb)
+            allowed-modules               (some-> (get-in config [:allowed-modules current-module]) set)
+            required-namespace-symb-nodes (-> ns-form-node
+                                              ns-form-node->require-node
+                                              require-node->namespace-symb-nodes)]
+        (doseq [node  required-namespace-symb-nodes
+                :let  [required-namespace (hooks/sexpr node)
+                       required-module    (module required-namespace)]
                 ;; ignore stuff not in a module i.e. non-Metabase stuff.
                 :when required-module
-                :when (not (or (= required-module current-module) ; in current module
-                               (and (contains? allowed-modules required-module)
-                                    (let [module-api-namespaces (set (get-in config [:api-namespaces required-module]))]
-                                      (contains? module-api-namespaces ns-symb)))))]
-          (hooks/reg-finding! (assoc (meta node)
-                                     :message (format "Namespace %s is not allowed in the %s module. [:metabase/ns-module-checker]"
-                                                      ns-symb
-                                                      current-module)
-                                     :type :metabase/ns-module-checker)))))))
+                :let  [in-current-module? (= required-module current-module)]
+                :when (not in-current-module?)
+                :let  [allowed-module?           (or (not allowed-modules)
+                                                     (contains? allowed-modules required-module))
+                       module-api-namespaces     (set (get-in config [:api-namespaces required-module]))
+                       allowed-module-namespace? (or (empty? module-api-namespaces)
+                                                     (contains? module-api-namespaces required-namespace))]]
+          (when-let [error (cond
+                             (not allowed-module?)
+                             (format "Module %s should not be used in the %s module. [:metabase/ns-module-checker :allowed-modules %s]"
+                                     required-module
+                                     current-module
+                                     current-module)
+
+                             (not allowed-module-namespace?)
+                             (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/ns-module-checker :api-namespaces %s]"
+                                     required-namespace
+                                     required-module
+                                     required-module))]
+            (hooks/reg-finding! (assoc (meta node)
+                                       :message error
+                                       :type    :metabase/ns-module-checker))))))))
 
 
 (defn lint-ns [x]
-  (lint-required-namespaces (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
+  (lint-modules (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
   x)
