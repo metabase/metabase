@@ -25,12 +25,12 @@ interface HelpTextArg {
 
 type MBQLClauseFunctionReturnType =
   | "aggregation"
+  | "any"
   | "boolean"
   | "datetime"
   | "expression"
   | "number"
-  | "string"
-  | "any";
+  | "string";
 
 export type MBQLClauseFunctionConfig = {
   displayName: string;
