@@ -159,6 +159,8 @@ Metabase will display this illustration when questions or dashboard cards contai
 
 ### When no objects can be found
 
+Metabase will display this illustration when searches don't return any results.
+
 - Sailboat
 - No illustration
 - Custom
