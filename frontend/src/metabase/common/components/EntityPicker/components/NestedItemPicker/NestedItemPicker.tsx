@@ -34,7 +34,11 @@ export interface NestedItemPickerProps<
   options: Options;
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
-  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
+  listResolver: ComponentType<
+    ListProps<Id, Model, Item, Query, Options> & {
+      databaseId?: DatabaseId;
+    }
+  >;
   shouldDisableItem?: (item: Item) => boolean;
 }
 
