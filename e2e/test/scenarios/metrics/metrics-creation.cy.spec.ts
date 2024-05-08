@@ -247,6 +247,24 @@ describe("scenarios > metrics", () => {
     });
   });
 
+  describe("order by", () => {
+    it.skip("should add an order by clause to a metric query  (metabase#42416)", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      addBreakoutWithBucket("Created At", "Year");
+      addOrderBy("Count");
+      saveMetric();
+      runQuery();
+      cy.findByTestId("view-footer").findByLabelText("Switch to data").click();
+      cy.get("#main-data-grid")
+        .findAllByRole("gridcell")
+        .last()
+        .should("contain.text", "6,578");
+    });
+  });
+
   describe("limit", () => {
     it.skip("should add a limit clause to a metric query (metabase#42416)", () => {
       const limit = 5;
@@ -304,6 +322,17 @@ function addAggregation(operatorName: string, columnName?: string) {
 
 function addBreakout(columnName: string) {
   startNewBreakout();
+  popover().findByText(columnName).click();
+}
+
+function addBreakoutWithBucket(columnName: string, bucketName: string) {
+  startNewBreakout();
+  popover().findByLabelText(columnName).findByText("by month").click();
+  popover().last().findByText(bucketName).click();
+}
+
+function addOrderBy(columnName: string) {
+  cy.button("Sort").click();
   popover().findByText(columnName).click();
 }
 
