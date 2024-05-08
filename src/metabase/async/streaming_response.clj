@@ -147,8 +147,7 @@
       false)
     (catch ClosedChannelException _
       true)
-    (catch Throwable e
-      (log/error e "Error determining whether HTTP request was canceled")
+    (catch Throwable _e #_(log/error e "Error determining whether HTTP request was canceled")
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
