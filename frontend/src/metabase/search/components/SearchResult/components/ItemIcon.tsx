@@ -37,7 +37,7 @@ export const ItemIcon = ({
   type,
   "data-testid": dataTestId,
 }: ItemIconProps) => {
-  const archived = isWrappedResult(item) && item.archived;
+  const archived = Boolean(isWrappedResult(item) && item.archived);
 
   return (
     <IconWrapper
