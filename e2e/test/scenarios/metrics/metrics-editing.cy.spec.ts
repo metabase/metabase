@@ -192,7 +192,7 @@ describe("scenarios > metrics", () => {
       verifyLineChart({ xAxis: "Created At", yAxis: "Sum of Total" });
     });
 
-    it("should create a geo metric", () => {
+    it("should create a geo metric with multiple breakouts", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
