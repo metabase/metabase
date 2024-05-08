@@ -210,7 +210,7 @@
     {:id model_id
      :name (:name dashboard)
      :model :dashboard
-     :can_write (mi/can-write? :model/Card model_id)
+     :can_write (mi/can-write? :model/Dashboard model_id)
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dashboard))}))
 
