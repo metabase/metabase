@@ -31,7 +31,7 @@ interface Props {
   /**
    * Limit selection to a particular database
    */
-  databaseId?: DatabaseId | null;
+  databaseId?: DatabaseId;
   value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
@@ -133,6 +133,7 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
+      databaseId={databaseId}
       initialValue={value}
       options={options}
       selectedItem={value ?? null}

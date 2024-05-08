@@ -21,7 +21,7 @@ import {
 } from "./NativeQueryEditorPrompt.styled";
 
 interface NativeQueryEditorPromptProps {
-  databaseId?: DatabaseId | null;
+  databaseId?: DatabaseId;
   onQueryGenerated: (queryText: string) => void;
   onClose: () => void;
 }

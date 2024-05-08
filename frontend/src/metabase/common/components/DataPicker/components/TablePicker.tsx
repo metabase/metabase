@@ -26,7 +26,7 @@ interface Props {
   /**
    * Limit selection to a particular database
    */
-  databaseId?: DatabaseId | null;
+  databaseId?: DatabaseId;
   value: TablePickerValue | undefined;
   onChange: (value: NotebookDataPickerValueItem) => void;
 }

@@ -8,6 +8,7 @@ import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
+  DatabaseId,
   SearchModel,
   SearchResult,
   SearchResultId,
@@ -28,12 +29,17 @@ const defaultSearchFilter = <
 ) => results;
 
 export function EntityPickerSearchInput({
+  databaseId,
   searchQuery,
   setSearchQuery,
   setSearchResults,
   models,
   searchFilter = defaultSearchFilter,
 }: {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
@@ -47,6 +53,7 @@ export function EntityPickerSearchInput({
     {
       q: debouncedSearchQuery,
       models,
+      table_db_id: databaseId,
     },
     {
       skip: !debouncedSearchQuery,
