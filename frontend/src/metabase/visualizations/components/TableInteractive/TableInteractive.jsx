@@ -799,6 +799,7 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
+          c="text-medium"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
