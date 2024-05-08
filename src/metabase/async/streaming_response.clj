@@ -146,6 +146,19 @@
   Object
   (get-channel [_] nil))
 
+(def ^:private *reported-types
+  "A set of types returned from `.getTransport` have already been reported as errors. This is used to avoid spamming the logs with the same
+  error over and over."
+  (atom #{}))
+
+(defn log-unexpected-transport!
+  "Log an error when an unexpected transport is encountered."
+  [transport]
+  (let [transport-type (type transport)]
+    (when-not (contains? @*reported-types transport-type)
+      (log/errorf "Unexpected transport type encountered in `canceled?`: %s" transport-type))
+    (swap! *reported-types conj transport-type)))
+
 (defn- canceled?
   "Check whether the HTTP request has been canceled by the client.
 
@@ -161,7 +174,7 @@
           (log/tracef "Check cancelation status: .read returned %d" status)
           (neg? status))
         (do
-          (log/infof "Cannot create a SocketChannel from %s" (type transport))
+          (log-unexpected-transport! transport)
           false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
