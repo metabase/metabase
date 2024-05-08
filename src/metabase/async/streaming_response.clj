@@ -148,7 +148,7 @@
     (catch ClosedChannelException _
       true)
     (catch ClassCastException _
-      (log/error "ClassCastException occured: determining whether HTTP request was canceled")
+      (log/error "ClassCastException occured.")
       false)
     (catch Throwable e
       (log/error e "Error determining whether HTTP request was canceled")
