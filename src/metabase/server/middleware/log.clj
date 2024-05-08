@@ -9,10 +9,11 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.server :as server]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -190,11 +191,24 @@
 ;; Actual middleware. Determines whether request should be logged, and, if so, creates the info dictionary and hands
 ;; off to functions above.
 
+(defsetting health-check-logging-enabled
+  (deferred-tru "Whether to log health check requests from session middleware.")
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :export?    false)
+
+(defn- logging-disabled-uris
+  "The set of URIs that should not be logged."
+  []
+  (cond-> #{"/api/util/logs"}
+    (not (health-check-logging-enabled)) (conj "/api/health")))
+
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (request.u/api-call? request)
-       (not (#{"/api/util/logs"} uri))))
+       (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
   "Logs info about request such as status code, number of DB calls, and time taken to complete."
