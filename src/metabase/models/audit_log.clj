@@ -5,7 +5,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -126,7 +126,7 @@
                      (:user-id params) (assoc :user/id (:user-id params))
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
       (let [{:keys [user-id model-name model-id details unqualified-topic]}
-            (construct-event topic params api/*current-user-id*)]
+            (construct-event topic params (api/current-user-id))]
         (t2/insert! :model/AuditLog
                     :topic    unqualified-topic
                     :details  details

@@ -8,7 +8,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
@@ -301,13 +301,13 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+          (= :unrestricted (data-perms/full-db-permission-for-user (api/current-user-id)
                                                                    :perms/view-data
                                                                    (u/the-id db)))
           ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
           ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
-                     (data-perms/full-schema-permission-for-user api/*current-user-id*
+                     (data-perms/full-schema-permission-for-user (api/current-user-id)
                                                                  :perms/create-queries
                                                                  (u/the-id db)
                                                                  schema-name))))
@@ -423,12 +423,12 @@
                                 :display                :table
                                 :name                   (humanization/name->human-readable-name filename-prefix)
                                 :visualization_settings {}}
-                               @api/*current-user*)
+                               (api/current-user))
             upload-seconds    (/ (since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
 
         (events/publish-event! :event/upload-create
-                               {:user-id  (:id @api/*current-user*)
+                               {:user-id  (api/current-user-id)
                                 :model-id (:id table)
                                 :model    :model/Table
                                 :details  {:db-id       db-id
@@ -437,11 +437,11 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csv-upload-successful api/*current-user-id*
+        (snowplow/track-event! ::snowplow/csv-upload-successful (api/current-user-id)
                                (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats file))
+        (snowplow/track-event! ::snowplow/csv-upload-failed (api/current-user-id) (fail-stats file))
         (throw e)))))
 
 ;;; +-----------------------------
@@ -607,7 +607,7 @@
           (invalidate-cached-models! table)
 
           (events/publish-event! :event/upload-append
-                                 {:user-id  (:id @api/*current-user*)
+                                 {:user-id  (:id (api/current-user))
                                   :model-id (:id table)
                                   :model    :model/Table
                                   :details  {:db-id       (:id database)
@@ -615,11 +615,11 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csv-append-successful api/*current-user-id* stats)
+          (snowplow/track-event! ::snowplow/csv-append-successful (api/current-user-id) stats)
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
+      (snowplow/track-event! ::snowplow/csv-append-failed (api/current-user-id) (fail-stats file))
       (throw e))))
 
 (defn- can-update-error

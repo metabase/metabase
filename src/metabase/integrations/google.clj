@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.integrations.google.interface :as google.i]
    [metabase.models.setting :as setting :refer [defsetting]]

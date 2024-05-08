@@ -1,7 +1,7 @@
 (ns metabase.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
@@ -34,7 +34,7 @@
   [{:keys [object user-id has-access]
     :or   {has-access true}}]
   {:model      (u/lower-case-en (audit-log/model-name object))
-   :user_id    (or user-id api/*current-user-id*)
+   :user_id    (or user-id (api/current-user-id))
    :model_id   (u/id object)
    :has_access has-access})
 
@@ -106,7 +106,7 @@
      :user-id user-id}
     (try
       (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
-            user-id   (or user-id api/*current-user-id*)
+            user-id   (or user-id (api/current-user-id))
             views     (map (fn [dashcard]
                              {:model      "card"
                               :model_id   (u/id (:card_id dashcard))
@@ -136,7 +136,7 @@
       (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
-            has-access? (when (= api/*current-user-id* user-id)
+            has-access? (when (= (api/current-user-id) user-id)
                           (query-perms/can-query-table? database-id table-id))]
         (-> event
             (assoc :has-access has-access?)

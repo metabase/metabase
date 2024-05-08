@@ -146,7 +146,7 @@
    {metabase.actions               #{metabase.actions.core}
     metabase.analytics             :any
     metabase.analyze               :any
-    metabase.api                   :any
+    metabase.api                   #{metabase.api}
     metabase.async                 :any
     metabase.automagic-dashboards  :any
     metabase.bootstrap             #{metabase.bootstrap}
@@ -302,6 +302,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
+    metabase.actions.core                                         actions
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
@@ -312,6 +313,7 @@
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
     metabase.analyze.fingerprint.schema                           fingerprint.schema
+    metabase.api                                                  api
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
@@ -319,7 +321,7 @@
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
-    metabase.api.common                                           api
+    metabase.api.common                                           api.common
     metabase.api.dashboard                                        api.dashboard
     metabase.api.dashboard-test                                   api.dashboard-test
     metabase.api.database                                         api.database

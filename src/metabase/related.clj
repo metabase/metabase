@@ -3,7 +3,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -176,9 +176,9 @@
 
 (defn- recently-modified-dashboards
   []
-  (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id 'Revision
+  (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id :model/Revision
                                                         :model     "Dashboard"
-                                                        :user_id   api/*current-user-id*
+                                                        :user_id   (api/current-user-id)
                                                         {:order-by [[:timestamp :desc]]}))]
     (->> (t2/select Dashboard :id [:in dashboard-ids])
          filter-visible

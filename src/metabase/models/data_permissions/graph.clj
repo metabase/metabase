@@ -10,8 +10,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
-   [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
@@ -156,7 +155,7 @@
          (into {}))
     m))
 
-(mu/defn api-graph :- api.permission-graph/StrictData
+(mu/defn api-graph :- api/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -393,14 +392,14 @@
   *  `before`  -- the graph before the changes
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]
-  (when api/*current-user-id*
+  (when (api/current-user-id)
     (first (t2/insert-returning-instances! model
                                            ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
                                            ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
                                            :id      (inc current-revision)
                                            :before  before
                                            :after   changes
-                                           :user_id api/*current-user-id*))))
+                                           :user_id (api/current-user-id)))))
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
@@ -422,7 +421,7 @@
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
    logs the changes, and ensures impersonations and sandboxes are consistent."
-  ([new-graph :- api.permission-graph/StrictData]
+  ([new-graph :- api/StrictData]
    (let [old-graph (api-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})

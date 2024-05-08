@@ -1,6 +1,6 @@
 (ns metabase.models.user-parameter-value
   (:require
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -38,7 +38,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
-  (if-let [user-id api/*current-user-id*]
+  (if-let [user-id (api/current-user-id)]
     (let [all-parameter-ids               (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
           parameter-ids->last-used-values (when (seq all-parameter-ids)
                                             (into {}

@@ -3,7 +3,7 @@
   -- Consider whether there's a place to put this to consolidate things."
   (:require
    [clojure.core.async :as a]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.async.util :as async.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
@@ -21,7 +21,7 @@
   (let [query (-> query
                   (assoc-in [:constraints :max-results] 1)
                   (assoc-in [:constraints :max-results-bare-rows] 1)
-                  (assoc-in [:info :executed-by] api/*current-user-id*))]
+                  (assoc-in [:info :executed-by] (api/current-user-id)))]
     ;; need add the constraints above before calculating hash because those affect the hash
     ;;
     ;; (normally middleware takes care of calculating query hashes for 'userland' queries but this is not

@@ -2,7 +2,7 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]

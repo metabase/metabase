@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -246,7 +246,7 @@
                                                                                                :kind       kind
                                                                                                :source     src
                                                                                                :value      value
-                                                                                               :creator_id api/*current-user-id*}
+                                                                                               :creator_id (api/current-user-id)}
                                                                                         id
                                                                                         (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented

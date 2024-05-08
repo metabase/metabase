@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [environ.core :refer [env]]
    [malli.core :as mc]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -668,10 +668,10 @@
 
 (defenterprise sandboxed-user?
   "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
-  error if [[api/*current-user-id*]] is not bound."
+  error if [[api/current-user-id]] is not bound."
   metabase-enterprise.sandbox.api.util
   []
-  (when-not api/*current-user-id*
+  (when-not (api/current-user-id)
     ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
     ;; returning `false` for users who should actually be sandboxes.
     (throw (ex-info (str (tru "No current user found"))
@@ -682,10 +682,10 @@
 
 (defenterprise impersonated-user?
   "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
-  Will throw an error if [[api/*current-user-id*]] is not bound."
+  Will throw an error if [[api/current-user-id]] is not bound."
   metabase-enterprise.advanced-permissions.api.util
   []
-  (when-not api/*current-user-id*
+  (when-not (api/current-user-id)
     ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
     ;; returning `false` for users who should actually be using impersonations.
     (throw (ex-info (str (tru "No current user found"))
@@ -696,7 +696,7 @@
 
 (defn sandboxed-or-impersonated-user?
   "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
-  false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  false. Will throw an error if [[api/current-user-id]] is not bound."
   []
   (or (sandboxed-user?)
       (impersonated-user?)))

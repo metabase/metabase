@@ -21,7 +21,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.events :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -144,7 +144,7 @@
 
 (defn- current-user-is-creator?
   [notification]
-  (= api/*current-user-id* (:creator_id notification)))
+  (= (api/current-user-id) (:creator_id notification)))
 
 (defn- current-user-is-recipient?
   [notification]
@@ -153,13 +153,13 @@
                             recipient recipients]
                         (:id recipient))]
     (boolean
-     (some #{api/*current-user-id*} recipient-ids))))
+     (some #{(api/current-user-id)} recipient-ids))))
 
 (defmethod mi/can-read? Pulse
   [notification]
   (if (is-alert? notification)
    (mi/current-user-has-full-permissions? :read notification)
-   (or api/*is-superuser?*
+   (or (api/is-superuser?)
        (or (current-user-is-creator? notification)
            (current-user-is-recipient? notification)))))
 
@@ -169,7 +169,7 @@
   [notification]
   (if (is-alert? notification)
     (mi/current-user-has-full-permissions? :write notification)
-    (or api/*is-superuser?*
+    (or (api/is-superuser?)
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
@@ -535,7 +535,7 @@
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)
       (events/publish-event! :event/subscription-create {:object <>
-                                                         :user-id api/*current-user-id*}))))
+                                                         :user-id (api/current-user-id)}))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -596,7 +596,7 @@
   (update-notification! pulse)
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-pulse (u/the-id pulse))
-    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
+    (events/publish-event! :event/subscription-update {:object <> :user-id (api/current-user-id)})))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -614,7 +614,7 @@
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-alert (u/the-id alert))
-    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
+    (events/publish-event! :event/alert-update {:object <> :user-id (api/current-user-id)})))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

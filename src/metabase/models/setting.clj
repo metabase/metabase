@@ -81,7 +81,7 @@
    [environ.core :as env]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -412,7 +412,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+    (t2/update! :model/User (api/current-user-id) {:settings (json/generate-string @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -430,7 +430,7 @@
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
-  (or api/*is-superuser?*
+  (or (api/is-superuser?)
       (do
         (when config/ee-available?
           (classloader/require 'metabase-enterprise.advanced-permissions.common
@@ -449,11 +449,11 @@
   accessed directly via the API, but not in most other places on the backend."
   [setting]
   (or (not *enforce-setting-access-checks*)
-      (nil? api/*current-user-id*)
-      api/*is-superuser?*
+      (nil? (api/current-user-id))
+      (api/is-superuser?)
       (and
        ;; Non-admin setting managers can only access settings that are not marked as admin-only
-       (not api/*is-superuser?*)
+       (not (api/is-superuser?))
        (has-advanced-setting-access?)
        (not= (:visibility setting) :admin))
       (and
@@ -897,7 +897,7 @@
                       (when (not= audit :no-value)
                         {:previous-value (maybe-obfuscate previous-value)
                          :new-value      (maybe-obfuscate new-value)}))
-      :user-id api/*current-user-id*
+      :user-id (api/current-user-id)
       :model  :model/Setting})))
 
 (defn- should-audit?
@@ -1347,11 +1347,11 @@
   "Returns a set of setting visibilities that the current user has read access to."
   []
   (set (concat [:public]
-               (when @api/*current-user*
+               (when (api/current-user)
                  [:authenticated])
                (when (has-advanced-setting-access?)
                  [:settings-manager])
-               (when api/*is-superuser?*
+               (when (api/is-superuser?)
                  [:admin]))))
 
 (defn current-user-writable-visibilities
@@ -1360,7 +1360,7 @@
   (set (concat []
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
-               (when api/*is-superuser?*
+               (when (api/is-superuser?)
                  [:admin]))))
 
 (defn- user-facing-settings-matching

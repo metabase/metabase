@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
@@ -34,8 +34,8 @@
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
                     (if new-value
-                      (snowplow/track-event! ::snowplow/embedding-enabled api/*current-user-id* snowplow-payload)
-                      (snowplow/track-event! ::snowplow/embedding-disabled api/*current-user-id* snowplow-payload))))))
+                      (snowplow/track-event! ::snowplow/embedding-enabled (api/current-user-id) snowplow-payload)
+                      (snowplow/track-event! ::snowplow/embedding-disabled (api/current-user-id) snowplow-payload))))))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

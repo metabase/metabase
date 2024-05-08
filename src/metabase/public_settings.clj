@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -833,7 +833,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defn- not-handling-api-request?
   []
-  (nil? @api/*current-user*))
+  (nil? (api/current-user-id)))
 
 (defn set-uploads-database-id!
   "Sets the :uploads-database-id setting, with an appropriate permission check."

@@ -1,8 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
-   [metabase.api.common
-    :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.api :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -32,7 +31,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user *current-user-id*)
+                    :actual-permissions   (data-perms/permissions-for-user (api/current-user-id))
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -79,9 +78,9 @@
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
-  (when *current-user-id*
+  (when (api/current-user-id)
     (log/tracef "Checking query permissions. Current user permissions = %s"
-                (pr-str (data-perms/permissions-for-user *current-user-id*)))
+                (pr-str (data-perms/permissions-for-user (api/current-user-id))))
     (when (= perms/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
@@ -109,7 +108,7 @@
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
-  `*current-user-id*` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
+  `(api/current-user-id` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
@@ -126,7 +125,7 @@
   [{database-id :database, :as outer-query} :- [:map
                                                 [:database ::lib.schema.id/database]
                                                 [:type [:enum :query :native]]]]
-  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str (api/current-user-permissions-set)))
   (when *card-id*
     (check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
@@ -154,8 +153,8 @@
   allowed to see the native query before converting the MBQL query to native.)"
   [{database-id :database, :as _query}]
   (or
-   (not *current-user-id*)
-   (= (data-perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
+   (not (api/current-user-id))
+   (= (data-perms/full-db-permission-for-user (api/current-user-id) :perms/create-queries database-id)
       :query-builder-and-native)))
 
 (defn check-current-user-has-adhoc-native-query-perms

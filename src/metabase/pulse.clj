@@ -2,7 +2,7 @@
   "Public API for sending Pulses."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -67,7 +67,7 @@
 
   This function should be executed under pulse's creator permissions."
   [dashboard dashcard card-or-id parameters]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert (api/current-user-id) "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
           card    (t2/select-one :model/Card :id card-id)
@@ -125,7 +125,7 @@
 
   This function should be executed under pulse's creator permissions."
   [dashcard]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert (api/current-user-id) "Makes sure you wrapped this with a `with-current-user`.")
   (let [link-card (get-in dashcard [:visualization_settings :link])]
     (cond
       (some? (:url link-card))
@@ -155,7 +155,7 @@
 
   The result will follow the pulse's creator permissions."
   [dashcard pulse dashboard]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert (api/current-user-id) "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]

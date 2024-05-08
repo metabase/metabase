@@ -1,6 +1,6 @@
 (ns metabase.transforms.materialize
   (:require
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -52,7 +52,7 @@
 (defn make-card-for-step!
   "Make and save a card for a given transform step and query."
   [{:keys [name transform description]} query]
-  (->> {:creator_id             api/*current-user-id*
+  (->> {:creator_id             (api/current-user-id)
         :dataset_query          query
         :description            description
         :name                   name

@@ -8,7 +8,7 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -76,7 +76,7 @@
                  ;; preprocess this without a current user context so it's not subject to permissions checks. To get
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
-                 (binding [api/*current-user-id* nil]
+                 (api/with-current-user-id nil
                    ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query

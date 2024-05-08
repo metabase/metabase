@@ -3,7 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
@@ -229,7 +229,7 @@
                                 :start-time    (System/nanoTime)
                                 :call-count-fn call-count-fn
                                 :diag-info-fn  diag-info-fn
-                                :log-context   {:metabase-user-id api/*current-user-id*}}
+                                :log-context   {:metabase-user-id (api/current-user-id)}}
                 response->info (fn [response]
                                  (assoc info :response response))
                 respond        (comp respond logged-response response->info)]

@@ -2,7 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -77,12 +77,12 @@
    (if (should-read-audit-db? pk)
      false
      (and (= :unrestricted (data-perms/full-db-permission-for-user
-                            api/*current-user-id*
+                            (api/current-user-id)
                             :perms/view-data
                             pk))
           (contains? #{:query-builder :query-builder-and-native}
                     (data-perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
+                     (api/current-user-id)
                      :perms/create-queries
                      pk))))))
 

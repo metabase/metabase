@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -144,7 +144,7 @@
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
-    (when-let [user-id api/*current-user-id*]
+    (when-let [user-id (api/current-user-id)]
       (doseq [{:keys [id value]} request-params]
         (user-parameter-value/upsert! user-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"

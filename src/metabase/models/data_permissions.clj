@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -140,7 +140,7 @@
      ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]
-  (if (and (= user-id api/*current-user-id*)
+  (if (and (= user-id (api/current-user-id))
            (get @*permissions-for-user* user-id))
     (get-in @*permissions-for-user* [user-id perm-type db-id])
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
@@ -183,8 +183,8 @@
 
 (defn- is-superuser?
   [user-id]
-  (if (= user-id api/*current-user-id*)
-    api/*is-superuser?*
+  (if (= user-id (api/current-user-id))
+    (api/is-superuser?)
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
 
 (mu/defn database-permission-for-user :- PermissionValue

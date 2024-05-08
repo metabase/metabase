@@ -1,7 +1,7 @@
 (ns metabase.events.recent-views
   "This namespace is responsible for subscribing to events which should update the recent views for a user."
   (:require
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.recent-views :as recent-views]
@@ -26,7 +26,7 @@
       (when object
         (let [model    (audit-log/model-name object)
               model-id (u/id object)
-              user-id  (or user-id api/*current-user-id*)]
+              user-id  (or user-id (api/current-user-id))]
           (recent-views/update-users-recent-views! user-id model model-id)))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
@@ -44,7 +44,7 @@
      :user-id user-id}
     (try
       (let [model    "card"
-            user-id  (or user-id api/*current-user-id*)]
+            user-id  (or user-id (api/current-user-id))]
         ;; we don't want to count pinned card views
         (when-not (#{:collection :dashboard} context)
           (recent-views/update-users-recent-views! user-id model card-id)))

@@ -10,7 +10,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.analyze.query-results :as qr]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
@@ -862,7 +862,7 @@ saved later when it is ready."
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
+      (events/publish-event! :event/card-update {:object card :user-id (api/current-user-id)}))
     card))
 
 (methodical/defmethod mi/to-json :model/Card

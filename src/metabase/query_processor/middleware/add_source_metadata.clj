@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -47,7 +47,7 @@
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
-    (let [cols (binding [api/*current-user-id* nil]
+    (let [cols (api/with-current-user-id nil
                  ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                   {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query

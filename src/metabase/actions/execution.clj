@@ -5,7 +5,7 @@
    [metabase.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -205,7 +205,7 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
+    (snowplow/track-event! ::snowplow/action-executed (api/current-user-id) {:source    :dashboard
                                                                              :type      (:type action)
                                                                              :action_id (:id action)})
     (execute-action! action request-parameters)))
@@ -217,7 +217,7 @@
              (tru "Values can only be fetched for actions that require a Primary Key."))
   (let [implicit-action (keyword (:kind action))
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
-        info {:executed-by api/*current-user-id*
+        info {:executed-by (api/current-user-id)
               :context     :action
               :action-id   (:id action)}
         card (t2/select-one Card :id (:model_id action))
@@ -233,10 +233,10 @@
         exposed-param-ids (-> (set (map :id (:parameters action)))
                               (set/difference (set hidden-param-ids)))]
     (m/filter-keys
-      #(contains? exposed-param-ids %)
-      (zipmap
-        (map (comp u/slugify :name) (get-in result [:data :cols]))
-        (first (get-in result [:data :rows]))))))
+     #(contains? exposed-param-ids %)
+     (zipmap
+      (map (comp u/slugify :name) (get-in result [:data :cols]))
+      (first (get-in result [:data :rows]))))))
 
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.

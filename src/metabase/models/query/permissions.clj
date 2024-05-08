@@ -4,7 +4,7 @@
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -35,7 +35,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user api/*current-user-id*)
+                    :actual-permissions   (data-perms/permissions-for-user (api/current-user-id))
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -94,7 +94,7 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (binding [api/*current-user-id* nil]
+  (api/with-current-user-id nil
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
 (defn- legacy-mbql-required-perms
@@ -164,16 +164,16 @@
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
       (let [paths-excluding-gtap-paths (set/difference paths (-> gtap-perms :paths))]
-        (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
+        (or (perms/set-has-full-permissions-for-set? (api/current-user-permissions-set) paths-excluding-gtap-paths)
             (throw (perms-exception paths)))))
     ;; Check native query access if required
     (when (= (:perms/create-queries required-perms) :query-builder-and-native)
       (or (= (:perms/create-queries gtap-perms) :query-builder-and-native)
-          (= (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db-id) :query-builder-and-native)
+          (= (data-perms/full-db-permission-for-user (api/current-user-id) :perms/create-queries db-id) :query-builder-and-native)
           (throw (perms-exception {db-id {:perms/create-queries :query-builder-and-native}}))))
     (when (= (:perms/view-data required-perms) :unrestricted)
       (or (= (:perms/view-data gtap-perms) :unrestricted)
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data db-id))
+          (= :unrestricted (data-perms/full-db-permission-for-user (api/current-user-id) :perms/view-data db-id))
           (throw (perms-exception {db-id {:perms/view-data :unrestricted}}))))
     (when-let [table-id->perm (and (coll? (:perms/create-queries required-perms))
                                    (:perms/create-queries required-perms))]
@@ -182,7 +182,7 @@
          (contains? #{:query-builder :query-builder-and-native}
                     (get-in gtap-perms [:perms/create-queries table-id]))
          (data-perms/user-has-permission-for-table?
-          api/*current-user-id*
+          (api/current-user-id)
           :perms/create-queries
           :query-builder
           db-id

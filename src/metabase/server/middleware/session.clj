@@ -16,8 +16,11 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   ;; This is a 'glue' namespace between modules, so we'll allow it to hit the internals of `metabase.api.common`... for
+   ;; now.
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.api.common
-    :as api
+    :as api.common
     :refer [*current-user*
             *current-user-id*
             *current-user-permissions-set*

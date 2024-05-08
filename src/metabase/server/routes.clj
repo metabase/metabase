@@ -4,8 +4,7 @@
   (:require
    [compojure.core :refer [context defroutes GET OPTIONS]]
    [compojure.route :as route]
-   [metabase.api.dataset :as api.dataset]
-   [metabase.api.routes :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
@@ -29,14 +28,14 @@
 
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 (defroutes ^:private public-routes
-  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format api.dataset/export-format-regex]
+  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format api/export-format-regex]
        [uuid export-format]
        (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 (defroutes ^:private embed-routes
-  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
+  (GET ["/question/:token.:export-format", :export-format api/export-format-regex]
        [token export-format]
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))

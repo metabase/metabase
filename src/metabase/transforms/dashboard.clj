@@ -1,7 +1,7 @@
 (ns metabase.transforms.dashboard
   (:require
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.models.table :refer [Table]]
    [metabase.transforms.materialize :as tf.materialize]
@@ -37,7 +37,7 @@
 (defn- card-for-source-table
   [table]
   {:pre [(map? table)]}
-  {:creator_id             api/*current-user-id*
+  {:creator_id             (api/current-user-id)
    :dataset_query          {:type     :query
                             :query    {:source-table (u/the-id table)}
                             :database (:db_id table)}

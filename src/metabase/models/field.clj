@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -146,13 +146,13 @@
 (defmethod mi/can-read? :model/Field
   ([instance]
    (and (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
+         (api/current-user-id)
          :perms/view-data
          :unrestricted
          (field->db-id instance)
          (:table_id instance))
         (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
+         (api/current-user-id)
          :perms/create-queries
          :query-builder
          (field->db-id instance)

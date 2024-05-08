@@ -2,7 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -122,9 +122,9 @@
     (let [current-version (:tag config/mb-version-info)]
       (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
-      (binding [api/*current-user-id*       user-id
-                setting/*user-local-values* (delay (atom (user-local-settings user)))]
-        (setting/set! :last-acknowledged-version current-version)))
+      (api/with-current-user-id user-id
+        (binding [setting/*user-local-values* (delay (atom (user-local-settings user)))]
+          (setting/set! :last-acknowledged-version current-version))))
     ;; add the newly created user to the magic perms groups.
     (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?

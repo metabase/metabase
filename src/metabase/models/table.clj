@@ -1,6 +1,6 @@
 (ns metabase.models.table
   (:require
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -93,13 +93,13 @@
 (defmethod mi/can-read? :model/Table
   ([instance]
    (and (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
+         (api/current-user-id)
          :perms/view-data
          :unrestricted
          (:db_id instance)
          (:id instance))
         (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
+         (api/current-user-id)
          :perms/create-queries
          :query-builder
          (:db_id instance)

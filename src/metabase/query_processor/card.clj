@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -212,7 +212,7 @@
                                            (merge
                                             {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
                                             middleware))))
-        info     (cond-> {:executed-by            api/*current-user-id*
+        info     (cond-> {:executed-by            (api/current-user-id)
                           :context                context
                           :card-id                card-id
                           :card-name              (:name card)

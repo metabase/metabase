@@ -4,7 +4,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api :as api]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -50,7 +50,7 @@
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
      (data-perms/user-has-permission-for-table?
-      api/*current-user-id*
+      (api/current-user-id)
       :perms/manage-table-metadata
       :yes
       (:db_id table)
