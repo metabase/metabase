@@ -1027,7 +1027,8 @@ class TableInteractive extends Component {
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
     const shortcutColumn = 1;
-    const info = Lib.queryDisplayInfo(question.query());
+    const query = question?.query();
+    const info = query && Lib.queryDisplayInfo(query);
 
     return (
       <DelayGroup>
@@ -1097,7 +1098,7 @@ class TableInteractive extends Component {
                 {shortcutColumn && (
                   <ColumnShortcut
                     height={headerHeight - 1}
-                    isEditable={info.isEditable}
+                    isEditable={info?.isEditable}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
