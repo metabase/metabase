@@ -570,8 +570,8 @@
         (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true
                                                     :embedding_params {"static_category"       "enabled"
                                                                        "static_category_label" "enabled"}})
-        (let [unsigned-token (dash-token dashboard)
-              url            (format "preview_embed/dashboard/%s/params/%s/values" unsigned-token "_STATIC_CATEGORY_")]
+        (let [signed-token (dash-token dashboard)
+              url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
