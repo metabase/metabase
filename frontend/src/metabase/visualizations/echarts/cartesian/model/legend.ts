@@ -1,10 +1,10 @@
 import { isBreakoutSeries } from "./guards";
-import type { SeriesModel } from "./types";
+import type { LegendItem, SeriesModel } from "./types";
 
 export const getLegendItems = (
   seriesModels: SeriesModel[],
   showAllLegendItems: boolean = false,
-) => {
+): LegendItem[] => {
   if (
     seriesModels.length === 1 &&
     !isBreakoutSeries(seriesModels[0]) &&
