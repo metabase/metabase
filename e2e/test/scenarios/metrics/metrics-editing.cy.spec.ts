@@ -179,7 +179,7 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("755,310.84");
     });
 
-    it.skip("should combine multiple aggregation clauses in an inner metric query stage (metabase#42425)", () => {
+    it.skip("should combine multiple aggregation columns from an inner query stage (metabase#42425)", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
