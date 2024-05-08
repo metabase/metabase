@@ -71,7 +71,7 @@ describe("scenarios > metrics", () => {
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addAggregation("Count of rows");
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -83,7 +83,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addAggregation("Count of rows");
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -93,7 +93,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
-      addAggregation("Count of rows");
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -103,7 +103,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
-      addAggregation("Count of rows");
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -134,7 +134,7 @@ describe("scenarios > metrics", () => {
         cy.findByText("CA").click();
         cy.button("Add filter").click();
       });
-      addAggregation("Count of rows");
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
       verifyScalarValue("613");
@@ -173,7 +173,7 @@ describe("scenarios > metrics", () => {
         name: "Total2",
       });
       popover().button("Done").click();
-      addAggregation("Sum of ...", "Total2");
+      addAggregation({ operatorName: "Sum of ...", columnName: "Total2" });
       saveMetric();
       runQuery();
       verifyScalarValue("755,310.84");
@@ -185,8 +185,8 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addAggregation("Sum of ...", "Total");
-      addBreakout("Created At");
+      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      addBreakout({ columnName: "Created At" });
       saveMetric();
       runQuery();
       verifyLineChart("Created At", "Sum of Total");
@@ -196,9 +196,9 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("People").click();
-      addAggregation("Count of rows");
-      addBreakout("Latitude");
-      addBreakout("Longitude");
+      addAggregation({ operatorName: "Count of rows" });
+      addBreakout({ columnName: "Latitude" });
+      addBreakout({ columnName: "Longitude" });
       saveMetric();
       runQuery();
       verifyPinMap();
@@ -245,6 +245,19 @@ describe("scenarios > metrics", () => {
       runQuery();
       // FIXME put correct value verifyScalarValue("9,380");
     });
+
+    it("should add an aggregation clause in a metric query with 2 stages", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Count of rows" });
+      addBreakout({ columnName: "Created At", bucketName: "Year" });
+      startNewAggregation();
+      popover().findByText("Count of rows").click();
+      saveMetric();
+      runQuery();
+      verifyScalarValue("5");
+    });
   });
 
   describe("order by", () => {
@@ -252,8 +265,8 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addAggregation("Count of rows");
-      addBreakoutWithBucket("Created At", "Year");
+      addAggregation({ operatorName: "Count of rows" });
+      addBreakout({ columnName: "Created At", bucketName: "Year" });
       addOrderBy("Count");
       saveMetric();
       runQuery();
@@ -271,8 +284,8 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addAggregation("Count of rows");
-      addBreakout("Created At");
+      addAggregation({ operatorName: "Count of rows" });
+      addBreakout({ columnName: "Created At" });
       addLimit(limit);
       saveMetric();
       runQuery();
@@ -281,7 +294,11 @@ describe("scenarios > metrics", () => {
   });
 });
 
-function startNewClause() {
+function clickActionButton(title: string) {
+  cy.findByTestId("action-buttons").button(title).click();
+}
+
+function clickAddClauseButton() {
   cy.findAllByTestId("notebook-cell-item").last().click();
 }
 
@@ -293,24 +310,54 @@ function startNewCustomColumn() {
   cy.findAllByTestId("action-buttons").first().button("Custom column").click();
 }
 
-function startNewFilter() {
-  getNotebookStep("filter").within(() => startNewClause());
+function startNewFilter({
+  stageIndex,
+  isNewStage,
+}: { stageIndex?: number; isNewStage?: boolean } = {}) {
+  if (isNewStage) {
+    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+      clickActionButton("Filter (optional)"),
+    );
+  } else {
+    getNotebookStep("filter", { stage: stageIndex }).within(() =>
+      clickAddClauseButton(),
+    );
+  }
 }
 
-function startNewAggregation() {
-  getNotebookStep("summarize")
-    .findByTestId("aggregate-step")
-    .within(() => startNewClause());
+function startNewAggregation({
+  stageIndex,
+  isNewStage,
+}: { stageIndex?: number; isNewStage?: boolean } = {}) {
+  if (isNewStage) {
+    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+      clickActionButton("Measure calculation"),
+    );
+  } else {
+    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
+      clickAddClauseButton(),
+    );
+  }
 }
 
-function startNewBreakout() {
-  getNotebookStep("summarize")
+function startNewBreakout({ stageIndex }: { stageIndex?: number } = {}) {
+  getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
-    .within(() => startNewClause());
+    .within(() => clickAddClauseButton());
 }
 
-function addAggregation(operatorName: string, columnName?: string) {
-  startNewAggregation();
+function addAggregation({
+  operatorName,
+  columnName,
+  stageIndex,
+  isNewStage,
+}: {
+  operatorName: string;
+  columnName?: string;
+  stageIndex?: number;
+  isNewStage?: boolean;
+}) {
+  startNewAggregation({ stageIndex, isNewStage });
 
   popover().within(() => {
     cy.findByText(operatorName).click();
@@ -320,15 +367,22 @@ function addAggregation(operatorName: string, columnName?: string) {
   });
 }
 
-function addBreakout(columnName: string) {
-  startNewBreakout();
-  popover().findByText(columnName).click();
-}
-
-function addBreakoutWithBucket(columnName: string, bucketName: string) {
-  startNewBreakout();
-  popover().findByLabelText(columnName).findByText("by month").click();
-  popover().last().findByText(bucketName).click();
+function addBreakout({
+  columnName,
+  bucketName,
+  stageIndex,
+}: {
+  columnName: string;
+  bucketName?: string;
+  stageIndex?: number;
+}) {
+  startNewBreakout({ stageIndex });
+  if (bucketName) {
+    popover().findByLabelText(columnName).findByText("by month").click();
+    popover().last().findByText(bucketName).click();
+  } else {
+    popover().findByText(columnName).click();
+  }
 }
 
 function addOrderBy(columnName: string) {
