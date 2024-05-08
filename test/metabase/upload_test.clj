@@ -550,6 +550,9 @@
     (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
+(defn- column-position [table column-name]
+  (t2/select-one-fn :database_position Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
+
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -564,37 +567,23 @@
                                     "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
                                     "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"])))]
           (testing "Table and Fields exist after sync"
-            (is (=? {:name          #"(?i)_mb_row_id"
-                     :semantic_type (if (not= driver/*driver* :clickhouse)
-                                      :type/PK
-                                      keyword?)
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 0 :table_id (:id table))))
-            (is (=? {:name          #"(?i)id"
-                     :semantic_type :type/PK
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 1 :table_id (:id table))))
-            (is (=? {:name      #"(?i)nulls"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 2 :table_id (:id table))))
-            (is (=? {:name      #"(?i)string"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 3 :table_id (:id table))))
-            (is (=? {:name      #"(?i)bool"
-                     :base_type :type/Boolean}
-                    (t2/select-one Field :database_position 4 :table_id (:id table))))
-            (is (=? {:name      #"(?i)number"
-                     :base_type :type/Float}
-                    (t2/select-one Field :database_position 5 :table_id (:id table))))
-            (is (=? {:name      #"(?i)date"
-                     :base_type :type/Date}
-                    (t2/select-one Field :database_position 6 :table_id (:id table))))
-            (is (=? {:name      #"(?i)datetime"
-                     :base_type :type/DateTime}
-                    (t2/select-one Field :database_position 7 :table_id (:id table))))
-            (testing "Check the data was uploaded into the table"
-              (is (= 2
-                     (count (rows-for-table table)))))))))))
+            (is (=? (cond->> [["id" {:semantic_type :type/PK
+                                     :base_type     :type/BigInteger}]
+                              ["nulls" {:base_type :type/Text}]
+                              ["string" {:base_type :type/Text}]
+                              ["bool" {:base_type :type/Boolean}]
+                              ["number" {:base_type :type/Float}]
+                              ["date" {:base_type :type/Date}]
+                              ["datetime" {:base_type :type/DateTime}]]
+                      (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                      (cons ["_mb_row_id" {:semantic_type     :type/PK
+                                           :base_type         :type/BigInteger}]))
+                    (->> (t2/select :model/Field :table_id (:id table))
+                         (sort-by :database_position)
+                         (map (juxt (comp u/lower-case-en :name) identity))))))
+          (testing "Check the data was uploaded into the table"
+            (is (= 2
+                   (count (rows-for-table table))))))))))
 
 (deftest load-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -613,10 +602,8 @@
                                     "2022-01-01T00:00"])))]
           (testing "Fields exists after sync"
             (testing "Check the datetime column the correct base_type"
-              (is (=? {:name      #"(?i)datetime"
-                       :base_type :type/DateTime}
-                      ;; db position is 1; 0 is for the auto-inserted ID
-                      (t2/select-one Field :database_position 1 :table_id (:id table)))))
+              (is (=? :type/DateTime
+                      (t2/select-one-fn :base_type Field :%lower.name "datetime" :table_id (:id table)))))
             (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
@@ -626,28 +613,29 @@
         (with-redefs [driver/db-default-timezone (constantly "Z")
                       upload/current-database    (constantly (mt/db))]
           (let [table-name (mt/random-name)
-                datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
-                                ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
-                                ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
-                                ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
-                                ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
-                                ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
-                                ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
-                                ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
+                transpose  (fn [m] (apply mapv vector m))
+                [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
+                                                ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
+                                                ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
+                                                ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
+                                                ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
+                                                ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
+                                                ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
+                                                ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]])]
             (testing "Fields exists after sync"
               (with-upload-table!
                 [table (do (load-from-csv-and-sync!
                             driver/*driver*
                             (mt/db)
                             table-name
-                            (csv-file-with (into ["offset_datetime"] (map first datetime-pairs)))))]
+                            (csv-file-with (into ["offset_datetime"] csv-strs))))]
                 (testing "Check the offset datetime column the correct base_type"
-                  (is (=? {:name      #"(?i)offset_datetime"
-                           :base_type :type/DateTimeWithLocalTZ}
-                          ;; db position is 1; 0 is for the auto-inserted ID
-                          (t2/select-one Field :database_position 1 :table_id (:id table)))))
-                (is (= (map second datetime-pairs)
-                       (map second (rows-for-table table))))))))))))
+                  (is (=? :type/DateTimeWithLocalTZ
+                          (t2/select-one-fn :base_type Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                (let [position (column-position table "offset_datetime")
+                      values   (map #(nth % position) (rows-for-table table))]
+                  (is (= expected
+                         values)))))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
@@ -680,11 +668,11 @@
                                     "18,0"])))]
           (testing "Table and Fields exist after sync"
             (testing "Check the boolean column has a boolean base_type"
-              (is (=? {:name      #"(?i)bool"
-                       :base_type :type/Boolean}
-                      (t2/select-one Field :database_position 2 :table_id (:id table)))))
+              (is (= :type/Boolean
+                     (t2/select-one-fn :base_type Field :%lower.name "bool" :table_id (:id table)))))
             (testing "Check the data was uploaded into the table correctly"
-              (let [bool-column (map #(nth % 2) (rows-for-table table))
+              (let [position    (column-position table "bool")
+                    bool-column (map #(nth % position) (rows-for-table table))
                     alternating (map even? (range (count bool-column)))]
                 (is (= alternating bool-column))))))))))
 
@@ -1478,7 +1466,8 @@
                      (append-csv! {:file     file
                                    :table-id (:id table)})))
               (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "Obi-Wan Kenobi"]]
+                (is (= (rows-with-auto-pk
+                        [["Obi-Wan Kenobi"]])
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
@@ -1564,7 +1553,7 @@
           (io/delete-file file))))))
 
 (deftest append-mb-row-id-csv-and-table-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
     (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
       (with-upload-table! [table (create-upload-table!)]
         (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
@@ -1603,7 +1592,8 @@
                  (catch-ex-info (append-csv! {:file     file
                                               :table-id (:id table)}))))
           (testing "Check the data was not uploaded into the table"
-            (is (= [[1 "Obi-Wan Kenobi"]]
+            (is (= (rows-with-auto-pk
+                    [["Obi-Wan Kenobi"]])
                    (rows-for-table table))))
           (io/delete-file file))))))
 
@@ -1611,10 +1601,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Append should handle the columns in the CSV file being reordered"
       (with-upload-table! [table (create-upload-table!
-                                  :col->upload-type (ordered-map/ordered-map
-                                                     upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
-                                                     :name ::upload/varchar-255
-                                                     :shame ::upload/varchar-255)
+                                  :col->upload-type (columns-with-auto-pk
+                                                     (ordered-map/ordered-map
+                                                      :name ::upload/varchar-255
+                                                      :shame ::upload/varchar-255))
                                   :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
 
         (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
@@ -1667,11 +1657,10 @@
                 (testing (str "\nTry to upload an invalid value for " upload-type)
                   (with-upload-table!
                     [table (create-upload-table!
-                            {:col->upload-type (cond-> (ordered-map/ordered-map
-                                                        :test_column upload-type
-                                                        :name        ::upload/varchar-255)
-                                                 auto-pk-column?
-                                                 (assoc upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk))
+                            {:col->upload-type (columns-with-auto-pk
+                                                (ordered-map/ordered-map
+                                                 :test_column upload-type
+                                                 :name        ::upload/varchar-255))
                              :rows             [[valid "Obi-Wan Kenobi"]]})]
                     (let [;; The CSV contains 50 valid rows and 1 invalid row
                           csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
