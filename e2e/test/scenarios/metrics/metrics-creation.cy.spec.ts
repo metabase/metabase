@@ -252,8 +252,10 @@ describe("scenarios > metrics", () => {
       popover().findByText("Orders").click();
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Created At", bucketName: "Year" });
-      startNewAggregation();
-      popover().findByText("Count of rows").click();
+      addAggregation({
+        operatorName: "Count of rows",
+        isPostAggregation: true,
+      });
       saveMetric();
       runQuery();
       verifyScalarValue("5");
