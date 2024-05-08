@@ -207,6 +207,7 @@ export type CartesianChartModel = BaseCartesianChartModel & {
 export type ShowWarning = (warning: string) => void;
 
 export type LegendItem = {
+  key: string;
   name: string;
   color: string;
 };
