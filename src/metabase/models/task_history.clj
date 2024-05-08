@@ -6,7 +6,6 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -51,7 +50,8 @@
     (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
 (t2/deftransforms :model/TaskHistory
-  {:task_details mi/transform-json})
+  {:task_details mi/transform-json
+   :status       mi/transform-keyword})
 
 (mu/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
@@ -75,33 +75,32 @@
    [:db_id        {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
    [:task_details {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
-(defn- save-task-history! [start-time-ms info]
-  (let [end-time-ms (System/currentTimeMillis)
-        duration-ms (- end-time-ms start-time-ms)]
-    (try
-      (first (t2/insert-returning-instances! TaskHistory
-                                             (assoc info
-                                                    :started_at (t/instant start-time-ms)
-                                                    :ended_at   (t/instant end-time-ms)
-                                                    :duration   duration-ms)))
-      (catch Throwable e
-        (log/warn e "Error saving task history")))))
+(defn- update-task-history! [th-id startime-ms info]
+  (let [end-time-ms (System/currentTimeMillis)]
+    (t2/update! :model/TaskHistory th-id (merge {:ended_at (t/instant end-time-ms)
+                                                 :duration (- end-time-ms startime-ms)}
+                                                info))))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
   [info :- TaskHistoryInfo f]
-  (let [start-time-ms (System/currentTimeMillis)]
+  (let [start-time-ms (System/currentTimeMillis)
+        th-id         (t2/insert-returning-pk! :model/TaskHistory
+                                               (assoc info
+                                                      :status     :started
+                                                      :started_at (t/instant start-time-ms)))]
+
     (try
       (u/prog1 (f)
-        (save-task-history! start-time-ms info))
+        (update-task-history! th-id start-time-ms {:status :sucess}))
       (catch Throwable e
-        (let [info (assoc info :task_details {:status        :failed
-                                              :exception     (class e)
-                                              :message       (.getMessage e)
-                                              :stacktrace    (u/filtered-stacktrace e)
-                                              :ex-data       (ex-data e)
-                                              :original-info (:task_details info)})]
-          (save-task-history! start-time-ms info))
+        (update-task-history! th-id start-time-ms {:task_details {:status        :failed
+                                                                  :exception     (class e)
+                                                                  :message       (.getMessage e)
+                                                                  :stacktrace    (u/filtered-stacktrace e)
+                                                                  :ex-data       (ex-data e)
+                                                                  :original-info (:task_details info)}
+                                                   :status       :failed})
         (throw e)))))
 
 (defmacro with-task-history
