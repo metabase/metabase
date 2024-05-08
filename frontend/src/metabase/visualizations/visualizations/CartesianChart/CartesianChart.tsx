@@ -46,7 +46,13 @@ function _CartesianChart(props: VisualizationProps) {
     [originalSettings, gridSize],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption({
+  const {
+    chartModel,
+    timelineEventsModel,
+    option,
+    seriesVisible,
+    setSeriesVisible,
+  } = useModelsAndOption({
     ...props,
     width: chartSize.width,
     height: chartSize.height,
@@ -79,6 +85,7 @@ function _CartesianChart(props: VisualizationProps) {
     chartModel,
     timelineEventsModel,
     option,
+    setSeriesVisible,
     props,
   );
 

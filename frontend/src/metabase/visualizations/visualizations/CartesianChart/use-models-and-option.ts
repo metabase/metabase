@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
@@ -112,6 +112,10 @@ export function useModelsAndOption({
     [chartModel.seriesModels, hovered],
   );
 
+  const [seriesVisible, setSeriesVisible] = useState(
+    chartModel.seriesModels.map(_ => true),
+  );
+
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -132,6 +136,7 @@ export function useModelsAndOption({
       default:
         return getCartesianChartOption(
           chartModel as CartesianChartModel,
+          seriesVisible,
           chartMeasurements,
           timelineEventsModel,
           selectedTimelineEventIds ?? [],
@@ -145,6 +150,7 @@ export function useModelsAndOption({
   }, [
     card.display,
     chartModel,
+    seriesVisible,
     chartMeasurements,
     renderingContext,
     selectedTimelineEventIds,
@@ -156,5 +162,11 @@ export function useModelsAndOption({
     isPlaceholder,
   ]);
 
-  return { chartModel, timelineEventsModel, option };
+  return {
+    chartModel,
+    timelineEventsModel,
+    option,
+    seriesVisible,
+    setSeriesVisible,
+  };
 }

@@ -43,6 +43,7 @@ export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
+  seriesVisible: boolean[],
   chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
@@ -118,17 +119,25 @@ export const getCartesianChartOption = (
     });
   }
 
+  const selected: Record<string, boolean> = {};
+  chartModel.seriesModels.forEach(
+    (seriesModel, index) =>
+      (selected[seriesModel.dataKey] = seriesVisible[index]),
+  );
+
   return {
     ...getSharedEChartsOptions(isPlaceholder),
     grid: {
       ...chartMeasurements.padding,
     },
     // We need to specify the legend property in order to dispatch the
-    // `legendToggleSelect` action, which we use to toggle series visiblity.
+    // `legendToggleSelect` action, which we use to toggle series visiblity, and
+    // to persist visiblity between re-renders with the `selected` object.
     // However, right now we are still using our own custom legend component, so
-    // we don't want the echarts legend to be visibile/interactable
+    // we don't want the echarts legend to be visibile/interactable.
     legend: {
       show: false,
+      selected,
     },
     dataset: echartsDataset,
     series: seriesOption,
