@@ -12,8 +12,6 @@ interface ThunkConfig {
 export const createAsyncThunk =
   createAsyncThunkOriginal.withTypes<ThunkConfig>();
 
-type AwaitedIfPromise<T> = T extends Promise<infer R> ? R : T;
-
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction<
@@ -30,7 +28,7 @@ export function createThunkAction<
 ) => (
   dispatch: ThunkDispatch<any, any, any>,
   getState: GetState,
-) => Promise<{ type: TActionType; payload: AwaitedIfPromise<TResult> }> {
+) => Promise<{ type: TActionType; payload: Awaited<TResult> }> {
   // @ts-expect-error - withAction is too hard to type correctly as it can accept both the payload or a thunk creator
   // this function only uses it with a thunk creator
   return withAction(actionType)(thunkCreator);
