@@ -62,7 +62,7 @@
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
-  "Return a list of candidates for automagic dashboards orderd by interestingness."
+  "Return a list of candidates for automagic dashboards ordered by interestingness."
   [id]
   {id ms/PositiveInt}
   (-> (t2/select-one Database :id id)

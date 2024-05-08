@@ -15,8 +15,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
@@ -254,7 +254,7 @@
 
 (mu/defn ^:private field->clause :- mbql.s/field
   [driver     :- :keyword
-   field      :- lib.metadata/ColumnMetadata
+   field      :- ::lib.schema.metadata/column
    param-type :- ::lib.schema.parameter/type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
@@ -323,7 +323,7 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field lib.metadata/ColumnMetadata]
+                                         [:field ::lib.schema.metadata/column]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1

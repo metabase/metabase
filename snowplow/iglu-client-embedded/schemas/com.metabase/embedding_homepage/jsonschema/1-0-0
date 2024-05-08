@@ -1,0 +1,43 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "User interactions with the embedding-homepage",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embedding-homepage",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "embedding_homepage_dismissed",
+        "embedding_homepage_quickstart_click",
+        "embedding_homepage_example_dashboard_click"
+      ],
+      "description": "The type of event being recorded."
+    },
+    "dismiss_reason": {
+      "type": "string",
+      "enum": [
+        "dismissed-done",
+        "dismissed-run-into-issues",
+        "dismissed-not-interested-now"
+      ],
+      "description": "The reason the user dismissed the homepage."
+    },
+    "initial_tab": {
+      "type": "string",
+      "enum": [
+        "static",
+        "interactive"
+      ],
+      "description": "The tab that was initially selected when the user first viewed the homepage."
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": false
+}

@@ -78,8 +78,24 @@ describe("command palette", () => {
       commandPaletteSearch().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
 
-      //Check that we are not filtering search results by action name
+      // When entering a query, if there are results that come before search results, highlight
+      // the first action, otherwise, highlight the first search result
+      commandPaletteSearch().clear().type("Or");
+      cy.findByRole("option", { name: "Performance" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.findByRole("option", { name: /View and filter/ }).should("exist");
+
+      // Check that we are not filtering search results by action name
       commandPaletteSearch().clear().type("Company");
+      cy.findByRole("option", { name: /View and filter/ }).should("exist");
+      cy.findByRole("option", { name: "PEOPLE" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.findByRole("option", { name: "REVIEWS" }).should("exist");
       cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
       commandPaletteSearch().clear();

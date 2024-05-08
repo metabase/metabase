@@ -1,1 +1,2 @@
-export { BulkActionBar } from "./BulkActionBar";
+export * from "./BulkActionBar";
+export * from "./BulkActionBar.styled";

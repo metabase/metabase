@@ -1,6 +1,7 @@
 import { useKBar, useMatches } from "kbar";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useKeyPressEvent } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
@@ -27,6 +28,12 @@ export const PaletteResults = () => {
     () => processResults(results as (PaletteActionImpl | string)[]),
     [results],
   );
+
+  useEffect(() => {
+    if (processedResults[0] === t`Search results`) {
+      query.setActiveIndex(2);
+    }
+  }, [processedResults, query]);
 
   useKeyPressEvent("End", () => {
     const lastIndex = processedResults.length - 1;
@@ -84,7 +91,11 @@ export const PaletteResults = () => {
                   {item}
                 </Box>
               ) : (
-                <PaletteResultItem item={item} active={active} />
+                <PaletteResultItem
+                  item={item}
+                  active={active}
+                  togglePalette={query.toggle}
+                />
               )}
             </Flex>
           );

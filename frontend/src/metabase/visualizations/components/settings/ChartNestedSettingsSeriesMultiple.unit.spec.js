@@ -75,7 +75,7 @@ describe("ChartNestedSettingSeries", () => {
     const expandButtons = screen.getAllByRole("img", { name: /chevrondown/i });
     expect(expandButtons).toHaveLength(3);
 
-    expect(screen.queryByText("Line style")).not.toBeInTheDocument();
+    expect(screen.queryByText("Line shape")).not.toBeInTheDocument();
     expect(screen.queryByText("Show dots on lines")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Replace missing values with"),
@@ -88,7 +88,7 @@ describe("ChartNestedSettingSeries", () => {
     //Expand a section
     await userEvent.click(expandButtons[0]);
     expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
-    expect(screen.getByText("Line style")).toBeInTheDocument();
+    expect(screen.getByText("Line shape")).toBeInTheDocument();
     expect(screen.getByText("Show dots on lines")).toBeInTheDocument();
     expect(screen.getByText("Replace missing values with")).toBeInTheDocument();
     expect(screen.getByText("Y-axis position")).toBeInTheDocument();

@@ -19,6 +19,7 @@ import type {
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
+import type { ColumnExtractionTag } from "./extractions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -452,7 +453,7 @@ export type ColumnExtraction = unknown & {
 };
 
 export type ColumnExtractionInfo = {
-  tag: string;
+  tag: ColumnExtractionTag;
   displayName: string;
 };
 

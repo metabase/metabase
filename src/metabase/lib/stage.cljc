@@ -73,7 +73,7 @@
 (mu/defn ^:private breakouts-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
@@ -84,7 +84,7 @@
 (mu/defn ^:private aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
@@ -97,7 +97,7 @@
 (mu/defn ^:private fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
     (not-empty
      (for [[tag :as ref-clause] fields
@@ -116,7 +116,7 @@
 (mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (into []
          (mapcat (fn [f]
@@ -128,7 +128,7 @@
   "Metadata for the previous stage, if there is one."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
      (for [col  (lib.metadata.calculation/returned-columns query
@@ -177,9 +177,9 @@
                 options))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   unique-name-fn  :- fn?]
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (for [expression (lib.expression/expressions-metadata query stage-number)]
      (let [base-type (:base-type expression)]

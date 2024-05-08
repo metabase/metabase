@@ -13,7 +13,8 @@ const getQuestionDetails = collectionId => ({
   collection_id: collectionId,
 });
 
-describe("scenarios > collections > archive", () => {
+// being deleted in #42226
+describe.skip("scenarios > collections > archive", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

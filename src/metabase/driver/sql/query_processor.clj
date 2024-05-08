@@ -346,15 +346,13 @@
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
      (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
-     :else            [:case
-                       [:=
-                        (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
-                        (inline-num 0)]
-                       (inline-num 7)
-                       :else
-                       (mod-fn
-                        (h2x/+ day-of-week-honeysql-expr offset)
-                        (inline-num 7))])))
+     :else            (-> [:coalesce
+                           [:nullif
+                            (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
+                            [:inline 0]]
+                           [:inline 7]]
+                          (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
+                                                           "integer"))))))
 
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
@@ -690,12 +688,15 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defn- window-aggregation-over-expr-for-query-with-breakouts [driver inner-query]
+(defn- window-aggregation-over-expr-for-query-with-breakouts
+  "Order by the first breakout, then partition by all the other ones. See #42003 and
+  https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
+  [driver inner-query]
   (let [num-breakouts   (count (:breakout inner-query))
         group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when ((fnil > 0) num-breakouts 1)
-                          (butlast group-bys))
-        order-expr      (last group-bys)]
+        partition-exprs (when (> num-breakouts 1)
+                          (rest group-bys))
+        order-expr      (first group-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
@@ -880,9 +881,7 @@
     (recur (second denominator))
 
     :else
-    [:case
-     [:= denominator (inline-num 0)] nil
-     :else                           denominator]))
+    [:nullif denominator [:inline 0]]))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]

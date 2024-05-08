@@ -1,10 +1,10 @@
-import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
+import { SearchBar } from "../search/SearchBar";
 
 import {
   AppBarLeftContainer,

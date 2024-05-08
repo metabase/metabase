@@ -53,7 +53,7 @@
           (fallback-display-name source-card)))))
 
 (mu/defn ^:private infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-query            :- :map]
   (when (some? card-query)
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
@@ -75,7 +75,7 @@
   ([metadata-providerable col]
    (->card-metadata-column metadata-providerable nil col))
 
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     col                   :- :map]
    (let [col (-> col
@@ -126,7 +126,7 @@
 
 (mu/defn card-metadata-columns :- CardColumns
   "Get a normalized version of the saved metadata associated with Card metadata."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- Card]
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
@@ -143,7 +143,7 @@
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)

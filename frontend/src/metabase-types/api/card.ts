@@ -77,12 +77,16 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   original_card_id?: number;
 }
 
+export type LineSize = "S" | "M" | "L";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
   show_series_values?: boolean;
   display?: string;
   axis?: string;
+  "line.size"?: LineSize;
+  "line.style"?: "solid" | "dashed" | "dotted";
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;

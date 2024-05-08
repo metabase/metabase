@@ -1,4 +1,4 @@
-import { useRegisterActions, useKBar } from "kbar";
+import { useRegisterActions, useKBar, Priority } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -14,7 +14,6 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
 import {
   getDocsSearchUrl,
   getDocsUrl,
@@ -79,7 +78,7 @@ export const useCommandPalette = () => {
       {
         id: "search_docs",
         name: debouncedSearchText
-          ? `Search documentation for "${debouncedSearchText}"`
+          ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
@@ -108,7 +107,7 @@ export const useCommandPalette = () => {
       return [
         {
           id: "search-is-loading",
-          name: "Loading...",
+          name: t`Loading...`,
           keywords: searchQuery,
           section: "search",
         },
@@ -122,27 +121,57 @@ export const useCommandPalette = () => {
         },
       ];
     } else if (debouncedSearchText) {
-      if (searchResults?.data?.length) {
-        return searchResults.data.map(result => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          return {
-            id: `search-result-${result.model}-${result.id}`,
-            name: result.name,
-            icon: wrappedResult.getIcon().name,
+      if (searchResults?.data.length) {
+        return [
+          {
+            id: `search-results-metadata`,
+            name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            subtitle: result.description || "",
+            icon: "link" as const,
             perform: () => {
-              dispatch(closeModal());
-              dispatch(push(wrappedResult.getUrl()));
+              dispatch(
+                push({
+                  pathname: "search",
+                  query: {
+                    q: debouncedSearchText,
+                  },
+                }),
+              );
             },
+            priority: Priority.HIGH,
             extra: {
-              parentCollection: wrappedResult.getCollection().name,
-              isVerified: result.moderated_status === "verified",
-              database: result.database_name,
+              href: {
+                pathname: "search",
+                query: {
+                  q: debouncedSearchText,
+                },
+              },
             },
-          };
-        });
+          },
+        ].concat(
+          searchResults.data.map(result => {
+            const wrappedResult = Search.wrapEntity(result, dispatch);
+            return {
+              id: `search-result-${result.model}-${result.id}`,
+              name: result.name,
+              subtitle: result.description || "",
+              icon: wrappedResult.getIcon().name,
+              section: "search",
+              keywords: debouncedSearchText,
+              priority: Priority.NORMAL,
+              perform: () => {
+                dispatch(push(wrappedResult.getUrl()));
+              },
+              extra: {
+                parentCollection: wrappedResult.getCollection().name,
+                isVerified: result.moderated_status === "verified",
+                database: result.database_name,
+                href: wrappedResult.getUrl(),
+              },
+            };
+          }),
+        );
       } else {
         return [
           {
@@ -174,12 +203,17 @@ export const useCommandPalette = () => {
         icon: getIcon(item).name,
         section: "recent",
         perform: () => {
-          dispatch(push(Urls.modelToUrl(item) ?? ""));
+          // Need to keep this logic here for when user selects via keyboard
+          const href = Urls.modelToUrl(item);
+          if (href) {
+            dispatch(push(href));
+          }
         },
         extra:
           item.model === "table"
             ? {
                 database: item.model_object.database_name,
+                href: Urls.modelToUrl(item),
               }
             : {
                 parentCollection:
@@ -187,6 +221,7 @@ export const useCommandPalette = () => {
                     ? ROOT_COLLECTION.name
                     : item.model_object.collection_name,
                 isVerified: item.model_object.moderated_status === "verified",
+                href: Urls.modelToUrl(item),
               },
       })) || []
     );
