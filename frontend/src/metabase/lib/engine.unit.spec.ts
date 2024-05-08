@@ -147,4 +147,8 @@ describe("isDeprecatedEngine", () => {
   it("should be false for an engine that's not deprecated", () => {
     expect(isDeprecatedEngine(engines, "baz")).toBe(false);
   });
+
+  it("should be false if an engine doesn't exist", () => {
+    expect(isDeprecatedEngine(engines, "buzzzzz")).toBe(false);
+  });
 });
