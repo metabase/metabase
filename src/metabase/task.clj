@@ -199,7 +199,7 @@
   Used to update trigger properties like priority."
   [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (.rescheduleJob scheduler (.getKey trigger) trigger)))
+    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
