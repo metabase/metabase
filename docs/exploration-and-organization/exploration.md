@@ -10,6 +10,40 @@ redirect_from:
 
 As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page, or in [collections][collections] you have access to.
 
+## Command palette
+
+The command palette lets you jump to anywhere in your Metabase.
+
+To bring up the command palette, hit cmd/ctrl + k. That's `cmd + k` for Macs, and `ctrl + k` for Windows PCs.
+
+You can use the command palette to:
+
+- Create new things (like new questions and dashboards)
+- Find things (saved questions, dashboards, models, etc.)
+- Find and jump to Admin settings
+
+So anytime you want to do or find anything in Metabase, just hit cmd/ctrl + k and start typing what you want to do.
+
+## Search
+
+If you want to refine your search with filters, use the search bar and click through to the search results page.
+
+You can select a result from the dropdown, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
+
+Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
+
+![Search results](./images/search-results.png)
+
+You can search by:
+
+- **Content type**: dashboard, question, model, etc.
+- **Creator**: who made the thing.
+- **Last editor**: who made the last saved change on the thing.
+- **Creation date**.
+- **Last edited date**.
+- **Verified items only**. Only show items that [have been verified](#verified-items).
+- **Search the contents of native queries**. Toggle this option if you want to search through SQL/native code in questions.
+
 ## Browse your data
 
 Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page or clicking the **Browse data** button in the side nav bar, and then selecting a database and clicking on one of its tables to see it. You can also hover over any table and click on the bolt icon to see an automatic exploration of the table's data. Give it a try!
@@ -69,14 +103,6 @@ When you're looking at the detail view of a question, you can use all the same a
 ![Heading actions](images/heading-actions.png)
 
 One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
-
-## Search
-
-Use the search bar to find dashboards, questions, collections, subscriptions, and alerts. You can select a result from the dropdown, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
-
-Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
-
-![Search results](./images/search-results.png)
 
 ## Bookmarks
 
