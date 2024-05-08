@@ -22,7 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -141,6 +141,17 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
+(defn- delete-jobs-with-no-class!
+  "Delete any jobs that have been scheduled but whose class is no longer available."
+  []
+  (doseq [job-key (some-> (scheduler) (.getJobKeys nil))]
+    (try
+      (qs/get-job (scheduler) job-key)
+      (catch JobPersistenceException e
+        (when (instance? ClassNotFoundException (.getCause e))
+          (log/infof "Deleting job %s due to class not found" (.getName job-key))
+          (qs/delete-job scheduler job-key))))))
+
 (defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
@@ -153,7 +164,8 @@
         (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
-        (init-tasks!)))))
+        (init-tasks!)
+        (delete-jobs-with-no-class!)))))
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
@@ -167,6 +179,8 @@
     (do (init-scheduler!)
         (qs/start (scheduler))
         (log/info "Task scheduler started"))))
+
+
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
