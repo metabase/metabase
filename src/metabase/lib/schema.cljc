@@ -109,14 +109,23 @@
        (= ref-type (first x))
        (not (contains? valid-ids (get x 2)))))
 
+(defn- stage-with-joins-and-namespaced-keys-removed
+  "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
+  info e.g. `:lib/metadata`."
+  [stage]
+  (select-keys stage (into []
+                           (comp (filter simple-keyword?)
+                                 (remove (partial = :joins)))
+                           (keys stage))))
+
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
                                #(bad-ref-clause? :expression expression-names %))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
                                #(bad-ref-clause? :aggregation uuids %))))
 
 (defn ref-errors-for-stage
