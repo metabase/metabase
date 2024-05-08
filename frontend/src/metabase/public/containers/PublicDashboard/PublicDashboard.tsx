@@ -1,7 +1,8 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { assoc } from "icepick";
+import type { ComponentType } from "react";
 import { Component } from "react";
+import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -10,11 +11,18 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import * as dashboardActions from "metabase/dashboard/actions";
+import {
+  initialize,
+  setParameterValueToDefault,
+  setParameterValue,
+  cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
+} from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
 import {
   getDashboardComplete,
   getCardData,
@@ -24,6 +32,10 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import type {
+  FetchDashboardResult,
+  SuccessfulFetchDashboardResult,
+} from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -35,33 +47,70 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import EmbedFrame from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicDashboard.styled";
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state: State) => {
   return {
-    metadata: getMetadata(state, props),
-    dashboardId:
-      props.params.dashboardId || props.params.uuid || props.params.token,
-    dashboard: getDashboardComplete(state, props),
-    dashcardData: getCardData(state, props),
-    slowCards: getSlowCards(state, props),
-    parameters: getParameters(state, props),
-    parameterValues: getParameterValues(state, props),
-    draftParameterValues: getDraftParameterValues(state, props),
+    metadata: getMetadata(state),
+    dashboard: getDashboardComplete(state),
+    dashcardData: getCardData(state),
+    slowCards: getSlowCards(state),
+    parameters: getParameters(state),
+    parameterValues: getParameterValues(state),
+    draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
   };
 };
 
 const mapDispatchToProps = {
-  ...dashboardActions,
+  initialize,
+  cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
+  setParameterValueToDefault,
+  setParameterValue,
   setErrorPage,
   onChangeLocation: push,
 };
 
-class PublicDashboardInner extends Component {
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type OwnProps = {
+  params: {
+    dashboardId?: DashboardId;
+    uuid?: string;
+    token?: string;
+  };
+};
+
+type PublicDashboardProps = ReduxProps &
+  OwnProps &
+  DashboardControlsPassedProps;
+
+type PublicDashboardState = {
+  dashboardId: DashboardId;
+};
+
+class PublicDashboardInner extends Component<
+  PublicDashboardProps,
+  PublicDashboardState
+> {
+  constructor(props: PublicDashboardProps) {
+    super(props);
+
+    this.state = {
+      dashboardId: String(
+        props.params.dashboardId || props.params.uuid || props.params.token,
+      ),
+    };
+  }
+
   _initialize = async () => {
     const {
       initialize,
@@ -80,17 +129,17 @@ class PublicDashboardInner extends Component {
     initialize();
 
     const result = await fetchDashboard({
-      dashId: uuid || token,
+      dashId: String(uuid || token),
       queryParams: location.query,
     });
 
-    if (result.error) {
+    if (!isSuccessfulFetchDashboardResult(result)) {
       setErrorPage(result.payload);
       return;
     }
 
     try {
-      if (this.props.dashboard.tabs.length === 0) {
+      if (this.props.dashboard?.tabs?.length === 0) {
         await fetchDashboardCardData({ reload: false, clearCache: true });
       }
     } catch (error) {
@@ -100,15 +149,18 @@ class PublicDashboardInner extends Component {
   };
 
   async componentDidMount() {
-    this._initialize();
+    await this._initialize();
   }
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
   }
 
-  async componentDidUpdate(prevProps) {
-    if (this.props.dashboardId !== prevProps.dashboardId) {
+  async componentDidUpdate(
+    prevProps: PublicDashboardProps,
+    prevState: PublicDashboardState,
+  ) {
+    if (this.state.dashboardId !== prevState.dashboardId) {
       return this._initialize();
     }
 
@@ -129,19 +181,21 @@ class PublicDashboardInner extends Component {
       return [];
     }
     if (!selectedTabId) {
-      return dashboard.dashcards;
+      return dashboard?.dashcards;
     }
-    return dashboard.dashcards.filter(
+    return dashboard?.dashcards.filter(
       dashcard => dashcard.dashboard_tab_id === selectedTabId,
     );
   };
 
   getHiddenParameterSlugs = () => {
     const { parameters } = this.props;
-    const currentTabParameterIds = this.getCurrentTabDashcards().flatMap(
-      dashcard =>
-        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
-    );
+    const currentTabParameterIds =
+      this.getCurrentTabDashcards()?.flatMap(
+        dashcard =>
+          dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ??
+          [],
+      ) ?? [];
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
@@ -183,8 +237,12 @@ class PublicDashboardInner extends Component {
           buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
         }
         dashboardTabs={
-          dashboard?.tabs?.length > 1 && (
-            <DashboardTabs location={this.props.location} />
+          dashboard?.tabs &&
+          dashboard.tabs.length > 1 && (
+            <DashboardTabs
+              dashboardId={this.state.dashboardId}
+              location={this.props.location}
+            />
           )
         }
       >
@@ -216,8 +274,17 @@ class PublicDashboardInner extends Component {
   }
 }
 
+function isSuccessfulFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is SuccessfulFetchDashboardResult {
+  const hasError = "error" in result;
+  return !hasError;
+}
+
 export const PublicDashboard = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  title(({ dashboard }) => dashboard && dashboard.name),
+  connector,
+  title(
+    ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
+  ),
   DashboardControls,
-)(PublicDashboardInner);
+)(PublicDashboardInner) as ComponentType<PublicDashboardProps>;
