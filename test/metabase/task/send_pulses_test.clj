@@ -108,13 +108,13 @@
                                            :channel_type :slack
                                            :details      {:channel "#random"}}
                                           daily-at-1am)]
-        (testing "priority is 0 to starts with"
+        (testing "priority is 0 to start with"
           (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
-        (testing "send pulse should updates it priority"
-          ;; 6 is the default priority of a trigger, we need it to be higher than that because
+        (testing "send pulse should update its priority"
+          ;; 5 is the default priority of a trigger, we need it to be higher than that because
           ;; pulse is time sensitive compared to other tasks like sync
-          (is (> (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority) 6)))))))
+          (is (> (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority) 5)))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"
