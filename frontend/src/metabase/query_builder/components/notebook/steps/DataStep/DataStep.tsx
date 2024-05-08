@@ -6,14 +6,14 @@ import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { Group, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import { DataStepCell, DataStepIconButton } from "./DataStep.styled";
+import { DataStepIconButton } from "./DataStep.styled";
 
 export const DataStep = ({
   query,
@@ -28,13 +28,16 @@ export const DataStep = ({
   const questionRef = useLatest(question);
   const collectionId = question.collectionId();
   const databaseId = Lib.databaseID(query);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceTable =
+    sourceTableId != null
+      ? Lib.tableOrCardMetadata(query, sourceTableId)
+      : null;
   const dispatch = useDispatch();
 
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
-    : t`Pick your starting data`;
+  const sourceTableInfo = sourceTable
+    ? Lib.displayInfo(query, stageIndex, sourceTable)
+    : null;
 
   const isRaw = useMemo(() => {
     return (
@@ -43,7 +46,7 @@ export const DataStep = ({
     );
   }, [query, stageIndex]);
 
-  const canSelectTableColumns = table && isRaw && !readOnly;
+  const canSelectTableColumns = sourceTable && isRaw && !readOnly;
 
   const handleTableSelect = async (
     tableId: TableId,
@@ -60,7 +63,7 @@ export const DataStep = ({
     <NotebookCell color={color}>
       <NotebookCellItem
         color={color}
-        inactive={!table}
+        inactive={!sourceTable}
         right={
           canSelectTableColumns && (
             <DataFieldPopover
@@ -79,10 +82,15 @@ export const DataStep = ({
           collectionId={collectionId}
           databaseQuery={{ saved: true }}
           selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
+          selectedTableId={sourceTableId}
           setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
+          isInitiallyOpen={!sourceTable}
+          triggerElement={
+            <Group p={NotebookCell.CONTAINER_PADDING} spacing="sm">
+              {sourceTableInfo?.isMetric && <Icon name="metric" />}
+              {sourceTableInfo?.displayName ?? t`Pick your starting data`}
+            </Group>
+          }
         />
       </NotebookCellItem>
     </NotebookCell>

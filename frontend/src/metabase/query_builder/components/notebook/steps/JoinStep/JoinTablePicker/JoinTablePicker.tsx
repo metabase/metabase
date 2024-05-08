@@ -23,7 +23,7 @@ import {
 interface JoinTablePickerProps {
   query: Lib.Query;
   table: Lib.Joinable | undefined;
-  tableName: string | undefined;
+  tableInfo: Lib.TableDisplayInfo | undefined;
   color: string;
   isReadOnly: boolean;
   isModelDataSource: boolean;
@@ -34,7 +34,7 @@ interface JoinTablePickerProps {
 export function JoinTablePicker({
   query,
   table,
-  tableName,
+  tableInfo,
   color,
   isReadOnly,
   isModelDataSource,
@@ -42,7 +42,6 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const queryRef = useLatest(query);
-  const onChangeRef = useLatest(onChange);
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -68,7 +67,7 @@ export function JoinTablePicker({
     databaseId: DatabaseId,
   ) => {
     await dispatch(loadMetadataForTable(databaseId, tableId));
-    onChangeRef.current?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
+    onChange?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
   };
 
   return (
@@ -101,7 +100,8 @@ export function JoinTablePicker({
         setSourceTableFn={handleTableChange}
         triggerElement={
           <TablePickerButton disabled={isDisabled}>
-            {tableName || t`Pick data…`}
+            {tableInfo?.isMetric && <Icon name="metric" />}
+            {tableInfo?.displayName ?? t`Pick data…`}
           </TablePickerButton>
         }
       />

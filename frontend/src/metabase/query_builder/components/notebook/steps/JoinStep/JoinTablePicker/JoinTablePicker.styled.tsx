@@ -6,6 +6,8 @@ import { color } from "metabase/lib/colors";
 import { NotebookCell } from "../../../NotebookCell";
 
 export const TablePickerButton = styled.button`
+  display: flex;
+  gap: 0.25rem;
   color: inherit;
   font-weight: inherit;
   cursor: ${props => (props.disabled ? "auto" : "pointer")};
