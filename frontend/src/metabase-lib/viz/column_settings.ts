@@ -6,25 +6,12 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dataset,
   DatasetColumn,
-  TableColumnOrderSetting,
   VisualizationSettings,
 } from "metabase-types/api";
 
 export type SettingsSyncOptions = {
   column: DatasetColumn;
 };
-
-function isValid(
-  cols: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
-) {
-  const columnIndexes = findColumnIndexesForColumnSettings(
-    cols,
-    columnSettings.filter(({ enabled }) => enabled),
-  );
-
-  return columnIndexes.every(columnIndex => columnIndex >= 0);
-}
 
 export function syncColumnSettings(
   settings: VisualizationSettings,
@@ -36,15 +23,6 @@ export function syncColumnSettings(
 
   if (queryResults && !queryResults.error) {
     newSettings = syncTableColumnSettings(newSettings, queryResults, options);
-    const { cols } = queryResults.data;
-
-    // needed for a case when we have named and field_id based field_refs
-    if (!isValid(cols, settings["table.columns"] ?? [])) {
-      newSettings = {
-        ...newSettings,
-        "table.columns": undefined,
-      };
-    }
 
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
