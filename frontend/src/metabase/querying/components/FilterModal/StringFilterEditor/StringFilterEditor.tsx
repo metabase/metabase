@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import type { OperatorType } from "metabase/querying/hooks/use-string-filter";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Grid, TextInput } from "metabase/ui";
+import { Grid, MultiAutocomplete } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -24,11 +25,10 @@ export function StringFilterEditor({
   const [isFocused, setIsFocused] = useState(false);
 
   const {
+    type,
     operator,
     availableOptions,
     values,
-    valueCount,
-    hasMultipleValues,
     options,
     getDefaultValues,
     getFilterClause,
@@ -90,8 +90,7 @@ export function StringFilterEditor({
             stageIndex={stageIndex}
             column={column}
             values={values}
-            valueCount={valueCount}
-            hasMultipleValues={hasMultipleValues}
+            type={type}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
@@ -107,8 +106,7 @@ interface StringValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: string[];
-  valueCount: number;
-  hasMultipleValues?: boolean;
+  type: OperatorType;
   onChange: (values: string[]) => void;
   onFocus: () => void;
   onBlur: () => void;
@@ -119,13 +117,12 @@ function StringValueInput({
   stageIndex,
   column,
   values,
-  valueCount,
-  hasMultipleValues,
+  type,
   onChange,
   onFocus,
   onBlur,
 }: StringValueInputProps) {
-  if (hasMultipleValues) {
+  if (type === "exact") {
     return (
       <StringFilterValuePicker
         query={query}
@@ -140,13 +137,14 @@ function StringValueInput({
     );
   }
 
-  if (valueCount === 1) {
+  if (type === "partial") {
     return (
-      <TextInput
-        value={values[0]}
+      <MultiAutocomplete
+        data={[]}
+        value={values}
         placeholder={t`Enter some text`}
         aria-label={t`Filter value`}
-        onChange={event => onChange([event.target.value])}
+        onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
       />

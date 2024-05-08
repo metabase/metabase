@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type {
@@ -40,6 +41,9 @@ export const defaultOptions: EntityPickerModalOptions = {
   hasConfirmButtons: true,
   allowCreateNew: true,
 };
+
+// needs to be above popovers and bulk actions
+export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
@@ -109,10 +113,10 @@ export function EntityPickerModal<
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
-      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
       yOffset="10dvh"
+      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
       <ModalContent h="100%">
