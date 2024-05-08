@@ -1275,6 +1275,6 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.job"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
     (qs/shutdown scheduler)))
