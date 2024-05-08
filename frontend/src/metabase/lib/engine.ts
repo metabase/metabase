@@ -1,6 +1,6 @@
 import type { Engine } from "metabase-types/api";
 
-export function getEngineNativeType(engine?: string) {
+export function getEngineNativeType(engine?: string): "sql" | "json" {
   switch (engine) {
     case "mongo":
     case "druid":
@@ -11,7 +11,7 @@ export function getEngineNativeType(engine?: string) {
 }
 
 export function getNativeQueryLanguage(engine?: string) {
-  return getEngineNativeType(engine).toUpperCase();
+  return getEngineNativeType(engine).toUpperCase() as "SQL" | "JSON";
 }
 
 export function getEngineNativeAceMode(engine?: string | null) {
