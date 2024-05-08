@@ -11,8 +11,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
-  ListCollectionItemsRequest,
   CollectionItemModel,
+  DatabaseId,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -22,7 +23,7 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
+import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
@@ -35,7 +36,12 @@ export const defaultOptions: QuestionPickerOptions = {
   showRootCollection: true,
   hasConfirmButtons: false,
 };
+
 interface QuestionPickerProps {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
@@ -75,6 +81,7 @@ const useGetInitialCollection = (
 };
 
 export const QuestionPicker = ({
+  databaseId,
   onItemSelect,
   initialValue,
   options,
@@ -167,6 +174,7 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
+      databaseId={databaseId}
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       generateKey={generateKey}

@@ -90,6 +90,7 @@ export const DataPickerModal = ({
           icon: "model",
           element: (
             <QuestionPicker
+              databaseId={databaseId}
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
               options={options}
@@ -117,6 +118,7 @@ export const DataPickerModal = ({
           icon: "folder",
           element: (
             <QuestionPicker
+              databaseId={databaseId}
               initialValue={isQuestionItem(value) ? value : undefined}
               models={QUESTION_PICKER_MODELS}
               options={options}

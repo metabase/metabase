@@ -2,12 +2,13 @@ import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
+import type { DatabaseId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
+  IsFolder,
   ListProps,
   PickerState,
-  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { isSelectedItem } from "../../utils";
@@ -23,6 +24,10 @@ export interface NestedItemPickerProps<
   Query,
   Options extends EntityPickerOptions,
 > {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
   generateKey: (query?: Query) => string;
@@ -40,6 +45,7 @@ export function NestedItemPicker<
   Query,
   Options extends EntityPickerOptions,
 >({
+  databaseId,
   onFolderSelect,
   onItemSelect,
   generateKey,
@@ -80,6 +86,7 @@ export function NestedItemPicker<
             >
               <ErrorBoundary>
                 <ListResolver
+                  databaseId={databaseId}
                   query={query}
                   selectedItem={selectedItem}
                   options={options}

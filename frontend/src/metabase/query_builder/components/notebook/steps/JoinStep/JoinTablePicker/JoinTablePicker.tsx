@@ -107,7 +107,7 @@ export function JoinTablePicker({
 
       {isDataPickerOpen && (
         <DataPickerModal
-          databaseId={databaseId}
+          databaseId={databaseId ?? undefined}
           value={value}
           onChange={handleTableChange}
           onClose={() => setIsDataPickerOpen(false)}
