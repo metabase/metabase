@@ -8,7 +8,7 @@ The **Table** option is good for looking at tabular data (duh), or for lists of 
 
 ## Rearranging, adding, and removing columns
 
-Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eyeball icon.
+Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
 
 To manage these columns or any from linked tables, just click **add or remove columns**. Here, you can check the boxes next to the columns you want to show in the **visible section** or uncheck to hide them. To rearrange the order of the columns, simply click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
