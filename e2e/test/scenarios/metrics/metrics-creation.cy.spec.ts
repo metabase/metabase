@@ -203,6 +203,27 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyPinMap();
     });
+
+    it("should add a breakout clause in a metric query with 2 stages", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Count of rows" });
+      addBreakout({ columnName: "Created At" });
+      addAggregation({
+        operatorName: "Average of ...",
+        columnName: "Count",
+        isPostAggregation: true,
+      });
+      addBreakout({
+        columnName: "Created At: Month",
+        bucketName: "Year",
+        stageIndex: 1,
+      });
+      saveMetric();
+      runQuery();
+      verifyLineChart("Created At", "Average of Count");
+    });
   });
 
   describe("aggregations", () => {
