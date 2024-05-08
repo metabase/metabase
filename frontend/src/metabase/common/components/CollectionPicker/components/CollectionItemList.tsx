@@ -1,4 +1,5 @@
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type { CollectionItem, DatabaseId } from "metabase-types/api";
 
 import { ItemList } from "../../EntityPicker";
@@ -31,10 +32,7 @@ export const CollectionItemList = ({
 
   const items = collectionItems?.data ?? [];
   const filteredItems = items.filter(item => {
-    if (
-      typeof databaseId === "undefined" ||
-      typeof item.database_id === "undefined"
-    ) {
+    if (isNullOrUndefined(databaseId) || isNullOrUndefined(item.database_id)) {
       return true;
     }
 
