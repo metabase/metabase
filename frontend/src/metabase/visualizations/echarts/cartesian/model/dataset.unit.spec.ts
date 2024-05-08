@@ -360,13 +360,17 @@ describe("dataset transform functions", () => {
       expect(result).toEqual([
         {
           [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
           series1: 1 / 3,
           series2: 2 / 3,
+          unusedSeries: 100,
         },
         {
           [X_AXIS_DATA_KEY]: "B",
+          dimensionKey: "B",
           series1: 3 / 7,
           series2: 4 / 7,
+          unusedSeries: 100,
         },
       ]);
     });

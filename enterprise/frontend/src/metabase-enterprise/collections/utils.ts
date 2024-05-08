@@ -52,14 +52,18 @@ export const getIcon = (item: ObjectWithModel): IconData => {
     };
   }
 
-  if (item.model === "collection" && item.authority_level === "official") {
+  if (
+    item.model === "collection" &&
+    (item.authority_level === "official" ||
+      item.collection_authority_level === "official")
+  ) {
     return {
       name: OFFICIAL_COLLECTION.icon,
       color: OFFICIAL_COLLECTION.color,
     };
   }
 
-  if (item.model === "dataset" && item.authority_level === "official") {
+  if (item.model === "dataset" && item.moderated_status === "verified") {
     return {
       name: "model_with_badge",
       color: OFFICIAL_COLLECTION.color,

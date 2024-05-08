@@ -357,6 +357,13 @@ export const mockScrollTo = () => {
 };
 
 /**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollIntoView = () => {
+  window.Element.prototype.scrollIntoView = jest.fn();
+};
+
+/**
  * jsdom doesn't have DataTransfer
  */
 export function createMockClipboardData(

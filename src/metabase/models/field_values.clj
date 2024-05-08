@@ -242,6 +242,7 @@
            has-field-values :has_field_values} field-or-field-id]
       (boolean
        (and
+        (not (isa? base-type :type/field-values-unsupported))
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
         (not (isa? (keyword base-type) :type/Temporal))
         (#{:list :auto-list} (keyword has-field-values)))))))

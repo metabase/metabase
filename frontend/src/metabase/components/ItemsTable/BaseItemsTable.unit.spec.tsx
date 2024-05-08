@@ -43,6 +43,7 @@ function getCollectionItem({
     model,
     description,
     name,
+    collection: createMockCollection({ can_write: true }),
     getIcon: () => ({
       name: icon,
     }),
@@ -50,7 +51,7 @@ function getCollectionItem({
   };
 }
 
-describe("Collections BaseItemsTable", () => {
+describe("BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
   function setup({
@@ -75,7 +76,7 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays item data", () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
 
     expect(screen.getByText(ITEM.name)).toBeInTheDocument();
     expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -84,7 +85,7 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays last edit time on hover", async () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
 
     await userEvent.hover(screen.getByText(lastEditedAt));
 

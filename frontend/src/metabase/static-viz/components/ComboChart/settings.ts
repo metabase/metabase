@@ -36,6 +36,8 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
+  getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
   getSeriesDefaultShowSeriesValues,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
@@ -76,6 +78,18 @@ const getSeriesFunction = (
       singleSeriesSettings,
       "line.interpolate",
       getSeriesDefaultLinearInterpolate(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
+      "line.style",
+      getSeriesDefaultLineStyle(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
+      "line.size",
+      getSeriesDefaultLineSize(settings),
     );
 
     fillWithDefaultValue(

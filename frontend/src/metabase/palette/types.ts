@@ -1,3 +1,4 @@
+import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 
 import type { IconName } from "metabase/ui";
@@ -14,7 +15,7 @@ interface PaletteActionExtras {
      * href: If defined, the palette item will be wrapped in a link. This allows for
      * browser interactions to open items in new tabs/windows
      */
-    href?: string | null;
+    href?: LocationDescriptor | null;
   };
 }
 
