@@ -142,7 +142,8 @@
     metabase.core                  nil
     metabase.db                    #{metabase.db
                                      metabase.db.metadata-queries ; FIXME, this should probably be separate from metabase.db
-                                     metabase.db.query}           ; FIXME, this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.query            ; FIXME, this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.setup}           ; FIXME, these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.domain-entities       nil
     metabase.driver                nil
     metabase.email                 nil
