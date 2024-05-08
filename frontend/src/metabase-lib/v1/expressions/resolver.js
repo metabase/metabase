@@ -40,14 +40,11 @@ function findMBQL(op) {
   return clause;
 }
 
-const isCompatible = (expectedArgumentType, clause) => {
-  if (clause.name === "offset") {
-    return ["expression", "aggregation", "any"].includes(expectedArgumentType);
-  }
-
-  const inferredType = clause.type;
-
+const isCompatible = (expectedArgumentType, inferredType) => {
   if (expectedArgumentType === "any") {
+    return true;
+  }
+  if (inferredType === "any") {
     return true;
   }
   if (expectedArgumentType === inferredType) {
@@ -177,7 +174,7 @@ export function resolve({
     }
 
     const { displayName, args, multiple, hasOptions, validator } = clause;
-    if (!isCompatible(type, clause)) {
+    if (!isCompatible(type, clause.type)) {
       throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
         expression.node,
@@ -217,9 +214,10 @@ export function resolve({
     });
     return [op, ...resolvedOperands];
   } else if (
-    !isCompatible(type, {
-      type: typeof expression === "boolean" ? "expression" : typeof expression,
-    })
+    !isCompatible(
+      type,
+      typeof expression === "boolean" ? "expression" : typeof expression,
+    )
   ) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,

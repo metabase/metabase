@@ -293,7 +293,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   offset: {
     displayName: `Offset`,
-    type: "expression",
+    type: "any", // ideally we'd dynamically infer it from the first argument
     args: ["any", "number"],
     requiresFeature: "window-functions/offset",
     validator: function (_expr: any, offset: number) {

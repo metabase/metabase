@@ -29,7 +29,8 @@ type MBQLClauseFunctionReturnType =
   | "datetime"
   | "expression"
   | "number"
-  | "string";
+  | "string"
+  | "any";
 
 export type MBQLClauseFunctionConfig = {
   displayName: string;
