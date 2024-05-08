@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import CollapseSection from "./CollapseSection";
 
@@ -6,6 +7,10 @@ function setup({
   header = "Collapse Header",
   initialState = "collapsed",
   ...props
+}: {
+  header?: string | React.ReactNode;
+  initialState?: "collapsed" | "expanded";
+  [key: string]: any;
 } = {}) {
   return render(
     <CollapseSection header={header} initialState={initialState} {...props}>
@@ -66,10 +71,10 @@ describe("CollapseSection", () => {
     expect(screen.getByText("Custom Header")).toBeInTheDocument();
   });
 
-  it("uses different icons for 'up-down' icon variant", () => {
+  it("uses different icons for 'up-down' icon variant", async () => {
     setup({ iconVariant: "up-down" });
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
-    fireEvent.click(screen.queryByLabelText("chevrondown icon"));
+    await userEvent.click(screen.getByLabelText("chevrondown icon"));
     expect(screen.getByLabelText("chevronup icon")).toBeInTheDocument();
   });
 });
