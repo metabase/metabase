@@ -537,17 +537,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublic={this.props.isPublic}
         isXray={this.props.isXray}
-        onRemove={this.onDashCardRemove.bind(this, dc)}
-        onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+        onRemove={() => this.onDashCardRemove(dc)}
+        onAddSeries={() => this.onDashCardAddSeries(dc)}
         onReplaceCard={() => this.onReplaceCard(dc)}
-        onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
-        onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
+        onUpdateVisualizationSettings={settings =>
+          this.props.onUpdateDashCardVisualizationSettings(dc.id, settings)
+        }
+        onReplaceAllVisualizationSettings={settings =>
+          this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
+        }
         mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard

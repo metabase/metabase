@@ -33,7 +33,10 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
-import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
+import type {
+  DashboardControlsPassedProps,
+  DashboardControlsProps,
+} from "metabase/dashboard/hoc/types";
 import {
   getDashboardComplete,
   getCardData,
@@ -116,7 +119,7 @@ type OwnProps = {
     uuid?: string;
     token?: string;
   };
-};
+} & DashboardControlsProps;
 
 type PublicDashboardProps = ReduxProps &
   OwnProps &
@@ -342,4 +345,4 @@ export const PublicDashboard = _.compose(
     ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
   ),
   DashboardControls,
-)(PublicDashboardInner) as ComponentType<PublicDashboardProps>;
+)(PublicDashboardInner) as ComponentType<OwnProps>;

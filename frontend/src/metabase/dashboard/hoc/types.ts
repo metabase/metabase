@@ -9,7 +9,6 @@ import type { FetchDashboardResult } from "../types";
 // passed via ...this.props
 export type DashboardControlsProps = {
   location: Location;
-  replace: LocationAction;
   fetchDashboard: (opts: {
     dashId: DashboardId;
     queryParams?: Record<string, unknown>;
@@ -35,6 +34,7 @@ export type DashboardControlsState = {
 
 export type DashboardControlsPassedProps = {
   // Passed via explicit props
+  replace: LocationAction;
   isNightMode: boolean;
   hasNightModeToggle: boolean;
   setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
