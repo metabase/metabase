@@ -14,18 +14,15 @@ import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image
 import type { FontFile } from "metabase-types/api";
 
 interface SdkContentWrapperProps {
-  font: string;
   baseUrl?: string;
 }
 export function SdkContentWrapper({
-  font,
   baseUrl,
   ...divProps
 }: SdkContentWrapperProps & HTMLAttributes<HTMLDivElement>) {
   const fontFiles = useSelector(getFontFiles);
   return (
     <SdkContentWrapperInner
-      font={font}
       baseUrl={baseUrl}
       fontFiles={fontFiles}
       {...divProps}
