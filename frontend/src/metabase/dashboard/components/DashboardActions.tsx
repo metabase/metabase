@@ -21,7 +21,7 @@ type GetDashboardActionsProps = {
   isEmpty?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
-  isPublic: boolean;
+  isPublic?: boolean;
   onFullscreenChange: (
     isFullscreen: boolean,
     isBrowserFullscreen?: boolean,
@@ -30,7 +30,7 @@ type GetDashboardActionsProps = {
   onRefreshPeriodChange: (period: number) => void;
   onSharingClick?: () => void;
   refreshPeriod: number | null;
-  setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
+  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
 };
 
 export const getDashboardActions = ({
