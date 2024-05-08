@@ -4,7 +4,7 @@
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]
-   #?@(:clj ([metabase.test :as mt]))))
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
@@ -375,12 +375,36 @@
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
-  (t/testing "desugaring does-not-contain without options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
-  (t/testing "desugaring does-not-contain *with* options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
+  (t/testing "desugaring does-not-contain"
+    (t/testing "without options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
+    (t/testing "*with* options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}]))))
+    (t/testing "desugaring does-not-contain with multiple arguments"
+      (t/testing "without options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]
+                  [:not [:contains [:field 1 nil] "LMN"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ" "LMN"]))))
+      (t/testing "*with* options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "LMN" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"

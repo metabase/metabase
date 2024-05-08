@@ -1,6 +1,9 @@
+import dayjs from "dayjs";
+
 import { createMockSeriesModel } from "__support__/echarts";
 import { checkNumber } from "metabase/lib/types";
 import {
+  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -34,6 +37,7 @@ import type {
   ChartDataset,
   LegacySeriesSettingsObjectKey,
   NumericAxisScaleTransforms,
+  TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
 
@@ -356,13 +360,17 @@ describe("dataset transform functions", () => {
       expect(result).toEqual([
         {
           [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
           series1: 1 / 3,
           series2: 2 / 3,
+          unusedSeries: 100,
         },
         {
           [X_AXIS_DATA_KEY]: "B",
+          dimensionKey: "B",
           series1: 3 / 7,
           series2: 4 / 7,
+          unusedSeries: 100,
         },
       ]);
     });
@@ -398,6 +406,82 @@ describe("dataset transform functions", () => {
           series2: 200,
         },
       ]);
+    });
+
+    describe("time series", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "2020-01-01T00:00:00.000Z",
+          dimensionKey: "A",
+          series1: 10,
+        },
+        // Missing February
+        {
+          [X_AXIS_DATA_KEY]: "2020-03-01T00:00:00.000Z",
+          dimensionKey: "A",
+          series1: 20,
+        },
+      ];
+
+      const xAxisModel: TimeSeriesXAxisModel = {
+        axisType: "time",
+        intervalsCount: 2,
+        interval: {
+          count: 1,
+          unit: "month",
+        },
+        timezone: "UTC",
+        range: [dayjs(), dayjs()],
+        formatter: value => String(value),
+        fromEChartsAxisValue: () => dayjs(),
+        toEChartsAxisValue: val => String(val),
+      };
+
+      it("should replace missing values with zeros based on the x-axis interval", () => {
+        const result = applyVisualizationSettingsDataTransformations(
+          dataset,
+          xAxisModel,
+          [createMockSeriesModel({ dataKey: "series1" })],
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings({
+            series: () => ({
+              "line.missing": "zero",
+            }),
+          }),
+        );
+
+        expect(result).toEqual([
+          {
+            [ORIGINAL_INDEX_DATA_KEY]: 0,
+            [X_AXIS_DATA_KEY]: "2020-01-01T00:00:00.000Z",
+            dimensionKey: "A",
+            series1: 10,
+          },
+          { [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z", series1: 0 },
+          {
+            [ORIGINAL_INDEX_DATA_KEY]: 1,
+            [X_AXIS_DATA_KEY]: "2020-03-01T00:00:00.000Z",
+            dimensionKey: "A",
+            series1: 20,
+          },
+        ]);
+      });
+
+      it("should not replace missing values with zeros when x-axis interval is too big", () => {
+        const result = applyVisualizationSettingsDataTransformations(
+          dataset,
+          { ...xAxisModel, intervalsCount: 10001 },
+          [createMockSeriesModel({ dataKey: "series1" })],
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings({
+            series: () => ({
+              "line.missing": "zero",
+            }),
+          }),
+        );
+
+        expect(result).toHaveLength(dataset.length);
+      });
     });
 
     it("should work on empty datasets", () => {

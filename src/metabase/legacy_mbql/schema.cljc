@@ -12,6 +12,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -373,6 +374,10 @@
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
   [:ref ::Reference])
 
+(defclause ^{:added "0.50.0"} offset
+  opts [:ref ::lib.schema.common/options]
+  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::UnnamedAggregation]]
+  n    ::lib.schema.expression.window/offset.n)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -417,7 +422,7 @@
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :metric :aggregation-options :count})
+    :metric :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
@@ -793,13 +798,38 @@
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
-(defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause contains,    field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (mr/def clause-keyword
+    [:or
+     ;; Binary form
+     (helpers/clause (keyword (name clause-keyword))
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "options" [:optional StringFilterOptions])
+     ;; Multi-arg form
+     (helpers/clause (keyword (name clause-keyword))
+                     "options" StringFilterOptions
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "second-string-or-field" StringExpressionArg
+                     "more-strings-or-fields" [:rest StringExpressionArg])]))
+
+(def ^{:clause-name :starts-with} starts-with
+  "Schema for a valid :starts-with clause."
+  [:ref ::starts-with])
+(def ^{:clause-name :ends-with} ends-with
+  "Schema for a valid :ends-with clause."
+  [:ref ::ends-with])
+(def ^{:clause-name :contains} contains
+  "Schema for a valid :contains clause."
+  [:ref ::contains])
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(defclause ^:sugar does-not-contain
-  field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(def ^{:sugar       true
+       :clause-name :does-not-contain}
+  does-not-contain
+  "Schema for a valid :does-not-contain clause."
+  [:ref ::does-not-contain])
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -898,12 +928,14 @@
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? :case x)              :case
+                       (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
    [:case     case]
+   [:offset   offset]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
@@ -976,9 +1008,7 @@
                        :else))}
    [:numeric-expression NumericExpression]
    [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
-                  sum-where case median percentile ag:var
-                  ;; SUGAR clauses
-                  cum-count count)]])
+                  sum-where case median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
   ::UnnamedAggregation)

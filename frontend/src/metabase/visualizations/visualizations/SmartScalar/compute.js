@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { isEmpty } from "metabase/lib/validate";
+import { computeChange } from "metabase/visualizations/lib/numeric";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
@@ -534,14 +535,6 @@ function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
     ...options,
     compact: true,
   });
-}
-
-export function computeChange(comparisonVal, currVal) {
-  if (comparisonVal === 0) {
-    return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
-  }
-
-  return (currVal - comparisonVal) / Math.abs(comparisonVal);
 }
 
 export const CHANGE_TYPE_OPTIONS = {

@@ -22,8 +22,11 @@ and documented in this changelog.
 
   `as-returned` looks at the query and stage, and shifts to a later stage if necessary. If a later stage is needed but
   we were already on the last stage, a new empty stage is appended.
-- New functions `column-extractions` and `extract` have been added.
+
+- New functions `column-extractions`, `extract`, and `extraction-expression` have been added.
   - `column-extractions` returns a list of _extractions_, which are possible custom expressions we can derive from a
     given column. For example, getting the host or base domain name from a URL or email address, or the day of the week
     from a date or datetime.
   - `extract` applies an extraction to the query.
+  - `extraction-expression` returns the expression for the extraction, allowing further editing.
+

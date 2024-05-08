@@ -17,12 +17,10 @@
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [User]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
    [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
@@ -306,11 +304,11 @@
     ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
-      (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                                :last_name   "Hughes"
-                                                                :email       "howard@aircraft.com"
-                                                                :password    "superstrong"
-                                                                :date_joined :%now}))
+      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                                       :last_name   "Hughes"
+                                                                                       :email       "howard@aircraft.com"
+                                                                                       :password    "superstrong"
+                                                                                       :date_joined :%now}))
             dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                             :creator_id user-id}))
             tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
@@ -396,11 +394,12 @@
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                              :last_name   "Hughes"
-                                                              :email       "howard@aircraft.com"
-                                                              :password    "superstrong"
-                                                              :date_joined :%now}))
+    (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -448,11 +447,12 @@
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                              :last_name   "Hughes"
-                                                              :email       "howard@aircraft.com"
-                                                              :password    "superstrong"
-                                                              :date_joined :%now}))
+    (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}          ; correct case
                         {:id 2 :row 0 :col 0 :sizeX 4 :sizeY 4}            ; sizeX and sizeY are legacy names
@@ -581,11 +581,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             card        {:visualization_settings visualization-settings}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
@@ -657,11 +658,12 @@
                                                                              :source-table 5}]
                                                              :source-table 2}
                                                   :type     :query}}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
@@ -707,11 +709,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
@@ -797,11 +800,12 @@
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
@@ -865,11 +869,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Dashboard"
@@ -931,11 +936,12 @@
                                                                    "join-alias" "Joined table"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                        {"column_title" "4"}}
                                    (update-keys json/generate-string))}
-            user-id            (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                                      :last_name   "Hughes"
-                                                                      :email       "howard@aircraft.com"
-                                                                      :password    "superstrong"
-                                                                      :date_joined :%now})
+            user-id            (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
             database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
@@ -1362,11 +1368,12 @@
                                  "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                                  "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                                  "graph.metrics"    ["count"]})
-                [user-id]      (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+                [user-id]      (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
                 [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
@@ -1673,45 +1680,3 @@
               (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
                      (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
               (is (nil? (:cache_field_values_schedule db))))))))))
-
-(deftest backfill-query-field-test
-  (impl/test-migrations "v50.2024-04-18T14:33:19" [migrate!]
-    (let [user-id     (:id (new-instance-with-default :core_user))
-          c1-id       (:id (new-instance-with-default
-                            :report_card
-                            {:creator_id    user-id
-                             :database_id   (mt/id)
-                             :query_type    "native"
-                             :dataset_query (json/generate-string
-                                             (mt/native-query {:query "SELECT id FROM venues"}))}))
-          c2-id       (:id (new-instance-with-default
-                            :report_card
-                            {:creator_id    user-id
-                             :database_id   (mt/id)
-                             :query_type    "query"
-                             :dataset_query (json/generate-string
-                                             (mt/mbql-query venues {:aggregation [[:distinct $name]]}))}))
-          archived-id (binding [query-analyzer/*parse-queries-in-test?* false]
-                        (:id (new-instance-with-default
-                              :report_card
-                              {:archived      true
-                               :creator_id    user-id
-                               :database_id   (mt/id)
-                               :query_type    "native"
-                               :dataset_query (json/generate-string
-                                               (mt/native-query {:query "SELECT id FROM venues"}))})))
-          ;; (first (vals %)) are necessary since h2 generates :count(id) as name for column
-          get-count   #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
-      (testing "QueryField is empty - queries weren't analyzed"
-        ;; they were not analyzed since `new-instance-with-default` inserts directly into the table, omitting model
-        ;; hooks
-        (is (zero? (get-count c1-id)))
-        (is (zero? (get-count c2-id)))
-        (is (zero? (get-count archived-id))))
-      (binding [query-analyzer/*parse-queries-in-test?* true]
-        (migrate!))
-      (testing "QueryField is filled now"
-        (is (pos? (get-count c1-id)))
-        (is (pos? (get-count c2-id)))
-        (testing "but not for archived card"
-          (is (zero? (get-count archived-id))))))))

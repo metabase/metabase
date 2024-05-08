@@ -96,6 +96,7 @@
                            :series
                            :dashcard/action
                            :dashcard/linkcard-info]
+                :last_used_param_values
                 :tabs
                 :collection_authority_level
                 :can_write

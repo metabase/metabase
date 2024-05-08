@@ -1080,9 +1080,9 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details (json/parse-string keyword) :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
-                              (t2/select :model/Database)))]
+                              (t2/select :metabase_database)))]
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
@@ -1240,13 +1240,13 @@
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
                      [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
-    (pretty-spit "resources/sample-content.edn" data))
+    (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
-  )
+
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
@@ -1258,40 +1258,11 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
 
-(define-migration BackfillQueryField
-  (let [field-ids-for-sql  (requiring-resolve 'metabase.native-query-analyzer/field-ids-for-sql)
-        ;; practically #'metabase.models.query-field/field-ids-for-mbql
-        mbql-fields-xf     (comp
-                            (map #(match %
-                                    ["field" (id :guard integer?) opts] [id (:source-field opts)]
-                                    :else                               nil))
-                            cat
-                            (remove nil?))
-        field-ids-for-mbql (fn [query]
-                             {:direct (->> (tree-seq coll? seq query)
-                                           (into #{} mbql-fields-xf)
-                                           not-empty)})
-        cards              (t2/select :report_card :id [:in {:from      [[:report_card :c]]
-                                                             :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                             :select    [:c.id]
-                                                             :where     [:and
-                                                                         [:not :c.archived]
-                                                                         [:= :f.id nil]]}])]
-    (doseq [{card-id :id query :dataset_query :as card} cards]
-      (let [query                             (json/parse-string query true)
-            {:keys [direct indirect] :as res} (if (= (:type query) "native")
-                                                (field-ids-for-sql query)
-                                                (field-ids-for-mbql query))
-            id->record                        (fn [direct? field-id]
-                                                {:card_id          card-id
-                                                 :field_id         field-id
-                                                 :direct_reference direct?})
-            records                           (concat
-                                               (map (partial id->record true) direct)
-                                               (map (partial id->record false) indirect))
-            known                             (set
-                                               (when (seq records)
-                                                 (t2/select-fn-set :id :metabase_field :id [:in (map :field_id records)])))
-            records                           (filterv (comp known :field_id) records)]
-        (when (seq records)
-          (t2/insert! :query_field records))))))
+(define-migration DeleteSendPulsesTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.job"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
+    (qs/shutdown scheduler)))

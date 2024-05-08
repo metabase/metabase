@@ -2,9 +2,11 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  withPublicComponentWrapper,
+  SdkError,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -20,6 +22,7 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
+  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
@@ -53,6 +56,7 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
+  const queryResults = useSelector(getQueryResults);
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
@@ -77,7 +81,6 @@ export const _InteractiveQuestion = ({
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
-    } finally {
       setLoading(false);
     }
   };
@@ -90,11 +93,17 @@ export const _InteractiveQuestion = ({
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
+  useEffect(() => {
+    if (queryResults) {
+      setLoading(false);
+    }
+  }, [queryResults]);
+
   if (loading) {
     return <Loader data-testid="loading-spinner" />;
   }
 
-  if (!question) {
+  if (!queryResults || !question) {
     return <SdkError message={t`Question not found`} />;
   }
 

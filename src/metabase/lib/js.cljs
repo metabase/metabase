@@ -1085,7 +1085,7 @@
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
-        unique-name-fn (lib.util/unique-name-generator)]
+        unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider a-query))]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(-> %
                    (assoc :selected? true)
@@ -1383,6 +1383,15 @@
   > **Code health:** Healthy"
   [a-query stage-number extraction]
   (lib.core/extract a-query stage-number extraction))
+
+(defn ^:export extraction-expression
+  "Given `a-query` and an `extraction`, returns the expression it represents, as an opaque form similarly to
+  [[expression-clause]]. It can be passed to [[expression]] to add it to the query. (Though if that's all you need, use
+  [[extract]] instead.)
+
+  > **Code health:** Healthy"
+  [_a-query _stage-number extraction]
+  (lib.core/extraction-expression extraction))
 
 (defn ^:export suggested-join-conditions
   "Returns a JS array of possible default join conditions when joining against `joinable`, e.g. a Table, Saved
@@ -1909,6 +1918,15 @@
        "stageIndex" stage-number
        "value"      (if (= value :null) nil value)})
 
+(defn ^:export column-extract-drill-extractions
+  "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
+
+  The extractions are opaque values of the same type as are returned by [[column-extractions]].
+
+  > **Code health:** Single use. This is only here to support UI for column extract drills, and should not be reused."
+  [column-extract-drill]
+  (to-array (lib.core/extractions-for-drill column-extract-drill)))
+
 (defn ^:export pivot-types
   "Returns a JS array of pivot types that are available in `a-drill-thru`, which must be a `pivot` drill-thru.
 
@@ -2025,7 +2043,7 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [expr (js->clj legacy-expression :keywordize-keys true)
           expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.convert/->pMBQL expr))))
+      (lib.core/normalize (lib.convert/->pMBQL expr)))))
 
 (defn ^:export legacy-expression-for-expression-clause
   "Convert `an-expression-clause` into a legacy expression.
@@ -2060,11 +2078,14 @@
   then several of these functions for dealing with legacy can be removed."
   [a-query stage-number expression-mode legacy-expression expression-position]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+    (let [expr (as-> legacy-expression expr
+                 (js->clj expr :keywordize-keys true)
+                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
+                 (lib.convert/->pMBQL expr)
+                 (lib.core/normalize expr))]
       (-> (lib.expression/diagnose-expression a-query stage-number
                                               (keyword expression-mode)
-                                              (lib.convert/->pMBQL expr)
+                                              expr
                                               expression-position)
           clj->js))))
 

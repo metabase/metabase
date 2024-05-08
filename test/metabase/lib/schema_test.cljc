@@ -48,8 +48,8 @@
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
       ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
-      {:lib/type                           :mbql.stage/mbql
-       :metabase.lib.stage/cached-metadata {:field-ref [:aggregation 0]}}
+      {:lib/type           :mbql.stage/mbql
+       :some-other-section {:field-ref [:aggregation 0]}}
       ["Invalid :aggregation reference: [:aggregation 0]"]
 
       ;; don't recurse into joins.
