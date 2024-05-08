@@ -109,11 +109,12 @@
                                            :details      {:channel "#random"}}
                                           daily-at-1am)]
         (testing "priority is 0 to starts with"
-          (is (= 0 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
+          (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
         (testing "send pulse should updates it priority"
-          ;; negative because job takes 1 seconds and priority is the invert of duration
-          (is (neg-int? (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))))))
+          ;; 6 is the default priority of a trigger, we need it to be higher than that because
+          ;; pulse is time sensitive compared to other tasks like sync
+          (is (> (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority) 6)))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"

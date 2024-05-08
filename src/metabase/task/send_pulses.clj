@@ -48,8 +48,8 @@
     (task-history/with-task-history {:task         "send-pulse"
                                      :task_details {:pulse-id    pulse-id
                                                     :channel-ids (seq channel-ids)}}
-      (log/debugf "Starting Pulse Execution: %d" pulse-id)
       (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
+        (log/debugf "Starting Pulse Execution: %d" pulse-id)
         (metabase.pulse/send-pulse! pulse :channel-ids channel-ids)
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
@@ -62,11 +62,11 @@
   ([pulse-id     :- pos-int?
     schedule-map :- u.cron/ScheduleMap
     pc-ids       :- [:set pos-int?]]
-   (send-pulse-trigger pulse-id schedule-map pc-ids 0))
+   (send-pulse-trigger pulse-id schedule-map pc-ids 6))
  ([pulse-id     :- pos-int?
    schedule-map :- u.cron/ScheduleMap
    pc-ids       :- [:set pos-int?]
-   priority     :- int?]
+   priority     :- pos-int?]
   (triggers/build
    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
    (triggers/for-job send-pulse-job-key)
@@ -100,6 +100,18 @@
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
     (set ids-to-delete)))
 
+(defn- ms-duration->priority
+  "Converts a duration in milliseconds to a priority value for a trigger.
+
+  Pulses are time sensitive, so we need it to have higher priority than other tasks, in which has a default priority of 5."
+  [ms-duration]
+  (-> ms-duration
+      (/ 1000)
+      ;; assuming 1 hour is the max duration a pulse can take
+      (#(- (* 60 60) %))
+      (+ 6) ;; make sure it's higher than 5 (the default priority)
+      int))
+
 (defn- send-pulse!*
   "Do several things:
   - Clear PulseChannels that have no recipients and no channel set for a pulse
@@ -113,11 +125,9 @@
       (let [start    (System/currentTimeMillis)
             result   (send-pulse! pulse-id to-send-enabled-channel-ids)
             end      (System/currentTimeMillis)
-            ;; we set priority as duration in seconds, the quicker the pulse is sent the higher the priority
-            ;; highest priorities triggers are executed first, so we need to invert it with the duration
-            priority (-> (- end start) (/ 1000) int -)]
+            priority (ms-duration->priority (- end start))]
         (when (= :done result)
-          (log/infof "Updating priority of trigger %s to %d" (.getName (send-pulse-trigger-key pulse-id schedule-map)) priority)
+          (log/infof "Updating priority of trigger %s to %d" (.getName ^TriggerKey (send-pulse-trigger-key pulse-id schedule-map)) priority)
           (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids priority))))
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
