@@ -154,12 +154,15 @@
   immediately, returning `0`."
   [^Request request]
   (try
-    (let [transport (.. request getHttpChannel getEndPoint getTransport)
-          channel   (get-channel transport)
-          buf       (ByteBuffer/allocate 1)
-          status    (.read channel buf)]
-      (log/tracef "Check cancelation status: .read returned %d" status)
-      (neg? status))
+    (let [transport (.. request getHttpChannel getEndPoint getTransport)]
+      (if-let [channel (get-channel transport)]
+        (let [buf        (ByteBuffer/allocate 1)
+              status     (.read channel buf)]
+          (log/tracef "Check cancelation status: .read returned %d" status)
+          (neg? status))
+        (do
+          (log/infof "Cannot create a SocketChannel from %s" (type transport))
+          false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
     (catch Throwable e
