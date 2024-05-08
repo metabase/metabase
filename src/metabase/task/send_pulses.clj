@@ -193,7 +193,7 @@
                         (jobs/store-durably))
         init-trigger   (triggers/build
                         (triggers/with-identity (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))
-                        ;; runs once on Metabase startup
+                        ;; run only once per MB instance (like a migration)
                         (triggers/start-now))]
     (task/add-job! send-pulse-job)
     (task/schedule-task! init-job init-trigger)))
