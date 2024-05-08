@@ -178,24 +178,6 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("755,310.84");
     });
-
-    it.skip("should combine multiple aggregation columns from an inner query stage (metabase#42425)", () => {
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
-      addBreakout({ columnName: "Product ID" });
-      startNewAggregation({ isPostAggregation: true });
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({
-        formula: "[Sum of Total] - [Sum of Subtotal]",
-        name: "Metric",
-      });
-      popover().button("Done").click();
-      saveMetric();
-      runQuery();
-    });
   });
 
   describe("breakouts", () => {
@@ -298,6 +280,41 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("5");
+    });
+
+    it("should add multiple aggregation columns in the first stage of a metric query", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
+      addBreakout({ columnName: "Created At" });
+      addAggregation({
+        operatorName: "Average of ...",
+        columnName: "Sum of Subtotal",
+        isPostAggregation: true,
+      });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("29,554.86");
+    });
+
+    it.skip("should combine multiple aggregation columns in a custom aggregation expression (metabase#42425)", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
+      addBreakout({ columnName: "Product ID" });
+      startNewAggregation({ isPostAggregation: true });
+      popover().findByText("Custom Expression").click();
+      enterCustomColumnDetails({
+        formula: "[Sum of Total] - [Sum of Subtotal]",
+        name: "Metric",
+      });
+      popover().button("Done").click();
+      saveMetric();
+      runQuery();
     });
   });
 
