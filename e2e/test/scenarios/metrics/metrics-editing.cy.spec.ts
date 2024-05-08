@@ -281,6 +281,24 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("5");
     });
+
+    it.skip("should add multiple aggregation clauses in an inner metric query stage", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
+      addBreakout({ columnName: "Product ID" });
+      startNewAggregation({ isPostAggregation: true });
+      popover().findByText("Custom Expression").click();
+      enterCustomColumnDetails({
+        formula: "[Sum of Total] - [Sum of Subtotal]",
+        name: "Metric",
+      });
+      popover().button("Done").click();
+      saveMetric();
+      runQuery();
+    });
   });
 
   describe("order by", () => {
