@@ -46,6 +46,9 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(t2/deftransforms :model/ApiKey
+  {:scope mi/transform-keyword})
+
 (defn prefix
   "Given an API key, returns the standardized prefix for that API key."
   [key]
