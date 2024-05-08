@@ -106,8 +106,7 @@ function _CartesianChart(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
-        labels={legendItems.map(item => item.name)}
-        colors={legendItems.map(item => item.color)}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
