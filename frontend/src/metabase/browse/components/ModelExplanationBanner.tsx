@@ -32,7 +32,6 @@ export const ModelExplanationBanner = () => {
 
   return (
     <Paper
-      mb="-0.5rem"
       p="1rem"
       color="text-dark"
       bg="brand-lighter"
