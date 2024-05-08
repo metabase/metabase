@@ -3,7 +3,9 @@ import {
   getEngineNativeType,
   getNativeQueryLanguage,
   formatNativeQuery,
+  isDeprecatedEngine,
 } from "metabase/lib/engine";
+import type { Engine } from "metabase-types/api";
 
 describe("getEngineNativeAceMode", () => {
   it("should be SQL when engine is undefined", () => {
@@ -115,5 +117,34 @@ describe("formatNativeQuery", () => {
     expect(formatNativeQuery([], "mongo")).toEqual("[]");
     expect(formatNativeQuery(["foo"], "mongo")).toEqual('[\n  "foo"\n]');
     expect(formatNativeQuery({ a: 1 }, "mongo")).toEqual('{\n  "a": 1\n}');
+  });
+});
+
+describe("isDeprecatedEngine", () => {
+  const engines: Record<string, Engine> = {
+    foo: {
+      "driver-name": "Foo",
+      source: { type: "official", contact: null },
+      "superseded-by": "deprecated",
+    },
+    bar: {
+      "driver-name": "Bar",
+      source: { type: "official", contact: null },
+      "superseded-by": "baz",
+    },
+    baz: {
+      "driver-name": "Baz",
+      source: { type: "official", contact: null },
+      "superseded-by": null,
+    },
+  };
+
+  it("should be true for a deprecated engine", () => {
+    expect(isDeprecatedEngine(engines, "foo")).toBe(true);
+    expect(isDeprecatedEngine(engines, "bar")).toBe(true);
+  });
+
+  it("should be false for an engine that's not deprecated", () => {
+    expect(isDeprecatedEngine(engines, "baz")).toBe(false);
   });
 });
