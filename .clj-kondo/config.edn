@@ -23,6 +23,7 @@
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
   :metabase/mbql-query-first-arg                                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/require-shape-checker                                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/validate-logging                                           {:level :warning}
@@ -138,7 +139,9 @@
     metabase.api                   nil
     metabase.async                 nil
     metabase.automagic-dashboards  nil
+    metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   nil
+    metabase.config                #{metabase.config}
     metabase.core                  nil
     metabase.db                    #{metabase.db
                                      metabase.db.metadata-queries ; FIXME, this should probably be separate from metabase.db
@@ -153,20 +156,26 @@
     metabase.integrations          nil
     metabase.legacy-mbql           nil
     metabase.lib                   nil
+    metabase.logger                #{metabase.logger}
     metabase.metabot               nil
     metabase.models                nil
+    metabase.moderation            #{metabase.moderation}
     metabase.native-query-analyzer nil
     metabase.permissions           nil
     metabase.plugins               nil
     metabase.public-settings       nil
     metabase.pulse                 nil
     metabase.query-processor       nil
+    metabase.related               #{metabase.related}
+    metabase.sample-data           #{metabase.sample-data}
     metabase.search                nil
     metabase.server                nil
+    metabase.setup                 #{metabase.setup}
     metabase.shared                nil
     metabase.sync                  nil
     metabase.task                  nil
     metabase.transforms            nil
+    metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                nil
     metabase.util                  nil}
@@ -186,7 +195,9 @@
     metabase.api                   nil
     metabase.async                 nil
     metabase.automagic-dashboards  nil
+    metabase.bootstrap             #{}
     metabase.cmd                   nil
+    metabase.config                #{metabase.plugins}
     metabase.core                  nil
     metabase.db                    nil
     metabase.domain-entities       nil
@@ -198,20 +209,27 @@
     metabase.integrations          nil
     metabase.legacy-mbql           nil
     metabase.lib                   nil
+    metabase.logger                #{metabase.config
+                                     metabase.plugins}
     metabase.metabot               nil
     metabase.models                nil
+    metabase.moderation            nil
     metabase.native-query-analyzer nil
     metabase.permissions           nil
     metabase.plugins               nil
     metabase.public-settings       nil
     metabase.pulse                 nil
     metabase.query-processor       nil
+    metabase.related               nil
+    metabase.sample-data           nil
     metabase.search                nil
     metabase.server                nil
+    metabase.setup                 nil
     metabase.shared                nil
     metabase.sync                  nil
     metabase.task                  nil
     metabase.transforms            nil
+    metabase.troubleshooting       nil
     metabase.types                 #{metabase.util}
     metabase.upload                nil
     metabase.util                  nil}
