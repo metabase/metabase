@@ -48,11 +48,6 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
-      styles={{
-        content: {
-          padding: "1rem",
-        },
-      }}
       zIndex={ENTITY_PICKER_Z_INDEX}
     >
       <FormProvider
