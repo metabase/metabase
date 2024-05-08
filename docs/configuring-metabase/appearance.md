@@ -151,11 +151,15 @@ The landing page is what people will see whenever they login. You can set the UR
 
 ![Sailboat](./images/sailboat.png)
 
+Metabase will display this illustration when questions or dashboard cards contain no results.
+
 - Sailboat
 - No illustration
 - Custom
 
 ### When no objects can be found
+
+
 
 - Sailboat
 - No illustration
