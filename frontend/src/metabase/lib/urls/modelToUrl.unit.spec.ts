@@ -83,6 +83,6 @@ describe("urls > modelToUrl", () => {
         },
         timestamp: "2021-01-01T00:00:00.000Z",
       }),
-    ).toBe("/question/#?db=22&table=33");
+    ).toBe("/question#?db=22&table=33");
   });
 });
