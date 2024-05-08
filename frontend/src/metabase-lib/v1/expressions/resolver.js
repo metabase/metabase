@@ -40,32 +40,35 @@ function findMBQL(op) {
   return clause;
 }
 
-// a is the type of the argument expected,
-// as defined in MBQL_CLAUSES,
-// and b is the inferred type of the argument
-const isCompatible = (a, b) => {
-  if (a === "any") {
+const isCompatible = (expectedArgumentType, clause) => {
+  if (clause.name === "offset") {
+    return ["expression", "aggregation", "any"].includes(expectedArgumentType);
+  }
+
+  const inferredType = clause.type;
+
+  if (expectedArgumentType === "any") {
     return true;
   }
-  if (a === b) {
+  if (expectedArgumentType === inferredType) {
     return true;
   }
   // if b is a string, then it can be an arg to a function that expects a datetime argument.
   // This allows datetime string literals to work as args for functions that expect datetime types.
   // FIXME: By doing this we are allowing string columns to be arguments to functions, which isn’t valid MBQL.
-  if (a === "datetime" && b === "string") {
+  if (expectedArgumentType === "datetime" && inferredType === "string") {
     return true;
   }
   if (
-    a === "expression" &&
-    ["datetime", "number", "string", "window"].includes(b)
+    expectedArgumentType === "expression" &&
+    ["datetime", "number", "string"].includes(inferredType)
   ) {
     return true;
   }
-  if (a === "aggregation" && ["number", "window"].includes(b)) {
+  if (expectedArgumentType === "aggregation" && inferredType === "number") {
     return true;
   }
-  if (a === "number" && ["aggregation", "window"].includes(b)) {
+  if (expectedArgumentType === "number" && inferredType === "aggregation") {
     return true;
   }
   return false;
@@ -174,7 +177,7 @@ export function resolve({
     }
 
     const { displayName, args, multiple, hasOptions, validator } = clause;
-    if (!isCompatible(type, clause.type)) {
+    if (!isCompatible(type, clause)) {
       throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
         expression.node,
@@ -214,10 +217,9 @@ export function resolve({
     });
     return [op, ...resolvedOperands];
   } else if (
-    !isCompatible(
-      type,
-      typeof expression === "boolean" ? "expression" : typeof expression,
-    )
+    !isCompatible(type, {
+      type: typeof expression === "boolean" ? "expression" : typeof expression,
+    })
   ) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
