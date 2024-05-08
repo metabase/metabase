@@ -14,7 +14,7 @@ import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Icon, type IconProps } from "metabase/ui";
 import type { Card, SearchResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
@@ -42,8 +42,6 @@ export const ModelsTable = ({ items }: ModelsTableProps) => {
   return (
     <Table>
       <colgroup>
-        <Columns.Type.Col />
-
         {/* <col> for Name column */}
         <TableColumn style={{ width: "10rem" }} />
 
@@ -57,7 +55,6 @@ export const ModelsTable = ({ items }: ModelsTableProps) => {
       </colgroup>
       <thead>
         <tr>
-          <Columns.Type.Header title="" />
           <Columns.Name.Header />
           <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
           <ColumnHeader {...collectionProps}>{t`Collection`}</ColumnHeader>
@@ -83,12 +80,10 @@ const TBodyRow = ({ item }: { item: SearchResult }) => {
 
   return (
     <tr>
-      {/* Type */}
-      <Columns.Type.Cell icon={icon} />
-
       {/* Name */}
       <NameCell
         item={item}
+        icon={icon}
         onClick={() => {
           trackModelClick(item.id);
         }}
@@ -128,23 +123,26 @@ const NameCell = ({
   item,
   testIdPrefix = "table",
   onClick,
+  icon,
 }: {
   item: SearchResult;
   testIdPrefix?: string;
   onClick?: () => void;
+  icon: IconProps;
 }) => {
-  // TODO: make sure I've done the icons right
   return (
     <ItemNameCell data-testid={`${testIdPrefix}-name`}>
       <ItemLink
         to={Urls.model(item as unknown as Partial<Card>)}
         onClick={onClick}
       >
-        <EntityItem.Name name={item.name} variant="list" />
-        <PLUGIN_MODERATION.ModerationStatusIcon
+        <Icon
           size={16}
-          status={item.moderated_status}
+          {...icon}
+          color={color("brand")}
+          style={{ flexShrink: 0 }}
         />
+        <EntityItem.Name name={item.name} variant="list" />
       </ItemLink>
     </ItemNameCell>
   );
