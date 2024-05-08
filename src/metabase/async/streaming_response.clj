@@ -154,7 +154,6 @@
   immediately, returning `0`."
   [^Request request]
   (try
-    (log/fatal "--------------------------------------------------")
     (let [transport (.. request getHttpChannel getEndPoint getTransport)
           channel   (get-channel transport)
           buf       (ByteBuffer/allocate 1)
