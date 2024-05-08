@@ -543,7 +543,9 @@ export function setEmbedQuestionEndpoints(token) {
 }
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed");
+    setDashboardEndpoints(embedBase);
+  } else {
+    setDashboardParameterValuesEndpoint(embedBase);
   }
 }
 
@@ -583,6 +585,12 @@ function setDashboardEndpoints(prefix) {
   );
   DashboardApi.parameterSearch = GET(
     `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
+  );
+}
+
+function setDashboardParameterValuesEndpoint(prefix) {
+  DashboardApi.parameterValues = GET(
+    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
 }
 
