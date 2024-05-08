@@ -118,7 +118,7 @@
   [dashboard-id current-tabs new-tabs]
   (let [{:keys [to-create
                 to-update
-                to-delete]} (u/classify-changes current-tabs new-tabs)
+                to-delete]} (u/row-diff current-tabs new-tabs)
         to-delete-ids       (map :id to-delete)
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
                               (delete-tabs! to-delete-ids))
