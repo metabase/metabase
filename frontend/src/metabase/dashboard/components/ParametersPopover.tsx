@@ -11,7 +11,7 @@ import {
 } from "metabase/dashboard/components/ParametersPopover.styled";
 import {
   getDashboardParameterSections,
-  getDefaultOptionForParameterSection,
+  getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
 import { Icon } from "metabase/ui";
 import type { ParameterMappingOptions } from "metabase-types/api";
@@ -25,7 +25,8 @@ interface ParametersPopoverProps {
   onAddParameter: (parameter: ParameterMappingOptions) => void;
 }
 
-const defaultOptionForParameterSection = getDefaultOptionForParameterSection();
+const defaultOptionForParameterSection =
+  getDefaultOptionForParameterSectionMap();
 const PARAMETER_SECTIONS = getDashboardParameterSections();
 
 type ParameterSection = typeof PARAMETER_SECTIONS[number];

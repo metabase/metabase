@@ -57,7 +57,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
       name: "extract",
       title: drillInfo.displayName,
       section: "extract",
-      icon: "extract",
+      icon: "arrow_split",
       buttonType: "horizontal",
       popover: DrillPopover,
     },

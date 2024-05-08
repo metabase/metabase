@@ -244,7 +244,7 @@ export const getNormalizedDatasetTransform = (
 
     // Copy the dimension value
     const normalizedDatum: Datum = {
-      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
+      ...datum,
     };
 
     // Compute normalized values for metrics
@@ -536,7 +536,10 @@ const interpolateTimeSeriesData = (
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
-    result.push(datum);
+    result.push({
+      ...datum,
+      [ORIGINAL_INDEX_DATA_KEY]: datum[ORIGINAL_INDEX_DATA_KEY] ?? i,
+    });
 
     if (i === dataset.length - 1) {
       break;
@@ -545,7 +548,7 @@ const interpolateTimeSeriesData = (
     const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
 
     let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
-    while (start.add(count, unit).isBefore(end)) {
+    while (start.add(count, unit).isBefore(end, unit)) {
       const interpolatedValue = start.add(count, unit);
       result.push({
         [X_AXIS_DATA_KEY]: interpolatedValue.toISOString(),

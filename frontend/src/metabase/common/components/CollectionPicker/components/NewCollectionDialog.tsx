@@ -12,6 +12,7 @@ import {
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { ENTITY_PICKER_Z_INDEX } from "../../EntityPicker";
 import type { CollectionPickerItem } from "../types";
 
 interface NewCollectionDialogProps {
@@ -53,7 +54,7 @@ export const NewCollectionDialog = ({
           padding: "1rem",
         },
       }}
-      zIndex={400} // needs to be above the EntityPickerModal at 400
+      zIndex={ENTITY_PICKER_Z_INDEX}
     >
       <FormProvider
         initialValues={{ name: "" }}
