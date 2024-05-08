@@ -16,10 +16,9 @@ import {
   Breadcrumb,
   CollectionBreadcrumbsWrapper,
 } from "./CollectionBreadcrumbsWithTooltip.styled";
+import { pathSeparatorChar } from "./constants";
 import type { RefProp } from "./types";
-import { getBreadcrumbMaxWidths } from "./utils";
-
-const separatorCharacter = "/";
+import { getBreadcrumbMaxWidths, getCollectionPathString } from "./utils";
 
 export const CollectionBreadcrumbsWithTooltip = ({
   collection,
@@ -31,9 +30,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
   const collections = (
     (collection.effective_ancestors as CollectionEssentials[]) || []
   ).concat(collection);
-  const pathString = collections
-    .map(coll => getCollectionName(coll))
-    .join(` ${separatorCharacter} `);
+  const pathString = getCollectionPathString(collection);
   const ellipsifyPath = collections.length > 2;
   const shownCollections = ellipsifyPath
     ? [collections[0], collections[collections.length - 1]]
@@ -75,9 +72,9 @@ export const CollectionBreadcrumbsWithTooltip = ({
   return (
     <Tooltip
       label={pathString}
-      disabled={!isTooltipEnabled}
       multiline
       maw="20rem"
+      disabled={!isTooltipEnabled}
     >
       <ResponsiveContainer
         aria-label={pathString}
@@ -149,6 +146,6 @@ Ellipsis.displayName = "Ellipsis";
 
 const PathSeparator = () => (
   <Text color="text-light" mx="xs" py={1}>
-    {separatorCharacter}
+    {pathSeparatorChar}
   </Text>
 );
