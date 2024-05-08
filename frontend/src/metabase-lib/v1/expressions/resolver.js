@@ -41,10 +41,7 @@ function findMBQL(op) {
 }
 
 const isCompatible = (expectedType, inferredType) => {
-  if (expectedType === "any") {
-    return true;
-  }
-  if (inferredType === "any") {
+  if (expectedType === "any" || inferredType === "any") {
     return true;
   }
   if (expectedType === inferredType) {
