@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 import {
   FullScreenButtonIcon,
@@ -10,25 +11,46 @@ import {
   RefreshWidgetButton,
 } from "./DashboardActions.styled";
 
-export const getDashboardActions = props => {
-  const {
-    dashboard,
-    isAdmin,
-    canManageSubscriptions,
-    formInput,
-    isEditing = false,
-    isEmpty = false,
-    isFullscreen,
-    isNightMode,
-    isPublic = false,
-    onNightModeChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    onSharingClick,
-    onFullscreenChange,
-    hasNightModeToggle,
-  } = props;
+type GetDashboardActionsProps = {
+  canManageSubscriptions?: boolean;
+  dashboard: Dashboard | null;
+  formInput?: any;
+  hasNightModeToggle: boolean;
+  isAdmin?: boolean;
+  isEditing?: boolean;
+  isEmpty?: boolean;
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  isPublic: boolean;
+  onFullscreenChange: (
+    isFullscreen: boolean,
+    isBrowserFullscreen?: boolean,
+  ) => void;
+  onNightModeChange: (isNightMode: boolean) => void;
+  onRefreshPeriodChange: (period: number) => void;
+  onSharingClick?: () => void;
+  refreshPeriod: number | null;
+  setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
+};
+
+export const getDashboardActions = ({
+  canManageSubscriptions = false,
+  dashboard,
+  formInput,
+  hasNightModeToggle,
+  isAdmin,
+  isEditing = false,
+  isEmpty = false,
+  isFullscreen,
+  isNightMode,
+  isPublic = false,
+  onFullscreenChange,
+  onNightModeChange,
+  onRefreshPeriodChange,
+  onSharingClick,
+  refreshPeriod,
+  setRefreshElapsedHook,
+}: GetDashboardActionsProps) => {
   const buttons = [];
 
   const isLoaded = !!dashboard;
@@ -38,7 +60,8 @@ export const getDashboardActions = props => {
   const hasDataCards =
     hasCards &&
     dashboard.dashcards.some(
-      dashCard => !["text", "heading"].includes(dashCard.card.display),
+      (dashCard: DashboardCard) =>
+        !["text", "heading"].includes(dashCard.card.display),
     );
 
   const canCreateSubscription = hasDataCards && canManageSubscriptions;
@@ -68,12 +91,14 @@ export const getDashboardActions = props => {
       );
     }
 
-    buttons.push(
-      <DashboardEmbedAction
-        key="dashboard-embed-action"
-        dashboard={dashboard}
-      />,
-    );
+    if (isLoaded) {
+      buttons.push(
+        <DashboardEmbedAction
+          key="dashboard-embed-action"
+          dashboard={dashboard}
+        />,
+      );
+    }
   }
 
   if (!isEditing && !isEmpty) {

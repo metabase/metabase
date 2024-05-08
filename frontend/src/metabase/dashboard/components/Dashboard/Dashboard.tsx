@@ -428,6 +428,10 @@ function DashboardInner(props: DashboardProps) {
       );
     }
     return (
+      // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
+      // TODO: Check if onEditingChange is being used.
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       <DashboardGridConnected
         {...props}
         isNightMode={shouldRenderAsNightMode}

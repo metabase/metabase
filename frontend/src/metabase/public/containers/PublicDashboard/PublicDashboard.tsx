@@ -17,6 +17,17 @@ import {
   setParameterValue,
   cancelFetchDashboardCardData,
   fetchDashboardCardMetadata,
+  replaceCard,
+  fetchCardData,
+  markNewCardSeen,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  showClickBehaviorSidebar,
+  fetchDashboard,
+  fetchDashboardCardData,
 } from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
@@ -46,6 +57,7 @@ import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -54,8 +66,12 @@ import EmbedFrame from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicDashboard.styled";
 
-const mapStateToProps = (state: State) => {
+const mapStateToProps = (state: State, props: OwnProps) => {
   return {
+    // this MUST go here, so it's passed to DashboardControls in the _.compose at the bottom
+    dashboardId: String(
+      props.params.dashboardId || props.params.uuid || props.params.token,
+    ),
     metadata: getMetadata(state),
     dashboard: getDashboardComplete(state),
     dashcardData: getCardData(state),
@@ -75,6 +91,19 @@ const mapDispatchToProps = {
   setParameterValue,
   setErrorPage,
   onChangeLocation: push,
+  fetchCardData,
+  replaceCard,
+  markNewCardSeen,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  showClickBehaviorSidebar,
+
+  // these two must also go here, so it's passed to DashboardControls in the _.compose at the bottom
+  fetchDashboard,
+  fetchDashboardCardData,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -93,24 +122,7 @@ type PublicDashboardProps = ReduxProps &
   OwnProps &
   DashboardControlsPassedProps;
 
-type PublicDashboardState = {
-  dashboardId: DashboardId;
-};
-
-class PublicDashboardInner extends Component<
-  PublicDashboardProps,
-  PublicDashboardState
-> {
-  constructor(props: PublicDashboardProps) {
-    super(props);
-
-    this.state = {
-      dashboardId: String(
-        props.params.dashboardId || props.params.uuid || props.params.token,
-      ),
-    };
-  }
-
+class PublicDashboardInner extends Component<PublicDashboardProps> {
   _initialize = async () => {
     const {
       initialize,
@@ -156,11 +168,8 @@ class PublicDashboardInner extends Component<
     this.props.cancelFetchDashboardCardData();
   }
 
-  async componentDidUpdate(
-    prevProps: PublicDashboardProps,
-    prevState: PublicDashboardState,
-  ) {
-    if (this.state.dashboardId !== prevState.dashboardId) {
+  async componentDidUpdate(prevProps: PublicDashboardProps) {
+    if (this.props.dashboardId !== prevProps.dashboardId) {
       return this._initialize();
     }
 
@@ -211,10 +220,27 @@ class PublicDashboardInner extends Component<
       isFullscreen,
       isNightMode,
       setParameterValueToDefault,
+      onFullscreenChange,
+      onNightModeChange,
+      onRefreshPeriodChange,
+      refreshPeriod,
+      setRefreshElapsedHook,
+      hasNightModeToggle,
     } = this.props;
 
     const buttons = !isWithinIframe()
-      ? getDashboardActions({ ...this.props, isPublic: true })
+      ? getDashboardActions({
+          dashboard,
+          hasNightModeToggle,
+          isFullscreen,
+          isNightMode,
+          onFullscreenChange,
+          onNightModeChange,
+          onRefreshPeriodChange,
+          refreshPeriod,
+          setRefreshElapsedHook,
+          isPublic: true,
+        })
       : [];
 
     const visibleDashcards = (dashboard?.dashcards ?? []).filter(
@@ -240,7 +266,7 @@ class PublicDashboardInner extends Component<
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
             <DashboardTabs
-              dashboardId={this.state.dashboardId}
+              dashboardId={this.props.dashboardId}
               location={this.props.location}
             />
           )
@@ -255,19 +281,48 @@ class PublicDashboardInner extends Component<
           })}
           loading={!dashboard}
         >
-          {() => (
-            <DashboardContainer>
-              <DashboardGridConnected
-                {...this.props}
-                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                isPublic
-                className={CS.spread}
-                mode={PublicMode}
-                metadata={this.props.metadata}
-                navigateToNewCardFromDashboard={() => {}}
-              />
-            </DashboardContainer>
-          )}
+          {() =>
+            dashboard ? (
+              <DashboardContainer>
+                <DashboardGridConnected
+                  dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
+                  isPublic
+                  mode={PublicMode as unknown as Mode}
+                  metadata={this.props.metadata}
+                  navigateToNewCardFromDashboard={() => {}}
+                  dashcardData={this.props.dashcardData}
+                  selectedTabId={this.props.selectedTabId}
+                  parameterValues={this.props.parameterValues}
+                  slowCards={this.props.slowCards}
+                  isEditing={false}
+                  isEditingParameter={false}
+                  isXray={false}
+                  isFullscreen={isFullscreen}
+                  isNightMode={isNightMode}
+                  clickBehaviorSidebarDashcard={null}
+                  width={0}
+                  fetchCardData={this.props.fetchCardData}
+                  replaceCard={this.props.replaceCard}
+                  markNewCardSeen={this.props.markNewCardSeen}
+                  setDashCardAttributes={this.props.setDashCardAttributes}
+                  setMultipleDashCardAttributes={
+                    this.props.setMultipleDashCardAttributes
+                  }
+                  undoRemoveCardFromDashboard={
+                    this.props.undoRemoveCardFromDashboard
+                  }
+                  onReplaceAllDashCardVisualizationSettings={
+                    this.props.onReplaceAllDashCardVisualizationSettings
+                  }
+                  onUpdateDashCardVisualizationSettings={
+                    this.props.onUpdateDashCardVisualizationSettings
+                  }
+                  onChangeLocation={this.props.onChangeLocation}
+                  showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
+                />
+              </DashboardContainer>
+            ) : null
+          }
         </LoadingAndErrorWrapper>
       </EmbedFrame>
     );
