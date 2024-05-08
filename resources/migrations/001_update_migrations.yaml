@@ -6603,7 +6603,7 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
-      id: v50.2024-04-25T01:04:04
+      id: v50.2024-04-25T01:04:05
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
       changes:
