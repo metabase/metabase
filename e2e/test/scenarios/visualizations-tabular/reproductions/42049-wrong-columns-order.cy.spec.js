@@ -3,7 +3,7 @@ import { restore, createQuestion } from "e2e/support/helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // unskip once metabase#42049 is addressed
-describe.skip("issue 42049", () => {
+describe("issue 42049", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -61,9 +61,10 @@ describe.skip("issue 42049", () => {
 
     cy.log("verify initial columns order");
 
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "ID");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "Created At");
-    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Quantity");
+    cy.findAllByTestId("header-cell").as("headerCells");
+    cy.get("@headerCells").eq(0).should("have.text", "ID");
+    cy.get("@headerCells").eq(1).should("have.text", "Created At");
+    cy.get("@headerCells").eq(2).should("have.text", "Quantity");
 
     cy.findByRole("button", { name: "Filter" }).click();
 
@@ -77,8 +78,9 @@ describe.skip("issue 42049", () => {
 
     cy.log("verify columns order after applying the filter");
 
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "ID");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "Created At");
-    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Quantity");
+    cy.findAllByTestId("header-cell").as("headerCells");
+    cy.get("@headerCells").eq(0).should("have.text", "ID");
+    cy.get("@headerCells").eq(1).should("have.text", "Created At");
+    cy.get("@headerCells").eq(2).should("have.text", "Quantity");
   });
 });
