@@ -1,6 +1,4 @@
-import type { MantineThemeOverride } from "@mantine/core";
-
-import type { MetabaseFontFamily } from "./fonts";
+import type { MetabaseFontFamily } from "../fonts";
 
 /**
  * Theme configuration for embedded Metabase components.
@@ -43,14 +41,3 @@ export type MetabaseColor = keyof MetabaseColors;
  * components and visualizations.
  */
 export interface MetabaseComponentTheme {}
-
-/**
- * Mantine theme overrides with theme options specific to React embedding.
- *
- * We use this type instead of declaration merging
- * to avoid polluting the metabase-ui Mantine type with
- * theme configuration that only applies to React embedding SDK.
- */
-export type EmbeddingThemeOverride = MantineThemeOverride & {
-  other?: MetabaseComponentTheme;
-};

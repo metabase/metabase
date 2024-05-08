@@ -6,6 +6,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { DEFAULT_POPOVER_Z_INDEX } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
@@ -111,7 +112,7 @@ export const ExpressionEditorHelpText = ({
       reference={target}
       placement="bottom-start"
       visible
-      zIndex={300}
+      zIndex={DEFAULT_POPOVER_Z_INDEX}
       content={<ExpressionEditorHelpTextContent helpText={helpText} />}
     />
   );

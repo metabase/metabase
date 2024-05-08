@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { Component } from "react";
+import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -52,6 +53,8 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
+import { removeCardFromDashboard } from "../actions";
+
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
 import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
@@ -80,7 +83,7 @@ type DashboardChangeItem = {
   attributes: Partial<BaseDashboardCard>;
 };
 
-interface DashboardGridProps {
+type DashboardGridProps = ConnectedProps<typeof connector> & {
   dashboard: Dashboard;
   dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId;
@@ -117,10 +120,6 @@ interface DashboardGridProps {
     dashcards: Array<DashboardChangeItem>;
   }) => void;
 
-  removeCardFromDashboard: (options: {
-    dashcardId: DashCardId;
-    cardId?: CardId | null;
-  }) => void;
   undoRemoveCardFromDashboard: (options: { dashcardId: DashCardId }) => void;
 
   onReplaceAllDashCardVisualizationSettings: (
@@ -142,7 +141,7 @@ interface DashboardGridProps {
     undo: boolean;
     action: () => void;
   }) => void;
-}
+};
 
 interface DashboardGridState {
   visibleCardIds: Set<number>;
@@ -154,7 +153,7 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapDispatchToProps = { addUndo };
+const mapDispatchToProps = { addUndo, removeCardFromDashboard };
 
 class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   static contextType = ContentViewportContext;
@@ -468,6 +467,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       dashcardId: dc.id,
       cardId: dc.card_id,
     });
+
     this.props.addUndo({
       message: t`Removed card`,
       undo: true,
@@ -673,7 +673,9 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
   throw new Error(`Unknown card.type: ${type}`);
 };
 
+const connector = connect(null, mapDispatchToProps);
+
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
-  connect(null, mapDispatchToProps),
+  connector,
 )(DashboardGrid);
