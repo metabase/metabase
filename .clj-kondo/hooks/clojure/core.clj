@@ -286,38 +286,38 @@
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (ignored-namespace? ns-symb config)
-      (let [current-module                (module ns-symb)
-            allowed-modules               (get-in config [:allowed-modules current-module])
-            required-namespace-symb-nodes (-> ns-form-node
-                                              ns-form-node->require-node
-                                              require-node->namespace-symb-nodes)]
-        (doseq [node  required-namespace-symb-nodes
-                :let  [required-namespace (hooks/sexpr node)
-                       required-module    (module required-namespace)]
+      (when-let [current-module (module ns-symb)]
+        (let [allowed-modules               (get-in config [:allowed-modules current-module])
+              required-namespace-symb-nodes (-> ns-form-node
+                                                ns-form-node->require-node
+                                                require-node->namespace-symb-nodes)]
+          (doseq [node  required-namespace-symb-nodes
+                  :let  [required-namespace (hooks/sexpr node)
+                         required-module    (module required-namespace)]
                 ;; ignore stuff not in a module i.e. non-Metabase stuff.
-                :when required-module
-                :let  [in-current-module? (= required-module current-module)]
-                :when (not in-current-module?)
-                :let  [allowed-module?           (or (= allowed-modules :any)
-                                                     (contains? (set allowed-modules) required-module))
-                       module-api-namespaces     (module-api-namespaces required-module config)
-                       allowed-module-namespace? (or (empty? module-api-namespaces)
-                                                     (contains? module-api-namespaces required-namespace))]]
-          (when-let [error (cond
-                             (not allowed-module?)
-                             (format "Module %s should not be used in the %s module. [:metabase/ns-module-checker :allowed-modules %s]"
-                                     required-module
-                                     current-module
-                                     current-module)
+                  :when required-module
+                  :let  [in-current-module? (= required-module current-module)]
+                  :when (not in-current-module?)
+                  :let  [allowed-module?           (or (= allowed-modules :any)
+                                                       (contains? (set allowed-modules) required-module))
+                         module-api-namespaces     (module-api-namespaces required-module config)
+                         allowed-module-namespace? (or (empty? module-api-namespaces)
+                                                       (contains? module-api-namespaces required-namespace))]]
+            (when-let [error (cond
+                               (not allowed-module?)
+                               (format "Module %s should not be used in the %s module. [:metabase/ns-module-checker :allowed-modules %s]"
+                                       required-module
+                                       current-module
+                                       current-module)
 
-                             (not allowed-module-namespace?)
-                             (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/ns-module-checker :api-namespaces %s]"
-                                     required-namespace
-                                     required-module
-                                     required-module))]
-            (hooks/reg-finding! (assoc (meta node)
-                                       :message error
-                                       :type    :metabase/ns-module-checker))))))))
+                               (not allowed-module-namespace?)
+                               (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/ns-module-checker :api-namespaces %s]"
+                                       required-namespace
+                                       required-module
+                                       required-module))]
+              (hooks/reg-finding! (assoc (meta node)
+                                         :message error
+                                         :type    :metabase/ns-module-checker)))))))))
 
 
 (defn lint-ns [x]

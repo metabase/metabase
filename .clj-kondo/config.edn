@@ -251,9 +251,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"
-     "test-util$"
-     "^metabase\\.test.*"}}
+   #{"-test$"                     ; anything ending in `-test`
+     "test[-.]util"               ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                ; anything that contains `test.impl`
+     "^metabase\\.test"           ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
