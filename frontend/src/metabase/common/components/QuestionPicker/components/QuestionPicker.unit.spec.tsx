@@ -385,10 +385,12 @@ describe("QuestionPickerModal", () => {
       "true",
     );
 
+    await screen.findByText(/loading/i);
     await screen.findByText(/Didn't find anything/i);
   });
 
   it("should switch back to the default tab when the search query is cleared", async () => {
+    await setupSearchEndpoints([]);
     await setupModal();
 
     const searchInput = await screen.findByPlaceholderText(/search/i);
@@ -406,6 +408,9 @@ describe("QuestionPickerModal", () => {
       "aria-selected",
       "true",
     );
+
+    await screen.findByText(/loading/i);
+    await screen.findByText(/Didn't find anything/i);
 
     await userEvent.clear(searchInput);
 
