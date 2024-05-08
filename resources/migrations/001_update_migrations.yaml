@@ -6543,14 +6543,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
-      id: v50.2024-04-09T15:55:23
-      author: piranha
-      comment: Backfill query_field for native queries
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -6583,14 +6575,6 @@ databaseChangeLog:
                   remarks: The timestamp of when the card is last used
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v50.2024-04-18T14:33:19
-      author: piranha
-      comment: Backfill query_field
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
 
   - changeSet:
       id: v50.2024-04-19T17:04:04
@@ -6725,6 +6709,49 @@ databaseChangeLog:
                   FROM view_log v
                   WHERE v.model = 'dashboard'
                   AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:35
+      author: calherries
+      comment: Add metabase_table.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: metabase_table
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:36
+      author: calherries
+      comment: Populate metabase_table.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              SET t.view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_table t
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
               );
       rollback: # nothing to do, since view_count didn't exist in v49
 
