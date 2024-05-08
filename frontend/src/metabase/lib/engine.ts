@@ -32,17 +32,20 @@ function formatJsonQuery(query: JSONQuery) {
 
 export function formatNativeQuery(query?: string | JSONQuery, engine?: string) {
   if (!query || !engine) {
-    return;
+    return undefined;
   }
 
-  if (getEngineNativeType(engine) === "sql" && typeof query === "string") {
+  const engineType = getEngineNativeType(engine);
+
+  if (typeof query === "string" && engineType === "sql") {
     return formatSQL(query);
-  } else if (
-    getEngineNativeType(engine) === "json" &&
-    typeof query === "object"
-  ) {
+  }
+
+  if (typeof query === "object" && engineType === "json") {
     return formatJsonQuery(query);
   }
+
+  return undefined;
 }
 
 export function isDeprecatedEngine(
