@@ -3,7 +3,6 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { defer } from "metabase/lib/promise";
 import {
   createAction,
@@ -192,7 +191,7 @@ export const fetchDashboard = createAsyncThunk(
         );
         result = {
           ...result,
-          id: IS_EMBED_PREVIEW ? result.id : dashId,
+          id: dashId,
           dashcards: result.dashcards.map(dc => ({
             ...dc,
             dashboard_id: dashId,
