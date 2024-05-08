@@ -3,7 +3,7 @@ import { restore, createQuestion } from "e2e/support/helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // unskip once metabase#42049 is addressed
-describe("issue 42049", () => {
+describe.skip("issue 42049", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
