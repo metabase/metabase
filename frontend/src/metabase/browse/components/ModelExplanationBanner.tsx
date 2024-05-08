@@ -8,7 +8,7 @@ import { Flex, Paper, Icon, Text } from "metabase/ui";
 
 import { BannerCloseButton, BannerModelIcon } from "./BrowseModels.styled";
 
-export function ModelExplanationBanner() {
+export const ModelExplanationBanner = () => {
   const hasDismissedBanner = useSelector(state =>
     getSetting(state, "dismissed-browse-models-banner"),
   );
@@ -32,7 +32,6 @@ export function ModelExplanationBanner() {
 
   return (
     <Paper
-      mt="1rem"
       mb="-0.5rem"
       p="1rem"
       color="text-dark"
@@ -53,4 +52,4 @@ export function ModelExplanationBanner() {
       </Flex>
     </Paper>
   );
-}
+};

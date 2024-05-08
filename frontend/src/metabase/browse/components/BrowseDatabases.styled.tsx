@@ -6,9 +6,7 @@ import { color } from "metabase/lib/colors";
 
 import { BrowseGrid } from "./BrowseContainer.styled";
 
-export const DatabaseGrid = styled(BrowseGrid)`
-  margin-top: 1rem;
-`;
+export const DatabaseGrid = styled(BrowseGrid)``;
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;

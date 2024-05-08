@@ -30,7 +30,13 @@ export const BrowseModels = () => {
     <BrowseContainer>
       <BrowseHeader>
         <BrowseSection>
-          <Flex w="100%" direction="row" justify="space-between" align="center">
+          <Flex
+            w="100%"
+            h="2.25rem"
+            direction="row"
+            justify="space-between"
+            align="center"
+          >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
                 <Icon size={24} color={color("brand")} name="model" />

@@ -37,7 +37,7 @@ export const ModelFilterControls = ({
   return (
     <Popover position="bottom-end">
       <Popover.Target>
-        <Button p="sm" variant="subtle" color="text-dark">
+        <Button p="sm" lh={0} variant="subtle" color="text-dark">
           <Icon name="filter" />
         </Button>
       </Popover.Target>
