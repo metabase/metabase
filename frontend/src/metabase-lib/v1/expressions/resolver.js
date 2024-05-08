@@ -58,14 +58,14 @@ const isCompatible = (a, b) => {
   }
   if (
     a === "expression" &&
-    ["datetime", "number", "string", "aggregation"].includes(b)
+    ["datetime", "number", "string", "window"].includes(b)
   ) {
     return true;
   }
-  if (a === "aggregation" && b === "number") {
+  if (a === "aggregation" && ["number", "window"].includes(b)) {
     return true;
   }
-  if (a === "number" && b === "aggregation") {
+  if (a === "number" && ["aggregation", "window"].includes(b)) {
     return true;
   }
   return false;

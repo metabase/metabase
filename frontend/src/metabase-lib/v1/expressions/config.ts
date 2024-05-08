@@ -66,7 +66,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   offset: {
     displayName: `Offset`,
-    type: "aggregation",
+    type: "window",
     args: ["any", "number"],
     requiresFeature: "window-functions/offset",
     validator: function (_expr: any, offset: number) {
