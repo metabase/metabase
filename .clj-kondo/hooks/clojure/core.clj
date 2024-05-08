@@ -219,7 +219,6 @@
                    ns-form-node->require-node
                    :children
                    rest)]
-    (println "(pr-str (hooks/sexpr node)):" (pr-str (hooks/sexpr node))) ; NOCOMMIT
     (cond
       (not (hooks/vector-node? node))
       (hooks/reg-finding! (assoc (meta node)
@@ -268,11 +267,27 @@
      (re-find (re-pattern pattern-str) (str ns-symb)))
    (:ignored-namespace-patterns config)))
 
+(defn- module-api-namespaces
+  "Set API namespaces for a given module. `:any` means you can use anything, there are no API namespaces for this
+  module (yet). If unspecified, the default is just the namespace with the same name as the module e.g.
+  `metabase.db`."
+  [module config]
+  (let [module-config (get-in config [:api-namespaces module])]
+    (cond
+      (= module-config :any)
+      nil
+
+      (set? module-config)
+      module-config
+
+      :else
+      #{module})))
+
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (ignored-namespace? ns-symb config)
       (let [current-module                (module ns-symb)
-            allowed-modules               (some-> (get-in config [:allowed-modules current-module]) set)
+            allowed-modules               (get-in config [:allowed-modules current-module])
             required-namespace-symb-nodes (-> ns-form-node
                                               ns-form-node->require-node
                                               require-node->namespace-symb-nodes)]
@@ -283,9 +298,9 @@
                 :when required-module
                 :let  [in-current-module? (= required-module current-module)]
                 :when (not in-current-module?)
-                :let  [allowed-module?           (or (not allowed-modules)
-                                                     (contains? allowed-modules required-module))
-                       module-api-namespaces     (set (get-in config [:api-namespaces required-module]))
+                :let  [allowed-module?           (or (= allowed-modules :any)
+                                                     (contains? (set allowed-modules) required-module))
+                       module-api-namespaces     (module-api-namespaces required-module config)
                        allowed-module-namespace? (or (empty? module-api-namespaces)
                                                      (contains? module-api-namespaces required-namespace))]]
           (when-let [error (cond
