@@ -9,6 +9,7 @@ import {
   modal,
   popover,
   restore,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -152,11 +153,12 @@ describe("scenarios > metrics", () => {
         cy.findByText("Metrics").click();
         cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
       });
-      startNewAggregation();
-      popover().findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
-      getNotebookStep("summarize")
-        .findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name)
-        .should("be.visible");
+      getNotebookStep("summarize").within(() => {
+        cy.findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).should("be.visible");
+        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).should(
+          "be.visible",
+        );
+      });
     });
   });
 
@@ -244,6 +246,21 @@ describe("scenarios > metrics", () => {
       // FIXME put correct value verifyScalarValue("9,380");
     });
   });
+
+  describe("limit", () => {
+    it.skip("should add a limit clause to a metric query (metabase#42416)", () => {
+      const limit = 5;
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation("Count of rows");
+      addBreakout("Created At");
+      addLimit(limit);
+      saveMetric();
+      runQuery();
+      assertQueryBuilderRowCount(limit);
+    });
+  });
 });
 
 function startNewClause() {
@@ -288,6 +305,14 @@ function addAggregation(operatorName: string, columnName?: string) {
 function addBreakout(columnName: string) {
   startNewBreakout();
   popover().findByText(columnName).click();
+}
+
+function addLimit(limit: number) {
+  cy.button("Row limit").click();
+  getNotebookStep("limit")
+    .findByPlaceholderText("Enter a limit")
+    .type(String(limit))
+    .blur();
 }
 
 function saveMetric() {
