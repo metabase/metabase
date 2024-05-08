@@ -2,7 +2,7 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
@@ -42,7 +42,7 @@
                                    [:= :t.visibility_type nil]]})
         fk-field-id-query (field-id-query db-id fk-table-schema fk-table-name fk-column-name)
         pk-field-id-query (field-id-query db-id pk-table-schema pk-table-name pk-column-name)
-        q (case (mdb.connection/db-type)
+        q (case (mdb/db-type)
             :mysql
             {:update [:metabase_field :f]
              :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
@@ -76,7 +76,7 @@
                       [:or
                        [:= :f.fk_target_field_id nil]
                        [:not= :f.fk_target_field_id pk-field-id-query]]]})]
-    (sql/format q :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))))
+    (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
 
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."

@@ -17,7 +17,6 @@
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.util.log :as log]))
 
 (defn dump-to-h2!
@@ -39,5 +38,5 @@
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy! (mdb/db-type) (mdb/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
+       (mdb/with-application-db (mdb/application-db :h2 h2-data-source)
          (rotate-encryption/rotate-encryption-key! nil))))))
