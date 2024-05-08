@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -516,9 +517,11 @@
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
          a-join              (cond-> a-join
                                (seq suggested-conditions) (with-join-conditions suggested-conditions))
-         a-join              (add-default-alias query stage-number a-join)]
-     (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
-                                                                     (conj (vec existing-joins) a-join))))))
+         a-join              (add-default-alias query stage-number a-join)
+         metric              (lib.metric.basics/join-metric query a-join)]
+     (cond-> (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
+                                                                             (conj (vec existing-joins) a-join)))
+       metric (lib.aggregation/aggregate stage-number (lib.ref/ref metric))))))
 
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
