@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { c, t } from "ttag";
+import { c, ngettext, t, msgid } from "ttag";
 
 import { Box, Flex, Text, Button, Modal, Switch } from "metabase/ui";
 import type { Table } from "metabase-types/api";
@@ -43,11 +43,11 @@ export function DeleteConfirmModal({
         <Switch
           size="sm"
           checked={sendToTrash}
-          label={
-            tables.length === 1
-              ? t`Also send all models and questions based on this table to the trash`
-              : t`Also send all models and questions based on these tables to the trash`
-          }
+          label={ngettext(
+            msgid`Also send all models and questions based on this table to the trash`,
+            `Also send all models and questions based on these tables to the trash`,
+            tables.length,
+          )}
           onChange={e => setSendToTrash(e.target.checked)}
         />
       </Box>

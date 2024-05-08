@@ -21,7 +21,14 @@ export const uploadManagementApi = Api.injectEndpoints({
         params,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), tag("database")]),
+        invalidateTags(error, [
+          tag("database"),
+          tag("schema"),
+          tag("table"),
+          tag("field"),
+          tag("field-values"),
+          tag("card"),
+        ]),
     }),
   }),
 });

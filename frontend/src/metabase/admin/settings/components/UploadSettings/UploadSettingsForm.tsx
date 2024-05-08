@@ -99,7 +99,7 @@ export function UploadSettingsFormView({
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
   const dispatch = useDispatch();
 
-  const showSchema = dbId && dbHasSchema(databases, dbId);
+  const showSchema = Boolean(dbId && dbHasSchema(databases, dbId));
   const databaseOptions = getDatabaseOptions(databases);
 
   const enableButtonRef = useRef<ActionButton>(null);
@@ -192,7 +192,7 @@ export function UploadSettingsFormView({
             }}
           />
         </Stack>
-        {!!showSchema && (
+        {showSchema && (
           <Schemas.ListLoader query={{ dbId, getAll: true }}>
             {({ list: schemaList }: { list: Schema[] }) => (
               <Stack>
@@ -214,7 +214,7 @@ export function UploadSettingsFormView({
             )}
           </Schemas.ListLoader>
         )}
-        {!!showPrefix && (
+        {showPrefix && (
           <Stack>
             <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
             <Input

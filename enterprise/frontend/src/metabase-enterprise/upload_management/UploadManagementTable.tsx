@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
@@ -48,13 +48,16 @@ export function UploadManagementTable() {
     [deleteTableRequest],
   );
 
+  const selectedItemIds = useMemo(
+    () => new Set(selectedItems.map(item => item.id)),
+    [selectedItems],
+  );
+
   const renderRow = useCallback(
     (row: Table) => (
       <UploadTableRow
         item={row}
-        isSelected={selectedItems.some(
-          selectedTable => selectedTable.id === row.id,
-        )}
+        isSelected={selectedItemIds.has(row.id)}
         onSelect={newItem =>
           setSelectedItems(prevItems => [...prevItems, newItem])
         }
@@ -69,7 +72,7 @@ export function UploadManagementTable() {
         }}
       />
     ),
-    [selectedItems],
+    [selectedItemIds],
   );
 
   if (isLoading || error) {
@@ -142,7 +145,7 @@ export function UploadManagementTable() {
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
-        rowRenderer={row => renderRow(row as Table)}
+        rowRenderer={row => renderRow(row)}
       />
     </Box>
   );
