@@ -1,5 +1,4 @@
 import type { IconName } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -38,7 +37,6 @@ export type ListProps<
   Query,
   Options extends EntityPickerOptions,
 > = {
-  databaseId?: DatabaseId;
   query?: Query;
   onClick: (val: Item) => void;
   selectedItem: Item | null;

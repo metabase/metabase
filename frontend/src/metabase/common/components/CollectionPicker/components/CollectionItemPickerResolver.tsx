@@ -19,7 +19,6 @@ export const CollectionItemPickerResolver = ({
   if (!query) {
     return (
       <RootItemList
-        databaseId={databaseId}
         options={options}
         selectedItem={selectedItem}
         onClick={onClick}
@@ -33,7 +32,6 @@ export const CollectionItemPickerResolver = ({
   if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
-        databaseId={databaseId}
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}

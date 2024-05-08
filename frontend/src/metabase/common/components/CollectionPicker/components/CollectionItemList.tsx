@@ -1,8 +1,12 @@
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import type { CollectionItem } from "metabase-types/api";
+import type { CollectionItem, DatabaseId } from "metabase-types/api";
 
 import { ItemList } from "../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+
+interface Props extends CollectionItemListProps {
+  databaseId?: DatabaseId;
+}
 
 export const CollectionItemList = ({
   databaseId,
@@ -12,7 +16,7 @@ export const CollectionItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: Props) => {
   const {
     data: collectionItems,
     error,
