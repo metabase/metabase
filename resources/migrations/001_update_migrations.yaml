@@ -6543,14 +6543,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
-      id: v50.2024-04-09T15:55:23
-      author: piranha
-      comment: Backfill query_field for native queries
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -6585,14 +6577,6 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-04-18T14:33:19
-      author: piranha
-      comment: Backfill query_field
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
-
-  - changeSet:
       id: v50.2024-04-19T17:04:04
       author: noahmoss
       comment: Clean up deprecated view-data and native-query-editing permissions (again)
@@ -6601,6 +6585,14 @@ databaseChangeLog:
         - sql:
             sql: >
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:04
+      author: qnkhuat
+      comment: Delete the old SendPulses job and trigger
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
 
   - changeSet:
       id: v50.2024-04-25T03:15:01
@@ -6770,7 +6762,6 @@ databaseChangeLog:
             columns:
               column:
                 name: user_id
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

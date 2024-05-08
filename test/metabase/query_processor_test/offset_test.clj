@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn- ->local-date [t]
@@ -72,8 +73,8 @@
 
 (deftest ^:parallel offset-expression-test-order-by-parameterized-expression
   (testing "An offset as a plain expression with an order by that will get parameterized with ? placeholders"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset :left-join)
+      (let [metadata-provider (qp.test-util/mock-fks-application-database-metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -113,8 +114,8 @@
 
 (deftest ^:parallel offset-expression-inside-other-expression-test
   (testing "An offset as a plain expression nested inside another expression"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset :left-join)
+      (let [metadata-provider (qp.test-util/mock-fks-application-database-metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -201,8 +202,9 @@
                 [#t "2017-01-01" #t "2017-01-01" 11094.77 nil] ; <- should reset here because breakout 2 changed values
                 [#t "2017-02-01" #t "2017-01-01" 11243.66 1.34]
                 [#t "2017-03-01" #t "2017-01-01" 14115.68 25.54]]
-               (mt/formatted-rows [->local-date ->local-date 2.0 2.0]
-                                  (qp/process-query query))))))))
+               (mt/formatted-rows
+                [->local-date ->local-date 2.0 2.0]
+                (qp/process-query query))))))))
 
 (deftest ^:parallel rolling-window-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
@@ -229,8 +231,9 @@
                   [#t "2016-06-01" 2072.92 3391.41]   ; (+ 2072.92 1265.73 52.76)
                   [#t "2016-07-01" 3734.72 7073.37]   ; (+ 3734.72 2072.92 1265.73)
                   [#t "2016-08-01" 4960.65 10768.29]] ; (+ 4960.65 3734.72 2072.92)
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel lead-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
@@ -255,5 +258,28 @@
                   [#t "2016-05-01" 1265.73 3338.65] ; (+ 1265.73 2072.92)
                   [#t "2016-06-01" 2072.92 5807.64]
                   [#t "2016-07-01" 3734.72 8695.37]]
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))
+
+(deftest ^:parallel legacy-query-normalization-test
+  (testing "Make sure legacy queries work correctly as they come in from the REST API (not-yet-normalized) (#42323)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
+      (let [query (-> (mt/mbql-query orders
+                        {:aggregation [[:offset
+                                        ;; missing UUID. Even in legacy we're supposed to be keeping the UUID.
+                                        {:name           "Sum previous total"
+                                         :display-name   "Sum previous total"
+                                         :effective-type :type/Float}
+                                        ;; TODO -- Field has string base-type, effective-type
+                                        [:sum [:field (mt/id :orders :total) {:base-type :type/Float, :effective-type :type/Float}]]
+                                        -1]]
+                         :breakout    [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]
+                         :limit       3})
+                      (assoc-in [:middleware :format-rows?] false))]
+        (is (= [[#t "2016-04-01" nil]
+                [#t "2016-05-01" 52.76]
+                [#t "2016-06-01" 1265.73]]
+               (mt/formatted-rows
+                [->local-date 2.0]
+                (qp/process-query (mt/obj->json->obj query)))))))))
