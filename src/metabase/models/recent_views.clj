@@ -134,7 +134,8 @@
    [:multi {:dispatch :model}
     [:card [:map
             [:parent_collection ::pc]
-            [:display :string]]]
+            [:display :string]
+            [:moderated_status [:enum "verified" nil]]]]
     [:dataset [:map
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
@@ -170,6 +171,18 @@
       (select-keys [:id :name :authority_level])
       (update :authority_level #(some-> % keyword))))
 
+(mu/defn get-moderated-status
+  "Returns moderated_status for a given model and model-id.
+
+  (Currently only used for cards and models, but ought to be extended to dashboards in the future)"
+  [model :- [:enum :card] model-id] :- [:maybe "verified"]
+  (-> (t2/select-one [:model/ModerationReview :status]
+                     {:where [:and
+                              [:= :moderated_item_id model-id]
+                              [:= :moderated_item_type (name model)]
+                              [:= :most_recent true]]})
+      :status))
+
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (let [card (or model_object (t2/select-one :model/Card model_id))]
     {:id model_id
@@ -178,6 +191,7 @@
      :model :card
      :can_write (mi/can-write? :model/Card model_id)
      :timestamp (str timestamp)
+     :moderated_status (get-moderated-status :card model_id)
      :parent_collection (get-parent-coll (:collection_id card))}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
@@ -187,6 +201,8 @@
      :model :dataset
      :can_write (mi/can-write? :model/Card model_id)
      :timestamp (str timestamp)
+      ;; another table that doesn't differentiate between card and dataset :cry:
+     :moderated_status (get-moderated-status :card model_id)
      :parent_collection (get-parent-coll (:collection_id dataset))}))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
