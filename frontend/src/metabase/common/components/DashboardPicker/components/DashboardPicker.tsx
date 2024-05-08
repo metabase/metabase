@@ -43,8 +43,7 @@ interface DashboardPickerProps {
 const useGetInitialCollection = (
   initialValue?: Pick<DashboardPickerItem, "model" | "id">,
 ) => {
-  const isDashboard =
-    initialValue && ["dashboard"].includes(initialValue.model);
+  const isDashboard = initialValue?.model === "dashboard";
 
   const dashboardId = isDashboard ? Number(initialValue.id) : undefined;
 
@@ -62,11 +61,12 @@ const useGetInitialCollection = (
       ? currentDashboard?.collection_id
       : initialValue?.id;
 
+  const requestCollectionId =
+    (isValidCollectionId(collectionId) && collectionId) || "root";
+
   const { data: currentCollection, error: collectionError } =
     useGetCollectionQuery(
-      !isDashboard || !!currentDashboard
-        ? (isValidCollectionId(collectionId) && collectionId) || "root"
-        : skipToken,
+      !isDashboard || !!currentDashboard ? requestCollectionId : skipToken,
     );
 
   return {
