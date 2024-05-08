@@ -14,7 +14,7 @@ As long as you're not the very first user in your team's Metabase, the easiest w
 
 The command palette lets you jump to anywhere in your Metabase.
 
-To bring up the command palette, hit cmd/ctrl + k. That's `cmd + k` for Macs, and `ctrl + k` for Windows PCs.
+To bring up the command palette, hit cmd/ctrl + k. That's `cmd + k` for Macs, or `ctrl + k` for Windows PCs.
 
 You can use the command palette to:
 
