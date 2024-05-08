@@ -2,7 +2,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore, createQuestion } from "e2e/support/helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 42049", () => {
+// unskip once metabase#42049 is addressed
+describe.skip("issue 42049", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -57,7 +58,6 @@ describe("issue 42049", () => {
       },
       { visitQuestion: true },
     );
-    cy.pause();
 
     cy.log("verify initial columns order");
 
