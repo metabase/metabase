@@ -9,6 +9,7 @@ export interface EmbedOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
+  theme?: "night" | "transparent";
 }
 
 export interface EmbedState {

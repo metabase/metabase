@@ -12,3 +12,7 @@ export const getEmbedOptions = (state: State): EmbedOptions => {
 export const getIsEmbeddingSdk = (state: State): boolean => {
   return !!state.embed.isEmbeddingSdk;
 };
+
+export const getIsNightMode = (state: State): boolean => {
+  return getEmbedOptions(state)?.theme === "night";
+};

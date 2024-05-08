@@ -10,8 +10,10 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { color, lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
+import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getIsNightMode } from "metabase/selectors/embed";
 import { Box, Flex, Title, Text, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
@@ -184,6 +186,7 @@ function PreviousValueComparison({
   } = comparison;
 
   const theme = useMantineTheme();
+  const isNightMode = useSelector(getIsNightMode);
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
@@ -194,12 +197,16 @@ function PreviousValueComparison({
         })
       : display.percentChange;
 
+  const separatorColor = isNightMode
+    ? lighten(theme.fn.themeColor("text-medium"), 0.15)
+    : lighten(theme.fn.themeColor("text-light"), 0.25);
+
   const separator = (
     <Text
       display="inline-block"
       mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
-      c={lighten(theme.fn.themeColor("text-light"), 0.25)}
+      c={separatorColor}
       span
     >
       {" • "}
@@ -235,16 +242,20 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
+    const descColor = isNightMode
+      ? lighten(theme.fn.themeColor("text-medium"), 0.45)
+      : "text-light";
+
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueStr} c="text-light" span>
+        <Text key={valueStr} c={descColor} span>
           {valueStr}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c="text-light" span>
+      <Text key="value-str" c={descColor} span>
         {valueStr}
       </Text>
     )}`;
@@ -259,33 +270,50 @@ function PreviousValueComparison({
       }) <= availableComparisonWidth,
   );
 
-  const VariationPercent = ({ iconSize, children }) => (
-    <Flex align="center" maw="100%" c={changeColor ?? "text-light"}>
-      {changeArrowIconName && (
-        <VariationIcon name={changeArrowIconName} size={iconSize} />
-      )}
-      <VariationValue showTooltip={false}>{children}</VariationValue>
-    </Flex>
-  );
+  const VariationPercent = ({ inTooltip, iconSize, children }) => {
+    const noChangeColor =
+      inTooltip || isNightMode
+        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
+        : "text-light";
 
-  const VariationDetails = ({ children }) =>
-    children ? (
-      <Title order={4} c="text-medium" style={{ whiteSpace: "pre" }}>
+    return (
+      <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
+        {changeArrowIconName && (
+          <VariationIcon name={changeArrowIconName} size={iconSize} />
+        )}
+        <VariationValue showTooltip={false}>{children}</VariationValue>
+      </Flex>
+    );
+  };
+
+  const VariationDetails = ({ inTooltip, children }) => {
+    if (!children) {
+      return null;
+    }
+
+    const detailColor =
+      isNightMode || inTooltip
+        ? lighten(theme.fn.themeColor("text-light"), 0.25)
+        : "text-medium";
+
+    return (
+      <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
         {separator}
         {children}
       </Title>
-    ) : null;
+    );
+  };
 
   return (
     <Tooltip
       isEnabled={fullDetailDisplay !== fittedDetailDisplay}
       placement="bottom"
       tooltip={
-        <Flex align="center" className="variation-container-tooltip">
-          <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
+        <Flex align="center">
+          <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
             {display.percentChange}
           </VariationPercent>
-          <VariationDetails>{fullDetailDisplay}</VariationDetails>
+          <VariationDetails inTooltip>{fullDetailDisplay}</VariationDetails>
         </Flex>
       }
     >
