@@ -95,8 +95,6 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
-  const debounceTimeout = 200;
-
   return (
     <SidebarContentRoot>
       <div>
@@ -120,7 +118,7 @@ function MainNavbarView({
             iconPosition="right"
             iconSize={8}
             headerClass={CS.mb1}
-            onToggle={_.debounce(setExpandBrowse, debounceTimeout)}
+            onToggle={setExpandBrowse}
           >
             <PaddedSidebarLink
               icon="model"
@@ -168,7 +166,7 @@ function MainNavbarView({
               selectedItem={cardItem ?? dashboardItem ?? collectionItem}
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
-              onToggle={_.debounce(setExpandBookmarks, debounceTimeout)}
+              onToggle={setExpandBookmarks}
               initialState={expandBookmarks ? "expanded" : "collapsed"}
             />
           </SidebarSection>
