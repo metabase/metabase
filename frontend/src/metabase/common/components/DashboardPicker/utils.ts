@@ -1,23 +1,28 @@
+import _ from "underscore";
+
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
+  CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
+import { getParentCollectionId } from "../CollectionPicker/utils";
 import type { PickerState } from "../EntityPicker";
-import type { QuestionPickerItem } from "../QuestionPicker";
 
-import type { CollectionPickerItem } from "./types";
+import type {
+  DashboardPickerInitialValueItem,
+  DashboardPickerItem,
+} from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
-    CollectionPickerItem,
+    DashboardPickerItem,
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
-  isPersonal?: boolean,
 ): CollectionId[] => {
-  if (collection.id === null || collection.id === "root") {
+  if (collection.id === "root" || collection.id === null) {
     return ["root"];
   }
 
@@ -39,10 +44,10 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
-  if (isPersonal) {
-    return ["personal", ...pathFromRoot, collection.id];
-  } else if (isInUserPersonalCollection) {
+  if (isInUserPersonalCollection) {
     return [...pathFromRoot, collection.id];
+  } else if (collection.is_personal) {
+    return ["personal", ...pathFromRoot, collection.id];
   } else {
     return ["root", ...pathFromRoot, collection.id];
   }
@@ -51,12 +56,14 @@ export const getCollectionIdPath = (
 export const getStateFromIdPath = ({
   idPath,
   namespace,
+  models = ["card", "dataset"],
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem, ListCollectionItemsRequest> => {
+  models?: CollectionItemModel[];
+}): PickerState<DashboardPickerItem, ListCollectionItemsRequest> => {
   const statePath: PickerState<
-    CollectionPickerItem,
+    DashboardPickerItem,
     ListCollectionItemsRequest
   > = [
     {
@@ -64,8 +71,6 @@ export const getStateFromIdPath = ({
         name: "",
         model: "collection",
         id: idPath[0],
-        here: ["collection"],
-        below: ["collection"],
       },
     },
   ];
@@ -76,7 +81,7 @@ export const getStateFromIdPath = ({
     statePath.push({
       query: {
         id,
-        models: ["collection"],
+        models: ["collection", ...models],
         namespace,
       },
       selectedItem: nextLevelId
@@ -84,8 +89,6 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
-            here: ["collection"],
-            below: ["collection"],
           }
         : null,
     });
@@ -94,39 +97,32 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: CollectionPickerItem): boolean => {
-  return Boolean(
-    item.model === "collection" && item?.here?.includes("collection"),
-  );
-};
-
-export const getParentCollectionId = (
-  location?: string | null,
+export const getCollectionId = (
+  item: DashboardPickerItem | DashboardPickerInitialValueItem | null,
 ): CollectionId => {
-  const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
-  return parentCollectionId ? Number(parentCollectionId) : "root";
-};
-
-export const getPathLevelForItem = (
-  item: CollectionPickerItem | QuestionPickerItem,
-  path: PickerState<
-    CollectionPickerItem | QuestionPickerItem,
-    ListCollectionItemsRequest
-  >,
-  userPersonalCollectionId?: CollectionId,
-): number => {
-  if (item.id === userPersonalCollectionId) {
-    return 0;
+  if (!item) {
+    return "root";
   }
 
-  const parentCollectionId =
-    item.collection_id ??
-    getParentCollectionId(item?.effective_location ?? item?.location);
+  if (item.model === "collection") {
+    return (item.id as CollectionId) ?? "root";
+  }
 
-  // set selected item at the correct level
-  const pathLevel = path.findIndex(
-    level => String(level?.query?.id) === String(parentCollectionId),
+  if ("location" in item) {
+    return getParentCollectionId(item.effective_location ?? item.location);
+  }
+
+  return "root";
+};
+
+export const isFolder = (item: DashboardPickerItem) => {
+  return (
+    item.is_personal ||
+    item.id === "root" ||
+    (item?.model === "collection" &&
+      _.intersection(
+        [...(item?.below ?? []), ...(item?.here ?? [])],
+        ["dashboard"],
+      ).length > 0)
   );
-
-  return pathLevel === -1 ? 0 : pathLevel;
 };
