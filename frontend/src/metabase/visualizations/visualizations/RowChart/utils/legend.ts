@@ -6,13 +6,10 @@ export const getLegendItems = <TDatum>(
   seriesColors: Record<string, string>,
   settings: VisualizationSettings,
 ) => {
-  const orderedTitles = multipleSeries.map(
-    series =>
+  return multipleSeries.map(series => ({
+    key: series.seriesKey,
+    name:
       settings?.series_settings?.[series.seriesKey]?.title ?? series.seriesName,
-  );
-
-  return {
-    labels: orderedTitles,
-    colors: multipleSeries.map(single => seriesColors[single.seriesKey]),
-  };
+    color: seriesColors[series.seriesKey],
+  }));
 };
