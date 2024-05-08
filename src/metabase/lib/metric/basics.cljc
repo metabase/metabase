@@ -37,7 +37,7 @@
   "returns the **primary** breakout of this metric, if it has breakouts.
 
   by convention the first breakout is the primary breakout."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metric :- ::lib.schema.metadata/metric]
   (let [metric-query   (->> metric
                             :dataset-query
