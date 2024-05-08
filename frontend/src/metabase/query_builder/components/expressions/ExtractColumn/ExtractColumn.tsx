@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { Text, Box, Stack, Button } from "metabase/ui";
+import { Text, Box, Stack, Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
@@ -180,15 +180,18 @@ function ExtractColumnButton({
       className={styles.button}
       classNames={{
         inner: styles.inner,
+        label: styles.label,
       }}
       onClick={onClick}
     >
-      <Text color="text-dark" className={styles.content} weight="bold" p={0}>
-        {title}
-      </Text>
-      <Text color="text-light" size="sm" className={styles.example}>
-        {example}
-      </Text>
+      <Flex align="center" justify="space-between" gap="1rem">
+        <Text color="text-dark" className={styles.content} weight="bold" p={0}>
+          {title}
+        </Text>
+        <Text color="text-light" size="sm" className={styles.example}>
+          {example}
+        </Text>
+      </Flex>
     </Button>
   );
 }
