@@ -51,6 +51,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
 
   return (
     <TextInput
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         input: {
           fontWeight: "bold",

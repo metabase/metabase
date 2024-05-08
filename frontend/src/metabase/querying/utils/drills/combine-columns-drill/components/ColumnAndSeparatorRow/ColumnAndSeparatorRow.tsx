@@ -69,6 +69,7 @@ export const ColumnAndSeparatorRow = ({
             }}
             onBlur={() => setIsFocused(false)}
             onFocus={handleFocus}
+            // eslint-disable-next-line react/forbid-component-props
             styles={{
               input: {
                 fontFamily: fontFamilyMonospace as string,

@@ -26,6 +26,7 @@ export const ModelFilterControls = ({
       }}
       size="sm"
       labelPosition="left"
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         root: {
           marginInlineStart: "auto",

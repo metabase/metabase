@@ -48,6 +48,7 @@ export const FormTextarea = forwardRef(function FormTextarea(
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
+      // eslint-disable-next-line react/forbid-component-props
       styles={{
         input: {
           fontWeight: "bold",

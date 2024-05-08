@@ -158,6 +158,7 @@ export const EditApiKeyModal = ({
                   name="masked_key"
                   label={t`API Key`}
                   size="sm"
+                  // eslint-disable-next-line react/forbid-component-props
                   styles={{
                     input: {
                       color: `black !important`,

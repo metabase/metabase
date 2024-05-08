@@ -81,6 +81,7 @@ export function AnotherColumnForm({
             label={t`Column`}
             searchable
             onChange={handleChangeColumnKey}
+            // eslint-disable-next-line react/forbid-component-props
             styles={{ dropdown: { width: "100%" } }}
             withinPortal={false}
           />

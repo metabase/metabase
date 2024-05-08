@@ -63,6 +63,7 @@ export const ColumnAndSeparatorRow = ({
 
       {showRemove && (
         <Button
+          // eslint-disable-next-line react/forbid-component-props
           styles={{
             root: {
               border: "none",
@@ -122,6 +123,7 @@ function SeparatorInput({
         onChange={event => onChange(event.target.value)}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        // eslint-disable-next-line react/forbid-component-props
         styles={{
           input: {
             fontFamily: fontFamilyMonospace as string,

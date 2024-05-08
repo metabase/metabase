@@ -112,6 +112,7 @@ function FormCollectionPicker({
           onClick={() => setIsPickerOpen(true)}
           fullWidth
           rightIcon={<Icon name="ellipsis" />}
+          // eslint-disable-next-line react/forbid-component-props
           styles={{
             inner: {
               justifyContent: "space-between",
