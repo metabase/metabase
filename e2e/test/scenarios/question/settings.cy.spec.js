@@ -191,7 +191,6 @@ describe("scenarios > question > settings", () => {
 
       // Add "Address"
       cy.findByRole("button", { name: "Add or remove columns" }).click();
-      cy.pause();
       cy.findByLabelText("Address").should("not.be.checked").click();
 
       // The result automatically load when adding new fields but two requests are fired.

@@ -57,7 +57,6 @@ describe("issue 42049", () => {
       },
       { visitQuestion: true },
     );
-    cy.pause();
 
     cy.log("verify initial columns order");
 
