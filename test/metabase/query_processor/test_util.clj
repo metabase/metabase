@@ -437,12 +437,12 @@
   when [[metabase.config/is-test?]] is true."
   false)
 
-(defn mock-fks-metadata-provider
+(defn mock-fks-application-database-metadata-provider
   "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
   database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
   formal FK constraints."
   ([]
-   (mock-fks-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -460,8 +460,8 @@
   (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true
             *enable-fk-support-for-disabled-drivers-in-tests*       true]
     (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                       (mock-fks-metadata-provider (qp.store/metadata-provider))
-                                       (mock-fks-metadata-provider))
+                                       (mock-fks-application-database-metadata-provider (qp.store/metadata-provider))
+                                       (mock-fks-application-database-metadata-provider))
       (thunk))))
 
 (defmacro with-mock-fks-for-drivers-without-fk-constraints

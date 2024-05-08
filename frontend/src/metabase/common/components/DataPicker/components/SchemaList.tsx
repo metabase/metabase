@@ -34,7 +34,11 @@ export const SchemaList = ({
     }));
   }, [schemas]);
 
-  const hasOnly1Item = useAutoSelectOnlyItem(items, onClick);
+  const hasOnly1Item = useAutoSelectOnlyItem({
+    disabled: Boolean(selectedItem),
+    items,
+    onChange: onClick,
+  });
 
   if (!isLoading && !error && hasOnly1Item) {
     return null;

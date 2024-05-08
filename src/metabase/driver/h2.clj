@@ -283,7 +283,7 @@
          (h2x/literal unit)
          (if (number? amount)
            (sql.qp/inline-num (long amount))
-           (h2x/cast :long amount))
+           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
          expr]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
