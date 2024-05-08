@@ -144,13 +144,14 @@
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."
   []
-  (doseq [job-key (some-> (scheduler) (.getJobKeys nil))]
-    (try
-      (qs/get-job (scheduler) job-key)
-      (catch JobPersistenceException e
-        (when (instance? ClassNotFoundException (.getCause e))
-          (log/infof "Deleting job %s due to class not found" (.getName job-key))
-          (qs/delete-job scheduler job-key))))))
+  (when-let [scheduler (scheduler)]
+    (doseq [job-key (.getJobKeys scheduler nil)]
+      (try
+        (qs/get-job scheduler job-key)
+        (catch JobPersistenceException e
+          (when (instance? ClassNotFoundException (.getCause e))
+            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (qs/delete-job scheduler job-key)))))))
 
 (defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
@@ -164,8 +165,8 @@
         (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
-        (init-tasks!)
-        (delete-jobs-with-no-class!)))))
+        (delete-jobs-with-no-class!)
+        (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
@@ -179,8 +180,6 @@
     (do (init-scheduler!)
         (qs/start (scheduler))
         (log/info "Task scheduler started"))))
-
-
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
