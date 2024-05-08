@@ -54,7 +54,7 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
-  const { hasModels, hasQuestions } = useAvailableData();
+  const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
   const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
