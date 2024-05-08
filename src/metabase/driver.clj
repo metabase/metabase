@@ -587,7 +587,7 @@
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
 
-    ;; Does the driver support automatically adding an auto-incrementing integer column for uploads?
+    ;; Does the driver support automatically adding a primary key column to a table for uploads?
     ;; DEFAULTS TO TRUE
     :upload-with-auto-pk})
 
