@@ -698,7 +698,14 @@
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
-                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; watch and reload clojure namespaces
+  :watch {:extra-deps
+          {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
+           io.github.tonsky/clj-reload {:mvn/version "0.7.0"}} ;; reloader
+          :extra-paths "dev/src/watch"
+          :main-opts ["-m" "watch.watcher"]}}}
 
 
 
