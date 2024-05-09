@@ -43,3 +43,8 @@ export const ModalBody = styled(Modal.Body)`
 export const ModalFooter = styled(Flex)`
   border-top: 1px solid ${color("border")};
 `;
+
+export const TabsListSidebar = styled(Tabs.List)`
+  overflow-y: auto;
+  flex-wrap: nowrap;
+`;

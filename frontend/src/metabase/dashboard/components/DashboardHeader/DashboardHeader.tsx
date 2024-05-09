@@ -130,7 +130,7 @@ interface DashboardHeaderProps {
     browserFullscreen?: boolean,
   ) => void;
   onSharingClick: () => void;
-  onNightModeChange: () => void;
+  onNightModeChange: (isNightMode: boolean) => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   closeSidebar: () => void;

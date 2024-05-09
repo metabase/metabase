@@ -19,11 +19,12 @@
   "Column clicks on string columns.
 
   Might add a stage, like `:drill-thru/column-filter` does, if the current stage has aggregations."
-  [_query                 :- ::lib.schema/query
-   _stage-number          :- :int
+  [query                 :- ::lib.schema/query
+   stage-number          :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and column
              (nil? value)
+             (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.types.isa/string? column))
     {:lib/type :metabase.lib.drill-thru/drill-thru
      :type     :drill-thru/combine-columns

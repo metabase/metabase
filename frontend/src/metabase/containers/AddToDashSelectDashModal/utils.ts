@@ -2,8 +2,9 @@ import {
   coerceCollectionId,
   isPublicCollection,
 } from "metabase/collections/utils";
+import type { DashboardPickerItem } from "metabase/common/components/DashboardPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard, SearchResult } from "metabase-types/api";
 
 interface GetInitialOpenCollectionIdProps {
   isQuestionInPersonalCollection: boolean;
@@ -31,3 +32,13 @@ export const getInitialOpenCollectionId = ({
 export function isInPublicCollection(dashboard: Dashboard | undefined) {
   return isPublicCollection(dashboard?.collection ?? ROOT_COLLECTION);
 }
+
+export const shouldDisableItem = (item: DashboardPickerItem) => {
+  return item.model === "dashboard" && item.can_write === false;
+};
+
+export const filterWritableDashboards = (
+  dashes: SearchResult[],
+): SearchResult[] => {
+  return dashes.filter(dash => dash.can_write);
+};

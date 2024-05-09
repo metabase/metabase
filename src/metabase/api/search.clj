@@ -27,6 +27,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -499,7 +500,10 @@
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (mdb.query/reducible-query search-query :max-rows search.config/*db-max-results*)
+        reducible-results  (reify clojure.lang.IReduceInit
+                             (reduce [_this rf init]
+                               (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :max-rows search.config/*db-max-results*)]
+                                 (reduce rf init (t2/reducible-query search-query)))))
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
