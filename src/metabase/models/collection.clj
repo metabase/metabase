@@ -46,8 +46,7 @@
   510)
 
 (defn- trash-collection* []
-  (t2/select-one :model/Collection :type "trash")
-  )
+  (t2/select-one :model/Collection :type "trash"))
 
 (def ^{:arglists '([])} trash-collection
   "Memoized copy of the Trash collection from the DB."
@@ -1065,13 +1064,13 @@
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
   (let [fetch-collection       (fn [id]
-                              (t2/select-one Collection :id id))
+                                 (t2/select-one Collection :id id))
         {:keys [trashed_from_parent_id
                 parent_id]}    (some-> coll :id fetch-collection (t2/hydrate :parent_id :trashed_from_parent_id))
         parent                 (some-> parent_id fetch-collection)
         trashed-from-parent    (some-> trashed_from_parent_id fetch-collection)
         parent-id              (when parent
-                              (or (:entity_id parent) (serdes/identity-hash parent)))
+                                 (or (:entity_id parent) (serdes/identity-hash parent)))
         trashed-from-parent-id (when trashed-from-parent
                                  (or (:entity_id trashed-from-parent) (serdes/identity-hash trashed-from-parent)))
         owner-email            (when (:personal_owner_id coll)

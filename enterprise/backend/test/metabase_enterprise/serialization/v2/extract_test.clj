@@ -45,7 +45,7 @@
        (map :id)
        set))
 
-(def trash-eid (delay (:entity_id (collection/trash-collection))))
+(def ^:private trash-eid (delay (:entity_id (collection/trash-collection))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db

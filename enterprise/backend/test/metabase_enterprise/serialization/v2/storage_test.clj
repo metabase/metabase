@@ -26,7 +26,7 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
-(def trash-dir (delay (str (:entity_id (collection/trash-collection)) "_trash")))
+(def ^:private trash-dir (delay (str (:entity_id (collection/trash-collection)) "_trash")))
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -84,9 +84,9 @@
         (let [export (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
-            (let [gp-dir    (str (:entity_id grandparent) "_grandparent_collection")
-                  p-dir     (str (:entity_id parent)      "_parent_collection")
-                  c-dir     (str (:entity_id child)       "_child_collection")]
+            (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
+                  p-dir  (str (:entity_id parent)      "_parent_collection")
+                  c-dir  (str (:entity_id child)       "_child_collection")]
               (is (= #{[@trash-dir (str @trash-dir ".yaml")]                                  ; Trash collection, always included
                        [gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
@@ -117,9 +117,9 @@
                          NativeQuerySnippet c4          {:name "child snippet" :collection_id (:id child)}]
         (let [export (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
-          (let [gp-dir    (str (:entity_id grandparent) "_grandparent_collection")
-                p-dir     (str (:entity_id parent)      "_parent_collection")
-                c-dir     (str (:entity_id child)       "_child_collection")]
+          (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
+                p-dir  (str (:entity_id parent)      "_parent_collection")
+                c-dir  (str (:entity_id child)       "_child_collection")]
             (testing "collections under collections/"
               (is (= #{[gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
@@ -142,7 +142,7 @@
                          Field       website {:name "Company/organization website" :table_id (:id table)}
                          FieldValues _       {:field_id (:id website)}
                          Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
-        (let [export          (into [] (extract/extract {:include-field-values true}))]
+        (let [export (into [] (extract/extract {:include-field-values true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]
