@@ -937,7 +937,7 @@ saved later when it is ready."
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
+           result_metadata table_id visualization_settings trashed_from_collection_id]}]
   (->> (map serdes/mbql-deps parameter_mappings)
        (reduce set/union #{})
        (set/union (serdes/parameters-deps parameters))
@@ -945,6 +945,7 @@ saved later when it is ready."
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (result-metadata-deps result_metadata))
        (set/union (serdes/mbql-deps dataset_query))
        (set/union (serdes/visualization-settings-deps visualization_settings))

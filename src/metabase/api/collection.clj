@@ -12,7 +12,6 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -88,10 +87,10 @@
                        (case archived
                          nil nil
                          false [:and
-                                [:not= :id config/trash-collection-id]
+                                [:not= :id (collection/trash-collection-id)]
                                 [:not :archived]]
                          true [:or
-                               [:= :id config/trash-collection-id]
+                               [:= :id (collection/trash-collection-id)]
                                :archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
@@ -105,7 +104,10 @@
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [[[:case
+                             [:= :type nil] 0
+                             [:= :type collection/trash-collection-type] 1
+                             :else 2]] :asc]
                           [:%lower.name :asc]]})
    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -538,8 +540,8 @@
   (-> (assoc (collection/effective-children-query
               collection
               (if archived?
-                [:or [:= :archived true] [:= :id config/trash-collection-id]]
-                [:and [:= :archived false] [:not= :id config/trash-collection-id]])
+                [:or [:= :archived true] [:= :id (collection/trash-collection-id)]]
+                [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
@@ -757,7 +759,10 @@
   [sort-info db-type]
   ;; always put "Metabase Analytics" last
   (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+         [[[:case
+            [:= :collection_type nil] 0
+            [:= :collection_type collection/trash-collection-type] 1
+            :else 2]] :asc]]
         (case sort-info
           nil                     [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
