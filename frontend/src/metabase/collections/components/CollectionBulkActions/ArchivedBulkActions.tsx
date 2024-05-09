@@ -9,13 +9,12 @@ import {
   canUnarchiveItem,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { BulkActionButton } from "metabase/components/BulkActionBar";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
-
-import { BulkActionButton } from "metabase/components/BulkActionBar";
 
 type ArchivedBulkActionsProps = {
   selected: any[];

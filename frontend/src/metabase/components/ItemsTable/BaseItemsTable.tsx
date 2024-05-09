@@ -4,7 +4,6 @@ import {
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
-import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import type {
@@ -14,10 +13,9 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
+import { isTrashedCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
-import { isTrashedCollection } from "metabase/collections/utils";
-import CheckBox from "metabase/core/components/CheckBox";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
