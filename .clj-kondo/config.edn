@@ -143,7 +143,7 @@
    ;;
    ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
    :api-namespaces
-   {metabase.actions               :any
+   {metabase.actions               #{metabase.actions.core}
     metabase.analytics             :any
     metabase.analyze               :any
     metabase.api                   :any
