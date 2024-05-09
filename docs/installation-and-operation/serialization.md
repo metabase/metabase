@@ -628,10 +628,10 @@ tar -czf metabase_data.tgz metabase_data
 From the directory where you've stored your GZIP-compressed file, run:
 
 ```sh
-curl \
+curl -X POST \
   -H 'x-api-key: YOUR_API_KEY' \
   -F file=@metabase_data.tgz \
-  -X 'POST http://your-metabase-url/api/ee/serialization/import' \
+  'http://your-metabase-url/api/ee/serialization/import' \
   -o -
 ```
 
