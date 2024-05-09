@@ -1964,7 +1964,7 @@
 
 (deftest move-to-trash-test
   (testing "existing archived items should be moved to the Trash"
-    (impl/test-migrations ["v50.2024-05-03T16:29:53" "v50.2024-05-03T16:35:47"] [migrate!]
+    (impl/test-migrations ["v50.2024-05-09T15:55:06" "v50.2024-05-09T16:16:42"] [migrate!]
       (let [user       (create-raw-user! (mt/random-email))
             db         (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
                                                                        (update :details json/generate-string)
@@ -1991,10 +1991,9 @@
                                                 {:name     "Silly Collection"
                                                  :slug     "silly-collection"
                                                  :archived true})]
-        (is (nil? (t2/select-one :model/Collection :id (collection/trash-collection-id))))
         (is (empty? (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
         (is (empty? (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
-        (is (empty? (t2/select-fn-set :id :model/Collection :location (collection/trash-path))))
+        (is (empty? (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))
         (migrate!)
         (is (set/subset? #{dash} (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
         (is (set/subset? #{card} (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
