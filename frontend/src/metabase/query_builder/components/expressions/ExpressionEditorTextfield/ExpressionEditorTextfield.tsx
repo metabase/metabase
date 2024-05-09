@@ -14,7 +14,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MBQL_CLAUSES, isExpression } from "metabase-lib/v1/expressions";
+import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
@@ -94,17 +94,6 @@ export function suggestWithExtras(
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
       });
-    }
-  }
-
-  if (args.startRule === "boolean") {
-    // the offset function is not supported in custom filter expressions
-    const offsetIndex = suggestions.findIndex(
-      suggestion => suggestion.name === MBQL_CLAUSES.offset.displayName,
-    );
-
-    if (offsetIndex > -1) {
-      suggestions.splice(offsetIndex, 1);
     }
   }
 
