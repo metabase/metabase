@@ -74,7 +74,7 @@ export const dataPickerValueFromJoinable = (
     return {
       id: pickerInfo.cardId,
       name: displayInfo.displayName,
-      model: pickerInfo.isModel ? "dataset" : "card",
+      model: displayInfo.isModel ? "dataset" : "card",
     };
   }
 

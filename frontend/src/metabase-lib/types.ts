@@ -136,6 +136,7 @@ export type TableDisplayInfo = {
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
+  isModel?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
