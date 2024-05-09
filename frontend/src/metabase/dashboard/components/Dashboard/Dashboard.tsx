@@ -247,10 +247,10 @@ function DashboardInner(props: DashboardProps) {
         dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
     );
     const hiddenParameters = parameters.filter(
-      (parameter: Parameter) => !currentTabParameterIds.includes(parameter.id),
+      parameter => !currentTabParameterIds.includes(parameter.id),
     );
 
-    return hiddenParameters.map((p: Parameter) => p.slug).join(",");
+    return hiddenParameters.map(p => p.slug).join(",");
   }, [parameters, currentTabDashcards, isEditing]);
 
   const visibleParameters = useMemo(
