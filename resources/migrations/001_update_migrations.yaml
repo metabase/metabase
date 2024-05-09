@@ -7080,6 +7080,110 @@ databaseChangeLog:
               );
               DELETE FROM collection WHERE type = 'trash';
 
+  - changeSet:
+      id: v50.2024-05-09T15:55:06
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (Postgres)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              SET trashed_from_location = c1.location,
+                  location = CONCAT('/', c2.id, '/')
+              FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET trashed_from_location = NULL, location = trashed_from_location
+              WHERE archived = true AND namespace IS NULL;
+
+  - changeSet:
+      id: v50.2024-05-09T16:16:24
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              SET trashed_from_location = c1.location,
+                  location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET trashed_from_location = NULL, location = trashed_from_location
+              WHERE archived = true AND namespace IS NULL;
+
+  - changeSet:
+      id: v50.2024-05-09T16:16:31
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              JOIN (
+                  SELECT id FROM collection WHERE type = 'trash'
+              ) AS c2
+              SET c1.trashed_from_location = c1.location,
+                  c1.location = CONCAT('/', c2.id, '/')
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET trashed_from_location = NULL, location = trashed_from_location
+              WHERE archived = true AND namespace IS NULL;
+
+  - changeSet:
+      id: v50.2024-05-09T16:16:38
+      author: johnswanson
+      comment: Move existing archived dashboards to the Trash
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE archived = true;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET trashed_from_collection_id = NULL, collection_id = trashed_from_collection_id
+              WHERE archived = true;
+
+  - changeSet:
+      id: v50.2024-05-09T16:16:42
+      author: johnswanson
+      comment: Move existing archived cards to the Trash
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE archived = true;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET trashed_from_collection_id = NULL, collection_id = trashed_from_collection_id
+              WHERE archived = true;
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
