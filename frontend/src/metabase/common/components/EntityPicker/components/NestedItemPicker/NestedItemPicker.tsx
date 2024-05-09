@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -24,22 +23,15 @@ export interface NestedItemPickerProps<
   Query,
   Options extends EntityPickerOptions,
 > {
-  /**
-   * Limit selection to a particular database
-   */
-  databaseId?: DatabaseId;
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
   generateKey: (query?: Query) => string;
   options: Options;
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
-  listResolver: ComponentType<
-    ListProps<Id, Model, Item, Query, Options> & {
-      databaseId?: DatabaseId;
-    }
-  >;
+  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -49,7 +41,6 @@ export function NestedItemPicker<
   Query,
   Options extends EntityPickerOptions,
 >({
-  databaseId,
   onFolderSelect,
   onItemSelect,
   generateKey,
@@ -58,6 +49,7 @@ export function NestedItemPicker<
   isFolder,
   listResolver: ListResolver,
   shouldDisableItem,
+  shouldShowItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -90,13 +82,13 @@ export function NestedItemPicker<
             >
               <ErrorBoundary>
                 <ListResolver
-                  databaseId={databaseId}
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={isCurrentLevel}
                   shouldDisableItem={shouldDisableItem}
+                  shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

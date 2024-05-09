@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -25,6 +25,7 @@ import {
 } from "../../EntityPicker";
 import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
 import {
+  createDatabaseIdItemFilter,
   generateKey,
   getCollectionIdPath,
   getStateFromIdPath,
@@ -105,6 +106,10 @@ export const QuestionPicker = ({
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
+  const shouldShowItem = useMemo(() => {
+    return createDatabaseIdItemFilter(databaseId);
+  }, [databaseId]);
+
   const onFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
       const newPath = getStateFromIdPath({
@@ -174,7 +179,6 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
-      databaseId={databaseId}
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       generateKey={generateKey}
@@ -182,6 +186,7 @@ export const QuestionPicker = ({
       onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

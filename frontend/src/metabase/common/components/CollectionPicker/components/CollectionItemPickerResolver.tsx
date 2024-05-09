@@ -1,5 +1,4 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type { DatabaseId } from "metabase-types/api";
 
 import type { CollectionItemListProps } from "../types";
 
@@ -7,12 +6,7 @@ import { CollectionItemList } from "./CollectionItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
 
-interface Props extends CollectionItemListProps {
-  databaseId?: DatabaseId;
-}
-
 export const CollectionItemPickerResolver = ({
-  databaseId,
   onClick,
   selectedItem,
   options,
@@ -20,7 +14,8 @@ export const CollectionItemPickerResolver = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: Props) => {
+  shouldShowItem,
+}: CollectionItemListProps) => {
   if (!query) {
     return (
       <RootItemList
@@ -30,6 +25,7 @@ export const CollectionItemPickerResolver = ({
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
         shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
       />
     );
   }
@@ -42,6 +38,7 @@ export const CollectionItemPickerResolver = ({
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
         shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
         options={options}
       />
     );
@@ -49,13 +46,13 @@ export const CollectionItemPickerResolver = ({
 
   return (
     <CollectionItemList
-      databaseId={databaseId}
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
       options={options}
     />
   );
