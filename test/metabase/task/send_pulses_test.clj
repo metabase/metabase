@@ -185,9 +185,9 @@
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
           (with-redefs [;; run the job every 2 seconds
-                        u.cron/schedule-map->cron-string       (constantly "0/2 * * 1/1 * ? *")
-                        task.send-pulses/send-pulse!           (fn [_pulse-id channel-ids]
-                                                                (swap! sent-channel-ids set/union channel-ids))]
+                        u.cron/schedule-map->cron-string (constantly "0/2 * * 1/1 * ? *")
+                        task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
+                                                          (swap! sent-channel-ids set/union channel-ids))]
             (let [pc-count  (+ 2 mt.util/in-memory-scheduler-thread-count)
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
@@ -202,5 +202,6 @@
                 (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count)))
                 (is (= #{} @sent-channel-ids)))
               ;; job run every 2 seconds, so wait a bit so the job can run
+              (Thread/sleep 3000)
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
                 (is (= (set pc-ids) @sent-channel-ids))))))))))
