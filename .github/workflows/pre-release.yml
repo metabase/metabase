@@ -108,7 +108,7 @@ jobs:
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   run-sanity-check:
-    runs-on: ubuntu-22.04
+    runs-on: buildjet-4vcpu-ubuntu-2004
     timeout-minutes: 30
     needs: [release-artifact, check-uberjar-health]
     strategy:
