@@ -129,6 +129,7 @@
    [:map
     [:id [:int {:min 1}]]
     [:name :string]
+    [:description :string]
     [:model [:enum :dataset :card :dashboard :collection :table]]
     [:can_write :boolean]
     [:timestamp :string]]
@@ -187,9 +188,10 @@
       :status))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
-  (let [card (or model_object (t2/select-one :model/Card model_id))]
+  (when-let [card (or model_object (t2/select-one :model/Card model_id))]
     {:id model_id
      :name (:name card)
+     :description (:description card)
      :display (when-let [display (:display card)] (name display))
      :model :card
      :can_write (mi/can-write? card)
@@ -198,29 +200,32 @@
      :parent_collection (get-parent-coll (:collection_id card))}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
-  (let [dataset (or model_object (t2/select-one :model/Card model_id))]
+  (when-let [dataset (or model_object (t2/select-one :model/Card model_id))]
     {:id model_id
      :name (:name dataset)
+     :description (:description dataset)
      :model :dataset
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
-      ;; another table that doesn't differentiate between card and dataset :cry:
+     ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (get-moderated-status :card model_id)
      :parent_collection (get-parent-coll (:collection_id dataset))}))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
-  (let [dashboard (or model_object (t2/select-one :model/Dashboard model_id))]
+  (when-let [dashboard (or model_object (t2/select-one :model/Dashboard model_id))]
     {:id model_id
      :name (:name dashboard)
+     :description (:description dashboard)
      :model :dashboard
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dashboard))}))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
-  (let [table (or model_object (t2/select-one :model/Table model_id))]
+  (when-let [table (or model_object (t2/select-one :model/Table model_id))]
     {:id model_id
      :name (:name table)
+     :description (:description table)
      :model :table
      :display_name (:display_name table)
      :can_write (mi/can-write? table)
@@ -233,9 +238,10 @@
                   :initial_sync_status initial_sync_status})}))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
-  (let [collection (or model_object (t2/select-one :model/Collection model_id))]
+  (when-let [collection (or model_object (t2/select-one :model/Collection model_id))]
     {:id model_id
      :name (:name collection)
+     :description (:description collection)
      :model :collection
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
@@ -257,13 +263,17 @@
                                  :order-by [[:rv.timestamp :desc]]}))
 
 (defn- post-process [recent-view]
-  (u/prog1 (-> recent-view
-               fill-recent-view-info
-               (dissoc :card_type)
-               (update :model model->return-model))
-    (log/fatalf "Recent view\n in: %s\n out: %s" (pr-str (into {} recent-view)) (pr-str <>))))
+  (log/fatalf "\n---\nRecent view\n in: %s" (pr-str (into {} recent-view)))
+  (when-let [filled-recent (fill-recent-view-info recent-view)]
+    (u/prog1 (-> filled-recent
+                 (dissoc :card_type)
+                 (update :model model->return-model))
+      (log/fatalf "\nRecent view out: %s\n---"  (pr-str <>)))))
 
 (mu/defn get-list :- [:sequential Item]
-  "Gets all recent views for a given user. Returns a list of at most 20 `RecentItem` maps per [[models-of-interest]]."
+  "Gets all recent views for a given user. Returns a list of at most 20 `Item` maps per [[models-of-interest]].
+
+  [[do-query]] can return nils, and we remove them here becuase models can be deleted, and we don't want to show those
+  in the recent views."
   [user-id]
-  (into [] (map post-process) (do-query user-id)))
+  (into [] (comp (remove nil?) (map post-process)) (do-query user-id)))

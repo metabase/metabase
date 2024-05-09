@@ -31,26 +31,34 @@
 (deftest most-recently-viewed-dashboard-id-test
   (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
     (clear-test-user-recent-views :rasta)
-    (t2.with-temp/with-temp [:model/RecentViews _ {:model "dashboard"
-                                                   :model_id 1
-                                                   :user_id (mt/user->id :rasta)
-                                                   :timestamp (t/minus (t/zoned-date-time) (t/days 2))}]
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Dashboard {dash-id-2 :id} {}
+                   :model/Dashboard {dash-id-3 :id} {}]
+
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (t2.with-temp/with-temp [:model/RecentViews _ {:model "dashboard" :model_id 2 :user_id (mt/user->id :rasta)}
-                               :model/RecentViews _ {:model "dashboard" :model_id 3 :user_id (mt/user->id :rasta)}]
-        (is (= 3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-;; TODO: fix this test by fixing pruning stuff:
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2)
+      (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
+
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3)
+      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))))
+
 (deftest update-users-recent-views!-test
   (clear-test-user-recent-views :rasta)
   (binding [recent-views/*recent-views-stored-per-user-per-model* 3]
     (let [user-id (mt/user->id :rasta)]
       (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
-        (dotimes [_ 25] (recent-views/update-users-recent-views! user-id :model/Card 1))
-        (is (= 1 (count (filter (comp #{:dataset} :model) (recent-views/get-list user-id))))))
+        (mt/with-temp [:model/Card {card-id :id} {:type "question"}]
+          (dotimes [_ 25] (recent-views/update-users-recent-views! user-id :model/Card card-id))
+          (is (= 1 (count (filter (comp #{:dataset} :model) (recent-views/get-list user-id)))))))
 
-      (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
+      (testing "`update-users-recent-views!` prunes duplicates of all models.`"
         (doseq [[model out-model] [[:model/Card :card]
                                    [:model/Card :dataset]
                                    [:model/Dashboard :dashboard]
@@ -91,7 +99,6 @@
              (->> (recent-views/get-list user-id)
                   (take 2)
                   (mapv #(dissoc % :timestamp)))))
-
 
       (testing "The most recent dashboard view is not pruned"
         (recent-views/update-users-recent-views! user-id :model/Dashboard 1)
