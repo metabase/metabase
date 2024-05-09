@@ -585,7 +585,11 @@
 
     ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
-    :describe-fields})
+    :describe-fields
+
+    ;; Does the driver support automatically adding a primary key column to a table for uploads?
+    ;; DEFAULTS TO TRUE
+    :upload-with-auto-pk})
 
 
 (defmulti supports?
@@ -641,7 +645,8 @@
                               :date-arithmetics                       true
                               :temporal-extract                       true
                               :convert-timezone                       false
-                              :test/jvm-timezone-setting              true}]
+                              :test/jvm-timezone-setting              true
+                              :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
