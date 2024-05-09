@@ -63,7 +63,9 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
 
 ```
-/public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
+{%raw%}
+/public/dashboard/?child_filter_name={{parent_column_name}}
+{%endraw%}
 ```
 
 For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
@@ -201,7 +203,7 @@ Admins can view and deactivate all public links for a Metabase.
 
 ## See all publicly shared content
 
-You can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
+Admins can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
 
 ![See shared content](../images/see-shared-content.png)
 
