@@ -58,7 +58,8 @@ describe(
                   .click()
                   .type("1")
                   .blur();
-                assertOnRequest("updateQuestion");
+                assertRequestNot403("updateQuestion");
+                assertNoPermissionsError();
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders1");
               });
@@ -70,7 +71,8 @@ describe(
                   .type("foo", { delay: 0 })
                   .blur();
 
-                assertOnRequest("updateQuestion");
+                assertRequestNot403("updateQuestion");
+                assertNoPermissionsError();
 
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("foo");
@@ -94,16 +96,17 @@ describe(
                   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("My personal collection").click();
                   clickButton("Move");
-                  assertOnRequest("updateQuestion");
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains("37.65");
+                  assertRequestNot403("updateQuestion");
 
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains(
-                    `Question moved to ${getPersonalCollectionName(
-                      USERS[user],
-                    )}`,
-                  );
+                  cy.findAllByRole("status")
+                    .contains(
+                      `Question moved to ${getPersonalCollectionName(
+                        USERS[user],
+                      )}`,
+                    )
+                    .should("exist");
+                  assertNoPermissionsError();
+                  cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
                     // Highlight "Your personal collection" after move
@@ -130,7 +133,7 @@ describe(
                   cy.get("header").findByText(NEW_COLLECTION);
                 });
 
-                it("should be able to move models", () => {
+                it("should be able to move models", { tags: "@flaky" }, () => {
                   // TODO: Currently nodata users can't turn a question into a model
                   cy.skipOn(user === "nodata");
 
@@ -152,14 +155,17 @@ describe(
                   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("My personal collection").click();
                   clickButton("Move");
-                  assertOnRequest("updateQuestion");
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains("37.65");
+                  assertRequestNot403("updateQuestion");
 
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains(
-                    `Model moved to ${getPersonalCollectionName(USERS[user])}`,
-                  );
+                  cy.findAllByRole("status")
+                    .contains(
+                      `Model moved to ${getPersonalCollectionName(
+                        USERS[user],
+                      )}`,
+                    )
+                    .should("exist");
+                  assertNoPermissionsError();
+                  cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
                     // Highlight "Your personal collection" after move
@@ -184,7 +190,8 @@ describe(
                   "It will also be removed from the filter that uses it to populate values.",
                 ).should("not.exist");
                 clickButton("Archive");
-                assertOnRequest("updateQuestion");
+                assertRequestNot403("updateQuestion");
+                assertNoPermissionsError();
                 cy.wait("@getItems"); // pinned items
                 cy.wait("@getItems"); // unpinned items
                 cy.location("pathname").should("eq", "/collection/root");
@@ -473,11 +480,13 @@ function clickButton(name) {
   cy.button(name).should("not.be.disabled").click();
 }
 
-function assertOnRequest(xhr_alias) {
+function assertRequestNot403(xhr_alias) {
   cy.wait("@" + xhr_alias).then(xhr => {
     expect(xhr.status).not.to.eq(403);
   });
+}
 
+function assertNoPermissionsError() {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
@@ -485,8 +494,11 @@ function assertOnRequest(xhr_alias) {
 
 function turnIntoModel() {
   openQuestionActions();
-  cy.findByText("Turn into a model").click();
-  cy.findByText("Turn this into a model").click();
+  cy.findByRole("dialog").contains("Turn into a model").click();
+  cy.findByRole("dialog").contains("Turn this into a model").click();
+  assertRequestNot403("updateQuestion");
+  cy.findAllByRole("status").contains("This is a model now.").should("exist");
+  assertNoPermissionsError();
 }
 
 function findSelectedItem() {
