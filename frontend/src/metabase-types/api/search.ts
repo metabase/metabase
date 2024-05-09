@@ -71,7 +71,8 @@ export type SearchResponse<
 export type CollectionEssentials = Pick<
   Collection,
   "id" | "name" | "authority_level" | "type"
->;
+> &
+  Partial<Pick<Collection, "effective_ancestors">>;
 
 export type SearchResultId =
   | CollectionId
@@ -132,8 +133,12 @@ export type SearchRequest = {
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
   verified?: boolean | null;
+  model_ancestors?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
 } & PaginationRequest;
+
+/** Model retrieved through the search endpoint */
+export type ModelResult = SearchResult<number, "dataset">;

@@ -1,59 +1,47 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import CollectionPicker from "metabase/containers/CollectionPicker";
-import Button from "metabase/core/components/Button/Button";
+import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { getTimelineName } from "metabase/lib/timelines";
-import type { Timeline } from "metabase-types/api";
-
-import ModalFooter from "../ModalFooter";
-import ModalHeader from "../ModalHeader";
-
-import { ModalBody, ModalRoot } from "./MoveTimelineModal.styled";
+import type { CollectionId, Timeline } from "metabase-types/api";
 
 export interface MoveTimelineModalProps {
   timeline: Timeline;
-  onSubmit: (timeline: Timeline, collectionId: number | null) => void;
+  onSubmit: (timeline: Timeline, collectionId: CollectionId) => void;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const MoveTimelineModal = ({
   timeline,
   onSubmit,
   onSubmitSuccess,
-  onCancel,
   onClose,
 }: MoveTimelineModalProps): JSX.Element => {
-  const [collectionId, setCollectionId] = useState(timeline.collection_id);
-  const isEnabled = timeline.collection_id !== collectionId;
-
-  const handleSubmit = useCallback(async () => {
-    await onSubmit(timeline, collectionId);
-    onSubmitSuccess?.();
-  }, [timeline, collectionId, onSubmit, onSubmitSuccess]);
+  const handleSubmit = useCallback(
+    async (collectionId: CollectionId) => {
+      await onSubmit(timeline, collectionId);
+      onSubmitSuccess?.();
+      onClose?.();
+    },
+    [timeline, onSubmit, onSubmitSuccess, onClose],
+  );
 
   return (
-    <ModalRoot>
-      <ModalHeader
-        title={t`Move ${getTimelineName(timeline)}`}
-        onClose={onClose}
-      />
-      <ModalBody>
-        <CollectionPicker
-          value={collectionId}
-          showScroll={false}
-          onChange={setCollectionId}
-        />
-      </ModalBody>
-      <ModalFooter>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button primary disabled={!isEnabled} onClick={handleSubmit}>
-          {t`Move`}
-        </Button>
-      </ModalFooter>
-    </ModalRoot>
+    <CollectionPickerModal
+      value={{ id: timeline.collection_id ?? "root", model: "collection" }}
+      title={t`Move ${getTimelineName(timeline)}`}
+      onClose={onClose}
+      onChange={async newCollection => {
+        await handleSubmit(newCollection.id);
+      }}
+      options={{
+        confirmButtonText: t`Move`,
+        showPersonalCollections: true,
+        showRootCollection: true,
+      }}
+    />
   );
 };
 
