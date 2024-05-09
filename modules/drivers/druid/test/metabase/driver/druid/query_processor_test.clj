@@ -542,7 +542,8 @@
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
-(deftest metrics-inside-aggregation-clauses-test
+;; FIXME metrics v2
+#_(deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
