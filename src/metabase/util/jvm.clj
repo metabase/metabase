@@ -304,12 +304,13 @@
   "Wait until `pred-fn` returns truthy, or until `max-retry` times, with `interval-ms` between retries."
   [pred-fn & {:keys [max-retry interval-ms]
               :or   {max-retry 10
-                     interval-ms 100}:as opts}]
+                     interval-ms 100} :as opts}]
 
   (loop [retry-count 0]
     (when-not (pred-fn)
       (if (>= retry-count max-retry)
-        (throw (ex-info "Timeout" opts))
+        (throw (ex-info "Timeout" {:opts    opts
+                                   :pred-fn pred-fn}))
         (do
          (Thread/sleep interval-ms)
          (recur (inc retry-count)))))))

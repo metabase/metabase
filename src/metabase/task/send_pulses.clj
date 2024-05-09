@@ -78,10 +78,10 @@
                                                      :id [:not-in {:select   [[:pulse_channel_id :id]]
                                                                    :from     :pulse_channel_recipient
                                                                    :group-by [:pulse_channel_id]
-                                                                   :having   [:>= :%count.* [:raw 1]]}])]
-                              (when (and (empty? (get-in channel [:details :emails]))
-                                         (not (get-in channel [:details :channel])))
-                                (:id channel))))]
+                                                                   :having   [:>= :%count.* [:raw 1]]}])
+                                  :when (and (empty? (get-in channel [:details :emails]))
+                                             (not (get-in channel [:details :channel])))]
+                              (:id channel)))]
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
     (set ids-to-delete)))
