@@ -253,7 +253,7 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, event, timeline, collection, segment, metric). This entity ID is used to identify and reference the items within your Metabase.
+Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, collection, etc.).
 
 You can see the entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
@@ -268,7 +268,7 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
 ```
 
-Entity IDs are also included in the file and directory names for exported entities. This helps to disambiguate entities that share the same name:
+To disambiguate entities that share the same name, Metabase includes entity IDs in the file and directory names for exported entities.
 
 ```
 r6vC_vLmo9zG6_r9sAuYG_products_by_week.yaml
@@ -708,7 +708,7 @@ You'll need to keep in mind:
 - Database connection details are not exported by default
 - Databases, tables and fields referenced by an item should either already exist in the target Metabase, or be included in the import.
 
-For example, if you want to switch all questions in the `Movie review` collection to use the `Sequels` database instead of the `Prequels` database, and both databases have the same schema, you could follow
+For example, if you want to switch all questions in the `Movie review` collection to use the `Romance` database instead of the `Horror` database, and both databases have the same schema, you could follow
 
 1. In Metabase, add a new database connection in **Admin > Databases** and name it `Sequels`.
 2. Export the collection `Movie reviews`.
