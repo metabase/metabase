@@ -429,12 +429,6 @@
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))
        set))
 
-(defn do-with-send-pulse-setup!
-  [thunk]
-  (mt/with-temp-scheduler
-    (task/init! ::task.send-pulses/SendPulses)
-    (thunk)))
-
 (defmacro with-send-pulse-setup!
   [& body]
   `(mt/with-temp-scheduler

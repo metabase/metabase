@@ -299,3 +299,17 @@
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(do-with-timeout ~timeout-ms (fn [] ~@body)))
+
+(defn wait-until
+  "Wait until `pred-fn` returns truthy, or until `max-retry` times, with `interval-ms` between retries."
+  [pred-fn & {:keys [max-retry interval-ms]
+              :or   {max-retry 10
+                     interval-ms 100}:as opts}]
+
+  (loop [retry-count 0]
+    (when-not (pred-fn)
+      (if (>= retry-count max-retry)
+        (throw (ex-info "Timeout" opts))
+        (do
+         (Thread/sleep interval-ms)
+         (recur (inc retry-count)))))))

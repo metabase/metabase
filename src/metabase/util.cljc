@@ -50,6 +50,7 @@
                         metabase-namespace-symbols
                         sorted-take
                         varargs
+                        wait-until
                         with-timeout
                         with-us-locale]
                        [u.str

@@ -224,8 +224,8 @@
 
    :model/PulseChannel
    (fn [_] (default-timestamped
-             {:channel_type  :email
-              :details       {}
+             {:channel_type  :slack
+              :details       {:channel "general"}
               :schedule_type :daily
               :schedule_hour 15}))
 
@@ -605,7 +605,7 @@
         already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
-      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+      (with-redefs [task/*quartz-scheduler* (atom temp-scheduler)]
         (try
           (assert (not (qs/started? temp-scheduler))
                   "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
