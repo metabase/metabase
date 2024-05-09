@@ -1,14 +1,28 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, createQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  createQuestion,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  expectGoodSnowplowEvent,
+} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > visualizations > combine shortcut", () => {
+describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    resetSnowplow();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
   });
 
   it("should be possible add a new column through the combine columns shortcut", () => {
@@ -33,6 +47,12 @@ describe("scenarios > visualizations > combine shortcut", () => {
       newColumn: "Combined Email, ID",
       example: "email@example.com12345",
       newValue: "borer-hudson@yahoo.com1",
+    });
+
+    expectGoodSnowplowEvent({
+      event: "column_combine_via_plus_modal",
+      custom_expressions_used: ["concat"],
+      database_id: SAMPLE_DB_ID,
     });
   });
 });
