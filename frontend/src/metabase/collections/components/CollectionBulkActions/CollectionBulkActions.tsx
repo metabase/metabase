@@ -9,8 +9,8 @@ import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
-import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
+import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {
   selected: any[];
@@ -115,3 +115,5 @@ export const CollectionBulkActions = memo(
     );
   },
 );
+
+CollectionBulkActions.displayName = "CollectionBulkActions";
