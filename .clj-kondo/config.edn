@@ -423,7 +423,6 @@
     metabase.api.tiles                                            api.tiles
     metabase.api.timeline                                         api.timeline
     metabase.api.timeline-event                                   api.timeline-event
-    metabase.api.transform                                        api.transform
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
