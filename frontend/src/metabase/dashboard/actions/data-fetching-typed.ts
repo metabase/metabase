@@ -12,7 +12,8 @@ import {
   expandInlineDashboard,
   getDashboardType,
 } from "metabase/dashboard/utils";
-import { defer, Deferred } from "metabase/lib/promise";
+import type { Deferred } from "metabase/lib/promise";
+import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";

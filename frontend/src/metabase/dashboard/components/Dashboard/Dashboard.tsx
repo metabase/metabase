@@ -42,6 +42,7 @@ import type {
   ValuesQueryType,
   ValuesSourceType,
   ValuesSourceConfig,
+  DashboardCard,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -231,7 +232,7 @@ function DashboardInner(props: DashboardProps) {
       return dashboard.dashcards;
     }
     return dashboard.dashcards.filter(
-      dc => dc.dashboard_tab_id === selectedTabId,
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     );
   }, [dashboard, selectedTabId]);
 
@@ -242,13 +243,14 @@ function DashboardInner(props: DashboardProps) {
     }
 
     const currentTabParameterIds = currentTabDashcards.flatMap(
-      dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+      (dc: DashboardCard) =>
+        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
     );
     const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
+      (parameter: Parameter) => !currentTabParameterIds.includes(parameter.id),
     );
 
-    return hiddenParameters.map(p => p.slug).join(",");
+    return hiddenParameters.map((p: Parameter) => p.slug).join(",");
   }, [parameters, currentTabDashcards, isEditing]);
 
   const visibleParameters = useMemo(
