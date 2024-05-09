@@ -56,6 +56,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { Visualizer } from "metabase/visualizer/Visualizer";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
@@ -198,6 +199,8 @@ export const getRoutes = store => {
             <Route path="query" component={QueryBuilder} />
             <Route path="metabot" component={QueryBuilder} />
           </Route>
+
+          <Route path="/visualizer" component={Visualizer} />
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
