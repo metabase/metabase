@@ -105,6 +105,7 @@ export const DataStep = ({
 
         {isDataPickerOpen && (
           <DataPickerModal
+            title={t`Pick your starting data`}
             value={value}
             onChange={handleTableChange}
             onClose={() => setIsDataPickerOpen(false)}

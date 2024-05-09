@@ -32,6 +32,7 @@ interface Props {
    * Limit selection to a particular database
    */
   databaseId?: DatabaseId;
+  title: string;
   value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
@@ -50,6 +51,7 @@ const options: DataPickerModalOptions = {
 
 export const DataPickerModal = ({
   databaseId,
+  title,
   value,
   onChange,
   onClose,
@@ -140,7 +142,7 @@ export const DataPickerModal = ({
       options={options}
       selectedItem={value ?? null}
       tabs={tabs}
-      title={t`Pick your starting data`}
+      title={title}
       onClose={onClose}
       onItemSelect={handleChange}
     />

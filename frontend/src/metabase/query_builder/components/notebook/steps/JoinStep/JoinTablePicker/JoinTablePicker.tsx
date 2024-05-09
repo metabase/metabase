@@ -89,6 +89,7 @@ export function JoinTablePicker({
       {isDataPickerOpen && (
         <DataPickerModal
           databaseId={databaseId ?? undefined}
+          title={t`Pick data to join`}
           value={value}
           onChange={handleTableChange}
           onClose={() => setIsDataPickerOpen(false)}
