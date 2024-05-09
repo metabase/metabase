@@ -58,6 +58,13 @@ const NewItemMenu = ({
 
     if (hasDataAccess) {
       items.push({
+        title: t`Visualization`,
+        icon: "lineandbar",
+        link: "/visualizer",
+        onClose: onCloseNavbar,
+      });
+
+      items.push({
         title: t`Question`,
         icon: "insight",
         link: Urls.newQuestion({
