@@ -149,10 +149,6 @@
   "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
   13371337)
 
-(def ^:const trash-collection-id
-  "ID of the Trash collection."
-  13371339)
-
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."

@@ -499,7 +499,7 @@
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates)
+        card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates (collection/trash-collection-id))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]

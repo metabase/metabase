@@ -23,7 +23,6 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
-   [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -276,7 +275,6 @@
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
-    (collection/ensure-trash-collection-created!)
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
                    :model/Card card-2 {:name "Card 2"}
                    :model/Card card-3 {:name "Card 3"}]
