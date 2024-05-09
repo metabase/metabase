@@ -704,7 +704,7 @@ Your databases must have the same engine, and ideally they should have the same 
 
 You'll need to keep in mind:
 
-- Databases, tables and fields are [referred to in Metabase by name](#metabase-uses-names-to-identify-and-reference-data-sources)
+- Databases, tables and fields are [referred to in Metabase by name](#databases-schemas-tables-and-fields-are-identified-by-name)
 - Database connection details are not exported by default. To export database connection details, you'll need to [specify this in export parameters](#customize-what-gets-exported).
 - Databases, tables and fields referenced by an item should either already exist in the target Metabase, or be included in the import.
 
@@ -718,7 +718,7 @@ For example, if you want to switch all questions in the `Movie reviews` collecti
 3. In the YAML files for items from this collection, replace all references to `Horror` database with references to `Romance`
 4. Import the edited files.
 
-Importing will overwrite the original questions. If you're looking to create new questions that use a different data source, you can combine this process with [Using serialization for duplicating assets](#using-serialization-for-duplicating-assets-within-one-instance).
+Importing will overwrite the original questions. If you're looking to create new questions that use a different data source, you can combine this process with [Using serialization for duplicating assets](#using-serialization-for-duplicating-content-within-the-same-metabase).
 
 This process assumes that your new data source has exactly the same schema. If the schema is different, then you will also need to replace all references to all tables and fields. This process can be complicated and error-prone, so we strongly recommend that you test your serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
