@@ -11,7 +11,6 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [metabase.config :as config]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -347,7 +346,7 @@
                   (catch Exception e
                     (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
                     counter))))
-             (mdb.query/reducible-query
+             (t2/reducible-query
               {:select [:id :details]
                :from   [:metabase_database]
                :where  [:or

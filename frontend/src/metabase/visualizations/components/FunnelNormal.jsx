@@ -1,11 +1,16 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
+import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
+import {
+  formatChangeWithSign,
+  formatNumber,
+  formatValue,
+} from "metabase/lib/formatting";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -16,6 +21,8 @@ import {
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+
+import { computeChange } from "../lib/numeric";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -85,6 +92,25 @@ export default class FunnelNormal extends Component {
     sortedRows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
 
+      const footerData = [
+        {
+          key: t`Retained`,
+          value: formatNumber(row[metricIndex] / infos[0].value, {
+            number_style: "percent",
+          }),
+        },
+      ];
+
+      const prevRow = sortedRows[rowIndex - 1];
+      if (prevRow != null) {
+        footerData.push({
+          key: t`Compared to previous`,
+          value: formatChangeWithSign(
+            computeChange(prevRow[metricIndex], row[metricIndex]),
+          ),
+        });
+      }
+
       infos[rowIndex + 1] = {
         value: row[metricIndex],
 
@@ -108,11 +134,8 @@ export default class FunnelNormal extends Component {
               value: row[metricIndex],
               col: cols[metricIndex],
             },
-            {
-              key: "Retained",
-              value: formatPercent(row[metricIndex] / infos[0].value),
-            },
           ],
+          footerData,
         },
 
         clicked: {

@@ -13,7 +13,7 @@
 
 ;;; added 0.50.0
 (mbql-clause/define-tuple-mbql-clause :offset
-  #_expr :any
+  #_expr [:ref ::expression/expression]
   #_n    ::offset.n)
 
 (defmethod expression/type-of-method :offset

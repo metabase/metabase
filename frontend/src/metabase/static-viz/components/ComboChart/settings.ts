@@ -24,9 +24,10 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
-  getYAxisAutoRangeIncludeZero,
+  getYAxisUnpinFromZeroDefault,
   isStackingValueValid,
   isXAxisScaleValid,
+  isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -35,6 +36,8 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
+  getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
   getSeriesDefaultShowSeriesValues,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
@@ -75,6 +78,18 @@ const getSeriesFunction = (
       singleSeriesSettings,
       "line.interpolate",
       getSeriesDefaultLinearInterpolate(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
+      "line.style",
+      getSeriesDefaultLineStyle(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
+      "line.size",
+      getSeriesDefaultLineSize(settings),
     );
 
     fillWithDefaultValue(
@@ -179,8 +194,9 @@ export const computeStaticComboChartSettings = (
 
   fillWithDefaultValue(
     settings,
-    "graph.y_axis.auto_range_include_zero",
-    getYAxisAutoRangeIncludeZero(mainCard.display),
+    "graph.y_axis.unpin_from_zero",
+    getYAxisUnpinFromZeroDefault(mainCard.display),
+    isYAxisUnpinFromZeroValid(seriesDisplays, settings),
   );
 
   fillWithDefaultValue(

@@ -105,6 +105,7 @@ export const CombineColumnsDrill = ({
       column,
       columnsAndSeparators,
     );
+
     const newQuery = Lib.expression(query, stageIndex, name, expressionClause);
 
     onSubmit(newQuery);

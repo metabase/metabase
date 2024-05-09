@@ -17,7 +17,8 @@ import {
 
 import { useSearchListQuery } from "./use-search-list-query";
 
-const TEST_ITEM = createMockCollectionItem();
+const TEST_ITEM_MODEL = "card";
+const TEST_ITEM = createMockCollectionItem({ model: TEST_ITEM_MODEL });
 
 const TEST_TABLE_DB_ID = 1;
 const TEST_SEARCH_RESULTS = createMockSearchResults({
@@ -35,7 +36,7 @@ const TestComponent = () => {
     error,
   } = useSearchListQuery({
     query: {
-      models: [TEST_ITEM.model],
+      models: [TEST_ITEM_MODEL],
       limit: TEST_SEARCH_METADATA.limit,
       offset: TEST_SEARCH_METADATA.offset,
       table_db_id: TEST_TABLE_DB_ID,

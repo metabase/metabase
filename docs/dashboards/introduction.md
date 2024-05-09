@@ -163,9 +163,9 @@ Sections include:
 
 ![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
 
-### Dashboard width
+## Dashboard width
 
-You can change the width of a dashboard.
+You can change the width of a dashboard by going into the three dots menu in the upper right:
 
 ![Change dashboard width](./images/toggle-width.png)
 

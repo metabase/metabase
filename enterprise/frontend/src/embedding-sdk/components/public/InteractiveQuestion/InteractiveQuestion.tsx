@@ -7,6 +7,7 @@ import {
   SdkError,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -38,6 +39,7 @@ interface InteractiveQuestionProps {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
+  height?: string | number;
 }
 
 export const _InteractiveQuestion = ({
@@ -46,6 +48,7 @@ export const _InteractiveQuestion = ({
   withTitle = false,
   customTitle,
   plugins: componentPlugins,
+  height,
 }: InteractiveQuestionProps): JSX.Element | null => {
   const globalPlugins = useSdkSelector(getPlugins);
 
@@ -57,6 +60,7 @@ export const _InteractiveQuestion = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
   const queryResults = useSelector(getQueryResults);
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
@@ -81,7 +85,6 @@ export const _InteractiveQuestion = ({
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
-    } finally {
       setLoading(false);
     }
   };
@@ -109,7 +112,7 @@ export const _InteractiveQuestion = ({
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&
@@ -137,7 +140,7 @@ export const _InteractiveQuestion = ({
         )}
         <Group h="100%" pos="relative" align="flex-start">
           <QueryVisualization
-            className={cx(CS.flexFull, CS.fullWidth)}
+            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
             question={question}
             rawSeries={[{ card, data: result && result.data }]}
             isRunning={isRunning}

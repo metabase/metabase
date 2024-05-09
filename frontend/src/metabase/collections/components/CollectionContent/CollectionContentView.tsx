@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import BulkActions from "metabase/collections/components/BulkActions";
+import CollectionBulkActions from "metabase/collections/components/CollectionBulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -73,7 +73,6 @@ export const CollectionContentView = ({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  isNavbarOpen,
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
@@ -86,7 +85,6 @@ export const CollectionContentView = ({
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
   isAdmin: boolean;
-  isNavbarOpen: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canUploadToDb: boolean;
@@ -389,7 +387,7 @@ export const CollectionContentView = ({
                             />
                           )}
                         </div>
-                        <BulkActions
+                        <CollectionBulkActions
                           selected={selected}
                           collection={collection}
                           onArchive={handleBulkArchive}
@@ -399,7 +397,6 @@ export const CollectionContentView = ({
                           onCopy={clear}
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
-                          isNavbarOpen={isNavbarOpen}
                         />
                       </CollectionTable>
                     );

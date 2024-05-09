@@ -348,17 +348,28 @@
 (def ^:private default-checklist-state
   {:db-type    :h2
    :hosted?    false
+   :embedding  {:interested? false
+                :done?       false
+                :app-origin  false}
    :configured {:email true
-                :slack false}
+                :slack false
+                :sso   false}
    :counts     {:user  5
                 :card  5
                 :table 5}
-   :exists     {:non-sample-db true
-                :dashboard     true
-                :pulse         true
-                :hidden-table  false
-                :collection    true
-                :model         true}})
+   :exists     {:non-sample-db     true
+                :dashboard         true
+                :pulse             true
+                :hidden-table      false
+                :collection        true
+                :model             true
+                :embedded-resource false}})
+
+
+(defn get-embedding-step
+  [checklist]
+  (let [[{:keys [tasks]}] checklist]
+    (first (filter #(= (get % :title) "Setup embedding") tasks))))
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
@@ -376,6 +387,10 @@
                                :completed    false
                                :triggered    true
                                :is_next_step true}
+                              {:completed false,
+                               :is_next_step false,
+                               :title "Setup embedding",
+                               :triggered false}
                               {:title        "Invite team members"
                                :completed    true
                                :triggered    true
@@ -413,6 +428,30 @@
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))
+    (testing "setup-embedding"
+      (testing "should be done when a dashboard as been published"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (update default-checklist-state
+                               :exists #(merge %  {:embedded-resource true})))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist))))))
+      (testing "should be done when sso and embed-app-origin has been configured"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (-> default-checklist-state
+                           (assoc-in [:configured :sso] true)
+                           (assoc-in [:embedding :app-origin] true)))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true}
+                          (get-embedding-step checklist))))))
+      (testing "should be done when dismissed-done"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (-> default-checklist-state
+                           (assoc-in [:embedding :done?] true)))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."

@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {;; JDBC java driver used for executing queries on Druid.
+  ;; Reference: https://druid.apache.org/docs/latest/api-reference/sql-jdbc
+  org.apache.calcite.avatica/avatica  {:mvn/version "1.23.0"}}}
