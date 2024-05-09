@@ -227,7 +227,8 @@
    :metric])
 
 (mr/def ::type
-  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/metric :metadata/segment])
+  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/metric
+   :metadata/segment])
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
@@ -289,7 +290,7 @@
 ;;; converts these as needed.
 (mr/def ::metric
   [:map
-   {:error/message "Valid mentric metadata"}
+   {:error/message "Valid metric metadata"}
    [:lib/type    [:= :metadata/metric]]
    [:id          ::lib.schema.id/metric]
    [:name        ::lib.schema.common/non-blank-string]

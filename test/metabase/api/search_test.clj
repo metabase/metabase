@@ -118,7 +118,7 @@
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
@@ -423,7 +423,7 @@
             (is (ordered-subset? (->> (default-search-results)
                                       (remove (comp #{"collection"} :model))
                                       (map #(cond-> %
-                                              (contains? #{"dashboard" "card" "dataset"} (:model %))
+                                              (contains? #{"dashboard" "card" "dataset" "metric"} (:model %))
                                               (assoc :can_write false))))
                                  (search-request-data :rasta :q "test"))))))))
 
@@ -437,7 +437,7 @@
               (perms/grant-collection-read-permissions! group (u/the-id collection))
               (is (=? (->> (default-results-with-collection)
                           (map #(cond-> %
-                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "segment test2 segment", :description "Lookin' for a blueberry",
@@ -462,7 +462,7 @@
                                                      (remove #(= "collection" (:model %)))
                                                      (map #(update % :name str/replace "test" "test2"))))
                                         (map #(cond-> %
-                                                (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                                (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                                 (assoc :can_write false)))
                                         reverse
                                         sorted-results)
@@ -497,7 +497,7 @@
                                        [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
                                          :creator_id true :creator_common_name "Rasta Toucan"}]))
                           (map #(cond-> %
-                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
                           reverse
                           sorted-results)

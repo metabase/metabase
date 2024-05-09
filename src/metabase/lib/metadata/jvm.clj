@@ -298,7 +298,7 @@
     :from      [[(t2/table-name :model/Card) :metric]]
     :where     [:= :metric/type "metric"]}))
 
-(t2/define-after-select :metadata/legacy-metric
+(t2/define-after-select :metadata/metric
   [metric]
   (let [card (instance->metadata metric :metadata/metric)]
     (-> card
@@ -351,12 +351,12 @@
 ;;;
 
 (defn- database [database-id]
-            (when-not database-id
-              (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                                      `lib.metadata.protocols/database
-                                      `UncachedApplicationDatabaseMetadataProvider)
-                              {})))
-            (t2/select-one :metadata/database database-id))
+  (when-not database-id
+    (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                            `lib.metadata.protocols/database
+                            `UncachedApplicationDatabaseMetadataProvider)
+                    {})))
+  (t2/select-one :metadata/database database-id))
 
 (defn- metadatas [database-id metadata-type ids]
   (let [database-id-key (case metadata-type
@@ -369,24 +369,24 @@
                  :id             [:in (set ids)]))))
 
 (defn- tables [database-id]
-          (t2/select :metadata/table
-                     :db_id           database-id
-                     :active          true
-                     :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+  (t2/select :metadata/table
+             :db_id           database-id
+             :active          true
+             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
     :metadata/column
-          (t2/select :metadata/column
-                     :table_id        table-id
-                     :active          true
-                     :visibility_type [:not-in #{"sensitive" "retired"}])
+    (t2/select :metadata/column
+               :table_id        table-id
+               :active          true
+               :visibility_type [:not-in #{"sensitive" "retired"}])
 
     :metadata/legacy-metric
-                  (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
+    (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
 
     :metadata/segment
-            (t2/select :metadata/segment :table_id table-id, :archived false)))
+    (t2/select :metadata/segment :table_id table-id, :archived false)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
