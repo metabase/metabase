@@ -732,6 +732,8 @@ The `rowOffset` is the number relative to the current row. For example, `-1` for
 
 Example: `Offset([Total], -1)` would get the `Total` value from the previous row.
 
+See [Offset](./expressions/offset.md).
+
 ## Limitations
 
 - [Aggregation expressions](#aggregations)  can only be used in the **Summarize** section of the query builder.
