@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models
     :refer [Card Collection Dashboard LegacyMetric ModelIndex ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
@@ -12,14 +11,15 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-   [metabase.test.domain-entities :as test.de]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.transforms :as transforms.test]
-   [metabase.transforms.core :as tf]
-   [metabase.transforms.materialize :as tf.materialize]
-   [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
+   [metabase.xrays.test-util.domain-entities :as test.de]
+   [metabase.xrays.test-util.transforms :as transforms.test]
+   [metabase.xrays.transforms.core :as tf]
+   [metabase.xrays.transforms.materialize :as tf.materialize]
+   [metabase.xrays.transforms.specs :as tf.specs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -48,7 +48,7 @@
 
   ([template args revoke-fn validation-fn]
    (mt/with-test-user :rasta
-     (with-dashboard-cleanup
+     (with-dashboard-cleanup!
        (mt/with-full-data-perms-for-all-users!
          (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
                resp         (mt/user-http-request :rasta :get 200 api-endpoint)
@@ -247,8 +247,8 @@
 (deftest transforms-test
   (testing "GET /api/automagic-dashboards/transform/:id"
     (mt/with-test-user :crowberto
-      (transforms.test/with-test-transform-specs
-        (test.de/with-test-domain-entity-specs
+      (transforms.test/with-test-transform-specs!
+        (test.de/with-test-domain-entity-specs!
           (mt/with-model-cleanup [Card Collection]
             (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
             (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
@@ -486,7 +486,7 @@
   "Create a dashboard via API twice, once with a limit and once without, and return the results."
   [limit template args]
   (mt/with-test-user :crowberto
-    (with-dashboard-cleanup
+    (with-dashboard-cleanup!
       (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
             resp          (mt/user-http-request :crowberto :get 200 api-endpoint)
             slimmed       (mt/user-http-request :crowberto :get 200 api-endpoint :show limit)

@@ -162,10 +162,6 @@
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
-    metabase.automagic-dashboards  #{metabase.automagic-dashboards.comparison
-                                     metabase.automagic-dashboards.core
-                                     metabase.automagic-dashboards.dashboard-templates
-                                     metabase.automagic-dashboards.populate}                        ; TODO -- consolidate these into a real API namespace.
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.config                #{metabase.config}
@@ -174,8 +170,6 @@
                                      metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
                                      metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
-    metabase.domain-entities       #{metabase.domain-entities.core
-                                     metabase.domain-entities.specs}                                ; TODO -- these should probably be combined into the `metabase.transforms` module, that's the only place that uses them.
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
                                      metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
@@ -251,14 +245,11 @@
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
                                      metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
-    metabase.transforms            #{metabase.transforms.core
-                                     metabase.transforms.dashboard
-                                     metabase.transforms.materialize
-                                     metabase.transforms.specs}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
-    metabase.util                  :any}                                                            ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
+    metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
+    metabase.xrays                 #{metabase.xrays}}
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
    ;;
@@ -275,13 +266,11 @@
     metabase.analyze               :any
     metabase.api                   :any
     metabase.async                 :any
-    metabase.automagic-dashboards  :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
-    metabase.domain-entities       :any
     metabase.driver                :any
     metabase.email                 :any
     metabase.embed                 :any
@@ -309,11 +298,11 @@
     metabase.shared                :any
     metabase.sync                  :any
     metabase.task                  :any
-    metabase.transforms            :any
     metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
-    metabase.util                  :any}
+    metabase.util                  :any
+    metabase.xrays                 :any}
 
    ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
    ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
@@ -426,9 +415,6 @@
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
-    metabase.automagic-dashboards.core                            magic
-    metabase.automagic-dashboards.dashboard-templates             dashboard-templates
-    metabase.automagic-dashboards.populate                        populate
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
@@ -438,7 +424,6 @@
     metabase.db.metadata-queries                                  metadata-queries
     metabase.db.spec                                              mdb.spec
     metabase.db.query                                             mdb.query
-    metabase.domain-entities.specs                                de.specs
     metabase.driver.common.parameters                             params
     metabase.driver.common.parameters.dates                       params.dates
     metabase.driver.common.parameters.operators                   params.ops
@@ -583,9 +568,6 @@
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
     metabase.timeseries-query-processor-test.util                 tqpt
-    metabase.transforms.core                                      tf
-    metabase.transforms.materialize                               tf.materialize
-    metabase.transforms.specs                                     tf.specs
     metabase.util.cron                                            u.cron
     metabase.util.date-2                                          u.date
     metabase.util.date-2.common                                   u.date.common
@@ -606,6 +588,7 @@
     metabase.util.schema                                          su
     metabase.util.ui-logic                                        ui-logic
     metabase.util.urls                                            urls
+    metabase.xrays                                                xrays
     metabuild-common.core                                         u
     metabuild-common.output                                       out
     metabuild-common.shell                                        shell
@@ -637,7 +620,6 @@
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
-  metabase.domain-entities.malli/defn                                                  schema.core/defn
   metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                   clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                 clojure.core/let
@@ -668,28 +650,28 @@
   metabase.test/with-actions                                                           clojure.core/let
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn
-
-  metabase.test/with-temp-dir                    clojure.core/let
-  metabase.test/with-temp-empty-app-db           clojure.core/let
-  metabase.test/with-temp-file                   clojure.core/let
-  metabase.test/with-user-in-groups              clojure.core/let
-  metabase.upload-test/with-upload-table!        clojure.core/let
-  metabase.util.files/with-open-path-to-resource clojure.core/let
-  metabase.util.malli.defn/defn                  schema.core/defn
-  metabase.util.malli.fn/fn                      schema.core/fn
-  metabase.util.malli/defmethod                  schema.core/defmethod
-  metabase.util.malli/defn                       schema.core/defn
-  metabase.util.malli/fn                         schema.core/fn
-  metabase.util.ssh/with-ssh-tunnel              clojure.core/let
-  monger.operators/defoperator                   clojure.core/def
-  potemkin.types/defprotocol+                    clojure.core/defprotocol
-  potemkin.types/defrecord+                      clojure.core/defrecord
-  potemkin.types/deftype+                        clojure.core/deftype
-  potemkin/defprotocol+                          clojure.core/defprotocol
-  potemkin/defrecord+                            clojure.core/defrecord
-  potemkin/deftype+                              clojure.core/deftype
-  toucan.db/with-call-counting                   clojure.core/fn
-  toucan2.core/with-call-count                   clojure.core/fn}
+  metabase.test/with-temp-dir                                                          clojure.core/let
+  metabase.test/with-temp-empty-app-db                                                 clojure.core/let
+  metabase.test/with-temp-file                                                         clojure.core/let
+  metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.upload-test/with-upload-table!                                              clojure.core/let
+  metabase.util.files/with-open-path-to-resource                                       clojure.core/let
+  metabase.util.malli.defn/defn                                                        schema.core/defn
+  metabase.util.malli.fn/fn                                                            schema.core/fn
+  metabase.util.malli/defmethod                                                        schema.core/defmethod
+  metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli/fn                                                               schema.core/fn
+  metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
+  metabase.xrays.domain-entities.malli/defn                                            schema.core/defn
+  monger.operators/defoperator                                                         clojure.core/def
+  potemkin.types/defprotocol+                                                          clojure.core/defprotocol
+  potemkin.types/defrecord+                                                            clojure.core/defrecord
+  potemkin.types/deftype+                                                              clojure.core/deftype
+  potemkin/defprotocol+                                                                clojure.core/defprotocol
+  potemkin/defrecord+                                                                  clojure.core/defrecord
+  potemkin/deftype+                                                                    clojure.core/deftype
+  toucan.db/with-call-counting                                                         clojure.core/fn
+  toucan2.core/with-call-count                                                         clojure.core/fn}
 
  :hooks
  {:analyze-call
@@ -817,7 +799,6 @@
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
-   metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
    metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
@@ -833,7 +814,8 @@
    metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
    metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
    metabase.test/with-temp-env-var-value!                                       macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
+   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.xrays.domain-entities.malli/define-getters-and-setters              macros.metabase.xrays.domain-entities.malli/define-getters-and-setters}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -845,14 +827,14 @@
  ;; the following patterns are considered to be test namespaces:
  ;;
  ;; - Any namespace ending in `-test` or `-test.whatever`
- ;; - Any namespace ending in `test-util`
+ ;; - Any namespace containing in `test-util`
  ;; - Any namespace that starts with `metabase.test`
  ;;
  ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
  ;; fix those namespaces than it is to make this regex super hairy.
- [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
+ [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util)|(?:^metabase\\.test.*)"
    :name    test-namespaces}
-  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util$)(?!^metabase\\.test.*).*$"
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
   {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
    :name    printable-namespaces}

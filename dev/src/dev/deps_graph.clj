@@ -59,19 +59,22 @@
 
 (defn module-dependencies
   "Build a graph of module => set of modules it refers to."
-  []
-  (letfn [(reduce-module-deps [module-deps module deps]
-            (reduce
-             (fn [module-deps {dep-module :module, :as _dep}]
-               (cond-> module-deps
-                 (not= dep-module module) (conj dep-module)))
-             (or module-deps (sorted-set))
-             deps))
-          (reduce-deps [module->deps {:keys [module deps]}]
-            (update module->deps module reduce-module-deps module deps))]
-    (reduce reduce-deps (sorted-map) (dependencies))))
+  ([]
+   (letfn [(reduce-module-deps [module-deps module deps]
+             (reduce
+              (fn [module-deps {dep-module :module, :as _dep}]
+                (cond-> module-deps
+                  (not= dep-module module) (conj dep-module)))
+              (or module-deps (sorted-set))
+              deps))
+           (reduce-deps [module->deps {:keys [module deps]}]
+             (update module->deps module reduce-module-deps module deps))]
+     (reduce reduce-deps (sorted-map) (dependencies))))
 
-(defn circular-refs
+  ([module]
+   (get (module-dependencies) module)))
+
+(defn circular-dependencies
   "Build a graph of module => set of modules it refers to that also refer to this module."
   ([]
    (let [module->deps (module-dependencies)]
@@ -91,15 +94,28 @@
              (keys module->deps)))))
 
   ([module]
-   (get (circular-refs) module)))
+   (get (circular-dependencies) module)))
 
 (defn non-circular-module-dependencies
   "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
   meant to make it easier to fill out the `:metabase/ns-module-checker` `:allowed-modules` section of the Kondo
   config, or to figure out which ones can easily get a consolidated API namespace without drama."
   []
-  (let [circular-refs (circular-refs)]
+  (let [circular-dependencies (circular-dependencies)]
     (into (sorted-map)
           (remove (fn [[module _deps]]
-                    (contains? circular-refs module)))
+                    (contains? circular-dependencies module)))
           (module-dependencies))))
+
+(defn module-usages-of-other-module
+  "Information about how `module-x` uses `module-y`."
+  [module-x module-y]
+  (let [module-x-ns->module-y-ns   (->> (external-usages module-y)
+                                        (filter #(= (:module %) module-x))
+                                        (map (juxt :namespace :depends-on-namespace)))]
+    (reduce
+     (fn [m [module-x-ns module-y-ns]]
+       (update m module-x-ns (fn [deps]
+                               (conj (or deps (sorted-set)) module-y-ns))))
+     (sorted-map)
+     module-x-ns->module-y-ns)))
