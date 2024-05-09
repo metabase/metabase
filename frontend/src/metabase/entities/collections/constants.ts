@@ -30,7 +30,7 @@ export const PERSONAL_COLLECTIONS = {
 };
 
 export const TRASH_COLLECTION = {
-  id: 13371339 as const,
+  id: 2,
   name: t`Trash`,
   icon: "trash" as const,
   location: "/",

@@ -7,7 +7,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ROOT_COLLECTION, TRASH_COLLECTION } from "./constants";
+import { ROOT_COLLECTION } from "./constants";
 
 type Props = {
   collectionId?: Collection["id"];
@@ -53,7 +53,7 @@ const getInitialCollectionId = createSelector(
   (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const validCollectionIds = collectionIds
-      .filter(id => id !== TRASH_COLLECTION.id)
+      // .filter(id => collections[id as CollectionId]?.type !== "trash")
       .concat(rootCollectionId) as CollectionId[];
 
     if (personalCollectionId) {

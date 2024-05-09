@@ -13,7 +13,6 @@ import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
-  TRASH_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
@@ -205,7 +204,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.load({
-    id: TRASH_COLLECTION.id,
+    id: 2,
     entityAlias: "trashCollection",
     loadingAndErrorWrapper: false,
   }),

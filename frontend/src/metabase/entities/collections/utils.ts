@@ -32,7 +32,7 @@ export function getCollectionIcon(
     return { name: "group" };
   }
 
-  if (collection.id === TRASH_COLLECTION.id) {
+  if (collection.type === "trash") {
     return { name: TRASH_COLLECTION.icon };
   }
 

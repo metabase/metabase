@@ -10,6 +10,7 @@ import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
+import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
@@ -21,7 +22,6 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { TRASH_COLLECTION } from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -140,12 +140,11 @@ export const getRoutes = store => {
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect path="archive" to="trash" replace />
-          <Redirect
-            path={`/collection/${TRASH_COLLECTION.id}-trash`}
-            to="trash"
-            replace
+          <Route
+            path="trash"
+            title={t`Trash`}
+            component={TrashCollectionLanding}
           />
-          <Route path="trash" title={t`Trash`} component={CollectionLanding} />
 
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
