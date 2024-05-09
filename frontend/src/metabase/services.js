@@ -556,15 +556,6 @@ export const MetabotApi = {
   sendFeedback: POST("/api/metabot/feedback"),
 };
 
-export const ApiKeysApi = {
-  list: GET("/api/api-key"),
-  create: POST("/api/api-key"),
-  count: GET("/api/api-key/count"),
-  delete: DELETE("/api/api-key/:id"),
-  edit: PUT("/api/api-key/:id"),
-  regenerate: PUT("/api/api-key/:id/regenerate"),
-};
-
 export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),
