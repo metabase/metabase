@@ -380,7 +380,7 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or (u/slugify card-name) "query_result")
+                           (or card-name "query_result")
                            (u.date/format (t/zoned-date-time))
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
