@@ -12,7 +12,7 @@ Once you really get rolling with Metabase, it's often the case that you'll have 
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
-**Export** will serialize your the contents of your source Metabase instance as YAML files which contain all the information necessary to recreate the contents, and **import** will read YAML files and create or update items in the target Metabase instance. Metabase provides you with two ways to run export and import: [using CLI commands](#serializing-metabase-with-cli-commands) and [through the API](#serializing-metabase-via-the-api).
+**Export** will serialize your the contents of your source Metabase instance as YAML files which contain all the information necessary to recreate the contents, and **import** will read YAML files and create or update items in the target Metabase instance. Metabase provides you with two ways to run export and import: [using CLI commands](#serialization-with-cli-commands) and [through the API](#serialization-via-the-api).
 
 > We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 
@@ -31,7 +31,7 @@ Check out our guides for [running multiple environments](https://www.metabase.co
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
 - [Customize what gets exported](#customize-what-gets-exported)
 - [Example of a serialized question](#example-of-a-serialized-question)
-- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-and-reference-items)
+- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)
 
 ### What gets exported
 
@@ -46,7 +46,7 @@ Metabase will only include some artifacts in its exports:
 - Data model and table metadata
 - Segments and Metrics defined in the Table Metadata
 - Public sharing settings for questions and dashboards
-- [General Metabase settings](#general-settings-that-metabase-exports)
+- [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
   (#customize-what-gets-exported).
@@ -127,7 +127,7 @@ You can customize what gets exported. You can tell Metabase:
 - Include sample field values (excluded by default)
 - Include database connection details (excluded by default)
 
-See [export parameters in CLI commands](#use-parameters-to-customize-what-metabase-exports) or [export parameters in API calls](#api-export-parameters).
+See [export parameters in CLI commands](#export-options) or [export parameters in API calls](#api-export-parameters).
 
 ### Example of a serialized question
 
@@ -310,7 +310,7 @@ During import, Metabase will read the provided YAML files and create items accor
 
 Metabase will not delete items from target instance during import, but it will overwrite items that already exist.
 
-Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-items) to figure out which items to create or overwrite, and what are the relationships between items. When importing into an instance that already has some content in it, keep in mind:
+Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite, and what are the relationships between items. When importing into an instance that already has some content in it, keep in mind:
 
 - If you import an item with an `entity_id` that already exists in your target Metabase, the existing item will be overwritten.
 
@@ -357,7 +357,7 @@ Imports: You can add the `-o -` flag to export logs directly into the terminal, 
 
 Metabase provides [`export`](#exporting-with-cli) and [`import`](#importing-with-cli) CLI commands.
 
-See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#best-practices) for general information about serialization.
+See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
 
 ### Exporting with CLI
 
@@ -409,7 +409,7 @@ The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collectio
 
 #### `--no-settings`
 
-The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.yaml` file that includes [site-wide settings](#the-general-settings-that-metabase-exports), which is exported by default.
+The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.yaml` file that includes [site-wide settings](#general-metabase-settings-that-are-exported), which is exported by default.
 
 #### `--no-data-model`
 
@@ -461,7 +461,7 @@ There are two endpoints:
 
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
-See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#best-practices) for general information about serialization.
+See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
 
 ### API export parameters
 
@@ -678,7 +678,7 @@ For example, to duplicate a collection that contains _only_ questions that are b
 
 7. Import the edited files.
 
-This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-for-switching-the-data-source-within-one-instance) to use a different data source for every duplicated collection.
+This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-to-swap-the-data-source-for-questions-within-one-instance) to use a different data source for every duplicated collection.
 
 If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template entity IDs and any references to them with your created entity IDs.
 
