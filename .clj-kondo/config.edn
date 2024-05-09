@@ -155,7 +155,10 @@
                                      metabase.analyze.fingerprint.fingerprinters
                                      metabase.analyze.fingerprint.schema
                                      metabase.analyze.query-results}                                ; TODO -- consolidate these into a real API namespace.
-    metabase.api                   #{metabase.api.common}
+    metabase.api                   #{metabase.api.common
+                                     metabase.api.dataset
+                                     metabase.api.permission-graph
+                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
