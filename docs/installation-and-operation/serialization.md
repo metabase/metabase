@@ -12,14 +12,14 @@ Once you really get rolling with Metabase, it's often the case that you'll have 
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
-**Export** will serialize your the contents of your source Metabase as YAML files. 
+**Export** will serialize your the contents of your source Metabase as YAML files.
 
 **Import** will read those exported YAML files and create or update items in the target Metabase based on the contents serialized in those YAML files.
 
 There are two ways to run these `export` and `import` commands:
 
- - [Using CLI commands](#serialization-with-cli-commands)
- - [Through the API](#serialization-via-the-api).
+- [Using CLI commands](#serialization-with-cli-commands)
+- [Through the API](#serialization-via-the-api).
 
 > We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 
@@ -253,7 +253,7 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, collection, etc.).
+Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, collection, etc.). Entity IDs use the [NanoID format](https://github.com/ai/nanoid).
 
 You can see the entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
@@ -674,19 +674,19 @@ You'll need to keep in mind:
 
   This means that you might need a multi-stage export/import: create some of the items you need (like collections) in Metabase first, export them to get their entity IDs, then export the stuff that you want to duplicate and use those IDs in items that reference them.
 
-For example, to duplicate a collection that contains _only_ questions that are built directly on raw data (not on models or other saved questions), you can use a process like this:
+For example, to duplicate a collection that contains _only_ questions that are built directly on raw data (not on models or other saved questions), without changing the data source for the questions, you can use a process like this:
 
-1. In Metabase, create a "template" collection that contains the items you'd like to duplicate.
-2. Export the template collection. The YAML files for template questions in the export will have their own Entity IDs and reference the entity ID of the template collection.
-3. In Metabase, create a new collection which will serve as the target for duplicated items.
-4. Export the new collection. This will let you get its entity ID.
-5. Get the entity ID of the new collection from its export.
-6. In the YAML files for questions in the template collection export:
+1. In Metabase, create a "template" collection and add the items you'd like to duplicate.
+2. In Metabase, create a new collection which will serve as the target for duplicated items.
+3. Export the template collection and the target collection (you can use [export parameters](#customize-what-gets-exported) to export only a few collections).
+   The YAML files for template questions in the export will have their own Entity IDs and reference the entity ID of the template collection.
+4. Get the entity ID of the target collection from its export.
+5. In the YAML files for questions in the template collection export:
 
-   - Clear `entity_id` and `serdes/meta → id` values for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
+   - Clear the values for the fields `entity_id` and `serdes/meta → id` for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
    - Replace `collection_id` references to the template collection with the ID of the new collection
 
-7. Import the edited files.
+6. Import the edited files.
 
 This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-to-swap-the-data-source-for-questions-within-one-instance) to use a different data source for every duplicated collection.
 
@@ -705,22 +705,22 @@ Your databases must have the same engine, and ideally they should have the same 
 You'll need to keep in mind:
 
 - Databases, tables and fields are [referred to in Metabase by name](#metabase-uses-names-to-identify-and-reference-data-sources)
-- Database connection details are not exported by default
+- Database connection details are not exported by default. To export database connection details, you'll need to [specify this in export parameters](#customize-what-gets-exported).
 - Databases, tables and fields referenced by an item should either already exist in the target Metabase, or be included in the import.
 
-For example, if you want to switch all questions in the `Movie review` collection to use the `Romance` database instead of the `Horror` database, and both databases have the same schema, you could follow
+For example, if you want to switch all questions in the `Movie reviews` collection to use the `Romance` database instead of the `Horror` database, and _both databases have the same schema_, you could follow a process like this:
 
-1. In Metabase, add a new database connection in **Admin > Databases** and name it `Sequels`.
+1. In Metabase, add a new database connection in **Admin > Databases** and name it `Romance`.
 2. Export the collection `Movie reviews`.
 
    You can tell Metabase to export a single collection, or you can export all the collections and just work with files in the folder for the `Movie reviews` collection
 
-3. In the YAML files for items from this collection, replace all references to `Prequels` database with references to `Sequels`
+3. In the YAML files for items from this collection, replace all references to `Horror` database with references to `Romance`
 4. Import the edited files.
 
 Importing will overwrite the original questions. If you're looking to create new questions that use a different data source, you can combine this process with [Using serialization for duplicating assets](#using-serialization-for-duplicating-assets-within-one-instance).
 
-This process assumes that your new data source has exactly the same schema. If the schema is different, then you will also need to replace all references to all tables and fields. This process can be complicated and error -rone, so we strongly recommend that you test your serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
+This process assumes that your new data source has exactly the same schema. If the schema is different, then you will also need to replace all references to all tables and fields. This process can be complicated and error-prone, so we strongly recommend that you test your serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
 ## Migrating from the old serialization commands
 
