@@ -137,21 +137,25 @@ describe("ParameterSidebar", () => {
   });
 
   describe("string", () => {
-    beforeEach(() => {
-      setup({
-        parameter: createMockUiParameter({
-          type: "string/=",
-          sectionId: "string",
-        }),
+    describe("smoke test", () => {
+      beforeEach(() => {
+        setup({
+          parameter: createMockUiParameter({
+            type: "string/=",
+            sectionId: "string",
+          }),
+        });
       });
-    });
 
-    it("should render type", () => {
-      expect(screen.getByDisplayValue("Text or Category")).toBeInTheDocument();
-    });
+      it("should render type", () => {
+        expect(
+          screen.getByDisplayValue("Text or Category"),
+        ).toBeInTheDocument();
+      });
 
-    it("should render operator", () => {
-      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+      it("should render operator", () => {
+        expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+      });
     });
   });
 
