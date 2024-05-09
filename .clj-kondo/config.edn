@@ -175,7 +175,7 @@
                                      metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.domain-entities       #{metabase.domain-entities.core
-                                     metabase.domain-entities.specs}                                ; TODO -- consolidate these into a real API namespace.
+                                     metabase.domain-entities.specs}                                ; TODO -- these should probably be combined into the `metabase.transforms` module, that's the only place that uses them.
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
                                      metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
@@ -193,9 +193,7 @@
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger}
-    metabase.metabot               #{metabase.metabot
-                                     metabase.metabot.feedback
-                                     metabase.metabot.util}                                         ; TODO -- consolidate these into a real API namespace.
+    metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.native-query-analyzer #{metabase.native-query-analyzer}
