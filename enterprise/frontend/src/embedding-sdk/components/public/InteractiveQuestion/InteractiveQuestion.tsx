@@ -67,7 +67,7 @@ export const _InteractiveQuestion = ({
 
   const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
-  const { isRunning } = uiControls;
+  const { isRunning: isQueryRunning } = uiControls;
 
   if (question) {
     // FIXME: remove "You can also get an alert when there are some results." feature for question
@@ -103,7 +103,7 @@ export const _InteractiveQuestion = ({
     }
   }, [queryResults]);
 
-  if (isQuestionLoading || isRunning) {
+  if (isQuestionLoading || isQueryRunning) {
     return <Loader data-testid="loading-spinner" />;
   }
 
@@ -143,7 +143,7 @@ export const _InteractiveQuestion = ({
             className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
             question={question}
             rawSeries={[{ card, data: result && result.data }]}
-            isRunning={isRunning}
+            isRunning={isQueryRunning}
             isObjectDetail={false}
             isResultDirty={false}
             isNativeEditorOpen={false}
