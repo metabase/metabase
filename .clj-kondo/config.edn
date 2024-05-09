@@ -208,6 +208,7 @@
     metabase.automagic-dashboards  :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
+    metabase.compatibility         :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
