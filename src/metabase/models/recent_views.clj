@@ -276,4 +276,5 @@
   [[do-query]] can return nils, and we remove them here becuase models can be deleted, and we don't want to show those
   in the recent views."
   [user-id]
-  (into [] (comp (remove nil?) (map post-process)) (do-query user-id)))
+  (into [] (comp (map post-process)
+                 (remove nil?)) (do-query user-id)))
