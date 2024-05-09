@@ -93,11 +93,13 @@ describe(
                   moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
 
-                  cy.findAllByRole("status").contains(
-                    `Question moved to ${getPersonalCollectionName(
-                      USERS[user],
-                    )}`,
-                  );
+                  cy.findAllByRole("status")
+                    .contains(
+                      `Question moved to ${getPersonalCollectionName(
+                        USERS[user],
+                      )}`,
+                    )
+                    .should("exist");
                   cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
@@ -152,9 +154,13 @@ describe(
 
                   moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
-                  cy.findAllByRole("status").contains(
-                    `Model moved to ${getPersonalCollectionName(USERS[user])}`,
-                  );
+                  cy.findAllByRole("status")
+                    .contains(
+                      `Model moved to ${getPersonalCollectionName(
+                        USERS[user],
+                      )}`,
+                    )
+                    .should("exist");
                   cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
