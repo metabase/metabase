@@ -16,7 +16,7 @@ Example: `Offset([Total], -1)` would get the `Total` value from the previous row
 
 ## Data types
 
-`offset` returns whatever value is in the offset row.
+The `Offset` function returns whatever value is in the offset row.
 
 | [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Returned by `Offset` |
 | ------------------------------------------------------------------------------------------------ | -------------------- |
@@ -30,16 +30,16 @@ Example: `Offset([Total], -1)` would get the `Total` value from the previous row
 
 ### SQL
 
-The `offset` function compares with SQL's `LAG` and `LEAD` window functions.
+The `Offset` function compares with SQL's `LAG` and `LEAD` window functions.
 
 For example, if you're trying to create a line chart with two series to compare a) this month's order counts with b) the previous month's order counts, you'd `count` the orders for this month, then use an `offset` expression to count the previous month's orders, like so:
 
 
 ```
-offset(count, -1)
+Offset(count, -1)
 ```
 
-Under the hood, Metabase will translate that `offset` expression into a `LAG` window function, like in this query:
+Under the hood, Metabase will translate that `Offset` expression into a `LAG` window function, like in this query:
 
 ```sql
 SELECT
