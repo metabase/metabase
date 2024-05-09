@@ -4,16 +4,11 @@
   TODO: a lot of this stuff wouldn't need to be exposed if we moved more of the search stuff
   from [[metabase.api.search]] into the `metabase.search` module."
   (:require
-   [potemkin :as p]
    [metabase.search.config]
    [metabase.search.filter]
    [metabase.search.scoring]
-   [metabase.search.util]))
-
-'[[metabase.api.search metabase.search.util]
-  [metabase.api.search metabase.search.config]
-  [metabase.api.search metabase.search.scoring]
-  [metabase.api.search metabase.search.filter]]
+   [metabase.search.util]
+   [potemkin :as p]))
 
 (comment
   metabase.search.config/keep-me
