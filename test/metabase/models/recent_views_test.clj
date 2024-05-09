@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -22,10 +23,10 @@
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard 3)
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 2)
     ;; card 2 was latest, so it comes first in the list:
-    (is (= [[:card 2] [:dashboard 3] [:card 1]]
+    (is (= [[:dataset 2] [:dashboard 3] [:dataset 1]]
            (mapv (juxt :model :id) (recent-views/get-list (mt/user->id :rasta)))))
 
-    (is (= [:card 2] (-> (recent-views/get-list (mt/user->id :rasta)) first ((juxt :model :id)))))))
+    (is (= [:dataset 2] (-> (recent-views/get-list (mt/user->id :rasta)) first ((juxt :model :id)))))))
 
 (deftest most-recently-viewed-dashboard-id-test
   (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
@@ -41,109 +42,146 @@
         (is (= 3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 ;; TODO: fix this test by fixing pruning stuff:
-#_(do
-  (deftest update-users-recent-views!-test
-    (clear-test-user-recent-views :rasta)
-    (binding [recent-views/*recent-views-stored-per-user-per-model* 3]
-      (let [user-id (mt/user->id :rasta)]
-        (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
-          (doseq [i (range 1 25)] (recent-views/update-users-recent-views! user-id :model/Card 1))
-          (is (= 1 (count (filter (comp #{:card} :model) (recent-views/get-list user-id))))))
+(deftest update-users-recent-views!-test
+  (clear-test-user-recent-views :rasta)
+  (binding [recent-views/*recent-views-stored-per-user-per-model* 3]
+    (let [user-id (mt/user->id :rasta)]
+      (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
+        (dotimes [_ 25] (recent-views/update-users-recent-views! user-id :model/Card 1))
+        (is (= 1 (count (filter (comp #{:dataset} :model) (recent-views/get-list user-id))))))
 
-        (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
-          (doseq [[model out-model] [[:model/Card :card]
-                                     [:model/Card :dataset]
-                                     [:model/Dashboard :dashboard]
-                                     [:model/Collection :collection]
-                                     [:model/Table :table]]]
-            (doseq [i (if (= model :dataset)
-                        (t2/select-pks-vec :model/Card {:type "model"})
-                        (t2/select-pks-vec model))]
-              (recent-views/update-users-recent-views! user-id model i))
-            (testing (str "Bucket pruning of " (name out-model))
+      (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
+        (doseq [[model out-model] [[:model/Card :card]
+                                   [:model/Card :dataset]
+                                   [:model/Dashboard :dashboard]
+                                   [:model/Collection :collection]
+                                   [:model/Table :table]]]
+          (doseq [i (cond
+                      (= model :dataset) (t2/select-pks-vec :model/Card {:type "model"})
+                      (= model :card) (t2/select-pks-vec :model/Card {:type "question"})
+                      :else (t2/select-pks-vec model))]
+            (recent-views/update-users-recent-views! user-id model i))
+          (testing (str "Bucket pruning of " (name out-model))
+            (is (= 3 (count (filter (comp #{out-model} :model) (recent-views/get-list user-id))))))))
+      (recent-views/update-users-recent-views! user-id :model/Card 3)
+      (is (=  {:id 3,
+               :name "Content",
+               :model :dataset,
+               :can_write false,
+               :timestamp java.lang.String,
+               :moderated_status nil,
+               :parent_collection {:id 1, :name "Metabase analytics", :authority_level nil}}
+              (update (first (recent-views/get-list user-id))
+                      :timestamp type)))
 
-              (prn ["!" out-model (recent-views/get-list user-id)])
-              (is (= 3 (count (filter (comp #{out-model} :model) (recent-views/get-list user-id))))))))
-        ;; (recent-views/update-users-recent-views! user-id :model/Card 3)
-        ;; (is (= [{:model "card" :model_id 3} {:model "card" :model_id 2} {:model "card" :model_id 1}]
-        ;;        (recent-views/get-list user-id)))
+      (recent-views/update-users-recent-views! user-id :model/Card 4)
+      (is (= [{:can_write false,
+               :name "Last queries",
+               :parent_collection {:id 1, :name "Metabase analytics", :authority_level nil},
+               :moderated_status nil,
+               :id 4,
+               :display "table",
+               :model :card}
+              {:id 3,
+               :name "Content",
+               :model :dataset,
+               :can_write false,
+               :moderated_status nil,
+               :parent_collection {:id 1, :name "Metabase analytics", :authority_level nil},}]
+             (->> (recent-views/get-list user-id)
+                  (take 2)
+                  (mapv #(dissoc % :timestamp)))))
 
-        ;; ;; Still only 3 items
-        ;; (recent-views/update-users-recent-views! user-id :model/Card 4)
-        ;; (is (= [{:model "card" :model_id 4} {:model "card" :model_id 3} {:model "card" :model_id 2}]
-        ;;        (recent-views/get-list user-id)))
 
+      (testing "The most recent dashboard view is not pruned"
+        (recent-views/update-users-recent-views! user-id :model/Dashboard 1)
+        (recent-views/update-users-recent-views! user-id :model/Card 5)
+        (recent-views/update-users-recent-views! user-id :model/Card 6)
+        (recent-views/update-users-recent-views! user-id :model/Card 7)
+        (recent-views/update-users-recent-views! user-id :model/Card 8)
+        (recent-views/update-users-recent-views! user-id :model/Card 9)
+        (is (= {:id 1,
+                :name "Performance overview",
+                :model :dashboard,
+                :can_write false,
+                ;;:timestamp "2024-05-09T15:50:55.589867Z",
+                :parent_collection {:id 1, :name "Metabase analytics", :authority_level nil}}
+               (-> (recent-views/get-list user-id)
+                   (->> (u/seek (comp #{:dashboard} :model)))
+                   (dissoc :timestamp)))))
 
-        #_#_#_(testing "The most recent dashboard view is not pruned"
-          (recent-views/update-users-recent-views! user-id :model/Dashboard 1)
+      (binding [recent-views/*recent-views-stored-per-user-per-model* 1]
+        (testing "If another dashboard view occurs, the old one can be pruned"
+          (recent-views/update-users-recent-views! user-id :model/Dashboard 2)
+          (is (= [{:id 2,
+                   :name "Person overview",
+                   :model :dashboard,
+                   :can_write false,
+                   ;; :timestamp "2024-05-09T15:55:32.702813Z",
+                   :parent_collection {:id 1, :name "Metabase analytics", :authority_level nil}}]
+                 (->> (recent-views/get-list user-id)
+                      (filter (comp #{:dashboard} :model))
+                      (mapv #(dissoc % :timestamp)))))))
+
+      (testing "If `*recent-views-stored-per-user*` changes, the table expands or shrinks appropriately"
+        (binding [recent-views/*recent-views-stored-per-user-per-model* 1]
+          (recent-views/update-users-recent-views! user-id :model/Table 1)
+          (is (= {:table 1, :dashboard 1, :dataset 1, :card 1, :collection 1}
+                 (frequencies (map :model (recent-views/get-list user-id))))))
+
+        (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+          (recent-views/update-users-recent-views! user-id :model/Table 2)
+          (recent-views/update-users-recent-views! user-id :model/Card 2)
+          (recent-views/update-users-recent-views! user-id :model/Card 1)
           (recent-views/update-users-recent-views! user-id :model/Card 5)
           (recent-views/update-users-recent-views! user-id :model/Card 6)
           (recent-views/update-users-recent-views! user-id :model/Card 7)
           (recent-views/update-users-recent-views! user-id :model/Card 8)
           (recent-views/update-users-recent-views! user-id :model/Card 9)
-          (is (= [{:model "card" :model_id 9} {:model "card" :model_id 8} {:model "dashboard" :model_id 1}]
-                 (recent-views/get-list user-id))))
-
-        (testing "If another dashboard view occurs, the old one can be pruned"
           (recent-views/update-users-recent-views! user-id :model/Dashboard 2)
-          (is (= [{:model "dashboard" :model_id 2} {:model "card" :model_id 9} {:model "card" :model_id 8}]
-                 (recent-views/get-list user-id))))
+          (recent-views/update-users-recent-views! user-id :model/Dashboard 1)
+          (recent-views/update-users-recent-views! user-id :model/Collection 2)
+          (is (= {:collection 2, :dashboard 2, :dataset 2, :card 2, :table 2}
+                 (frequencies (map :model (recent-views/get-list user-id))))))))))
 
-        (testing "If `*recent-views-stored-per-user*` changes, the table expands or shrinks appropriately"
-          (binding [recent-views/*recent-views-stored-per-user* 4]
-            (recent-views/update-users-recent-views! user-id :model/Table 1)
-            (is (= [{:model "table"     :model_id 1}
-                    {:model "dashboard" :model_id 2}
-                    {:model "card"      :model_id 9}
-                    {:model "card"      :model_id 8}]
-                   (recent-views/get-list user-id))))
+(deftest id-pruning-test
+  (mt/with-temp [:model/Database a-db     {}
+                 :model/Table a-table     {:db_id (:id a-db)}
+                 :model/Collection a-coll {}
+                 :model/Card a-card       {:type "question" :table_id (mt/id :reviews)}
+                 :model/Card a-model      {:type "model" :table_id (mt/id :reviews)}
+                 :model/Dashboard a-dash  {};;]
+                 ;; oldest first:
 
-          (binding [recent-views/*recent-views-stored-per-user* 2]
-            (recent-views/update-users-recent-views! user-id :model/Table 2)
-            (is (= [{:model "table" :model_id 2} {:model "dashboard" :model_id 2}]
-                   (recent-views/get-list user-id))))))))
-  (run-test update-users-recent-views!-test))
-
-(do (deftest id-pruning-test
-      (mt/with-temp [:model/Database a-db     {}
-                     :model/Table a-table     {:db_id (:id a-db)}
-                     :model/Collection a-coll {}
-                     :model/Card a-card       {:type "question" :table_id (mt/id :reviews)}
-                     :model/Card a-model      {:type "model" :table_id (mt/id :reviews)}
-                     :model/Dashboard a-dash  {};;]
-        ;; oldest first:
-
-        ;;[
-         :model/RecentViews rv15  {:id 1336998, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:00+08:00"}
-         :model/RecentViews rv14  {:id 1336999, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:01+08:00"}
-         :model/RecentViews _rv13 {:id 1337000, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:02+08:00"}
-         :model/RecentViews rv12  {:id 1337001, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1971-01-01T08:03+08:00"}
-         :model/RecentViews rv11  {:id 1337002, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1972-11-31T18:02:00.001-06:00"}
-         :model/RecentViews _rv10 {:id 1337003, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1973-01-01T01:01:00.003+01:00"}
-         :model/RecentViews rv9   {:id 1337004, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1974-01-01T06:22:59.999+06:30"}
-         :model/RecentViews _rv8  {:id 1337005, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1975-01-01T06:22:59.999+06:30"}
-         :model/RecentViews rv7   {:id 1337006, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1976-01-01T06:29:59.999+06:30"}
-         :model/RecentViews rv6   {:id 1337007, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1977-01-01T09:00+09:00"}
-         :model/RecentViews rv5   {:id 1337008, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1978-01-01T01:00:00.001+01:00"}
-         :model/RecentViews rv4   {:id 1337009, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1979-01-01T04:59:59.998+05:00"}
-         :model/RecentViews rv3   {:id 1337010, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1980-01-01T00:00Z"}
-         :model/RecentViews _rv2  {:id 1337011, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1981-01-01T05:59:59.999+06:00"}
-         :model/RecentViews rv1   {:id 1337012, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1982-01-01T00:00Z"}
-         :model/RecentViews _rv0  {:id 1337013, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1983-10-01T00:00Z"}]
-     (def card-id-a (:id a-model))
-     (def qr (#'recent-views/do-query (mt/user->id :rasta)))
-     (let [query-result (recent-views/get-list (mt/user->id :rasta))]
-       ;; everything should be in chronological order, newest first:
-       (is (apply t/after? (map :timestamp query-result))))
-     (let [ids-to-prune (#'recent-views/duplicate-model-ids)]
-       (is (= #{(:id rv1)                                         ;; dupe cards
-                (:id rv3) (:id rv4) (:id rv5) (:id rv6) (:id rv7) ;; dupe tables
-                (:id rv9)                                         ;; dupe collections
-                (:id rv11) (:id rv12)                             ;; dupe dashboards
-                (:id rv14) (:id rv15)}                            ;; dupe models
-              ids-to-prune)))))
-    (run-test id-pruning-test))
-
+                 ;;[
+                 :model/RecentViews rv15  {:id 1336998, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:00+08:00"}
+                 :model/RecentViews rv14  {:id 1336999, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:01+08:00"}
+                 :model/RecentViews _rv13 {:id 1337000, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:02+08:00"}
+                 :model/RecentViews rv12  {:id 1337001, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1971-01-01T08:03+08:00"}
+                 :model/RecentViews rv11  {:id 1337002, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1972-11-31T18:02:00.001-06:00"}
+                 :model/RecentViews _rv10 {:id 1337003, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1973-01-01T01:01:00.003+01:00"}
+                 :model/RecentViews rv9   {:id 1337004, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1974-01-01T06:22:59.999+06:30"}
+                 :model/RecentViews _rv8  {:id 1337005, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1975-01-01T06:22:59.999+06:30"}
+                 :model/RecentViews rv7   {:id 1337006, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1976-01-01T06:29:59.999+06:30"}
+                 :model/RecentViews rv6   {:id 1337007, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1977-01-01T09:00+09:00"}
+                 :model/RecentViews rv5   {:id 1337008, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1978-01-01T01:00:00.001+01:00"}
+                 :model/RecentViews rv4   {:id 1337009, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1979-01-01T04:59:59.998+05:00"}
+                 :model/RecentViews rv3   {:id 1337010, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1980-01-01T00:00Z"}
+                 :model/RecentViews _rv2  {:id 1337011, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1981-01-01T05:59:59.999+06:00"}
+                 :model/RecentViews rv1   {:id 1337012, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1982-01-01T00:00Z"}
+                 :model/RecentViews _rv0  {:id 1337013, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1983-10-01T00:00Z"}]
+    (def card-id-a (:id a-model))
+    (def qr (#'recent-views/do-query (mt/user->id :rasta)))
+    (let [query-result (recent-views/get-list (mt/user->id :rasta))]
+      ;; everything should be in chronological order, newest first:
+      (is (apply t/after? (map (comp t/zoned-date-time :timestamp) query-result))))
+    (let [ids-to-prune (#'recent-views/duplicate-model-ids (mt/user->id :rasta))]
+      (is (= #{(:id rv1)                                         ;; dupe cards
+               (:id rv3) (:id rv4) (:id rv5) (:id rv6) (:id rv7) ;; dupe tables
+               (:id rv9)                                         ;; dupe collections
+               (:id rv11) (:id rv12)                             ;; dupe dashboards
+               (:id rv14) (:id rv15)}                            ;; dupe models
+             ids-to-prune)))))
 
 (deftest test-recent-views-garbage-collection
   (mt/with-temp [:model/Card a-card {:type "question" :table_id (mt/id :reviews)}

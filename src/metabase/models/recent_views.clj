@@ -155,8 +155,10 @@
 
   - When called from `GET /popular_items`, the `model_object` field will be present, and should be used instead of
   querying the database for the object."
-  (fn [{:keys [model #_model_id #_timestamp]}]
-    (keyword (if (= model :model) "dataset" model))))
+  (fn [{:keys [model #_model_id #_timestamp card_type]}]
+    (or (get {"model" :dataset
+              "question" :card} card_type)
+        (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
 
@@ -255,11 +257,11 @@
                                  :order-by [[:rv.timestamp :desc]]}))
 
 (defn- post-process [recent-view]
-  (log/fatal (pr-str ["RV" recent-view]))
-  (-> recent-view
-      fill-recent-view-info
-      (dissoc :card_type)
-      (update :model model->return-model)))
+  (u/prog1 (-> recent-view
+               fill-recent-view-info
+               (dissoc :card_type)
+               (update :model model->return-model))
+    (log/fatalf "Recent view\n in: %s\n out: %s" (pr-str (into {} recent-view)) (pr-str <>))))
 
 (mu/defn get-list :- [:sequential Item]
   "Gets all recent views for a given user. Returns a list of at most 20 `RecentItem` maps per [[models-of-interest]]."
