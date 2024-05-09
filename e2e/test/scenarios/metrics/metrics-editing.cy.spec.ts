@@ -110,26 +110,6 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("613");
     });
 
-    it("should not be possible to join data on the first stage of a metric-based query", () => {
-      createQuestion(ORDER_COUNT_METRIC);
-      startNewQuestion();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_METRIC.name).click();
-      getNotebookStep("data").within(() => {
-        getActionButton("Custom column").should("be.visible");
-        getActionButton("Join data").should("not.exist");
-      });
-      addBreakout({ columnName: "Product ID" });
-      startNewJoin({ isPostAggregation: true });
-      popover().findByText("Products").click();
-      getNotebookStep("join", { stage: 1 }).within(() => {
-        cy.findByText("ID").should("be.visible");
-        cy.findByText("Product ID").should("be.visible");
-      });
-      visualize();
-      assertQueryBuilderRowCount(200);
-    });
-
     it("should not be possible to join a metric", () => {
       createQuestion(ORDER_COUNT_METRIC);
       startNewMetric();
@@ -144,6 +124,33 @@ describe("scenarios > metrics", () => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Metrics").should("not.exist");
       });
+    });
+
+    it("should not be possible to join data on the first stage of a metric-based query", () => {
+      createQuestion(ORDER_COUNT_METRIC);
+      startNewQuestion();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDER_COUNT_METRIC.name).click();
+      getNotebookStep("data").within(() => {
+        getActionButton("Custom column").should("be.visible");
+        getActionButton("Join data").should("not.exist");
+      });
+    });
+
+    it("should a join in the second stage of a metric query", () => {
+      createQuestion(ORDER_COUNT_METRIC);
+      startNewQuestion();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDER_COUNT_METRIC.name).click();
+      addBreakout({ columnName: "Product ID" });
+      startNewJoin({ isPostAggregation: true });
+      popover().findByText("Products").click();
+      getNotebookStep("join", { stage: 1 }).within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("Product ID").should("be.visible");
+      });
+      visualize();
+      assertQueryBuilderRowCount(200);
     });
   });
 
