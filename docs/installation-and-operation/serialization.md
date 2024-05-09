@@ -65,7 +65,7 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
 
   When serializing through the API, the export directory [will be a compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
-- A `settings.yaml` file that includes some [Metabase-wide settings](#the-general-settings-that-metabase-exports)
+- A `settings.yaml` file that includes some [Metabase-wide settings](#general-metabase-settings-that-are-exported)
 
 Database connection details are not included by default, so you but you can [configure your export](#customize-what-gets-exported) to include them.
 
@@ -353,7 +353,7 @@ Imports: You can add the `-o -` flag to export logs directly into the terminal, 
 
 ## Serialization with CLI commands
 
-> To serialize data on Metabase Cloud, use the [import and export API endpoints](#serializing-metabase-via-the-api)
+> To serialize data on Metabase Cloud, use the [import and export API endpoints](#serialization-via-the-api)
 
 Metabase provides [`export`](#exporting-with-cli) and [`import`](#importing-with-cli) CLI commands.
 
@@ -648,7 +648,7 @@ We're providing some directions on how to approach alternative use cases, but yo
 
 ### Using serialization for duplicating assets within one instance
 
-Duplicating assets is more complicated than just duplicating the serialized YAML files and importing them, because [Metabase uses Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-items) to identify and reference items. You'll need to manually wrangle Entity IDs for all the items you're duplicating — and all the items that are related to those items — to avoid overwriting existing data.
+Duplicating assets is more complicated than just duplicating the serialized YAML files and importing them, because [Metabase uses Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to identify and reference items. You'll need to manually wrangle Entity IDs for all the items you're duplicating — and all the items that are related to those items — to avoid overwriting existing data.
 
 Before starting this journey, review [how export works](#how-export-works) and [how import works](#how-import-works), and contact [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
