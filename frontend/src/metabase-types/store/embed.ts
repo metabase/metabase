@@ -11,7 +11,7 @@ export interface EmbedOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
-  theme?: DisplayTheme;
+  theme: DisplayTheme;
 }
 
 export interface EmbedState {

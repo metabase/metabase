@@ -518,7 +518,7 @@ const autoApplyFilters = handleActions(
 
 const theme = handleActions(
   {
-    [SET_DISPLAY_THEME]: { next: (state, { payload }) => payload },
+    [SET_DISPLAY_THEME]: { next: (state, { payload }) => payload ?? "light" },
   },
   INITIAL_DASHBOARD_STATE.theme,
 );
