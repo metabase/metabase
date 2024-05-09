@@ -108,7 +108,7 @@
                                             :channel_type :slack
                                             :details      {:channel "#random"}}
                                            daily-at-1am)]
-         (testing "priority is 0 to start with"
+         (testing "priority is 6 to start with"
            (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
          (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
          (testing "send pulse should update its priority"
