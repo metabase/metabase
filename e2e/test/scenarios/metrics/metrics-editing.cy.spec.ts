@@ -18,7 +18,7 @@ const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 type QuestionDetails = StructuredQuestionDetails & { name: string };
 
-const ORDER_COUNT_METRIC: QuestionDetails = {
+const SINGLE_STAGE_METRIC: QuestionDetails = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -110,11 +110,22 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("18,760");
     });
 
+    it("should create a metric based on a multi-stage model", () => {
+      createQuestion({ ...MULTI_STAGE_QUESTION, type: "model" });
+      startNewMetric();
+      popover().findByText("Saved Questions").click();
+      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addAggregation({ operatorName: "Count of rows" });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("48");
+    });
+
     it("should create a metric based on a single-stage metric", () => {
-      createQuestion(ORDER_COUNT_METRIC);
+      createQuestion(SINGLE_STAGE_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_METRIC.name).click();
+      popover().findByText(SINGLE_STAGE_METRIC.name).click();
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
@@ -142,7 +153,7 @@ describe("scenarios > metrics", () => {
     });
 
     it("should not be possible to join a metric", () => {
-      createQuestion(ORDER_COUNT_METRIC);
+      createQuestion(SINGLE_STAGE_METRIC);
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
@@ -158,10 +169,10 @@ describe("scenarios > metrics", () => {
     });
 
     it("should not be possible to join data on the first stage of a metric-based query", () => {
-      createQuestion(ORDER_COUNT_METRIC);
+      createQuestion(SINGLE_STAGE_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_METRIC.name).click();
+      popover().findByText(SINGLE_STAGE_METRIC.name).click();
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
         getActionButton("Join data").should("not.exist");
@@ -169,10 +180,10 @@ describe("scenarios > metrics", () => {
     });
 
     it("should join on the second stage of a metric query", () => {
-      createQuestion(ORDER_COUNT_METRIC);
+      createQuestion(SINGLE_STAGE_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_METRIC.name).click();
+      popover().findByText(SINGLE_STAGE_METRIC.name).click();
       addBreakout({ columnName: "Product ID" });
       startNewJoin({ isPostAggregation: true });
       popover().findByText("Products").click();
@@ -251,13 +262,13 @@ describe("scenarios > metrics", () => {
 
   describe("aggregations", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
-      createQuestion(ORDER_COUNT_METRIC);
+      createQuestion(SINGLE_STAGE_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_METRIC.name).click();
-      getNotebookStep("summarize").findByText(ORDER_COUNT_METRIC.name).click();
+      popover().findByText(SINGLE_STAGE_METRIC.name).click();
+      getNotebookStep("summarize").findByText(SINGLE_STAGE_METRIC.name).click();
       enterCustomColumnDetails({
-        formula: `[${ORDER_COUNT_METRIC.name}] / 2`,
+        formula: `[${SINGLE_STAGE_METRIC.name}] / 2`,
         name: "",
       });
       popover().button("Update").click();
