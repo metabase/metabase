@@ -10,7 +10,6 @@ import {
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -225,84 +224,77 @@ export const SaveQuestionModal = ({
   return (
     <Modal.Root onClose={onClose} opened={true}>
       <Modal.Overlay />
-      <CreateCollectionOnTheGo>
-        {({ resumedValues }) => (
-          <FormProvider
-            initialValues={{ ...initialValues, ...resumedValues }}
-            onSubmit={handleSubmit}
-            validationSchema={SAVE_QUESTION_SCHEMA}
-            enableReinitialize
-          >
-            {({ values, setValues }) => (
-              <Modal.Content p="md" data-testid="save-question-modal">
-                <Modal.Header>
-                  <Modal.Title>{title}</Modal.Title>
-                  <Flex align="center" justify="flex-end" gap="sm">
-                    <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
-                      question={submittableQuestion}
-                      onAccept={nextValues =>
-                        setValues({ ...values, ...nextValues })
-                      }
-                    />
-                    <Modal.CloseButton />
-                  </Flex>
-                </Modal.Header>
-                <Modal.Body>
-                  <Form>
-                    {showSaveType && (
-                      <FormRadio
-                        name="saveType"
-                        title={t`Replace or save as new?`}
-                        options={[
-                          {
-                            name: t`Replace original question, "${originalQuestion?.displayName()}"`,
-                            value: "overwrite",
-                          },
-                          { name: t`Save as new question`, value: "create" },
-                        ]}
-                        vertical
+      <FormProvider
+        initialValues={{ ...initialValues }}
+        onSubmit={handleSubmit}
+        validationSchema={SAVE_QUESTION_SCHEMA}
+        enableReinitialize
+      >
+        {({ values, setValues }) => (
+          <Modal.Content p="md" data-testid="save-question-modal">
+            <Modal.Header>
+              <Modal.Title>{title}</Modal.Title>
+              <Flex align="center" justify="flex-end" gap="sm">
+                <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
+                  question={submittableQuestion}
+                  onAccept={nextValues =>
+                    setValues({ ...values, ...nextValues })
+                  }
+                />
+                <Modal.CloseButton />
+              </Flex>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+                {showSaveType && (
+                  <FormRadio
+                    name="saveType"
+                    title={t`Replace or save as new?`}
+                    options={[
+                      {
+                        name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+                        value: "overwrite",
+                      },
+                      { name: t`Save as new question`, value: "create" },
+                    ]}
+                    vertical
+                  />
+                )}
+                <TransitionGroup>
+                  {values.saveType === "create" && (
+                    <div className={CS.overflowHidden}>
+                      <FormInput
+                        name="name"
+                        title={t`Name`}
+                        placeholder={nameInputPlaceholder}
                       />
-                    )}
-                    <TransitionGroup>
-                      {values.saveType === "create" && (
-                        <div className={CS.overflowHidden}>
-                          <FormInput
-                            name="name"
-                            title={t`Name`}
-                            placeholder={nameInputPlaceholder}
-                          />
-                          <FormTextArea
-                            name="description"
-                            title={t`Description`}
-                            placeholder={t`It's optional but oh, so helpful`}
-                          />
-                          <FormCollectionPicker
-                            name="collection_id"
-                            title={t`Which collection should this go in?`}
-                            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-                          />
-                        </div>
-                      )}
-                    </TransitionGroup>
-                    <FormFooter>
-                      <FormErrorMessage inline />
-                      <Button
-                        type="button"
-                        onClick={onClose}
-                      >{t`Cancel`}</Button>
-                      <FormSubmitButton
-                        title={t`Save`}
-                        data-testid="save-question-button"
-                        primary
+                      <FormTextArea
+                        name="description"
+                        title={t`Description`}
+                        placeholder={t`It's optional but oh, so helpful`}
                       />
-                    </FormFooter>
-                  </Form>
-                </Modal.Body>
-              </Modal.Content>
-            )}
-          </FormProvider>
+                      <FormCollectionPicker
+                        name="collection_id"
+                        title={t`Which collection should this go in?`}
+                        zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+                      />
+                    </div>
+                  )}
+                </TransitionGroup>
+                <FormFooter>
+                  <FormErrorMessage inline />
+                  <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+                  <FormSubmitButton
+                    title={t`Save`}
+                    data-testid="save-question-button"
+                    primary
+                  />
+                </FormFooter>
+              </Form>
+            </Modal.Body>
+          </Modal.Content>
         )}
-      </CreateCollectionOnTheGo>
+      </FormProvider>
     </Modal.Root>
   );
 };
