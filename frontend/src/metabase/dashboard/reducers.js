@@ -45,6 +45,7 @@ import {
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
+  SET_DISPLAY_THEME,
   fetchDashboard,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -515,6 +516,13 @@ const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
+const theme = handleActions(
+  {
+    [SET_DISPLAY_THEME]: { next: (state, { payload }) => payload },
+  },
+  INITIAL_DASHBOARD_STATE.theme,
+);
+
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -536,6 +544,7 @@ export const dashboardReducers = reduceReducers(
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
+    theme,
   }),
   tabsReducer,
 );
