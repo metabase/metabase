@@ -78,7 +78,12 @@ For an introduction to expressions, check out the [overview of custom expression
     - [week](#week)
     - [weekday](#weekday)
     - [year](#year)
-- [Database limitations](#database-limitations)
+
+  - [Window functions](#window-functions)
+    - [Offset](#offset)
+
+- [Limitations](#limitations)
+  - [Database limitations](#database-limitations)
 
 ## Aggregations
 
@@ -670,8 +675,6 @@ Syntax: `timeSpan(number, text)`.
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
-
-
 ### week
 
 Takes a datetime and returns the week as an integer.
@@ -714,6 +717,20 @@ Takes a datetime and returns the year as an integer.
 Syntax: `year([datetime column])`.
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
+
+## Window functions
+
+### Offset
+
+Returns the value of an expression in a different row.
+
+Syntax: `Offset(expression, rowOffset)`
+
+The `expression` is the value to get from a different row.
+
+The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
+
+Example: `Offset([Total], -1)` would get the `Total` value from the previous row.
 
 ## Limitations
 
