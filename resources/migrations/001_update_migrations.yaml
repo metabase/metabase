@@ -6941,7 +6941,7 @@ databaseChangeLog:
               SELECT CONCAT('/collection/', c.id, '/'), pg.id
               FROM collection c
               CROSS JOIN permissions_group pg
-              WHERE c.type = 'trash';
+              WHERE c.type = 'trash' AND pg.name != 'Administrators';
 
       rollback:
         - sql:
