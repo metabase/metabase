@@ -69,7 +69,7 @@ describe("scenarios > metrics", () => {
   });
 
   describe("data source", () => {
-    it("should create a metric for a table", () => {
+    it("should create a metric based on a table", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
@@ -79,7 +79,7 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("18,760");
     });
 
-    it("should create a metric for a saved question", () => {
+    it("should create a metric based on a saved question", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
@@ -89,7 +89,7 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("18,760");
     });
 
-    it("should create a metric for a multi-stage saved question", () => {
+    it("should create a metric based on a multi-stage saved question", () => {
       createQuestion(MULTI_STAGE_QUESTION);
       startNewMetric();
       popover().findByText("Saved Questions").click();
@@ -100,7 +100,7 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("48");
     });
 
-    it("should create a metric for a model", () => {
+    it("should create a metric based on a model", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
@@ -110,7 +110,7 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("18,760");
     });
 
-    it("should create a metric for another metric", () => {
+    it("should create a metric based on a single-stage metric", () => {
       createQuestion(ORDER_COUNT_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
@@ -168,7 +168,7 @@ describe("scenarios > metrics", () => {
       });
     });
 
-    it("should a join on the second stage of a metric query", () => {
+    it("should join on the second stage of a metric query", () => {
       createQuestion(ORDER_COUNT_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
