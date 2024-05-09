@@ -6,7 +6,7 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -434,7 +434,7 @@
    visualization_settings ms/Map
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe qr/ResultsMetadata]
+   result_metadata        [:maybe analyze/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
@@ -494,7 +494,7 @@
    embedding_params       [:maybe ms/EmbeddingParams]
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe qr/ResultsMetadata]
+   result_metadata        [:maybe analyze/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)

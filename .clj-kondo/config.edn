@@ -150,11 +150,7 @@
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
-    metabase.analyze               #{metabase.analyze.classifiers.core
-                                     metabase.analyze.classifiers.name
-                                     metabase.analyze.fingerprint.fingerprinters
-                                     metabase.analyze.fingerprint.schema
-                                     metabase.analyze.query-results}                                ; TODO -- consolidate these into a real API namespace.
+    metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.permission-graph
