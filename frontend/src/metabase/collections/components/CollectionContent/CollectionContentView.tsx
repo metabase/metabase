@@ -18,10 +18,8 @@ import type {
 } from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
-import {
-  Sort,
-  type SortingOptions,
-} from "metabase/components/ItemsTable/BaseItemsTable";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -97,7 +95,7 @@ export const CollectionContentView = ({
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
       sort_column: "name",
-      sort_direction: Sort.Asc,
+      sort_direction: SortDirection.Asc,
     });
 
   const [

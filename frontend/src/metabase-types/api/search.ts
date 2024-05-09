@@ -139,3 +139,6 @@ export type SearchRequest = {
   collection?: CollectionId;
   namespace?: "snippets";
 } & PaginationRequest;
+
+/** Model retrieved through the search endpoint */
+export type ModelResult = SearchResult<number, "dataset">;

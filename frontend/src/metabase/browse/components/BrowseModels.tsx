@@ -7,6 +7,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import type { ModelResult, SearchRequest } from "metabase-types/api";
 
 import { filterModels, type ActualModelFilters } from "../utils";
 
@@ -62,16 +63,20 @@ export const BrowseModels = () => {
 export const BrowseModelsBody = ({
   actualModelFilters,
 }: {
+  /** Mapping of filter names to true if the filter is active
+   * or false if it is inactive */
   actualModelFilters: ActualModelFilters;
 }) => {
-  const { data, error, isLoading } = useSearchQuery({
-    models: ["dataset"],
-    filter_items_in_personal_collection: "exclude",
+  const query: SearchRequest = {
+    models: ["dataset"], // 'model' in the sense of 'type of thing'
     model_ancestors: true,
-  });
+    filter_items_in_personal_collection: "exclude",
+  };
+
+  const { data, error, isLoading } = useSearchQuery(query);
 
   const models = useMemo(() => {
-    const unfilteredModels = data?.data ?? [];
+    const unfilteredModels = (data?.data as ModelResult[]) ?? [];
     const filteredModels = filterModels(
       unfilteredModels || [],
       actualModelFilters,
@@ -85,7 +90,7 @@ export const BrowseModelsBody = ({
       <LoadingAndErrorWrapper
         error={error}
         loading={isLoading}
-        style={{ display: "flex", flex: 1 }}
+        style={{ flex: 1 }}
       />
     );
   }
@@ -94,7 +99,7 @@ export const BrowseModelsBody = ({
     return (
       <Stack spacing="md" mb="lg">
         <ModelExplanationBanner />
-        <ModelsTable items={models} />
+        <ModelsTable models={models} />
       </Stack>
     );
   }

@@ -14,6 +14,7 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
+import { SortDirection } from "./Columns";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -64,7 +65,10 @@ describe("BaseItemsTable", () => {
         component={() => (
           <BaseItemsTable
             items={items}
-            sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+            sortingOptions={{
+              sort_column: "name",
+              sort_direction: SortDirection.Asc,
+            }}
             onSortingOptionsChange={jest.fn()}
             {...props}
           />
