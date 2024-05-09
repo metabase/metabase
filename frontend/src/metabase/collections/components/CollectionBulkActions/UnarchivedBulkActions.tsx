@@ -2,9 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
-import type { Collection, CollectionItem } from "metabase-types/api";
-
 import { BulkActionButton } from "metabase/components/BulkActionBar";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 type UnarchivedBulkActionsProps = {
   selected: any[];
