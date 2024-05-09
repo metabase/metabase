@@ -81,6 +81,7 @@
    :type                   mi/transform-keyword})
 
 (doto :model/Card
+  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)

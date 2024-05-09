@@ -408,6 +408,39 @@
                 :moderated_status "verified"}]
               (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
 
+(deftest archived-permissions-test
+  (testing "Users without perms for a collection can't see search results that were trashed from that collection"
+    (let [search-name (random-uuid)
+          named       #(str search-name "-" %)]
+      (mt/with-temp [:model/Collection {parent-id :id} {}
+                     :model/Dashboard {dash :id} {:collection_id parent-id :name (named "dashboard")}
+                     :model/Card {card :id} {:collection_id parent-id :name (named "card")}
+                     :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
+        (mt/with-full-data-perms-for-all-users!
+          (perms/revoke-collection-permissions! (perms-group/all-users) parent-id)
+          (testing "sanity check: before archiving, we can't see these items"
+            (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                   :archived true :q search-name)))))
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dash)) {:archived true})
+          (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+          (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id model)) {:archived true})
+          (testing "after archiving, we still can't see these items"
+            (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                   :archived true :q search-name)))))
+          (testing "an admin can see the items"
+            (is (= #{dash card model}
+                   (set (map :id (:data (mt/user-http-request :crowberto :get 200 "/search"
+                                                              :archived true :q search-name)))))))
+          (testing "the collection ID is correct - the Trash ID"
+            (is (= #{(collection/trash-collection-id)}
+                   (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
+                                                                                 :archived true :q search-name)))))))
+          (testing "if we are granted permissions on the original collection, we can see the trashed items"
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-id)
+            (is (= #{dash card model}
+                   (set (map :id (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                              :archived true :q search-name))))))))))))
+
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
                 "don't have collections, so they'll be returned")
@@ -719,6 +752,12 @@
          :archived true
          :trashed_from_location "/"
          :location (collection/trash-path)))
+
+(defn- archived-with-trashed-from-id [m]
+  (assoc m
+         :archived true
+         :trashed_from_collection_id (:collection_id m)
+         :collection_id (collection/trash-collection-id)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
@@ -1668,12 +1707,12 @@
   (testing "Results which the searching user has no write permissions for are filtered out. #33602"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
     (mt/with-temp [Collection  {collection-id :id} {:name "collection test collection"}
-                   Card        _ (archived {:name "card test card is returned"})
-                   Card        _ (archived {:name "card test card"
-                                            :collection_id collection-id})
-                   Card        _ (archived {:name "dataset test dataset" :type :model
-                                            :collection_id collection-id})
-                   Dashboard   _ (archived {:name          "dashboard test dashboard"
+                   Card        _ (archived-with-trashed-from-id {:name "card test card is returned"})
+                   Card        _ (archived-with-trashed-from-id {:name "card test card"
+                                                                 :collection_id collection-id})
+                   Card        _ (archived-with-trashed-from-id {:name "dataset test dataset" :type :model
+                                                                 :collection_id collection-id})
+                   Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
                                             :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
@@ -1682,7 +1721,7 @@
         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
                                                      {:archived true}))
       (is (= ["card test card is returned"]
-             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
+             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data
                   (map :name)))))))
 

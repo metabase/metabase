@@ -109,23 +109,38 @@
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
-  so we can return its `:name`."
+  so we can return its `:name`.
+
+  A brief note here on `collection-join-id` and `collection-permission-id`. What the heck do these represent?
+
+  Permissions on Trashed items work differently than normal permissions. If something is in the trash, you can only
+  see it if you have the relevant permissions on the *original* collection the item was trashed from. This is set as
+  `trashed_from_collection_id`.
+
+  However, the item is actually *in* the Trash, and we want to show that to the frontend. Therefore, we need two
+  different collection IDs. One, the ID we should be checking permissions on, and two, the ID we should be joining to
+  Collections on."
   [honeysql-query                                :- ms/Map
-   ;; `[:vector :keyword]` allows for `[:coalesce :col1 :col2]`
-   collection-id-column                          :- [:or :keyword [:vector :keyword]]
+   model                                         :- :string
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
+        collection-join-id       (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-permission-id (if (= model "collection")
+                                   :collection.id
+                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-column
+                                  collection-permission-id
                                   visible-collections)]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
       ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= collection-id-column :collection.id)
+      (not= model "collection")
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-column :collection.id])
+                             [:= collection-join-id :collection.id])
 
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
@@ -146,7 +161,7 @@
                 [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-column nil]))))))
+               [:= collection-join-id nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -218,15 +233,6 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(defn- collection-id-for-table
-  "What should we use to represent the 'collection id' for a row in `table`? Generally, the `collection_id`, but if a
-  `trashed_from_collection_id` is present, we should use that instead - this is a trashed collection, and the relevant
-  collection is not the Trash but whatever collection it was trashed from."
-  [table-name]
-  [:coalesce
-   (keyword (format "%s.trashed_from_collection_id" (name table-name)))
-   (keyword (format "%s.collection_id" (name table-name)))])
-
 (mu/defn ^:private shared-card-impl
   [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
    search-ctx :- SearchContext]
@@ -236,7 +242,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses (collection-id-for-table :card) search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info model)
       (with-moderated-status model)))
@@ -248,7 +254,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses (collection-id-for-table :model)
+      (add-collection-join-and-where-clauses model
                                              search-ctx)))
 
 (defmethod search-query-for-model "card"
@@ -262,13 +268,13 @@
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
-  [_model search-ctx]
+  [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :collection.id search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -281,7 +287,7 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses (collection-id-for-table :dashboard) search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info model)))
 
 (defmethod search-query-for-model "metric"
@@ -527,10 +533,13 @@
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
+
                             (map #(update % :archived api/bit->boolean))
+
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
