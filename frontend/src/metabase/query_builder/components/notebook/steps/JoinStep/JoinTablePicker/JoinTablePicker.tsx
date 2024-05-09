@@ -23,7 +23,7 @@ import {
 interface JoinTablePickerProps {
   query: Lib.Query;
   table: Lib.Joinable | undefined;
-  tableInfo: Lib.TableDisplayInfo | undefined;
+  tableName: string | undefined;
   color: string;
   isReadOnly: boolean;
   isModelDataSource: boolean;
@@ -34,7 +34,7 @@ interface JoinTablePickerProps {
 export function JoinTablePicker({
   query,
   table,
-  tableInfo,
+  tableName,
   color,
   isReadOnly,
   isModelDataSource,
@@ -101,8 +101,7 @@ export function JoinTablePicker({
         setSourceTableFn={handleTableChange}
         triggerElement={
           <TablePickerButton disabled={isDisabled}>
-            {tableInfo?.isMetric && <Icon name="metric" />}
-            {tableInfo?.displayName ?? t`Pick data…`}
+            {tableName || t`Pick data…`}
           </TablePickerButton>
         }
       />

@@ -52,8 +52,11 @@ export function JoinDraft({
     [query, stageIndex, rhsTable, lhsColumn],
   );
 
-  const rhsTableInfo = useMemo(
-    () => (rhsTable ? Lib.displayInfo(query, stageIndex, rhsTable) : undefined),
+  const rhsTableName = useMemo(
+    () =>
+      rhsTable
+        ? Lib.displayInfo(query, stageIndex, rhsTable).displayName
+        : undefined,
     [query, stageIndex, rhsTable],
   );
 
@@ -101,7 +104,7 @@ export function JoinDraft({
           <JoinTablePicker
             query={query}
             table={rhsTable}
-            tableInfo={rhsTableInfo}
+            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             isModelDataSource={isModelDataSource}
@@ -129,7 +132,7 @@ export function JoinDraft({
               stageIndex={stageIndex}
               joinable={rhsTable}
               lhsTableName={lhsTableName}
-              rhsTableName={rhsTableInfo?.displayName}
+              rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={false}
               onChange={handleConditionChange}

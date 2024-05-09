@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
-  startNewMetric,
+  assertQueryBuilderRowCount,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -9,10 +9,12 @@ import {
   modal,
   popover,
   restore,
-  assertQueryBuilderRowCount,
+  startNewMetric,
+  startNewQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 type QuestionDetails = StructuredQuestionDetails & { name: string };
 
@@ -21,38 +23,6 @@ const ORDER_COUNT_DETAILS: QuestionDetails = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const ORDER_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
-  name: "Orders metric",
-  type: "metric",
-  query: {
-    "source-table": ORDERS_ID,
-    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const PRODUCT_COUNT_DETAILS: QuestionDetails = {
-  name: "Products metric",
-  type: "metric",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const PRODUCT_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
-  name: "Products metric",
-  type: "metric",
-  query: {
-    "source-table": PRODUCTS_ID,
-    breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -140,25 +110,24 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("613");
     });
 
-    it("should suggest join conditions when joining metrics with breakout clauses", () => {
-      createQuestion(ORDER_COUNT_CREATED_AT_DETAILS);
-      createQuestion(PRODUCT_COUNT_CREATED_AT_DETAILS);
-      startNewMetric();
+    it("should not be possible to join data on the first stage of a metric-based query", () => {
+      createQuestion(ORDER_COUNT_DETAILS);
+      startNewQuestion();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).click();
-      startNewJoin();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Raw Data").click();
-        cy.findByText("Metrics").click();
-        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
+      popover().findByText(ORDER_COUNT_DETAILS.name).click();
+      getNotebookStep("data").within(() => {
+        getActionButton("Custom column").should("be.visible");
+        getActionButton("Join data").should("not.exist");
       });
-      getNotebookStep("summarize").within(() => {
-        cy.findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).should("be.visible");
-        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).should(
-          "be.visible",
-        );
+      addBreakout({ columnName: "Product ID" });
+      startNewJoin({ isPostAggregation: true });
+      popover().findByText("Products").click();
+      getNotebookStep("join", { stage: 1 }).within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("Product ID").should("be.visible");
       });
+      visualize();
+      assertQueryBuilderRowCount(200);
     });
   });
 
@@ -243,30 +212,6 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("9,380");
     });
 
-    it.skip("should create a metric with a custom aggregation expression based on 2 metrics (metabase#42253)", () => {
-      createQuestion(ORDER_COUNT_DETAILS);
-      createQuestion(PRODUCT_COUNT_DETAILS);
-      startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_DETAILS.name).click();
-      startNewJoin();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Raw Data").click();
-        cy.findByText("Metrics").click();
-        cy.findByText(PRODUCT_COUNT_DETAILS.name).click();
-      });
-      getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
-      enterCustomColumnDetails({
-        formula: `[${ORDER_COUNT_DETAILS.name}] / [${PRODUCT_COUNT_DETAILS.name}]`,
-        name: "",
-      });
-      popover().button("Update").click();
-      saveMetric();
-      runQuery();
-      // FIXME put correct value verifyScalarValue("9,380");
-    });
-
     it("should add an aggregation clause in a metric query with 2 stages", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
@@ -298,67 +243,15 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("29,554.86");
     });
-
-    it.skip("should combine multiple aggregation columns in a custom aggregation expression (metabase#42425)", () => {
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
-      addBreakout({ columnName: "Product ID" });
-      startNewAggregation({ isPostAggregation: true });
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({
-        formula: "[Sum of Total] - [Sum of Subtotal]",
-        name: "Metric",
-      });
-      popover().button("Done").click();
-      saveMetric();
-      runQuery();
-      // FIXME put correct value verifyScalarValue("9,380");
-    });
-  });
-
-  describe("order by", () => {
-    it.skip("should add an order by clause to a metric query  (metabase#42416)", () => {
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At", bucketName: "Year" });
-      addOrderBy({ columnName: "Count" });
-      saveMetric();
-      runQuery();
-      cy.findByTestId("view-footer").findByLabelText("Switch to data").click();
-      cy.get("#main-data-grid")
-        .findAllByRole("gridcell")
-        .last()
-        .should("contain.text", "6,578");
-    });
-  });
-
-  describe("limit", () => {
-    it.skip("should add a limit clause to a metric query (metabase#42416)", () => {
-      const limit = 5;
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At" });
-      addLimit({ limit });
-      saveMetric();
-      runQuery();
-      assertQueryBuilderRowCount(limit);
-    });
   });
 });
 
-function clickActionButton(title: string) {
-  cy.findByTestId("action-buttons").button(title).click();
+function getActionButton(title: string) {
+  return cy.findByTestId("action-buttons").button(title);
 }
 
-function clickAddClauseButton() {
-  cy.findAllByTestId("notebook-cell-item").last().click();
+function getPlusButton() {
+  return cy.findAllByTestId("notebook-cell-item").last();
 }
 
 interface StartNewClauseOpts {
@@ -372,11 +265,11 @@ function startNewJoin({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Join data"),
+      getActionButton("Join data").click(),
     );
   } else {
     getNotebookStep("data", { stage: stageIndex }).within(() =>
-      clickActionButton("Join data"),
+      getActionButton("Join data").click(),
     );
   }
 }
@@ -387,11 +280,11 @@ function startNewCustomColumn({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Custom column"),
+      getActionButton("Custom column").click(),
     );
   } else {
     getNotebookStep("data", { stage: stageIndex }).within(() =>
-      clickActionButton("Custom column"),
+      getActionButton("Custom column").click(),
     );
   }
 }
@@ -402,11 +295,11 @@ function startNewFilter({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Filter (optional)"),
+      getActionButton("Filter").click(),
     );
   } else {
     getNotebookStep("filter", { stage: stageIndex }).within(() =>
-      clickAddClauseButton(),
+      getPlusButton().click(),
     );
   }
 }
@@ -417,19 +310,19 @@ function startNewAggregation({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Measure calculation"),
+      getActionButton("Summarize").click(),
     );
   } else {
     getNotebookStep("summarize", { stage: stageIndex })
       .findByTestId("aggregate-step")
-      .within(() => clickAddClauseButton());
+      .within(() => getPlusButton().click());
   }
 }
 
 function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
   getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
-    .within(() => clickAddClauseButton());
+    .within(() => getPlusButton().click());
 }
 
 function addAggregation({
@@ -469,34 +362,6 @@ function addBreakout({
   } else {
     popover().findByText(columnName).click();
   }
-}
-
-function addOrderBy({
-  columnName,
-  stageIndex,
-}: {
-  columnName: string;
-  stageIndex?: number;
-}) {
-  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-    clickActionButton("Sort"),
-  );
-  popover().findByText(columnName).click();
-}
-
-function addLimit({
-  limit,
-  stageIndex,
-}: {
-  limit: number;
-  stageIndex?: number;
-}) {
-  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-    clickActionButton("Limit"),
-  );
-  getNotebookStep("limit")
-    .findByPlaceholderText("Enter a limit")
-    .type(String(limit));
 }
 
 function saveMetric() {

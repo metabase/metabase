@@ -79,6 +79,7 @@ export const DataStep = ({
       >
         <DataSourceSelector
           hasTableSearch
+          hasMetrics
           collectionId={collectionId}
           databaseQuery={{ saved: true }}
           selectedDatabaseId={databaseId}
