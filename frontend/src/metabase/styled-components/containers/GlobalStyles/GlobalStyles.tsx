@@ -30,7 +30,7 @@ export const GlobalStyles = (): JSX.Element => {
     ${fontFiles?.map(
       file => css`
         @font-face {
-          font-family: "${font}";
+          font-family: "Custom";
           src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
           font-weight: ${file.fontWeight};
           font-style: normal;
@@ -41,6 +41,7 @@ export const GlobalStyles = (): JSX.Element => {
     ${aceEditorStyles}
     ${saveDomImageStyles}
     body {
+      font-size: 0.875em;
       ${getRootStyle(theme)}
     }
 

@@ -1,6 +1,10 @@
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
+import type {
+  CollectionEssentials,
+  PaginationRequest,
+  PaginationResponse,
+} from "metabase-types/api";
 
 import type { CardDisplayType, CardType } from "./card";
 import type { DatabaseId } from "./database";
@@ -59,7 +63,7 @@ export interface Collection {
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
-  effective_ancestors?: Collection[];
+  effective_ancestors?: CollectionEssentials[];
 
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];

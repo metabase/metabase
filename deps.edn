@@ -87,7 +87,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.170"
+  metabase/saml20-clj                       {:mvn/version "2.2.7.171"
                                              :exclusions [                      ; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -243,8 +243,8 @@
                                   [org.ow2.asm/asm-all]}
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     lambdaisland/deep-diff2      {:mvn/version "2.11.216"}                  ; way better diffs
-    methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
-    org.clojure/algo.generic     {:mvn/version "1.0.0"}
+    methodical/methodical        {:mvn/version "1.0.111"}                   ; drop-in replacements for Clojure multimethods and adds several advanced features
+    org.clojure/algo.generic     {:mvn/version "1.0.1"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
@@ -384,6 +384,7 @@
    ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
+    "modules/drivers/druid-jdbc/test"
     "modules/drivers/googleanalytics/test"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
@@ -410,6 +411,7 @@
                 "modules/drivers/athena/src"
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/druid/src"
+                "modules/drivers/druid-jdbc/src"
                 "modules/drivers/googleanalytics/src"
                 "modules/drivers/mongo/src"
                 "modules/drivers/oracle/src"
@@ -432,6 +434,7 @@
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
+                                 "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/googleanalytics/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"
@@ -695,7 +698,14 @@
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
-                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; watch and reload clojure namespaces
+  :watch {:extra-deps
+          {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
+           io.github.tonsky/clj-reload {:mvn/version "0.7.0"}} ;; reloader
+          :extra-paths "dev/src/watch"
+          :main-opts ["-m" "watch.watcher"]}}}
 
 
 

@@ -196,7 +196,7 @@
       (mt/test-drivers (into #{}
                              (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
-        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
   Drill,
@@ -31,6 +32,8 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
       onSubmit={newQuery => {
         const nextQuestion = question.setQuery(newQuery);
         const nextCard = nextQuestion.card();
+
+        trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
         onChangeCardAndRun({ nextCard });
         onClose();
       }}
@@ -42,7 +45,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
       name: "combine",
       title: t`Combine columns`,
       section: "combine",
-      icon: "add",
+      icon: "combine",
       buttonType: "horizontal",
       popover: DrillPopover,
     },

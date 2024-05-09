@@ -13,6 +13,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -120,6 +121,8 @@
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
+ [lib.drill-thru.column-extract
+  extractions-for-drill]
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]

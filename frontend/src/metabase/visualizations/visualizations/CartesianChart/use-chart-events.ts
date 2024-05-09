@@ -101,7 +101,12 @@ export const useChartEvents = (
             return;
           }
 
-          const hoveredData = getSeriesHoverData(chartModel, settings, event);
+          const hoveredData = getSeriesHoverData(
+            chartModel,
+            settings,
+            rawSeries[0].card.display,
+            event,
+          );
 
           const isSameDatumHovered =
             hoveredData?.index === hovered?.index &&
@@ -111,7 +116,7 @@ export const useChartEvents = (
             return;
           }
 
-          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
+          onHoverChange?.(hoveredData);
         },
       },
       {

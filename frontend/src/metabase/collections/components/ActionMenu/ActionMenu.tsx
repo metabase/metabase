@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 
 import type {
@@ -24,7 +24,7 @@ import type { State } from "metabase-types/store";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-interface OwnProps {
+export interface ActionMenuProps {
   className?: string;
   item: CollectionItem;
   collection?: Collection;
@@ -36,12 +36,10 @@ interface OwnProps {
   deleteBookmark?: DeleteBookmark;
 }
 
-interface StateProps {
+interface ActionMenuStateProps {
   isXrayEnabled: boolean;
   isMetabotEnabled: boolean;
 }
-
-type ActionMenuProps = OwnProps & StateProps;
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
@@ -60,7 +58,7 @@ function normalizeItemModel(item: CollectionItem) {
     : item.model;
 }
 
-function mapStateToProps(state: State): StateProps {
+function mapStateToProps(state: State): ActionMenuStateProps {
   return {
     isXrayEnabled: getSetting(state, "enable-xrays"),
     isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
@@ -79,7 +77,7 @@ function ActionMenu({
   onMove,
   createBookmark,
   deleteBookmark,
-}: ActionMenuProps) {
+}: ActionMenuProps & ActionMenuStateProps) {
   const database = databases?.find(({ id }) => id === item.database_id);
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canPin = canPinItem(item, collection);
@@ -105,9 +103,15 @@ function ActionMenu({
     item.setArchived?.(true);
   }, [item]);
 
-  const handleToggleBookmark = useCallback(() => {
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
+  const handleToggleBookmark = useMemo(() => {
+    if (!createBookmark && !deleteBookmark) {
+      return undefined;
+    }
+    const handler = () => {
+      const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+      toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
+    };
+    return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   const handleTogglePreview = useCallback(() => {

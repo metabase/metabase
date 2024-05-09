@@ -99,7 +99,7 @@
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
+    metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
    {:lib/type     :mbql/query
     :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -219,13 +219,13 @@
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
   (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    inner-query           :- :map]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)

@@ -3,9 +3,15 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModel, SearchResultId } from "metabase-types/api";
+import type {
+  SearchModel,
+  SearchResult,
+  SearchResultId,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -37,6 +43,9 @@ export const defaultOptions: EntityPickerModalOptions = {
   allowCreateNew: true,
 };
 
+// needs to be above popovers and bulk actions
+export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
+
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
@@ -47,7 +56,8 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   onClose: () => void;
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
-  searchResultFilter?: (results: Item[]) => Item[];
+  searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
@@ -69,9 +79,12 @@ export function EntityPickerModal<
   actionButtons = [],
   searchResultFilter,
   trapFocus = true,
+  searchParams,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<Item[] | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
+    null,
+  );
 
   const hydratedOptions = useMemo(
     () => ({
@@ -103,10 +116,10 @@ export function EntityPickerModal<
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
-      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
       yOffset="10dvh"
+      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
       <ModalContent h="100%">
@@ -114,12 +127,13 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <EntityPickerSearchInput<Id, Model, Item>
+              <EntityPickerSearchInput
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 searchFilter={searchResultFilter}
+                searchParams={searchParams}
               />
             )}
           </GrowFlex>

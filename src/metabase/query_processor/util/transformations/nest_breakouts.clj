@@ -54,7 +54,6 @@
                                   ;; for other columns: remove temporal type, it should be nil anyway but remove it to
                                   ;; be safe.
                                   nil))
-      (lib/with-join-alias nil)
       (lib/with-binning nil)))
 
 (mu/defn ^:private update-second-stage-refs :- ::lib.schema/stage

@@ -755,16 +755,16 @@
     (-> dashboard
         (populate/create-dashboard show)
         (assoc
-          :related (related
-                     root grounded-dimensions
-                     dashboard-template)
-          :more (when (and (not= show :all)
-                           (-> dashboard :cards count (> show)))
-                  (format "%s#show=all" url))
-          :transient_filters query-filter
-          :param_fields (filter-referenced-fields root query-filter)
-          :auto_apply_filters true
-          :width "fixed"))))
+         :related (related
+                   root grounded-dimensions
+                   dashboard-template)
+         :more (when (and (not= show :all)
+                          (-> dashboard :cards count (> show)))
+                 (format "%s#show=all" url))
+         :transient_filters query-filter
+         :param_fields (filter-referenced-fields root query-filter)
+         :auto_apply_filters true
+         :width "fixed"))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."

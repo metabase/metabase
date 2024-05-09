@@ -1304,6 +1304,34 @@
                    (mt/first-row
                      (qp/process-query query))))))))))
 
+(deftest temporal-unit-parameters-test
+  (mt/dataset test-data
+    (let [query-months (mt/query orders
+                         {:type       :query
+                          :query      {:source-table $$orders
+                                       :aggregation  [[:sum $subtotal]]
+                                       :breakout     [!month.created_at]
+                                       :filter       [:between $created_at "2018-01-01T00:00:00Z" "2018-12-31T23:59:59Z"]}
+                          ;; The value for this parameter gets overridden below.
+                          :parameters [{:type   :temporal-unit
+                                        :target [:dimension !month.created_at]
+                                        :value  "month"}]})
+          unit-totals (fn [unit]
+                        (->> (qp/process-query (assoc-in query-months [:parameters 0 :value] unit))
+                             (mt/formatted-rows [identity 2.0])
+                             (map second)))]
+      (testing "monthly"
+        (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
+                42292.10 42443.71 42077.35 45708.74 44498.55 46245.48]
+               (unit-totals "month"))))
+
+      (testing "quarterly"
+        (is (= [106535.94 118642.54 126813.16 136452.77]
+               (unit-totals "quarter"))))
+
+      (testing "annual"
+        (is (= [488444.41] (unit-totals "year")))))))
+
 (deftest day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
