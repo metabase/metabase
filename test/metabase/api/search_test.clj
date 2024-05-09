@@ -133,8 +133,8 @@
         :when (false? (:archived result))]
     (cond-> result
       true (assoc :archived true)
-      (= (:model result) "collection") (assoc :location collection/trash-path
-                                              :effective_location collection/trash-path))))
+      (= (:model result) "collection") (assoc :location (collection/trash-path)
+                                              :effective_location (collection/trash-path)))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -708,7 +708,7 @@
   (assoc m
          :archived true
          :trashed_from_location "/"
-         :location collection/trash-path))
+         :location (collection/trash-path)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
