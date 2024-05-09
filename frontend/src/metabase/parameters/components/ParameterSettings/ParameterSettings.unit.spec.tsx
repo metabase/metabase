@@ -157,6 +157,34 @@ describe("ParameterSidebar", () => {
         expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
       });
     });
+
+    it.each([
+      "string/=",
+      "string/!=",
+      "string/contains",
+      "string/does-not-contain",
+      "string/starts-with",
+      "string/ends-with",
+    ])(
+      "should be able to toggle multiple values settings for `%s` operator",
+      async type => {
+        const { onChangeIsMultiSelect } = setup({
+          parameter: createMockUiParameter({
+            type,
+            sectionId: "string",
+          }),
+        });
+
+        expect(screen.getByText("People can pick")).toBeInTheDocument();
+        expect(
+          screen.getByRole("radio", { name: "Multiple values" }),
+        ).toBeChecked();
+        await userEvent.click(
+          screen.getByRole("radio", { name: "A single value" }),
+        );
+        expect(onChangeIsMultiSelect).toHaveBeenCalledWith(false);
+      },
+    );
   });
 
   describe("date", () => {
@@ -201,6 +229,7 @@ describe("ParameterSidebar", () => {
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
+  const onChangeIsMultiSelect = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -210,7 +239,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeName={onChangeName}
       onChangeType={jest.fn()}
       onChangeDefaultValue={jest.fn()}
-      onChangeIsMultiSelect={jest.fn()}
+      onChangeIsMultiSelect={onChangeIsMultiSelect}
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
@@ -219,5 +248,5 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
     />,
   );
 
-  return { onChangeQueryType, onChangeName };
+  return { onChangeQueryType, onChangeName, onChangeIsMultiSelect };
 };
