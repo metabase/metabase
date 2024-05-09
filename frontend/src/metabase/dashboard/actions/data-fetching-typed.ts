@@ -12,9 +12,7 @@ import {
   expandInlineDashboard,
   getDashboardType,
 } from "metabase/dashboard/utils";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
+import { defer, Deferred } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
@@ -40,10 +38,10 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: string;
-      queryParams: Record<string, string | string[] | null | undefined>;
+      queryParams: Record<string, any>;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
-    { dispatch, getState, rejectWithValue },
+    { getState, dispatch, rejectWithValue },
   ) => {
     if (fetchDashboardCancellation) {
       fetchDashboardCancellation.resolve();
@@ -88,7 +86,7 @@ export const fetchDashboard = createAsyncThunk(
         );
         result = {
           ...result,
-          id: IS_EMBED_PREVIEW ? result.id : dashId,
+          id: dashId,
           dashcards: result.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
@@ -112,7 +110,7 @@ export const fetchDashboard = createAsyncThunk(
         // HACK: this is horrible but the easiest way to get "inline" dashboards up and running
         // pass the dashboard in as dashboardId, and replace the id with [object Object] because
         // that's what it will be when cast to a string
-        // - ignoring type error for now due to above comment.
+        // Adding ESLint ignore because this is a hack and we should fix it.
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         result = expandInlineDashboard(dashId);
@@ -181,8 +179,8 @@ export const fetchDashboard = createAsyncThunk(
         parameterValues: parameterValuesById,
         preserveParameters,
       };
-    } catch (error: any) {
-      if (!error.isCancelled) {
+    } catch (error) {
+      if (!(error as { isCancelled: boolean }).isCancelled) {
         console.error(error);
       }
       return rejectWithValue(error);
