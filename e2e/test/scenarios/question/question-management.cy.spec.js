@@ -154,13 +154,10 @@ describe(
 
                   moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains("37.65");
-
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains(
+                  cy.findAllByRole("status").contains(
                     `Model moved to ${getPersonalCollectionName(USERS[user])}`,
                   );
+                  cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
                     // Highlight "Your personal collection" after move
@@ -452,6 +449,10 @@ function assertOnRequest(xhr_alias) {
     expect(xhr.status).not.to.eq(403);
   });
 
+  cy.findByTestId("query-builder-main")
+    .findByText("Doing science...")
+    .should("not.exist");
+
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
@@ -459,8 +460,10 @@ function assertOnRequest(xhr_alias) {
 
 function turnIntoModel() {
   openQuestionActions();
-  cy.findByText("Turn into a model").click();
-  cy.findByText("Turn this into a model").click();
+  cy.findByRole("dialog").contains("Turn into a model").click();
+  cy.findByRole("dialog").contains("Turn this into a model").click();
+  assertOnRequest("updateQuestion");
+  cy.findAllByRole("status").contains("This is a model now.").should("exist");
 }
 
 function findPickerItem(name) {
