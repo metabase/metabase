@@ -2,6 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.models :refer [Card]]
+   [metabase.models.query-field :as query-field]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -127,3 +132,32 @@
           ;; subset since it also includes the PKs/FKs
           (is (set/subset? #{total-qf tax-qf}
                            (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
+
+(deftest parse-mbql-test
+  (testing "Parsing MBQL query returns correct used fields"
+    (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
+                                             {:aggregation [[:distinct $name]
+                                                            [:distinct $price]]
+                                              :limit       5})}
+                   Card c2 {:dataset_query {:query    {:source-table (str "card__" (:id c1))}
+                                            :database (:id (mt/db))
+                                            :type     :query}}
+                   Card c3 {:dataset_query (mt/mbql-query checkins
+                                             {:joins [{:source-table (str "card__" (:id c2))
+                                                       :alias        "Venues"
+                                                       :condition    [:= $checkins.venue_id $venues.id]}]})}]
+      (mt/$ids
+        (is (= {:direct #{%venues.name %venues.price}}
+               (#'query-field/query-field-ids (:dataset_query c1))))
+        (is (= {:direct nil}
+               (#'query-field/query-field-ids (:dataset_query c2))))
+        (is (= {:direct #{%venues.id %checkins.venue_id}}
+               (#'query-field/query-field-ids (:dataset_query c3)))))))
+  (testing "Parsing pMBQL query returns correct used fields"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          venues            (lib.metadata/table metadata-provider (mt/id :venues))
+          venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
+          mlv2-query        (-> (lib/query metadata-provider venues)
+                                (lib/aggregate (lib/distinct venues-name)))]
+      (is (= {:direct #{(mt/id :venues :name)}}
+               (#'query-field/query-field-ids mlv2-query))))))

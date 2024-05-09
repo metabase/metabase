@@ -6,7 +6,7 @@ import type { QuestionUrlBuilderParams } from "./questions";
 import { question } from "./questions";
 import { appendSlug } from "./utils";
 
-type CardOrSearchResult = Partial<Card> & {
+export type CardOrSearchResult = Partial<Card> & {
   id?: number | string;
   card_id?: number | string;
   name?: string;

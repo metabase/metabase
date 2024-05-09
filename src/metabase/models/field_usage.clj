@@ -56,8 +56,8 @@
         :breakout_binning_num_bins  (:num-bins binning-option)}))))
 
 (defn- expression->field-usage
-  [expresison-clause]
-  (when-let [field-ids (seq (lib.util/referenced-field-ids expresison-clause))]
+  [expression-clause]
+  (when-let [field-ids (seq (lib.util/referenced-field-ids expression-clause))]
     (for [field-id field-ids]
       {:field_id field-id
        :used_in  :expression})))
@@ -66,7 +66,7 @@
 
 (defn- join->field-usages
   [query join]
-  (let [join-query (fetch-source-query/resolve-source-cards (assoc query :stages (get join :stages)))]
+  (let [join-query (fetch-source-query/resolve-source-cards (assoc query :stages (:stages join)))]
     ;; treat the source query as a :mbql/query
     (pmbql->field-usages join-query)))
 

@@ -49,10 +49,15 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(<Route path="/" component={EmbedHomepage} />, {
-    storeInitialState: state,
-    withRouter: true,
-  });
+  renderWithProviders(
+    <Route path="/" component={EmbedHomepage} />,
+
+    {
+      storeInitialState: state,
+      withRouter: true,
+      withUndos: true,
+    },
+  );
 }
 
 export const getLastHomepageSettingSettingCall = () =>

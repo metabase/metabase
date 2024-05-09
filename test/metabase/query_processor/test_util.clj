@@ -16,11 +16,11 @@
    [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.add-implicit-joins
-    :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -38,9 +38,9 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def ^:private abnormal-drivers
+(def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :googleanalytics})
+  #{:druid :druid-jdbc :googleanalytics})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -369,6 +369,12 @@
   [results]
   {:rows (rows results), :cols (cols results)})
 
+(defn formatted-rows+column-names
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing. Format
+   the rows using `fns`."
+  [fns results]
+  {:rows (formatted-rows fns results), :columns (map :name (cols results))})
+
 (defn rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
   [results]
@@ -378,11 +384,11 @@
   "Returns true if `driver` is affected by the bug originally observed in
   Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
   applied correctly, but the date operations that we use aren't using that timezone. This function is used to
-  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
-  also have this issue."
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift also has this
+  issue."
   [driver]
   ;; TIMEZONE FIXME — remove this and fix the drivers
-  (contains? #{:snowflake :oracle :redshift} driver))
+  (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
   "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
@@ -431,12 +437,12 @@
   when [[metabase.config/is-test?]] is true."
   false)
 
-(defn mock-fks-metadata-provider
+(defn mock-fks-application-database-metadata-provider
   "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
   database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
   formal FK constraints."
   ([]
-   (mock-fks-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -454,8 +460,8 @@
   (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true
             *enable-fk-support-for-disabled-drivers-in-tests*       true]
     (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                       (mock-fks-metadata-provider (qp.store/metadata-provider))
-                                       (mock-fks-metadata-provider))
+                                       (mock-fks-application-database-metadata-provider (qp.store/metadata-provider))
+                                       (mock-fks-application-database-metadata-provider))
       (thunk))))
 
 (defmacro with-mock-fks-for-drivers-without-fk-constraints
@@ -485,7 +491,7 @@
   {:dataset_query   query
    :result_metadata (actual-query-results query)})
 
-(mu/defn metadata-provider-with-cards-for-queries :- lib.metadata/MetadataProvider
+(mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
@@ -493,11 +499,11 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries))
 
-  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
-(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
+(mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
   "Like [[metadata-provider-with-cards-for-queries]], but includes the results
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
@@ -507,7 +513,7 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries))
 
-  ([parent-metadata-provider :- lib.metadata/MetadataProvider
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (transduce
     (map-indexed (fn [i {database-id :database, :as query}]

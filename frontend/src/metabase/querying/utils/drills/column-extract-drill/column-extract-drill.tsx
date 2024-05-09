@@ -1,35 +1,53 @@
+import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
   Drill,
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
+  query,
+  stageIndex,
+  question,
   drill,
   drillInfo,
   clicked,
   applyDrill,
 }) => {
   const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
+    const extractions = Lib.extractionsForDrill(drill);
+
     const actions: RegularClickAction[] = drillInfo.extractions.map(
-      extraction => ({
+      (extraction, index) => ({
         name: `extract.${extraction.displayName}`,
         title: extraction.displayName,
         subTitle: getExample(extraction),
         section: "extract-popover",
         buttonType: "horizontal",
         question: () => applyDrill(drill, extraction.tag),
-        extra: () => ({ settingsSyncOptions: { column: clicked.column } }),
+        extra: () => ({
+          extraction: extractions[index],
+          settingsSyncOptions: { column: clicked.column },
+        }),
       }),
     );
+
+    function handleClick(action: RegularClickAction) {
+      const { extraction } = action.extra?.() as {
+        extraction: Lib.ColumnExtraction;
+      };
+
+      trackColumnExtractViaHeader(query, stageIndex, extraction, question);
+      onClick(action);
+    }
 
     return (
       <ClickActionsView
         clickActions={actions}
         close={onClose}
-        onClick={onClick}
+        onClick={handleClick}
       />
     );
   };
@@ -39,7 +57,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
       name: "extract",
       title: drillInfo.displayName,
       section: "extract",
-      icon: "extract",
+      icon: "arrow_split",
       buttonType: "horizontal",
       popover: DrillPopover,
     },
@@ -65,9 +83,9 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
     case "year":
       return "2023, 2024";
     case "domain":
-      return "example.com, online.com";
-    case "host":
       return "example, online";
+    case "host":
+      return "example.com, online.com";
     case "subdomain":
       return "www, maps";
   }

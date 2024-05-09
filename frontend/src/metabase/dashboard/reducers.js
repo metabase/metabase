@@ -502,7 +502,7 @@ const missingActionParameters = handleActions(
   INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
-export const autoApplyFilters = handleActions(
+const autoApplyFilters = handleActions(
   {
     [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
       next: (state, { payload: { toastId, dashboardId } }) => ({

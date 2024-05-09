@@ -14,6 +14,7 @@
   :redundant-fn-wrapper         {:level :warning}
   :refer-all                    {:level :warning, :exclude [clojure.test]}
   :single-key-in                {:level :warning}
+  :unsorted-required-namespaces {:level :warning}
   :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
@@ -22,6 +23,7 @@
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
   :metabase/mbql-query-first-arg                                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/require-shape-checker                                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/validate-logging                                           {:level :warning}
@@ -122,7 +124,138 @@
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces {:level :warning}
+  ;; A "module" is any `metabase.x` namespace in `src`.
+  :metabase/ns-module-checker
+  {:level :warning
+
+   ;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
+   ;;
+   ;; 1. Special sentinel value `:any` means means this module does not (yet) have external public-facing API
+   ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
+   ;;    you should go create one.
+   ;;
+   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed ;; to use namespaces from
+   ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
+   ;;    better than `:any`.
+   ;;
+   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace that matches the name of the
+   ;;    module itself, e.g. the module namespace for `metabase.setup` would be `metabase.setup`.
+   ;;
+   ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
+   :api-namespaces
+   {metabase.actions               :any
+    metabase.analytics             :any
+    metabase.analyze               :any
+    metabase.api                   :any
+    metabase.async                 :any
+    metabase.automagic-dashboards  :any
+    metabase.bootstrap             #{metabase.bootstrap}
+    metabase.cmd                   :any
+    metabase.config                #{metabase.config}
+    metabase.core                  :any
+    metabase.db                    #{metabase.db
+                                     metabase.db.metadata-queries ; FIXME, this should probably be separate from metabase.db
+                                     metabase.db.query            ; FIXME, this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.setup}           ; FIXME, these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
+    metabase.domain-entities       :any
+    metabase.driver                :any
+    metabase.email                 :any
+    metabase.embed                 :any
+    metabase.events                :any
+    metabase.formatter             :any
+    metabase.integrations          :any
+    metabase.legacy-mbql           :any
+    metabase.lib                   :any
+    metabase.logger                #{metabase.logger}
+    metabase.metabot               :any
+    metabase.models                :any
+    metabase.moderation            #{metabase.moderation}
+    metabase.native-query-analyzer :any
+    metabase.permissions           :any
+    metabase.plugins               :any
+    metabase.public-settings       :any
+    metabase.pulse                 :any
+    metabase.query-processor       :any
+    metabase.related               #{metabase.related}
+    metabase.sample-data           #{metabase.sample-data}
+    metabase.search                :any
+    metabase.server                :any
+    metabase.setup                 #{metabase.setup}
+    metabase.shared                :any
+    metabase.sync                  :any
+    metabase.task                  :any
+    metabase.transforms            :any
+    metabase.troubleshooting       #{metabase.troubleshooting}
+    metabase.types                 #{metabase.types}
+    metabase.upload                :any
+    metabase.util                  :any}
+
+   ;; Map of module => other modules you're allowed to use there. You have two options here:
+   ;;
+   ;; 1. `:any` means namespaces in this module are allowed to use any other module -- allowed modules are not
+   ;;    enforced for this module. Module API namespaces for modules that have them defined are still enforced. For
+   ;;    ones that are `nil`, please go in and add a list of allowed modules. `:any` is mostly meant a temporary
+   ;;    placeholder until we can fill these all out, so feel free to fix these.
+   ;;
+   ;; 2. A set of module symbols. This is the list of modules that are allowed to be referenced. An empty set means no
+   ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
+   :allowed-modules
+   {metabase.actions               :any
+    metabase.analytics             :any
+    metabase.analyze               :any
+    metabase.api                   :any
+    metabase.async                 :any
+    metabase.automagic-dashboards  :any
+    metabase.bootstrap             #{}
+    metabase.cmd                   :any
+    metabase.config                #{metabase.plugins}
+    metabase.core                  :any
+    metabase.db                    :any
+    metabase.domain-entities       :any
+    metabase.driver                :any
+    metabase.email                 :any
+    metabase.embed                 :any
+    metabase.events                :any
+    metabase.formatter             :any
+    metabase.integrations          :any
+    metabase.legacy-mbql           :any
+    metabase.lib                   :any
+    metabase.logger                #{metabase.config
+                                     metabase.plugins}
+    metabase.metabot               :any
+    metabase.models                :any
+    metabase.moderation            :any
+    metabase.native-query-analyzer :any
+    metabase.permissions           :any
+    metabase.plugins               :any
+    metabase.public-settings       :any
+    metabase.pulse                 :any
+    metabase.query-processor       :any
+    metabase.related               :any
+    metabase.sample-data           :any
+    metabase.search                :any
+    metabase.server                :any
+    metabase.setup                 :any
+    metabase.shared                :any
+    metabase.sync                  :any
+    metabase.task                  :any
+    metabase.transforms            :any
+    metabase.troubleshooting       :any
+    metabase.types                 #{metabase.util}
+    metabase.upload                :any
+    metabase.util                  :any}
+
+   ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
+   ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
+   ;;
+   ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
+   ;; together, e.g. `metabase.lib.metadata.jvm`.
+   :ignored-namespace-patterns
+   #{"-test$"                     ; anything ending in `-test`
+     "test[-.]util"               ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                ; anything that contains `test.impl`
+     "^metabase\\.test"           ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -491,7 +624,8 @@
 
  :hooks
  {:analyze-call
-  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
+   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest

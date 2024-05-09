@@ -1,5 +1,12 @@
-import type { ComponentType, HTMLAttributes, ReactNode } from "react";
+import type {
+  ComponentType,
+  Dispatch,
+  HTMLAttributes,
+  ReactNode,
+  SetStateAction,
+} from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -13,10 +20,11 @@ import {
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
+  ActualModelFilters,
   AvailableModelFilters,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
-import type { IconData, ObjectWithModel } from "metabase/lib/icon";
+import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -235,8 +243,6 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
-type GetIconType = ((item: ObjectWithModel) => IconData) | null;
-
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -259,7 +265,7 @@ export const PLUGIN_COLLECTIONS = {
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
-  getIcon: null as GetIconType,
+  getIcon: getIconBase,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
@@ -426,6 +432,11 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
+  useModelFilterSettings: () =>
+    [{}, _.noop] as [
+      ActualModelFilters,
+      Dispatch<SetStateAction<ActualModelFilters>>,
+    ],
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {

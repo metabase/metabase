@@ -94,22 +94,6 @@ export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
   });
 }
 
-export function isDashboardParameterWithoutMapping(
-  parameter: Parameter,
-  dashboard: Dashboard,
-) {
-  if (!dashboard || !dashboard.parameters) {
-    return false;
-  }
-
-  const parameterExistsOnDashboard = dashboard.parameters.some(
-    dashParam => dashParam.id === parameter.id,
-  );
-  const parameterHasMapping = hasMapping(parameter, dashboard);
-
-  return parameterExistsOnDashboard && !parameterHasMapping;
-}
-
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
   return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;

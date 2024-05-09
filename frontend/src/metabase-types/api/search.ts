@@ -1,6 +1,6 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardId } from "./card";
+import type { CardDisplayType, CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
@@ -23,7 +23,6 @@ export const SEARCH_MODELS = [
   ...ENABLED_SEARCH_MODELS,
   "segment",
   "metric",
-  "snippet",
 ] as const;
 
 export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
@@ -72,7 +71,8 @@ export type SearchResponse<
 export type CollectionEssentials = Pick<
   Collection,
   "id" | "name" | "authority_level" | "type"
->;
+> &
+  Partial<Pick<Collection, "effective_ancestors">>;
 
 export type SearchResultId =
   | CollectionId
@@ -96,6 +96,7 @@ export interface SearchResult<
   bookmark: boolean | null;
   database_id: DatabaseId;
   database_name: string | null;
+  display: CardDisplayType | null;
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
@@ -132,6 +133,7 @@ export type SearchRequest = {
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
   verified?: boolean | null;
+  model_ancestors?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

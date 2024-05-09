@@ -34,6 +34,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -90,10 +91,11 @@
 
 (defn- normalize-ref-opts [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
-   (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
+    (cond-> opts
+      (:base-type opts)      (update :base-type keyword)
+      (:effective-type opts) (update :effective-type keyword)
+      (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))
 
@@ -207,7 +209,8 @@
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
-  [:offset (or opts {}) (normalize-tokens expr :ignore-path) n])
+  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+    [:offset opts (normalize-tokens expr :ignore-path) n]))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
@@ -577,13 +580,20 @@
   (into [filter-name (canonicalize-implicit-field-id first-arg)]
         (map canonicalize-mbql-clause other-args)))
 
-(doseq [clause-name [:starts-with :ends-with :contains :does-not-contain
-                     := :!= :< :<= :> :>=
+(doseq [clause-name [:= :!= :< :<= :> :>=
                      :is-empty :not-empty :is-null :not-null
                      :between]]
   (defmethod canonicalize-mbql-clause clause-name
     [clause]
     (canonicalize-simple-filter-clause clause)))
+
+;; These clauses have pMBQL-style options in index 1, when they have multiple arguments.
+(doseq [tag [:starts-with :ends-with :contains :does-not-contain]]
+  (defmethod canonicalize-mbql-clause tag
+    [[_tag opts & args :as clause]]
+    (if (> (count args) 2)
+      (into [tag (or opts {})] (map canonicalize-mbql-clause args))
+      (canonicalize-simple-filter-clause clause))))
 
 ;;; aggregations/expression subclauses
 

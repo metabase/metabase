@@ -309,6 +309,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import split_component from "./split.svg?component";
+import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
 import sql_source from "./sql.svg?source";
 import star_component from "./star.svg?component";
@@ -906,6 +908,10 @@ export const Icons = {
   share: {
     component: share_component,
     source: share_source,
+  },
+  split: {
+    component: split_component,
+    source: split_source,
   },
   sql: {
     component: sql_component,

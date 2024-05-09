@@ -272,8 +272,7 @@ describe("scenarios > setup", () => {
       cy.findAllByRole("link").should("contain", dbName);
     });
 
-    cy.visit("/browse");
-    cy.findByRole("tab", { name: "Databases" }).click();
+    cy.visit("/browse/databases");
     cy.findByTestId("database-browser").findByText(dbName);
   });
 

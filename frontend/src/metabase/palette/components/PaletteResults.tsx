@@ -1,46 +1,39 @@
-import { useKBar, useMatches, KBarResults } from "kbar";
-import { useState, useMemo } from "react";
-import { useDebounce, useKeyPressEvent } from "react-use";
+import { useKBar, useMatches } from "kbar";
+import { useMemo, useEffect } from "react";
+import { useKeyPressEvent } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
-import type { PaletteAction } from "../types";
-import { processResults, findClosesestActionIndex } from "../utils";
+import type { PaletteActionImpl } from "../types";
+import { processResults, findClosestActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
+import { PaletteResultList } from "./PaletteResultsList";
 
 const PAGE_SIZE = 4;
 
 export const PaletteResults = () => {
   // Used for finding actions within the list
-  const { searchQuery, query } = useKBar(state => ({
-    searchQuery: state.searchQuery,
-  }));
-  const trimmedQuery = searchQuery.trim();
+  const { query } = useKBar();
 
-  // Used for finding objects across the Metabase instance
-  const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
-
-  useDebounce(
-    () => {
-      setDebouncedSearchText(trimmedQuery);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
-  );
-
-  useCommandPalette({
-    query: trimmedQuery,
-    debouncedSearchText,
-  });
+  useCommandPalette();
 
   const { results } = useMatches();
 
-  const processedResults = useMemo(() => processResults(results), [results]);
+  const processedResults = useMemo(
+    () => processResults(results as (PaletteActionImpl | string)[]),
+    [results],
+  );
+
+  useEffect(() => {
+    if (processedResults[0] === t`Search results`) {
+      query.setActiveIndex(2);
+    }
+  }, [processedResults, query]);
 
   useKeyPressEvent("End", () => {
     const lastIndex = processedResults.length - 1;
@@ -53,26 +46,26 @@ export const PaletteResults = () => {
 
   useKeyPressEvent("PageDown", () => {
     query.setActiveIndex(i =>
-      findClosesestActionIndex(processedResults, i, PAGE_SIZE),
+      findClosestActionIndex(processedResults, i, PAGE_SIZE),
     );
   });
 
   useKeyPressEvent("PageUp", () => {
     query.setActiveIndex(i =>
-      findClosesestActionIndex(processedResults, i, -PAGE_SIZE),
+      findClosestActionIndex(processedResults, i, -PAGE_SIZE),
     );
   });
 
   return (
     <Flex align="stretch" direction="column" p="0.75rem 0">
-      <KBarResults
+      <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
         onRender={({
           item,
           active,
         }: {
-          item: string | PaletteAction;
+          item: string | PaletteActionImpl;
           active: boolean;
         }) => {
           const isFirst = processedResults[0] === item;
@@ -98,7 +91,11 @@ export const PaletteResults = () => {
                   {item}
                 </Box>
               ) : (
-                <PaletteResultItem item={item} active={active} />
+                <PaletteResultItem
+                  item={item}
+                  active={active}
+                  togglePalette={query.toggle}
+                />
               )}
             </Flex>
           );
