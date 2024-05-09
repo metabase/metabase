@@ -147,10 +147,11 @@ export function SmartScalar({
 function ScalarPeriod({ period, onClick }) {
   return (
     <ScalarTitleContainer data-testid="scalar-period" lines={1}>
-      <Title
+      <Text
+        component="h3"
         ta="center"
         style={{ overflow: "hidden", cursor: onClick && "pointer" }}
-        order={3}
+        fw={700}
         size="0.875rem"
         className={cx(
           DashboardS.fullscreenNormalText,
@@ -162,7 +163,7 @@ function ScalarPeriod({ period, onClick }) {
         <Ellipsified tooltip={period} lines={1} placement="bottom">
           {period}
         </Ellipsified>
-      </Title>
+      </Text>
     </ScalarTitleContainer>
   );
 }
