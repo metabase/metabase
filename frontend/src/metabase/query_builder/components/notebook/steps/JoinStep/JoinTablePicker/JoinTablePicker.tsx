@@ -42,6 +42,7 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const queryRef = useLatest(query);
+  const onChangeRef = useLatest(onChange);
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -67,7 +68,7 @@ export function JoinTablePicker({
     databaseId: DatabaseId,
   ) => {
     await dispatch(loadMetadataForTable(databaseId, tableId));
-    onChange?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
+    onChangeRef.current?.(Lib.tableOrCardMetadata(queryRef.current, tableId));
   };
 
   return (

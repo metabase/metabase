@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardCreateEndpoint,
-  setupCardQueryMetadataEndpoint,
+  setupCardEndpoints,
 } from "__support__/server-mocks";
 import {
   screen,
@@ -76,7 +76,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/model/new",
       });
       setupCardCreateEndpoint();
-      setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
+      setupCardEndpoints(TEST_NATIVE_CARD);
 
       await startNewNotebookModel();
       await waitForSaveToBeEnabled();

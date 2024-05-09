@@ -846,7 +846,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should be possible to sort by metric (metabase#8283)", () => {
+  it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
     cy.createQuestion(
       {
         name: "Revenue",
