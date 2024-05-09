@@ -101,6 +101,7 @@ export function JoinDraft({
           />
           <JoinTablePicker
             query={query}
+            stageIndex={stageIndex}
             table={rhsTable}
             tableName={rhsTableName}
             color={color}

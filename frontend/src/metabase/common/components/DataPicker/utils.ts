@@ -1,5 +1,7 @@
 import { humanize, titleize } from "metabase/lib/formatting";
+import * as Lib from "metabase-lib";
 import TableEntity from "metabase-lib/v1/metadata/Table";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
   Database,
@@ -53,6 +55,35 @@ export const dataPickerValueFromTable = (
     model: "table",
     name: table.display_name,
     schema: table.schema,
+  };
+};
+
+export const dataPickerValueFromJoinable = (
+  query: Lib.Query,
+  stageIndex: number,
+  joinable: Lib.Joinable,
+): DataPickerValue | undefined => {
+  const pickerInfo = Lib.pickerInfo(query, joinable);
+  const displayInfo = Lib.displayInfo(query, stageIndex, joinable);
+
+  if (!pickerInfo) {
+    return undefined;
+  }
+
+  if (typeof pickerInfo.cardId === "number") {
+    return {
+      id: pickerInfo.cardId,
+      name: displayInfo.displayName,
+      model: pickerInfo.isModel ? "dataset" : "card",
+    };
+  }
+
+  return {
+    id: pickerInfo.tableId,
+    name: displayInfo.displayName,
+    model: "table",
+    db_id: pickerInfo.databaseId,
+    schema: getSchemaName(displayInfo.schema),
   };
 };
 

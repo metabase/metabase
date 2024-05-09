@@ -3,11 +3,9 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import {
   DataPickerModal,
-  dataPickerValueFromCard,
-  dataPickerValueFromTable,
+  dataPickerValueFromJoinable,
 } from "metabase/common/components/DataPicker";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
@@ -24,6 +22,7 @@ import {
 
 interface JoinTablePickerProps {
   query: Lib.Query;
+  stageIndex: number;
   table: Lib.Joinable | undefined;
   tableName: string | undefined;
   color: string;
@@ -34,6 +33,7 @@ interface JoinTablePickerProps {
 
 export function JoinTablePicker({
   query,
+  stageIndex,
   table: joinable,
   tableName,
   color,
@@ -48,20 +48,6 @@ export function JoinTablePicker({
   const [isDataPickerOpen, setIsDataPickerOpen] = useState(!joinable);
   const databaseId = useMemo(() => Lib.databaseID(query), [query]);
 
-  const pickerInfo = useMemo(() => {
-    return joinable ? Lib.pickerInfo(query, joinable) : null;
-  }, [query, joinable]);
-
-  const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
-  const sourceCardId = pickerInfo?.cardId;
-  const { data: sourceCard } = useGetCardQuery(
-    sourceCardId ? { id: sourceCardId } : skipToken,
-  );
-
-  const { data: table } = useGetTableQuery(
-    tableId ? { id: tableId } : skipToken,
-  );
-
   const isDisabled = isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
@@ -71,16 +57,12 @@ export function JoinTablePicker({
   };
 
   const value = useMemo(() => {
-    if (sourceCardId && sourceCard) {
-      return dataPickerValueFromCard(sourceCard);
+    if (!joinable) {
+      return undefined;
     }
 
-    if (table && table.id === tableId) {
-      return dataPickerValueFromTable(table);
-    }
-
-    return undefined;
-  }, [sourceCard, sourceCardId, table, tableId]);
+    return dataPickerValueFromJoinable(query, stageIndex, joinable);
+  }, [query, stageIndex, joinable]);
 
   return (
     <NotebookCellItem

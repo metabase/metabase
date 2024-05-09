@@ -6,6 +6,7 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
 } from "metabase-types/api";
 
 import type {
@@ -134,6 +135,7 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
