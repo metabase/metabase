@@ -92,15 +92,13 @@ describe(
 
                   moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains("37.65");
 
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.contains(
+                  cy.findAllByRole("status").contains(
                     `Question moved to ${getPersonalCollectionName(
                       USERS[user],
                     )}`,
                   );
+                  cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
                     // Highlight "Your personal collection" after move
