@@ -10,7 +10,6 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.config :refer [trash-collection-id]]
    [metabase.db :as mdb]
    [metabase.events :as events]
    [metabase.models.collection.root :as collection.root]
@@ -47,40 +46,36 @@
   "Maximum number of characters allowed in a Collection `slug`."
   510)
 
-(defn- trash-collection*
-  "Gets the Trash collection from the database."
-  []
-  (if-let [trash (t2/select-one :model/Collection :id trash-collection-id)]
-    trash
-    (do (t2/insert! :model/Collection {:id trash-collection-id
-                                       :name "Trash"
-                                       :type "trash"})
-        (t2/select-one :model/Collection :id trash-collection-id))))
+(defn- trash-collection* []
+  (t2/select-one :model/Collection :type "trash"))
 
-(def trash-collection
-  "Gets the Trash collection from the database."
-  (memoize trash-collection*))
+(def ^{:arglists '([])} trash-collection
+  "Memoized copy of the Trash collection from the DB."
+  (mdb/memoize-for-application-db
+   (fn []
+     (u/prog1 (trash-collection*)
+       (when-not <>
+         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
-(def trash-path
+(defn trash-collection-id
+  "The ID representing the Trash collection."
+  [] (u/the-id (trash-collection)))
+
+(defn trash-path
   "The fixed location path for the trash collection."
-  (format "/%s/" trash-collection-id))
+  []
+  (format "/%s/" (trash-collection-id)))
 
 (defn is-trash?
   "Is this the trash collection?"
   [collection]
   (and (not (collection.root/is-root-collection? collection))
-       (= (u/the-id collection) trash-collection-id)))
+       (= (u/the-id collection) (trash-collection-id))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
   [collection]
-  (str/starts-with? (:location collection) trash-path))
-
-(defn ensure-trash-collection-created!
-  "Creates the trash collection if it does not already exist."
-  []
-  ;; just call `trash-collection`
-  (trash-collection))
+  (str/starts-with? (:location collection) (trash-path)))
 
 (def Collection
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
@@ -460,6 +455,16 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
+(mu/defn ^:private trashed-from-parent-id* :- [:maybe ms/PositiveInt]
+  [{:keys [trashed_from_location]} :- CollectionWithLocationOrRoot]
+  (some-> trashed_from_location location-path->parent-id))
+
+(methodical/defmethod t2/simple-hydrate [:default :trashed_from_parent_id]
+  "Get the immediate parent `collection` id this collection was *trashed* from, if set."
+  [_model k collection]
+  (cond-> collection
+    (:archived collection) (assoc k (trashed-from-parent-id* collection))))
+
 (methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
   [_model k collection]
@@ -683,7 +688,6 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
-  (ensure-trash-collection-created!)
   (let [namespaced?   (some? (:namespace collection))
         archived? (:archived updates)
         new-parent-id (cond
@@ -692,12 +696,12 @@
                                      (:location collection))
 
                         ;; move archived things to the trash, no matter what.
-                        archived? trash-collection-id
+                        archived? (trash-collection-id)
 
                         (contains? updates :parent_id)
                         (:parent_id updates)
 
-                        (and (= (:location collection) trash-path)
+                        (and (= (:location collection) (trash-path))
                              (:trashed_from_location collection))
                         (location-path->parent-id
                          (:trashed_from_location collection))
@@ -745,7 +749,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
-        will-be-trashed? (str/starts-with? new-location trash-path)]
+        will-be-trashed? (str/starts-with? new-location (trash-path))]
     (when will-be-trashed?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection :new-location new-location})))
@@ -832,7 +836,8 @@
 
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
-  (when-not (is-personal-collection-or-descendant-of-one? collection)
+  (when-not (or (is-personal-collection-or-descendant-of-one? collection)
+                (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
@@ -979,6 +984,9 @@
 
 (t2/define-before-delete :model/Collection
   [collection]
+  ;; This should never happen, but just to make sure...
+  (when (= (u/the-id collection) (trash-collection-id))
+    (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   ;; Delete all the Children of this Collection
   (t2/delete! Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
@@ -1021,11 +1029,16 @@
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
   "instance-analytics")
 
+(def trash-collection-type
+  "The value of the `:type` field for the Trash collection that holds archived items."
+  "trash")
+
 (defmethod mi/exclude-internal-content-hsql :model/Collection
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
      [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+     [:not= (maybe-alias :type) [:inline trash-collection-type]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
@@ -1052,57 +1065,74 @@
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
-  (let [fetch-collection (fn [id]
-                           (t2/select-one Collection :id id))
-        parent           (some-> coll
-                                 :id
-                                 fetch-collection
-                                 (t2/hydrate :parent_id)
-                                 :parent_id
-                                 fetch-collection)
-        parent-id        (when parent
-                           (or (:entity_id parent) (serdes/identity-hash parent)))
-        owner-email      (when (:personal_owner_id coll)
-                           (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
+  (let [fetch-collection       (fn [id]
+                                 (t2/select-one Collection :id id))
+        {:keys [trashed_from_parent_id
+                parent_id]}    (some-> coll :id fetch-collection (t2/hydrate :parent_id :trashed_from_parent_id))
+        parent                 (some-> parent_id fetch-collection)
+        trashed-from-parent    (some-> trashed_from_parent_id fetch-collection)
+        parent-id              (when parent
+                                 (or (:entity_id parent) (serdes/identity-hash parent)))
+        trashed-from-parent-id (when trashed-from-parent
+                                 (or (:entity_id trashed-from-parent) (serdes/identity-hash trashed-from-parent)))
+        owner-email            (when (:personal_owner_id coll)
+                                 (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
     (-> (serdes/extract-one-basics "Collection" coll)
         (dissoc :location)
-        (assoc :parent_id parent-id :personal_owner_id owner-email)
+        (assoc :parent_id parent-id
+               :personal_owner_id owner-email
+               :trashed_from_parent_id trashed-from-parent-id)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
-  (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
-                       (str location id "/"))
-                     "/")]
+(defmethod serdes/load-xform "Collection" [{:keys [parent_id trashed_from_parent_id archived] :as contents}]
+  (let [loc (fn [col-id]
+              (if col-id
+                (let [{:keys [id location]} (serdes/lookup-by-id Collection col-id)]
+                  (str location id "/"))
+                "/"))]
     (-> contents
         (dissoc :parent_id)
-        (assoc :location loc)
+        (dissoc :trashed_from_parent_id)
+        (assoc :location (loc parent_id)
+               :trashed_from_location (when archived (loc trashed_from_parent_id)))
         (update :personal_owner_id serdes/*import-user*)
         serdes/load-xform-basics)))
 
 (defmethod serdes/dependencies "Collection"
-  [{:keys [parent_id]}]
-  (if parent_id
-    [[{:model "Collection" :id parent_id}]]
-    []))
+  [{:keys [parent_id trashed_from_parent_id]}]
+  (set/union (when parent_id
+                   #{[{:model "Collection" :id parent_id}]})
+             (when trashed_from_parent_id
+               #{[{:model "Collection" :id trashed_from_parent_id}]})))
 
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
 (defmethod serdes/ascendants "Collection" [_ id]
-  (let [location (t2/select-one-fn :location Collection :id id)]
+  (let [{:keys [location trashed_from_location]} (t2/select-one :model/Collection :id id)]
     ;; it would work returning just one, but why not return all if it's cheap
-    (set (map vector (repeat "Collection") (location-path->ids location)))))
+    (set (concat (map vector (repeat "Collection") (location-path->ids location))
+                 (when trashed_from_location
+                   (map vector (repeat "Collection") (location-path->ids trashed_from_location)))))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
-  (let [location    (t2/select-one-fn :location Collection :id id)
-        child-colls (set (for [child-id (t2/select-pks-set Collection {:where [:like :location (str location id "/%")]})]
-                           ["Collection" child-id]))
-        dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
-                           ["Dashboard" dash-id]))
-        cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
-                           ["Card" card-id]))]
-    (set/union child-colls dashboards cards)))
+  ;; the Trash collection has no descendants, for our purposes. This allows us to only include trashed items that were
+  ;; explicitly included in the export.
+  (when-not (is-trash? (t2/select-one :model/Collection :id id))
+    (let [location    (t2/select-one-fn :location Collection :id id)
+          child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:or
+                                                                                        [:like :location (str location id "/%")]
+                                                                                        [:like :trashed_from_location (str location id "/%")]]})]
+                             ["Collection" child-id]))
+          dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:or
+                                                                                      [:= :collection_id id]
+                                                                                      [:= :trashed_from_collection_id id]]})]
+                             ["Dashboard" dash-id]))
+          cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:or
+                                                                                 [:= :collection_id id]
+                                                                                 [:= :trashed_from_collection_id id]]})]
+                             ["Card" card-id]))]
+      (set/union child-colls dashboards cards))))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
