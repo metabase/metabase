@@ -60,7 +60,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
     <Table>
       <colgroup>
         {/* <col> for Name column */}
-        <TableColumn style={{ width: "10rem" }} />
+        <TableColumn style={{ width: "200px" }} />
 
         {/* <col> for Description column */}
         <TableColumn {...descriptionProps} />
