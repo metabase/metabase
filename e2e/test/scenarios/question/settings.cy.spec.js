@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  browse,
+  browseData,
   restore,
   openOrdersTable,
   openNavigationSidebar,
@@ -10,6 +10,7 @@ import {
   modal,
   sidebar,
   moveDnDKitElement,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -442,21 +443,18 @@ describe("scenarios > question > settings", () => {
       // create a question and add it to a modal
       openOrdersTable();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Save").click();
-      cy.findByTestId("save-question-modal").contains("button", "Save").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Yes please!").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Orders in a dashboard").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Cancel").click();
-      modal().button("Discard changes").click();
+      cy.findByTestId("qb-header").contains("Save").click();
+      cy.findByTestId("save-question-modal").findByText("Save").click();
+      modal().findByText("Yes please!").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Orders in a dashboard").click();
+        cy.findByText("Cancel").click();
+      });
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
-      browse().click();
-      cy.findByRole("tab", { name: "Databases" }).click();
+      browseData().click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -465,8 +463,7 @@ describe("scenarios > question > settings", () => {
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Add this question to a dashboard").should("not.exist");
+      modal().should("not.exist");
     });
   });
 });

@@ -48,8 +48,15 @@ export const dashboardApi = Api.injectEndpoints({
         url: "/api/dashboard",
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("dashboard")]),
+      invalidatesTags: (newDashboard, error) =>
+        newDashboard
+          ? [
+              ...invalidateTags(error, [listTag("dashboard")]),
+              ...invalidateTags(error, [
+                idTag("collection", newDashboard.collection_id ?? "root"),
+              ]),
+            ]
+          : [],
     }),
     updateDashboard: builder.mutation<Dashboard, UpdateDashboardRequest>({
       query: ({ id, ...body }) => ({

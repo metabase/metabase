@@ -466,6 +466,10 @@
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
 
+(define-premium-feature enable-upload-management?
+  "Should we allow admins to clean up tables created from uploads?"
+  :upload-management)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean
