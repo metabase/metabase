@@ -85,11 +85,7 @@
               :visualization_settings "{}"
               :parameters "[3]"
               :created_at #t "2024-05-02T19:26:15Z"}
-        rewritten-dataset-query {:type "query"
-                                 :database 1
-                                 :query {:source-table "card__11"
-                                         :aggregation [["count"] ["metric" 11]]
-                                         :filter ["<" ["field" 33 nil] 100]}}
+        rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)
         rewritten-card {:description "query description"
                         :archived true
                         :table_id 5
@@ -151,7 +147,7 @@
         dataset-query {:type "query"
                        :database 1
                        :query {:source-table 5
-                               :aggregation [["metric" 2] ["count"] ["metric" 1]]
+                               :aggregation [["/" ["metric" 2] ["metric" 1]] ["count"]]
                                :filter ["<" ["field" 33 nil] 100]}}
         card {:description "query description"
               :archived true
@@ -167,11 +163,9 @@
               :visualization_settings "{}"
               :parameters "[3]"
               :created_at #t "2024-05-02T19:26:15Z"}
-        rewritten-dataset-query {:type "query"
-                                 :database 1
-                                 :query {:source-table 5
-                                         :aggregation [["metric" 22] ["count"] ["metric" 11]]
-                                         :filter ["<" ["field" 33 nil] 100]}}
+        rewritten-dataset-query (-> dataset-query
+                                    (assoc-in [:query :aggregation 0 1 1] 22)
+                                    (assoc-in [:query :aggregation 0 2 1] 11))
         rewritten-card {:description "query description"
                         :archived true
                         :table_id 5

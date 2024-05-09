@@ -114,129 +114,24 @@
 
 (defn- replace-metric-refs
   "Replaces the IDs in metric references contained in `expr` with the :id properties
-  of the corresponding entities in `id->entity`. It the entity has an :alias, it is
-  set as :join-alias.
+  of the corresponding entities in `id->entity`.
   `expr` is an MBQL aggregation expression or a part of it.
-  The mapping is from metric IDs to v2 metric cards.
-  Returns a pair with the rewritten expression in the first element and the set
-  of IDs replaced in the second."
+  The mapping is from metric IDs to v2 metric cards."
   [expr id->entity]
   (if-not (vector? expr)
-    [expr #{}]
+    expr
     (if-let [id (metric-ref->id expr)]
-      (let [{mapped-id :id, alias :alias} (id->entity id)]
-        [(cond-> (assoc expr 1 mapped-id)
-           alias (conj {:join-alias alias}))
-         #{id}])
-      (reduce (fn [[rewritten ids] sub-expr]
-                (let [[sub-rewritten sub-ids] (replace-metric-refs sub-expr id->entity)]
-                  [(conj rewritten sub-rewritten) (into ids sub-ids)]))
-              [[] #{}]
-              expr))))
-
-(defn- rewrite-single-metric-query
-  [query rewritten-aggregation metric-id->metric-card]
-  (assoc query
-         :aggregation rewritten-aggregation
-         :source-table (str "card__" (-> metric-id->metric-card first val :id))))
-
-(defn- collect-join-aliases
-  [query]
-  (if-let [joins (:joins query)]
-    (-> #{}
-        (into (map :join-alias) joins)
-        (into (mapcat (comp collect-join-aliases :source-query) joins)))
-    #{}))
-
-(defn- table-fields
-  [table-id]
-  (t2/select :metabase_field :table_id table-id))
-
-(defn- get-pk-columns
-  "Get the primary key fields of the table with ID `table-id`.
-
-  We assume that there are no duplicate rows, and consider the set of all fields
-  a primary key. This is not necessarily true, and when it's not, the migrated
-  query might produce results different from the original query.
-
-  V1 metrics can only be used at the first stage and when the source is a real
-  table."
-  [table-id]
-  {:pre [(pos-int? table-id)]}
-  (let [all-fields (table-fields table-id)
-        pk-fields (filter #(= (:semantic_type %) "type/PK") all-fields)]
-    (if (seq pk-fields)
-      pk-fields
-      all-fields)))
-
-(defn- unique-join-alias
-  [alias used-aliases]
-  (if (contains? used-aliases alias)
-    (->> (range 2)
-         (map #(str alias "_" %))
-         (remove used-aliases)
-         first)
-    alias))
-
-(defn- metric-card-joins
-  "Returns a map mapping the metric IDs to their joins for each metric card
-  in `metric-cards` to be added to `query`. (This is possible, because it's
-  impossible to have a v1 metric multiple times in a query.)
-  Each generated join queries the metric card, has a unique join alias based
-  on the name of the metric and a condition matching all PK columns of the
-  source of `query` (which must be the same as the source of the metric card).
-
-  The generated join aliases are unique in `query`, not necessarily in the top
-  level query which might be embedding `query`."
-  [query metric-cards]
-  (let [join-field-ids (into [] (map :id) (get-pk-columns (:source-table query)))]
-    (first
-     (reduce
-      (fn metric-join-generator [[metric-id->join used-join-aliases] metric-card]
-        (let [alias (unique-join-alias (u/slugify (:name metric-card)) used-join-aliases)
-              card-id (:id metric-card)
-              condition (into [:and]
-                              (map (fn [id]
-                                     [:= [:field id] [:field id {:join-alias alias}]]))
-                              join-field-ids)
-              join {:source-table (str "card__" card-id)
-                    :alias alias
-                    :strategy :inner-join
-                    :fields :none
-                    :condition condition}]
-          [(assoc metric-id->join card-id join) (conj used-join-aliases alias)]))
-      [{} (collect-join-aliases query)]
-      metric-cards))))
-
-(defn- add-metric-aliases
-  [aggregation metric-id->join]
-  ;; this call to replace-metric-refs doesn't change the IDs, it only
-  ;; adds the join aliases
-  (replace-metric-refs aggregation (into {}
-                                         (map (fn [[id join]]
-                                                [id (assoc join :id id)]))
-                                         metric-id->join)))
-
-(defn- rewrite-multi-metric-query
-  [query rewritten-aggregation metric-id->metric-card]
-  (let [metric-id->join (metric-card-joins query (vals metric-id->metric-card))]
-    (assoc query
-           :joins (into (vec (:joins query)) (vals metric-id->join))
-           :aggregation (add-metric-aliases rewritten-aggregation metric-id->join))))
+      (assoc expr 1 (-> id id->entity :id))
+      (mapv #(replace-metric-refs % id->entity) expr))))
 
 (defn- rewrite-metric-consuming-query
   [query metric-id->metric-card]
   (if (contains? query :source-query)
     (update query :source-query rewrite-metric-consuming-query metric-id->metric-card)
     (let [aggregation (:aggregation query)
-          [rewritten metric-ids] (replace-metric-refs aggregation metric-id->metric-card)]
-      (if (not= rewritten aggregation)
-        (let [rewrite-fn (if (next metric-ids)
-                           rewrite-multi-metric-query
-                           rewrite-single-metric-query)
-              used-metrics (select-keys metric-id->metric-card metric-ids)]
-          (rewrite-fn query rewritten used-metrics))
-        query))))
+          rewritten (replace-metric-refs aggregation metric-id->metric-card)]
+      (cond-> query
+        (not= rewritten aggregation) (assoc :aggregation rewritten)))))
 
 (defn- rewrite-metric-consuming-card
   "Rewrite the question `card` replacing references to v1 metrics with references
