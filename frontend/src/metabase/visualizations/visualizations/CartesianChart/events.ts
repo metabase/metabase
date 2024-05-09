@@ -3,7 +3,10 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatChangeWithSign } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import {
+  getDaylightSavingsChangeTolerance,
+  parseTimestamp,
+} from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
@@ -217,9 +220,15 @@ const getTooltipFooterData = (
     ? "quarter"
     : chartModel.xAxisModel.interval.unit;
 
+  const dateDifference = currentDate.diff(
+    previousDate,
+    chartModel.xAxisModel.interval.unit,
+    true,
+  );
+
   let isOneIntervalAgo =
-    currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) ===
-    chartModel.xAxisModel.interval.count;
+    Math.abs(dateDifference - chartModel.xAxisModel.interval.count) <=
+    getDaylightSavingsChangeTolerance(chartModel.xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
   // specially, because there are fewer days in this period due to Feburary
