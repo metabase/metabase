@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMap, usePrevious } from "react-use";
+import { useMap, usePrevious, useSet } from "react-use";
 import _ from "underscore";
 
 import { skipToken, useCardQueryQuery } from "metabase/api";
 import { QuestionPicker } from "metabase/dashboard/components/QuestionPicker";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Center, Grid, Loader, Select, Stack } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Center,
+  Flex,
+  Grid,
+  Loader,
+  Select,
+  Stack,
+} from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import {
@@ -45,31 +54,40 @@ const FAKE_CATEGORY_COLUMN: DatasetColumn = {
 
 export function Visualizer() {
   const [cardDataMap, cardDataMapActions] = useMap<Record<CardId, Dataset>>({});
-  const [fetchedCardId, setFetchedCardId] = useState<CardId | null>(null);
+  const [selectedCardIds, selectedCardsActions] = useSet(new Set<CardId>());
   const [vizType, setVizType] = useState("bar");
 
-  const cardQuery = useCardQueryQuery(fetchedCardId ?? skipToken);
+  const cardIdToFetch = Array.from(selectedCardIds).find(
+    cardId => !cardDataMap[cardId],
+  );
+
+  const cardQuery = useCardQueryQuery(cardIdToFetch ?? skipToken);
   const wasFetching = usePrevious(cardQuery.isFetching);
 
   const metadata = useSelector(getMetadata);
 
   useEffect(() => {
     if (
-      fetchedCardId &&
-      !cardDataMap[fetchedCardId] &&
+      cardIdToFetch &&
+      !cardDataMap[cardIdToFetch] &&
       cardQuery.data &&
       !cardQuery.isFetching &&
       wasFetching
     ) {
-      cardDataMapActions.set(fetchedCardId, cardQuery.data);
-      setFetchedCardId(null);
+      cardDataMapActions.set(cardIdToFetch, cardQuery.data);
     }
-  }, [fetchedCardId, cardDataMap, cardDataMapActions, cardQuery, wasFetching]);
+  }, [cardIdToFetch, cardDataMap, cardDataMapActions, cardQuery, wasFetching]);
 
   const combinedRows = useMemo(() => {
     const rows: RowValues[] = [];
 
-    Object.values(cardDataMap).forEach(dataset => {
+    Array.from(selectedCardIds).forEach(cardId => {
+      const dataset = cardDataMap[cardId];
+
+      if (!dataset) {
+        return;
+      }
+
       const metricColumnIndex = dataset.data.cols.findIndex(
         col => isNumber(col) && !isPK(col) && !isFK(col),
       );
@@ -91,7 +109,7 @@ export function Visualizer() {
     });
 
     return rows;
-  }, [cardDataMap]);
+  }, [cardDataMap, selectedCardIds]);
 
   const combinedSeries = useMemo(() => {
     const card = {
@@ -110,17 +128,16 @@ export function Visualizer() {
   const hasMinData = combinedRows.length > 0;
 
   const isLoading =
-    cardQuery.isFetching || (fetchedCardId && !cardDataMap[fetchedCardId]);
+    cardQuery.isFetching || (cardIdToFetch && !cardDataMap[cardIdToFetch]);
 
   const handleQuestionSelected = (questionId: CardId) => {
     if (isLoading) {
       return;
     }
-    if (cardDataMap[questionId]) {
-      setFetchedCardId(null);
-      cardDataMapActions.remove(questionId);
+    if (selectedCardIds.has(questionId)) {
+      selectedCardsActions.remove(questionId);
     } else {
-      setFetchedCardId(questionId);
+      selectedCardsActions.add(questionId);
     }
   };
 
@@ -146,17 +163,25 @@ export function Visualizer() {
               <Loader size="xl" />
             ) : hasMinData ? (
               <Stack w="100%" h="100%">
-                <Select
-                  value={vizType}
-                  data={vizOptions}
-                  onChange={e => e && setVizType(e)}
-                  style={{ maxWidth: "240px" }}
-                  styles={{
-                    dropdown: {
-                      maxHeight: "320px !important",
-                    },
-                  }}
-                />
+                <Flex gap="sm">
+                  <Button
+                    onClick={() => selectedCardsActions.reset()}
+                    disabled={selectedCardIds.size === 0}
+                  >
+                    Remove all
+                  </Button>
+                  <Select
+                    value={vizType}
+                    data={vizOptions}
+                    onChange={e => e && setVizType(e)}
+                    style={{ maxWidth: "240px" }}
+                    styles={{
+                      dropdown: {
+                        maxHeight: "320px !important",
+                      },
+                    }}
+                  />
+                </Flex>
                 <BaseVisualization
                   rawSeries={combinedSeries}
                   isDashboard={combinedSeries[0].card.display === "table"}
