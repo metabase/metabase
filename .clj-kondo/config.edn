@@ -208,6 +208,8 @@
     metabase.automagic-dashboards  :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
+    metabase.compatibility         #{metabase.legacy-mbql
+                                     metabase.lib}
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any

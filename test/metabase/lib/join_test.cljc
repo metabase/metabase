@@ -1471,16 +1471,17 @@
             (is (=? nil
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))
 
+(defn- ->metric [id label inner-query]
+  {:name          label
+   :id            id
+   :database-id   (meta/id)
+   :dataset-query {:database (meta/id)
+                   :type     :query
+                   :query    inner-query}})
+
 (deftest ^:parallel suggested-join-conditions-joining-metrics-test
   (testing "joining metrics should suggest a condition on the primary breakouts"
-    (let [->metric              (fn [id label inner-query]
-                                  {:name          label
-                                   :id            id
-                                   :database-id   (meta/id)
-                                   :dataset-query {:database (meta/id)
-                                                   :type     :query
-                                                   :query    inner-query}})
-          subtotals-no-breakout (->metric 1 "All time revenue"
+    (let [subtotals-no-breakout (->metric 1 "All time revenue"
                                           {:source-table (meta/id :orders)
                                            :aggregation  [[:sum [:field (meta/id :orders :subtotal) nil]]]})
           subtotals-monthly     (->metric 2 "Monthly revenue"
@@ -1512,8 +1513,8 @@
                       ;; NOTE: No join aliases yet; those are added to the conditions only when the join is attached to
                       ;; the query.
                       ;; NOTE: Also, the temporal unit is copied from the source metric to the joined metric.
-                      [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                      [:field {:temporal-unit :month} (meta/id :orders :created-at)]]]
+                      [:field {:source-metric 2, :temporal-unit :month} (meta/id :orders :created-at)]
+                      [:field {:source-metric 3, :temporal-unit :month} (meta/id :orders :created-at)]]]
                     (lib.join/suggested-join-conditions metric-query (lib.metadata/metric provider 3)))))
           (testing "- but not if their types don't match"
             ;; Breaking by product category, not time.
@@ -1534,3 +1535,30 @@
                        :aggregation [[:metric {:join-alias join-1} 1]
                                      [:metric {:join-alias join-2} 2]]}]}
             query))))
+
+(deftest ^:parallel joins-with-metric-on-LHS-use-proper-display-name
+  (testing "use the metric as the LHS display name when joining a metric"
+    (let [subtotals-monthly     (->metric 1 "Monthly revenue"
+                                          {:source-table (meta/id :orders)
+                                           :aggregation  [[:sum [:field (meta/id :orders :subtotal) nil]]]
+                                           :breakout     [[:field (meta/id :orders :created-at) {:temporal-unit :month}]]})
+          user-joins-monthly    (->metric 2 "Monthly user joins"
+                                          {:source-table (meta/id :people)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:field (meta/id :people :created-at) {:temporal-unit :month}]]})
+          provider              (lib.tu/metadata-provider-with-mock-metrics
+                                  [subtotals-monthly user-joins-monthly])]
+      (testing "to another metric"
+        (let [query (-> (lib/query provider (lib.metadata/card provider 1))
+                        (lib.join/join (lib.metadata/metric provider 2)))]
+          (is (= ["Monthly revenue"]
+                 (->> (lib.join/joins query)
+                      (map #(lib.join/join-lhs-display-name query %)))))))
+
+      (testing "to a table"
+        (let [query (-> (lib/query provider (lib.metadata/card provider 1))
+                        (lib.join/join (lib.join/join-clause (meta/table-metadata :orders)
+                                                             [(lib/= 1 1)])))]
+          (is (= ["Monthly revenue"]
+                 (->> (lib.join/joins query)
+                      (map #(lib.join/join-lhs-display-name query %))))))))))

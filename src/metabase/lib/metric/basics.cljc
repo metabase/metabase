@@ -55,6 +55,7 @@
                                   :include-implicitly-joinable-for-source-card? false})
                                (lib.equality/find-matching-column first-breakout)))
         temporal-bucket (lib.temporal-bucket/temporal-bucket first-breakout)]
-    (cond-> breakout-column
-      ;; copy the temporal bucket (if any) from the breakout ref to its column.
-      temporal-bucket (lib.temporal-bucket/with-temporal-bucket temporal-bucket))))
+    (when breakout-column
+      (cond-> (assoc breakout-column ::source-metric (:id metric))
+        ;; copy the temporal bucket (if any) from the breakout ref to its column.
+        temporal-bucket (lib.temporal-bucket/with-temporal-bucket temporal-bucket)))))

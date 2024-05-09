@@ -39,7 +39,7 @@
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
 (def ^:private Joinable
-  [:or ::lib.schema.metadata/table ::lib.schema.metadata/card])
+  [:or ::lib.schema.metadata/table ::lib.schema.metadata/card ::lib.schema.metadata/metric])
 
 (def ^:private JoinOrJoinable
   [:or
@@ -322,6 +322,10 @@
        :stages [{:source-card (:id card)
                  :lib/type :mbql.stage/mbql}]}
       lib.options/ensure-uuid))
+
+(defmethod join-clause-method :metadata/metric
+  [metric]
+  ((get-method join-clause-method :metadata/card) metric))
 
 (declare with-join-fields)
 
@@ -925,8 +929,12 @@
   (when-let [condition-lhs-column (or condition-lhs-column-or-nil
                                       (when (join? join-or-joinable)
                                         (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs-column)]
-      (get-in display-info [:table :display-name]))))
+    (if-let [metric-id (-> condition-lhs-column lib.options/options :source-metric)]
+      ;; This column came from a metric; use the metric's name.
+      (lib.metadata.calculation/display-name query stage-number (lib.metadata/metric query metric-id))
+      ;; Otherwise use the table the field came from.
+      (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs-column)]
+        (get-in display-info [:table :display-name])))))
 
 (defn- first-join?
   "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.
@@ -950,13 +958,15 @@
 (defn- join-lhs-display-name-for-first-join-in-first-stage
   [query stage-number join-or-joinable]
   (when (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
-             (first-join? query stage-number join-or-joinable)           ; first join?
-             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
-    (let [table-id (lib.util/source-table-id query)
-          table    (lib.metadata/table query table-id)]
-      ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
-      ;; `:long` for a Table anyway
-      (lib.metadata.calculation/display-name query stage-number table))))
+             (first-join? query stage-number join-or-joinable))          ; first join?
+    (or (when-let [metric (some->> (lib.util/source-card-id query)
+                                   (lib.metadata/metric query))]
+          (lib.metadata.calculation/display-name query stage-number metric))
+        (when-let [table-id (lib.util/source-table-id query)]
+          ;; For queries that use source tables, return the display name for that table.
+          ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
+          ;; `:long` for a Table anyway
+          (lib.metadata.calculation/display-name query stage-number (lib.metadata/table query table-id))))))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
   "Get the display name for whatever we are joining. See #32015 and #32764 for screenshot examples.
@@ -984,8 +994,11 @@
 
     1b. When building a join, you can optionally pass in `condition-lhs-column-or-nil` yourself.
 
+    1c. If the LHS is a Metric, make sure we use its display name and not its underlying table.
+
   2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
-     uses a `:source-table`, then use the display name for the source Table.
+     uses a `:source-table`, then use the display name for the source Table. If it uses a `:source-card`, then use the
+     display name for that card or metric.
 
   3. Otherwise use `Previous results`.
 

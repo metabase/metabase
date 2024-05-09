@@ -12,6 +12,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metric.basics :as lib.metric.basics]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -469,7 +470,9 @@
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
-                                   {:source-field source-field-id}))
+                                   {:source-field source-field-id})
+                                 (when-let [metric-id (::lib.metric.basics/source-metric metadata)]
+                                   {:source-metric metric-id}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)
                              (some-fn :id :name))
