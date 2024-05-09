@@ -12,7 +12,7 @@ function isSafeProtocol(protocol: string) {
   );
 }
 
-function isDefaultLinkProtocol(protocol: string) {
+export function isDefaultLinkProtocol(protocol: string) {
   return (
     protocol === "http:" || protocol === "https:" || protocol === "mailto:"
   );
