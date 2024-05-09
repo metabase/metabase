@@ -90,14 +90,14 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-    (catch Exception _
-      (ex-data
-       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-         (log/warn
-          (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
-                          (u/pprint-to-str schema)
-                          (u/add-period route-str)))))
-      "")))
+       (catch Exception _
+         (ex-data
+          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+            (log/warn
+             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                             (u/pprint-to-str schema)
+                             (u/add-period route-str)))))
+         "")))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -209,23 +209,32 @@
        (map second)
        (map keyword)))
 
+(defn- requiring-resolve-form [form]
+  (walk/postwalk
+   (fn [x]
+     (if (symbol? x)
+       (try @(requiring-resolve x)
+            (catch Exception _ x)) x))
+   form))
+
 (defn- ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema      (if (symbol? schema)
-                      #_:clj-kondo/ignore @(requiring-resolve schema)
-                      schema)
+  (let [schema      (try #_:clj-kondo/ignore
+                         (eval schema)
+                         (catch Exception _ #_:clj-kondo/ignore
+                                (requiring-resolve-form schema)))
         schema-type (mc/type schema)]
     [schema-type
      (condp = schema-type
        ;; can use any regex directly
-       :re (first (mc/children schema))
-       :keyword #"[\S]+"
+       :re       (first (mc/children schema))
+       :keyword  #"[\S]+"
        'pos-int? #"[0-9]+"
-       :int #"-?[0-9]+"
-       'int? #"-?[0-9]+"
-       :uuid u/uuid-regex
-       'uuid? u/uuid-regex
+       :int      #"-?[0-9]+"
+       'int?     #"-?[0-9]+"
+       :uuid     u/uuid-regex
+       'uuid?    u/uuid-regex
        nil)]))
 
 (def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
