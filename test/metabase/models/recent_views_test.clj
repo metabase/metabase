@@ -190,19 +190,22 @@
                  :model/Card d-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card e-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card f-card {:type "question" :table_id (mt/id :reviews)}
-                 :model/RecentViews _ {:id 1337000 :user_id (mt/user->id :rasta), :model "card", :model_id (:id a-card),  :timestamp #t "1983-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337001 :user_id (mt/user->id :rasta), :model "card", :model_id (:id b-card),  :timestamp #t "1983-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337002 :user_id (mt/user->id :rasta), :model "card", :model_id (:id c-card),  :timestamp #t "1983-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337003 :user_id (mt/user->id :rasta), :model "card", :model_id (:id d-card),  :timestamp #t "1983-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337004 :user_id (mt/user->id :rasta), :model "card", :model_id (:id e-card),  :timestamp #t "1983-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337005 :user_id (mt/user->id :rasta), :model "card", :model_id (:id f-card),  :timestamp #t "1983-10-01T00:00Z"}]
-    (doseq [[ids bucket-size] [[#{1337000 1337002 1337004 1337005 1337003 1337001} 0] ;; delete them all!
-                               [#{1337002 1337004 1337005 1337003 1337001} 1]
-                               [#{1337002 1337004 1337005 1337003} 2]
-                               [#{1337004 1337005 1337003} 3]
-                               [#{1337004 1337005} 4]
-                               [#{1337005} 5]
-                               [#{} 6]
-                               [#{} 7]]]
+                 :model/RecentViews _ {:id 1337000 :user_id (mt/user->id :rasta), :model "card", :model_id (:id a-card),  :timestamp #t "2000-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337001 :user_id (mt/user->id :rasta), :model "card", :model_id (:id b-card),  :timestamp #t "2001-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337002 :user_id (mt/user->id :rasta), :model "card", :model_id (:id c-card),  :timestamp #t "2002-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337003 :user_id (mt/user->id :rasta), :model "card", :model_id (:id d-card),  :timestamp #t "2003-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337004 :user_id (mt/user->id :rasta), :model "card", :model_id (:id e-card),  :timestamp #t "2004-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337005 :user_id (mt/user->id :rasta), :model "card", :model_id (:id f-card),  :timestamp #t "2005-10-01T00:00Z"}]
+    (doseq [{:keys [ids-to-prune bucket-size]} [{:bucket-size 0 :ids-to-prune [0 1 2 3 4 5]} ;; delete them all!
+                                                {:bucket-size 1 :ids-to-prune [0 1 2 3 4]}
+                                                {:bucket-size 2 :ids-to-prune [0 1 2 3]}
+                                                {:bucket-size 3 :ids-to-prune [0 1 2]}
+                                                {:bucket-size 4 :ids-to-prune [0 1]}
+                                                {:bucket-size 5 :ids-to-prune [0]}
+                                                {:bucket-size 6 :ids-to-prune []}
+                                                {:bucket-size 7 :ids-to-prune []}]]
       (binding [recent-views/*recent-views-stored-per-user-per-model* bucket-size]
-        (is (= ids (#'recent-views/ids-to-prune (mt/user->id :rasta))))))))
+        (testing (str "Bucket size: " bucket-size)
+          (is (= ids-to-prune
+                 (vec (sort (map #(- % 1337000)
+                                 (#'recent-views/ids-to-prune (mt/user->id :rasta))))))))))))
