@@ -315,6 +315,7 @@ describe("scenarios > metrics", () => {
       popover().button("Done").click();
       saveMetric();
       runQuery();
+      // FIXME put correct value verifyScalarValue("9,380");
     });
   });
 
