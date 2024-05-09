@@ -125,7 +125,9 @@ export function ColumnInput({
             {text}
           </Button>
         </Popover.Target>
-        <Popover.Dropdown>{dropdown}</Popover.Dropdown>
+        <Popover.Dropdown setupSequencedCloseHandler>
+          {dropdown}
+        </Popover.Dropdown>
       </Popover>
     </Input.Wrapper>
   );
