@@ -300,17 +300,20 @@
   [timeout-ms & body]
   `(do-with-timeout ~timeout-ms (fn [] ~@body)))
 
-(defn wait-until
-  "Wait until `pred-fn` returns truthy, or until `max-retry` times, with `interval-ms` between retries."
-  [pred-fn & {:keys [max-retry interval-ms]
-              :or   {max-retry 10
-                     interval-ms 100} :as opts}]
-
-  (loop [retry-count 0]
-    (when-not (pred-fn)
-      (if (>= retry-count max-retry)
-        (throw (ex-info "Timeout" {:opts    opts
-                                   :pred-fn pred-fn}))
-        (do
-         (Thread/sleep interval-ms)
-         (recur (inc retry-count)))))))
+(defn poll
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
+  The default timeout is 1000ms and the default interval is 100ms."
+  [{:keys [thunk done? timeout-ms interval-ms]
+    :or   {timeout-ms 1000 interval-ms 100}}]
+  (let [start-time (System/currentTimeMillis)]
+    (loop []
+      (let [response (thunk)]
+        (if (done? response)
+          response
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              nil ; timeout reached
+              (do
+                (Thread/sleep interval-ms)
+                (recur)))))))))

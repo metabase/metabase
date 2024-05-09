@@ -1725,7 +1725,8 @@
             ;; simulate starting MB after migrate up, which will trigger this function
             (task/init! ::task.send-pulses/SendPulses)
             ;; wait a bit for the InitSendPulseTriggers to run
-            (u/wait-until #(= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+            (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                     :done? #(= 1 %)})
             (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
               (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
               (is (= #{"metabase.task.send-pulses.send-pulse.job"
