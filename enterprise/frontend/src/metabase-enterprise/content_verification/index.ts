@@ -7,6 +7,7 @@ import {
   availableModelFilters,
   sortCollectionsByVerification,
   sortModelsByVerification,
+  useModelFilterSettings,
 } from "./utils";
 
 if (hasPremiumFeature("content_verification")) {
@@ -16,5 +17,6 @@ if (hasPremiumFeature("content_verification")) {
     availableModelFilters,
     sortModelsByVerification,
     sortCollectionsByVerification,
+    useModelFilterSettings,
   });
 }
