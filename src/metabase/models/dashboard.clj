@@ -47,6 +47,7 @@
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
 (doto :model/Dashboard
+  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)

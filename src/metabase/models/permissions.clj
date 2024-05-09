@@ -324,10 +324,7 @@
    (let [path-fn (case read-or-write
                    :read  collection-read-path
                    :write collection-readwrite-path)
-         collection-id (if (and (contains? this :trashed_from_collection_id)
-                                (:archived this))
-                         (:trashed_from_collection_id this)
-                         (:collection_id this))]
+         collection-id (mi/parent-collection-id-for-perms this)]
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
      #{(path-fn (or collection-id
