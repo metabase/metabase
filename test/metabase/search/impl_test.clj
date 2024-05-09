@@ -77,7 +77,7 @@
             (is (= 9
                    (call-count)))))))))
 
-(deftest ^:parlallel created-at-correctness-test
+(deftest ^:parallel created-at-correctness-test
   (let [search-term "created-at-filtering"
         new          #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
