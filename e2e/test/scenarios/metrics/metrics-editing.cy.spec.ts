@@ -14,7 +14,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 type QuestionDetails = StructuredQuestionDetails & { name: string };
 
@@ -26,6 +26,26 @@ const ORDER_COUNT_METRIC: QuestionDetails = {
     aggregation: [["count"]],
   },
   display: "scalar",
+};
+
+const MULTI_STAGE_QUESTION: QuestionDetails = {
+  name: "Multi-stage orders",
+  type: "question",
+  query: {
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+  },
+  display: "table",
 };
 
 describe("scenarios > metrics", () => {
@@ -67,6 +87,17 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
+    });
+
+    it("should create a metric for a multi-stage saved question", () => {
+      createQuestion(MULTI_STAGE_QUESTION);
+      startNewMetric();
+      popover().findByText("Saved Questions").click();
+      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addAggregation({ operatorName: "Count of rows" });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("48");
     });
 
     it("should create a metric for a model", () => {
@@ -137,7 +168,7 @@ describe("scenarios > metrics", () => {
       });
     });
 
-    it("should a join in the second stage of a metric query", () => {
+    it("should a join on the second stage of a metric query", () => {
       createQuestion(ORDER_COUNT_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
