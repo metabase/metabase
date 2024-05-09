@@ -205,9 +205,9 @@
                                           (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                        (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                             :from            [:report_card]
+                                                             :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -563,11 +563,11 @@
                   (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                 {:dataset #{}
                  :card    #{}}
-                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                            :from            [:report_card]
-                                            :where           [:and
-                                                              [:= :archived false]
-                                                              [:in :collection_id descendant-collection-ids]]}))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
