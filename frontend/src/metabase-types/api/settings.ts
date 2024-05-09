@@ -315,13 +315,16 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
 }
 
-export interface UserSettings {
+export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
-}
+  "expand-browse-in-nav"?: boolean;
+  "expand-bookmarks-in-nav"?: boolean;
+  "browse-filter-only-verified-models"?: boolean;
+};
 
 export type Settings = InstanceSettings &
   PublicSettings &

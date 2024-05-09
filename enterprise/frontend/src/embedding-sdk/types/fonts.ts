@@ -17,4 +17,5 @@ export type MetabaseFontFamily =
   | "Oswald"
   | "Ubuntu"
   | "Montserrat"
-  | "Lora";
+  | "Lora"
+  | "Custom";
