@@ -5,6 +5,13 @@ import _ from "underscore";
 import { skipToken, useCardQueryQuery } from "metabase/api";
 import { QuestionPicker } from "metabase/dashboard/components/QuestionPicker";
 import { Card, Center, Grid, Loader } from "metabase/ui";
+import {
+  isCategory,
+  isNumber,
+  isPK,
+  isFK,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
 import type { CardId, Dataset, RowValues } from "metabase-types/api";
 
 export function Visualizer() {
@@ -30,10 +37,24 @@ export function Visualizer() {
   const combinedRows = useMemo(() => {
     const rows: RowValues[] = [];
 
-    Object.values(cardDataMap).map(dataset => {
-      const [lastRow] = dataset.data.rows.toReversed();
-      if (lastRow) {
-        rows.push(lastRow);
+    Object.values(cardDataMap).forEach(dataset => {
+      const metricColumnIndex = dataset.data.cols.findIndex(
+        col => isNumber(col) && !isPK(col) && !isFK(col),
+      );
+
+      let categoryColumnIndex = dataset.data.cols.findIndex(col =>
+        isCategory(col),
+      );
+      if (categoryColumnIndex === -1) {
+        categoryColumnIndex = dataset.data.cols.findIndex(col => isString(col));
+      }
+
+      const lastRow = _.last(dataset.data.rows);
+
+      if (lastRow && metricColumnIndex !== -1 && categoryColumnIndex !== -1) {
+        const metricValue = lastRow[metricColumnIndex];
+        const categoryValue = lastRow[categoryColumnIndex];
+        rows.push([metricValue, categoryValue]);
       }
     });
 
