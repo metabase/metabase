@@ -28,11 +28,10 @@ const SINGLE_STAGE_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const MULTI_STAGE_QUESTION: QuestionDetails = {
-  name: "Multi-stage orders",
-  type: "question",
+const MULTI_STAGE_METRIC: QuestionDetails = {
+  name: "Orders metric",
+  type: "metric",
   query: {
-    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
     "source-query": {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
@@ -44,6 +43,28 @@ const MULTI_STAGE_QUESTION: QuestionDetails = {
         ],
       ],
     },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const MULTI_STAGE_QUESTION: QuestionDetails = {
+  name: "Multi-stage orders",
+  type: "question",
+  query: {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
   },
   display: "table",
 };
@@ -129,6 +150,16 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
+    });
+
+    it("should create a metric based on a multi-stage metric", () => {
+      createQuestion(MULTI_STAGE_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(MULTI_STAGE_METRIC.name).click();
+      saveMetric();
+      runQuery();
+      verifyScalarValue("48");
     });
   });
 
