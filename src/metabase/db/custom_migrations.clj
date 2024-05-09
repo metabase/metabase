@@ -1080,9 +1080,9 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details (json/parse-string keyword) :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
-                              (t2/select :model/Database)))]
+                              (t2/select :metabase_database)))]
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
@@ -1257,18 +1257,6 @@
     (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
-
-(define-migration BackfillQueryField
-  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
-        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                              :select    [:c.id]
-                                                              :where     [:and
-                                                                          [:not :c.archived]
-                                                                          [:= :c.query_type "native"]
-                                                                          [:= :f.id nil]]}])]
-    (doseq [card cards]
-      (update-query-fields! card))))
 
 (define-migration DeleteSendPulsesTask
   (classloader/the-classloader)

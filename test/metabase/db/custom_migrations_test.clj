@@ -23,7 +23,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.task.sync-databases-test :as task.sync-databases-test]

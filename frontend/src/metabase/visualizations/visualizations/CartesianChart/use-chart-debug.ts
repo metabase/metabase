@@ -2,7 +2,7 @@
 import type { EChartsOption } from "echarts";
 import { useEffect } from "react";
 
-import { isProduction } from "metabase/env";
+import { isChartsDebugLoggingEnabled } from "metabase/env";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ export function useChartDebug({
   chartModel: BaseCartesianChartModel;
 }) {
   useEffect(() => {
-    if (!isQueryBuilder || isProduction) {
+    if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
       return;
     }
     console.log("-------------- ECHARTS DEBUG INFO START --------------");

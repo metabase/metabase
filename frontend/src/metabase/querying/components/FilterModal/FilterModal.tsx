@@ -20,6 +20,7 @@ import {
   ModalFooter,
   ModalHeader,
   TabPanelRoot,
+  TabsListSidebar,
 } from "./FilterModal.styled";
 import { FilterSearchInput } from "./FilterSearchInput";
 import { SegmentFilterEditor } from "./SegmentFilterEditor";
@@ -198,7 +199,7 @@ interface TabListProps {
 
 function TabList({ groupItems }: TabListProps) {
   return (
-    <Tabs.List w="25%" pt="sm" pl="md">
+    <TabsListSidebar w="25%" pt="sm" pl="md">
       {groupItems.map(groupItem => (
         <Tabs.Tab
           key={groupItem.key}
@@ -209,7 +210,7 @@ function TabList({ groupItems }: TabListProps) {
           {groupItem.displayName}
         </Tabs.Tab>
       ))}
-    </Tabs.List>
+    </TabsListSidebar>
   );
 }
 

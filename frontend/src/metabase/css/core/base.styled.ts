@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 
 export const getRootStyle = (theme: Theme) => css`
   font-family: var(--mb-default-font-family), sans-serif;
-  font-size: 0.875em;
   font-weight: 400;
   font-style: normal;
   color: ${theme.fn.themeColor("text-dark")};

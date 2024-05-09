@@ -103,6 +103,3 @@ export const isFolder = (
         .length > 0)
   );
 };
-
-export const generateKey = (query?: ListCollectionItemsRequest) =>
-  JSON.stringify(query ?? "root");

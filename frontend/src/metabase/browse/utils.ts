@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -95,7 +96,7 @@ export type AvailableModelFilters = Record<
 
 export type ModelFilterControlsProps = {
   actualModelFilters: ActualModelFilters;
-  handleModelFilterChange: (filterName: string, active: boolean) => void;
+  setActualModelFilters: Dispatch<SetStateAction<ActualModelFilters>>;
 };
 
 export const sortModels = (
