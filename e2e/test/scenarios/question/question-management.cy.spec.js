@@ -153,7 +153,7 @@ describe(
                   });
 
                   moveQuestionTo(/Personal Collection/);
-                  assertOnRequest("updateQuestion");
+                  cy.wait("@updateQuestion");
                   cy.findAllByRole("status")
                     .contains(
                       `Model moved to ${getPersonalCollectionName(
@@ -161,6 +161,9 @@ describe(
                       )}`,
                     )
                     .should("exist");
+                  cy.findAllByRole("status")
+                    .contains("Sorry, you don’t have permission to see that.")
+                    .should("not.exist");
                   cy.findAllByRole("gridcell").contains("37.65");
 
                   navigationSidebar().within(() => {
@@ -466,8 +469,11 @@ function turnIntoModel() {
   openQuestionActions();
   cy.findByRole("dialog").contains("Turn into a model").click();
   cy.findByRole("dialog").contains("Turn this into a model").click();
-  assertOnRequest("updateQuestion");
+  cy.wait("@updateQuestion");
   cy.findAllByRole("status").contains("This is a model now.").should("exist");
+  cy.findAllByRole("status")
+    .contains("Sorry, you don’t have permission to see that.")
+    .should("not.exist");
 }
 
 function findPickerItem(name) {
