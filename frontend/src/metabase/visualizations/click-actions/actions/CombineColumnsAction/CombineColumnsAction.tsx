@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackColumnCombineViaPlusModal } from "metabase/query_builder/analytics";
 import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
@@ -29,6 +30,8 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
       const newQuery = Lib.expression(query, stageIndex, name, clause);
       const nextQuestion = question.setQuery(newQuery);
       const nextCard = nextQuestion.card();
+
+      trackColumnCombineViaPlusModal(newQuery, nextQuestion);
 
       onChangeCardAndRun({ nextCard });
       onClose();
