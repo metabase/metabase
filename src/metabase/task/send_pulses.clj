@@ -110,7 +110,8 @@
       ;; assuming 1 hour is the max duration a pulse can take
       (#(- (* 60 60) %))
       ;; make sure it's higher than 5 (the default priority)
-      (min 6)))
+      (max 6)
+      int))
 
 (defn- send-pulse!*
   "Do several things:

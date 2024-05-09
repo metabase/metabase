@@ -98,23 +98,24 @@
 
 (deftest send-pulse!*-update-trigger-priority-test
   (testing "send-pulse!* should update the priority of the trigger based on the duration of the pulse"
-    (with-redefs [metabase.pulse/send-pulse! (fn [& _args]
-                                               ;; priority is duration round to seconds
-                                               (Thread/sleep 1000))]
-      (mt/with-temp
-        [:model/Pulse        {pulse :id} {}
-         :model/PulseChannel {pc :id}    (merge
-                                          {:pulse_id     pulse
-                                           :channel_type :slack
-                                           :details      {:channel "#random"}}
-                                          daily-at-1am)]
-        (testing "priority is 0 to start with"
-          (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
-        (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
-        (testing "send pulse should update its priority"
-          ;; 5 is the default priority of a trigger, we need it to be higher than that because
-          ;; pulse is time sensitive compared to other tasks like sync
-          (is (> (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority) 5)))))))
+    (pulse-channel-test/with-send-pulse-setup!
+     (with-redefs [metabase.pulse/send-pulse! (fn [& _args]
+                                                ;; priority is duration round to seconds
+                                                (Thread/sleep 1000))]
+       (mt/with-temp
+         [:model/Pulse        {pulse :id} {}
+          :model/PulseChannel {pc :id}    (merge
+                                           {:pulse_id     pulse
+                                            :channel_type :slack
+                                            :details      {:channel "#random"}}
+                                           daily-at-1am)]
+         (testing "priority is 0 to start with"
+           (is (= 6 (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority))))
+         (#'task.send-pulses/send-pulse!* daily-at-1am pulse #{pc})
+         (testing "send pulse should update its priority"
+           ;; 5 is the default priority of a trigger, we need it to be higher than that because
+           ;; pulse is time sensitive compared to other tasks like sync
+           (is (> (-> (pulse-channel-test/send-pulse-triggers pulse) first :priority) 5))))))))
 
 (deftest init-send-pulse-triggers!-group-runs-test
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"
