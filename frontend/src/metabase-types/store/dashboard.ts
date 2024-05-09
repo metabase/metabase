@@ -101,7 +101,7 @@ export interface DashboardState {
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
 
   sidebar: DashboardSidebarState;
 
