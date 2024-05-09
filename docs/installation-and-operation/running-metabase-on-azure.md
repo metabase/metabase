@@ -187,7 +187,7 @@ In case you're embedding Metabase, you might need to enable CORS in **Settings**
 
 ### Database name
 
-Azure does not let users create a database upon service creation, that's the reason why we used `postgres` as the database to install Metabase. Althought this shouldn't be a problem, a good practice would be to install the database in a separate database named `metabase`. If you are not in a hurry to try the product, you should create a database named `metabase` as soon as you create the database and then use the appropiate connection string when deploying the docker container.
+Azure does not let users create a database upon service creation, that's the reason why we used `postgres` as the database to install Metabase. Although this shouldn't be a problem, a good practice would be to install the database in a separate database named `metabase`. If you are not in a hurry to try the product, you should create a database named `metabase` as soon as you create the database and then use the appropiate connection string when deploying the docker container.
 In the example above the connection string would be 
 
 ```

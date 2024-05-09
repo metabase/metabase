@@ -216,7 +216,7 @@ Fetch filter values for dashboard parameter `param-key`.
 
 ## `GET /api/public/oembed`
 
-oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.
+oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.
 
 ### PARAMS:
 
