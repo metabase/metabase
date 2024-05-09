@@ -168,6 +168,28 @@ function ScalarPeriod({ period, onClick }) {
   );
 }
 
+const Separator = ({ inTooltip }) => {
+  const theme = useMantineTheme();
+  const isNightMode = useSelector(getIsNightMode);
+
+  const separatorColor =
+    isNightMode || inTooltip
+      ? lighten(theme.fn.themeColor("text-medium"), 0.15)
+      : lighten(theme.fn.themeColor("text-light"), 0.25);
+
+  return (
+    <Text
+      display="inline-block"
+      mx="0.2rem"
+      style={{ transform: "scale(0.7)" }}
+      c={separatorColor}
+      span
+    >
+      {" • "}
+    </Text>
+  );
+};
+
 function PreviousValueComparison({
   comparison,
   width,
@@ -198,28 +220,12 @@ function PreviousValueComparison({
         })
       : display.percentChange;
 
-  const separatorColor = isNightMode
-    ? lighten(theme.fn.themeColor("text-medium"), 0.15)
-    : lighten(theme.fn.themeColor("text-light"), 0.25);
-
-  const separator = (
-    <Text
-      display="inline-block"
-      mx="0.2rem"
-      style={{ transform: "scale(0.7)" }}
-      c={separatorColor}
-      span
-    >
-      {" • "}
-    </Text>
-  );
-
   const availableComparisonWidth =
     width -
     4 * SPACING -
     ICON_SIZE -
     ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(separator), {
+    measureTextWidth(innerText(<Separator />), {
       size: fontSize,
       family: fontFamily,
       weight: 700,
@@ -238,14 +244,15 @@ function PreviousValueComparison({
     "",
   ];
 
-  const detailCandidates = valueCandidates.map(valueStr => {
+  const getDetailCandidate = (valueStr, { inTooltip } = {}) => {
     if (isEmpty(valueStr)) {
       return comparisonDescStr;
     }
 
-    const descColor = isNightMode
-      ? lighten(theme.fn.themeColor("text-medium"), 0.45)
-      : "text-light";
+    const descColor =
+      isNightMode || inTooltip
+        ? lighten(theme.fn.themeColor("text-medium"), 0.45)
+        : "text-light";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -260,7 +267,11 @@ function PreviousValueComparison({
         {valueStr}
       </Text>
     )}`;
-  });
+  };
+
+  const detailCandidates = valueCandidates.map(valueStr =>
+    getDetailCandidate(valueStr),
+  );
   const fullDetailDisplay = detailCandidates[0];
   const fittedDetailDisplay = detailCandidates.find(
     e =>
@@ -270,6 +281,10 @@ function PreviousValueComparison({
         weight: 700,
       }) <= availableComparisonWidth,
   );
+
+  const tooltipFullDetailDisplay = getDetailCandidate(valueCandidates[0], {
+    inTooltip: true,
+  });
 
   const VariationPercent = ({ inTooltip, iconSize, children }) => {
     const noChangeColor =
@@ -299,7 +314,7 @@ function PreviousValueComparison({
 
     return (
       <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
-        {separator}
+        <Separator inTooltip={inTooltip} />
         {children}
       </Title>
     );
@@ -314,7 +329,9 @@ function PreviousValueComparison({
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
             {display.percentChange}
           </VariationPercent>
-          <VariationDetails inTooltip>{fullDetailDisplay}</VariationDetails>
+          <VariationDetails inTooltip>
+            {tooltipFullDetailDisplay}
+          </VariationDetails>
         </Flex>
       }
     >
