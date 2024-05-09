@@ -5,41 +5,18 @@
   from [[metabase.api.search]] into the `metabase.search` module."
   (:require
    [metabase.search.config]
-   [metabase.search.filter]
-   [metabase.search.scoring]
-   [metabase.search.util]
+   [metabase.search.impl]
    [potemkin :as p]))
 
 (comment
   metabase.search.config/keep-me
-  metabase.search.filter/keep-me
-  metabase.search.scoring/keep-me
-  metabase.search.util/keep-me)
+  metabase.search.impl/keep-me)
 
 (p/import-vars
   [metabase.search.config
    SearchableModel
-   SearchContext
-   all-models
-   all-search-columns
-   columns-for-model
-   column-with-model-alias
-   max-filtered-results
-   model-to-db-model
-   search-model->revision-model]
-  [metabase.search.filter
-   build-filters
-   search-context->applicable-models]
-  [metabase.search.scoring
-   score-and-result
-   serialize
-   top-results]
-  [metabase.search.util
-   normalize
-   wildcard-match])
-
-(defn db-max-results
-  "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
-  returning tons of results."
-  []
-  metabase.search.config/*db-max-results*)
+   all-models]
+  [metabase.search.impl
+   query-model-set
+   search-context
+   search])
