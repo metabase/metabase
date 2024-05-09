@@ -6589,7 +6589,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-04-25T01:04:05
       author: qnkhuat
-      comment: Delete the old SendPulse job and trigger
+      comment: Delete the old SendPulses job and trigger
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteSendPulsesTask"

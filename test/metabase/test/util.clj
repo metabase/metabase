@@ -623,8 +623,8 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler
    (^:once fn* []
-           (qs/start @task/*quartz-scheduler*)
-           (thunk))))
+    (qs/start @task/*quartz-scheduler*)
+    (thunk))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
