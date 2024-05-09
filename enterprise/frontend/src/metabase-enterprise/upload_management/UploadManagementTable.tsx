@@ -36,7 +36,15 @@ export function UploadManagementTable() {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
 
-  const { data: uploadTables, error, isLoading } = useListUploadTablesQuery();
+  // TODO: once we have uploads running through RTK Query, we can remove the force update
+  // because we can properly invalidate the tables tag
+  const {
+    data: uploadTables,
+    error,
+    isLoading,
+  } = useListUploadTablesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
 
   const deleteTable = useCallback(
     async (table: Table, sendToTrash: boolean) => {
