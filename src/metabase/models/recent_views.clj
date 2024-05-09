@@ -129,7 +129,7 @@
    [:map
     [:id [:int {:min 1}]]
     [:name :string]
-    [:description :string]
+    [:description [:maybe :string]]
     [:model [:enum :dataset :card :dashboard :collection :table]]
     [:can_write :boolean]
     [:timestamp :string]]
