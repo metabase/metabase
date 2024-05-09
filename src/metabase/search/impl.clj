@@ -28,6 +28,8 @@
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private HoneySQLColumn
   [:or
    :keyword

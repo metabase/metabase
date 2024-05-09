@@ -45,7 +45,7 @@
         context                            (normalize-map (.getMap context-json))]
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
-(defn do-with-fake-snowplow-collector!
+(defn do-with-fake-snowplow-collector
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (mt/with-temporary-setting-values [snowplow-available    true
@@ -55,7 +55,7 @@
         (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
-
+;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe.
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
   events are parsed and added to the fake collector.
@@ -63,7 +63,7 @@
   Fetch the contents of the collector by calling [[snowplow-collector-contents]]."
   [& body]
   {:style/indent 0}
-  `(do-with-fake-snowplow-collector! (fn [] ~@body)))
+  `(do-with-fake-snowplow-collector (fn [] ~@body)))
 
 (defn- clear-snowplow-collector!
   []

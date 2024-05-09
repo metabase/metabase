@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
@@ -376,7 +375,7 @@
                       "indexed-entity"
                       (merge default-search-ctx {:search-string "foo"}))))))))
 
-(deftest build-filters-indexed-entity-test
+(deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
     (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
