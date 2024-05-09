@@ -51,13 +51,13 @@ describe("scenarios > question > snippets", () => {
     openNativeEditor().type("select ");
     // 2. snippet
     cy.icon("snippet").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("stuff-snippet").click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("stuff-snippet").click();
 
-    // Open the snippet edit modal
-    cy.icon("chevrondown").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
+      // Open the snippet edit modal
+      cy.icon("chevrondown").click({ force: true });
+      cy.findByRole("button", { name: /pencil icon edit/i }).click();
+    });
 
     // Update the name and content
     modal().within(() => {

@@ -12,8 +12,8 @@ import type {
   CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
