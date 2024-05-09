@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
-   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
@@ -433,7 +432,7 @@
                    (set (map :id (:data (mt/user-http-request :crowberto :get 200 "/search"
                                                               :archived true :q search-name)))))))
           (testing "the collection ID is correct - the Trash ID"
-            (is (= #{config/trash-collection-id}
+            (is (= #{(collection/trash-collection-id)}
                    (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
                                                                                  :archived true :q search-name)))))))
           (testing "if we are granted permissions on the original collection, we can see the trashed items"
@@ -748,7 +747,7 @@
   (assoc m
          :archived true
          :trashed_from_collection_id (:collection_id m)
-         :collection_id config/trash-collection-id))
+         :collection_id (collection/trash-collection-id)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
