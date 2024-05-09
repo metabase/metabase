@@ -6,7 +6,8 @@ import { skipToken, useCardQueryQuery } from "metabase/api";
 import { QuestionPicker } from "metabase/dashboard/components/QuestionPicker";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Center, Grid, Loader } from "metabase/ui";
+import { Card, Center, Grid, Loader, Select, Stack } from "metabase/ui";
+import visualizations from "metabase/visualizations";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import {
   isCategory,
@@ -45,6 +46,7 @@ const FAKE_CATEGORY_COLUMN: DatasetColumn = {
 export function Visualizer() {
   const [cardDataMap, cardDataMapActions] = useMap<Record<CardId, Dataset>>({});
   const [fetchedCardId, setFetchedCardId] = useState<CardId | null>(null);
+  const [vizType, setVizType] = useState("bar");
 
   const cardQuery = useCardQueryQuery(fetchedCardId ?? skipToken);
   const wasFetching = usePrevious(cardQuery.isFetching);
@@ -93,7 +95,7 @@ export function Visualizer() {
 
   const combinedSeries = useMemo(() => {
     const card = {
-      display: "bar",
+      display: vizType,
       visualization_settings: {},
     };
 
@@ -103,7 +105,7 @@ export function Visualizer() {
     };
 
     return [{ card, data }];
-  }, [combinedRows]);
+  }, [vizType, combinedRows]);
 
   const hasMinData = combinedRows.length > 0;
 
@@ -122,6 +124,16 @@ export function Visualizer() {
     }
   };
 
+  const vizOptions = Array.from(visualizations)
+    .filter(([, viz]) => !viz.hidden)
+    .map(([vizType, viz]) => ({
+      label: viz.uiName,
+      value: vizType,
+      icon: viz.iconName,
+      disabled:
+        hasMinData && viz.isSensible && !viz.isSensible(combinedSeries[0].data),
+    }));
+
   return (
     <Grid p="md" w="100%" h="100%">
       <Grid.Col span={3}>
@@ -129,13 +141,30 @@ export function Visualizer() {
       </Grid.Col>
       <Grid.Col span={9}>
         <Card withBorder w="100%" h="100%">
-          {isLoading ? (
-            <Center w="100%" h="100%">
+          <Center w="100%" h="100%">
+            {isLoading ? (
               <Loader size="xl" />
-            </Center>
-          ) : hasMinData ? (
-            <BaseVisualization rawSeries={combinedSeries} metadata={metadata} />
-          ) : null}
+            ) : hasMinData ? (
+              <Stack w="100%" h="100%">
+                <Select
+                  value={vizType}
+                  data={vizOptions}
+                  onChange={e => e && setVizType(e)}
+                  style={{ maxWidth: "240px" }}
+                  styles={{
+                    dropdown: {
+                      maxHeight: "320px !important",
+                    },
+                  }}
+                />
+                <BaseVisualization
+                  rawSeries={combinedSeries}
+                  isDashboard={combinedSeries[0].card.display === "table"}
+                  metadata={metadata}
+                />
+              </Stack>
+            ) : null}
+          </Center>
         </Card>
       </Grid.Col>
     </Grid>
