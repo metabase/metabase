@@ -98,7 +98,6 @@ export const sortModels = (
     const a = getValueForSorting(modelA, sort_column);
     const b = getValueForSorting(modelB, sort_column);
 
-    const ascending = sort_direction === SortDirection.Asc;
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
@@ -106,6 +105,7 @@ export const sortModels = (
       const b2 = getValueForSorting(modelB, sort_column2);
       result = compare(a2, b2);
     }
-    return ascending ? result : -result;
+
+    return sort_direction === SortDirection.Asc ? result : -result;
   });
 };
