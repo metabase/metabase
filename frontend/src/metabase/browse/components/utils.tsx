@@ -100,7 +100,7 @@ export const sortModels = (
 
     const ascending = sort_direction === SortDirection.Asc;
     let result = compare(a, b);
-    if (result !== 0) {
+    if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
       const a2 = getValueForSorting(modelA, sort_column2);
       const b2 = getValueForSorting(modelB, sort_column2);
