@@ -26,6 +26,22 @@ The `Offset` function returns whatever value is in the offset row.
 | Boolean                                                                                          | ✅                   |
 | JSON                                                                                             | ✅                   |
 
+## Example year-over-year (YoY) time series comparison using `Offset`
+
+In the Sample database, you can use `Offset` to compare the count of orders year over year (YoY).
+
+First, summarize by count. Then summarize that count again, this time using `Offset` to offset the count by one. Then group the results by `Created At` by year:
+
+![Comparing year over year](../../images/offset-example.png)
+
+Which yields:
+
+![Year over year order count results](../../images/offset-results.png)
+
+With these offsets (the counts in the "Previous Count" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly counts, and the percentage change year to year:
+
+![Difference and percentage change](../../images/diff-and-percentage.png)
+
 ## Related functions
 
 ### SQL
