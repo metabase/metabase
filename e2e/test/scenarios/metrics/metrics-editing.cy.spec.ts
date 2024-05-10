@@ -94,7 +94,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
-      addCategoryFilter({
+      addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
         values: ["Gadget"],
@@ -109,7 +109,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
-      addCategoryFilter({
+      addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
         values: ["Gadget"],
@@ -125,17 +125,22 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addNumberBetweenFilter({
+        columnName: "Count",
+        minValue: 5,
+        maxValue: 100,
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("48");
+      verifyScalarValue("5");
     });
 
     it("should create a metric based on a model", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
-      addCategoryFilter({
+      addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
         values: ["Gadget"],
@@ -151,10 +156,15 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addNumberBetweenFilter({
+        columnName: "Count",
+        minValue: 5,
+        maxValue: 100,
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("48");
+      verifyScalarValue("5");
     });
 
     it("should create a metric based on a single-stage metric", () => {
@@ -162,7 +172,7 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(SINGLE_STAGE_METRIC.name).click();
-      addCategoryFilter({
+      addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
         values: ["Gadget"],
@@ -177,9 +187,14 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(MULTI_STAGE_METRIC.name).click();
+      addDateBetweenFilter({
+        columnName: "Created At: Month",
+        minValue: "May 7, 2020",
+        maxValue: "October 20, 2022",
+      });
       saveMetric();
       runQuery();
-      verifyScalarValue("48");
+      verifyScalarValue("6");
     });
   });
 
@@ -441,7 +456,7 @@ function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
     .within(() => getPlusButton().click());
 }
 
-function addCategoryFilter({
+function addStringCategoryFilter({
   tableName,
   columnName,
   values,
@@ -457,6 +472,53 @@ function addCategoryFilter({
     }
     cy.findByText(columnName).click();
     values.forEach(value => cy.findByText(value).click());
+    cy.button("Add filter").click();
+  });
+}
+
+function addNumberBetweenFilter({
+  tableName,
+  columnName,
+  minValue,
+  maxValue,
+}: {
+  tableName?: string;
+  columnName: string;
+  minValue: number;
+  maxValue: number;
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    cy.findByPlaceholderText("Min").type(String(minValue));
+    cy.findByPlaceholderText("Max").type(String(maxValue));
+    cy.button("Add filter").click();
+  });
+}
+
+function addDateBetweenFilter({
+  tableName,
+  columnName,
+  minValue,
+  maxValue,
+}: {
+  tableName?: string;
+  columnName: string;
+  minValue: string;
+  maxValue: string;
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    cy.findByText("Specific dates…").click();
+    cy.findByLabelText("Start date").clear().type(minValue);
+    cy.findByLabelText("End date").clear().type(maxValue);
     cy.button("Add filter").click();
   });
 }
