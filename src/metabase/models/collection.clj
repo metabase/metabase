@@ -45,8 +45,12 @@
   "Maximum number of characters allowed in a Collection `slug`."
   510)
 
+(def ^:constant trash-collection-type
+  "The value of the `:type` field for the Trash collection that holds archived items."
+  "trash")
+
 (defn- trash-collection* []
-  (t2/select-one :model/Collection :type "trash"))
+  (t2/select-one :model/Collection :type trash-collection-type))
 
 (def ^{:arglists '([])} trash-collection
   "Memoized copy of the Trash collection from the DB."
@@ -68,8 +72,11 @@
 (defn is-trash?
   "Is this the trash collection?"
   [collection]
-  (and (not (collection.root/is-root-collection? collection))
-       (= (u/the-id collection) (trash-collection-id))))
+  ;; in some circumstances we don't have a `:type` on the collection (e.g. search or collection items lists, where we
+  ;; select a subset of columns). Use the type if it's there, but fall back to the ID to be sure.
+  ;; We can't *only* use the id because getting that requires selecting a collection :sweat-smile:
+  (or (= (:type collection) trash-collection-type)
+      (= (:id collection) (trash-collection-id))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -90,6 +97,17 @@
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
+
+(defn maybe-localize-trash-name
+  "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
+  `define-after-select` in all circumstances, e.g. when searching or listing collection items (where we do a direct DB
+  query without `:model/Collection`)."
+  [collection]
+  (cond-> collection
+    (is-trash? collection) (assoc :name (tru "Trash"))))
+
+(t2/define-after-select :model/Collection [collection]
+  (maybe-localize-trash-name collection))
 
 (doto Collection
   (derive :metabase/model)
@@ -1026,10 +1044,6 @@
 (def ^:private instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
   "instance-analytics")
-
-(def trash-collection-type
-  "The value of the `:type` field for the Trash collection that holds archived items."
-  "trash")
 
 (defmethod mi/exclude-internal-content-hsql :model/Collection
   [_model & {:keys [table-alias]}]

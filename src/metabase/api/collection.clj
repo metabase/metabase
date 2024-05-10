@@ -626,6 +626,7 @@
               (dissoc row :personal_owner_id)))]
     (for [row (annotate-collections parent-collection rows)]
       (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
+          collection/maybe-localize-trash-name
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           (update :archived api/bit->boolean)
