@@ -180,5 +180,9 @@ function createOffsetOptions(name = "offset") {
 let nextUuid = 0;
 
 function uuid() {
-  return String(++nextUuid);
+  const uuids = "0123456789abcdef".split("").map(character => {
+    return `355c4922-b77c-43b5-9787-46918e11217${character}`;
+  });
+
+  return uuids[++nextUuid % uuids.length];
 }
