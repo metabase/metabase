@@ -183,6 +183,8 @@ export default function App() {
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
+You can optionally pass in `height` to change the height of the component.
+
 ```jsx
 import React from "react";
 import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
@@ -194,11 +196,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      {/** You need to set the parent container to have some width and height, and display as flex,
-           because the Metabase visualizations have flex-grow: 1 and will take up all available space. */}
-      <div style={{ width: 800, height: 600, display: "flex" }}>
         <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
-      </div>
     </MetabaseProvider>
   );
 }
@@ -217,9 +215,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <div style={{ width: 800, height: 600, display: "flex" }}>
-        <InteractiveQuestion questionId={questionId}  />
-      </div>
+      <InteractiveQuestion questionId={questionId}  />
     </MetabaseProvider>
   );
 }
@@ -284,9 +280,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <div style={{ width: 800, height: 600, display: "flex" }}>
-      <InteractiveQuestion questionId={questionId}  />
-    </div>
+    <InteractiveQuestion questionId={questionId}  />
   </MetabaseProvider>
 );
 ```

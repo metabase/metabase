@@ -350,41 +350,43 @@ export const CollectionContentView = ({
                     }
 
                     return (
-                      <CollectionTable data-testid="collection-table">
-                        <ItemsTable
-                          databases={databases}
-                          bookmarks={bookmarks}
-                          createBookmark={createBookmark}
-                          deleteBookmark={deleteBookmark}
-                          items={unpinnedItems}
-                          collection={collection}
-                          sortingOptions={unpinnedItemsSorting}
-                          onSortingOptionsChange={
-                            handleUnpinnedItemsSortingChange
-                          }
-                          selectedItems={selected}
-                          hasUnselected={hasUnselected}
-                          getIsSelected={getIsSelected}
-                          onToggleSelected={toggleItem}
-                          onDrop={clear}
-                          onMove={handleMove}
-                          onCopy={handleCopy}
-                          onSelectAll={handleSelectAll}
-                          onSelectNone={clear}
-                        />
-                        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-                          {hasPagination && (
-                            <PaginationControls
-                              showTotal
-                              page={page}
-                              pageSize={PAGE_SIZE}
-                              total={metadata.total}
-                              itemsLength={unpinnedItems.length}
-                              onNextPage={handleNextPage}
-                              onPreviousPage={handlePreviousPage}
-                            />
-                          )}
-                        </div>
+                      <>
+                        <CollectionTable data-testid="collection-table">
+                          <ItemsTable
+                            databases={databases}
+                            bookmarks={bookmarks}
+                            createBookmark={createBookmark}
+                            deleteBookmark={deleteBookmark}
+                            items={unpinnedItems}
+                            collection={collection}
+                            sortingOptions={unpinnedItemsSorting}
+                            onSortingOptionsChange={
+                              handleUnpinnedItemsSortingChange
+                            }
+                            selectedItems={selected}
+                            hasUnselected={hasUnselected}
+                            getIsSelected={getIsSelected}
+                            onToggleSelected={toggleItem}
+                            onDrop={clear}
+                            onMove={handleMove}
+                            onCopy={handleCopy}
+                            onSelectAll={handleSelectAll}
+                            onSelectNone={clear}
+                          />
+                          <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+                            {hasPagination && (
+                              <PaginationControls
+                                showTotal
+                                page={page}
+                                pageSize={PAGE_SIZE}
+                                total={metadata.total}
+                                itemsLength={unpinnedItems.length}
+                                onNextPage={handleNextPage}
+                                onPreviousPage={handlePreviousPage}
+                              />
+                            )}
+                          </div>
+                        </CollectionTable>
                         <CollectionBulkActions
                           selected={selected}
                           collection={collection}
@@ -396,7 +398,7 @@ export const CollectionContentView = ({
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
                         />
-                      </CollectionTable>
+                      </>
                     );
                   }}
                 </Search.ListLoader>
