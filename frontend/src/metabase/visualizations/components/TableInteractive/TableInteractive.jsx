@@ -147,7 +147,9 @@ class TableInteractive extends Component {
         c={cellTheme.color}
         bg={cellTheme.background}
         style={{
-          border: `1px solid ${alpha(theme.fn.themeColor("brand"), 0.14)}`,
+          border:
+            isIDColumn &&
+            `1px solid ${alpha(theme.fn.themeColor("brand"), 0.14)}`,
         }}
       >
         {children}
