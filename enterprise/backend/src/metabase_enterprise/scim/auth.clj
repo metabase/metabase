@@ -23,4 +23,4 @@
           [_ api-key]          (re-matches #"Bearer (.*)" (or authorization-header ""))]
       (if (validate-scim-api-key api-key)
         (handler request respond raise)
-        (respond req.util/response-forbidden)))))
+        (respond req.util/response-unauthentic)))))
