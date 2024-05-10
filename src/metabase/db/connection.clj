@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -143,12 +144,28 @@
                     (.commit connection))
                   result)
                 (catch Throwable e
-                  (.rollback connection savepoint)
+                  (try
+                    (.rollback connection savepoint)
+                    (catch Throwable e2
+                      (log/error e2 "Error rolling back transaction to savepoint")
+                      (throw (ex-info (format "Unable to roll transaction back to savepoint: %s (triggered by: %s)"
+                                              (ex-message e2)
+                                              (ex-message e))
+                                      {:triggered-by e}
+                                      e2))))
                   (throw e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try
         (.setAutoCommit connection false)
+        ;; This is the default transaction isolation level in Postgres, however MySQL/MariaDB default to
+        ;; `REPEATABLE_READ` which constantly leads to deadlocks when running massively-parallel tests like
+        ;; `metabase.api.search-test` (and probably occasionally in real life too)... we don't need repeatable reads,
+        ;; `READ_COMMITED` is perfectly fine.
+        ;;
+        ;; See https://docs.oracle.com/javase/tutorial/jdbc/basics/transactions.html if you need to know more about what
+        ;; the hecc that means.
+        (.setTransactionIsolation connection java.sql.Connection/TRANSACTION_READ_COMMITTED)
         (thunk)
         (finally
           (.setAutoCommit connection true)))
