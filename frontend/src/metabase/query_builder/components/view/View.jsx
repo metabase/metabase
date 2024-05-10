@@ -239,7 +239,7 @@ class View extends Component {
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
     const canRestore =
-      !!card.collection_id && isRootTrashCollection({ id: card.collection_id });
+      !!card.collection && isRootTrashCollection(card.collection);
 
     return (
       <QueryBuilderViewHeaderContainer>
