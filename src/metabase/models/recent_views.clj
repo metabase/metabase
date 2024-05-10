@@ -72,6 +72,8 @@
                                   [:= :rc.id :rv.model_id]
                                   [:= :rv.model (h2x/literal "card")]]]
                      :order-by [[:rv.timestamp :desc]]
+                     ;; mysql doesn't support offset without limit :derp:
+                     :limit 100000
                      :offset *recent-views-stored-per-user-per-model*}))
 
 (defn- overflowing-model-buckets [user-id]
