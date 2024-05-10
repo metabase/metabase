@@ -1,9 +1,10 @@
-(ns metabase.api.search-test
+(ns ^:mb/once metabase.api.search-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.db :as mdb]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
@@ -24,6 +25,18 @@
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+;;; MySQL/MariaDB are the most annoying databases in the world and these tests constantly fail because they decide
+;;; they're in a deadlock when two threads try to do DML operations at the same time and then abort the transactions. I
+;;; spent a half a day trying to debug this stuff but I can't get it working (yet)... until I do, rather than
+;;; de-parallelize all the tests (which work fine in H2 and Postgres) let's just force them to be single-threaded with a
+;;; fixture for MySQL. -- Cam
+(use-fixtures :each (let [lock (Object.)]
+                      (fn [thunk]
+                        (if (= (mdb/db-type) :mysql)
+                          (locking lock
+                            (thunk))
+                          (thunk)))))
 
 (defn- ordered-subset?
   "Test if all the elements in `xs` appear in the same order in `ys`. Search results in this test suite can be polluted
