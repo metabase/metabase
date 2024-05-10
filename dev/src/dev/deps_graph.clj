@@ -71,7 +71,7 @@
             (update module->deps module reduce-module-deps module deps))]
     (reduce reduce-deps (sorted-map) (dependencies))))
 
-(defn circular-refs
+(defn circular-dependencies
   "Build a graph of module => set of modules it refers to that also refer to this module."
   ([]
    (let [module->deps (module-dependencies)]
@@ -91,15 +91,15 @@
              (keys module->deps)))))
 
   ([module]
-   (get (circular-refs) module)))
+   (get (circular-dependencies) module)))
 
 (defn non-circular-module-dependencies
   "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
   meant to make it easier to fill out the `:metabase/ns-module-checker` `:allowed-modules` section of the Kondo
   config, or to figure out which ones can easily get a consolidated API namespace without drama."
   []
-  (let [circular-refs (circular-refs)]
+  (let [circular-dependencies (circular-dependencies)]
     (into (sorted-map)
           (remove (fn [[module _deps]]
-                    (contains? circular-refs module)))
+                    (contains? circular-dependencies module)))
           (module-dependencies))))
