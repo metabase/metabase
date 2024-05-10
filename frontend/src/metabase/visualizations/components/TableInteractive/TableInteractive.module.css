@@ -10,7 +10,6 @@
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellData .cellData:hover {

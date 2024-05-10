@@ -6,7 +6,7 @@ import type { MetabaseComponentTheme } from "embedding-sdk";
 export const DEFAULT_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
-      background: "#ffffff",
+      backgroundColor: "#ffffff",
     },
   },
 };

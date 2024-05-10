@@ -45,7 +45,7 @@ export const TableDraggable = styled(Draggable)<TableDraggableProps>`
 
 export const HeaderCell = styled(Box)`
   &:hover {
-    color: ${color("text-brand")};
+    color: ${({ theme }) => theme.fn?.themeColor("text-brand")};
   }
 `;
 

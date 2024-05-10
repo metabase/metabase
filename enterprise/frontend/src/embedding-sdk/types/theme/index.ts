@@ -48,7 +48,20 @@ export interface MetabaseComponentTheme {
       textColor?: string;
 
       /** Default background color of table cells */
-      background?: string;
+      backgroundColor?: string;
+    };
+
+    idColumn?: {
+      /** Default background color of ID column pill */
+      backgroundColor?: string;
+    };
+
+    header?: {
+      /** Text color of table header. This defaults to the  */
+      textColor?: string;
+
+      /** Background color of table header */
+      backgroundColor?: string;
     };
   };
 }
