@@ -157,7 +157,7 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
-    hasMetrics: PropTypes.bool,
+    canSelectMetric: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -189,7 +189,7 @@ export class UnconnectedDataSelector extends Component {
     hasTriggerExpandControl: true,
     isPopover: true,
     isMantine: false,
-    hasMetrics: false,
+    canSelectMetric: false,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -444,8 +444,8 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasMetrics = () => {
-    const { metrics, loaded, hasMetrics } = this.props;
-    return loaded && metrics && metrics.length > 0 && hasMetrics;
+    const { metrics, loaded, canSelectMetric } = this.props;
+    return loaded && metrics && metrics.length > 0 && canSelectMetric;
   };
 
   hasUsableMetrics = () => {
