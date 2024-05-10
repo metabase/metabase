@@ -35,7 +35,7 @@
 ;; The Pivot Table Download/export test can be a bit confusing. I've kept a 'see pivot result' function in a comment at the end of this ns
 ;; If you eval/run that in your repl, you should be able to see the results (It's not too many rows so should print acceptably)
 ;; If you need to add assertions or fix up this test, that may be a helpful function to run!
-(deftest pivot-export-test
+(deftest ^:parallel pivot-export-test
   []
   (mt/dataset pivot-base-data
     (mt/with-temp [:model/Card {card-id :id}
