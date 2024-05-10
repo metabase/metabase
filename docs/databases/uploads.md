@@ -10,13 +10,17 @@ Once you've [enabled uploads](#enabling-uploads), you can [upload files](../expl
 
 Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
+## Managing upload settings
+
+To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings - Uploads", or click on the **gear** icon in the upper right and click through **Admin settings** > **Settings** > **Uploads**.
+
 ## Databases that support uploads
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
 - [Redshift](../databases/connections/redshift.md)
 
-## Enabling uploads
+## Setting up uploads
 
 There are a few things admins need to do to support CSV uploads:
 
@@ -133,9 +137,9 @@ You can archive a model by clicking on the three dots in the upper right and sel
 
 For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history.md#deleting-items-permanently).
 
-### Deleting uploaded tables
+### Deleting tables created by uploads
 
-Hit cmd/ctrl + K and search for "Settings - Uploads".
+To delete tables created by uploads, go to **Admin settings** > **Settings** > **Uploads**.
 
 Under **Manage uploads**, Metabase will list the tables underlying the models.
 
