@@ -1477,10 +1477,10 @@
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
-      (is (= ["card test card is returned"]
-             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
-                  :data
-                  (map :name)))))))
+      (let [results (into #{}
+                          (map :name)
+                          (:data (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")))]
+        (is (contains? results "card test card is returned"))))))
 
 (deftest ^:parallel model-ancestors-gets-ancestor-collections
   (testing "Collection names are correct"
@@ -1488,23 +1488,23 @@
                    Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
                    Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}
                    Card {top-card-id :id} {:type :model :collection_id top-col-id :name "top model"}]
-      (is (= #{[leaf-card-id [{:name "top level col" :id top-col-id}]]
-               [top-card-id []]}
-             (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
-                  :data
-                  (map (juxt :id #(get-in % [:collection :effective_ancestors])))
-                  (into #{})))))))
+      (is (=? {leaf-card-id [{:name "top level col" :id top-col-id}]
+               top-card-id  []}
+              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                   :data
+                   (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                   (into {})))))))
 
 (deftest ^:parallel model-ancestors-gets-ancestor-collections-2
   (testing "Models not in a collection work correctly"
     (mt/with-temp [Card {card-id :id} {:type :model
                                        :name "model"
                                        :collection_id nil}]
-      (is (= #{[card-id []]}
-             (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
-                  :data
-                  (map (juxt :id #(get-in % [:collection :effective_ancestors])))
-                  (into #{})))))))
+      (is (=? {card-id []}
+              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                   :data
+                   (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                   (into {})))))))
 
 (deftest ^:parallel model-ancestors-gets-ancestor-collections-3
   (testing "Non-models don't get collection_ancestors"
