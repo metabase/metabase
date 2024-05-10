@@ -8,7 +8,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metric.basics :as lib.metric.basics]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -92,19 +91,10 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/metric
-  [query stage-number metric options]
-  (lib.metadata.calculation/returned-columns-method query stage-number (assoc metric :lib/type :metadata/card) options))
-
-(defn- metrics-for-all-joins
-  [query stage-number]
-  (for [join (lib.join/joins query stage-number)]
-    (lib.metric.basics/join-metric query join)))
-
-(defn- joined-metrics
-  [query stage-number]
-  (->> (metrics-for-all-joins query stage-number)
-       (filter identity)))
+(defn- source-metric
+  "Returns the `:metadata/metric` for the given stage, or nil if this stage is not based on a metric."
+  [metadata-providerable stage]
+  (some->> stage :source-card (lib.metadata/metric metadata-providerable)))
 
 (mu/defn metric-based? :- :boolean
   "Returns true if this MBQL `query` is based on metrics.
@@ -112,13 +102,12 @@
   This is always false for stages other than 0, but accepting the parameter means consumers of the API don't need to
   know about that.
 
-  Being \"based on metrics\" means the source is a metric, and so are the sources of all the joins in stage 0."
+  Being \"based on metrics\" means the source is a metric."
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (and (zero? (lib.util/canonical-stage-index query stage-number))
        (not (lib.query/native? query))
-       (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))
-       (every? identity (metrics-for-all-joins query 0))))
+       (source-metric query (lib.util/query-stage query stage-number))))
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
@@ -133,16 +122,14 @@
                                                        (:join-alias (lib.options/options aggregation-clause))]
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
-         s-metric (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))
-         metrics (cond->> (joined-metrics query stage-number)
-                   s-metric (cons s-metric))]
-     (when (seq metrics)
+         s-metric (source-metric query (lib.util/query-stage query stage-number))]
+     (when s-metric
        (if (empty? metric-aggregations)
-         (vec metrics)
+         [s-metric]
          (mapv (fn [metric-metadata]
                  (let [aggregation-pos (-> metric-metadata
                                            ((juxt :id ::lib.join/join-alias))
                                            metric-aggregations)]
                    (cond-> metric-metadata
                      aggregation-pos (assoc :aggregation-position aggregation-pos))))
-               metrics))))))
+               [s-metric]))))))
