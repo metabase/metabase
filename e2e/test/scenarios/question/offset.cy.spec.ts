@@ -1,5 +1,4 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
   echartsContainer,
@@ -44,17 +43,18 @@ describe("scenarios > question > offset", () => {
   });
 
   it("does not work without breakout or order-by clause", () => {
-    createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["offset", createOffsetOptions(), ["sum", TOTAL_FIELD_REF], -1],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
+    const aggregation: Aggregation = [
+      "offset",
+      createOffsetOptions(),
+      ["sum", TOTAL_FIELD_REF],
+      -1,
+    ];
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [aggregation],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
 
     verifyQuestionError(
       "Window function requires either breakouts or order by in the query",
@@ -77,7 +77,10 @@ describe("scenarios > question > offset", () => {
 
     createQuestion({ query }, { visitQuestion: true });
 
-    verifyLineChart({ xAxis: "Created At", yAxis: aggregationName });
+    verifyTableCellContent(0, "April 2022");
+    verifyTableCellContent(1, "");
+    verifyTableCellContent(2, "May 2022");
+    verifyTableCellContent(3, "52.76");
   });
 
   it("works after saving a question (metabase#42323)", () => {
@@ -107,13 +110,11 @@ describe("scenarios > question > offset", () => {
   it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
     const formula = "Sum(case([Total] > 0, Offset([Total], -1)))";
     const name = "Aggregation";
-    const questionDetails: StructuredQuestionDetails = {
-      query: {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      },
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      limit: 5,
     };
-    createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion({ query }, { visitQuestion: true });
     openNotebook();
     cy.icon("sum").click();
     addCustomAggregation({ formula, name });
@@ -157,8 +158,12 @@ function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
   });
 }
 
+function verifyTableCellContent(index: number, text: string) {
+  cy.findAllByRole("gridcell").eq(index).should("have.text", text);
+}
+
 function verifyQuestionError(error: string) {
-  cy.get("main").within(() => {
+  cy.findByTestId("query-builder-main").within(() => {
     cy.findByText("There was a problem with your question").should("exist");
     cy.findByText("Show error details").click();
     cy.findByText(error).should("exist");
