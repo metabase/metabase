@@ -299,6 +299,22 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("755,310.84");
     });
 
+    it.skip("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      startNewCustomColumn();
+      enterCustomColumnDetails({
+        formula: "[Product → Price] * 2",
+        name: "Price2",
+      });
+      popover().button("Done").click();
+      addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("111.38");
+    });
+
     it("should be able to use a custom column in a metric-based query", () => {
       createQuestion(ORDERS_COUNT_METRIC);
       startNewMetric();
