@@ -229,7 +229,7 @@
     "concurrently": "^7.6.0",
     "cross-fetch": "^3.1.5",
     "css-loader": "^6.10.0",
-    "cypress": "13.6.1",
+    "cypress": "^13.9.0",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-real-events": "^1.11.0",
     "esbuild": "^0.17.9",
