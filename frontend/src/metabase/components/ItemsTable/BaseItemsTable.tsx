@@ -1,6 +1,11 @@
-import type { HTMLAttributes, PropsWithChildren } from "react";
-import { t } from "ttag";
+import {
+  useCallback,
+  useMemo,
+  type HTMLAttributes,
+  type PropsWithChildren,
+} from "react";
 
+import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -8,76 +13,89 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
-import CheckBox from "metabase/core/components/CheckBox";
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
-  BulkSelectWrapper,
   ColumnHeader,
-  LastEditedByCol,
   SortingControlContainer,
   SortingIcon,
   Table,
   TBody,
 } from "./BaseItemsTable.styled";
-import BaseTableItem, { type BaseTableItemProps } from "./BaseTableItem";
+import { Columns, SortDirection } from "./Columns";
+import type { ResponsiveProps } from "./utils";
 
 export type SortingOptions = {
   sort_column: string;
-  sort_direction: "asc" | "desc";
+  sort_direction: SortDirection;
 };
 
-interface SortableColumnHeaderProps
-  extends PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>> {
-  name: string;
-  sortingOptions: SortingOptions;
-  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
-}
+export type SortableColumnHeaderProps = {
+  name?: string;
+  sortingOptions?: SortingOptions;
+  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+} & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
-export enum Sort {
-  Asc = "asc",
-  Desc = "desc",
-}
-
-const SortableColumnHeader = ({
+export const SortableColumnHeader = ({
   name,
   sortingOptions,
   onSortingOptionsChange,
   children,
+  hideAtContainerBreakpoint,
+  containerName,
   ...props
-}: SortableColumnHeaderProps) => {
-  const isSortingThisColumn = sortingOptions.sort_column === name;
+}: SortableColumnHeaderProps & ResponsiveProps) => {
+  const isSortable = !!onSortingOptionsChange && !!name;
+  const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
-    ? sortingOptions.sort_direction
-    : Sort.Desc;
+    ? sortingOptions?.sort_direction
+    : SortDirection.Desc;
 
-  const onSortingControlClick = () => {
-    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
-    onSortingOptionsChange({
-      sort_column: name,
-      sort_direction: nextDirection,
-    });
-  };
+  const onSortingControlClick = useMemo(() => {
+    if (!isSortable) {
+      return undefined;
+    }
+    const handler = () => {
+      const nextDirection =
+        direction === SortDirection.Asc
+          ? SortDirection.Desc
+          : SortDirection.Asc;
+      const newSortingOptions = {
+        sort_column: name,
+        sort_direction: nextDirection,
+      };
+      onSortingOptionsChange?.(newSortingOptions);
+    };
+    return handler;
+  }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
-    <ColumnHeader>
+    <ColumnHeader
+      hideAtContainerBreakpoint={hideAtContainerBreakpoint}
+      containerName={containerName}
+    >
       <SortingControlContainer
         {...props}
         isActive={isSortingThisColumn}
         onClick={onSortingControlClick}
         role="button"
+        isSortable={isSortable}
       >
         {children}
-        <SortingIcon
-          name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
-        />
+        {isSortable && (
+          <SortingIcon
+            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
+          />
+        )}
       </SortingControlContainer>
     </ColumnHeader>
   );
 };
 
-export interface BaseItemsTableProps {
+export type BaseItemsTableProps = {
   items: CollectionItem[];
   collection?: Collection;
   databases?: Database[];
@@ -87,7 +105,6 @@ export interface BaseItemsTableProps {
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
-  renderItem?: (props: ItemRendererProps) => JSX.Element;
   sortingOptions: SortingOptions;
   onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
   onToggleSelected?: OnToggleSelectedWithItem;
@@ -99,17 +116,10 @@ export interface BaseItemsTableProps {
   getIsSelected?: (item: any) => boolean;
   /** Used for dragging */
   headless?: boolean;
-}
-
-type ItemRendererProps = {
-  item: CollectionItem;
-} & BaseTableItemProps;
-
-const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
-  return (
-    <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
-  );
-};
+  isInDragLayer?: boolean;
+  ItemComponent?: (props: ItemRendererProps) => JSX.Element;
+  includeColGroup?: boolean;
+} & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy">>;
 
 export const BaseItemsTable = ({
   databases,
@@ -121,7 +131,6 @@ export const BaseItemsTable = ({
   selectedItems,
   hasUnselected,
   isPinned,
-  renderItem = defaultItemRenderer,
   onCopy,
   onMove,
   onDrop,
@@ -132,37 +141,25 @@ export const BaseItemsTable = ({
   onSelectNone,
   getIsSelected = () => false,
   headless = false,
+  isInDragLayer = false,
+  ItemComponent = DefaultItemRenderer,
+  includeColGroup = true,
   ...props
 }: BaseItemsTableProps) => {
-  const itemRenderer = (item: CollectionItem) =>
-    renderItem({
-      databases,
-      bookmarks,
-      createBookmark,
-      deleteBookmark,
-      item,
-      collection,
-      selectedItems,
-      isSelected: getIsSelected(item),
-      isPinned,
-      onCopy,
-      onMove,
-      onDrop,
-      onToggleSelected,
-    });
-
   const canSelect = !!collection?.can_write;
-
   return (
-    <Table canSelect={canSelect} {...props}>
-      <colgroup>
-        {canSelect && <col style={{ width: "70px" }} />}
-        <col style={{ width: "70px" }} />
-        <col />
-        <LastEditedByCol />
-        <col style={{ width: "140px" }} />
-        <col style={{ width: "100px" }} />
-      </colgroup>
+    <Table isInDragLayer={isInDragLayer} {...props}>
+      {includeColGroup && (
+        <colgroup>
+          {canSelect && <Columns.Select.Col />}
+          <Columns.Type.Col />
+          <Columns.Name.Col isInDragLayer={isInDragLayer} />
+          <Columns.LastEditedBy.Col />
+          <Columns.LastEditedAt.Col />
+          <Columns.ActionMenu.Col />
+          <Columns.RightEdge.Col />
+        </colgroup>
+      )}
       {!headless && (
         <thead
           data-testid={
@@ -171,53 +168,142 @@ export const BaseItemsTable = ({
         >
           <tr>
             {canSelect && (
-              <ColumnHeader>
-                <BulkSelectWrapper>
-                  <CheckBox
-                    checked={!!selectedItems?.length}
-                    indeterminate={!!selectedItems?.length && hasUnselected}
-                    onChange={hasUnselected ? onSelectAll : onSelectNone}
-                    aria-label={t`Select all items`}
-                  />
-                </BulkSelectWrapper>
-              </ColumnHeader>
+              <Columns.Select.Header
+                selectedItems={selectedItems}
+                hasUnselected={hasUnselected}
+                onSelectAll={onSelectAll}
+                onSelectNone={onSelectNone}
+              />
             )}
-            <SortableColumnHeader
-              name="model"
+            <Columns.Type.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-              style={{ marginInlineStart: 6 }}
-            >
-              {t`Type`}
-            </SortableColumnHeader>
-            <SortableColumnHeader
-              name="name"
+            />
+            <Columns.Name.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-            >
-              {t`Name`}
-            </SortableColumnHeader>
-            <SortableColumnHeader
-              name="last_edited_by"
+            />
+            <Columns.LastEditedBy.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-            >
-              {t`Last edited by`}
-            </SortableColumnHeader>
-            <SortableColumnHeader
-              name="last_edited_at"
+            />
+            <Columns.LastEditedAt.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-            >
-              {t`Last edited at`}
-            </SortableColumnHeader>
-            <th></th>
+            />
+            <Columns.ActionMenu.Header />
+            <Columns.RightEdge.Header />
           </tr>
         </thead>
       )}
-      <TBody>{items.map(itemRenderer)}</TBody>
+      <TBody>
+        {items.map((item: CollectionItem) => {
+          const isSelected = getIsSelected(item);
+
+          const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
+          const key = `${item.model}-${item.id}`;
+          return (
+            <ItemDragSource
+              item={item}
+              collection={collection}
+              isSelected={isSelected}
+              selected={selectedItems}
+              onDrop={onDrop}
+              key={`item-drag-source-${key}`}
+            >
+              <tr data-testid={testIdPrefix} style={{ height: 48 }}>
+                <ItemComponent
+                  testIdPrefix={testIdPrefix}
+                  item={item}
+                  isSelected={isSelected}
+                  databases={databases}
+                  bookmarks={bookmarks}
+                  createBookmark={createBookmark}
+                  deleteBookmark={deleteBookmark}
+                  collection={collection}
+                  isPinned={isPinned}
+                  onCopy={onCopy}
+                  onMove={onMove}
+                  onToggleSelected={onToggleSelected}
+                />
+              </tr>
+            </ItemDragSource>
+          );
+        })}
+      </TBody>
     </Table>
   );
 };
 
-BaseItemsTable.Item = BaseTableItem;
+export type ItemRendererProps = {
+  item: CollectionItem;
+  isSelected?: boolean;
+  isPinned?: boolean;
+  onToggleSelected?: OnToggleSelectedWithItem;
+  collection?: Collection;
+  draggable?: boolean;
+  testIdPrefix?: string;
+  databases?: Database[];
+  bookmarks?: Bookmark[];
+} & ActionMenuProps;
+
+const DefaultItemRenderer = ({
+  item,
+  isSelected,
+  isPinned,
+  onToggleSelected,
+  collection,
+  onCopy,
+  onMove,
+  createBookmark,
+  deleteBookmark,
+  databases,
+  bookmarks,
+  testIdPrefix = "item",
+}: ItemRendererProps) => {
+  const canSelect =
+    collection?.can_write && typeof onToggleSelected === "function";
+
+  const icon = item.getIcon();
+  if (item.model === "card") {
+    icon.color = color("text-light");
+  }
+
+  const handleSelectionToggled = useCallback(() => {
+    onToggleSelected?.(item);
+  }, [item, onToggleSelected]);
+
+  return (
+    <>
+      {canSelect && (
+        <Columns.Select.Cell
+          testIdPrefix={testIdPrefix}
+          icon={icon}
+          isPinned={isPinned}
+          isSelected={isSelected}
+          handleSelectionToggled={handleSelectionToggled}
+        />
+      )}
+      <Columns.Type.Cell
+        testIdPrefix={testIdPrefix}
+        icon={icon}
+        isPinned={isPinned}
+      />
+      <Columns.Name.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.ActionMenu.Cell
+        item={item}
+        collection={collection}
+        databases={databases}
+        bookmarks={bookmarks}
+        onCopy={onCopy}
+        onMove={onMove}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+      />
+      <Columns.RightEdge.Cell />
+    </>
+  );
+};
+BaseItemsTable.Item = DefaultItemRenderer;

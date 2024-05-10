@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -47,22 +46,17 @@ function CreateDashboardModal({
   );
 
   return (
-    <CreateCollectionOnTheGo>
-      {({ resumedValues }) => (
-        <ModalContent
-          title={t`New dashboard`}
-          onClose={onClose}
-          data-testid="new-dashboard-modal"
-        >
-          <CreateDashboardFormConnected
-            {...props}
-            onCreate={handleCreate}
-            onCancel={onClose}
-            initialValues={resumedValues}
-          />
-        </ModalContent>
-      )}
-    </CreateCollectionOnTheGo>
+    <ModalContent
+      title={t`New dashboard`}
+      onClose={onClose}
+      data-testid="new-dashboard-modal"
+    >
+      <CreateDashboardFormConnected
+        {...props}
+        onCreate={handleCreate}
+        onCancel={onClose}
+      />
+    </ModalContent>
   );
 }
 

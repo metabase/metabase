@@ -1,9 +1,18 @@
 import { t } from "ttag";
 
 import { ID_OPTION } from "metabase-lib/v1/parameters/constants";
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
+import type { ParameterMappingOptions } from "metabase-types/api";
 
-export function getDashboardParameterSections() {
+export interface ParameterSection {
+  id: ParameterSectionId;
+  name: string;
+  description: string;
+  options: ParameterMappingOptions[];
+}
+
+export function getDashboardParameterSections(): ParameterSection[] {
   return [
     {
       id: "date",
@@ -40,40 +49,44 @@ export function getDashboardParameterSections() {
       description: t`Name, Rating, Description, etc.`,
       options: buildTypedOperatorOptions("string", "string", t`Text`),
     },
-  ].filter(Boolean);
+  ];
 }
 
-export function getDefaultOptionForParameterSection() {
+const defaultSectionToParameter = {
+  location: "string/=",
+  number: "number/=",
+  string: "string/=",
+  date: "date/all-options",
+};
+
+export function getDefaultOptionForParameterSectionMap(): Record<
+  ParameterSectionId,
+  ParameterMappingOptions
+> {
   const sections = getDashboardParameterSections();
+  const map = {} as Record<ParameterSectionId, ParameterMappingOptions>;
 
-  const map = Object.fromEntries(
-    sections.map(section => {
-      const { id: sectionId, options } = section;
-      let defaultOption;
+  for (const section of sections) {
+    const { id: sectionId, options } = section;
 
-      if (sectionId === "id") {
-        defaultOption = options[0];
-      }
+    if (sectionId === "id") {
+      map[sectionId] = options[0];
+      continue;
+    }
 
-      if (sectionId === "location") {
-        defaultOption = options.find(o => o.type === "string/=");
-      }
+    const defaultOperator = defaultSectionToParameter[sectionId];
+    const defaultOption = options.find(
+      option => option.type === defaultOperator,
+    );
 
-      if (sectionId === "number") {
-        defaultOption = options.find(o => o.type === "number/=");
-      }
+    if (!defaultOption) {
+      throw new Error(
+        `No default option found for parameter section "${sectionId}"`,
+      );
+    }
 
-      if (sectionId === "string") {
-        defaultOption = options.find(o => o.type === "string/=");
-      }
-
-      if (sectionId === "date") {
-        defaultOption = options.find(o => o.type === "date/all-options");
-      }
-
-      return [sectionId, defaultOption];
-    }),
-  );
+    map[sectionId] = defaultOption;
+  }
 
   return map;
 }

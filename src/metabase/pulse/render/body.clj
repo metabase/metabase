@@ -4,7 +4,6 @@
    [hiccup.core :refer [h]]
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.formatter.datetime :as datetime]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.color :as color]
@@ -71,7 +70,7 @@
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
-    (datetime/format-temporal-str timezone-id value col)
+    (formatter/format-temporal-str timezone-id value col)
 
     (number? value)
     (formatter/format-number value col visualization-settings)
@@ -422,8 +421,8 @@
                  {:percentage (percentages (first row))
                   :color      (legend-colors (first row))
                   :label      (if (and (contains? label-viz-settings :date_style)
-                                       (datetime/temporal-string? label))
-                                (datetime/format-temporal-str
+                                       (formatter/temporal-string? label))
+                                (formatter/format-temporal-str
                                  timezone-id
                                  (first row)
                                  (x-axis-rowfn cols)

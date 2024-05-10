@@ -178,20 +178,18 @@
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
-(def user-http-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request
   "A version of our test client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID.
   The request will be executed with a temporary session id.
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
-(def user-real-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-real-request
   "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]

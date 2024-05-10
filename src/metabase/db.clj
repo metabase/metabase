@@ -11,7 +11,9 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.db.data-source :as mdb.data-source]
    [metabase.db.env :as mdb.env]
+   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
    [potemkin :as p]))
@@ -19,24 +21,32 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
- [mdb.connection
-  quoting-style
-  db-type
-  unique-identifier
-  data-source]
+  [mdb.connection
+   application-db
+   data-source
+   db-type
+   quoting-style
+   unique-identifier]
 
- [mdb.connection-pool-setup
-  recent-activity?]
+  [mdb.connection-pool-setup
+   recent-activity?]
 
- [mdb.env
-  db-file]
+  [mdb.data-source
+   broken-out-details->DataSource]
 
- [mdb.setup
-  migrate!]
+  [mdb.env
+   db-file]
 
- [mdb.spec
-  make-subname
-  spec])
+  [mdb.jdbc-protocols
+   clob->str]
+
+  [mdb.setup
+   migrate!
+   quote-for-application-db]
+
+  [mdb.spec
+   make-subname
+   spec])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)
@@ -99,3 +109,15 @@
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
   (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+
+(defn do-with-application-db
+  "Impl for [[with-application-db]] macro."
+  [application-db thunk]
+  (binding [mdb.connection/*application-db* application-db]
+    (thunk)))
+
+(defmacro with-application-db
+  "Bind the current application database and execute body."
+  {:style/indent [:defn]}
+  [application-db & body]
+  `(do-with-application-db ~application-db (^:once fn* [] ~@body)))

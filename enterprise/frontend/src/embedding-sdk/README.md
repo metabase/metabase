@@ -19,19 +19,28 @@ Features planned:
 
 * You have an application using React 17 or higher
 * You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-* You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
+* You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
 
 # Getting started
 
-## Start a local build of Metabase from master
+## Start Metabase
 
-1. Check out the code from the metabase repo
-```git clone git@github.com:metabase/metabase.git```
-1. Move into the repo and start it
-```cd metabase && yarn dev-ee```
-1. Metabase will be running at http://localhost:3000/
-1. Go through the setup process
-1. Make sure to activate your license. You can do this during the setup process or after, from the admin settings
+Currently, the SDK only works with specific versions of Metabase.
+You have the following options:
+
+### 1. Running on Docker
+Start the Metabase container:
+```bash
+docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.0
+```
+
+### 2. Running the Jar file
+1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.0/metabase.jar
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
+```bash
+java -jar metabase.jar
+```
 
 ## Configure Metabase
 
@@ -53,13 +62,12 @@ The SDK will call this endpoint if it doesn't have a token or to refresh the tok
 Example:
 
 ```ts
-import express from "express"
-import type { Request, Response } from "express"
+const express = require("express")
 
-import jwt from "jsonwebtoken"
-import fetch from "node-fetch"
+const jwt = require("jsonwebtoken")
+const fetch = require("node-fetch")
 
-async function metabaseAuthHandler(req: Request, res: Response) {
+async function metabaseAuthHandler(req, res) {
   const { user } = req.session
 
   if (!user) {
@@ -80,7 +88,7 @@ async function metabaseAuthHandler(req: Request, res: Response) {
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET
   )
-  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`
 
   try {
     const response = await fetch(ssoUrl, { method: 'GET' })
@@ -100,7 +108,15 @@ async function metabaseAuthHandler(req: Request, res: Response) {
 
 const app = express()
 
-// middleware
+// Middleware
+
+// If your FE application is on a different domain from your BE, you need to enable CORS
+// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
+// to your FE application URL.
+app.use(cors({
+  credentials: true,
+}))
+
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -123,7 +139,7 @@ app.listen(PORT, () => {
 You can install Metabase Embedding SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react --force
 ```
 
 or using yarn:
@@ -146,12 +162,17 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-  font: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+}
+
+// Theme Options
+const theme = {
+  fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+  colors: { brand: "#9b59b6" }
 }
 
 export default function App() {
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} theme={theme}>
       Hello World!
     </MetabaseProvider>
   );
@@ -161,6 +182,8 @@ export default function App() {
 ### Embedding a static question
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
+
+You can optionally pass in `height` to change the height of the component.
 
 ```jsx
 import React from "react";
@@ -173,7 +196,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
+        <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
     </MetabaseProvider>
   );
 }

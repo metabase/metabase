@@ -112,10 +112,10 @@
 
 (defn- default-search-results []
   (sorted-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
+   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
@@ -367,7 +367,7 @@
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
                          :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
-                         :dataset_query nil :display "table"))]
+                         :dataset_query nil :display "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -421,7 +421,11 @@
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-            (is (ordered-subset? (remove (comp #{"collection"} :model) (default-search-results))
+            (is (ordered-subset? (->> (default-search-results)
+                                      (remove (comp #{"collection"} :model))
+                                      (map #(cond-> %
+                                              (contains? #{"dashboard" "card" "dataset"} (:model %))
+                                              (assoc :can_write false))))
                                  (search-request-data :rasta :q "test"))))))))
 
   (testing "Users without root collection permissions should still see other collections they have access to"
@@ -433,7 +437,9 @@
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-collection-read-permissions! group (u/the-id collection))
               (is (= (->> (default-results-with-collection)
-                          (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
+                          (map #(cond-> %
+                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (assoc :can_write false)))
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "metric test2 metric", :description "Lookin' for a blueberry",
                                          :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
@@ -455,10 +461,12 @@
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
               (is (ordered-subset? (->> (default-results-with-collection)
-                                        (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
-                                        (concat (for [row  (default-search-results)
-                                                      :when (not= "collection" (:model row))]
-                                                  (update row :name #(str/replace % "test" "test2"))))
+                                        (concat (->> (default-search-results)
+                                                     (remove #(= "collection" (:model %)))
+                                                     (map #(update % :name str/replace "test" "test2"))))
+                                        (map #(cond-> %
+                                                (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                                (assoc :can_write false)))
                                         reverse
                                         sorted-results)
                                    (search-request-data :rasta :q "test")))))))))
@@ -488,12 +496,14 @@
                            PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
               (perms/grant-collection-read-permissions! group (u/the-id coll-1))
               (is (= (->> (default-results-with-collection)
-                          (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "metric test2 metric" :description "Lookin' for a blueberry"
                                          :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
                                         {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
                                          :creator_id true :creator_common_name "Rasta Toucan"}]))
+                          (map #(cond-> %
+                                  (contains? #{"collection" "dashboard" "card" "dataset"} (:model %))
+                                  (assoc :can_write false)))
                           reverse
                           sorted-results)
                      (search-request-data :rasta :q "test")))))))))

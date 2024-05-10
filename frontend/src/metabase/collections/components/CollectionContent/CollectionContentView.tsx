@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import BulkActions from "metabase/collections/components/BulkActions";
+import CollectionBulkActions from "metabase/collections/components/CollectionBulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -18,10 +18,8 @@ import type {
 } from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
-import {
-  Sort,
-  type SortingOptions,
-} from "metabase/components/ItemsTable/BaseItemsTable";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -73,7 +71,6 @@ export const CollectionContentView = ({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  isNavbarOpen,
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
@@ -86,7 +83,6 @@ export const CollectionContentView = ({
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
   isAdmin: boolean;
-  isNavbarOpen: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canUploadToDb: boolean;
@@ -99,7 +95,7 @@ export const CollectionContentView = ({
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
       sort_column: "name",
-      sort_direction: Sort.Asc,
+      sort_direction: SortDirection.Asc,
     });
 
   const [
@@ -354,42 +350,44 @@ export const CollectionContentView = ({
                     }
 
                     return (
-                      <CollectionTable data-testid="collection-table">
-                        <ItemsTable
-                          databases={databases}
-                          bookmarks={bookmarks}
-                          createBookmark={createBookmark}
-                          deleteBookmark={deleteBookmark}
-                          items={unpinnedItems}
-                          collection={collection}
-                          sortingOptions={unpinnedItemsSorting}
-                          onSortingOptionsChange={
-                            handleUnpinnedItemsSortingChange
-                          }
-                          selectedItems={selected}
-                          hasUnselected={hasUnselected}
-                          getIsSelected={getIsSelected}
-                          onToggleSelected={toggleItem}
-                          onDrop={clear}
-                          onMove={handleMove}
-                          onCopy={handleCopy}
-                          onSelectAll={handleSelectAll}
-                          onSelectNone={clear}
-                        />
-                        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-                          {hasPagination && (
-                            <PaginationControls
-                              showTotal
-                              page={page}
-                              pageSize={PAGE_SIZE}
-                              total={metadata.total}
-                              itemsLength={unpinnedItems.length}
-                              onNextPage={handleNextPage}
-                              onPreviousPage={handlePreviousPage}
-                            />
-                          )}
-                        </div>
-                        <BulkActions
+                      <>
+                        <CollectionTable data-testid="collection-table">
+                          <ItemsTable
+                            databases={databases}
+                            bookmarks={bookmarks}
+                            createBookmark={createBookmark}
+                            deleteBookmark={deleteBookmark}
+                            items={unpinnedItems}
+                            collection={collection}
+                            sortingOptions={unpinnedItemsSorting}
+                            onSortingOptionsChange={
+                              handleUnpinnedItemsSortingChange
+                            }
+                            selectedItems={selected}
+                            hasUnselected={hasUnselected}
+                            getIsSelected={getIsSelected}
+                            onToggleSelected={toggleItem}
+                            onDrop={clear}
+                            onMove={handleMove}
+                            onCopy={handleCopy}
+                            onSelectAll={handleSelectAll}
+                            onSelectNone={clear}
+                          />
+                          <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+                            {hasPagination && (
+                              <PaginationControls
+                                showTotal
+                                page={page}
+                                pageSize={PAGE_SIZE}
+                                total={metadata.total}
+                                itemsLength={unpinnedItems.length}
+                                onNextPage={handleNextPage}
+                                onPreviousPage={handlePreviousPage}
+                              />
+                            )}
+                          </div>
+                        </CollectionTable>
+                        <CollectionBulkActions
                           selected={selected}
                           collection={collection}
                           onArchive={handleBulkArchive}
@@ -399,9 +397,8 @@ export const CollectionContentView = ({
                           onCopy={clear}
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
-                          isNavbarOpen={isNavbarOpen}
                         />
-                      </CollectionTable>
+                      </>
                     );
                   }}
                 </Search.ListLoader>

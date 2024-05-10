@@ -144,14 +144,11 @@ To change a column's [filter widget](../dashboards/filters.md):
 
 #### Filter widget options
 
-- **Search box**: Enter a search term and Metabase will display checkboxes for column values that match the search.
-- **A list of all values**: dropdown menu with checkboxes for all column values.
-- **Plain input box**: Enter a search term and Metabase will make autocomplete suggestions for the search (no checkboxes).
+The default behavior for the `Is` filter for the field.
 
-#### Default filters
-
-- Columns with more than 100 unique values will default to a plain input box filter.
-- Columns with fewer values will display a search box filter.
+- **Search box**: Display a search box and suggest autocompletions for values in that column that match the search term(s).
+- **A list of all values**: Display a search box, as well as a list of checkboxes for values in a dropdown menu that people can select as search terms.
+- **Plain input box**: Display a search box, but do NOT suggest autocompletions.
 
 ### Changing a search box filter to a dropdown filter
 
