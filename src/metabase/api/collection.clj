@@ -687,13 +687,13 @@
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (map #(assoc % :collection_id (:id collection)))
        (maybe-check-permissions collection)
-       (map remove-unwanted-keys)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
+       (map remove-unwanted-keys)
        (sort-by (comp ::index meta))))
 
 
