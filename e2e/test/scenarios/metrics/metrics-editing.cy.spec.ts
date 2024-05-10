@@ -289,6 +289,15 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("755,310.84");
     });
+
+    it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      startNewAggregation();
+      cy.findByTestId("expression-editor").should("be.visible");
+    });
   });
 
   describe("filters", () => {
