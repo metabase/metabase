@@ -39,12 +39,14 @@ const PRODUCTS_CATEGORY_BREAKOUT: Breakout = [
   { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
 ];
 
+const SUM_TOTAL_AGGREGATION: Aggregation = ["sum", ORDERS_TOTAL_FIELD_REF];
+
 const OFFSET_SUM_TOTAL_AGGREGATION_NAME = "Offsetted sum of total";
 
 const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
   "offset",
   createOffsetOptions(OFFSET_SUM_TOTAL_AGGREGATION_NAME),
-  ["sum", ORDERS_TOTAL_FIELD_REF],
+  SUM_TOTAL_AGGREGATION,
   -1,
 ];
 
@@ -56,7 +58,7 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
   });
 
-  it("does not work without a breakout clause", () => {
+  it("does not work without a breakout", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
@@ -69,7 +71,7 @@ describe("scenarios > question > offset", () => {
     );
   });
 
-  it("works with a single breakout clause", () => {
+  it("works with a single breakout", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
@@ -85,7 +87,7 @@ describe("scenarios > question > offset", () => {
     ]);
   });
 
-  it("works with multiple breakout clauses", () => {
+  it("works with multiple breakouts", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
@@ -101,7 +103,7 @@ describe("scenarios > question > offset", () => {
     ]);
   });
 
-  it.skip("works with multiple breakout clauses and a limit clause (metabase#42509)", () => {
+  it.skip("works with multiple breakouts and a limit (metabase#42509)", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
@@ -115,6 +117,29 @@ describe("scenarios > question > offset", () => {
       ["April 2022", "", "", "", ""],
       ["May 2022", "", "52.76", "", ""],
       ["June 2022", "339.14", "203.57", "493.51", "229.5"],
+    ]);
+  });
+
+  it("works with multiple aggregations and breakouts", () => {
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+      breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
+      limit: 9,
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyTableContent([
+      ["April 2022", "Gadget", "52.76", ""],
+      ["May 2022", "Doohickey", "339.14", ""],
+      ["May 2022", "Gadget", "203.57", "52.76"],
+      ["May 2022", "Gizmo", "493.51", ""],
+      ["May 2022", "Widget", "229.5", ""],
+      ["June 2022", "Doohickey", "482.56", "339.14"],
+      ["June 2022", "Gadget", "515.53", "203.57"],
+      ["June 2022", "Gizmo", "387.79", "493.51"],
+      ["June 2022", "Widget", "687.06", "229.5"],
     ]);
   });
 
