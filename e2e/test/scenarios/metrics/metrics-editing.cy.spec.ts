@@ -94,20 +94,30 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
+      addCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
     it("should create a metric based on a saved question", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
+      addCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
     it("should create a metric based on a multi-stage saved question", () => {
@@ -125,10 +135,15 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
+      addCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
     it("should create a metric based on a multi-stage model", () => {
@@ -147,9 +162,14 @@ describe("scenarios > metrics", () => {
       startNewMetric();
       popover().findByText("Metrics").click();
       popover().findByText(SINGLE_STAGE_METRIC.name).click();
+      addCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
     it("should create a metric based on a multi-stage metric", () => {
@@ -419,6 +439,26 @@ function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
   getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
     .within(() => getPlusButton().click());
+}
+
+function addCategoryFilter({
+  tableName,
+  columnName,
+  values,
+}: {
+  tableName?: string;
+  columnName: string;
+  values: string[];
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    values.forEach(value => cy.findByText(value).click());
+    cy.button("Add filter").click();
+  });
 }
 
 function addAggregation({
