@@ -18,7 +18,7 @@
     (update api-key :unmasked_key u.secret/expose)
     api-key))
 
-(defn- present-api-key
+(defn present-api-key
   "Takes an ApiKey and hydrates/selects keys as necessary to put it into a standard form for responses"
   [api-key]
   (-> api-key

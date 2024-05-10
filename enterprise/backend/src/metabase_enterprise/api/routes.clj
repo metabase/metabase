@@ -15,7 +15,7 @@
     :as content-verification]
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
-   [metabase-enterprise.scim.api :as scim]
+   [metabase-enterprise.scim.routes :as scim]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.upload-management.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]

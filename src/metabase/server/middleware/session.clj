@@ -340,7 +340,10 @@
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
 
-(defn- do-useless-hash []
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]

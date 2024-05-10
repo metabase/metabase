@@ -1,8 +1,9 @@
 (ns metabase-enterprise.scim.api-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.scim.api :as scim]
-            [metabase.test :as mt]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.scim.api :as scim]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- scim-api-key-shape
   "Expected shape of a SCIM API key, to be used in =? assertions."
@@ -11,6 +12,7 @@
    :scope         (mt/malli=?
                    [:enum :scim "scim"])
    :key           (mt/malli=? :string)
+   :unmasked_key  (mt/malli=? :string)
    :user_id       nil
    :creator_id    (mt/user->id test-user)
    :updated_by_id (mt/user->id test-user)})
