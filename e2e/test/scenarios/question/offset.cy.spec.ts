@@ -39,6 +39,15 @@ const PRODUCTS_CATEGORY_BREAKOUT: Breakout = [
   { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
 ];
 
+const OFFSET_SUM_TOTAL_AGGREGATION_NAME = "Offsetted sum of total";
+
+const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
+  "offset",
+  createOffsetOptions(OFFSET_SUM_TOTAL_AGGREGATION_NAME),
+  ["sum", ORDERS_TOTAL_FIELD_REF],
+  -1,
+];
+
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
     restore();
@@ -48,15 +57,9 @@ describe("scenarios > question > offset", () => {
   });
 
   it("does not work without a breakout clause", () => {
-    const aggregation: Aggregation = [
-      "offset",
-      createOffsetOptions(),
-      ["sum", ORDERS_TOTAL_FIELD_REF],
-      -1,
-    ];
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
-      aggregation: [aggregation],
+      aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
     };
 
     createQuestion({ query }, { visitQuestion: true });
@@ -67,16 +70,9 @@ describe("scenarios > question > offset", () => {
   });
 
   it("works with a single breakout clause", () => {
-    const aggregationName = "My aggregation";
-    const aggregation: Aggregation = [
-      "offset",
-      createOffsetOptions(aggregationName),
-      ["sum", ORDERS_TOTAL_FIELD_REF],
-      -1,
-    ];
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
-      aggregation: [aggregation],
+      aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
       breakout: [ORDERS_CREATED_AT_BREAKOUT],
     };
 
@@ -89,15 +85,9 @@ describe("scenarios > question > offset", () => {
   });
 
   it("works with multiple breakout clauses", () => {
-    const aggregation: Aggregation = [
-      "offset",
-      createOffsetOptions(),
-      ["sum", ORDERS_TOTAL_FIELD_REF],
-      -1,
-    ];
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
-      aggregation: [aggregation],
+      aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
       breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
     };
 
@@ -111,7 +101,6 @@ describe("scenarios > question > offset", () => {
   });
 
   it("works after saving a question (metabase#42323)", () => {
-    const aggregationName = "Total sum with offset";
     const breakoutName = "Created At";
 
     startNewQuestion();
@@ -121,16 +110,22 @@ describe("scenarios > question > offset", () => {
     });
     addCustomAggregation({
       formula: "Offset(Sum([Total]), -1)",
-      name: aggregationName,
+      name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
     });
     addBreakout(breakoutName);
 
     visualize();
-    verifyLineChart({ xAxis: breakoutName, yAxis: aggregationName });
+    verifyLineChart({
+      xAxis: breakoutName,
+      yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+    });
 
     saveQuestion().then(({ response }) => {
       visitQuestion(response?.body.id);
-      verifyLineChart({ xAxis: breakoutName, yAxis: aggregationName });
+      verifyLineChart({
+        xAxis: breakoutName,
+        yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+      });
     });
   });
 
