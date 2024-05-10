@@ -537,6 +537,7 @@ export default class PieChart extends Component {
         }
         showLegend={settings["pie.show_legend"]}
         isDashboard={this.props.isDashboard}
+        onUpdateSize={this.updateChartViewportSize}
       >
         <div>
           <div ref={this.chartDetail} className={styles.Detail}>
