@@ -1,14 +1,18 @@
-import type { EChartsType, EChartsOption } from "echarts";
-import { init } from "echarts";
+import type { EChartsOption } from "echarts";
+import type { EChartsType } from "echarts/core";
+import { init } from "echarts/core";
 import { useEffect, useRef } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
+import { registerEChartsModules } from "metabase/visualizations/echarts";
 import type {
   EChartsEventHandler,
   ZREventHandler,
 } from "metabase/visualizations/types/echarts";
 
 import { EChartsRendererRoot } from "./EChartsRenderer.styled";
+
+registerEChartsModules();
 
 export interface EChartsRendererProps {
   option: EChartsOption;

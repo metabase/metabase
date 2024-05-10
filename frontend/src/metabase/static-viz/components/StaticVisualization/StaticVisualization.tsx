@@ -1,4 +1,5 @@
 import { extractRemappings } from "metabase/visualizations";
+import { registerEChartsModules } from "metabase/visualizations/echarts";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
 import { ComboChart } from "../ComboChart";
@@ -7,6 +8,8 @@ import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
+
+registerEChartsModules();
 
 export const StaticVisualization = (props: StaticVisualizationProps) => {
   const display = props.rawSeries[0].card.display;
