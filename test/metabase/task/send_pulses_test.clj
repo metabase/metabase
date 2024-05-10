@@ -149,7 +149,7 @@
                                              :channel_type :slack
                                              :details      {:channel "#general"}}
                                             daily-at-6pm)]
-        (#'task.send-pulses/update-send-pulse-triggers!)
+        (#'task.send-pulses/init-send-pulse-triggers!)
         (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
                   ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
                   ;; different schedule
