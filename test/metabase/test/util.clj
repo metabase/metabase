@@ -587,8 +587,6 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
-(def in-memory-scheduler-thread-count 1)
-
 (defn- in-memory-scheduler
   "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
   it returns the same scheduler! So make sure you shut it down when you're done using it."
@@ -598,7 +596,7 @@
     (doto (java.util.Properties.)
       (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
       (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
-      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") (str in-memory-scheduler-thread-count))))))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
 
 (defn do-with-unstarted-temp-scheduler [thunk]
   (let [temp-scheduler (in-memory-scheduler)
