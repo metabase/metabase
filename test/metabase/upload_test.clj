@@ -1089,7 +1089,7 @@
             ::upload/replace "replace")))
 
 (defn- updated-contents [action initial added]
-  ;; TODO make precise if we fix inconsistent mysql semantics
+  ;; TODO fix inconsistent mysql semantics
   (case action
     ::upload/append (rows-with-auto-pk (into initial added))
     ::upload/replace (if (= driver/*driver* :mysql)
