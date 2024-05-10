@@ -1,3 +1,4 @@
+import { createReducer } from "@reduxjs/toolkit";
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import produce from "immer";
 import reduceReducers from "reduce-reducers";
@@ -516,12 +517,12 @@ const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-const theme = handleActions(
-  {
-    [SET_DISPLAY_THEME]: { next: (state, { payload }) => payload ?? "light" },
-  },
-  INITIAL_DASHBOARD_STATE.theme,
-);
+const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
+  builder.addCase(
+    SET_DISPLAY_THEME,
+    (state, { payload }) => payload ?? "light",
+  );
+});
 
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
