@@ -1728,7 +1728,8 @@
             (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
                      :done? #(= 1 %)})
             (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
-              (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+              (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                     (pulse-channel-test/send-pulse-triggers pulse-id)))
               (is (= #{"metabase.task.send-pulses.send-pulse.job"
                        "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                      (scheduler-job-keys))))))))))
