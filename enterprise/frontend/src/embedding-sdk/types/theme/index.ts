@@ -52,12 +52,15 @@ export interface MetabaseComponentTheme {
     };
 
     idColumn?: {
+      /** Text color of table header. This defaults to the brand color. */
+      textColor?: string;
+
       /** Default background color of ID column pill */
       backgroundColor?: string;
     };
 
     header?: {
-      /** Text color of table header. This defaults to the  */
+      /** Text color of table header. This defaults to the brand color. */
       textColor?: string;
 
       /** Background color of table header */

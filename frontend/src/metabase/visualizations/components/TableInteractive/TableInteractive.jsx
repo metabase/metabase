@@ -27,6 +27,7 @@ import {
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box, Icon, DelayGroup } from "metabase/ui";
+import { getTableCellTheme } from "metabase/visualizations/components/TableInteractive/interactive-table-theme";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -128,9 +129,9 @@ class TableInteractive extends Component {
         </Box>
       );
     },
-    renderTableCellWrapper: (children, { theme } = {}) => {
+    renderTableCellWrapper: (children, { theme, isIDColumn } = {}) => {
       const hasChildren = children != null && children !== "";
-      const cellTheme = theme?.other?.table?.cell;
+      const cellTheme = getTableCellTheme({ theme, isIDColumn });
 
       return (
         <Box
@@ -138,8 +139,8 @@ class TableInteractive extends Component {
             [TableS.cellData]: hasChildren,
           })}
           data-testid={hasChildren ? "cell-data" : undefined}
-          c={cellTheme?.background || "text-brand"}
-          bg={cellTheme?.background}
+          c={cellTheme.color}
+          bg={cellTheme.background}
         >
           {children}
         </Box>
@@ -581,13 +582,9 @@ class TableInteractive extends Component {
     // Theme options from embedding SDK.
     const tableTheme = theme?.other?.table;
 
-    let backgroundColor =
-      this.getCellBackgroundColor(settings, value, rowIndex, column.name) ??
+    const backgroundColor =
+      this.getCellBackgroundColor(settings, value, rowIndex, column.name) ||
       tableTheme?.cell?.backgroundColor;
-
-    if (isIDColumn && tableTheme?.idColumn?.backgroundColor) {
-      backgroundColor = tableTheme.idColumn.backgroundColor;
-    }
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -827,8 +824,8 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          c={headerTheme?.textColor ?? "text-medium"}
-          bg={headerTheme?.backgroundColor ?? "white"}
+          c={headerTheme?.textColor || "text-medium"}
+          bg={headerTheme?.backgroundColor || "white"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
