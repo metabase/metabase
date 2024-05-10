@@ -37,7 +37,7 @@
 (def ^:private static-viz-context-delay
   "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
   for creating charts."
-  ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
+  ;; TODO: we should have resource pool for this
   (delay (load-viz-bundle (js/context))))
 
 (defn- context

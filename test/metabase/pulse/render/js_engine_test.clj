@@ -16,3 +16,12 @@
                          "curried function test")
       (let [curried (js/execute-fn-name context "curry_plus" 1)]
         (is (= 3 (.asLong (js/execute-fn curried 2))))))))
+
+
+(deftest thread-safe-execute-fn-name-test
+  (testing "execute-fn-name is thread safe"
+    (let [context (js/context)]
+      (js/load-js-string context "function plus (x, y) { return x + y }" "plus test")
+      (is (= (map inc (range 10))
+             (map deref (for [x (range 10)]
+                          (future (.asLong (js/execute-fn-name context "plus" x 1))))))))))
