@@ -7,10 +7,13 @@ import {
   enterCustomColumnDetails,
   getNotebookStep,
   modal,
+  openQuestionActions,
   popover,
+  queryBuilderHeader,
   restore,
   startNewMetric,
   startNewQuestion,
+  visitMetric,
   visualize,
 } from "e2e/support/helpers";
 
@@ -375,7 +378,7 @@ describe("scenarios > metrics", () => {
       addBreakout({ columnName: "Created At" });
       saveMetric();
       runQuery();
-      verifyLineChart({ xAxis: "Created At", yAxis: "Sum of Total" });
+      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Sum of Total" });
     });
 
     it("should create a geo metric with multiple breakouts", () => {
@@ -408,7 +411,10 @@ describe("scenarios > metrics", () => {
       });
       saveMetric();
       runQuery();
-      verifyLineChart({ xAxis: "Created At", yAxis: "Average of Count" });
+      verifyLineAreaBarChart({
+        xAxis: "Created At",
+        yAxis: "Average of Count",
+      });
     });
   });
 
@@ -482,6 +488,29 @@ describe("scenarios > metrics", () => {
         cy.findByText("Count of rows").should("be.visible");
         cy.findByText(ORDERS_COUNT_METRIC.name).should("not.exist");
       });
+    });
+  });
+
+  describe("updates", () => {
+    it("should be able to rename a metric", () => {
+      const newTitle = "New metric name";
+      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) => {
+        visitMetric(card.id);
+        renameMetric(newTitle);
+        visitMetric(card.id);
+        queryBuilderHeader().findByDisplayValue(newTitle).should("be.visible");
+      });
+    });
+
+    it("should be able to change the metric query definition", () => {
+      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
+      addBreakout({ tableName: "Product", columnName: "Category" });
+      updateMetric();
+      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
     });
   });
 });
@@ -654,15 +683,20 @@ function addAggregation({
 }
 
 function addBreakout({
+  tableName,
   columnName,
   bucketName,
   stageIndex,
 }: {
+  tableName?: string;
   columnName: string;
   bucketName?: string;
   stageIndex?: number;
 }) {
   startNewBreakout({ stageIndex });
+  if (tableName) {
+    popover().findByText(tableName).click();
+  }
   if (bucketName) {
     popover().findByLabelText(columnName).findByText("by month").click();
     popover().last().findByText(bucketName).click();
@@ -684,6 +718,18 @@ function saveMetric({ name }: { name?: string } = {}) {
   cy.wait("@createCard");
 }
 
+function updateMetric() {
+  cy.intercept("PUT", "/api/card/*").as("updateCard");
+  cy.button("Save changes").click();
+  cy.wait("@updateCard");
+}
+
+function renameMetric(newName: string) {
+  cy.intercept("PUT", "/api/card/*").as("updateCard");
+  cy.findByTestId("saved-question-header-title").clear().type(newName).blur();
+  cy.wait("@updateCard");
+}
+
 function runQuery() {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.findAllByTestId("run-button").last().click();
@@ -694,7 +740,13 @@ function verifyScalarValue(value: string) {
   cy.findByTestId("scalar-container").findByText(value).should("be.visible");
 }
 
-function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
+function verifyLineAreaBarChart({
+  xAxis,
+  yAxis,
+}: {
+  xAxis: string;
+  yAxis: string;
+}) {
   echartsContainer().within(() => {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
