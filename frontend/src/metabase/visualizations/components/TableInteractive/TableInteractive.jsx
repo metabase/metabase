@@ -721,6 +721,7 @@ class TableInteractive extends Component {
   // We should maybe rethink the approach to measurements or render a very basic table header, without react-draggable
   tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
+      card,
       data,
       isPivoted,
       hasMetadataPopovers,
@@ -734,7 +735,7 @@ class TableInteractive extends Component {
 
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
-    const isDraggable = !isPivoted;
+    const isDraggable = !isPivoted && !card.archived;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
