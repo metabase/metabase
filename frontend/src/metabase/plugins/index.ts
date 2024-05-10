@@ -1,5 +1,12 @@
-import type { ComponentType, HTMLAttributes, ReactNode } from "react";
+import type {
+  ComponentType,
+  Dispatch,
+  HTMLAttributes,
+  ReactNode,
+  SetStateAction,
+} from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -13,6 +20,7 @@ import {
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
+  ActualModelFilters,
   AvailableModelFilters,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
@@ -424,6 +432,11 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
+  useModelFilterSettings: () =>
+    [{}, _.noop] as [
+      ActualModelFilters,
+      Dispatch<SetStateAction<ActualModelFilters>>,
+    ],
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {
@@ -432,6 +445,10 @@ export const PLUGIN_DASHBOARD_HEADER = {
 
 export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_UPLOAD_MANAGEMENT = {
+  UploadManagementTable: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

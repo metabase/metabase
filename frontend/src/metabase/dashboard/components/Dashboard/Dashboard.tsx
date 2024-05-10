@@ -11,6 +11,7 @@ import type {
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
 import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
@@ -41,6 +42,7 @@ import type {
   ValuesQueryType,
   ValuesSourceType,
   ValuesSourceConfig,
+  DashboardCard,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -69,8 +71,7 @@ import {
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
 
-interface DashboardProps {
-  dashboardId: DashboardId;
+type DashboardProps = {
   route: Route;
   params: { slug: string };
   children?: ReactNode;
@@ -106,28 +107,10 @@ interface DashboardProps {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[];
-  location: Location;
-  isNightMode: boolean;
-  isFullscreen: boolean;
-  hasNightModeToggle: boolean;
-  refreshPeriod: number | null;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
-  fetchDashboard: (opts: {
-    dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
-    options?: {
-      clearCache?: boolean;
-      preserveParameters?: boolean;
-    };
-  }) => Promise<FetchDashboardResult>;
-  fetchDashboardCardData: (opts?: {
-    reload?: boolean;
-    clearCache?: boolean;
-  }) => Promise<void>;
   fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
-  loadDashboardParams: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
     cardId: CardId;
@@ -138,7 +121,6 @@ interface DashboardProps {
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
   archiveDashboard: (id: DashboardId) => Promise<void>;
 
-  onRefreshPeriodChange: (period: number | null) => void;
   setEditingDashboard: (dashboard: IDashboard | null) => void;
   setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
   setSharing: (isSharing: boolean) => void;
@@ -189,15 +171,10 @@ interface DashboardProps {
     slug: string,
   ) => EmbeddingParameterVisibility | null;
   updateDashboardAndCards: () => void;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    browserFullscreen?: boolean,
-  ) => void;
 
-  onNightModeChange: () => void;
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   hideAddParameterPopover: () => void;
-}
+} & DashboardControlsPassedProps;
 
 function DashboardInner(props: DashboardProps) {
   const {
@@ -255,7 +232,7 @@ function DashboardInner(props: DashboardProps) {
       return dashboard.dashcards;
     }
     return dashboard.dashcards.filter(
-      dc => dc.dashboard_tab_id === selectedTabId,
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     );
   }, [dashboard, selectedTabId]);
 
@@ -266,7 +243,8 @@ function DashboardInner(props: DashboardProps) {
     }
 
     const currentTabParameterIds = currentTabDashcards.flatMap(
-      dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+      (dc: DashboardCard) =>
+        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
     );
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
@@ -452,6 +430,10 @@ function DashboardInner(props: DashboardProps) {
       );
     }
     return (
+      // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
+      // TODO: Check if onEditingChange is being used.
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       <DashboardGridConnected
         {...props}
         isNightMode={shouldRenderAsNightMode}

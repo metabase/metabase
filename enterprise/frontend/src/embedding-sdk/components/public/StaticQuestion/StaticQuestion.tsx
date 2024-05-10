@@ -7,6 +7,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -28,6 +29,7 @@ import type { Card, CardId, Dataset } from "metabase-types/api";
 export type QueryVisualizationProps = {
   questionId: CardId;
   showVisualizationSelector?: boolean;
+  height?: string | number;
 };
 
 type State = {
@@ -40,6 +42,7 @@ type State = {
 const _StaticQuestion = ({
   questionId,
   showVisualizationSelector,
+  height,
 }: QueryVisualizationProps): JSX.Element | null => {
   const metadata = useSelector(getMetadata);
 
@@ -110,12 +113,14 @@ const _StaticQuestion = ({
   }
 
   const question = new Question(card, metadata);
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
+
   const legacyQuery = question.legacyQuery({
     useStructuredQuery: true,
   });
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth)}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (
           <Box w="355px">
@@ -131,7 +136,7 @@ const _StaticQuestion = ({
           </Box>
         )}
         <QueryVisualization
-          className={cx(CS.flexFull, CS.fullWidth)}
+          className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
           question={question}
           rawSeries={[{ card, data: result?.data }]}
           isRunning={isLoading}
