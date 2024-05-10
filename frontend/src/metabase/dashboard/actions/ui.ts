@@ -18,7 +18,7 @@ export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 export const closeSidebar = createAction(CLOSE_SIDEBAR);
 
 export const showClickBehaviorSidebar =
-  (dashcardId: DashCardId) => (dispatch: Dispatch) => {
+  (dashcardId: DashCardId | null) => (dispatch: Dispatch) => {
     if (dashcardId != null) {
       dispatch(
         setSidebar({

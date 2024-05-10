@@ -1,9 +1,4 @@
-import type { RegisteredSeriesOption } from "echarts";
-import type {
-  BarSeriesOption,
-  LineSeriesOption,
-  SeriesOption,
-} from "echarts/types/dist/echarts";
+import type { BarSeriesOption, LineSeriesOption } from "echarts/charts";
 import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import _ from "underscore";
@@ -62,7 +57,7 @@ export const getBarLabelLayout =
     dataset: ChartDataset,
     settings: ComputedVisualizationSettings,
     seriesDataKey: DataKey,
-  ): SeriesOption["labelLayout"] =>
+  ): BarSeriesOption["labelLayout"] =>
   params => {
     const { dataIndex, rect } = params;
     if (dataIndex == null) {
@@ -258,7 +253,7 @@ const buildEChartsBarSeries = (
   yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
   renderingContext: RenderingContext,
-): RegisteredSeriesOption["bar"] => {
+): BarSeriesOption => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
 
@@ -344,7 +339,7 @@ const buildEChartsLineAreaSeries = (
   hasMultipleSeries: boolean,
   chartWidth: number,
   renderingContext: RenderingContext,
-): RegisteredSeriesOption["line"] => {
+): LineSeriesOption => {
   const display = seriesSettings?.display ?? "line";
 
   const stackName =

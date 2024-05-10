@@ -29,6 +29,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :upload_management
                               :whitelabel}
           (is (= {:advanced_permissions           true
                   :audit_app                      true
@@ -50,5 +51,6 @@
                   :sso_jwt                        true
                   :sso_ldap                       true
                   :sso_saml                       true
+                  :upload_management              false
                   :whitelabel                     true}
                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
