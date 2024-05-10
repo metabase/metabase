@@ -61,7 +61,7 @@ export const DataStep = ({
 
   const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
-  const handleTableSelect = async (tableId: TableId) => {
+  const handleTableChange = async (tableId: TableId) => {
     // we need to populate question metadata with selected table
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
 
@@ -72,6 +72,14 @@ export const DataStep = ({
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
+
+  const value = useMemo(() => {
+    if (sourceCardId && sourceCard) {
+      return dataPickerValueFromCard(sourceCard);
+    }
+
+    return dataPickerValueFromTable(table);
+  }, [sourceCard, sourceCardId, table]);
 
   return (
     <NotebookCell color={color}>
@@ -91,23 +99,18 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <>
-          <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
-            {pickerLabel}
-          </DataStepCell>
+        <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+          {pickerLabel}
+        </DataStepCell>
 
-          {isDataPickerOpen && (
-            <DataPickerModal
-              value={
-                sourceCardId && sourceCard
-                  ? dataPickerValueFromCard(sourceCard)
-                  : dataPickerValueFromTable(table)
-              }
-              onChange={handleTableSelect}
-              onClose={() => setIsDataPickerOpen(false)}
-            />
-          )}
-        </>
+        {isDataPickerOpen && (
+          <DataPickerModal
+            title={t`Pick your starting data`}
+            value={value}
+            onChange={handleTableChange}
+            onClose={() => setIsDataPickerOpen(false)}
+          />
+        )}
       </NotebookCellItem>
     </NotebookCell>
   );

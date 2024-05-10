@@ -1,10 +1,13 @@
 import _ from "underscore";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   CollectionId,
-  ListCollectionItemsRequest,
+  CollectionItem,
   CollectionItemModel,
+  DatabaseId,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
@@ -106,3 +109,23 @@ export const isFolder = (
 
 export const generateKey = (query?: ListCollectionItemsRequest) =>
   JSON.stringify(query ?? "root");
+
+export const createDatabaseIdItemFilter = (databaseId?: DatabaseId) => {
+  return (item: QuestionPickerItem) => {
+    if (
+      isNullOrUndefined(databaseId) ||
+      !hasDatabaseId(item) ||
+      isNullOrUndefined(item.database_id)
+    ) {
+      return true;
+    }
+
+    return item.database_id === databaseId;
+  };
+};
+
+const hasDatabaseId = (
+  value: unknown,
+): value is Pick<CollectionItem, "database_id"> => {
+  return typeof value === "object" && value != null && "database_id" in value;
+};

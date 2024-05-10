@@ -23,12 +23,18 @@ import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
 
 interface Props {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
   value: TablePickerValue | undefined;
   onChange: (value: NotebookDataPickerValueItem) => void;
 }
 
-export const TablePicker = ({ value, onChange }: Props) => {
-  const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
+export const TablePicker = ({ databaseId, value, onChange }: Props) => {
+  const [dbId, setDbId] = useState<DatabaseId | undefined>(
+    databaseId ?? value?.db_id,
+  );
   const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
     value?.schema,
   );
@@ -109,14 +115,16 @@ export const TablePicker = ({ value, onChange }: Props) => {
       data-testid="nested-item-picker"
     >
       <Flex h="100%" w="fit-content">
-        <DatabaseList
-          databases={isLoadingDatabases ? undefined : databases?.data}
-          error={errorDatabases}
-          isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
-          isLoading={isLoadingDatabases}
-          selectedItem={selectedDbItem}
-          onClick={folder => handleFolderSelect({ folder })}
-        />
+        {!databaseId && (
+          <DatabaseList
+            databases={isLoadingDatabases ? undefined : databases?.data}
+            error={errorDatabases}
+            isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
+            isLoading={isLoadingDatabases}
+            selectedItem={selectedDbItem}
+            onClick={folder => handleFolderSelect({ folder })}
+          />
+        )}
 
         {isNotNull(dbId) && (
           <SchemaList

@@ -1,9 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CollectionItemModel, TableId } from "metabase-types/api";
+import type {
+  CollectionItemModel,
+  DatabaseId,
+  TableId,
+} from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -25,6 +28,11 @@ import {
 import { TablePicker } from "./TablePicker";
 
 interface Props {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
+  title: string;
   value: DataPickerValue | undefined;
   onChange: (value: TableId) => void;
   onClose: () => void;
@@ -41,8 +49,14 @@ const options: DataPickerModalOptions = {
   showRootCollection: true,
 };
 
-export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
-  const { hasModels, hasQuestions } = useAvailableData();
+export const DataPickerModal = ({
+  databaseId,
+  title,
+  value,
+  onChange,
+  onClose,
+}: Props) => {
+  const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
   const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
@@ -78,6 +92,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
           icon: "model",
           element: (
             <QuestionPicker
+              databaseId={databaseId}
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
               options={options}
@@ -92,6 +107,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       icon: "table",
       element: (
         <TablePicker
+          databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
           onChange={handleChange}
         />
@@ -104,6 +120,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
           icon: "folder",
           element: (
             <QuestionPicker
+              databaseId={databaseId}
               initialValue={isQuestionItem(value) ? value : undefined}
               models={QUESTION_PICKER_MODELS}
               options={options}
@@ -120,11 +137,12 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   return (
     <EntityPickerModal
       canSelectItem
+      databaseId={databaseId}
       initialValue={value}
       options={options}
       selectedItem={value ?? null}
       tabs={tabs}
-      title={t`Pick your starting data`}
+      title={title}
       onClose={onClose}
       onItemSelect={handleChange}
     />

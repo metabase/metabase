@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -11,8 +11,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
-  ListCollectionItemsRequest,
   CollectionItemModel,
+  DatabaseId,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -22,8 +23,9 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
+import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
 import {
+  createDatabaseIdItemFilter,
   generateKey,
   getCollectionIdPath,
   getStateFromIdPath,
@@ -35,7 +37,12 @@ export const defaultOptions: QuestionPickerOptions = {
   showRootCollection: true,
   hasConfirmButtons: false,
 };
+
 interface QuestionPickerProps {
+  /**
+   * Limit selection to a particular database
+   */
+  databaseId?: DatabaseId;
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
@@ -75,6 +82,7 @@ const useGetInitialCollection = (
 };
 
 export const QuestionPicker = ({
+  databaseId,
   onItemSelect,
   initialValue,
   options,
@@ -97,6 +105,10 @@ export const QuestionPicker = ({
   } = useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+
+  const shouldShowItem = useMemo(() => {
+    return createDatabaseIdItemFilter(databaseId);
+  }, [databaseId]);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
@@ -174,6 +186,7 @@ export const QuestionPicker = ({
       onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
+      shouldShowItem={shouldShowItem}
     />
   );
 };
