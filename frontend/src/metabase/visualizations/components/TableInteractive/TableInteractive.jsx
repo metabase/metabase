@@ -1201,6 +1201,7 @@ class TableInteractive extends Component {
 }
 
 export default _.compose(
+  withMantineTheme,
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
@@ -1212,7 +1213,6 @@ export default _.compose(
     "getCellFormattedValue",
     "getHeaderClickedObject",
   ),
-  withMantineTheme,
 )(TableInteractive);
 
 const DetailShortcut = forwardRef((_props, ref) => (

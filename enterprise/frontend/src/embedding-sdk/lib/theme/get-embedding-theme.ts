@@ -1,7 +1,14 @@
-import type { MetabaseTheme, MetabaseColor } from "../../types/theme";
+import { merge } from "icepick";
+
+import type {
+  MetabaseTheme,
+  MetabaseColor,
+  MetabaseComponentTheme,
+} from "../../types/theme";
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
+import { DEFAULT_COMPONENT_THEME } from "./default-component-theme";
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -10,12 +17,17 @@ import { colorTuple } from "./color-tuple";
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
 ): EmbeddingThemeOverride {
+  const components: MetabaseComponentTheme = merge(
+    DEFAULT_COMPONENT_THEME,
+    theme.components,
+  );
+
   const override: EmbeddingThemeOverride = {
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
     ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
-      ...theme.components,
+      ...components,
       ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
   };
