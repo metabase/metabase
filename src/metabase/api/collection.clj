@@ -876,6 +876,12 @@
   {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
 
+(api/defendpoint GET "/trash"
+  "Fetch the trash collection, as in `/api/collection/:trash-id`"
+  []
+  {}
+  (collection-detail (api/read-check (collection/trash-collection))))
+
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
