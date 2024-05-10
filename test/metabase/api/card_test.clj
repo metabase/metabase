@@ -3483,7 +3483,7 @@
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test
-  (testing "The `:format-rows` query processor middleware has the intended effect on file exports."
+  (testing "The `:format-rows` query processor middleware results in formatted/unformatted rows when set to true/false."
     (let [q             {:database (mt/id)
                          :type     :native
                          :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
