@@ -232,7 +232,7 @@
     "cypress": "^13.9.0",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-real-events": "^1.12.0",
-    "esbuild": "^0.17.9",
+    "esbuild": "^0.21.1",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",
