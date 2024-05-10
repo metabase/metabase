@@ -10,6 +10,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const MomentLocalesPlugin = require("moment-locales-webpack-plugin");
 
 const fs = require("fs");
 const path = require("path");
@@ -228,6 +229,39 @@ const config = (module.exports = {
   },
 
   plugins: [
+    // strip locales, except supported at
+    // https://www.metabase.com/docs/latest/configuring-metabase/localization
+    new MomentLocalesPlugin({
+      localesToKeep: [
+        "sq",
+        "ar",
+        "bg",
+        "ca",
+        "zh-cn",
+        "cs",
+        "nl",
+        "fa",
+        "fi",
+        "fr",
+        "de",
+        "id",
+        "it",
+        "ja",
+        "ko",
+        "lv",
+        "nb",
+        "pl",
+        "pt",
+        "ru",
+        "sr",
+        "sk",
+        "es",
+        "sv",
+        "tr",
+        "uk",
+        "vi",
+      ],
+    }),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new MiniCssExtractPlugin({
       filename: devMode ? "[name].css" : "[name].[contenthash].css",

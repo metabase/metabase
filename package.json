@@ -270,6 +270,7 @@
     "mochawesome-merge": "^4.2.1",
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
+    "moment-locales-webpack-plugin": "^1.2.0",
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.9.7",
     "node-polyfill-webpack-plugin": "2.0.1",

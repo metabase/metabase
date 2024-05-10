@@ -1,5 +1,5 @@
 import { waitFor } from "@testing-library/react";
-import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
   setupCollectionByIdEndpoint,
