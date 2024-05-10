@@ -66,7 +66,9 @@ describe("scenarios > collections > trash", () => {
     toggleEllipsisMenuFor("Collection A");
 
     cy.log("items in trash should have greyed out icons");
-    cy.icon("model").should("have.attr", "color", "#949AAB");
+    collectionTable().within(() => {
+      cy.icon("model").should("have.css", "color", "rgb(148, 154, 171)");
+    });
 
     cy.log("there should not be pins in the trash");
     cy.findByTestId("pinned-items").should("not.exist");
