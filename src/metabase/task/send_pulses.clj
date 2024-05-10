@@ -145,6 +145,7 @@
           (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids (send-trigger-timezone) priority))))
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
+;; called in [driver/report-timezone] setter
 (defn update-send-pulse-triggers-timezone!
   "Update the timezone of all SendPulse triggers if the report timezone changes."
   []
@@ -152,8 +153,8 @@
         new-timezone (send-trigger-timezone)]
     (doseq [trigger triggers
             :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
-      (let [trigger-key (:key trigger)
-            channel-ids (get-in trigger [:data "channel-ids"])
+      (let [trigger-key            (:key trigger)
+            channel-ids            (get-in trigger [:data "channel-ids"])
             {:keys [pulse-id
                     schedule-map]} (send-pulse-trigger-key->info trigger-key)]
         (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
@@ -170,7 +171,7 @@
 
 (declare update-send-pulse-trigger-if-needed!)
 
-(defn update-send-pulse-triggers!
+(defn init-send-pulse-triggers!
   "Update send pulse triggers for all active pulses.
   Called once when Metabase starts up to create triggers for all existing PulseChannels
   and whenever the report timezone changes."
@@ -195,7 +196,7 @@
     that run once on Metabase startup to do that."}
   InitSendPulseTriggers
   [_context]
-  (update-send-pulse-triggers!))
+  (init-send-pulse-triggers!))
 
 ;;; --------------------------------------------- Helpers -------------------------------------------
 

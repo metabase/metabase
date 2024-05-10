@@ -197,7 +197,7 @@
   [pulse-id]
   (first (map :next-fire-time (pulse-channel-test/send-pulse-triggers pulse-id :additional-keys [:next-fire-time]))))
 
-(defn next-fire-time
+(defn next-fire-hour
   [expected-hour]
   (let [now       (t/offset-date-time (t/zone-offset 0))
         next-day? (>= (.getHour now) expected-hour)]
@@ -206,9 +206,9 @@
                                 (.getDayOfMonth now)
                                 expected-hour
                                 0 0 0 (t/zone-offset 0))
+      ;; if the current hour is greater than the expected hour, then it should be fired tomorrow
       next-day? (t/plus (t/days 1))
       true      t/java-date)))
-
 
 (deftest send-pulse-trigger-respect-report-timezone-test
   (pulse-channel-test/with-send-pulse-setup!
@@ -221,7 +221,7 @@
                                          :details      {:channel "#random"}}
                                         daily-at-8am)]
         ;; if its want to be fired at 8 am utc+7, then it should be fired at 1am utc
-        (is (= (next-fire-time 1)
+        (is (= (next-fire-hour 1)
                (send-pusle-triggers-next-fire-time pulse))))))
 
   (mt/with-temporary-setting-values [report-timezone "UTC"]
@@ -232,7 +232,7 @@
                                        :channel_type :slack
                                        :details      {:channel "#random"}}
                                       daily-at-8am)]
-      (is (= (next-fire-time 8)
+      (is (= (next-fire-hour 8)
              (send-pusle-triggers-next-fire-time pulse))))))
 
 (deftest change-report-timezone-will-update-triggers-timezone-test
@@ -248,11 +248,11 @@
         (testing "Sanity check"
           (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
                           :timezone "UTC"
-                          :next-fire-time (next-fire-time 8))}
+                          :next-fire-time (next-fire-hour 8))}
                  (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))
         (driver/report-timezone! "Asia/Ho_Chi_Minh")
         (testing "changing report timezone will change the timezone and fire time of the trigger"
           (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
                           :timezone "Asia/Ho_Chi_Minh"
-                          :next-fire-time (next-fire-time 1))}
+                          :next-fire-time (next-fire-hour 1))}
                  (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))))))
