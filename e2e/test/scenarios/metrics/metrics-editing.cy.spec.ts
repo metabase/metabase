@@ -89,28 +89,56 @@ describe("scenarios > metrics", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("location", () => {
-    it("should create a new metric from the homepage and pin it automatically", () => {
-      const metricName = "My metric";
-      const metricValue = "18,760";
-
+  describe("organization", () => {
+    it("should be able to create a new metric from the homepage", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation({ operatorName: "Count of rows" });
-      saveMetric({ name: metricName });
+      saveMetric();
       runQuery();
-      verifyScalarValue(metricValue);
+      verifyScalarValue("18,760");
+    });
+
+    it("should be able to rename a metric", () => {
+      const newTitle = "New metric name";
+      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) => {
+        visitMetric(card.id);
+        renameMetric(newTitle);
+        visitMetric(card.id);
+        queryBuilderHeader().findByDisplayValue(newTitle).should("be.visible");
+      });
+    });
+
+    it("should be able to change the metric query definition", () => {
+      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
+      addBreakout({ tableName: "Product", columnName: "Category" });
+      updateMetric();
+      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
+    });
+
+    it("should pin new metrics automatically", () => {
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      popover().findByText("Metric").click();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      addAggregation({ operatorName: "Count of rows" });
+      saveMetric({ name: "New metric" });
 
       cy.findByTestId("head-crumbs-container")
         .findByText("Our analytics")
         .click();
       cy.findByTestId("pinned-items").within(() => {
         cy.findByText("Metrics").should("be.visible");
-        cy.findByText(metricName).should("be.visible");
-        verifyScalarValue(metricValue);
+        cy.findByText("New metric").should("be.visible");
+        verifyScalarValue("18,760");
       });
     });
   });
@@ -419,6 +447,14 @@ describe("scenarios > metrics", () => {
   });
 
   describe("aggregations", () => {
+    it("should not be possible to save a metric without an aggregation clause", () => {
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      cy.button("Save").should("be.disabled");
+      cy.findByTestId("run-button").should("not.be.visible");
+    });
+
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_COUNT_METRIC);
       startNewMetric();
@@ -488,29 +524,6 @@ describe("scenarios > metrics", () => {
         cy.findByText("Count of rows").should("be.visible");
         cy.findByText(ORDERS_COUNT_METRIC.name).should("not.exist");
       });
-    });
-  });
-
-  describe("updates", () => {
-    it("should be able to rename a metric", () => {
-      const newTitle = "New metric name";
-      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) => {
-        visitMetric(card.id);
-        renameMetric(newTitle);
-        visitMetric(card.id);
-        queryBuilderHeader().findByDisplayValue(newTitle).should("be.visible");
-      });
-    });
-
-    it("should be able to change the metric query definition", () => {
-      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) =>
-        visitMetric(card.id),
-      );
-      openQuestionActions();
-      popover().findByText("Edit metric definition").click();
-      addBreakout({ tableName: "Product", columnName: "Category" });
-      updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
     });
   });
 });
