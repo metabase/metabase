@@ -358,6 +358,7 @@ export default class PieChart extends Component {
         : {
             key: t`Other`,
             value: otherTotal,
+            displayValue: otherTotal,
             percentage: otherTotal / total,
             color: color("text-light"),
           };
@@ -441,8 +442,10 @@ export default class PieChart extends Component {
           event: event && event.nativeEvent,
           stackedTooltipModel: getTooltipModel(
             others.map(o => ({
+              ...o,
               key: formatDimension(o.key, false),
               value: o.displayValue,
+              color: undefined,
             })),
             null,
             getFriendlyName(cols[dimensionIndex]),
