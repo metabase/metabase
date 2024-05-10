@@ -15,8 +15,8 @@ When you upload a CSV file, Metabase may ask to select a destination for that up
 If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new model. if you want to:
 
 - Create a new model
-- Append to an existing model created by an upload
-- Replace the data for an existing model created by an upload
+- [Append to an existing model created by an upload](#appending-to-a-model-created-by-an-upload)
+- [Replace the data for an existing model created by an upload](#replacing-the-data-of-an-uploaded-model)
 
 Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
 
@@ -36,7 +36,9 @@ The upload icon will only be visible on models created by uploads.
 
 ## Replacing the data of an uploaded model
 
-Instead of deleting a model and recreating it, you can replace the underlying data with an updated spreadsheet. Like appending to uploaded models, replacing the uploaded CSV data with a new CSV files requires the columns and heading to match.
+Instead of deleting a model and recreating it, you can replace the underlying data with an updated spreadsheet.
+
+Like appending to uploaded models, replacing the uploaded CSV data with a new CSV file requires the columns and headings to match.
 
 If you [delete the uploaded table](../databases/uploads.md#deleting-uploaded-tables), you won't be able to replace the model's data.
 
