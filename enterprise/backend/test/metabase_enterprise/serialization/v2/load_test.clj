@@ -1223,3 +1223,36 @@
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
             (is (= (str "qwe_" (:name coll))
                    (t2/select-one-fn :name Collection :id (:id card))))))))))
+
+(deftest circular-links-test
+  (mt/with-empty-h2-app-db
+    (let [coll  (ts/create! Collection :name "coll")
+          card  (ts/create! Card :name "card" :collection_id (:id coll))
+          dash1 (ts/create! Dashboard :name "dash1" :collection_id (:id coll))
+          dash2 (ts/create! Dashboard :name "dash2" :collection_id (:id coll))
+          dash3 (ts/create! Dashboard :name "dash3" :collection_id (:id coll))
+          dc1   (ts/create! DashboardCard :dashboard_id (:id dash1) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash2)}})
+          dc2   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash3)}})
+          dc3   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash1)}})
+          ser   (atom nil)]
+      (reset! ser (into [] (serdes.extract/extract {:no-settings   true
+                                                    :no-data-model true})))
+      (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
+      (testing "Circular dependencies are loaded correctly"
+        (is (serdes.load/load-metabase! (ingestion-in-memory @ser)))
+        (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
+          (is (= (:id dash2)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
+          (is (= (:id dash3)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
+          (is (= (:id dash1)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
