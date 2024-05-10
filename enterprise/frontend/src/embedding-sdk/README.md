@@ -215,9 +215,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <div style={{ width: 800, height: 600, display: "flex" }}>
-        <InteractiveQuestion questionId={questionId}  />
-      </div>
+      <InteractiveQuestion questionId={questionId}  />
     </MetabaseProvider>
   );
 }
@@ -282,9 +280,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <div style={{ width: 800, height: 600, display: "flex" }}>
-      <InteractiveQuestion questionId={questionId}  />
-    </div>
+    <InteractiveQuestion questionId={questionId}  />
   </MetabaseProvider>
 );
 ```
