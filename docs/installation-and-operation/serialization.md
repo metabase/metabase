@@ -12,7 +12,7 @@ Once you really get rolling with Metabase, it's often the case that you'll have 
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
-**Export** will serialize your the contents of your source Metabase as YAML files.
+**Export** will serialize the contents of your source Metabase as YAML files.
 
 **Import** will read those exported YAML files and create or update items in the target Metabase based on the contents serialized in those YAML files.
 
