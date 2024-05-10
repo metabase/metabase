@@ -19,7 +19,6 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as m]
@@ -32,7 +31,7 @@
 
 (t2/define-before-insert :model/RecentViews
   [log-entry]
-  (let [defaults {:timestamp :%now}]
+  (let [defaults {:timestamp (t/zoned-date-time)}]
     (merge defaults log-entry)))
 
 (def ^:dynamic *recent-views-stored-per-user-per-model*
@@ -187,8 +186,21 @@
                               [:= :most_recent true]]})
       :status))
 
+(defn ellide-archived
+  "Returns nil if the model is archived, otherwise returns the model.
+  We use this to ensure that archived models are not returned in the recent views."
+  [model]
+  (cond
+    (false? (:archived model)) model
+
+    (true? (:archived model)) nil
+
+    (nil? (:archived model))
+    (throw (ex-info "Archived field is nil" {:model model}))))
+
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
-  (when-let [card (or model_object (t2/select-one :model/Card model_id))]
+  (when-let [card (ellide-archived
+                   (or model_object (t2/select-one :model/Card model_id)))]
     {:id model_id
      :name (:name card)
      :description (:description card)
@@ -200,7 +212,8 @@
      :parent_collection (get-parent-coll (:collection_id card))}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
-  (when-let [dataset (or model_object (t2/select-one :model/Card model_id))]
+  (when-let [dataset (ellide-archived
+                      (or model_object (t2/select-one :model/Card model_id)))]
     {:id model_id
      :name (:name dataset)
      :description (:description dataset)
@@ -212,7 +225,8 @@
      :parent_collection (get-parent-coll (:collection_id dataset))}))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
-  (when-let [dashboard (or model_object (t2/select-one :model/Dashboard model_id))]
+  (when-let [dashboard (ellide-archived
+                        (or model_object (t2/select-one :model/Dashboard model_id)))]
     {:id model_id
      :name (:name dashboard)
      :description (:description dashboard)
@@ -220,6 +234,18 @@
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
      :parent_collection (get-parent-coll (:collection_id dashboard))}))
+
+(defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
+  (when-let [collection (ellide-archived
+                         (or model_object (t2/select-one :model/Collection model_id)))]
+    {:id model_id
+     :name (:name collection)
+     :description (:description collection)
+     :model :collection
+     :can_write (mi/can-write? collection)
+     :timestamp (str timestamp)
+     :authority_level (:authority_level collection)
+     :parent_collection (get-parent-coll collection)}))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (when-let [table (or model_object (t2/select-one :model/Table model_id))]
@@ -237,17 +263,6 @@
                   :name name
                   :initial_sync_status initial_sync_status})}))
 
-(defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
-  (when-let [collection (or model_object (t2/select-one :model/Collection model_id))]
-    {:id model_id
-     :name (:name collection)
-     :description (:description collection)
-     :model :collection
-     :can_write (mi/can-write? collection)
-     :timestamp (str timestamp)
-     :authority_level (:authority_level collection)
-     :parent_collection (get-parent-coll collection)}))
-
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (#{:question} model) :card model))
 
@@ -263,12 +278,11 @@
                                  :order-by [[:rv.timestamp :desc]]}))
 
 (defn- post-process [recent-view]
-  (log/fatalf "\n---\nRecent view\n in: %s" (pr-str (into {} recent-view)))
-  (when-let [filled-recent (fill-recent-view-info recent-view)]
-    (u/prog1 (-> filled-recent
-                 (dissoc :card_type)
-                 (update :model model->return-model))
-      (log/fatalf "\nRecent view out: %s\n---"  (pr-str <>)))))
+  (when recent-view
+    (when-let [filled-recent (fill-recent-view-info recent-view)]
+      (-> filled-recent
+          (dissoc :card_type)
+          (update :model model->return-model)))))
 
 (mu/defn get-list :- [:sequential Item]
   "Gets all recent views for a given user. Returns a list of at most 20 `Item` maps per [[models-of-interest]].
@@ -277,4 +291,5 @@
   in the recent views."
   [user-id]
   (into [] (comp (map post-process)
-                 (remove nil?)) (do-query user-id)))
+                 (remove nil?))
+        (do-query user-id)))
