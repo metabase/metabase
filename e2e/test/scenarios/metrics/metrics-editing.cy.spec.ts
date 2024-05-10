@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
-  startNewMetric,
+  assertQueryBuilderRowCount,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -9,14 +9,16 @@ import {
   modal,
   popover,
   restore,
-  assertQueryBuilderRowCount,
+  startNewMetric,
+  startNewQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 type QuestionDetails = StructuredQuestionDetails & { name: string };
 
-const ORDER_COUNT_DETAILS: QuestionDetails = {
+const ORDERS_COUNT_METRIC: QuestionDetails = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -26,36 +28,56 @@ const ORDER_COUNT_DETAILS: QuestionDetails = {
   display: "scalar",
 };
 
-const ORDER_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
+const ORDERS_COUNT_FILTER_METRIC: QuestionDetails = {
   name: "Orders metric",
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
-    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    filter: [">", ["field", ORDERS.TOTAL, null], 100],
     aggregation: [["count"]],
   },
   display: "scalar",
 };
 
-const PRODUCT_COUNT_DETAILS: QuestionDetails = {
-  name: "Products metric",
+const MULTI_STAGE_METRIC: QuestionDetails = {
+  name: "Orders metric",
   type: "metric",
   query: {
-    "source-table": PRODUCTS_ID,
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
     aggregation: [["count"]],
   },
   display: "scalar",
 };
 
-const PRODUCT_COUNT_CREATED_AT_DETAILS: QuestionDetails = {
-  name: "Products metric",
-  type: "metric",
+const MULTI_STAGE_QUESTION: QuestionDetails = {
+  name: "Multi-stage orders",
+  type: "question",
   query: {
-    "source-table": PRODUCTS_ID,
-    breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
-    aggregation: [["count"]],
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      ],
+    },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
   },
-  display: "scalar",
+  display: "table",
 };
 
 describe("scenarios > metrics", () => {
@@ -79,44 +101,111 @@ describe("scenarios > metrics", () => {
   });
 
   describe("data source", () => {
-    it("should create a metric for a table", () => {
+    it("should create a metric based on a table", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
+      addStringCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
-    it("should create a metric for a saved question", () => {
+    it("should create a metric based on a saved question", () => {
       startNewMetric();
       popover().findByText("Saved Questions").click();
       popover().findByText("Orders").click();
+      addStringCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
-    it("should create a metric for a model", () => {
+    it("should create a metric based on a multi-stage saved question", () => {
+      createQuestion(MULTI_STAGE_QUESTION);
+      startNewMetric();
+      popover().findByText("Saved Questions").click();
+      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addNumberBetweenFilter({
+        columnName: "Count",
+        minValue: 5,
+        maxValue: 100,
+      });
+      addAggregation({ operatorName: "Count of rows" });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("5");
+    });
+
+    it("should create a metric based on a model", () => {
       startNewMetric();
       popover().findByText("Models").click();
       popover().findByText("Orders Model").click();
+      addStringCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("4,939");
     });
 
-    it("should create a metric for another metric", () => {
-      createQuestion(ORDER_COUNT_DETAILS);
+    it("should create a metric based on a multi-stage model", () => {
+      createQuestion({ ...MULTI_STAGE_QUESTION, type: "model" });
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_DETAILS.name).click();
+      popover().findByText("Models").click();
+      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      addNumberBetweenFilter({
+        columnName: "Count",
+        minValue: 5,
+        maxValue: 100,
+      });
+      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue("5");
+    });
+
+    it("should create a metric based on a single-stage metric", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      addStringCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Gadget"],
+      });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("4,939");
+    });
+
+    it("should create a metric based on a multi-stage metric", () => {
+      createQuestion(MULTI_STAGE_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(MULTI_STAGE_METRIC.name).click();
+      addDateBetweenFilter({
+        columnName: "Created At: Month",
+        minValue: "May 7, 2020",
+        maxValue: "October 20, 2022",
+      });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("6");
     });
   });
 
@@ -140,25 +229,47 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("613");
     });
 
-    it("should suggest join conditions when joining metrics with breakout clauses", () => {
-      createQuestion(ORDER_COUNT_CREATED_AT_DETAILS);
-      createQuestion(PRODUCT_COUNT_CREATED_AT_DETAILS);
+    it("should not be possible to join a metric", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).click();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
       startNewJoin();
       popover().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Raw Data").click();
-        cy.findByText("Metrics").click();
-        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).click();
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Saved Questions").should("be.visible");
+        cy.findByText("Models").should("be.visible");
+        cy.findByText("Metrics").should("not.exist");
       });
-      getNotebookStep("summarize").within(() => {
-        cy.findByText(ORDER_COUNT_CREATED_AT_DETAILS.name).should("be.visible");
-        cy.findByText(PRODUCT_COUNT_CREATED_AT_DETAILS.name).should(
-          "be.visible",
-        );
+    });
+
+    it("should not be possible to join data on the first stage of a metric-based query", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewQuestion();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      getNotebookStep("data").within(() => {
+        getActionButton("Custom column").should("be.visible");
+        getActionButton("Join data").should("not.exist");
       });
+    });
+
+    it("should join on the second stage of a metric query", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewQuestion();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      addBreakout({ columnName: "Product ID" });
+      startNewJoin({ isPostAggregation: true });
+      popover().findByText("Products").click();
+      getNotebookStep("join", { stage: 1 }).within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("Product ID").should("be.visible");
+      });
+      visualize();
+      assertQueryBuilderRowCount(200);
     });
   });
 
@@ -177,6 +288,32 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("755,310.84");
+    });
+
+    it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      startNewAggregation();
+      cy.findByTestId("expression-editor").should("be.visible");
+    });
+  });
+
+  describe("filters", () => {
+    it("should add a filter to a metric based on a metric with a filter", () => {
+      createQuestion(ORDERS_COUNT_FILTER_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_FILTER_METRIC.name).click();
+      addStringCategoryFilter({
+        tableName: "Product",
+        columnName: "Category",
+        values: ["Widget"],
+      });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("1,652");
     });
   });
 
@@ -228,43 +365,19 @@ describe("scenarios > metrics", () => {
 
   describe("aggregations", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
-      createQuestion(ORDER_COUNT_DETAILS);
+      createQuestion(ORDERS_COUNT_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_DETAILS.name).click();
-      getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      getNotebookStep("summarize").findByText(ORDERS_COUNT_METRIC.name).click();
       enterCustomColumnDetails({
-        formula: `[${ORDER_COUNT_DETAILS.name}] / 2`,
+        formula: `[${ORDERS_COUNT_METRIC.name}] / 2`,
         name: "",
       });
       popover().button("Update").click();
       saveMetric();
       runQuery();
       verifyScalarValue("9,380");
-    });
-
-    it.skip("should create a metric with a custom aggregation expression based on 2 metrics (metabase#42253)", () => {
-      createQuestion(ORDER_COUNT_DETAILS);
-      createQuestion(PRODUCT_COUNT_DETAILS);
-      startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDER_COUNT_DETAILS.name).click();
-      startNewJoin();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Raw Data").click();
-        cy.findByText("Metrics").click();
-        cy.findByText(PRODUCT_COUNT_DETAILS.name).click();
-      });
-      getNotebookStep("summarize").findByText(ORDER_COUNT_DETAILS.name).click();
-      enterCustomColumnDetails({
-        formula: `[${ORDER_COUNT_DETAILS.name}] / [${PRODUCT_COUNT_DETAILS.name}]`,
-        name: "",
-      });
-      popover().button("Update").click();
-      saveMetric();
-      runQuery();
-      // FIXME put correct value verifyScalarValue("9,380");
     });
 
     it("should add an aggregation clause in a metric query with 2 stages", () => {
@@ -298,67 +411,15 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("29,554.86");
     });
-
-    it.skip("should combine multiple aggregation columns in a custom aggregation expression (metabase#42425)", () => {
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
-      addBreakout({ columnName: "Product ID" });
-      startNewAggregation({ isPostAggregation: true });
-      popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({
-        formula: "[Sum of Total] - [Sum of Subtotal]",
-        name: "Metric",
-      });
-      popover().button("Done").click();
-      saveMetric();
-      runQuery();
-      // FIXME put correct value verifyScalarValue("9,380");
-    });
-  });
-
-  describe("order by", () => {
-    it.skip("should add an order by clause to a metric query  (metabase#42416)", () => {
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At", bucketName: "Year" });
-      addOrderBy({ columnName: "Count" });
-      saveMetric();
-      runQuery();
-      cy.findByTestId("view-footer").findByLabelText("Switch to data").click();
-      cy.get("#main-data-grid")
-        .findAllByRole("gridcell")
-        .last()
-        .should("contain.text", "6,578");
-    });
-  });
-
-  describe("limit", () => {
-    it.skip("should add a limit clause to a metric query (metabase#42416)", () => {
-      const limit = 5;
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At" });
-      addLimit({ limit });
-      saveMetric();
-      runQuery();
-      assertQueryBuilderRowCount(limit);
-    });
   });
 });
 
-function clickActionButton(title: string) {
-  cy.findByTestId("action-buttons").button(title).click();
+function getActionButton(title: string) {
+  return cy.findByTestId("action-buttons").button(title);
 }
 
-function clickAddClauseButton() {
-  cy.findAllByTestId("notebook-cell-item").last().click();
+function getPlusButton() {
+  return cy.findAllByTestId("notebook-cell-item").last();
 }
 
 interface StartNewClauseOpts {
@@ -372,11 +433,11 @@ function startNewJoin({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Join data"),
+      getActionButton("Join data").click(),
     );
   } else {
     getNotebookStep("data", { stage: stageIndex }).within(() =>
-      clickActionButton("Join data"),
+      getActionButton("Join data").click(),
     );
   }
 }
@@ -387,11 +448,11 @@ function startNewCustomColumn({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Custom column"),
+      getActionButton("Custom column").click(),
     );
   } else {
     getNotebookStep("data", { stage: stageIndex }).within(() =>
-      clickActionButton("Custom column"),
+      getActionButton("Custom column").click(),
     );
   }
 }
@@ -402,11 +463,11 @@ function startNewFilter({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Filter (optional)"),
+      getActionButton("Filter").click(),
     );
   } else {
     getNotebookStep("filter", { stage: stageIndex }).within(() =>
-      clickAddClauseButton(),
+      getPlusButton().click(),
     );
   }
 }
@@ -417,19 +478,86 @@ function startNewAggregation({
 }: StartNewClauseOpts = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      clickActionButton("Measure calculation"),
+      getActionButton("Summarize").click(),
     );
   } else {
     getNotebookStep("summarize", { stage: stageIndex })
       .findByTestId("aggregate-step")
-      .within(() => clickAddClauseButton());
+      .within(() => getPlusButton().click());
   }
 }
 
 function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
   getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
-    .within(() => clickAddClauseButton());
+    .within(() => getPlusButton().click());
+}
+
+function addStringCategoryFilter({
+  tableName,
+  columnName,
+  values,
+}: {
+  tableName?: string;
+  columnName: string;
+  values: string[];
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    values.forEach(value => cy.findByText(value).click());
+    cy.button("Add filter").click();
+  });
+}
+
+function addNumberBetweenFilter({
+  tableName,
+  columnName,
+  minValue,
+  maxValue,
+}: {
+  tableName?: string;
+  columnName: string;
+  minValue: number;
+  maxValue: number;
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    cy.findByPlaceholderText("Min").type(String(minValue));
+    cy.findByPlaceholderText("Max").type(String(maxValue));
+    cy.button("Add filter").click();
+  });
+}
+
+function addDateBetweenFilter({
+  tableName,
+  columnName,
+  minValue,
+  maxValue,
+}: {
+  tableName?: string;
+  columnName: string;
+  minValue: string;
+  maxValue: string;
+}) {
+  startNewFilter();
+  popover().within(() => {
+    if (tableName) {
+      cy.findByText(tableName).click();
+    }
+    cy.findByText(columnName).click();
+    cy.findByText("Specific dates…").click();
+    cy.findByLabelText("Start date").clear().type(minValue);
+    cy.findByLabelText("End date").clear().type(maxValue);
+    cy.button("Add filter").click();
+  });
 }
 
 function addAggregation({
@@ -469,34 +597,6 @@ function addBreakout({
   } else {
     popover().findByText(columnName).click();
   }
-}
-
-function addOrderBy({
-  columnName,
-  stageIndex,
-}: {
-  columnName: string;
-  stageIndex?: number;
-}) {
-  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-    clickActionButton("Sort"),
-  );
-  popover().findByText(columnName).click();
-}
-
-function addLimit({
-  limit,
-  stageIndex,
-}: {
-  limit: number;
-  stageIndex?: number;
-}) {
-  getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-    clickActionButton("Limit"),
-  );
-  getNotebookStep("limit")
-    .findByPlaceholderText("Enter a limit")
-    .type(String(limit));
 }
 
 function saveMetric() {

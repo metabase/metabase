@@ -66,7 +66,7 @@ function NotebookStep({
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
-        const title = stepUi.getTitle(step.question.type());
+        const title = stepUi.title;
         return {
           priority: stepUi.priority,
           button: (
@@ -90,7 +90,7 @@ function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.actions, step.question, isLastStep, openStep]);
+  }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
@@ -104,12 +104,11 @@ function NotebookStep({
   }, [step, updateQuery]);
 
   const {
-    getTitle,
+    title,
     color,
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
-  const title = getTitle(step.question.type());
   const canPreview =
     Lib.canRun(step.query, step.question.type()) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;

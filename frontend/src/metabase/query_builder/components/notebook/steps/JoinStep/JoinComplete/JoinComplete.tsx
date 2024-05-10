@@ -48,8 +48,8 @@ export function JoinComplete({
     [query, stageIndex, join],
   );
 
-  const rhsTableInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, rhsTable),
+  const rhsTableName = useMemo(
+    () => Lib.displayInfo(query, stageIndex, rhsTable).displayName,
     [query, stageIndex, rhsTable],
   );
 
@@ -114,7 +114,7 @@ export function JoinComplete({
           <JoinTablePicker
             query={query}
             table={rhsTable}
-            tableInfo={rhsTableInfo}
+            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             isModelDataSource={isModelDataSource}
@@ -146,7 +146,7 @@ export function JoinComplete({
                 join={join}
                 condition={condition}
                 lhsTableName={lhsTableName}
-                rhsTableName={rhsTableInfo.displayName}
+                rhsTableName={rhsTableName}
                 isReadOnly={isReadOnly}
                 isRemovable={conditions.length > 1}
                 onChange={newCondition =>
@@ -172,7 +172,7 @@ export function JoinComplete({
               stageIndex={stageIndex}
               joinable={join}
               lhsTableName={lhsTableName}
-              rhsTableName={rhsTableInfo.displayName}
+              rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={true}
               onChange={handleAddCondition}

@@ -26,6 +26,7 @@ export const QuestionDataSelector = ({
     <DataSourceSelector
       containerClassName={CS.z2}
       hasTableSearch
+      hasMetrics
       databaseQuery={{ saved: true }}
       setSourceTableFn={handleTableChange}
       triggerElement={triggerElement}
