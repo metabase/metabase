@@ -21,7 +21,7 @@ import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
-import { getItemUrl, isItemActive, resultsFilter } from "./util";
+import { getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {
   isLoading: boolean;
@@ -67,7 +67,7 @@ export const RecentsListContent = ({
     >
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
       <Stack spacing={0}>
-        {resultsFilter(results).map((item, index) => {
+        {results.map((item, index) => {
           const isActive = isItemActive(item);
 
           return (

@@ -34,7 +34,7 @@ export const HomeRecentSection = () => {
     <div>
       <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
       <SectionBody>
-        {resultsFilter(recentItems).map((item, index) => (
+        {recentsFilter(recentItems).map((item, index) => (
           <HomeModelCard
             key={index}
             title={getName(item)}
@@ -48,6 +48,6 @@ export const HomeRecentSection = () => {
   );
 };
 
-export const resultsFilter = (results: RecentItem[]): RecentItem[] => {
+export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
   return results.filter(item => item.model !== "collection").slice(0, 5);
 };

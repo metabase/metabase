@@ -14,6 +14,6 @@ export const getItemUrl = (item: RecentItem) => {
   return url || undefined;
 };
 
-export const resultsFilter = (results: RecentItem[]): RecentItem[] => {
+export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
   return results.filter(item => item.model !== "collection").slice(0, 5);
 };

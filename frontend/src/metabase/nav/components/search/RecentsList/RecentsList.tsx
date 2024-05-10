@@ -4,9 +4,10 @@ import { useListRecentItemsQuery } from "metabase/api";
 import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
-import { getItemUrl } from "metabase/nav/components/search/RecentsList/util";
 import { Paper } from "metabase/ui";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
+
+import { getItemUrl, recentsFilter } from "./util";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
@@ -30,6 +31,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     if (onClick) {
       onClick({
         ...item,
+        description: item.description ?? undefined,
         name: getName(item),
       });
     } else {
@@ -41,7 +43,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     <Paper withBorder className={className}>
       <RecentsListContent
         isLoading={isRecentsListLoading}
-        results={data}
+        results={recentsFilter(data)}
         onClick={onContainerClick}
       />
     </Paper>
