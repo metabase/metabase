@@ -109,8 +109,11 @@
   Returns nil otherwise."
   [expr]
   (when (and (vector? expr)
-             (= (get expr 0) "metric"))
-    (get expr 1)))
+             (= (u/lower-case-en (get expr 0)) "metric"))
+    (let [id (get expr 1)]
+      ;; GA metrics with string references are ignored
+      (when (int? id)
+        id))))
 
 (defn- replace-metric-refs
   "Replaces the IDs in metric references contained in `expr` with the :id properties
@@ -159,13 +162,11 @@
     (let [metric-v2-coll (get-metric-migration-collection {:create? true})
           backup-coll (get-backup-collection {:create? true, :parent metric-v2-coll})
           metric-id->metric-card (into {}
-                                    ;; the created card should store the info necessary
-                                    ;; for the reconstruction of the metric
-                                    (map (juxt :id #(create-metric-v2 % metric-v2-coll)))
-                                    (t2/query {:select [:m.* [:t.db_id :database_id]]
-                                               :from [[:metric :m]]
-                                               :left-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))]
-      (doseq [card (t2/select :report_card {:where [:like :dataset_query "%[\"metric\" %"]})
+                                       (map (juxt :id #(create-metric-v2 % metric-v2-coll)))
+                                       (t2/query {:select [:m.* [:t.db_id :database_id]]
+                                                  :from [[:metric :m]]
+                                                  :left-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))]
+      (doseq [card (t2/select :report_card {:where [:like [:lower :dataset_query] "%[\"metric\" %"]})
               :let [rewritten (rewrite-metric-consuming-card card metric-id->metric-card)]
               :when (and rewritten (not= card rewritten))]
         (backup-card card backup-coll)
@@ -246,4 +247,8 @@
   (get-metric-migration-collection {:create? true})
   (t2/select :permissions)
   (t2/delete! :collection :name "Migrated Metrics v1")
+  (t2/select :metric)
+  (require '[next.jdbc :as jdbc])
+  (t2/with-connection [conn]
+    (jdbc/execute! conn ["show columns from report_card"]))
   0)

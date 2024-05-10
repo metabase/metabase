@@ -46,7 +46,9 @@
                            (update :dataset_query json/parse-string true)))))))
 
 (deftest rewrite-single-metric-consuming-card-test
-  (let [metric-dataset-query {:type "query"
+  (doseq [metric-tag ["metric" "METRIC" "meTriC"]]
+    (testing (str "with source-table key " metric-tag)
+      (let [metric-dataset-query {:type "query"
                               :database 1
                               :query {:source-table 5
                                       :aggregation [["sum" ["field" 41 nil]]]
@@ -69,7 +71,7 @@
         dataset-query {:type "query"
                        :database 1
                        :query {:source-table 5
-                               :aggregation [["count"] ["metric" 1]]
+                               :aggregation [["count"] [metric-tag 1]]
                                :filter ["<" ["field" 33 nil] 100]}}
         card {:description "query description"
               :archived true
@@ -102,7 +104,32 @@
                         :created_at #t "2024-05-02T19:26:15Z"}]
     (is (= rewritten-card
            (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric-card})
-               (update :dataset_query json/parse-string true))))))
+               (update :dataset_query json/parse-string true))))))))
+
+(deftest ignore-ga-metric-consuming-card-test
+  (testing "GA metrics references are ignored"
+    (let [dataset-query {:type "query"
+                         :database 1
+                         :query {:source-table 5
+                                 :aggregation [["count"] ["metric" "ga:pageviews"]]
+                                 :filter ["<" ["field" 33 nil] 100]}}
+          card {:description "query description"
+                :archived true
+                :table_id 5
+                :enable_embedding true
+                :query_type "query"
+                :name "v1 metric consuming query"
+                :type "question"
+                :creator_id 2
+                :dataset_query (json/generate-string dataset-query)
+                :parameter_mappings "[{}]"
+                :display "table"
+                :visualization_settings "{}"
+                :parameters "[3]"
+                :created_at #t "2024-05-02T19:26:15Z"}]
+      (is (nil?
+           (#'metrics-v2/rewrite-metric-consuming-card
+            card {1 :not-a-card-but-it-does-not-matter}))))))
 
 (deftest rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
