@@ -88,23 +88,26 @@ describe("scenarios > metrics", () => {
 
   describe("location", () => {
     it("should create a new metric from the homepage and pin it automatically", () => {
+      const metricName = "My metric";
+      const metricValue = "18,760";
+
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Metric").click();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       addAggregation({ operatorName: "Count of rows" });
-      saveMetric();
+      saveMetric({ name: metricName });
       runQuery();
-      verifyScalarValue("18,760");
+      verifyScalarValue(metricValue);
 
       cy.findByTestId("head-crumbs-container")
         .findByText("Our analytics")
         .click();
       cy.findByTestId("pinned-items").within(() => {
         cy.findByText("Metrics").should("be.visible");
-        cy.findByText("Orders, Count").should("be.visible");
-        verifyScalarValue("18,760");
+        cy.findByText(metricName).should("be.visible");
+        verifyScalarValue(metricValue);
       });
     });
   });
@@ -668,11 +671,14 @@ function addBreakout({
   }
 }
 
-function saveMetric() {
+function saveMetric({ name }: { name?: string } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   cy.button("Save").click();
   modal().within(() => {
     cy.findByText("Save metric").should("be.visible");
+    if (name) {
+      cy.findByLabelText("Name").clear().type(name);
+    }
     cy.button("Save").click();
   });
   cy.wait("@createCard");
