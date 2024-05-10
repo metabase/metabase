@@ -1,4 +1,5 @@
-import type { EChartsType, EChartsOption } from "echarts";
+import type { EChartsOption } from "echarts";
+import type { EChartsType } from "echarts/core";
 import { init } from "echarts/core";
 import { useEffect, useRef } from "react";
 import { useMount, useUpdateEffect } from "react-use";
