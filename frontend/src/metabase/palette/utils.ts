@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { RecentItem } from "metabase-types/api";
+
 import type { PaletteActionImpl } from "./types";
 
 export const processResults = (
