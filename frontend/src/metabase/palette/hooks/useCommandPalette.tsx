@@ -213,7 +213,7 @@ export const useCommandPalette = () => {
         extra:
           item.model === "table"
             ? {
-                database: item.model_object.database_name,
+                database: item.database.name,
                 href: Urls.modelToUrl(item),
               }
             : {

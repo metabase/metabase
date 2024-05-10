@@ -14,6 +14,7 @@ export interface BaseRecentItem {
   id: number;
   name: string;
   model: ActivityModel;
+  description?: string | null;
   timestamp: string;
 }
 
