@@ -1701,7 +1701,7 @@
        set))
 
 (deftest delete-send-pulse-job-on-migrate-down-test
-  (impl/test-migrations ["v50.2024-04-25T01:04:06" "v50.2024-04-25T01:04:08"] [migrate!]
+  (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
       (let [user-id  (:id (new-instance-with-default :core_user))
