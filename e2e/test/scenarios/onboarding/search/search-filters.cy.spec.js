@@ -4,6 +4,7 @@ import {
   ADMIN_USER_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
+  FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createAction,
@@ -1009,6 +1010,28 @@ describe("scenarios > search", () => {
         expectSearchResultItemNameContent({
           itemNames: [TEST_NATIVE_QUESTION_NAME],
         });
+      });
+    });
+
+    describe("trashed items filter", () => {
+      it("should only show items in the trash", () => {
+        cy.visit("/search?q=First");
+        cy.findAllByTestId("search-result-item").should("have.length", 1);
+        cy.findByTestId("search-result-item")
+          .findByText("Collection")
+          .should("exist");
+
+        cy.findByTestId("archived-search-filter")
+          .findByText("Search items in trash")
+          .click();
+        cy.findAllByTestId("search-result-item").should("have.length", 0);
+
+        cy.archiveCollection(FIRST_COLLECTION_ID);
+        cy.reload();
+        cy.findAllByTestId("search-result-item").should("have.length", 1);
+        cy.findByTestId("search-result-item")
+          .findByText("Trash")
+          .should("exist");
       });
     });
 
