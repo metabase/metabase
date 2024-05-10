@@ -185,11 +185,21 @@
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
+      ;; TODO: a job could have multiple triggers, so the first trigger is not guaranteed to be the one we want to
+      ;; replace. Should we check that the key name is matching?
       (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
         (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
         (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
+
+(mu/defn reschedule-trigger!
+  "Reschedule a trigger with the same key as the given trigger.
+
+  Used to update trigger properties like priority."
+  [trigger :- (ms/InstanceOfClass Trigger)]
+  (when-let [scheduler (scheduler)]
+    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
