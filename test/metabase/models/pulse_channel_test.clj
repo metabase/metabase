@@ -405,6 +405,7 @@
   [pulse-id schedule-map pc-ids]
   {:key      (.getName (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
    :schedule (u.cron/schedule-map->cron-string schedule-map)
+   :priority 6
    :data     {"pulse-id"    pulse-id
               "channel-ids" (set pc-ids)}})
 
@@ -424,7 +425,7 @@
   [pulse-id]
   (->> (task/job-info @#'task.send-pulses/send-pulse-job-key)
        :triggers
-       (map #(select-keys % [:key :schedule :data]))
+       (map #(select-keys % [:key :schedule :data :priority]))
        (map #(update % :data (fn [data] (into {} data))))
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))
        set))

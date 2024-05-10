@@ -3,9 +3,10 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { getEngines } from "metabase/databases/selectors";
+import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import Databases from "metabase/entities/databases";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { getDefaultEngine } from "metabase/lib/engine";
 import {
   combineReducers,
   createThunkAction,
@@ -117,10 +118,11 @@ export const initializeDatabase = function (databaseId) {
         dispatch({ type: INITIALIZE_DATABASE_ERROR, payload: error });
       }
     } else {
+      const engines = getEngines(getState());
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: getDefaultEngine(),
+        engine: getDefaultEngineKey(engines),
         details: {},
         created: false,
       };

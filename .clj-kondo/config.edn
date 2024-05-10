@@ -1,3 +1,4 @@
+;; -*- comment-column: 100; -*-
 {:config-paths ["macros"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
@@ -142,53 +143,122 @@
    ;;    module itself, e.g. the module namespace for `metabase.setup` would be `metabase.setup`.
    ;;
    ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
+   ;;
+   ;; PRO TIP: Check out the `dev.deps-graph` namespace for helpful tools to see where a module is used externally.
    :api-namespaces
    {metabase.actions               #{metabase.actions.core}
-    metabase.analytics             :any
-    metabase.analyze               :any
-    metabase.api                   :any
-    metabase.async                 :any
-    metabase.automagic-dashboards  :any
+    metabase.analytics             #{metabase.analytics.prometheus
+                                     metabase.analytics.snowplow
+                                     metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
+    metabase.analyze               #{metabase.analyze.classifiers.core
+                                     metabase.analyze.classifiers.name
+                                     metabase.analyze.fingerprint.fingerprinters
+                                     metabase.analyze.fingerprint.schema
+                                     metabase.analyze.query-results}                                ; TODO -- consolidate these into a real API namespace.
+    metabase.api                   #{metabase.api.common
+                                     metabase.api.dataset
+                                     metabase.api.permission-graph
+                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
+    metabase.async                 #{metabase.async.streaming-response
+                                     metabase.async.streaming-response.thread-pool
+                                     metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+    metabase.automagic-dashboards  #{metabase.automagic-dashboards.comparison
+                                     metabase.automagic-dashboards.core
+                                     metabase.automagic-dashboards.dashboard-templates
+                                     metabase.automagic-dashboards.populate}                        ; TODO -- consolidate these into a real API namespace.
     metabase.bootstrap             #{metabase.bootstrap}
-    metabase.cmd                   :any
+    metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.config                #{metabase.config}
-    metabase.core                  :any
+    metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
-                                     metabase.db.metadata-queries ; FIXME, this should probably be separate from metabase.db
-                                     metabase.db.query            ; FIXME, this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
-                                     metabase.db.setup}           ; FIXME, these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
-    metabase.domain-entities       :any
-    metabase.driver                :any
-    metabase.email                 :any
-    metabase.embed                 :any
-    metabase.events                :any
-    metabase.formatter             :any
-    metabase.integrations          :any
-    metabase.legacy-mbql           :any
-    metabase.lib                   :any
+                                     metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
+                                     metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
+    metabase.domain-entities       #{metabase.domain-entities.core
+                                     metabase.domain-entities.specs}                                ; TODO -- these should probably be combined into the `metabase.transforms` module, that's the only place that uses them.
+    metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
+    metabase.email                 #{metabase.email
+                                     metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
+    metabase.embed                 #{metabase.embed.settings}
+    metabase.events                #{metabase.events}
+    metabase.formatter             #{metabase.formatter}
+    metabase.integrations          #{metabase.integrations.common
+                                     metabase.integrations.google
+                                     metabase.integrations.ldap
+                                     metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
+    metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
+                                     metabase.legacy-mbql.predicates
+                                     metabase.legacy-mbql.schema
+                                     metabase.legacy-mbql.schema.helpers
+                                     metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
+    metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger}
-    metabase.metabot               :any
-    metabase.models                :any
+    metabase.metabot               #{metabase.metabot}
+    metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
-    metabase.native-query-analyzer :any
-    metabase.permissions           :any
-    metabase.plugins               :any
-    metabase.public-settings       :any
-    metabase.pulse                 :any
-    metabase.query-processor       :any
+    metabase.native-query-analyzer #{metabase.native-query-analyzer}
+    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
+    metabase.plugins               #{metabase.plugins
+                                     metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
+    metabase.public-settings       #{metabase.public-settings
+                                     metabase.public-settings.premium-features}
+    metabase.pulse                 #{metabase.pulse
+                                     metabase.pulse.markdown
+                                     metabase.pulse.parameters
+                                     metabase.pulse.preview
+                                     metabase.pulse.render
+                                     metabase.pulse.render.image-bundle
+                                     metabase.pulse.render.js-svg
+                                     metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
+    metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
-    metabase.search                :any
-    metabase.server                :any
+    metabase.search                #{metabase.search.config
+                                     metabase.search.filter
+                                     metabase.search.scoring
+                                     metabase.search.util}                                          ; TODO -- consolidate these into a real API namespace.
+    metabase.server                #{metabase.server
+                                     metabase.server.handler
+                                     metabase.server.middleware.auth
+                                     metabase.server.middleware.exceptions
+                                     metabase.server.middleware.json
+                                     metabase.server.middleware.misc
+                                     metabase.server.middleware.offset-paging
+                                     metabase.server.middleware.session
+                                     metabase.server.protocols
+                                     metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
     metabase.setup                 #{metabase.setup}
-    metabase.shared                :any
-    metabase.sync                  :any
-    metabase.task                  :any
-    metabase.transforms            :any
+    metabase.shared                #{metabase.shared.dashboards.constants
+                                     metabase.shared.formatting.constants
+                                     metabase.shared.formatting.date
+                                     metabase.shared.formatting.numbers
+                                     metabase.shared.models.visualization-settings
+                                     metabase.shared.parameters.parameters
+                                     metabase.shared.util.currency
+                                     metabase.shared.util.i18n
+                                     metabase.shared.util.internal.time-common
+                                     metabase.shared.util.namespaces
+                                     metabase.shared.util.time}                                     ; TODO -- consolidate these into a real API namespace.
+    metabase.sync                  #{metabase.sync
+                                     metabase.sync.analyze
+                                     metabase.sync.concurrent
+                                     metabase.sync.field-values
+                                     metabase.sync.schedules
+                                     metabase.sync.sync-metadata
+                                     metabase.sync.sync-metadata.fields
+                                     metabase.sync.sync-metadata.tables
+                                     metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
+    metabase.task                  #{metabase.task
+                                     metabase.task.index-values
+                                     metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
+    metabase.transforms            #{metabase.transforms.core
+                                     metabase.transforms.dashboard
+                                     metabase.transforms.materialize
+                                     metabase.transforms.specs}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
-    metabase.upload                :any
-    metabase.util                  :any}
+    metabase.upload                #{metabase.upload}
+    metabase.util                  :any}                                                            ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
    ;;
@@ -251,11 +321,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"                     ; anything ending in `-test`
-     "test[-.]util"               ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                ; anything that contains `test.impl`
-     "^metabase\\.test"           ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                           ; anything ending in `-test`
+     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                      ; anything that contains `test.impl`
+     "^metabase\\.test"                 ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}}       ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases

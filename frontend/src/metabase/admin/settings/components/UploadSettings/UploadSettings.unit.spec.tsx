@@ -9,8 +9,8 @@ import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import type { UploadSettings } from "./UploadSettings";
-import { UploadSettingsView } from "./UploadSettings";
+import type { UploadSettings } from "./UploadSettingsForm";
+import { UploadSettingsFormView } from "./UploadSettingsForm";
 
 const TEST_DATABASES = [
   createMockDatabase({
@@ -79,7 +79,7 @@ function setup({
   const clearSpy = jest.fn();
 
   renderWithProviders(
-    <UploadSettingsView
+    <UploadSettingsFormView
       databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
       settings={settings}
       updateSettings={updateSpy}
