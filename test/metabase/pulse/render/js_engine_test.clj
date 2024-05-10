@@ -1,7 +1,7 @@
 (ns metabase.pulse.render.js-engine-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.body-test :as body-test]
+   [metabase.pulse.render.body-test :as body-test]
    [metabase.pulse.render.js-engine :as js]))
 
 (set! *warn-on-reflection* true)
