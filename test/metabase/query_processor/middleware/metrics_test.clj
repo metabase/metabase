@@ -151,10 +151,11 @@
 
 (deftest ^:parallel adjust-joined-metric-test
   (let [[source-metric mp] (mock-metric)
-        query (-> (lib/query mp (meta/table-metadata :orders))
-                  (lib/join (lib/join-clause (lib.metadata/card mp (:id source-metric))
-                                             [(lib/= (meta/field-metadata :orders :product-id)
-                                                     (meta/field-metadata :products :id))])))]
+        query (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                (lib/join $q (lib/join-clause (lib.metadata/card mp (:id source-metric))
+                                              [(lib/= (meta/field-metadata :orders :product-id)
+                                                      (meta/field-metadata :products :id))]))
+                (lib/aggregate $q (lib.options/ensure-uuid [:metric {:join-alias "Mock metric - Product"} (:id source-metric)])))]
     (is (=?
           ;; joins get an extra, empty stage from 'fetch-source-query'
           {:stages [{:joins [{:stages [{:source-table (meta/id :products)} {}]}]
@@ -175,10 +176,13 @@
             m1 (lib.metadata/card mp 1)
             m2 (lib.metadata/card mp 2)
             m3 (lib.metadata/card mp 3)
-            q (-> (lib/query mp products-table)
-                (lib/join (lib/join-clause m1))
-                (lib/join (lib/join-clause m2))
-                (lib/join (lib/join-clause m3)))]
+            q (as-> (lib/query mp products-table) $q
+                (lib/join $q (lib/join-clause m1))
+                (lib/join $q (lib/join-clause m2))
+                (lib/join $q (lib/join-clause m3))
+                (lib/aggregate $q (first (lib/available-metrics $q)))
+                (lib/aggregate $q (second (lib/available-metrics $q)))
+                (lib/aggregate $q (last (lib/available-metrics $q))))]
         (is (=? {:stages [{:aggregation [[:count {}]
                                          [:avg {} [:field {:join-alias (:name m2)} (meta/id :orders :tax)]]
                                          [:sum {} [:field {:join-alias (:name m3)} (meta/id :orders :tax)]]]}]}
@@ -239,6 +243,7 @@
                                          (find-by-id (mt/id :orders :id) (lib/joinable-columns $q -1 metric))
                                          join-alias)
                                        (lib.metadata/field mp (mt/id :products :id)))]))
+                (lib/aggregate $q (first (lib/available-metrics $q)))
                 (lib/breakout $q (lib/with-temporal-bucket
                                    (find-by-id (mt/id :orders :created_at) (lib/breakoutable-columns $q))
                                    :month))
