@@ -5,11 +5,10 @@ import Draggable from "react-draggable";
 import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
-import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
 import TableS from "./TableInteractive.module.css";
 
-export const TableInteractiveRoot = styled(TableRoot)`
+export const TableInteractiveRoot = styled(Box)`
   .${TableS.TableInteractiveHeaderCellData} .${TableS.cellData} {
     border: 1px solid ${({ theme }) => alpha(theme.fn.themeColor("brand"), 0.2)};
   }

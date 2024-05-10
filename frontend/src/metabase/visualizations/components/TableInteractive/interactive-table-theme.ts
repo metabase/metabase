@@ -1,4 +1,5 @@
 import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
+import { alpha } from "metabase/lib/colors";
 
 export function getTableCellTheme({
   theme,
@@ -15,8 +16,9 @@ export function getTableCellTheme({
 
   if (isIDColumn) {
     return {
-      color: idTheme?.textColor || color,
-      background: idTheme?.backgroundColor || background || "brand",
+      color: idTheme?.textColor || "brand",
+      background:
+        idTheme?.backgroundColor || alpha(theme.fn?.themeColor("brand"), 0.08),
     };
   }
 

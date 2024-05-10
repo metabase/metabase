@@ -17,6 +17,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import { alpha } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -129,24 +130,30 @@ class TableInteractive extends Component {
         </Box>
       );
     },
-    renderTableCellWrapper: (children, { theme, isIDColumn } = {}) => {
-      const hasChildren = children != null && children !== "";
-      const cellTheme = getTableCellTheme({ theme, isIDColumn });
-
-      return (
-        <Box
-          className={cx({
-            [TableS.cellData]: hasChildren,
-          })}
-          data-testid={hasChildren ? "cell-data" : undefined}
-          c={cellTheme.color}
-          bg={cellTheme.background}
-        >
-          {children}
-        </Box>
-      );
-    },
   };
+
+  renderTableCellWrapper(children, { isIDColumn } = {}) {
+    const { theme } = this.props;
+
+    const hasChildren = children != null && children !== "";
+    const cellTheme = getTableCellTheme({ theme, isIDColumn });
+
+    return (
+      <Box
+        className={cx({
+          [TableS.cellData]: hasChildren,
+        })}
+        data-testid={hasChildren ? "cell-data" : undefined}
+        c={cellTheme.color}
+        bg={cellTheme.background}
+        style={{
+          border: `1px solid ${alpha(theme.fn.themeColor("brand"), 0.14)}`,
+        }}
+      >
+        {children}
+      </Box>
+    );
+  }
 
   UNSAFE_componentWillMount() {
     // for measuring cells:
@@ -648,10 +655,7 @@ class TableInteractive extends Component {
         }
         tabIndex="0"
       >
-        {this.props.renderTableCellWrapper(cellData, {
-          theme: this.props.theme,
-          isIDColumn,
-        })}
+        {this.renderTableCellWrapper(cellData, { isIDColumn })}
 
         {isCollapsed && (
           <ExpandButton
