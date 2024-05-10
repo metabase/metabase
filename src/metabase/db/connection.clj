@@ -4,7 +4,6 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -20,26 +19,6 @@
   unique)"}
   application-db-counter
   (atom 0))
-
-(defn- setup-connection!
-  "Make sure our application database connection is using our preferred transaction isolation level.
-
-  `READ_COMMITTED` is the default transaction isolation level in Postgres, however MySQL/MariaDB default to
-  `REPEATABLE_READ` which constantly leads to MySQL killing things because of perceived or real deadlocks when running
-  massively-parallel tests like [[metabase.api.search-test]] (and probably occasionally in real life too)... we don't
-  need repeatable reads, `READ_COMMITED` is perfectly fine.
-
-  See https://docs.oracle.com/javase/tutorial/jdbc/basics/transactions.html if you need to know more about what the
-  hecc that means.
-
-  Oh yeah, let's also make sure holdability is set to `CLOSE_CURSORS_AT_COMMIT` -- once we commit a transaction we
-  don't need to use any ResultSets opened while the transaction was open any more. Let the DB know if can free up
-  resources. This seems to be the default this is the default for Postgres, but MySQL/MariaDB seem to default to
-  `HOLD_CURSORS_OVER_COMMIT`."
-  [^java.sql.Connection conn]
-  (doto conn
-    (.setTransactionIsolation java.sql.Connection/TRANSACTION_READ_COMMITTED)
-    (.setHoldability java.sql.ResultSet/CLOSE_CURSORS_AT_COMMIT)))
 
 (p/defrecord+ ApplicationDB [^clojure.lang.Keyword db-type
                              ^javax.sql.DataSource data-source
@@ -66,16 +45,14 @@
   (getConnection [_]
     (try
       (.. lock readLock lock)
-      (doto (.getConnection data-source)
-        (setup-connection!))
+      (.getConnection data-source)
       (finally
         (.. lock readLock unlock))))
 
   (getConnection [_ user password]
     (try
       (.. lock readLock lock)
-      (doto (.getConnection data-source user password)
-        (setup-connection!))
+      (.getConnection data-source user password)
       (finally
         (.. lock readLock unlock)))))
 
@@ -161,20 +138,15 @@
             (let [savepoint (.setSavepoint connection)]
               (try
                 (let [result (f connection)]
-                  (if (= *transaction-depth* 1)
-                    ;; top-level transaction, commit. This will release all savepoints.
-                    (.commit connection)
-                    ;; otherwise we don't need our savepoint anymore and we can release it.
-                    (.releaseSavepoint connection savepoint))
+                  (when (= *transaction-depth* 1)
+                    ;; top-level transaction, commit
+                    (.commit connection))
                   result)
                 (catch Throwable e
-                  (try
-                    (.rollback connection savepoint)
-                    (catch Throwable e2
-                      (log/errorf e2 "Error rolling back transaction: %s (triggered by: %s)" (ex-message e2) (ex-message e))
-                      (throw e)))))))]
-    ;; only set/unset auto-commit for the top-level transaction.
-    (if (= *transaction-depth* 1)
+                  (.rollback connection savepoint)
+                  (throw e)))))]
+    ;; optimization: don't set and unset autocommit if it's already false
+    (if (.getAutoCommit connection)
       (try
         (.setAutoCommit connection false)
         (thunk)
@@ -183,9 +155,9 @@
       (thunk))))
 
 (comment
-  ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
-  ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
-  t2.jdbc.conn/keepme)
+ ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
+ ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
+ t2.jdbc.conn/keepme)
 
 (methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
   "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
@@ -215,6 +187,7 @@
    :else
    (binding [*transaction-depth* (inc *transaction-depth*)]
      (do-transaction connection f))))
+
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
