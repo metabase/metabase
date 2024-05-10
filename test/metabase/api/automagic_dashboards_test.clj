@@ -482,7 +482,7 @@
 ;; ------------------------------------------------ `show` limit test  -------------------------------------------------
 ;; Historically, the used params are `nil` and "all", so this tests the integer case.
 
-(defn- card-count-check
+(defn- card-count-check!
   "Create a dashboard via API twice, once with a limit and once without, and return the results."
   [limit template args]
   (mt/with-test-user :crowberto
@@ -497,7 +497,7 @@
 (deftest table-show-param-test
   (testing "x-ray of a table with show set reduces the number of returned cards"
     (let [show-limit 1
-          {:keys [base-count show-count]} (card-count-check show-limit "table/%s" [(mt/id :venues)])]
+          {:keys [base-count show-count]} (card-count-check! show-limit "table/%s" [(mt/id :venues)])]
       (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
@@ -508,7 +508,7 @@
     (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:query {:aggregation ["count"]}}}]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit "metric/%s" [metric-id])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -519,7 +519,7 @@
     (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -528,7 +528,7 @@
 (deftest field-xray-show-param-test
   (testing "x-ray of a field with show set reduces the number of returned cards"
     (let [show-limit 1
-          {:keys [base-count show-count]} (card-count-check show-limit "field/%s" [(mt/id :venues :price)])]
+          {:keys [base-count show-count]} (card-count-check! show-limit "field/%s" [(mt/id :venues :price)])]
       (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
@@ -541,7 +541,7 @@
                                                                   {:filter [:> $price 10]})}]
       (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
-            {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
+            {:keys [base-count show-count]} (card-count-check! show-limit "question/%s/cell/%s" [card-id cell-query])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
           (is (< show-count base-count)))
         (testing "Only \"limit\" cards are produced"
@@ -551,7 +551,7 @@
   (testing "x-ray of a comparison with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
       (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check show-limit
+            {:keys [base-count show-count]} (card-count-check! show-limit
                                                               "adhoc/%s/cell/%s/compare/segment/%s"
                                                               [(->> (mt/mbql-query venues
                                                                       {:filter [:> $price 10]})
