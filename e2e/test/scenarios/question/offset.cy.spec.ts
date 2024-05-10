@@ -19,18 +19,24 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const TOTAL_FIELD_REF: FieldReference = [
+const ORDERS_TOTAL_FIELD_REF: FieldReference = [
   "field",
   ORDERS.TOTAL,
   { "base-type": "type/Float" },
 ];
 
-const CREATED_AT_BREAKOUT: Breakout = [
+const ORDERS_CREATED_AT_BREAKOUT: Breakout = [
   "field",
   ORDERS.CREATED_AT,
   { "base-type": "type/DateTime", "temporal-unit": "month" },
+];
+
+const PRODUCTS_CATEGORY_BREAKOUT: Breakout = [
+  "field",
+  PRODUCTS.CATEGORY,
+  { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
 ];
 
 describe("scenarios > question > offset", () => {
@@ -45,7 +51,7 @@ describe("scenarios > question > offset", () => {
     const aggregation: Aggregation = [
       "offset",
       createOffsetOptions(),
-      ["sum", TOTAL_FIELD_REF],
+      ["sum", ORDERS_TOTAL_FIELD_REF],
       -1,
     ];
     const query: StructuredQuery = {
@@ -65,21 +71,43 @@ describe("scenarios > question > offset", () => {
     const aggregation: Aggregation = [
       "offset",
       createOffsetOptions(aggregationName),
-      ["sum", TOTAL_FIELD_REF],
+      ["sum", ORDERS_TOTAL_FIELD_REF],
       -1,
     ];
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [aggregation],
-      breakout: [CREATED_AT_BREAKOUT],
+      breakout: [ORDERS_CREATED_AT_BREAKOUT],
     };
 
     createQuestion({ query }, { visitQuestion: true });
 
-    verifyTableCellContent(0, "April 2022");
-    verifyTableCellContent(1, "");
-    verifyTableCellContent(2, "May 2022");
-    verifyTableCellContent(3, "52.76");
+    verifyTableContent([
+      ["April 2022", ""],
+      ["May 2022", "52.76"],
+    ]);
+  });
+
+  it("works with multiple breakout clauses", () => {
+    const aggregation: Aggregation = [
+      "offset",
+      createOffsetOptions(),
+      ["sum", ORDERS_TOTAL_FIELD_REF],
+      -1,
+    ];
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [aggregation],
+      breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyTableContent([
+      ["April 2022", "", "", "", ""],
+      ["May 2022", "", "52.76", "", ""],
+      ["June 2022", "339.14", "203.57", "493.51", "229.5"],
+    ]);
   });
 
   it("works after saving a question (metabase#42323)", () => {
@@ -112,6 +140,7 @@ describe("scenarios > question > offset", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
     };
+
     createQuestion({ query }, { visitQuestion: true });
     openNotebook();
     cy.icon("sum").click();
@@ -154,6 +183,20 @@ function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
   });
+}
+
+function verifyTableContent(rows: string[][]) {
+  const columnsCount = rows[0].length;
+  const pairs = rows.flatMap((row, rowIndex) => {
+    return row.map((text, cellIndex) => {
+      const index = rowIndex * columnsCount + cellIndex;
+      return { index, text };
+    });
+  });
+
+  for (const { index, text } of pairs) {
+    verifyTableCellContent(index, text);
+  }
 }
 
 function verifyTableCellContent(index: number, text: string) {
