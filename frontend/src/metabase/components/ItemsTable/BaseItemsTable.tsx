@@ -273,7 +273,7 @@ const DefaultItemRenderer = ({
     collection?.can_write && typeof onToggleSelected === "function";
 
   const icon = item.getIcon();
-  if (item.model === "card") {
+  if (item.model === "card" || item.archived) {
     icon.color = color("text-light");
   }
 
