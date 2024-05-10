@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
@@ -51,7 +51,7 @@ export const getCartesianChartOption = (
   isPlaceholder: boolean,
   hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
-): EChartsOption => {
+): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(

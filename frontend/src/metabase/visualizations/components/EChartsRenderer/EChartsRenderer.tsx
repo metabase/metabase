@@ -1,5 +1,4 @@
-import type { EChartsOption } from "echarts";
-import type { EChartsType } from "echarts/core";
+import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
 import { useEffect, useRef } from "react";
 import { useMount, useUpdateEffect } from "react-use";
@@ -15,7 +14,7 @@ import { EChartsRendererRoot } from "./EChartsRenderer.styled";
 registerEChartsModules();
 
 export interface EChartsRendererProps {
-  option: EChartsOption;
+  option: EChartsCoreOption;
   eventHandlers?: EChartsEventHandler[];
   zrEventHandlers?: ZREventHandler[];
   width: number | "auto";
