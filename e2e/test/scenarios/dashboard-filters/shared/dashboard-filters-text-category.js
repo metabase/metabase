@@ -7,20 +7,21 @@ export const DASHBOARD_TEXT_FILTERS = {
     value: "Organic",
     representativeResult: "37.65",
   },
+  // It is important to keep multiple values as a single string in the value field.
   Contains: {
-    value: "oo",
+    value: "oo,aa",
     representativeResult: "148.23",
   },
   "Does not contain": {
-    value: "oo",
+    value: "oo,aa",
     representativeResult: "37.65",
   },
   "Starts with": {
-    value: "A",
+    value: "A,b",
     representativeResult: "85.72",
   },
   "Ends with": {
-    value: "e",
+    value: "e,s",
     representativeResult: "47.68",
   },
 };
