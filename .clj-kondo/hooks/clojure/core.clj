@@ -298,7 +298,7 @@
                   :when (not (contains? clj-kondo-ignore :metabase/ns-module-checker))
                   :let  [required-namespace (hooks/sexpr node)
                          required-module    (module required-namespace)]
-                ;; ignore stuff not in a module i.e. non-Metabase stuff.
+                  ;; ignore stuff not in a module i.e. non-Metabase stuff.
                   :when required-module
                   :let  [in-current-module? (= required-module current-module)]
                   :when (not in-current-module?)

@@ -66,6 +66,13 @@ title: Driver interface changelog
   of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
   `metabase.types` namespace for an example.
 
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

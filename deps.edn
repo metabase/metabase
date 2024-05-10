@@ -644,7 +644,7 @@
    :java-opts   ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot
-  {:main-opts ["-m" "metabase.automagic-dashboards.dashboard-templates"]}
+  {:main-opts ["-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}
 
   ;; Start a Network REPL (nrepl) that you can connect your editor to.
   ;;
