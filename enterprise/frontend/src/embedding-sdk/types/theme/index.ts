@@ -44,26 +44,26 @@ export interface MetabaseComponentTheme {
   /** Data tables **/
   table?: {
     cell?: {
-      /** Default text color of table cells */
+      /** Text color of cells, defaults to `text-brand` */
       textColor?: string;
 
-      /** Default background color of table cells */
-      backgroundColor?: string;
-    };
-
-    idColumn?: {
-      /** Text color of table header. This defaults to the brand color. */
-      textColor?: string;
-
-      /** Default background color of ID column pill */
+      /** Default background color of cells, defaults to `white` */
       backgroundColor?: string;
     };
 
     header?: {
-      /** Text color of table header. This defaults to the brand color. */
+      /** Text color of table header, defaults to `brand`. */
       textColor?: string;
 
-      /** Background color of table header */
+      /** Background color of table header, defaults to `white` */
+      backgroundColor?: string;
+    };
+
+    idColumn?: {
+      /** Text color of ID column, defaults to `brand`. */
+      textColor?: string;
+
+      /** Background color of ID column, defaults to `lighten(brand)`  */
       backgroundColor?: string;
     };
   };
