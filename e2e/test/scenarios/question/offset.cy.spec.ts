@@ -12,7 +12,6 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
-import { uuid } from "metabase/lib/utils";
 import type {
   Aggregation,
   Breakout,
@@ -176,4 +175,10 @@ function createOffsetOptions(name = "offset") {
     name,
     "display-name": name,
   };
+}
+
+let nextUuid = 0;
+
+function uuid() {
+  return String(++nextUuid);
 }
