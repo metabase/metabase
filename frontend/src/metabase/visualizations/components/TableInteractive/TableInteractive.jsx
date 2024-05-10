@@ -1048,6 +1048,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      theme,
     } = this.props;
 
     if (!width || !height) {
@@ -1056,6 +1057,9 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
+
+    const tableTheme = theme?.other?.table;
+    const gutterBackground = tableTheme?.cell?.backgroundColor || "white";
 
     return (
       <DelayGroup>
@@ -1104,9 +1108,9 @@ class TableInteractive extends Component {
                         zIndex: 4,
                       }}
                     />
-                    <div
+                    <Box
                       id="gutter-column"
-                      className={TableS.TableInteractiveGutter}
+                      bg={gutterBackground}
                       style={{
                         position: "absolute",
                         top: headerHeight,
@@ -1119,7 +1123,7 @@ class TableInteractive extends Component {
                       onMouseLeave={this.handleLeaveRow}
                     >
                       <DetailShortcut ref={this.detailShortcutRef} />
-                    </div>
+                    </Box>
                   </>
                 )}
                 <Grid

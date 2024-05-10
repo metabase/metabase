@@ -95,7 +95,3 @@
 .TableInteractiveCellWrapperFirstColumn.padLeft {
   padding-left: 1.5em;
 }
-
-.TableInteractiveGutter {
-  background-color: var(--color-bg-white);
-}
