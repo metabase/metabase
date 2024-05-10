@@ -13,8 +13,16 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
+import { uuid } from "metabase/lib/utils";
+import type { FieldReference } from "metabase-types/api";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const TOTAL_FIELD_REF: FieldReference = [
+  "field",
+  ORDERS.TOTAL,
+  { "base-type": "type/Float" },
+];
 
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
@@ -22,6 +30,24 @@ describe("scenarios > question > offset", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("saveQuestion");
     cy.intercept("POST", "api/dataset").as("dataset");
+  });
+
+  it("does not work without breakout or order by clause", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["offset", createOffsetOptions(), ["sum", TOTAL_FIELD_REF], -1],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    verifyQuestionError(
+      "Window function requires either breakouts or order by in the query",
+    );
   });
 
   it("works after saving a question (metabase#42323)", () => {
@@ -99,4 +125,20 @@ function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
   });
+}
+
+function verifyQuestionError(error: string) {
+  cy.get("main").within(() => {
+    cy.findByText("There was a problem with your question").should("exist");
+    cy.findByText("Show error details").click();
+    cy.findByText(error).should("exist");
+  });
+}
+
+function createOffsetOptions(name = "offset") {
+  return {
+    "lib/uuid": uuid(),
+    name,
+    "display-name": name,
+  };
 }
