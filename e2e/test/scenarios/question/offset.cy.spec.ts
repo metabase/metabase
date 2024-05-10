@@ -111,7 +111,6 @@ describe("scenarios > question > offset", () => {
     const name = "Aggregation";
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
-      limit: 5,
     };
     createQuestion({ query }, { visitQuestion: true });
     openNotebook();
