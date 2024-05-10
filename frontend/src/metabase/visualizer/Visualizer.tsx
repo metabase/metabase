@@ -184,8 +184,11 @@ export function Visualizer() {
                 </Flex>
                 <BaseVisualization
                   rawSeries={combinedSeries}
-                  isDashboard={combinedSeries[0].card.display === "table"}
                   metadata={metadata}
+                  // isDashboard flag makes it use the TableSimple component
+                  // TableInteractive does a lot of work with Question and Metadata
+                  // and it's currently crashing
+                  isDashboard={combinedSeries[0].card.display === "table"}
                 />
               </Stack>
             ) : null}
