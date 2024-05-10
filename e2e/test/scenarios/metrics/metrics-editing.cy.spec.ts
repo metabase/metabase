@@ -134,7 +134,7 @@ describe("scenarios > metrics", () => {
     it("should create a metric based on a multi-stage model", () => {
       createQuestion({ ...MULTI_STAGE_QUESTION, type: "model" });
       startNewMetric();
-      popover().findByText("Saved Questions").click();
+      popover().findByText("Models").click();
       popover().findByText(MULTI_STAGE_QUESTION.name).click();
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();

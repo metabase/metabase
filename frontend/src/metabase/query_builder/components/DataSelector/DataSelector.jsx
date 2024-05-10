@@ -970,7 +970,12 @@ export class UnconnectedDataSelector extends Component {
       return isSavedEntityPickerShown ? ["card"] : ["card", "table"];
     }
     if (!selectedDataBucketId) {
-      return ["card", "dataset", "table", "metric"];
+      return [
+        "card",
+        "dataset",
+        "table",
+        ...(this.props.canSelectMetric ? ["metric"] : []),
+      ];
     }
     return {
       [DATA_BUCKET.MODELS]: ["dataset"],
