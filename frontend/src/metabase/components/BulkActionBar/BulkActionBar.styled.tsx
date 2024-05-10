@@ -39,4 +39,8 @@ export const BulkActionButton = styled(Button)`
     border-color: ${alpha(color("bg-white"), 0)};
     background-color: ${alpha(color("bg-white"), 0.3)};
   }
+  :disabled {
+    border-color: ${alpha(color("bg-white"), 0)};
+    background-color: ${alpha(color("bg-white"), 0.1)};
+  }
 ` as unknown as typeof Button;
