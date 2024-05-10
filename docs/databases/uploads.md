@@ -4,7 +4,7 @@ title: Uploading data
 
 # Uploading data
 
-Once you've [enabled uploads](#enabling-uploads), you can [upload files](../exploration-and-organization/collections.md#uploading-data) in CSV format to a collection in Metabase.
+Once you've [enabled uploads](#enabling-uploads), you can [upload files](../exploration-and-organization/uploads.md) in CSV format to a collection in Metabase.
 
 ![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
 
@@ -127,15 +127,19 @@ Offsets:
 
 ## Deleting models and tables created by uploads
 
-### Models
+### Deleting models created by uploads
 
 You can archive a model by clicking on the three dots in the upper right and selecting **Archive**.
 
 For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history.md#deleting-items-permanently).
 
-### Tables
+### Deleting uploaded tables
 
-You'll need to drop that table in the database itself (not in Metabase). For how to delete tables, see your database's documentation.
+Hit cmd/ctrl + K and search for "Settings - Uploads".
+
+Under **Manage uploads**, Metabase will list the tables underlying the models.
+
+When you delete the table, Metabase will give you the option to **Also send all models and questions based on this table to the trash**.
 
 ## Note on uploading data to a MySQL database
 
