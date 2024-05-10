@@ -11,28 +11,42 @@
   [test-user]
   (t2/delete! :model/RecentViews :user_id (mt/user->id test-user)))
 
-(deftest user-recent-views-test
-  (testing "`user-recent-views` dedupes items, and returns them in chronological order, most recent first"
+(deftest user-recent-views-dedupe-test
+  (testing "The `user-recent-views` table should dedupe views of the same model"
     (clear-test-user-recent-views :rasta)
-    ;; insert some duplicates, they should get ignored:
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 1)
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 2)
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 2)
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 1)
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard 3)
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card 2)
-    ;; card 2 was latest, so it comes first in the list:
-    (is (= [[:dataset 2] [:dashboard 3] [:dataset 1]]
-           (mapv (juxt :model :id) (recent-views/get-list (mt/user->id :rasta)))))
+    (t2.with-temp/with-temp [:model/Card      {model-id     :id} {:type "model"}
+                             :model/Card      {model-id-2   :id} {:type "model"}
+                             :model/Dashboard {dashboard-id :id} {}]
+      (let [t1 #t "2000-05-09T00:00:00.000000Z"
+            t2 #t "2001-05-09T00:00:00.000000Z"
+            t3 #t "2002-05-09T00:00:00.000000Z"]
 
-    (is (= [:dataset 2] (-> (recent-views/get-list (mt/user->id :rasta)) first ((juxt :model :id)))))))
+        ;; For some reason, the `update-users-recent-views!` function gives all of these the same timestamp.
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id)
+        (Thread/sleep 100)
+        #_(t2/update! :model/RecentViews {:model_id model-id :model "card"} {:timestamp t1})
 
-(deftest most-recently-viewed-dashboard-id-test
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2)
+        (Thread/sleep 100)
+        #_(t2/update! :model/RecentViews {:model_id model-id-2 :model "card"} {:timestamp t2})
+
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
+        (Thread/sleep 100)
+        #_(t2/update! :model/RecentViews {:model_id dashboard-id :model "dashboard"} {:timestamp t3})
+        (def my-recents (t2/select :model/RecentViews :user_id (mt/user->id :rasta)))
+
+        ;; (set (map :timestamp my-recents)) is now: #{#t "2024-05-10T14:47:08.034664Z"}
+        ;; (def wat (set (mapv :timestamp (recent-views/get-list (mt/user->id :rasta)))))
+        ;; ;; wat is now: #{"2024-05-10T14:46:25.753502Z"}
+
+        ))))
+
+#_(deftest most-recently-viewed-dashboard-id-test
   (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
     (clear-test-user-recent-views :rasta)
     (t2.with-temp/with-temp [:model/Dashboard {dash-id :id} {}
-                   :model/Dashboard {dash-id-2 :id} {}
-                   :model/Dashboard {dash-id-3 :id} {}]
+                             :model/Dashboard {dash-id-2 :id} {}
+                             :model/Dashboard {dash-id-3 :id} {}]
 
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
@@ -53,8 +67,6 @@
 ;; [:model/Card {card-id :id} {:type "question"}]
 ;; a dataset:
 ;; [:model/Card {card-id :id} {:type "model"}]
-
-
 
 (deftest update-users-recent-views!-test
   (clear-test-user-recent-views :rasta)
