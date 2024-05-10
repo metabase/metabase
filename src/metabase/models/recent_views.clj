@@ -249,8 +249,17 @@
      :authority_level (:authority_level collection)
      :parent_collection (get-parent-coll collection)}))
 
+(defn ellide-inactive
+  "Used to filter out inactive tables in [[fill-recent-view-info]] for `:table`."
+  [table]
+  (condp = (:archived table)
+    true nil
+    false table
+    ;; IF it's missing, query for the value, and use that one.
+    nil (ellide-inactive (t2/select-one [:model/Table :active] (:id table)))))
+
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
-  (when-let [table (or model_object (t2/select-one :model/Table model_id))]
+  (when-let [table (ellide-inactive (or model_object (t2/select-one :model/Table model_id)))]
     {:id model_id
      :name (:name table)
      :description (:description table)
