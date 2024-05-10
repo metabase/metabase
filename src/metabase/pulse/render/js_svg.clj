@@ -37,7 +37,6 @@
 (def ^:private static-viz-context-delay
   "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
   for creating charts."
-  ;; TODO: we should have resource pool for this
   (delay (load-viz-bundle (js/context))))
 
 (defn- context
