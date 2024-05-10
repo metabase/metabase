@@ -1,5 +1,18 @@
+export type CloudMigrationState =
+  | "init"
+  | "setup"
+  | "dump"
+  | "upload"
+  | "cancelled"
+  | "error"
+  | "done";
+
 export type CloudMigration = {
   id: number;
-  state: string;
+  external_id: number;
+  state: CloudMigrationState;
   progress: number;
+  upload_url: string;
+  created_at: string;
+  updated_at: string;
 };
