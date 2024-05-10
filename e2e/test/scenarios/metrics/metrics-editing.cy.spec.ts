@@ -299,6 +299,27 @@ describe("scenarios > metrics", () => {
       verifyScalarValue("755,310.84");
     });
 
+    it("should be able to use a custom column in a metric-based query", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewMetric();
+      popover().findByText("Metrics").click();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      startNewCustomColumn();
+      enterCustomColumnDetails({
+        formula: "[Total] / 2",
+        name: "Total2",
+      });
+      popover().button("Done").click();
+      addNumberBetweenFilter({
+        columnName: "Total2",
+        minValue: 60,
+        maxValue: 100,
+      });
+      saveMetric();
+      runQuery();
+      verifyScalarValue("3,326");
+    });
+
     it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
       createQuestion(ORDERS_COUNT_METRIC);
       startNewMetric();
