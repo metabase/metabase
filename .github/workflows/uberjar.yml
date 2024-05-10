@@ -18,6 +18,15 @@ on:
     inputs:
       commit:
         description: 'Optional full-length commit SHA-1 hash'
+  # This workflow will be called from "release-embedding-sdk.yml"
+  workflow_call:
+    outputs:
+      ee-uber-jar:
+        description: "The first output string"
+        value: ${{ jobs.example_job.outputs.output1 }}
+    inputs:
+      commit:
+        description: 'Optional full-length commit SHA-1 hash'
 
 jobs:
   build:

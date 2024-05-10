@@ -365,6 +365,7 @@
     "embedding-sdk:fixup-types-imports": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
+    "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "eslint-fix": "yarn lint-eslint --fix",
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
