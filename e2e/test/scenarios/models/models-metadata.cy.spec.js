@@ -334,6 +334,7 @@ describe("scenarios > models metadata", () => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
           cy.icon("close").click();
+          // FIXME: the problem occurs here
           cy.wait("@dataset");
         });
 

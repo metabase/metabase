@@ -1,3 +1,4 @@
+import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import { within } from "@testing-library/react";
 
 import {
@@ -16,6 +17,10 @@ import {
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
+  clearQueryResult,
+  runQuestionQuery,
+} from "metabase/query_builder/actions";
+import {
   createMockCard,
   createMockColumn,
   createMockDatabase,
@@ -24,6 +29,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -67,13 +73,16 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  renderWithProviders(<InteractiveQuestion questionId={TEST_CARD.id} />, {
-    mode: "sdk",
-    sdkConfig: createMockConfig({
-      jwtProviderUri: "http://TEST_URI/sso/metabase",
-    }),
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <InteractiveQuestion questionId={TEST_CARD.id} />,
+    {
+      mode: "sdk",
+      sdkConfig: createMockConfig({
+        jwtProviderUri: "http://TEST_URI/sso/metabase",
+      }),
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("InteractiveQuestion", () => {
@@ -95,6 +104,37 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render loading state when drilling down", async () => {
+    const { store } = setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      within(screen.getByTestId("TableInteractive-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    // Mimicking drilling down by rerunning the query again
+    const storeDispatch = store.dispatch as unknown as ThunkDispatch<
+      State,
+      void,
+      AnyAction
+    >;
+    storeDispatch(clearQueryResult());
+    storeDispatch(runQuestionQuery());
+
+    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(
+      within(await screen.findByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
   });
 
