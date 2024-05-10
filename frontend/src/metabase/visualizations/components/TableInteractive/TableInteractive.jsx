@@ -16,6 +16,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -538,7 +539,7 @@ class TableInteractive extends Component {
   };
 
   cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
-    const { data, settings } = this.props;
+    const { data, settings, theme } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
 
@@ -563,12 +564,15 @@ class TableInteractive extends Component {
 
     const isLink = cellData && cellData.type === ExternalLink;
     const isClickable = !isLink && !isScrolling;
-    const backgroundColor = this.getCellBackgroundColor(
-      settings,
-      value,
-      rowIndex,
-      column.name,
-    );
+
+    const tableTheme = theme?.other?.table;
+
+    // Default cell background color from theme. Used mainly for embedding.
+    const defaultBackgroundColor = tableTheme?.cell?.background;
+
+    const backgroundColor =
+      this.getCellBackgroundColor(settings, value, rowIndex, column.name) ??
+      defaultBackgroundColor;
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -1208,6 +1212,7 @@ export default _.compose(
     "getCellFormattedValue",
     "getHeaderClickedObject",
   ),
+  withMantineTheme,
 )(TableInteractive);
 
 const DetailShortcut = forwardRef((_props, ref) => (

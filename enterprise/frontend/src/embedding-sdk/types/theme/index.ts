@@ -40,4 +40,10 @@ export type MetabaseColor = keyof MetabaseColors;
  * Theme options for customizing specific Metabase
  * components and visualizations.
  */
-export interface MetabaseComponentTheme {}
+export interface MetabaseComponentTheme {
+  table?: {
+    cell?: {
+      background?: string;
+    };
+  };
+}
