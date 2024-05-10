@@ -1691,7 +1691,7 @@
               (with-upload-table!
                 [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
                                                                  (ordered-map/ordered-map
-                                                                  :test_column ::upload/varchar-255))
+                                                                  :test_column vchar-type))
                                               :rows             [["valid"]]})]
                 (let [csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
                       file  (csv-file-with csv-rows)]
