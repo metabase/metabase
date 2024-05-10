@@ -7,16 +7,6 @@ import {
 
 import { getCollectionPathString, sortModels } from "./utils";
 
-//
-// TODO:
-// Make collections the second column
-// Even out the spacing around the icon, left and right
-// Increase name to 240 or 280px
-// Ensure that the gap between the collection icon and the collection path is the same as the gap to the right
-// Let's make the whole collection path a single link
-// Remove Metabase analytics
-// Change the heading to Browsing models (to make clear that this is not a collection)
-
 describe("getCollectionPathString", () => {
   it("should return path for collection without ancestors", () => {
     const collection = createMockCollection({
