@@ -774,6 +774,10 @@ class TableInteractive extends Component {
 
     const headerTheme = theme?.other?.table?.header;
 
+    const cellColor = isSorted
+      ? "brand"
+      : headerTheme?.textColor || "text-medium";
+
     return (
       <TableDraggable
         enableUserSelectHack={false}
@@ -824,7 +828,7 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          c={headerTheme?.textColor || "text-medium"}
+          c={cellColor}
           bg={headerTheme?.backgroundColor || "white"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{

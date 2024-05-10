@@ -84,11 +84,6 @@
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--mb-color-brand);
-}
-
-.TableInteractiveHeaderCellDataSorted {
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellDataSorted :global(.Icon-chevrondown),

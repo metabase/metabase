@@ -16,7 +16,7 @@ export function getTableCellTheme({
   if (isIDColumn) {
     return {
       color: idTheme?.textColor || color,
-      background: idTheme?.backgroundColor || background,
+      background: idTheme?.backgroundColor || background || "brand",
     };
   }
 
