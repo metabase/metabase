@@ -39,6 +39,5 @@ describe("scenarios > question > offset", () => {
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Error normalizing")).not.to.be.true;
     });
-    // cy.findByLabelText("Expression").should("have.value", formula);
   });
 });
