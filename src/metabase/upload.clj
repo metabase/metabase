@@ -284,13 +284,8 @@
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
 
-   Returns a map with two keys:
-     - `:extant-columns`: an ordered map of columns found in the CSV file, excluding columns that have the same normalized name as the generated columns.
-     - `:generated-columns`: an ordered map of columns we are generating ourselves. Currently, this is just the auto-incrementing PK.
-
-   The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
-   given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
-   be of type `::text`."
+   Returns an ordered map of normalized-column-name -> type for the given CSV file. Supported types include `::int`,
+   `::datetime`, etc. A column that is completely blank is assumed to be of type `::text`."
   [header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name))
@@ -347,10 +342,14 @@
                                 max-sample-rows)))
                   rows)))
 
+(defn- defaulting-database-type [driver upload-type]
+  (or (driver/upload-type->database-type driver upload-type)
+      (driver/upload-type->database-type driver ::varchar-255)))
+
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
-  (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
+  (update-vals col->upload-type (partial defaulting-database-type driver)))
 
 (defn current-database
   "The database being used for uploads (as per the `uploads-database-id` setting)."
@@ -702,7 +701,6 @@
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
-
           (throw (ex-info (ex-message e) {:status-code 422}))))
       (when create-auto-pk?
         (driver/add-columns! driver

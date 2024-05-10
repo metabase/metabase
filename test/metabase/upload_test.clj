@@ -536,9 +536,9 @@
     (sync-upload-test-table! :database db :table-name table-name :schema-name schema)))
 
 (defn- columns-with-auto-pk [columns]
- (cond-> columns
-   (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
-   (#'upload/columns-with-auto-pk)))
+  (cond-> columns
+    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
@@ -607,7 +607,7 @@
             (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
-  (testing "Upload a CSV file with a datetime column"
+  (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-redefs [driver/db-default-timezone (constantly "Z")
@@ -1037,7 +1037,7 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
+        (with-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
                       future-call (fn [thunk]
                                     (swap! in-future? (constantly true))
                                     (thunk))]
@@ -1358,7 +1358,7 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest append-all-types-test
+(deftest append-common-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
       (mt/with-report-timezone-id "UTC"
@@ -1374,23 +1374,48 @@
                                            :text            ::upload/varchar-255
                                            :boolean         ::upload/boolean
                                            :date            ::upload/date
-                                           :datetime        ::upload/datetime
-                                           :offset_datetime ::upload/offset-datetime))
-                       :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00"]]})]
-              (let [csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
-                              "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]
+                                           :datetime        ::upload/datetime))
+                       :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00"]]})]
+              (let [csv-rows ["biginteger,float,text,boolean,date,datetime"
+                              "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02"]
                     file  (csv-file-with csv-rows (mt/random-name))]
                 (is (some? (append-csv! {:file     file
                                          :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= (set (rows-with-auto-pk
-                               [[1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
-                                [2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]))
+                               [[1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
+                                [2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z"]]))
                          (set (rows-for-table table)))))
                 (io/delete-file file)))))))))
 
-            (defn- cached-model-ids []
-              (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
+(deftest append-offset-datetime-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-mysql-local-infile-on-and-off
+      (mt/with-report-timezone-id "UTC"
+        (testing "Append should succeed for all possible CSV column types"
+          (with-redefs [driver/db-default-timezone (constantly "Z")
+                        upload/current-database    (constantly (mt/db))]
+            (with-upload-table!
+              [table (create-upload-table!
+                      {:col->upload-type (columns-with-auto-pk
+                                          (ordered-map/ordered-map
+                                           :offset_datetime ::upload/offset-datetime))
+                       :rows []})]
+              (let [csv-rows ["offset_datetime"
+                              "2020-02-02T02:02:02+02:00"]
+                    file  (csv-file-with csv-rows (mt/random-name))]
+                (is (some? (append-csv! {:file     file
+                                         :table-id (:id table)})))
+                (testing "Check the data was uploaded into the table correctly"
+                  (is (= (set (rows-with-auto-pk
+                               [[(if (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
+                                   "2020-02-02T00:02:02Z"
+                                   "2020-02-02T02:02:02+02:00")]]))
+                         (set (rows-for-table table)))))
+                (io/delete-file file)))))))))
+
+(defn- cached-model-ids []
+  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
 
 (defn- mbql [mp table]
   (let [table-metadata (lib.metadata/table mp (:id table))]
@@ -1612,10 +1637,10 @@
 
           (testing "The new row is inserted with the values correctly reordered"
             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
-            (is (= (rows-with-auto-pk
-                    [["Obi-Wan Kenobi" "No one really knows me"]
-                     ["Puke Nightstalker" "Nothing - you can't prove it"]])
-                   (rows-for-table table))))
+            (is (= (set (rows-with-auto-pk
+                         [["Obi-Wan Kenobi" "No one really knows me"]
+                          ["Puke Nightstalker" "Nothing - you can't prove it"]]))
+                   (set (rows-for-table table)))))
           (io/delete-file file))))))
 
 (deftest append-type-mismatch-test
@@ -1630,30 +1655,31 @@
                                     [false])]
             (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
               (doseq [{:keys [upload-type valid invalid msg]}
-                      [{:upload-type ::upload/int
-                        :valid       1
-                        :invalid     "not an int"
-                        :msg         "'not an int' is not a recognizable number"}
-                       {:upload-type ::upload/float
-                        :valid       1.1
-                        :invalid     "not a float"
-                        :msg         "'not a float' is not a recognizable number"}
-                       {:upload-type ::upload/boolean
-                        :valid       true
-                        :invalid     "correct"
-                        :msg         "'correct' is not a recognizable boolean"}
-                       {:upload-type ::upload/date
-                        :valid       #t "2000-01-01"
-                        :invalid     "2023-01-01T00:00:00"
-                        :msg         "'2023-01-01T00:00:00' is not a recognizable date"}
-                       {:upload-type ::upload/datetime
-                        :valid       #t "2000-01-01T00:00:00"
-                        :invalid     "2023-01-01T00:00:00+01"
-                        :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}
-                       {:upload-type ::upload/offset-datetime
-                        :valid       #t "2000-01-01T00:00:00+01"
-                        :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
-                        :msg         "'2023-01-01T00:00:00[Europe/Helsinki]' is not a recognizable zoned datetime"}]]
+                      (cond-> [{:upload-type ::upload/int
+                                :valid       1
+                                :invalid     "not an int"
+                                :msg         "'not an int' is not a recognizable number"}
+                               {:upload-type ::upload/float
+                                :valid       1.1
+                                :invalid     "not a float"
+                                :msg         "'not a float' is not a recognizable number"}
+                               {:upload-type ::upload/boolean
+                                :valid       true
+                                :invalid     "correct"
+                                :msg         "'correct' is not a recognizable boolean"}
+                               {:upload-type ::upload/date
+                                :valid       #t "2000-01-01"
+                                :invalid     "2023-01-01T00:00:00"
+                                :msg         "'2023-01-01T00:00:00' is not a recognizable date"}
+                               {:upload-type ::upload/datetime
+                                :valid       #t "2000-01-01T00:00:00"
+                                :invalid     "2023-01-01T00:00:00+01"
+                                :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}]
+                        (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
+                        (conj {:upload-type ::upload/offset-datetime
+                               :valid       #t "2000-01-01T00:00:00+01"
+                               :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
+                               :msg         "'2023-01-01T00:00:00[Europe/Helsinki]' is not a recognizable zoned datetime"}))]
                 (testing (str "\nTry to upload an invalid value for " upload-type)
                   (with-upload-table!
                     [table (create-upload-table!
