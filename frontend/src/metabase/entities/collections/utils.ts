@@ -10,11 +10,7 @@ import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import {
-  ROOT_COLLECTION,
-  PERSONAL_COLLECTIONS,
-  TRASH_COLLECTION,
-} from "./constants";
+import { ROOT_COLLECTION, PERSONAL_COLLECTIONS } from "./constants";
 
 export function normalizedCollection(collection: Collection) {
   return isRootCollection(collection) ? ROOT_COLLECTION : collection;
@@ -33,7 +29,7 @@ export function getCollectionIcon(
   }
 
   if (collection.type === "trash") {
-    return { name: TRASH_COLLECTION.icon };
+    return { name: "trash" };
   }
 
   if (isRootPersonalCollection(collection)) {

@@ -1,10 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import {
-  ROOT_COLLECTION,
-  TRASH_COLLECTION,
-} from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
@@ -20,6 +17,8 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 
+const mockTrashCollection = createMockCollection({ id: 2, name: "Trash" });
+
 export interface CollectionEndpoints {
   collections: Collection[];
   rootCollection?: Collection;
@@ -29,10 +28,10 @@ export interface CollectionEndpoints {
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
-  trashCollection = createMockCollection(TRASH_COLLECTION),
+  trashCollection = mockTrashCollection,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
-  fetchMock.get(`path:/api/collection/${TRASH_COLLECTION.id}`, trashCollection);
+  fetchMock.get(`path:/api/collection/trash`, trashCollection);
   fetchMock.get(
     {
       url: "path:/api/collection/tree",

@@ -1,13 +1,13 @@
-import { ReactNode, useEffect } from "react";
-import { Redirect } from "react-router";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { extractCollectionId } from "metabase/lib/urls";
 
 import { CollectionContent } from "../CollectionContent";
-import { useGetCollectionQuery } from "metabase/api";
-import { replace } from "react-router-redux";
 
 export interface CollectionLandingProps {
   params: CollectionLandingParams;
@@ -33,7 +33,7 @@ const CollectionLanding = ({
         dispatch(replace("/trash"));
       }
     },
-    [trashCollection?.id, collectionId],
+    [dispatch, trashCollection?.id, collectionId],
   );
 
   if (!isNotNull(collectionId)) {
