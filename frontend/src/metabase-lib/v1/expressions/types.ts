@@ -23,18 +23,9 @@ interface HelpTextArg {
   example: string;
 }
 
-type MBQLClauseFunctionReturnType =
-  | "aggregation"
-  | "any"
-  | "boolean"
-  | "datetime"
-  | "expression"
-  | "number"
-  | "string";
-
 export type MBQLClauseFunctionConfig = {
   displayName: string;
-  type: MBQLClauseFunctionReturnType;
+  type: string;
   args: string[];
   requiresFeature?: string;
   hasOptions?: boolean;
