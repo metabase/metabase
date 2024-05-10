@@ -9544,10 +9544,10 @@ cypress-multi-reporters@^1.6.4:
     debug "^4.3.4"
     lodash "^4.17.21"
 
-cypress-real-events@^1.11.0:
-  version "1.11.0"
-  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.11.0.tgz#292fe5281c5b6e955524e766ab7fec46930c7763"
-  integrity sha512-4LXVRsyq+xBh5TmlEyO1ojtBXtN7xw720Pwb9rEE9rkJuXmeH3VyoR1GGayMGr+Itqf11eEjfDewtDmcx6PWPQ==
+cypress-real-events@^1.12.0:
+  version "1.12.0"
+  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.12.0.tgz#ffeb2b23686ba5b16ac91dd9bc3b6785d36d38d3"
+  integrity sha512-oiy+4kGKkzc2PT36k3GGQqkGxNiVypheWjMtfyi89iIk6bYmTzeqxapaLHS3pnhZOX1IEbTDUVxh8T4Nhs1tyQ==
 
 cypress@^13.9.0:
   version "13.9.0"
