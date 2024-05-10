@@ -47,7 +47,7 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
   });
 
-  it("does not work without breakout or order-by clause", () => {
+  it("does not work without a breakout clause", () => {
     const aggregation: Aggregation = [
       "offset",
       createOffsetOptions(),
@@ -66,7 +66,7 @@ describe("scenarios > question > offset", () => {
     );
   });
 
-  it("works with breakout clause", () => {
+  it("works with a single breakout clause", () => {
     const aggregationName = "My aggregation";
     const aggregation: Aggregation = [
       "offset",
