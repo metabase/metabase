@@ -334,7 +334,7 @@
   ;; clojure -M:marginalia
   :marginalia
   {:extra-deps
-   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   {marginalia/marginalia {:mvn/version "0.9.2"}}
    :main-opts ["-m" "marginalia.main" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"
                "dev" "src" "enterprise/backend/src"]}
@@ -344,7 +344,7 @@
   ;; which creates `backend-docs/metabase.some.namespace.html`
   :marginalia/one
   {:extra-deps
-   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   {marginalia/marginalia {:mvn/version "0.9.2"}}
    :main-opts ["-m" "marginalia.main" "-m" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"]}
 

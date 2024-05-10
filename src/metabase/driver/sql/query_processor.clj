@@ -1254,7 +1254,8 @@
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
   (if-let [field-arg (lib.util.match/match-one args
-                       :field          &match)]
+                       :field          &match
+                       :expression     &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or

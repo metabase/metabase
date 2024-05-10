@@ -290,3 +290,8 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 };
+
+export enum SortDirection {
+  Asc = "asc",
+  Desc = "desc",
+}
