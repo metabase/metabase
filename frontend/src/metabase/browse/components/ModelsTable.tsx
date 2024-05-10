@@ -46,14 +46,18 @@ const collectionProps: ResponsiveProps = {
   containerName: "ItemsTableContainer",
 };
 
+const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+  sort_column: "collection",
+  sort_direction: SortDirection.Asc,
+};
+
 export const ModelsTable = ({ models }: ModelsTableProps) => {
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
 
-  const [sortingOptions, setSortingOptions] = useState<SortingOptions>({
-    sort_column: "name",
-    sort_direction: SortDirection.Asc,
-  });
+  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
+    DEFAULT_SORTING_OPTIONS,
+  );
 
   const sortedModels = sortModels(models, sortingOptions, localeCode);
 
