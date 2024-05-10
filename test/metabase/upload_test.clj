@@ -1092,7 +1092,9 @@
   ;; TODO make precise if we fix inconsistent mysql semantics
   (case action
     ::upload/append (rows-with-auto-pk (into initial added))
-    ::upload/replace (drop (count initial) (rows-with-auto-pk (into initial added)))))
+    ::upload/replace (if (= driver/*driver* :mysql)
+                       (rows-with-auto-pk added)
+                       (drop (count initial) (rows-with-auto-pk (into initial added))))))
 
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
