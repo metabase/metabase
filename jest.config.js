@@ -13,6 +13,7 @@ const config = {
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown":
       "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
+    "^echarts.*": "<rootDir>/node_modules/echarts/dist/echarts.common.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
   },
