@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-export const HeaderContainer = styled.div<{ role: string; tabIndex?: number }>`
+export const HeaderContainer = styled.div<{ role?: string; tabIndex?: number }>`
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -43,9 +43,8 @@ export const ToggleIcon = styled(
     isExpanded,
     variant,
     size = 12,
-    name: _,
     ...props
-  }: ToggleIconProps & IconProps) => {
+  }: ToggleIconProps & Omit<IconProps, "name">) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     const name = isExpanded ? expanded : collapsed;
     return <Icon name={name as IconName} size={size} {...props} />;

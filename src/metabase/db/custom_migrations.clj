@@ -1080,9 +1080,9 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details (json/parse-string keyword) :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
-                              (t2/select :model/Database)))]
+                              (t2/select :metabase_database)))]
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]

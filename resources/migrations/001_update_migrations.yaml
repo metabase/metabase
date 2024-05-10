@@ -3422,7 +3422,6 @@ databaseChangeLog:
               SET r.most_recent = true;
       rollback: # nothing to do since the most_recent will be dropped anyway
 
-
   - changeSet:
       id: v48.00-009
       validCheckSum: 8:dfd90256380263274ea7f5cc0c5ed413
@@ -5800,6 +5799,34 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
 
   - changeSet:
+      id: v49.2024-05-07T10:00:00
+      author: qnkhuat
+      comment: Set revision.most_recent = true to latest revision and false to others. A redo of v48.00-008 for mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE revision AS r
+              JOIN (
+                  SELECT inner_revision.id,
+                        ROW_NUMBER() OVER (PARTITION BY inner_revision.model, inner_revision.model_id ORDER BY inner_revision.timestamp DESC, inner_revision.id DESC) AS row_num
+                    FROM revision AS inner_revision
+                    JOIN (
+                          SELECT model, model_id
+                          FROM revision
+                          WHERE most_recent = true
+                          GROUP BY model, model_id
+                          HAVING count(*) > 1
+                        ) AS infected_revision ON inner_revision.model = infected_revision.model AND inner_revision.model_id = infected_revision.model_id
+              ) AS n ON r.id = n.id
+              SET r.most_recent = (n.row_num = 1);
+      rollback: # nothing
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6709,6 +6736,49 @@ databaseChangeLog:
                   FROM view_log v
                   WHERE v.model = 'dashboard'
                   AND v.model_id = c.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:35
+      author: calherries
+      comment: Add metabase_table.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: metabase_table
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:36
+      author: calherries
+      comment: Populate metabase_table.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              SET t.view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_table t
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
               );
       rollback: # nothing to do, since view_count didn't exist in v49
 

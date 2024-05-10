@@ -5,8 +5,6 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
-   [metabase.metabot.feedback :as metabot-feedback]
-   [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -17,7 +15,7 @@
 (defn- check-database-support
   "Do a preliminary check to ensure metabot will work. Throw an exception if not."
   [database-id]
-  (when-not (metabot-util/supported? database-id)
+  (when-not (metabot/supported? database-id)
     (throw
      (let [message "Metabot is not supported for this database type."]
        (ex-info
@@ -59,7 +57,7 @@
    question)
   (let [model   (api/check-404 (t2/select-one Card :id model-id :type :model))
         _       (check-database-support (:database_id model))
-        context {:model       (metabot-util/denormalize-model model)
+        context {:model       (metabot/denormalize-model model)
                  :user_prompt question
                  :prompt_task :infer_sql}
         dataset (infer-sql-or-throw context question)]
@@ -76,7 +74,7 @@
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (metabot/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_model}]
     (if-some [model (metabot/infer-model context)]
@@ -106,7 +104,7 @@
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (metabot/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_native_sql}]
     (metabot/infer-native-sql-query context)))
@@ -114,7 +112,7 @@
 (api/defendpoint POST "/feedback"
   "Record feedback on metabot results."
   [:as {feedback :body}]
-  (if-some [stored-feedback (metabot-feedback/submit-feedback feedback)]
+  (if-some [stored-feedback (metabot/submit-feedback feedback)]
     {:feedback stored-feedback
      :message  "Thanks for your feedback"}
     (throw

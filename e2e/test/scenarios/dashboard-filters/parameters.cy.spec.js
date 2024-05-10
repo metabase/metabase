@@ -27,6 +27,7 @@ import {
   dashboardParametersContainer,
   openQuestionActions,
   spyRequestFinished,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
@@ -1190,7 +1191,11 @@ function addQuestionFromQueryBuilder({
 
   openQuestionActions();
   popover().findByText("Add to dashboard").click();
-  modal().findByText("36275").click();
+
+  entityPickerModal().within(() => {
+    modal().findByText("36275").click();
+    cy.button("Select").click();
+  });
 
   undoToast().should("be.visible");
   if (saveDashboardAfterAdd) {
