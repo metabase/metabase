@@ -17,7 +17,10 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 
-const mockTrashCollection = createMockCollection({ id: 2, name: "Trash" });
+const mockTrashCollection = createMockCollection({
+  id: 20000000,
+  name: "Trash",
+});
 
 export interface CollectionEndpoints {
   collections: Collection[];

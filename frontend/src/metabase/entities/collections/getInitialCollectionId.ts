@@ -56,7 +56,7 @@ const getInitialCollectionId = createSelector(
   (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const validCollectionIds = collectionIds
-      .filter(id => isRootTrashCollection(collections[id as CollectionId]))
+      .filter(id => !isRootTrashCollection(collections[id as CollectionId]))
       .concat(rootCollectionId) as CollectionId[];
 
     if (personalCollectionId) {
