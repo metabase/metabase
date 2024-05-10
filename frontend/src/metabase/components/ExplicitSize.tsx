@@ -37,7 +37,7 @@ type SizeState = {
 type BaseInnerProps = {
   className?: string;
   style?: CSSProperties;
-  onResize?: () => void;
+  onUpdateSize?: () => void;
 };
 
 function ExplicitSize<T extends BaseInnerProps>({
@@ -184,7 +184,9 @@ function ExplicitSize<T extends BaseInnerProps>({
         if (element) {
           const { width, height } = element.getBoundingClientRect();
           if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height }, () => this.props?.onResize?.());
+            this.setState({ width, height }, () =>
+              this.props?.onUpdateSize?.(),
+            );
           }
         }
       };
