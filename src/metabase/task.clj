@@ -265,7 +265,7 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)
-   :data               (.getJobDataMap trigger)})
+   :data               (into {} (.getJobDataMap trigger))})
 
 (defmethod trigger->info CronTrigger
   [^CronTrigger trigger]
@@ -273,6 +273,9 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
+
+   :timezone
+   (.getID (.getTimeZone trigger))
 
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...
