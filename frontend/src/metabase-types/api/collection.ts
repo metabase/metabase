@@ -13,7 +13,12 @@ import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
+export type CollectionId =
+  | RegularCollectionId
+  | "root"
+  | "personal"
+  | "users"
+  | "trash";
 
 export type CollectionContentModel = "card" | "dataset";
 

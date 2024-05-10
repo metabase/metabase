@@ -272,7 +272,7 @@ function DashboardInner(props: DashboardProps) {
   const hasVisibleParameters = visibleParameters.length > 0;
   const canRestore =
     !!dashboard?.collection_id &&
-    isRootTrashCollection({ id: dashboard?.collection_id });
+    isRootTrashCollection({ type: dashboard?.collection?.type });
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 

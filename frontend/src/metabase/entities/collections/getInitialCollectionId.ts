@@ -1,13 +1,16 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls/collections";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ROOT_COLLECTION, TRASH_COLLECTION } from "./constants";
+import { ROOT_COLLECTION } from "./constants";
 
 type Props = {
   collectionId?: Collection["id"];
@@ -53,7 +56,7 @@ const getInitialCollectionId = createSelector(
   (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const validCollectionIds = collectionIds
-      .filter(id => id !== TRASH_COLLECTION.id)
+      .filter(id => !isRootTrashCollection(collections[id as CollectionId]))
       .concat(rootCollectionId) as CollectionId[];
 
     if (personalCollectionId) {

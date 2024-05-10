@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
@@ -28,13 +27,13 @@ export function isPersonalCollection(
 }
 
 export function isRootTrashCollection(
-  collection: Pick<Collection, "id">,
+  collection: Pick<Collection, "type">,
 ): boolean {
-  return collection.id === TRASH_COLLECTION.id;
+  return collection?.type === "trash";
 }
 
 export function isTrashedCollection(
-  collection: Pick<Collection, "id" | "archived">,
+  collection: Pick<Collection, "type" | "archived">,
 ): boolean {
   return isRootTrashCollection(collection) || collection.archived;
 }

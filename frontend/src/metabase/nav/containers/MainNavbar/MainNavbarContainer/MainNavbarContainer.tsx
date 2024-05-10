@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
@@ -13,7 +14,6 @@ import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
-  TRASH_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
@@ -56,7 +56,6 @@ interface Props extends MainNavbarProps {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
-  trashCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allError: boolean;
@@ -79,10 +78,7 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
-  trashCollection,
   hasDataAccess,
-  allError,
-  allFetched,
   location,
   params,
   openNavbar,
@@ -93,6 +89,12 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const {
+    data: trashCollection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery("trash");
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -163,10 +165,12 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
+  const allError = props.allError || !!error;
   if (allError) {
     return <NavbarErrorView />;
   }
 
+  const allFetched = props.allFetched && !isLoading;
   if (!allFetched) {
     return <NavbarLoadingView />;
   }
@@ -202,11 +206,6 @@ export default _.compose(
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.load({
-    id: TRASH_COLLECTION.id,
-    entityAlias: "trashCollection",
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({

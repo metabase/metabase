@@ -1,14 +1,15 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
 
-import { TRASH_COLLECTION } from "metabase/entities/collections";
+import { useGetCollectionQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { extractCollectionId } from "metabase/lib/urls";
 
 import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {
-  location: Location;
   params: CollectionLandingParams;
   children?: ReactNode;
 }
@@ -18,12 +19,22 @@ export interface CollectionLandingParams {
 }
 
 const CollectionLanding = ({
-  location: { pathname },
   params: { slug },
   children,
 }: CollectionLandingProps) => {
-  const collectionId =
-    pathname === "/trash" ? TRASH_COLLECTION.id : extractCollectionId(slug);
+  const dispatch = useDispatch();
+  const { data: trashCollection } = useGetCollectionQuery("trash");
+
+  const collectionId = extractCollectionId(slug);
+
+  useEffect(
+    function redirectIfTrashCollection() {
+      if (trashCollection?.id === collectionId) {
+        dispatch(replace("/trash"));
+      }
+    },
+    [dispatch, trashCollection?.id, collectionId],
+  );
 
   if (!isNotNull(collectionId)) {
     return null;
