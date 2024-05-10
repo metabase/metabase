@@ -37,7 +37,7 @@
         (let [opts      (when pivot-export-options
                           (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))]
+              col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
             (reset! pivot-options opts))
