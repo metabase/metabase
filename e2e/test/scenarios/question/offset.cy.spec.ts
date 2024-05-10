@@ -10,6 +10,7 @@ import {
   popover,
   restore,
   startNewQuestion,
+  visitQuestion,
   visualize,
 } from "e2e/support/helpers";
 
@@ -24,36 +25,27 @@ describe("scenarios > question > offset", () => {
   });
 
   it("works after saving a question (metabase#42323)", () => {
-    const AGGREGATION_NAME = "Total sum with offset";
-    const BREAKOUT_NAME = "Created At";
+    const aggregationName = "Total sum with offset";
+    const breakoutName = "Created At";
 
     startNewQuestion();
     popover().within(() => {
       cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
-
-    getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
-      .click();
-    popover().contains("Custom Expression").click();
-    enterCustomColumnDetails({
+    addCustomAggregation({
       formula: "Offset(Sum([Total]), -1)",
-      name: AGGREGATION_NAME,
+      name: aggregationName,
     });
-    popover().button("Done").click();
-    addBreakout(BREAKOUT_NAME);
+    addBreakout(breakoutName);
 
     visualize();
-    verifyLineChart({ xAxis: BREAKOUT_NAME, yAxis: AGGREGATION_NAME });
+    verifyLineChart({ xAxis: breakoutName, yAxis: aggregationName });
 
-    cy.button("Save").click();
-    modal().button("Save").click();
-    cy.wait("@saveQuestion");
-
-    cy.reload();
-    cy.wait("@dataset");
-    verifyLineChart({ xAxis: BREAKOUT_NAME, yAxis: AGGREGATION_NAME });
+    saveQuestion().then(({ response }) => {
+      visitQuestion(response?.body.id);
+      verifyLineChart({ xAxis: breakoutName, yAxis: aggregationName });
+    });
   });
 
   it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
@@ -67,13 +59,8 @@ describe("scenarios > question > offset", () => {
     };
     createQuestion(questionDetails, { visitQuestion: true });
     openNotebook();
-
     cy.icon("sum").click();
-    getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
-      .click();
-    popover().contains("Custom Expression").click();
-    enterCustomColumnDetails({ formula, name });
+    addCustomAggregation({ formula, name });
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Error normalizing")).not.to.be.true;
@@ -81,9 +68,30 @@ describe("scenarios > question > offset", () => {
   });
 });
 
+function addCustomAggregation({
+  formula,
+  name,
+}: {
+  formula: string;
+  name: string;
+}) {
+  getNotebookStep("summarize")
+    .findByText("Pick the metric you want to see")
+    .click();
+  popover().contains("Custom Expression").click();
+  enterCustomColumnDetails({ formula, name });
+  popover().button("Done").click();
+}
+
 function addBreakout(name: string) {
   getNotebookStep("summarize").findByText("Pick a column to group by").click();
   popover().findByText(name).click();
+}
+
+function saveQuestion() {
+  cy.button("Save").click();
+  modal().button("Save").click();
+  return cy.wait("@saveQuestion");
 }
 
 function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
