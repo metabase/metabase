@@ -748,7 +748,6 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
-      theme,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -772,11 +771,7 @@ class TableInteractive extends Component {
     const query = question?.query();
     const stageIndex = -1;
 
-    const headerTheme = theme?.other?.table?.header;
-
-    const cellColor = isSorted
-      ? "brand"
-      : headerTheme?.textColor || "text-medium";
+    const cellColor = isSorted ? "brand" : "text-medium";
 
     return (
       <TableDraggable
@@ -829,7 +824,7 @@ class TableInteractive extends Component {
       >
         <HeaderCell
           c={cellColor}
-          bg={headerTheme?.backgroundColor || "white"}
+          bg="white"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,

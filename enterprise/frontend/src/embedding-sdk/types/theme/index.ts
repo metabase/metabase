@@ -51,14 +51,6 @@ export interface MetabaseComponentTheme {
       backgroundColor?: string;
     };
 
-    header?: {
-      /** Text color of table header, defaults to `brand`. */
-      textColor?: string;
-
-      /** Background color of table header, defaults to `white` */
-      backgroundColor?: string;
-    };
-
     idColumn?: {
       /** Text color of ID column, defaults to `brand`. */
       textColor?: string;
