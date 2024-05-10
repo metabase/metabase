@@ -87,7 +87,7 @@ describe("scenarios > metrics", () => {
   });
 
   describe("location", () => {
-    it("should create a new metric from the homepage", () => {
+    it("should create a new metric from the homepage and pin it automatically", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Metric").click();
@@ -97,6 +97,15 @@ describe("scenarios > metrics", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("18,760");
+
+      cy.findByTestId("head-crumbs-container")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("pinned-items").within(() => {
+        cy.findByText("Metrics").should("be.visible");
+        cy.findByText("Orders, Count").should("be.visible");
+        verifyScalarValue("18,760");
+      });
     });
   });
 
@@ -411,6 +420,29 @@ describe("scenarios > metrics", () => {
       runQuery();
       verifyScalarValue("29,554.86");
     });
+
+    it.skip("should allow adding an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewQuestion();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      startNewAggregation();
+      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      visualize();
+      verifyScalarValue("18,760");
+    });
+
+    it("should not allow adding an aggregation based on a compatible metric for the same table in metrics (metabase#42470)", () => {
+      createQuestion(ORDERS_COUNT_METRIC);
+      startNewMetric();
+      popover().findByText("Raw Data").click();
+      popover().findByText("Orders").click();
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByText("Count of rows").should("be.visible");
+        cy.findByText(ORDERS_COUNT_METRIC.name).should("not.exist");
+      });
+    });
   });
 });
 
@@ -602,7 +634,10 @@ function addBreakout({
 function saveMetric() {
   cy.intercept("POST", "/api/card").as("createCard");
   cy.button("Save").click();
-  modal().button("Save").click();
+  modal().within(() => {
+    cy.findByText("Save metric").should("be.visible");
+    cy.button("Save").click();
+  });
   cy.wait("@createCard");
 }
 
