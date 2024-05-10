@@ -248,10 +248,7 @@ export default class PieChart extends Component {
     },
   };
 
-  updateChartViewportSize = (delay = 0) => {
-    if (delay > 1000) {
-      return;
-    }
+  updateChartViewportSize = () => {
     // Measure chart viewport dimensions in the next tick to wait for DOM elements to resize
     setTimeout(() => {
       if (!this.chartContainer.current) {
@@ -261,15 +258,11 @@ export default class PieChart extends Component {
       const { width, height } =
         this.chartContainer.current.getBoundingClientRect();
 
-      if (width === 0 && height === 0) {
-        return this.updateChartViewportSize(delay + 200);
-      }
-
       this.setState({
         width,
         height,
       });
-    }, delay);
+    });
   };
 
   componentDidMount() {
@@ -543,6 +536,7 @@ export default class PieChart extends Component {
         }
         showLegend={settings["pie.show_legend"]}
         isDashboard={this.props.isDashboard}
+        updateChartViewportSize={this.updateChartViewportSize}
       >
         <div>
           <div ref={this.chartDetail} className={styles.Detail}>
