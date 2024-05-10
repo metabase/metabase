@@ -282,7 +282,7 @@ In the **Variable** settings sidebar, you can toggle the **Always require a valu
 
 You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
 
-To make a clause optional in your native query, put `[[ .. ]]` brackets around a clause with the optional `{% raw %}{{variable}}{% endraw %}`. If you input a value in the filter widget for the `variable`, then the entire clause is placed into the template; otherwise Metabase will ignore the clause.
+To make a variable optional in your native query, put `[[ .. ]]` brackets around the entire clause containing the `{% raw %}{{variable}}{% endraw %}`. If someone inputs a value in the filter widget for the `variable`, Metabase will place the clause in the template; otherwise Metabase will ignore the clause and run the query as though the clause didn't exist.
 
 In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
@@ -296,11 +296,11 @@ FROM
 {% endraw %}
 ```
 
-### Your SQL should run without the optional clause in `[[ ]]`
+### Your SQL must also be able to run without the optional clause in `[[ ]]`
 
-You need to make sure that your SQL is still valid when the clause inside `[[ ]]` is not included in the query.
+You need to make sure that your SQL is still valid when no value is passed to the variable in the bracketed clause.
 
-For example, this will cause an error if there's no value given for `cat`:
+For example, excluding the `WHERE` keyword from the bracketed clause will cause an error if there's no value given for `cat`:
 
 ```
 -- this will cause an error:
@@ -339,7 +339,7 @@ FROM
 {% endraw %}
 ```
 
-When there's no value given for `cat`, Metabase will just execute
+When there's no value given for `cat`, Metabase will just execute:
 
 ```
 {% raw %}
