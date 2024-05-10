@@ -55,7 +55,6 @@ describe("scenarios > question > offset", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("saveQuestion");
-    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("does not work without a breakout", () => {
