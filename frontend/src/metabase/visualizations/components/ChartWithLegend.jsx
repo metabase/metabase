@@ -26,7 +26,7 @@ class ChartWithLegend extends Component {
       this.props.width !== prevProps.width ||
       this.props.height !== prevProps.height
     ) {
-      this.props?.updateChartViewportSize();
+      this.props?.updateChartViewportSize?.();
     }
   }
 
