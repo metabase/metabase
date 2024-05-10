@@ -19,6 +19,10 @@ export function getTableCellTheme({
       color: idTheme?.textColor || "brand",
       background:
         idTheme?.backgroundColor || alpha(theme.fn?.themeColor("brand"), 0.08),
+      border: `1px solid ${alpha(
+        idTheme?.backgroundColor || theme.fn.themeColor("brand"),
+        0.14,
+      )}`,
     };
   }
 

@@ -17,7 +17,6 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import { alpha } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -146,11 +145,7 @@ class TableInteractive extends Component {
         data-testid={hasChildren ? "cell-data" : undefined}
         c={cellTheme.color}
         bg={cellTheme.background}
-        style={{
-          border:
-            isIDColumn &&
-            `1px solid ${alpha(theme.fn.themeColor("brand"), 0.14)}`,
-        }}
+        style={{ border: cellTheme.border }}
       >
         {children}
       </Box>
