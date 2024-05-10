@@ -14,7 +14,12 @@ import {
   visualize,
 } from "e2e/support/helpers";
 import { uuid } from "metabase/lib/utils";
-import type { FieldReference } from "metabase-types/api";
+import type {
+  Aggregation,
+  Breakout,
+  FieldReference,
+  StructuredQuery,
+} from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -22,6 +27,12 @@ const TOTAL_FIELD_REF: FieldReference = [
   "field",
   ORDERS.TOTAL,
   { "base-type": "type/Float" },
+];
+
+const CREATED_AT_BREAKOUT: Breakout = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime", "temporal-unit": "month" },
 ];
 
 describe("scenarios > question > offset", () => {
@@ -32,7 +43,7 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
   });
 
-  it("does not work without breakout or order by clause", () => {
+  it("does not work without breakout or order-by clause", () => {
     createQuestion(
       {
         query: {
@@ -48,6 +59,25 @@ describe("scenarios > question > offset", () => {
     verifyQuestionError(
       "Window function requires either breakouts or order by in the query",
     );
+  });
+
+  it("works with breakout clause", () => {
+    const aggregationName = "My aggregation";
+    const aggregation: Aggregation = [
+      "offset",
+      createOffsetOptions(aggregationName),
+      ["sum", TOTAL_FIELD_REF],
+      -1,
+    ];
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [aggregation],
+      breakout: [CREATED_AT_BREAKOUT],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyLineChart({ xAxis: "Created At", yAxis: aggregationName });
   });
 
   it("works after saving a question (metabase#42323)", () => {
