@@ -10,6 +10,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const { RsdoctorWebpackPlugin } = require("@rsdoctor/webpack-plugin");
 
 const fs = require("fs");
 const path = require("path");
@@ -207,7 +208,7 @@ const config = (module.exports = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!sql-formatter[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -215,6 +216,16 @@ const config = (module.exports = {
           test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
+        },
+        jspdf: {
+          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          chunks: "all",
+          name: "jspdf",
+        },
+        html2canvas: {
+          test: /[\\/]node_modules[\\/]html2canvas[\\/]/,
+          chunks: "all",
+          name: "html2canvas",
         },
       },
     },
@@ -228,6 +239,9 @@ const config = (module.exports = {
   },
 
   plugins: [
+    new RsdoctorWebpackPlugin({
+      // plugin options
+    }),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new MiniCssExtractPlugin({
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
