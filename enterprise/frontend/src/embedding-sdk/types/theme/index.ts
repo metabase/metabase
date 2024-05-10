@@ -41,8 +41,13 @@ export type MetabaseColor = keyof MetabaseColors;
  * components and visualizations.
  */
 export interface MetabaseComponentTheme {
+  /** Data tables **/
   table?: {
     cell?: {
+      /** Default text color of table cells */
+      textColor?: string;
+
+      /** Default background color of table cells */
       background?: string;
     };
   };

@@ -565,14 +565,12 @@ class TableInteractive extends Component {
     const isLink = cellData && cellData.type === ExternalLink;
     const isClickable = !isLink && !isScrolling;
 
+    // Theme options from embedding SDK.
     const tableTheme = theme?.other?.table;
-
-    // Default cell background color from theme. Used mainly for embedding.
-    const defaultBackgroundColor = tableTheme?.cell?.background;
 
     const backgroundColor =
       this.getCellBackgroundColor(settings, value, rowIndex, column.name) ??
-      defaultBackgroundColor;
+      tableTheme?.cell?.background;
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -603,6 +601,9 @@ class TableInteractive extends Component {
           // add a transition while dragging column
           transition: dragColIndex != null ? "left 200ms" : null,
           backgroundColor,
+          ...(tableTheme?.cell?.textColor && {
+            color: tableTheme.cell.textColor,
+          }),
         }}
         className={cx(
           TableS.TableInteractiveCellWrapper,
