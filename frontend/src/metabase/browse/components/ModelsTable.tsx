@@ -1,8 +1,13 @@
+import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityItem from "metabase/components/EntityItem";
 import {
-  ColumnHeader,
+  SortableColumnHeader,
+  type SortingOptions,
+} from "metabase/components/ItemsTable/BaseItemsTable";
+import {
   ItemCell,
   ItemLink,
   ItemNameCell,
@@ -10,22 +15,25 @@ import {
   TableColumn,
   TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/components/ItemsTable/Columns";
+import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { color } from "metabase/lib/colors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getLocale } from "metabase/setup/selectors";
 import { Icon, type IconProps } from "metabase/ui";
-import type { Card, SearchResult } from "metabase-types/api";
+import type { ModelResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
-import { getModelDescription } from "./utils";
+import { ModelTableRow } from "./ModelsTable.styled";
+import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
-  items: SearchResult[];
+  models: ModelResult[];
 }
 
 const descriptionProps: ResponsiveProps = {
@@ -38,12 +46,26 @@ const collectionProps: ResponsiveProps = {
   containerName: "ItemsTableContainer",
 };
 
-export const ModelsTable = ({ items }: ModelsTableProps) => {
+const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+  sort_column: "collection",
+  sort_direction: SortDirection.Asc,
+};
+
+export const ModelsTable = ({ models }: ModelsTableProps) => {
+  const locale = useSelector(getLocale);
+  const localeCode: string | undefined = locale?.code;
+
+  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
+    DEFAULT_SORTING_OPTIONS,
+  );
+
+  const sortedModels = sortModels(models, sortingOptions, localeCode);
+
   return (
     <Table>
       <colgroup>
         {/* <col> for Name column */}
-        <TableColumn style={{ width: "10rem" }} />
+        <TableColumn style={{ width: "200px" }} />
 
         {/* <col> for Description column */}
         <TableColumn {...descriptionProps} />
@@ -55,94 +77,113 @@ export const ModelsTable = ({ items }: ModelsTableProps) => {
       </colgroup>
       <thead>
         <tr>
-          <Columns.Name.Header />
-          <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
-          <ColumnHeader {...collectionProps}>{t`Collection`}</ColumnHeader>
+          <Columns.Name.Header
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={setSortingOptions}
+          />
+          <SortableColumnHeader name="description" {...descriptionProps}>
+            {t`Description`}
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            name="collection"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={setSortingOptions}
+            {...collectionProps}
+          >
+            {t`Collection`}
+          </SortableColumnHeader>
           <Columns.RightEdge.Header />
         </tr>
       </thead>
       <TBody>
-        {items.map((item: SearchResult) => (
-          <TBodyRow item={item} key={`${item.model}-${item.id}`} />
+        {sortedModels.map((model: ModelResult) => (
+          <TBodyRow model={model} key={`${model.model}-${model.id}`} />
         ))}
       </TBody>
     </Table>
   );
 };
 
-const TBodyRow = ({ item }: { item: SearchResult }) => {
-  const icon = getIcon(item);
-  if (item.model === "card") {
-    icon.color = color("text-light");
-  }
-
-  const containerName = `collections-path-for-${item.id}`;
+const TBodyRow = ({ model }: { model: ModelResult }) => {
+  const icon = getIcon(model);
+  const containerName = `collections-path-for-${model.id}`;
+  const dispatch = useDispatch();
+  const { id, name } = model;
 
   return (
-    <tr>
+    <ModelTableRow
+      onClick={(e: React.MouseEvent) => {
+        const url = Urls.model({ id, name });
+        if ((e.ctrlKey || e.metaKey) && e.button === 0) {
+          window.open(url, "_blank");
+        } else {
+          dispatch(push(url));
+        }
+      }}
+      tabIndex={0}
+      key={model.id}
+    >
       {/* Name */}
       <NameCell
-        item={item}
+        model={model}
         icon={icon}
         onClick={() => {
-          trackModelClick(item.id);
+          trackModelClick(model.id);
         }}
       />
 
       {/* Description */}
       <ItemCell {...descriptionProps}>
         <EllipsifiedWithMarkdown>
-          {getModelDescription(item) || ""}
+          {getModelDescription(model) || ""}
         </EllipsifiedWithMarkdown>
       </ItemCell>
 
       {/* Collection */}
       <ItemCell
         data-testid={`path-for-collection: ${
-          item.collection
-            ? getCollectionName(item.collection)
+          model.collection
+            ? getCollectionName(model.collection)
             : t`Untitled collection`
         }`}
         {...collectionProps}
       >
-        {item.collection && (
+        {model.collection && (
           <CollectionBreadcrumbsWithTooltip
             containerName={containerName}
-            collection={item.collection}
+            collection={model.collection}
           />
         )}
       </ItemCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
-    </tr>
+    </ModelTableRow>
   );
 };
 
 const NameCell = ({
-  item,
+  model,
   testIdPrefix = "table",
   onClick,
   icon,
 }: {
-  item: SearchResult;
+  model: ModelResult;
   testIdPrefix?: string;
   onClick?: () => void;
   icon: IconProps;
 }) => {
+  const { id, name } = model;
   return (
     <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-      <ItemLink
-        to={Urls.model(item as unknown as Partial<Card>)}
-        onClick={onClick}
-      >
+      <ItemLink to={Urls.model({ id, name })} onClick={onClick}>
         <Icon
           size={16}
           {...icon}
           color={color("brand")}
           style={{ flexShrink: 0 }}
         />
-        <EntityItem.Name name={item.name} variant="list" />
+        <EntityItem.Name name={model.name} variant="list" />
       </ItemLink>
     </ItemNameCell>
   );
