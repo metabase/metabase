@@ -15,9 +15,10 @@ import type { InternalCloudMigrationState } from "./utils";
 import {
   getStartedVisibleStates,
   isInProgressState,
-  shouldPollStates,
+  pollingIntervalsByState,
 } from "./utils";
 
+// TODO: double check that this whole section of the UI is hidden if the user already on the cloud (tokenFeatures.hosting === true)
 // TODO: handle taking the user to store in a new tab
 // https://www.figma.com/file/gDjo1m8C8aEHFtBNvhjp1p/Cloud-Migration?type=design&node-id=86-2816&mode=design&t=mR3Rwi2iJzBOVE4S-4
 export const CloudPanel = () => {
@@ -42,12 +43,7 @@ export const CloudPanel = () => {
 
   useEffect(
     function syncPollingInterval() {
-      const newPollingInterval = shouldPollStates.has(migrationState)
-        ? // TODO: determine poll internval from a map,
-          // we likely want to poll faster in the beginning, then more slowly later...
-          1000
-        : undefined;
-      setPollingInterval(newPollingInterval);
+      setPollingInterval(pollingIntervalsByState[migrationState]);
     },
     [migrationState],
   );
@@ -74,7 +70,7 @@ export const CloudPanel = () => {
             <MigrationInProgress progress={progress} state={migrationState} />
           )}
 
-          {/* TODO: handle restarting a migration */}
+          {/* TODO: handle restarting a migration - not sure how this is possible given the current endpoints */}
           {migration && migrationState === "done" && (
             <MigrationSuccess
               migration={migration}

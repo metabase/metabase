@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { useCreateCloudMigrationMutation } from "metabase/api";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
+import { getPlan } from "metabase/common/utils/plan";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { Box, Button, Text, List } from "metabase/ui";
+import { getSetting } from "metabase/selectors/settings";
+import { Modal, Box, Button, Text, List, Flex } from "metabase/ui";
 
 // TODO: make the modal look more like the designs
 export const StepGetStarted = () => {
@@ -15,7 +15,10 @@ export const StepGetStarted = () => {
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const isPro = true; // TODO: determine if instance is pro
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+  const isProSelfHosted = plan === "pro-self-hosted";
 
   const [createCloudMigration] = useCreateCloudMigrationMutation();
 
@@ -24,21 +27,15 @@ export const StepGetStarted = () => {
     await dispatch(refreshSiteSettings({}));
   };
 
-  const message = (
-    <List size="md">
-      <List.Item>{t`Once you start this process, we’ll begin taking a snapshot of this instance, and then uploading it to a new Cloud instance.`}</List.Item>
-      <List.Item>{t`You will be directed to Metabase store to create an account and configure the instance details.`}</List.Item>
-      <List.Item>{t`During the snapshot step, this instance will be in a read-only mode. This should take 5-10 minutes depending on your instance’s size.`}</List.Item>
-    </List>
-  ) as unknown as string;
-
   return (
     <>
       <Box mt="1rem">
         <Text size="md">
           {t`It only takes a few clicks to migrate this instance to Metabase Cloud.`}
-          {isPro && " "}
-          {isPro ? t`There is no additional cost for your Pro account.` : ""}
+          {isProSelfHosted && " "}
+          {isProSelfHosted
+            ? t`There is no additional cost for your Pro account.`
+            : ""}
         </Text>
 
         <Text size="md">{t`You will get:`}</Text>
@@ -56,19 +53,34 @@ export const StepGetStarted = () => {
         >{t`Get started`}</Button>
       </Box>
 
-      {/* TODO: make the action button not red */}
-      <Modal isOpen={isModalOpen}>
-        <ConfirmContent
-          cancelButtonText={t`Cancel`}
-          confirmButtonText={t`Migrate now`}
-          data-testid="cloud-migration-confirmation"
-          title={t`Migrate this instance to Metabase Cloud now?`}
-          message={message}
-          onAction={handleCreateMigration}
-          onCancel={closeModal}
-          onClose={closeModal}
-        />
-      </Modal>
+      <Modal.Root
+        opened={isModalOpen}
+        onClose={closeModal}
+        size="lg"
+        data-testid="cloud-migration-confirmation"
+      >
+        <Modal.Overlay />
+        <Modal.Content p="1rem">
+          <Modal.Header pt="1rem" px="1rem">
+            <Modal.Title>{t`Migrate this instance to Metabase Cloud now?`}</Modal.Title>
+            <Modal.CloseButton />
+          </Modal.Header>
+          <Modal.Body mt="md" p="0">
+            <List spacing="md" mb="3.5rem" mx="1rem">
+              <List.Item>{t`Once you start this process, we’ll begin taking a snapshot of this instance, and then uploading it to a new Cloud instance.`}</List.Item>
+              <List.Item>{t`You will be directed to Metabase store to create an account and configure the instance details.`}</List.Item>
+              {/* TODO: dynamic time? https://www.figma.com/file/gDjo1m8C8aEHFtBNvhjp1p?type=design&node-id=86-2764&mode=design#799138756 */}
+              <List.Item>{t`During the snapshot step, this instance will be in a read-only mode. This should take 5-10 minutes depending on your instance’s size.`}</List.Item>
+            </List>
+            <Flex justify="end">
+              <Button
+                variant="filled"
+                onClick={handleCreateMigration}
+              >{t`Migrate now`}</Button>
+            </Flex>
+          </Modal.Body>
+        </Modal.Content>
+      </Modal.Root>
     </>
   );
 };
