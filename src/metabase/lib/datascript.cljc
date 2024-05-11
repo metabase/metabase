@@ -1,6 +1,7 @@
 (ns metabase.lib.datascript
   (:refer-clojure :exclude [filter])
   (:require
+   [clojure.core :as core]
    [clojure.walk :as walk]
    [datascript.core :as d]
    [medley.core :as m]
@@ -87,9 +88,30 @@
    ;; underlying source (:mbql.source/incoming) is included.
    :mbql.stage/source             {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
 
+   ;; "Sources" on the input side are a pair:
+   ;; - :mbql.source/incoming         incoming column source (eg. a table, an earlier stage)
+   ;; - :mbql.source/field            set of columns being used from that source
    :mbql.source/incoming          {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :mbql.source/field             {:db/cardinality :db.cardinality/many, :db/valueType :db.type/ref}
 
+   ;; Implicit joins are created as one-shot sources with a reference to the FK and to the stage, which lets the stage
+   ;; easily reverse-lookup all its FKs.
+   :mbql.source/implicit-join-fk    {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
+   :mbql.source/implicit-join-stage {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
+
+   ;; Columns are reified inclusions of some source column (Field, earlier aggregation, card/model column) with
+   ;; an alias and possibly other details.
+   ;; This indirection is necessary because sometimes a column is consumed differently from how it is produced.
+   ;; For example, a breakout might bucket a datetime Field by month. The column produced by that breakout is not the
+   ;; same as the original datetime column!
+   ;; Similarly, an implicit join on a foreign key is a column:
+   ;; - :mbql.column/origin      ref for the underlying value, a Field
+   ;; - :mbql.column/source      source from this stage that provides the column
+   ;;
+   ;; Implicit joins are handled by implicit join sources which have a ref to the stage, which makes them queryable
+   ;; from that stage. They might be duplicated, but that's not a huge concern. The QP already has logic to unify them.
+   :mbql.column/origin            {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
+   :mbql.column/source            {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
 
    ;; Stages have many parts:
    ;; - A single(?) :mbql/source (always)
@@ -361,13 +383,16 @@
 
 
 ;; Breakouts ====================================================================================
-(defn breakouts
-  "Returns the breakouts in order."
-  [query-entity stage-number]
-  (->> (query-stage query-entity stage-number)
+(defn- stage-breakouts [stage-entity]
+  (->> stage-entity
        :mbql.stage/breakout
        (sort-by :mbql/series)
        vec))
+
+(defn breakouts
+  "Returns the breakouts in order."
+  [query-entity stage-number]
+  (stage-breakouts (query-stage query-entity stage-number)))
 
 (defn- ->breakout [column-or-breakout]
   (if (:mbql.breakout/origin column-or-breakout)
@@ -397,13 +422,16 @@
   (assoc (->breakout breakoutable) :mbql.breakout/temporal-unit temporal-unit))
 
 ;; Expressions ==================================================================================
-(defn expressions
-  "Returns the expressions in order."
-  [query-entity stage-number]
-  (->> (query-stage query-entity stage-number)
+(defn- stage-expressions [stage-entity]
+  (->> stage-entity
        :mbql.stage/expression
        (sort-by :mbql/series)
        vec))
+
+(defn expressions
+  "Returns the expressions in order."
+  [query-entity stage-number]
+  (stage-expressions (query-stage query-entity stage-number)))
 
 (defn expression
   "Adds an expression to this stage, with the given name.
@@ -418,8 +446,85 @@
                                          {:mbql.expression/name expression-name
                                           :mbql/series          series})}]))))
 
-;; START HERE: Need tests for expressions and breakouts.
-;; Then start writing returned-columns and visible-columns.
+;; Returned columns =============================================================================
+(defn- table->returned-columns [table]
+  (->> table
+       :metadata.field/_table
+       (sort-by :metadata.field/position)))
+
+(declare stage->returned-columns)
+
+(defn- source->returned-columns [{:mbql.source/keys [incoming] :as source}]
+  ;; Several types of sources, which must be handled separately.
+  ;; TODO: Support fields filtering
+  ;; TODO: Support more kinds of sources - cards, etc.
+  (cond
+    (:metadata.table/id incoming) (table->returned-columns incoming)
+    (:mbql.stage/query incoming)  (stage->returned-columns incoming)
+    :else (throw (ex-info "Unsupported incoming source" {:source source}))))
+
+(defn- stage->returned-columns [stage]
+  (if-let [aggs (not-empty (:mbql.stage/aggregation stage))]
+    ;; Aggregations: return the breakouts followed by the aggregations.
+    (let [brks (:mbql.stage/breakout stage)]
+      (concat (sort-by :mbql/series brks)
+              (sort-by :mbql/series aggs)))
+    ;; Unaggregated: main source, joins in order, expressions, breakouts.
+    (concat (source->returned-columns (:mbql.stage/source stage))
+            ;; TODO: Explicit join support
+            #_(->> (:mbql.stage/join stage)
+                 (sort-by :mbql/series)
+                 (mapcat join->returned-columns))
+            (stage-expressions stage)
+            (stage-breakouts stage))))
+
+(defn returned-columns
+  "Given a query and stage number, return the (ordered) list of the columns it will return.
+
+  - MBQL stages with aggregations return all their breakouts followed by all their aggregations, each in order.
+  - MBQL stages without aggregations return the columns from: main source, explicit joins in order, expressions."
+  ;; TODO: Double-check that ordering.
+  [query-entity stage-number]
+  (stage->returned-columns (query-stage query-entity stage-number)))
+
+;; Visible columns ==============================================================================
+;; Correcting an error in the OG implementation - rather than returning the columns and then grouping them later, let's
+;; return the groups at the top level, and concat them into one list if desired.
+(defn visible-column-groups
+  "Given a query and stage number, return the (ordered) list of the columns which are \"visible\" to that stage.
+
+  That's the following columns, in this order:
+  - Columns returned by the main source.
+  - Columns from expressions on this stage.
+  - Columns returned by each explicit join, in order.
+  - Columns implicitly joinable through any FKs which appear in the above, in the same order.
+
+  - MBQL stages with aggregations return all their breakouts followed by all their aggregations, each in order.
+  - MBQL stages without aggregations return the columns from: main source, explicit joins in order, expressions."
+  ;; TODO: Double-check that ordering.
+  [query-entity stage-number]
+  (let [stage  (query-stage query-entity stage-number)
+        main-group {:lib/type                             :metadata/column-group
+                    :metabase.lib.column-group/group-type :group-type/main
+                    :metabase.lib.column-group/columns    (concat (source->returned-columns (:mbql.stage/source stage))
+                                                                  (stage-expressions stage))}
+        ;; TODO: Explicit join support
+        exp-joins  [] #_(for [join (stage-joins stage)]
+                     {:lib/type                             :metadata/column-group
+                      :metabase.lib.column-group/group-type :group-type/join.explicit
+                      :metabase.lib.column-group/columns    (join->returned-columns join)})
+        groups     (concat [main-group] exp-joins)
+        columns    (mapcat :metabase.lib.column-group/columns groups)
+        fks        (core/filter :metadata.field/fk-target columns)]
+    ;; Currently the FKs are always pointing to PKs of other tables.
+    (concat groups
+            (for [fk fks
+                  :let [pk            (:metadata.field/fk-target fk)
+                        foreign-table (:metadata.field/table pk)]]
+              {:lib/type                               :metadata/column-group
+               :metabase.lib.column-group/group-type   :group-type/join.implicit
+               :metabase.lib.column-group/foreign-key  fk
+               :metabase.lib.column-group/columns      (table->returned-columns foreign-table)}))))
 
 ;; Problem: Populating metadata DB ==============================================================
 ;; On JS we can maintain a single, sometimes updated atom with the entire picture in it; the FE takes

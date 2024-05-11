@@ -9,6 +9,7 @@
    [datascript.core :as d]
    [medley.core :as m]
    [metabase.lib.datascript :as ld]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]))
 
 ;; Adding DataScript's lazily-fetched Entities as a target for `=?`.
@@ -369,3 +370,156 @@
                     query))))
         (testing "ld/breakouts does sort the output"
           (is (=? brks (ld/breakouts query -1))))))))
+
+(defn- expected-fields [table-key]
+  (->> (for [field-key (meta/fields table-key)
+             :let [field (meta/field-metadata table-key field-key)]]
+         {:metadata.field/id       (:id field)
+          :metadata.field/name     (:name field)
+          :metadata.field/table    {:metadata.table/id (:table-id field)}
+          :metadata.field/position (:position field)})
+       (sort-by :metadata.field/position)))
+
+(deftest ^:parallel returned-columns-test
+  (testing "just tables"
+    (doseq [table (meta/tables)]
+      (is (=? (expected-fields table)
+              (-> (ld/query meta/metadata-provider (meta/table-metadata table))
+                  (ld/returned-columns -1))))))
+  (testing "with expressions"
+    (let [expr-query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                         (ld/expression -1 "tax_rate"
+                                        (ld/expr (keyword "/")
+                                                 [:metadata.field/id (meta/id :orders :tax)]
+                                                 [:metadata.field/id (meta/id :orders :subtotal)]))
+                         (ld/expression -1 "discount_ratio"
+                                        (ld/expr (keyword "/")
+                                                 (ld/expr :coalesce
+                                                          [:metadata.field/id (meta/id :orders :discount)]
+                                                          0)
+                                                 [:metadata.field/id (meta/id :orders :subtotal)])))]
+      (is (=? (concat (expected-fields :orders)
+                      [{:mbql.expression/name "tax_rate"}
+                       {:mbql.expression/name "discount_ratio"}])
+              (ld/returned-columns expr-query -1)))
+      (testing "and breakouts"
+        (is (=? (concat (expected-fields :orders)
+                        [{:mbql.expression/name        "tax_rate"}
+                         {:mbql.expression/name        "discount_ratio"}
+                         {:mbql.breakout/origin        {:metadata.field/id (meta/id :orders :created-at)}
+                          :mbql.breakout/temporal-unit :month}])
+                (-> (ld/breakout expr-query -1 (ld/with-temporal-bucketing
+                                                 [:metadata.field/id (meta/id :orders :created-at)]
+                                                 :month))
+                    (ld/returned-columns -1)))))))
+  (testing "with aggregations"
+    (let [agg-query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                        (ld/aggregate -1 (ld/agg-count))
+                        (ld/aggregate -1 (ld/agg-sum [:metadata.field/id (meta/id :orders :subtotal)]))
+                        (ld/aggregate -1 (ld/agg-sum-where
+                                           [:metadata.field/id (meta/id :orders :discount)]
+                                           (ld/expr :not-null [:metadata.field/id (meta/id :orders :discount)]))))]
+      (is (=? [{:mbql.aggregation/operator :count}
+               {:mbql.aggregation/operator :sum}
+               {:mbql.aggregation/operator :sum-where}]
+              (ld/returned-columns agg-query -1)))
+      (testing "and breakouts"
+        ;; Breakouts come before aggregations
+        (is (=? [{:mbql.breakout/origin        {:metadata.field/id (meta/id :orders :created-at)}
+                  :mbql.breakout/temporal-unit :month}
+                 {:mbql.aggregation/operator :count}
+                 {:mbql.aggregation/operator :sum}
+                 {:mbql.aggregation/operator :sum-where}]
+                (-> agg-query
+                    (ld/breakout -1 (ld/with-temporal-bucketing
+                                      [:metadata.field/id (meta/id :orders :created-at)]
+                                      :month))
+                    (ld/returned-columns -1))))))))
+
+(defn- field->implicit-join-group [field]
+  (when-let [target-id (:fk-target-field-id field)]
+    (let [foreign-pk    (lib.metadata/field meta/metadata-provider target-id)
+          foreign-table (lib.metadata/table meta/metadata-provider (:table-id foreign-pk))]
+      {:lib/type                              :metadata/column-group
+       :metabase.lib.column-group/group-type  :group-type/join.implicit
+       :metabase.lib.column-group/foreign-key {:metadata.field/id (:id field)}
+       :metabase.lib.column-group/columns
+       (->> (for [field (lib.metadata/fields meta/metadata-provider (:id foreign-table))]
+              {:metadata.field/id       (:id field)
+               :metadata.field/name     (:name field)
+               :metadata.field/table    {:metadata.table/id (:table-id field)}
+               :metadata.field/position (:position field)})
+            (sort-by :metadata.field/position))})))
+
+(deftest ^:parallel visible-column-groups-test
+  (testing "just tables"
+    (doseq [table (meta/tables)]
+      (is (=? (->> (meta/fields table)
+                   (map #(meta/field-metadata table %))
+                   (sort-by :position)
+                   (keep field->implicit-join-group)
+                   (into [{:lib/type                             :metadata/column-group
+                           :metabase.lib.column-group/group-type :group-type/main
+                           :metabase.lib.column-group/columns    (expected-fields table)}]))
+              (-> (ld/query meta/metadata-provider (meta/table-metadata table))
+                  (ld/visible-column-groups -1))))))
+  (testing "with expressions"
+    (let [expr-query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                         (ld/expression -1 "tax_rate"
+                                        (ld/expr (keyword "/")
+                                                 [:metadata.field/id (meta/id :orders :tax)]
+                                                 [:metadata.field/id (meta/id :orders :subtotal)]))
+                         (ld/expression -1 "discount_ratio"
+                                        (ld/expr (keyword "/")
+                                                 (ld/expr :coalesce
+                                                          [:metadata.field/id (meta/id :orders :discount)]
+                                                          0)
+                                                 [:metadata.field/id (meta/id :orders :subtotal)])))]
+      (is (=? [{:lib/type                             :metadata/column-group
+                :metabase.lib.column-group/group-type :group-type/main
+                :metabase.lib.column-group/columns
+                (concat (expected-fields :orders)
+                        [{:mbql.expression/name "tax_rate"}
+                         {:mbql.expression/name "discount_ratio"}])}
+               (field->implicit-join-group (meta/field-metadata :orders :user-id))
+               (field->implicit-join-group (meta/field-metadata :orders :product-id))]
+              (ld/visible-column-groups expr-query -1)))
+      (testing "and breakouts - does not include the breakouts"
+        (is (=? [{:lib/type                             :metadata/column-group
+                  :metabase.lib.column-group/group-type :group-type/main
+                  :metabase.lib.column-group/columns
+                  (concat (expected-fields :orders)
+                        [{:mbql.expression/name        "tax_rate"}
+                         {:mbql.expression/name        "discount_ratio"}])}
+                 (field->implicit-join-group (meta/field-metadata :orders :user-id))
+                 (field->implicit-join-group (meta/field-metadata :orders :product-id))]
+                (-> (ld/breakout expr-query -1 (ld/with-temporal-bucketing
+                                                 [:metadata.field/id (meta/id :orders :created-at)]
+                                                 :month))
+                    (ld/visible-column-groups -1)))))))
+  (testing "ignores aggregations"
+    (let [agg-query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                        (ld/aggregate -1 (ld/agg-count))
+                        (ld/aggregate -1 (ld/agg-sum [:metadata.field/id (meta/id :orders :subtotal)]))
+                        (ld/aggregate -1 (ld/agg-sum-where
+                                           [:metadata.field/id (meta/id :orders :discount)]
+                                           (ld/expr :not-null [:metadata.field/id (meta/id :orders :discount)]))))]
+      (is (=? [{:lib/type                             :metadata/column-group
+                :metabase.lib.column-group/group-type :group-type/main
+                :metabase.lib.column-group/columns
+                (expected-fields :orders)}
+               (field->implicit-join-group (meta/field-metadata :orders :user-id))
+               (field->implicit-join-group (meta/field-metadata :orders :product-id))]
+              (ld/visible-column-groups agg-query -1)))
+      (testing "and breakouts"
+        (is (=? [{:lib/type                             :metadata/column-group
+                  :metabase.lib.column-group/group-type :group-type/main
+                  :metabase.lib.column-group/columns
+                  (expected-fields :orders)}
+                 (field->implicit-join-group (meta/field-metadata :orders :user-id))
+                 (field->implicit-join-group (meta/field-metadata :orders :product-id))]
+                (-> agg-query
+                    (ld/breakout -1 (ld/with-temporal-bucketing
+                                      [:metadata.field/id (meta/id :orders :created-at)]
+                                      :month))
+                    (ld/visible-column-groups -1))))))))
