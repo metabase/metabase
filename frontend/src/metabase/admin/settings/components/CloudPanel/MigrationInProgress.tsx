@@ -5,24 +5,18 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  Card,
-  type CardProps,
-  Flex,
-  Text,
-  List,
-  Button,
-  Box,
-} from "metabase/ui";
+import { Flex, Text, List, Button, Box } from "metabase/ui";
 
-interface MigrationInProgressProps extends Omit<CardProps, "children"> {
+import { MigrationCard } from "./CloudPanel.styled";
+import type { InProgressStates } from "./utils";
+
+interface MigrationInProgressProps {
   progress: number;
+  state: InProgressStates;
 }
 
-export const MigrationInProgress = ({
-  progress,
-  ...props
-}: MigrationInProgressProps) => {
+// TODO: handle states...
+export const MigrationInProgress = ({ progress }: MigrationInProgressProps) => {
   const dispatch = useDispatch();
   const [cancelCloudMigration] = useCancelCloudMigrationMutation();
 
@@ -38,7 +32,7 @@ export const MigrationInProgress = ({
   };
 
   return (
-    <Card withBorder px="2.5rem" {...props}>
+    <MigrationCard>
       <Flex gap="sm" align="center">
         <Text fw="bold">{t`You have started migration to Metabase Cloud`}</Text>
       </Flex>
@@ -61,6 +55,6 @@ export const MigrationInProgress = ({
         onClick={handleCancelMigration}
         c="error"
       >{t`Cancel migration`}</Button>
-    </Card>
+    </MigrationCard>
   );
 };

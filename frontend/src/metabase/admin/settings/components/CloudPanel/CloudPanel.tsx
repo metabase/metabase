@@ -6,31 +6,20 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";
-import type { CloudMigrationState } from "metabase-types/api/cloud-migration";
 
 import { MigrationError } from "./MigrationError";
 import { MigrationInProgress } from "./MigrationInProgress";
 import { MigrationSuccess } from "./MigrationSuccess";
 import { StepGetStarted } from "./StepGetStarted";
+import type { InternalCloudMigrationState } from "./utils";
+import {
+  getStartedVisibleStates,
+  isInProgressState,
+  shouldPollStates,
+} from "./utils";
 
-type InternalCloudMigrationState = CloudMigrationState | "uninitialized";
-const getStartedVisibleStates = new Set<InternalCloudMigrationState>([
-  "uninitialized",
-  "init",
-  "setup",
-  "dump",
-  "upload",
-  "cancelled",
-  "error",
-]);
-
-const shouldPollStates = new Set<InternalCloudMigrationState>([
-  "init",
-  "setup",
-  "dump",
-  "upload",
-]);
-
+// TODO: handle taking the user to store in a new tab
+// https://www.figma.com/file/gDjo1m8C8aEHFtBNvhjp1p/Cloud-Migration?type=design&node-id=86-2816&mode=design&t=mR3Rwi2iJzBOVE4S-4
 export const CloudPanel = () => {
   const dispatch = useDispatch();
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
@@ -46,6 +35,7 @@ export const CloudPanel = () => {
     pollingInterval,
   });
 
+  const key = migration?.id;
   const migrationState: InternalCloudMigrationState =
     migration?.state ?? "uninitialized";
   const progress = migration?.progress ?? 0;
@@ -53,7 +43,9 @@ export const CloudPanel = () => {
   useEffect(
     function syncPollingInterval() {
       const newPollingInterval = shouldPollStates.has(migrationState)
-        ? 1000
+        ? // TODO: determine poll internval from a map,
+          // we likely want to poll faster in the beginning, then more slowly later...
+          1000
         : undefined;
       setPollingInterval(newPollingInterval);
     },
@@ -71,22 +63,29 @@ export const CloudPanel = () => {
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      <Box maw="30rem">
-        <Text fw="bold" size="1.5rem">{t`Migrate to Cloud`}</Text>
+      <Box maw="30rem" key={key}>
+        <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
 
         {getStartedVisibleStates.has(migrationState) && <StepGetStarted />}
 
-        {migration && migrationState === "error" && (
-          <MigrationError mt="2rem" migration={migration} />
-        )}
+        {/* TODO: test each of the progress states */}
+        <Box mt="2rem">
+          {migration && isInProgressState(migrationState) && (
+            <MigrationInProgress progress={progress} state={migrationState} />
+          )}
 
-        {migration && migrationState === "setup" && (
-          <MigrationInProgress progress={progress} mt="2rem" />
-        )}
+          {/* TODO: handle restarting a migration */}
+          {migration && migrationState === "done" && (
+            <MigrationSuccess
+              migration={migration}
+              restartMigration={() => {}}
+            />
+          )}
 
-        {migration && migrationState === "done" && (
-          <MigrationSuccess migration={migration} mt="2rem" />
-        )}
+          {migration && migrationState === "error" && (
+            <MigrationError migration={migration} />
+          )}
+        </Box>
       </Box>
     </LoadingAndErrorWrapper>
   );

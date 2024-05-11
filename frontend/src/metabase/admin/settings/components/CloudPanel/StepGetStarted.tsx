@@ -8,6 +8,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Button, Text, List } from "metabase/ui";
 
+// TODO: make the modal look more like the designs
 export const StepGetStarted = () => {
   const dispatch = useDispatch();
 
@@ -33,28 +34,26 @@ export const StepGetStarted = () => {
 
   return (
     <>
-      <Box>
-        <Box mt="1rem">
-          <Text size="md">
-            {t`It only takes a few clicks to migrate this instance to Metabase Cloud.`}
-            {isPro && " "}
-            {isPro ? t`There is no additional cost for your Pro account.` : ""}
-          </Text>
+      <Box mt="1rem">
+        <Text size="md">
+          {t`It only takes a few clicks to migrate this instance to Metabase Cloud.`}
+          {isPro && " "}
+          {isPro ? t`There is no additional cost for your Pro account.` : ""}
+        </Text>
 
-          <Text size="md">{t`You will get:`}</Text>
+        <Text size="md">{t`You will get:`}</Text>
 
-          <List size="md">
-            <List.Item>{t`Automatic upgrades`}</List.Item>
-            <List.Item>{t`Freedom from having to manage your own server`}</List.Item>
-            <List.Item>{t`Preconfigured SMTP Server`}</List.Item>
-          </List>
+        <List size="md">
+          <List.Item>{t`Automatic upgrades`}</List.Item>
+          <List.Item>{t`Freedom from having to manage your own server`}</List.Item>
+          <List.Item>{t`Preconfigured SMTP Server`}</List.Item>
+        </List>
 
-          <Button
-            mt="1rem"
-            variant="filled"
-            onClick={openModal}
-          >{t`Get started`}</Button>
-        </Box>
+        <Button
+          mt="1rem"
+          variant="filled"
+          onClick={openModal}
+        >{t`Get started`}</Button>
       </Box>
 
       {/* TODO: make the action button not red */}
