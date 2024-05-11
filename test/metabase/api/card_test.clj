@@ -3423,17 +3423,26 @@
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
 
 (deftest ^:parallel format-export-middleware-test
-  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+  (testing "The `:format-rows` query processor middleware results in formatted/unformatted rows when set to true/false."
     (let [q             {:database (mt/id)
                          :type     :native
                          :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
-          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
-                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
-      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}]
-        (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
-                                                            [:csv false ["2000" "2024-03-26"]]
-                                                            [:json true ["2,000" "March 26, 2024"]]
-                                                            [:json false [2000 "2024-03-26"]]]]
+          output-helper {:csv  (fn [output] (->> output csv/read-csv))
+                         :json (fn [[row]] [(map name (keys row)) (vals row)])}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query q
+                                                   :display       :table
+                                                   :visualization_settings
+                                                   {:column_settings
+                                                    {"[\"name\",\"NUMBER\"]" {:column_title "Custom Title"}
+                                                     "[\"name\",\"DATE\"]"   {:column_title "Custom Title 2"}}}}]
+        (doseq [[export-format apply-formatting? expected] [[:csv true [["Custom Title" "Custom Title 2"]
+                                                                        ["2,000" "March 26, 2024"]]]
+                                                            [:csv false [["NUMBER" "DATE"]
+                                                                         ["2000" "2024-03-26"]]]
+                                                            [:json true [["Custom Title" "Custom Title 2"]
+                                                                         ["2,000" "March 26, 2024"]]]
+                                                            [:json false [["NUMBER" "DATE"]
+                                                                          [2000 "2024-03-26"]]]]]
           (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
               (is (= expected
                      (->> (mt/user-http-request
