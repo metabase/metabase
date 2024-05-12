@@ -3,7 +3,8 @@
    [cheshire.core :as json]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,44 +27,6 @@
                (t2/insert! :permissions {:object   (format "/collection/%s/read/" (:id collection))
                                          :group_id all-users-group-id}))
              collection))))))
-
-(defn- get-backup-collection
-  ([]
-   (get-backup-collection nil))
-  ([{:keys [create? parent]}]
-   (let [coll-name "Migrated Metrics v1 - backup"
-         slug (u/slugify coll-name 510)
-         desc "This collection contains the queries rewritten by the migration to v50."]
-     (or (t2/select-one :collection :name coll-name :slug slug :description desc)
-         (when create?
-           (t2/insert-returning-instance!
-            :collection
-            {:name coll-name, :slug slug, :description desc
-             :location (str "/" (:location parent) "/")}))))))
-
-(defn- format-backup-description
-  [card]
-  (str "#" (:id card) " " (:description card)))
-
-(defn- parse-backup-description
-  [description]
-  (when-let [[_ id desc] (re-matches #"#(\d+) (.*)" description)]
-    [(parse-long id) desc]))
-
-(defn- backup-card
-  [card backup-coll]
-  (let [backup (-> card
-                   (dissoc :id)
-                   (assoc :collection_id (:id backup-coll)
-                          ;; TODO remove this unless needed for rollback
-                          :description (format-backup-description card)))]
-    (t2/insert! :report_card backup)))
-
-(defn- restore-card
-  [card]
-  (if-let [[id desc] (parse-backup-description card)]
-    (t2/update! :report_card (assoc card :id id :description desc))
-    (log/warnf "card with ID %s and name `%s' is not a backup a card" (:id card) (:name card))))
 
 (defn- add-metric-id
   "Add `id` (the ID of the metric being migrated) to `description`.
@@ -101,7 +64,8 @@
   (let [db-id (t2/select-one-fn :db-id :metabase_table (:table_id metric-v1))
         card (-> metric-v1
                  (convert-metric-v2 db-id)
-                 (assoc :collection_id (:id metric-v2-coll)))]
+                 (assoc :collection_id (:id metric-v2-coll)
+                        :updated_at (Instant/now)))]
     (t2/insert-returning-instance! :report_card card)))
 
 (defn- metric-ref->id
@@ -160,18 +124,21 @@
   []
   (when (t2/exists? :metric)
     (let [metric-v2-coll (get-metric-migration-collection {:create? true})
-          backup-coll (get-backup-collection {:create? true, :parent metric-v2-coll})
           metric-id->metric-card (into {}
                                        (map (juxt :id #(create-metric-v2 % metric-v2-coll)))
                                        (t2/query {:select [:m.* [:t.db_id :database_id]]
                                                   :from [[:metric :m]]
-                                                  :left-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))]
-      (doseq [card (t2/select :report_card {:where [:like [:lower :dataset_query] "%[\"metric\" %"]})
+                                                  :left-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))
+          metric-consuming-cards (t2/select :report_card {:where [:like [:lower :dataset_query] "%[\"metric\",%"]})]
+      (doseq [card metric-consuming-cards
               :let [rewritten (rewrite-metric-consuming-card card metric-id->metric-card)]
               :when (and rewritten (not= card rewritten))]
-        (backup-card card backup-coll)
-        ;; TODO updating the dataset_query field only should be enough
-        (t2/update! :report_card (:id card) rewritten)))))
+        ;; TODO document that updated_at changes
+        (t2/update! :report_card
+                    (:id card)
+                    (-> rewritten
+                        (assoc :dataset_query_metrics_v2_migration_backup (:dataset_query card)
+                               :updated_at (Instant/now))))))))
 
 (defn- try-deleting-collection
   [coll]
@@ -189,13 +156,11 @@
   5. deleting the metric migration collection."
   []
   (when-let [metric-v2-coll (get-metric-migration-collection)]
-    (when-let [backup-coll (get-backup-collection)]
-      (doseq [card (t2/select :report_card :collection_id (:id backup-coll))]
-        (restore-card card)
-        (t2/delete! :report_card :id card))
-      (try-deleting-collection backup-coll))
+    (doseq [{:keys [id dataset_query_metrics_v2_migration_backup]}
+            (t2/select :report_card {:where [:!= :dataset_query_metrics_v2_migration_backup nil]})]
+        (t2/update! :report_card id {:dataset_query dataset_query_metrics_v2_migration_backup}))
     (doseq [metric-card (t2/select :report_card :collection_id (:id metric-v2-coll))]
-      (t2/delete! :report_card :id metric-card))
+      (t2/delete! :report_card :id (:id metric-card)))
     (try-deleting-collection metric-v2-coll)))
 
 (comment

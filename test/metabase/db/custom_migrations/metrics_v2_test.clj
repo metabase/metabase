@@ -2,7 +2,13 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
-   [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]))
+   [malli.error :as me]
+   [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (deftest convert-metric-v2-test
   (testing "basic metric"
@@ -211,3 +217,102 @@
            (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric1-card
                                                                  2 metric2-card})
                (update :dataset_query json/parse-string true))))))
+
+(def query-validator
+  (mr/validator mbql.s/MBQLQuery))
+
+(def query-explainer
+  (mr/explainer mbql.s/MBQLQuery))
+
+(deftest migrate-metrics-to-v2-test
+  (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]
+    (let [add-timestamps (fn [entity]
+                           (assoc entity
+                                  :created_at (java.util.Date.)
+                                  :updated_at (java.util.Date.)))
+          user-id (t2/insert-returning-pk! :core_user
+                                           {:first_name  "Howard"
+                                            :last_name   "Hughes"
+                                            :email       "howard@aircraft.com"
+                                            :password    "superstrong"
+                                            :date_joined :%now})
+          database-id (t2/insert-returning-pk! :metabase_database
+                                               {:name       "DB"
+                                                :engine     "h2"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :details    "{}"})
+          table-id (t2/insert-returning-pk! :metabase_table
+                                            (add-timestamps
+                                             {:name "orders"
+                                              :active true
+                                              :db_id database-id}))
+          [field1-id field2-id] (t2/insert-returning-pks! :metabase_field
+                                                          (map add-timestamps
+                                                               [{:name "total"
+                                                                 :base_type "type/Float"
+                                                                 :table_id table-id
+                                                                 :database_type "DOUBLE PRECISION"}
+                                                                {:name "tax"
+                                                                 :base_type "type/Float"
+                                                                 :table_id table-id
+                                                                 :database_type "DOUBLE PRECISION"}]))
+          metric-definition {:source-table table-id
+                             :aggregation [["sum" ["field" field1-id nil]]]
+                             :filter ["=" ["field" field2-id nil] 3]}
+          metric-v1 (add-timestamps
+                     {:description "metric description"
+                      :archived false
+                      :table_id table-id
+                      :definition (json/generate-string metric-definition)
+                      :name "orders 3 tax subtotal sum"
+                      :creator_id user-id})
+          metric-id (t2/insert-returning-pk! :metric metric-v1)
+          dataset-query {:type "query"
+                         :database database-id
+                         :query {:source-table table-id
+                                 :aggregation [["count"] ["metric" metric-id]]
+                                 :filter [">" ["field" field1-id nil] 30]}}
+          card (add-timestamps
+                {:description "card description"
+                 :database_id database-id
+                 :table_id table-id
+                 :query_type "query"
+                 :name "orders 3 tax subtotal sum"
+                 :type "metric"
+                 :creator_id user-id
+                 :dataset_query (json/generate-string dataset-query)
+                 :display "line"
+                 :visualization_settings "{}"})
+          card-id (t2/insert-returning-pk! :report_card card)
+          original-query (:dataset_query card)]
+      (testing "sanity"
+        (is (t2/exists? :metric))
+        (let [query (-> original-query
+                        (json/parse-string true)
+                        mbql.normalize/normalize
+                        :query)]
+          (is (query-validator query)
+              (me/humanize (query-explainer query)))))
+
+      (testing "forward migration"
+        (migrate!)
+        (let [metric-cards (t2/select :report_card {:join [[:collection :coll]
+                                                          [:= :report_card.collection_id :coll.id]]
+                                                    :where [:= :coll.name "Migrated Metrics v1"]})
+              rewritten-card (t2/select-one :report_card card-id)]
+          (is (= 1 (count metric-cards)))
+          (is (int? card-id))
+          (is (= original-query (:dataset_query_metrics_v2_migration_backup rewritten-card)))
+          (is (query-validator (-> rewritten-card
+                                   :dataset_query
+                                   (json/parse-string true)
+                                   mbql.normalize/normalize
+                                   :query)))))
+
+      (testing "rollback"
+        (migrate! :down 50)
+        (let [migtation-coll (t2/select-one :collection :name "Migrated Metrics v1")
+              reverted-card (t2/select-one :report_card card-id)]
+          (is (nil? migtation-coll))
+          (is (= original-query (:dataset_query reverted-card))))))))
