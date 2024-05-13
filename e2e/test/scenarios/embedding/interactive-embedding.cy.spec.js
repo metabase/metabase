@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
+  modal,
   popover,
   appBar,
   restore,
@@ -236,8 +237,10 @@ describeEE("scenarios > embedding > full app", () => {
 
         cy.button("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Raw Data").click();
-        popover().findByText("Orders").click();
+        modal().within(() => {
+          cy.findByText("Tables").click();
+          cy.findByText("Orders").click();
+        });
       });
 
       it("should show the database for a new native question (metabase#21511)", () => {
