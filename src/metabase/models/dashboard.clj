@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.automagic-dashboards.populate :as populate]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -35,6 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -268,7 +268,7 @@
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -501,7 +501,7 @@
          tabs           :tabs
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (populate/create-collection!
+        collection (xrays/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
                     "Automatically generated cards."
                     parent-collection-id)

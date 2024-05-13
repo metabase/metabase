@@ -243,8 +243,8 @@
                                   [org.ow2.asm/asm-all]}
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     lambdaisland/deep-diff2      {:mvn/version "2.11.216"}                  ; way better diffs
-    methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
-    org.clojure/algo.generic     {:mvn/version "1.0.0"}
+    methodical/methodical        {:mvn/version "1.0.111"}                   ; drop-in replacements for Clojure multimethods and adds several advanced features
+    org.clojure/algo.generic     {:mvn/version "1.0.1"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
@@ -334,7 +334,7 @@
   ;; clojure -M:marginalia
   :marginalia
   {:extra-deps
-   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   {marginalia/marginalia {:mvn/version "0.9.2"}}
    :main-opts ["-m" "marginalia.main" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"
                "dev" "src" "enterprise/backend/src"]}
@@ -344,7 +344,7 @@
   ;; which creates `backend-docs/metabase.some.namespace.html`
   :marginalia/one
   {:extra-deps
-   {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
+   {marginalia/marginalia {:mvn/version "0.9.2"}}
    :main-opts ["-m" "marginalia.main" "-m" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"]}
 
@@ -645,7 +645,7 @@
    :java-opts   ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot
-  {:main-opts ["-m" "metabase.automagic-dashboards.dashboard-templates"]}
+  {:main-opts ["-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}
 
   ;; Start a Network REPL (nrepl) that you can connect your editor to.
   ;;
@@ -698,7 +698,14 @@
                       "test/metabase/query_processor"
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
-                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; watch and reload clojure namespaces
+  :watch {:extra-deps
+          {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
+           io.github.tonsky/clj-reload {:mvn/version "0.7.0"}} ;; reloader
+          :extra-paths "dev/src/watch"
+          :main-opts ["-m" "watch.watcher"]}}}
 
 
 

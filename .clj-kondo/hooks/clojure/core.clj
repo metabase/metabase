@@ -1,6 +1,7 @@
 (ns hooks.clojure.core
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [clojure.set :as set]
    [clojure.string :as str]))
 
 (defn- node->qualified-symbol [node]
@@ -15,7 +16,7 @@
    (catch Exception _
      nil)))
 
-(def ^:private white-card-symbols
+(def ^:private symbols-allowed-in-fns-not-ending-in-an-exclamation-point
   '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
      toucan2.core/delete!
@@ -159,7 +160,7 @@
                 (walk f child)))]
       (walk (fn [form]
               (when-let [qualified-symbol (node->qualified-symbol form)]
-                (when (and (not (contains? white-card-symbols qualified-symbol))
+                (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
                            (end-with-exclamation? qualified-symbol))
                   (hooks/reg-finding! (assoc (meta form-name)
                                              :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`."
@@ -203,3 +204,126 @@
        :findings))
 
  (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
+
+(defn- ns-form-node->require-node [ns-form-node]
+  (some (fn [node]
+          (when (and (hooks/list-node? node)
+                     (let [first-child (first (:children node))]
+                       (and (hooks/keyword-node? first-child)
+                            (= (hooks/sexpr first-child) :require))))
+            node))
+        (:children ns-form-node)))
+
+(defn- lint-require-shapes [ns-form-node]
+  (doseq [node (-> ns-form-node
+                   ns-form-node->require-node
+                   :children
+                   rest)]
+    (cond
+      (not (hooks/vector-node? node))
+      (hooks/reg-finding! (assoc (meta node)
+                                 :message "All :required namespaces should be wrapped in vectors [:metabase/require-shape-checker]"
+                                 :type    :metabase/require-shape-checker))
+
+      (hooks/vector-node? (second (:children node)))
+      (hooks/reg-finding! (assoc (meta node)
+                                 :message "Don't use prefix forms inside :require [:metabase/require-shape-checker]"
+                                 :type    :metabase/require-shape-checker)))))
+
+(defn- require-node->namespace-symb-nodes [require-node]
+  (let [[_ns & args] (:children require-node)]
+    (into []
+          ;; prefixed namespace forms are NOT SUPPORTED!!!!!!!!1
+          (keep (fn [node]
+                  (cond
+                    (hooks/vector-node? node)
+                    ;; propagate the metadata attached to this vector in case there's a `:clj-kondo/ignore` form.
+                    (vary-meta (first (:children node)) (partial merge (meta require-node) (meta node)))
+
+                    ;; this should also be dead code since we require requires to be vectors
+                    (hooks/token-node? node)
+                    (vary-meta node (partial merge (meta require-node)))
+
+                    :else
+                    (printf "Don't know how to figure out what namespace is being required in %s\n" (pr-str node)))))
+          args)))
+
+(defn- ns-form-node->ns-symb [ns-form-node]
+  (some-> (some (fn [node]
+                  (when (and (hooks/token-node? node)
+                             (not= (hooks/sexpr node) 'ns))
+                    node))
+                (:children ns-form-node))
+          hooks/sexpr))
+
+(defn- module
+  "E.g.
+
+    (module 'metabase.qp.middleware.wow) => 'metabase.qp"
+  [ns-symb]
+  (some-> (re-find #"^metabase\.[^.]+" (str ns-symb)) symbol))
+
+(defn- ignored-namespace? [ns-symb config]
+  (some
+   (fn [pattern-str]
+     (re-find (re-pattern pattern-str) (str ns-symb)))
+   (:ignored-namespace-patterns config)))
+
+(defn- module-api-namespaces
+  "Set API namespaces for a given module. `:any` means you can use anything, there are no API namespaces for this
+  module (yet). If unspecified, the default is just the namespace with the same name as the module e.g.
+  `metabase.db`."
+  [module config]
+  (let [module-config (get-in config [:api-namespaces module])]
+    (cond
+      (= module-config :any)
+      nil
+
+      (set? module-config)
+      module-config
+
+      :else
+      #{module})))
+
+(defn- lint-modules [ns-form-node config]
+  (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
+    (when-not (ignored-namespace? ns-symb config)
+      (when-let [current-module (module ns-symb)]
+        (let [allowed-modules               (get-in config [:allowed-modules current-module])
+              required-namespace-symb-nodes (-> ns-form-node
+                                                ns-form-node->require-node
+                                                require-node->namespace-symb-nodes)]
+          (doseq [node  required-namespace-symb-nodes
+                  :let  [clj-kondo-ignore (some-> (meta node) :clj-kondo/ignore hooks/sexpr set)]
+                  :when (not (contains? clj-kondo-ignore :metabase/ns-module-checker))
+                  :let  [required-namespace (hooks/sexpr node)
+                         required-module    (module required-namespace)]
+                  ;; ignore stuff not in a module i.e. non-Metabase stuff.
+                  :when required-module
+                  :let  [in-current-module? (= required-module current-module)]
+                  :when (not in-current-module?)
+                  :let  [allowed-module?           (or (= allowed-modules :any)
+                                                       (contains? (set allowed-modules) required-module))
+                         module-api-namespaces     (module-api-namespaces required-module config)
+                         allowed-module-namespace? (or (empty? module-api-namespaces)
+                                                       (contains? module-api-namespaces required-namespace))]]
+            (when-let [error (cond
+                               (not allowed-module?)
+                               (format "Module %s should not be used in the %s module. [:metabase/ns-module-checker :allowed-modules %s]"
+                                       required-module
+                                       current-module
+                                       current-module)
+
+                               (not allowed-module-namespace?)
+                               (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/ns-module-checker :api-namespaces %s]"
+                                       required-namespace
+                                       required-module
+                                       required-module))]
+              (hooks/reg-finding! (assoc (meta node)
+                                         :message error
+                                         :type    :metabase/ns-module-checker)))))))))
+
+(defn lint-ns [x]
+  (lint-require-shapes (:node x))
+  (lint-modules (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
+  x)

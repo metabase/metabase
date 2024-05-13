@@ -62,13 +62,12 @@ The SDK will call this endpoint if it doesn't have a token or to refresh the tok
 Example:
 
 ```ts
-import express from "express"
-import type { Request, Response } from "express"
+const express = require("express")
 
-import jwt from "jsonwebtoken"
-import fetch from "node-fetch"
+const jwt = require("jsonwebtoken")
+const fetch = require("node-fetch")
 
-async function metabaseAuthHandler(req: Request, res: Response) {
+async function metabaseAuthHandler(req, res) {
   const { user } = req.session
 
   if (!user) {
@@ -89,7 +88,7 @@ async function metabaseAuthHandler(req: Request, res: Response) {
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET
   )
-  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`
 
   try {
     const response = await fetch(ssoUrl, { method: 'GET' })
@@ -109,7 +108,15 @@ async function metabaseAuthHandler(req: Request, res: Response) {
 
 const app = express()
 
-// middleware
+// Middleware
+
+// If your FE application is on a different domain from your BE, you need to enable CORS
+// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
+// to your FE application URL.
+app.use(cors({
+  credentials: true,
+}))
+
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -132,7 +139,7 @@ app.listen(PORT, () => {
 You can install Metabase Embedding SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react --force
 ```
 
 or using yarn:
@@ -176,6 +183,8 @@ export default function App() {
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
+You can optionally pass in `height` to change the height of the component.
+
 ```jsx
 import React from "react";
 import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
@@ -187,7 +196,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
+        <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
     </MetabaseProvider>
   );
 }

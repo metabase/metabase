@@ -619,12 +619,14 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Products → Category",
         columnName: "Products → Category",
         table: "test question",
+        scrollTimes: 3,
       };
 
       const testData2 = {
         column: "Ean",
         columnName: "Product → Ean",
         table: "product",
+        scrollTimes: 3,
       };
 
       _hideColumn(testData);

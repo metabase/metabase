@@ -53,7 +53,7 @@ const MetabaseProviderInternal = ({
     <Provider store={store}>
       <EmotionCacheProvider>
         <ThemeProvider theme={themeOverride}>
-          <AppInitializeController config={config} font={theme?.fontFamily}>
+          <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
         </ThemeProvider>

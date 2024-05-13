@@ -16,6 +16,9 @@ title: API changelog
    Valid permission values for `view-data` are `unrestricted`, `blocked`, `sandboxed` or `restricted`. Valid permission values
    for `create-queries` are `query-builder-and-native`, `query-builder`, and `no`.
 
+- `GET /api/transform/:db-id/:schema/:transform-name`, which hasn't been used internally by Metabase for ages, has
+  been removed.
+
 ## Metabase 0.49.0
 - `POST /api/card` and `PUT /api/card/:id`
 

@@ -42,7 +42,7 @@
            {:schema        ms/FieldSemanticTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Category "type/Category"]}
-           {:schema        ms/Field
+           {:schema        ms/LegacyFieldOrExpressionReference
             :failed-cases  [[:aggregation 0] [:field "name" {}]]
             :success-cases [[:field 3 nil] ["field" "name" {:base-type :type/Float}]]}
            {:schema        ms/Map

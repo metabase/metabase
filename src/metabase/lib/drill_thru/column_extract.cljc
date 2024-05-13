@@ -11,6 +11,7 @@
 
   Extra constraints:
 
+  - MBQL stages only
   - Database must support `:regex` feature for the URL and Email extractions to work."
   (:require
    [medley.core :as m]
@@ -40,7 +41,9 @@
   [query                       :- ::lib.schema/query
    stage-number                :- :int
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
-  (when (and column (nil? value))
+  (when (and column
+             (nil? value)
+             (lib.drill-thru.common/mbql-stage? query stage-number))
     (when-let [drill (column-extract-drill-for-column query column)]
       (merge drill
              {:lib/type :metabase.lib.drill-thru/drill-thru
