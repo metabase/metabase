@@ -112,8 +112,8 @@ describe("scenarios > dashboard", () => {
         .findByRole("link", { name: "ask a new one" })
         .click();
 
-      popover().within(() => {
-        cy.findByPlaceholderText(/Search for some/).type("Pro");
+      modal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
