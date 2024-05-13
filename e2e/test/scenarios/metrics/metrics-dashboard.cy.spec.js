@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
   echartsContainer,
@@ -13,9 +12,7 @@ import {
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-type QuestionDetails = StructuredQuestionDetails & { name: string };
-
-const ORDERS_SCALAR_METRIC: QuestionDetails = {
+const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
   type: "metric",
   query: {
@@ -25,7 +22,7 @@ const ORDERS_SCALAR_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const ORDERS_TIMESERIES_METRIC: QuestionDetails = {
+const ORDERS_TIMESERIES_METRIC = {
   name: "Count of orders over time",
   type: "metric",
   query: {
@@ -42,7 +39,7 @@ const ORDERS_TIMESERIES_METRIC: QuestionDetails = {
   display: "line",
 };
 
-const PRODUCTS_SCALAR_METRIC: QuestionDetails = {
+const PRODUCTS_SCALAR_METRIC = {
   name: "Count of products",
   type: "metric",
   query: {
@@ -52,7 +49,7 @@ const PRODUCTS_SCALAR_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const PRODUCTS_TIMESERIES_METRIC: QuestionDetails = {
+const PRODUCTS_TIMESERIES_METRIC = {
   name: "Count of products over time",
   type: "metric",
   query: {
@@ -111,13 +108,13 @@ describe("scenarios > metrics > editing", () => {
   });
 });
 
-function combineAndVerifyMetrics(
-  metric1: QuestionDetails,
-  metric2: QuestionDetails,
-) {
-  createQuestion(metric1);
-  createQuestion(metric2);
-  visitDashboard(ORDERS_DASHBOARD_ID);
+function combineAndVerifyMetrics(metric1, metric2) {
+  cy.createDashboardWithQuestions({ questions: [metric1] }).then(
+    ({ dashboard }) => {
+      createQuestion(metric2);
+      visitDashboard(dashboard.id);
+    },
+  );
   cy.findByTestId("dashboard-header").within(() => {
     cy.findByLabelText("Edit dashboard").click();
     cy.findByLabelText("Add questions").click();

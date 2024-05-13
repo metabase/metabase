@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   assertQueryBuilderRowCount,
   createQuestion,
@@ -20,9 +19,7 @@ import {
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
-type QuestionDetails = StructuredQuestionDetails & { name: string };
-
-const ORDERS_COUNT_METRIC: QuestionDetails = {
+const ORDERS_COUNT_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -32,7 +29,7 @@ const ORDERS_COUNT_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const ORDERS_COUNT_MODEL_METRIC: QuestionDetails = {
+const ORDERS_COUNT_MODEL_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -42,7 +39,7 @@ const ORDERS_COUNT_MODEL_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const ORDERS_COUNT_FILTER_METRIC: QuestionDetails = {
+const ORDERS_COUNT_FILTER_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -53,7 +50,7 @@ const ORDERS_COUNT_FILTER_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const MULTI_STAGE_METRIC: QuestionDetails = {
+const MULTI_STAGE_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -74,7 +71,7 @@ const MULTI_STAGE_METRIC: QuestionDetails = {
   display: "scalar",
 };
 
-const MULTI_STAGE_QUESTION: QuestionDetails = {
+const MULTI_STAGE_QUESTION = {
   name: "Multi-stage orders",
   type: "question",
   query: {
@@ -550,7 +547,7 @@ describe("scenarios > metrics > editing", () => {
   });
 });
 
-function getActionButton(title: string) {
+function getActionButton(title) {
   return cy.findByTestId("action-buttons").button(title);
 }
 
@@ -558,15 +555,7 @@ function getPlusButton() {
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
-interface StartNewClauseOpts {
-  stageIndex?: number;
-  isPostAggregation?: boolean;
-}
-
-function startNewJoin({
-  stageIndex,
-  isPostAggregation,
-}: StartNewClauseOpts = {}) {
+function startNewJoin({ stageIndex, isPostAggregation } = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       getActionButton("Join data").click(),
@@ -578,10 +567,7 @@ function startNewJoin({
   }
 }
 
-function startNewCustomColumn({
-  stageIndex,
-  isPostAggregation,
-}: StartNewClauseOpts = {}) {
+function startNewCustomColumn({ stageIndex, isPostAggregation } = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       getActionButton("Custom column").click(),
@@ -593,10 +579,7 @@ function startNewCustomColumn({
   }
 }
 
-function startNewFilter({
-  stageIndex,
-  isPostAggregation,
-}: StartNewClauseOpts = {}) {
+function startNewFilter({ stageIndex, isPostAggregation } = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       getActionButton("Filter").click(),
@@ -608,10 +591,7 @@ function startNewFilter({
   }
 }
 
-function startNewAggregation({
-  stageIndex,
-  isPostAggregation,
-}: StartNewClauseOpts = {}) {
+function startNewAggregation({ stageIndex, isPostAggregation } = {}) {
   if (isPostAggregation) {
     getNotebookStep("summarize", { stage: stageIndex }).within(() =>
       getActionButton("Summarize").click(),
@@ -623,21 +603,13 @@ function startNewAggregation({
   }
 }
 
-function startNewBreakout({ stageIndex }: StartNewClauseOpts = {}) {
+function startNewBreakout({ stageIndex } = {}) {
   getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId("breakout-step")
     .within(() => getPlusButton().click());
 }
 
-function addStringCategoryFilter({
-  tableName,
-  columnName,
-  values,
-}: {
-  tableName?: string;
-  columnName: string;
-  values: string[];
-}) {
+function addStringCategoryFilter({ tableName, columnName, values }) {
   startNewFilter();
   popover().within(() => {
     if (tableName) {
@@ -649,17 +621,7 @@ function addStringCategoryFilter({
   });
 }
 
-function addNumberBetweenFilter({
-  tableName,
-  columnName,
-  minValue,
-  maxValue,
-}: {
-  tableName?: string;
-  columnName: string;
-  minValue: number;
-  maxValue: number;
-}) {
+function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
   startNewFilter();
   popover().within(() => {
     if (tableName) {
@@ -672,17 +634,7 @@ function addNumberBetweenFilter({
   });
 }
 
-function addDateBetweenFilter({
-  tableName,
-  columnName,
-  minValue,
-  maxValue,
-}: {
-  tableName?: string;
-  columnName: string;
-  minValue: string;
-  maxValue: string;
-}) {
+function addDateBetweenFilter({ tableName, columnName, minValue, maxValue }) {
   startNewFilter();
   popover().within(() => {
     if (tableName) {
@@ -701,11 +653,6 @@ function addAggregation({
   columnName,
   stageIndex,
   isPostAggregation,
-}: {
-  operatorName: string;
-  columnName?: string;
-  stageIndex?: number;
-  isPostAggregation?: boolean;
 }) {
   startNewAggregation({ stageIndex, isPostAggregation });
 
@@ -717,17 +664,7 @@ function addAggregation({
   });
 }
 
-function addBreakout({
-  tableName,
-  columnName,
-  bucketName,
-  stageIndex,
-}: {
-  tableName?: string;
-  columnName: string;
-  bucketName?: string;
-  stageIndex?: number;
-}) {
+function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   startNewBreakout({ stageIndex });
   if (tableName) {
     popover().findByText(tableName).click();
@@ -740,7 +677,7 @@ function addBreakout({
   }
 }
 
-function saveMetric({ name }: { name?: string } = {}) {
+function saveMetric({ name } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   cy.button("Save").click();
   modal().within(() => {
@@ -759,7 +696,7 @@ function updateMetric() {
   cy.wait("@updateCard");
 }
 
-function renameMetric(newName: string) {
+function renameMetric(newName) {
   cy.intercept("PUT", "/api/card/*").as("updateCard");
   cy.findByTestId("saved-question-header-title").clear().type(newName).blur();
   cy.wait("@updateCard");
@@ -771,17 +708,11 @@ function runQuery() {
   cy.wait("@dataset");
 }
 
-function verifyScalarValue(value: string) {
+function verifyScalarValue(value) {
   cy.findByTestId("scalar-container").findByText(value).should("be.visible");
 }
 
-function verifyLineAreaBarChart({
-  xAxis,
-  yAxis,
-}: {
-  xAxis: string;
-  yAxis: string;
-}) {
+function verifyLineAreaBarChart({ xAxis, yAxis }) {
   echartsContainer().within(() => {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
