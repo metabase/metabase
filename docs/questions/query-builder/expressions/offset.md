@@ -30,7 +30,7 @@ The `Offset` function returns whatever value is in the offset row.
 
 In the Sample database, you can use `Offset` to compare the count of orders year over year (YoY).
 
-First, summarize by count. Then summarize that count again, this time using `Offset` to offset the count by one. Then group the results by `Created At` by year:
+First, summarize by Sum of Total. Then summarize that summation again, this time using `Offset` to offset the Sum of Total by one. Then group the results by `Created At` by year:
 
 ![Comparing year over year](../../images/offset-example.png)
 
@@ -38,9 +38,21 @@ Which yields:
 
 ![Year over year order count results](../../images/offset-results.png)
 
-With these offsets (the counts in the "Previous Count" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly counts, and the percentage change year to year:
+With these offsets (the Sums in the "Previous Sum" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums, and the percentage change year to year:
 
 ![Difference and percentage change](../../images/diff-and-percentage.png)
+
+## Example rolling average
+
+You can use `Offset` to calculate rolling averages.
+
+For example, let's say you want to calculate the rolling average sum of order totals over the past three months. You'd use an expression like:
+
+```
+(Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)) / 3
+```
+
+Which takes this period's total, plus the previous two periods: offset by `-1` and `-2`, and divides by three to get the average across those periods.
 
 ## Related functions
 
