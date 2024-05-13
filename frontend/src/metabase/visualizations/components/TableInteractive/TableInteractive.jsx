@@ -607,7 +607,6 @@ class TableInteractive extends Component {
     return (
       <Box
         bg={backgroundColor}
-        c={tableTheme?.cell?.textColor || "text-brand"}
         key={key}
         role="gridcell"
         style={{
