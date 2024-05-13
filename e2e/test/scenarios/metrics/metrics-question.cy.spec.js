@@ -3,6 +3,7 @@ import {
   assertQueryBuilderRowCount,
   createQuestion,
   echartsContainer,
+  enterCustomColumnDetails,
   modal,
   popover,
   restore,
@@ -57,6 +58,22 @@ describe("scenarios > metrics > question", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
+  });
+
+  it("should be able to add a custom aggregation expression based on a metric", () => {
+    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
+      visitMetric(card.id),
+    );
+    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("sidebar-content")
+      .button(ORDERS_TIMESERIES_METRIC.name)
+      .click();
+    enterCustomColumnDetails({
+      formula: `[${ORDERS_TIMESERIES_METRIC.name}] * 2`,
+      name: "Expression",
+    });
+    popover().button("Update").click();
+    echartsContainer().findByText("Expression").should("be.visible");
   });
 
   it("should be able to add a breakout with an ad-hoc question", () => {
