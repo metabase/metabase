@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
@@ -28,8 +26,6 @@ import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const operators = _.uniq(DASHBOARD_TEXT_FILTERS.map(f => f.operator));
-
 describe("scenarios > dashboard > filters > text/category", () => {
   beforeEach(() => {
     restore();
@@ -51,9 +47,18 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should work when set through the filter widget", () => {
-    operators.forEach(operator => {
+    DASHBOARD_TEXT_FILTERS.forEach(({ operator, single }) => {
       cy.log(`Make sure we can connect ${operator} filter`);
       setFilter("Text or Category", operator);
+      cy.findAllByRole("radio", { name: "Multiple values" }).should(
+        "be.checked",
+      );
+
+      if (single) {
+        cy.findAllByRole("radio", { name: "A single value" })
+          .click()
+          .should("be.checked");
+      }
 
       cy.findByText("Select…").click();
       popover().contains("Source").click();
@@ -62,15 +67,21 @@ describe("scenarios > dashboard > filters > text/category", () => {
     waitDashboardCardQuery();
 
     DASHBOARD_TEXT_FILTERS.forEach(
-      ({ operator, value, representativeResult }, index) => {
+      (
+        { operator, value, representativeResult, single, negativeAssertion },
+        index,
+      ) => {
         filterWidget().eq(index).click();
         applyFilterByType(operator, value);
         waitDashboardCardQuery();
+        filterWidget()
+          .eq(index)
+          .contains(single ? value : /\d selections/);
 
         cy.log(`Make sure ${operator} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.contains(representativeResult);
-        });
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", negativeAssertion);
 
         clearFilterWidget(index);
         waitDashboardCardQuery();
