@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && "[ee]" || "[ee, oss]") }}
+        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && "[ee]" || "[ee, oss]") }}
+        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
@@ -90,7 +90,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && "[ee]" || "[ee, oss]") }}
+        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     services:
       registry:
         image: registry:2
@@ -207,7 +207,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && "[ee]" || "[ee, oss]") }}
+        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     services:
       registry:
         image: registry:2
