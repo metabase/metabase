@@ -78,6 +78,7 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     with:
       commit: ${{ github.event.inputs.commit }}
+    secrets: inherit
 
   upload-jar:
     needs: build-jar
