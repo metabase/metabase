@@ -480,10 +480,10 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
-      (t2/hydrate :can_write)
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
+      (t2/hydrate :can_write)
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -517,8 +517,8 @@
 
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
-      (t2/hydrate :can_write)
       (update :archived api/bit->boolean)
+      (t2/hydrate :can_write)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -625,11 +625,12 @@
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
     (for [row (annotate-collections parent-collection rows)]
-      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
+      (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
+          (update :archived api/bit->boolean)
+          (t2/hydrate :can_write :effective_location)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
-          (update :archived api/bit->boolean)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
