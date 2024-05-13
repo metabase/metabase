@@ -212,6 +212,71 @@ describe("scenarios > question > offset", () => {
     });
   });
 
+  it("works in a complex real-life scenario", () => {
+    const breakoutName = "Created At";
+    const totalSalesName = "Total sales (this month)";
+    const totalSalesLastMonthName = "Total sales (last month)";
+    const percentSalesGrowthName = "Percent sales growth over last month";
+    const rollingTotalName = "Rolling total of sales last 3 months";
+    const rollingAverageName = "Rolling average of sales last 3 months";
+    const legendItems = [
+      totalSalesName,
+      totalSalesLastMonthName,
+      percentSalesGrowthName,
+      rollingTotalName,
+      rollingAverageName,
+    ];
+
+    startNewQuestion();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("Orders").click();
+    });
+    addCustomAggregation({
+      formula: "Sum([Total])",
+      name: totalSalesName,
+    });
+    addCustomAggregation({
+      formula: "Offset(Sum([Total]), -1)",
+      name: totalSalesLastMonthName,
+      isFirst: false,
+    });
+    addCustomAggregation({
+      formula: "Sum([Total]) / Offset(Sum([Total]), -1) - 1",
+      name: percentSalesGrowthName,
+      isFirst: false,
+    });
+    addCustomAggregation({
+      formula:
+        "Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)",
+      name: rollingTotalName,
+      isFirst: false,
+    });
+    addCustomAggregation({
+      formula:
+        "(Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)) / 3",
+      name: rollingAverageName,
+      isFirst: false,
+    });
+    addBreakout(breakoutName);
+
+    visualize();
+    verifyNoQuestionError();
+    verifyLineChart({
+      xAxis: breakoutName,
+      legendItems,
+    });
+
+    saveQuestion().then(({ response }) => {
+      visitQuestion(response?.body.id);
+      verifyNoQuestionError();
+      verifyLineChart({
+        xAxis: breakoutName,
+        legendItems,
+      });
+    });
+  });
+
   it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
     const formula = "Sum(case([Total] > 0, Offset([Total], -1)))";
     const name = "Aggregation";
@@ -236,13 +301,20 @@ describe("scenarios > question > offset", () => {
 function addCustomAggregation({
   formula,
   name,
+  isFirst = true,
 }: {
   formula: string;
   name: string;
+  isFirst?: boolean;
 }) {
-  getNotebookStep("summarize")
-    .findByText("Pick the metric you want to see")
-    .click();
+  if (isFirst) {
+    getNotebookStep("summarize")
+      .findByText("Pick the metric you want to see")
+      .click();
+  } else {
+    getNotebookStep("summarize").icon("add").click();
+  }
+
   popover().contains("Custom Expression").click();
   enterCustomColumnDetails({ formula, name });
   popover().button("Done").click();
@@ -259,11 +331,28 @@ function saveQuestion() {
   return cy.wait("@saveQuestion");
 }
 
-function verifyLineChart({ xAxis, yAxis }: { xAxis: string; yAxis: string }) {
+function verifyLineChart({
+  xAxis,
+  yAxis,
+  legendItems,
+}: {
+  xAxis: string;
+  yAxis?: string;
+  legendItems?: string[];
+}) {
   echartsContainer().within(() => {
-    cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
+
+    if (yAxis) {
+      cy.findByText(yAxis).should("be.visible");
+    }
   });
+
+  if (legendItems) {
+    for (const legendItem of legendItems) {
+      cy.findAllByTestId("legend-item").contains(legendItem).should("exist");
+    }
+  }
 }
 
 function verifyTableContent(rows: string[][]) {
