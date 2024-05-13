@@ -2,6 +2,7 @@ import {
   addCustomColumn,
   enterCustomColumnDetails,
   getNotebookStep,
+  modal,
   popover,
   visualize,
   restore,
@@ -19,9 +20,11 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    popover().findByText("Raw Data").click();
-    popover().findByText(PG_DB_NAME).should("be.visible").click();
-    popover().findByTextEnsureVisible("People").click();
+    modal().within(() => {
+      cy.findByText("Tables").click();
+      cy.findByText(PG_DB_NAME).should("be.visible").click();
+      cy.findByTextEnsureVisible("People").click();
+    });
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
