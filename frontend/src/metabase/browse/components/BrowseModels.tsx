@@ -9,7 +9,8 @@ import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
 import type { ModelResult, SearchRequest } from "metabase-types/api";
 
-import { filterModels, type ActualModelFilters } from "../utils";
+import type { ActualModelFilters } from "../utils";
+import { filterModels } from "../utils";
 
 import {
   BrowseContainer,
@@ -72,7 +73,6 @@ export const BrowseModelsBody = ({
     model_ancestors: true,
     filter_items_in_personal_collection: "exclude",
   };
-
   const { data, error, isLoading } = useSearchQuery(query);
 
   const models = useMemo(() => {
