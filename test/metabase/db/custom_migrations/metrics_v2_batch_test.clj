@@ -1,4 +1,4 @@
-(ns metabase.db.custom-migrations.metrics-v2-batch-test
+(ns ^:mb/once metabase.db.custom-migrations.metrics-v2-batch-test
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
@@ -11,12 +11,12 @@
    [metabase.util :as u])
   (:import
    (java.net URI)
-   (java.nio.file Files FileSystem FileSystems NoSuchFileException)))
+   (java.nio.file Files FileSystem FileSystems NoSuchFileException #_OpenOption)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private data-file
-  "metric-migration/metric-v2-test-data.zip")
+  "metric-v2-test-data.zip")
 
 (def ^:private ^:dynamic ^FileSystem *data-fs* nil)
 
@@ -69,17 +69,31 @@
   (try
     (with-open [r (-> instance card-path Files/newBufferedReader)]
       (into {}
-            (keep (fn [[inst id dataset-query]]
-                    (when (not= inst instance)
-                      (throw (ex-info "unexpected instance"
-                                      {:expected instance
-                                       :actual inst})))
-                    (let [dataset-query (json/parse-string dataset-query true)]
-                      (when (uses-metric? (:query dataset-query))
-                        [(parse-long id) dataset-query]))))
+            (map (fn [[inst id dataset-query]]
+                   (when (not= inst instance)
+                     (throw (ex-info "unexpected instance"
+                                     {:expected instance
+                                      :actual inst})))
+                   (let [dataset-query (json/parse-string dataset-query true)]
+                     [(parse-long id) dataset-query])))
             (csv/read-csv r)))
     (catch NoSuchFileException _
       nil)))
+
+#_(defn- consuming-card-path
+  [instance]
+  (.getPath (FileSystems/getDefault)
+            "/Volumes/My Passport for Mac/work/metabase/metrics-v2/migration-test/cards"
+            (into-array String [(str instance ".csv")])))
+
+#_(defn- delete-cards
+  [instance ids]
+  (when (seq ids)
+    (let [id-set (set ids)
+          rows (with-open [r (-> instance card-path Files/newBufferedReader)]
+                 (into [] (remove #(-> % second parse-long id-set)) (csv/read-csv r)))]
+      (with-open [w (-> instance consuming-card-path (Files/newBufferedWriter (into-array OpenOption [])))]
+        (csv/write-csv w rows)))))
 
 (defn- read-instance
   []
@@ -92,9 +106,12 @@
                    :let [[instance metrics] (read-metrics metric-file)
                          cards (read-cards instance)]
                    :when (seq cards)]
-               {:instance instance
-                :metrics  metrics
-                :cards    cards}))))))
+               (let [metric-consuming-cards (into {} (filter #(-> % val :query uses-metric?)) cards)
+                     #_#_non-consuming-cards (apply dissoc cards (keys metric-consuming-cards))]
+                 #_(delete-cards instance (keys non-consuming-cards))
+                 {:instance instance
+                  :metrics  metrics
+                  :cards    metric-consuming-cards})))))))
 
 (def ^:private card-id-offset
   (quot Long/MAX_VALUE 2))
@@ -150,10 +167,9 @@
   ([{:keys [print-stats?]}]
    (when print-stats?
      #_{:clj-kondo/ignore [:discouraged-var]}
-     (println "instance,metrics,metric consuming cards"))
-   (doseq [instance (read-instance)]
-     (let [instance-name (:instance instance)
-           {:keys [v2-metrics cards]} (process-instance instance)]
+     (println "instance,metrics,metric consuming cards,all cards"))
+   (doseq [{instance-name :instance :as instance} (read-instance)]
+     (let [{:keys [v2-metrics cards]} (process-instance instance)]
        (when print-stats?
          #_{:clj-kondo/ignore [:discouraged-var]}
          (printf "%s,%d,%d%n" instance-name (count v2-metrics) (count cards)))
@@ -172,7 +188,7 @@
                                 :input input
                                 :query query}))
            (is (= (collect-metric-refs (second input))
-                     (map #(- % card-id-offset) (collect-metric-refs query)))))
+                  (map #(- % card-id-offset) (collect-metric-refs query)))))
          (validate-query (-> {:query query} mbql.normalize/normalize :query)
                          {:instance instance-name, :input input}))))
    (when print-stats?
@@ -182,42 +198,5 @@
   (process-instances))
 
 (comment
-  (str (first (metric-paths)))
-  (contains-metric? [["sum",["field",700,nil]],["sum",["field",702,nil]],["aggregation-options",["/",["sum",["field",702,nil]],["metric",2]],{"name" "% Employees Helped (cumulative)","display-name" "% Employees Helped (cumulative)"}],["metric",2]])
-  ((juxt uses-metric? collect-metric-refs)
-   {:source-table 71
-    :breakout [["field" 921 {"temporal-unit" "minute"}]]
-    :aggregation [["metric" 1] ["metric" 4] ["metric" 2] ["metric" 3]]
-    :joins [{:fields "all"
-             :source-table 73
-             :condition ["="
-                         ["field" 905 nil]
-                         ["field" 972 {:join-alias "MCM_ACCOUNTS"}]]
-             :alias "MCM_ACCOUNTS"}]})
-
-  (process-instances)
-
-  (#'mbql.normalize/canonicalize-top-level-mbql-clauses
-   (mbql.normalize/normalize-tokens
-    {:query
-     {:joins
-      [{:fields "all"
-        :source-table 10
-        :condition ["=" ["field" 62 nil] ["field" 170 {:join-alias "alias"}]]
-        :alias "alias"}]}}))
-
-  (count (read-instance))
-
-  (let [uri (URI/create "jar:file:/Users/metamben/github/metabase/metric-migration/metric-v2-test-data.zip")]
-    (with-open [zip-fs (FileSystems/newFileSystem uri {})
-                r (Files/newBufferedReader (.getPath zip-fs
-                                                     "/metrics/b448750582aa9dae8e48c47642bdd66c.csv"
-                                                     (into-array String [])))]
-      (with-open []
-        (slurp r))))
-
-  (let [uri (URI/create "jar:file:/Users/metamben/github/metabase/metric-migration/metric-v2-test-data.zip")]
-    (with-open [zip-fs (FileSystems/newFileSystem uri {})]
-      (let [path (.getPath zip-fs "/metrics" (into-array String []))]
-        (map str (.toArray (Files/list path))))))
+  (process-instances {:print-stats? true})
   0)

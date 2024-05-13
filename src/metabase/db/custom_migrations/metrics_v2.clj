@@ -117,10 +117,9 @@
 (defn migrate-up
   "Migrate metrics and the cards consuming them to metrics v2. This involves
   1. creating the migration collection,
-  2. creating the backup collection for the metric consuming cards,
-  3. creating a v2 metric cards for each v1 metric in the migration collection,
-  4. creating a backup for each metric consuming card in the backup collection,
-  5. rewriting the metric consuming cards to use the migrated v2 metric cards."
+  2. creating a v2 metric card for each v1 metric in the migration collection,
+  3. making a backup copy of the dataset_query of each metric consuming card,
+  4. rewriting the metric consuming cards to use the migrated v2 metric cards."
   []
   (when (t2/exists? :metric)
     (let [metric-v2-coll (get-metric-migration-collection {:create? true})
@@ -150,10 +149,8 @@
 (defn migrate-down
   "Revert the migration to v2 metrics. This involves
   1. restoring the metric consuming cards from the backup,
-  2. deleting the backup cards,
-  3. deleting the backup collection,
-  4. deleting the metric cards created by the up migration,
-  5. deleting the metric migration collection."
+  2. deleting the metric cards created by the up migration,
+  3. deleting the metric migration collection."
   []
   (when-let [metric-v2-coll (get-metric-migration-collection)]
     (doseq [{:keys [id dataset_query_metrics_v2_migration_backup]}

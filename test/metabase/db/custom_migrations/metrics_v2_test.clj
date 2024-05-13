@@ -1,16 +1,19 @@
 (ns metabase.db.custom-migrations.metrics-v2-test
   (:require
    [cheshire.core :as json]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.error :as me]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(deftest convert-metric-v2-test
+(use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:mb/once convert-metric-v2-test
   (testing "basic metric"
     (let [metric-definition {:source-table 5
                              :aggregation [["sum" ["field" 41 nil]]]
@@ -51,68 +54,68 @@
       (is (= metric-v2 (-> (#'metrics-v2/convert-metric-v2 metric-v1 1)
                            (update :dataset_query json/parse-string true)))))))
 
-(deftest rewrite-single-metric-consuming-card-test
+(deftest ^:mb/once rewrite-single-metric-consuming-card-test
   (doseq [metric-tag ["metric" "METRIC" "meTriC"]]
     (testing (str "with source-table key " metric-tag)
       (let [metric-dataset-query {:type "query"
-                              :database 1
-                              :query {:source-table 5
-                                      :aggregation [["sum" ["field" 41 nil]]]
-                                      :filter ["=" ["field" 35 nil] 3]}}
-        metric-card {:description "basic description (Migrated from metric 1.)"
-                     :id 11
-                     :archived false
-                     :table_id 5
-                     :enable_embedding false
-                     :query_type "query"
-                     :name "orders 3 tax subtotal sum"
-                     :type "metric"
-                     :creator_id 1
-                     :dataset_query (json/generate-string metric-dataset-query)
-                     :parameter_mappings "[]"
-                     :display "line"
-                     :visualization_settings "{}"
-                     :parameters "[]"
-                     :created_at #t "2024-05-02T19:26:15Z"}
-        dataset-query {:type "query"
-                       :database 1
-                       :query {:source-table 5
-                               :aggregation [["count"] [metric-tag 1]]
-                               :filter ["<" ["field" 33 nil] 100]}}
-        card {:description "query description"
-              :archived true
-              :table_id 5
-              :enable_embedding true
-              :query_type "query"
-              :name "v1 metric consuming query"
-              :type "question"
-              :creator_id 2
-              :dataset_query (json/generate-string dataset-query)
-              :parameter_mappings "[{}]"
-              :display "table"
-              :visualization_settings "{}"
-              :parameters "[3]"
-              :created_at #t "2024-05-02T19:26:15Z"}
-        rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)
-        rewritten-card {:description "query description"
-                        :archived true
-                        :table_id 5
-                        :enable_embedding true
-                        :query_type "query"
-                        :name "v1 metric consuming query"
-                        :type "question"
-                        :creator_id 2
-                        :dataset_query rewritten-dataset-query
-                        :parameter_mappings "[{}]"
-                        :display "table"
-                        :visualization_settings "{}"
-                        :parameters "[3]"
-                        :created_at #t "2024-05-02T19:26:15Z"}]
-    (is (= rewritten-card
-           (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric-card})
-               (update :dataset_query json/parse-string true))))))))
+                                  :database 1
+                                  :query {:source-table 5
+                                          :aggregation [["sum" ["field" 41 nil]]]
+                                          :filter ["=" ["field" 35 nil] 3]}}
+            metric-card {:description "basic description (Migrated from metric 1.)"
+                         :id 11
+                         :archived false
+                         :table_id 5
+                         :enable_embedding false
+                         :query_type "query"
+                         :name "orders 3 tax subtotal sum"
+                         :type "metric"
+                         :creator_id 1
+                         :dataset_query (json/generate-string metric-dataset-query)
+                         :parameter_mappings "[]"
+                         :display "line"
+                         :visualization_settings "{}"
+                         :parameters "[]"
+                         :created_at #t "2024-05-02T19:26:15Z"}
+            dataset-query {:type "query"
+                           :database 1
+                           :query {:source-table 5
+                                   :aggregation [["count"] [metric-tag 1]]
+                                   :filter ["<" ["field" 33 nil] 100]}}
+            card {:description "query description"
+                  :archived true
+                  :table_id 5
+                  :enable_embedding true
+                  :query_type "query"
+                  :name "v1 metric consuming query"
+                  :type "question"
+                  :creator_id 2
+                  :dataset_query (json/generate-string dataset-query)
+                  :parameter_mappings "[{}]"
+                  :display "table"
+                  :visualization_settings "{}"
+                  :parameters "[3]"
+                  :created_at #t "2024-05-02T19:26:15Z"}
+            rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)
+            rewritten-card {:description "query description"
+                            :archived true
+                            :table_id 5
+                            :enable_embedding true
+                            :query_type "query"
+                            :name "v1 metric consuming query"
+                            :type "question"
+                            :creator_id 2
+                            :dataset_query rewritten-dataset-query
+                            :parameter_mappings "[{}]"
+                            :display "table"
+                            :visualization_settings "{}"
+                            :parameters "[3]"
+                            :created_at #t "2024-05-02T19:26:15Z"}]
+        (is (= rewritten-card
+               (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric-card})
+                   (update :dataset_query json/parse-string true))))))))
 
-(deftest ignore-ga-metric-consuming-card-test
+(deftest ^:mb/once ignore-ga-metric-consuming-card-test
   (testing "GA metrics references are ignored"
     (let [dataset-query {:type "query"
                          :database 1
@@ -137,7 +140,7 @@
            (#'metrics-v2/rewrite-metric-consuming-card
             card {1 :not-a-card-but-it-does-not-matter}))))))
 
-(deftest rewrite-multi-metric-consuming-card-test
+(deftest ^:mb/once rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
                                :database 1
                                :query {:source-table 5
@@ -271,7 +274,7 @@
           dataset-query {:type "query"
                          :database database-id
                          :query {:source-table table-id
-                                 :aggregation [["count"] ["metric" metric-id]]
+                                 :aggregation [["count"] ["meTric" metric-id]]
                                  :filter [">" ["field" field1-id nil] 30]}}
           card (add-timestamps
                 {:description "card description"
@@ -285,30 +288,32 @@
                  :display "line"
                  :visualization_settings "{}"})
           card-id (t2/insert-returning-pk! :report_card card)
-          original-query (:dataset_query card)]
+          original-query (:dataset_query card)
+          normalized-query #(-> %
+                                (json/parse-string true)
+                                mbql.normalize/normalize
+                                :query)]
       (testing "sanity"
         (is (t2/exists? :metric))
-        (let [query (-> original-query
-                        (json/parse-string true)
-                        mbql.normalize/normalize
-                        :query)]
+        (let [query (normalized-query original-query)]
           (is (query-validator query)
               (me/humanize (query-explainer query)))))
 
       (testing "forward migration"
         (migrate!)
-        (let [metric-cards (t2/select :report_card {:join [[:collection :coll]
-                                                          [:= :report_card.collection_id :coll.id]]
-                                                    :where [:= :coll.name "Migrated Metrics v1"]})
-              rewritten-card (t2/select-one :report_card card-id)]
+        (let [migration-coll (t2/select-one :collection :name "Migrated Metrics v1")
+              coll-permissions (t2/select :permissions :object [:like (str "/collection/" (:id migration-coll) "/%")])
+              metric-cards (t2/select :report_card :collection_id (:id migration-coll))
+              rewritten-card (t2/select-one :report_card card-id)
+              rewritten-query (-> rewritten-card :dataset_query normalized-query)]
           (is (= 1 (count metric-cards)))
           (is (int? card-id))
+          (is (=? [{:object (str "/collection/" (:id migration-coll) "/read/")
+                    :group_id 1}]
+                  coll-permissions))
           (is (= original-query (:dataset_query_metrics_v2_migration_backup rewritten-card)))
-          (is (query-validator (-> rewritten-card
-                                   :dataset_query
-                                   (json/parse-string true)
-                                   mbql.normalize/normalize
-                                   :query)))))
+          (is (query-validator rewritten-query))
+          (is (= (-> metric-cards first :id) (get-in rewritten-query [:aggregation 1 1])))))
 
       (testing "rollback"
         (migrate! :down 50)
