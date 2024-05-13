@@ -379,8 +379,10 @@ describe("binning related reproductions", () => {
 
 function openSummarizeOptions(questionType) {
   startNewQuestion();
-  cy.findByText("Saved Questions").click();
-  cy.findByText("16379").click();
+  modal().within(() => {
+    cy.findByText("Saved questions").click();
+    cy.findByText("16379").click();
+  });
 
   if (questionType === "Simple mode") {
     visualize();
