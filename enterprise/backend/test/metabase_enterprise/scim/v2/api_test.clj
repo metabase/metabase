@@ -19,7 +19,7 @@
                         {:headers {"authorization" (format "Bearer %s" scim-api-key)}}}))
 
       (testing "SCIM endpoints do not allow normal auth"
-        (mt/user-http-request :crowberto :get 403 "ee/scim/v2/Users"))
+        (mt/user-http-request :crowberto :get 401 "ee/scim/v2/Users"))
 
       (testing "A SCIM API key cannot be passed via the x-api-key header"
-        (client/client :get 403 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" scim-api-key}}})))))
+        (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" scim-api-key}}})))))
