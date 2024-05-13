@@ -6,6 +6,7 @@ import {
   createQuestion,
   describeEE,
   navigationSidebar,
+  popover,
   restore,
   setTokenFeatures,
   visitMetric,
@@ -39,6 +40,29 @@ describe("scenarios > metrics > search", () => {
     cy.findByTestId("search-results-floating-container")
       .findByText(ORDERS_SCALAR_METRIC.name)
       .click();
+    cy.wait("@dataset");
+    cy.findByTestId("scalar-container").should("be.visible");
+  });
+
+  it("should be able to search for metrics on the search page", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    cy.visit("/");
+    appBar().findByPlaceholderText("Search…").type("orders{enter}");
+    cy.wait("@search");
+    cy.findByTestId("search-app").within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByTestId("type-search-filter").click();
+    });
+    popover().within(() => {
+      cy.findByText("Metric").click();
+      cy.findByText("Apply").click();
+    });
+    cy.wait("@search");
+    cy.findByTestId("search-app").within(() => {
+      cy.findByText("1 result").should("be.visible");
+      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+    });
     cy.wait("@dataset");
     cy.findByTestId("scalar-container").should("be.visible");
   });
