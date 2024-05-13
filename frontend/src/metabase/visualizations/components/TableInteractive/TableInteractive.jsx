@@ -588,7 +588,8 @@ class TableInteractive extends Component {
 
     const backgroundColor =
       this.getCellBackgroundColor(settings, value, rowIndex, column.name) ||
-      tableTheme?.cell?.backgroundColor;
+      tableTheme?.cell?.backgroundColor ||
+      "white";
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -610,7 +611,7 @@ class TableInteractive extends Component {
 
     return (
       <Box
-        bg={backgroundColor || "white"}
+        bg={backgroundColor}
         c={tableTheme?.cell?.textColor || "text-brand"}
         key={key}
         role="gridcell"
