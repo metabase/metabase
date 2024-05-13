@@ -24,6 +24,10 @@ on:
       commit:
         description: 'Optional full-length commit SHA-1 hash'
         type: string
+      only_ee:
+        description: A flag to indicate if only EE Uberjar should be built.
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -32,7 +36,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: ${{ github.event.inputs.only_ee && [ee] || [ee, oss] }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -61,7 +65,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: ${{ github.event.inputs.only_ee && [ee] || [ee, oss] }}
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
@@ -86,7 +90,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: ${{ github.event.inputs.only_ee && [ee] || [ee, oss] }}
     services:
       registry:
         image: registry:2
@@ -203,7 +207,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: ${{ github.event.inputs.only_ee && [ee] || [ee, oss] }}
     services:
       registry:
         image: registry:2
