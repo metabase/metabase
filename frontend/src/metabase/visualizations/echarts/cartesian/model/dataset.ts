@@ -648,10 +648,17 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
+  const isBarOnly = seriesModels.every(
+    seriesModel =>
+      settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
+      "bar",
+  );
+
   let groupedSeriesKeys: DataKey[] = [];
   if (
     settings["graph.max_categories"] != null &&
-    seriesDataKeys.length > settings["graph.max_categories"]
+    seriesDataKeys.length > settings["graph.max_categories"] &&
+    isBarOnly // TODO add `isAreaOnly` check later
   ) {
     const { groupedSeriesKeys: groupedKeys, transformedDataset } =
       groupSeriesIntoOther(
