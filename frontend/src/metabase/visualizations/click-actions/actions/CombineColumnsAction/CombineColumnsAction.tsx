@@ -12,7 +12,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
-    clicked?.extraData?.isRawTable ||
+    clicked.extraData?.isRawTable ||
     !isEditable
   ) {
     return [];
