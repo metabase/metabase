@@ -91,7 +91,7 @@ export function DashboardInfoSidebar({
         />
       </ContentSection>
 
-      {canWrite && (
+      {!dashboard.archived && (
         <ContentSection>
           <Switch
             disabled={!canWrite}
