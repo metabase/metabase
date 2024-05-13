@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
   createQuestion,
+  echartsContainer,
   modal,
   popover,
   restore,
@@ -56,6 +57,15 @@ describe("scenarios > metrics > question", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
+  });
+
+  it("should be able to add a breakout with an ad-hoc question", () => {
+    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
+      visitMetric(card.id),
+    );
+    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("sidebar-content").findByText("Category").click();
+    echartsContainer().findByText("Product → Category").should("be.visible");
   });
 
   it("should be able to change the temporal unit when consuming a timeseries metric", () => {
