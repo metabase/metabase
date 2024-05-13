@@ -464,3 +464,10 @@ export const getParameterMappingsBeforeEditing = createSelector(
     return map;
   },
 );
+
+export const getDisplayTheme = (state: State) => state.dashboard.theme;
+
+export const getIsNightMode = createSelector(
+  [getDisplayTheme],
+  theme => theme === "night",
+);

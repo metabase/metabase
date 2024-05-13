@@ -1,4 +1,4 @@
-import type { EChartsType } from "echarts";
+import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";

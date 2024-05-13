@@ -2,7 +2,7 @@ interface Props {
   [key: string]: any;
 }
 
-function PluginPlaceholder(_props: Props) {
+function PluginPlaceholder(_props: Props): JSX.Element | null {
   return null;
 }
 

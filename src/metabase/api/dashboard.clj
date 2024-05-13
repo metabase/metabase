@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
-   [metabase.automagic-dashboards.populate :as populate]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -48,6 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -901,7 +901,7 @@
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (populate/get-or-create-root-container-collection))
+                               (:id (xrays/get-or-create-root-container-collection))
                                (t2/select-one-fn :id 'Collection
                                                  :personal_owner_id api/*current-user-id*))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]

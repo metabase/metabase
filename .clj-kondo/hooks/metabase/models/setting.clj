@@ -38,8 +38,6 @@
      engines
      enum-cardinality-threshold
      follow-up-email-sent
-     ga-code
-     ga-enabled
      google-auth-auto-create-accounts-domain
      google-auth-client-id
      google-auth-configured

@@ -11,7 +11,7 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
 
-import { fetchDashboard } from "./data-fetching";
+import { fetchDashboard } from "./data-fetching-typed";
 
 describe("fetchDashboard", () => {
   let store;
