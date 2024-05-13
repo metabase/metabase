@@ -273,6 +273,7 @@
   [_]
   (conj default-columns :collection_id :trashed_from_collection_id :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
@@ -283,6 +284,7 @@
    [:model-index.pk_ref         :pk_ref]
    [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
+   [:collection.type            :collection_type]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
@@ -292,6 +294,7 @@
   [_]
   (conj default-columns :trashed_from_collection_id :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model "database"

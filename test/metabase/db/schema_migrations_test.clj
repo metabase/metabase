@@ -122,18 +122,22 @@
                                                                        :created_at             #t "2021-10-20T02:09Z"
                                                                        :updated_at             #t "2022-10-20T02:09Z"})]
         (migrate!)
-        (testing "A personal Collection should get created_at set by to the date_joined from its owner"
-          (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id personal-collection-id)))))
-        (testing "A non-personal Collection should get created_at set to its oldest object"
-          (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id impersonal-collection-id)))))
-        (testing "Empty Collection should not have been updated"
-          (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
-            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
-                      empty-collection-created-at))
-            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
-                      empty-collection-created-at))))))))
+        ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+        ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
+        ;; that so.
+        (with-redefs [collection/is-trash? (constantly false)]
+          (testing "A personal Collection should get created_at set by to the date_joined from its owner"
+            (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
+                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id personal-collection-id)))))
+          (testing "A non-personal Collection should get created_at set to its oldest object"
+            (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
+                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id impersonal-collection-id)))))
+          (testing "Empty Collection should not have been updated"
+            (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
+              (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                        empty-collection-created-at))
+              (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                        empty-collection-created-at)))))))))
 
 (deftest deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
@@ -498,16 +502,20 @@
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
-      (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
-                                                                                       :slug "amazing_collection"
-                                                                                       :color "#509EE3"}))]
+      ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+      ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
+      ;; that so.
+      (with-redefs [collection/is-trash? (constantly false)]
+        (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                         :slug "amazing_collection"
+                                                                                         :color "#509EE3"}))]
 
-        (testing "Collection should exist and have the color set by the user prior to migration"
-          (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+          (testing "Collection should exist and have the color set by the user prior to migration"
+            (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
 
-        (migrate!)
-        (testing "should drop the existing color column"
-          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
+          (migrate!)
+          (testing "should drop the existing color column"
+            (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))))))
 
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - end"

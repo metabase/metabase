@@ -480,7 +480,11 @@
                                (for [item search-results
                                      :when (= (:model item) "dataset")]
                                  [(:collection_id item)
-                                  {:name (:collection_name item)
+                                  {:name (-> {:name (:collection_name item)
+                                              :id (:collection_id item)
+                                              :type (:collection_type item)}
+                                             collection/maybe-localize-trash-name
+                                             :name)
                                    :effective_location (result->loc item)}]))
         ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
@@ -529,6 +533,7 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
+                            (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
