@@ -1,4 +1,5 @@
 import {
+  modal,
   popover,
   restore,
   visualize,
@@ -15,8 +16,8 @@ describe("issue 20683", { tags: "@external" }, () => {
 
   it("should filter postgres with the 'current quarter' filter (metabase#20683)", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    modal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
