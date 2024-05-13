@@ -662,24 +662,17 @@ export const buildEChartsSeries = (
     barSeriesCountByYAxisIndex,
   ).length;
 
-  const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
+  let barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
-  const barSeriesDisplayCount =
-    settings["graph.max_categories"] == null
-      ? barSeriesCount
-      : Math.min(settings["graph.max_categories"] + 1, barSeriesCount);
+  if (chartModel.otherSeriesModel) {
+    barSeriesCount += 1;
+  }
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
-  const groupedSeriesKeysSet = new Set(chartModel.groupedSeriesKeys);
-
   const series = chartModel.seriesModels
     .map(seriesModel => {
-      if (groupedSeriesKeysSet.has(seriesModel.dataKey)) {
-        return null;
-      }
-
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
 
@@ -706,7 +699,7 @@ export const buildEChartsSeries = (
             seriesModel,
             settings,
             yAxisIndex,
-            barSeriesDisplayCount,
+            barSeriesCount,
             yAxisWithBarSeriesCount,
             hasMultipleSeries,
             renderingContext,
@@ -742,11 +735,7 @@ export const buildEChartsSeries = (
     );
   }
 
-  if (
-    settings["graph.max_categories"] != null &&
-    chartModel.groupedSeriesKeys?.length !== 0 &&
-    chartModel.otherSeriesModel
-  ) {
+  if (chartModel.otherSeriesModel) {
     // TODO handle area chart
     series.push(
       buildEChartsBarSeries(
@@ -757,7 +746,7 @@ export const buildEChartsSeries = (
         chartModel.otherSeriesModel,
         settings,
         0, // TODO fix after updating y-axis split
-        barSeriesDisplayCount,
+        barSeriesCount,
         yAxisWithBarSeriesCount,
         true,
         renderingContext,

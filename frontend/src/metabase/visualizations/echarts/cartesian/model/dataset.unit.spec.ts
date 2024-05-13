@@ -320,11 +320,12 @@ describe("dataset transform functions", () => {
         originalDataset,
         xAxisModel,
         seriesModels,
+        [],
         yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "stacked",
         }),
-      ).transformedDataset;
+      );
 
       expect(result).toEqual([
         {
@@ -351,11 +352,12 @@ describe("dataset transform functions", () => {
         originalDataset,
         xAxisModel,
         seriesModels,
+        [],
         yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "normalized",
         }),
-      ).transformedDataset;
+      );
 
       expect(result).toEqual([
         {
@@ -389,6 +391,7 @@ describe("dataset transform functions", () => {
         dataset,
         xAxisModel,
         seriesModels,
+        [],
         yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
@@ -396,7 +399,7 @@ describe("dataset transform functions", () => {
               key.card._seriesKey === "series1" ? "zero" : undefined,
           }),
         }),
-      ).transformedDataset;
+      );
 
       expect(result).toEqual([
         {
@@ -442,13 +445,14 @@ describe("dataset transform functions", () => {
           dataset,
           xAxisModel,
           [createMockSeriesModel({ dataKey: "series1" })],
+          [],
           yAxisScaleTransforms,
           createMockComputedVisualizationSettings({
             series: () => ({
               "line.missing": "zero",
             }),
           }),
-        ).transformedDataset;
+        );
 
         expect(result).toEqual([
           {
@@ -472,13 +476,14 @@ describe("dataset transform functions", () => {
           dataset,
           { ...xAxisModel, intervalsCount: 10001 },
           [createMockSeriesModel({ dataKey: "series1" })],
+          [],
           yAxisScaleTransforms,
           createMockComputedVisualizationSettings({
             series: () => ({
               "line.missing": "zero",
             }),
           }),
-        ).transformedDataset;
+        );
 
         expect(result).toHaveLength(dataset.length);
       });
@@ -489,6 +494,7 @@ describe("dataset transform functions", () => {
         [],
         xAxisModel,
         seriesModels,
+        [],
         yAxisScaleTransforms,
         createMockVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
@@ -497,7 +503,7 @@ describe("dataset transform functions", () => {
           }),
           "stackable.stack_type": "stacked",
         }),
-      ).transformedDataset;
+      );
 
       expect(result).toEqual([]);
     });
@@ -578,6 +584,7 @@ describe("dataset transform functions", () => {
           [],
           xAxisModel,
           seriesModels,
+          [],
           yAxisScaleTransforms,
           createMockComputedVisualizationSettings(),
         ),

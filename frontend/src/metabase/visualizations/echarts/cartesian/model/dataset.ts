@@ -2,12 +2,7 @@ import { t } from "ttag";
 
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import {
-  checkNotNull,
-  checkNumber,
-  isNotNull,
-  isNumber,
-} from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -336,32 +331,10 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-function getRowValueForSorting(value: RowValue) {
-  if (isNumber(value)) {
-    return value;
-  }
-  // For ranking series to group into the "other" series, we consider null
-  // values to be the smallest
-  return -Infinity;
-}
-
-function groupSeriesIntoOther(
+function getOtherSeriesValues(
   dataset: ChartDataset,
-  seriesDataKeys: DataKey[],
-  maxCategories: number | undefined,
+  groupedSeriesKeys: DataKey[],
 ) {
-  checkNotNull(maxCategories);
-
-  const lastDatum = dataset[dataset.length - 1];
-
-  const groupedSeriesKeys = [...seriesDataKeys]
-    .sort(
-      (keyA, keyB) =>
-        getRowValueForSorting(lastDatum[keyB]) -
-        getRowValueForSorting(lastDatum[keyA]),
-    )
-    .slice(maxCategories);
-
   const transformedDataset: ChartDataset = [];
 
   dataset.forEach(datum => {
@@ -378,7 +351,7 @@ function groupSeriesIntoOther(
     transformedDataset.push(transformedDatum);
   });
 
-  return { groupedSeriesKeys, transformedDataset };
+  return transformedDataset;
 }
 
 function getStackedValueTransformFunction(
@@ -626,6 +599,7 @@ export const applyVisualizationSettingsDataTransformations = (
   dataset: ChartDataset,
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
+  groupedSeriesKeys: DataKey[],
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
@@ -648,34 +622,15 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
-  const isBarOnly = seriesModels.every(
-    seriesModel =>
-      settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
-      "bar",
-  );
-
-  let groupedSeriesKeys: DataKey[] = [];
-  if (
-    settings["graph.max_categories"] != null &&
-    seriesDataKeys.length > settings["graph.max_categories"] &&
-    isBarOnly // TODO add `isAreaOnly` check later
-  ) {
-    const { groupedSeriesKeys: groupedKeys, transformedDataset } =
-      groupSeriesIntoOther(
-        dataset,
-        seriesDataKeys,
-        settings["graph.max_categories"],
-      );
-
-    groupedSeriesKeys = groupedKeys;
-    dataset = transformedDataset;
+  if (groupedSeriesKeys.length > 0) {
+    dataset = getOtherSeriesValues(dataset, groupedSeriesKeys);
   }
 
   if (isTimeSeriesAxis(xAxisModel)) {
     dataset = interpolateTimeSeriesData(dataset, xAxisModel);
   }
 
-  const transformedDataset = transformDataset(dataset, [
+  return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",
@@ -710,8 +665,6 @@ export const applyVisualizationSettingsDataTransformations = (
       fn: getStackedAreasInterpolateTransform(seriesModels),
     },
   ]);
-
-  return { groupedSeriesKeys, transformedDataset };
 };
 
 export const sortDataset = (

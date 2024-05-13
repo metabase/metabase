@@ -86,15 +86,11 @@ export const getCartesianChartOption = (
     timelineEventsSeries,
   ].flatMap(option => option ?? []);
 
-  const groupedSeriesKeysSet = new Set(chartModel.groupedSeriesKeys);
-
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
     OTHER_DATA_KEY,
-    ...chartModel.seriesModels
-      .map(seriesModel => seriesModel.dataKey)
-      .filter(key => !groupedSeriesKeysSet.has(key)),
+    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
   ];
 
   if (settings["stackable.stack_type"] != null) {

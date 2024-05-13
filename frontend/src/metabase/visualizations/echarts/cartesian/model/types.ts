@@ -203,7 +203,6 @@ export type BaseCartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
 
   // For `max_categories` setting
-  groupedSeriesKeys?: DataKey[];
   otherSeriesModel?: OtherSeriesModel;
 };
 
