@@ -67,8 +67,7 @@ export const Title = styled.div`
 
 const selectedStyle = css`
   ${Content},
-  ${ColumnTypeIcon},
-  ${QueryColumnInfoIcon} {
+  ${ColumnTypeIcon} {
     background-color: ${color("summarize")};
     color: ${color("white")};
   }
@@ -94,7 +93,7 @@ const unselectedStyle = css`
     border-left: 0;
   }
 
-  ${QueryColumnInfoIcon} {
+  ${ColumnTypeIcon} {
     color: ${color("text-light")};
   }
 
