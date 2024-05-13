@@ -297,15 +297,17 @@ export const getNullReplacerTransform = (
   };
 };
 
-const hasInterpolatedSeries = (
+const hasInterpolatedAreaSeries = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ) => {
   return seriesModels.some(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
     return (
-      settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-        "line.missing"
-      ] !== "none"
+      seriesSettings["line.missing"] !== "none" &&
+      seriesSettings.display === "area"
     );
   });
 };
@@ -316,11 +318,13 @@ const hasInterpolatedSeries = (
  */
 const getStackedAreasInterpolateTransform = (
   seriesModels: SeriesModel[],
+  areaStackSeriesKeys: DataKey[],
 ): TransformFn => {
-  const seriesKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-
+  const areaStackSeriesKeysSet = new Set(areaStackSeriesKeys);
   return (datum: Datum) => {
-    const hasAtLeastOneSeriesValue = seriesKeys.some(key => datum[key] != null);
+    const hasAtLeastOneSeriesValue = areaStackSeriesKeys.some(
+      key => datum[key] != null,
+    );
     if (!hasAtLeastOneSeriesValue) {
       return datum;
     }
@@ -328,7 +332,9 @@ const getStackedAreasInterpolateTransform = (
     const transformedDatum = { ...datum };
     for (const seriesModel of seriesModels) {
       const dataKey = seriesModel.dataKey;
-      transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
+      if (areaStackSeriesKeysSet.has(dataKey)) {
+        transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
+      }
     }
     return transformedDatum;
   };
@@ -385,7 +391,7 @@ function getStackedValueTransformFunction(
 
 function getStackedValueTransfom(
   settings: ComputedVisualizationSettings,
-  seriesDataKeys: DataKey[],
+  stackModels: StackModel[],
 ): ConditionalTransform {
   const isPow = settings["graph.y_axis.scale"] === "pow";
   const isLog = settings["graph.y_axis.scale"] === "log";
@@ -399,10 +405,12 @@ function getStackedValueTransfom(
 
   const valueTransform = isPow ? signedSquareRoot : logValueTransform;
 
-  return {
-    condition: (isPow || isLog) && settings["stackable.stack_type"] != null,
-    fn: getStackedValueTransformFunction(seriesDataKeys, valueTransform),
-  };
+  const isNonLinearAxis = isPow || isLog;
+
+  return stackModels.map(stackModel => ({
+    condition: isNonLinearAxis,
+    fn: getStackedValueTransformFunction(stackModel.seriesKeys, valueTransform),
+  }));
 }
 
 function getStackedDataLabelTransform(
@@ -615,7 +623,7 @@ export const applyVisualizationSettingsDataTransformations = (
     getKeyBasedDatasetTransform(seriesDataKeys, value =>
       yAxisScaleTransforms.toEChartsAxisValue(value),
     ),
-    getStackedValueTransfom(settings, seriesDataKeys),
+    ...getStackedValueTransfom(settings, stackModels),
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
@@ -636,9 +644,12 @@ export const applyVisualizationSettingsDataTransformations = (
     {
       condition:
         settings["stackable.stack_type"] != null &&
-        settings["stackable.stack_display"] === "area" &&
-        hasInterpolatedSeries(seriesModels, settings),
-      fn: getStackedAreasInterpolateTransform(seriesModels),
+        hasInterpolatedAreaSeries(seriesModels, settings),
+      fn: getStackedAreasInterpolateTransform(
+        seriesModels,
+        stackModels.find(stackModel => stackModel.display === "area")
+          ?.seriesKeys ?? [],
+      ),
     },
   ]);
 };

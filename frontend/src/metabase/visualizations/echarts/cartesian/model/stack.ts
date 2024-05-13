@@ -15,16 +15,6 @@ export const getStackModels = (
     return [];
   }
 
-  const isComboChart = rawSeries[0].card.display === "combo";
-  if (!isComboChart) {
-    return [
-      {
-        display: settings["stackable.stack_display"],
-        seriesKeys: seriesModels.map(seriesModel => seriesModel.dataKey),
-      },
-    ];
-  }
-
   const seriesModelsByDisplay = _.groupBy(
     seriesModels,
     seriesModel =>
