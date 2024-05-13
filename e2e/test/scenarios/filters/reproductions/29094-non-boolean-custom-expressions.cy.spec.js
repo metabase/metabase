@@ -1,6 +1,7 @@
 import {
   enterCustomColumnDetails,
   getNotebookStep,
+  modal,
   popover,
   restore,
   startNewQuestion,
@@ -15,8 +16,8 @@ describe("issue 29094", () => {
   it("disallows adding a filter using non-boolean custom expression (metabase#29094)", () => {
     startNewQuestion();
 
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    modal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText("Orders").click();
     });
 
