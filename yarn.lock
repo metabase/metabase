@@ -17387,11 +17387,6 @@ num2fraction@^1.2.2:
   resolved "https://registry.yarnpkg.com/num2fraction/-/num2fraction-1.2.2.tgz#6f682b6a027a4e9ddfa4564cd2589d1d4e669ede"
   integrity sha1-b2gragJ6Tp3fpFZM0lidHU5mnt4=
 
-number-to-locale-string@^1.0.1:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/number-to-locale-string/-/number-to-locale-string-1.2.0.tgz#6c5030fb47e9c9ad14bf59a1ae81b33cc84b4038"
-  integrity sha512-q2BNrXwz250d/FR/wwHIr26oFx5eQiXfKxniS3V31TsSR1rJnYwKPfi7SaHRZYlMIOQTaXkAynjv9Pr/+vfyFQ==
-
 nwsapi@^2.2.4:
   version "2.2.5"
   resolved "https://registry.yarnpkg.com/nwsapi/-/nwsapi-2.2.5.tgz#a52744c61b3889dd44b0a158687add39b8d935e2"
