@@ -50,10 +50,15 @@ describe("Table", () => {
 
     const bgColors = rows
       .map(([value]) => screen.getByText(String(value)))
-      .map(element => element.parentNode.style["background-color"]);
+      .map(element =>
+        window
+          .getComputedStyle(element.parentNode)
+          .getPropertyValue("background"),
+      );
+
     expect(bgColors).toEqual([
-      "",
-      "",
+      "rgb(255, 255, 255)",
+      "rgb(255, 255, 255)",
       "rgba(255, 0, 0, 0.65)",
       "rgba(255, 0, 0, 0.65)",
     ]);
