@@ -1,5 +1,5 @@
 import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
-import { alpha, darken, isDark, lighten } from "metabase/lib/colors";
+import { alpha, isDark, lighten } from "metabase/lib/colors";
 
 export function getCellDataTheme({
   theme,
@@ -31,12 +31,12 @@ export const getCellHoverBackground = ({
 }: {
   theme: EmbeddingTheme;
 }): string => {
+  const brand = theme.fn.themeColor("brand");
   const background = theme.other?.table?.cell?.backgroundColor;
-  if (!background) {
-    return alpha(theme.fn.themeColor("brand"), 0.1);
+
+  if (background && isDark(background)) {
+    return lighten(background, 0.1);
   }
 
-  return isDark(background)
-    ? lighten(background, 0.1)
-    : darken(background, 0.1);
+  return alpha(brand, 0.1);
 };

@@ -1059,7 +1059,7 @@ class TableInteractive extends Component {
     const info = query && Lib.queryDisplayInfo(query);
 
     const tableTheme = theme?.other?.table;
-    const gutterBackground = tableTheme?.cell?.backgroundColor || "white";
+    const backgroundColor = tableTheme?.cell?.backgroundColor || "white";
 
     return (
       <DelayGroup>
@@ -1076,6 +1076,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
+                bg={backgroundColor || "white"}
                 className={cx(
                   className,
                   TableS.TableInteractive,
@@ -1110,7 +1111,7 @@ class TableInteractive extends Component {
                     />
                     <Box
                       id="gutter-column"
-                      bg={gutterBackground}
+                      bg={backgroundColor}
                       style={{
                         position: "absolute",
                         top: headerHeight,
