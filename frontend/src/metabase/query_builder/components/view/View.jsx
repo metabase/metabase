@@ -25,7 +25,6 @@ import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
-import NewQuestionView from "./View/NewQuestionView";
 import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
@@ -333,7 +332,6 @@ class View extends Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
-      updateQuestion,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -345,16 +343,6 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-
-    if (isNewQuestion && queryBuilderMode === "view") {
-      return (
-        <NewQuestionView
-          question={question}
-          updateQuestion={updateQuestion}
-          className={CS.fullHeight}
-        />
-      );
-    }
 
     const isModel = question.type() === "model";
 
