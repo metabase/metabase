@@ -2,18 +2,17 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import type { ModelResult } from "metabase-types/api";
 import EntityItem from "metabase/components/EntityItem";
 import {
   SortableColumnHeader,
-  type SortingOptions
+  type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
   ItemLink,
   ItemNameCell,
   Table,
   TableColumn,
-  TBody
+  TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
@@ -23,6 +22,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
 import { Icon, type IconProps } from "metabase/ui";
+import type { ModelResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
@@ -31,7 +31,8 @@ import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithToo
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import {
   ModelCell,
-  ModelNameColumn, ModelTableRow
+  ModelNameColumn,
+  ModelTableRow,
 } from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
@@ -179,11 +180,11 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
       </ModelCell>
 
       {/* Description */}
-      <ItemCell {...descriptionProps}>
+      <ModelCell {...descriptionProps}>
         <EllipsifiedWithMarkdownTooltip>
           {getModelDescription(model) || ""}
         </EllipsifiedWithMarkdownTooltip>
-      </ItemCell>
+      </ModelCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
