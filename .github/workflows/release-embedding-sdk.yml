@@ -61,6 +61,8 @@ jobs:
 
   build-jar:
     needs: test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     # TODO: Make it so that it only build EE jar, so we don't have to waste another runner for the image we don't use.
     uses: ./.github/workflows/uberjar.yml
     with:
@@ -68,6 +70,8 @@ jobs:
 
   upload-jar:
     needs: build-jar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
@@ -77,13 +81,13 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ inputs.aws-access-key-id }}
-          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
-          aws-region: ${{ inputs.aws-region }}
+          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload uberjar to S3
         env:
-          BUCKET: ${{ inputs.bucket }}
+          BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
           BUCKET_PATH: sdk/v${{ github.event.inputs.sdk_version }}/metabase.jar
           OUTPUT_FILE: ./target/uberjar/metabase.jar
         shell: bash
@@ -93,22 +97,61 @@ jobs:
 
   git-tag:
     needs: build
-      runs-on: ubuntu-22.04
-      timeout-minutes: 20
-      steps:
-        - name: Setup git user
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided commit, or HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit }}
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
+      - name: Create a new git tag
+        run: |
+          git tag embedding-sdk-${{ github.event.inputs.sdk_version }}
+      - if: failure()
+        run: echo "Make sure the tag 'embedding-sdk-${{ github.event.inputs.sdk_version }}' doesn't exist."
+
+      - name: Push the new tag
+        run: |
+          git push origin embedding-sdk-${{ github.event.inputs.sdk_version }}
+
+  publish-npm:
+    needs: git-tag
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+        - name: Check out the code using the provided commit, or HEAD
+          uses: actions/checkout@v4
+          with:
+            ref: ${{ github.event.inputs.commit }}
+
+      - name: Setup git user
           run: |
             git config --global user.email "metabase-bot@metabase.com"
             git config --global user.name "Metabase bot"
 
-        - name: Create a new git tag
-          run: |
-            git tag embedding-sdk-${{ github.event.inputs.sdk_version }}
-        - if: failure()
-          run: echo "Make sure the tag 'embedding-sdk-${{ github.event.inputs.sdk_version }}' doesn't exist."
+      - name: Update readme
+        run: |
+          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ github.event.inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ github.event.inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
 
-  update-readme:
-    needs: git-tag
+      - name: Bump published npm package version
+        run: |
+          sed -i -E 's/("version": ").*"/\1${{ github.event.inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
 
-  publish-npm:
-    needs: update-readme
+      - name: Create a PR updating readme + published version
+        run: |
+          git checkout -b update-sdk-version-${{ github.event.inputs.sdk_version }}
+          git commit -a -m 'Update Readme version references and published npm version to ${{ github.event.inputs.sdk_version }}'
+          gh pr create --base master\
+                       --assignee "${GITHUB_ACTOR}"\
+                       --title "Update SDK version to ${{ github.event.inputs.sdk_version }}"\
+                       --body "Update Readme version references and published npm package version to ${{ github.event.inputs.sdk_version }}"
+
+      - name: Publish to NPM
+        run: echo Implement this step once you've ensure other steps works correctly.
