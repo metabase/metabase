@@ -272,7 +272,7 @@
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.9.7",
-    "node-polyfill-webpack-plugin": "2.0.1",
+    "node-polyfill-webpack-plugin": "^3.0.0",
     "null-loader": "^4.0.1",
     "open-cli": "^8.0.0",
     "patch-package": "^8.0.0",
@@ -308,6 +308,7 @@
   "resolutions": {
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
+    "bn.js": "^5.2.1",
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
     "follow-redirects": "^1.15.5",
