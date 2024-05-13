@@ -12,13 +12,15 @@
    [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.setting.cache :as setting.cache]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
   (:import
-   [java.io File InputStream]))
+   [java.io File InputStream]
+   [org.apache.commons.io.input BoundedInputStream]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,6 +102,9 @@
 
 ;; Helpers
 
+(defn- migration-action-url [external-id path]
+  (str (metabase-store-migration-url) "/" external-id path))
+
 (def terminal-states
   "Cloud migration states that are terminal."
   #{:done :error :cancelled})
@@ -115,18 +120,16 @@
       2))
 
 (defn- progress-file-input-stream
-  "File input stream that calls on-percent-progress with current read progress as int from 0 to 100.
-  Does not call on-percent-progress for the same value twice. "
-  [^File file on-percent-progress]
+  "File input stream that calls on-percent-progress with current read progress as int from 0 to 100."
+  ^InputStream [^File file on-percent-progress]
   (let [input-stream             (io/input-stream file)
         length                   (.length file)
         *bytes                   (atom 0)
-        on-percent-progress-memo (memoize on-percent-progress) ;; memoize so we don't repeat calls
-        add-bytes                #(on-percent-progress-memo (int (* 100 (/ (swap! *bytes + %) length))))
+        add-bytes                #(on-percent-progress (int (* 100 (/ (swap! *bytes + %) length))))
         f                        (fn [ret & single?]
                                    (cond
                                      ;; -1 is end of stream
-                                     (= -1 ret)  (on-percent-progress-memo 100)
+                                     (= -1 ret)  (on-percent-progress 100)
                                      single?     (add-bytes 1)
                                      (int? ret)  (add-bytes ret))
                                    ret)]
@@ -150,17 +153,71 @@
                          {:state state :progress progress}))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
+(defn sub-stream
+  "Like subs, but for input-streams.
+  Returns a sub-stream that should be used inside with-open."
+  [^InputStream stream start end]
+  (.skip stream start)
+  (BoundedInputStream. stream (- end start)))
+
+(defn- put-file
+  "Put file, whole or from start to end, on url, reporting on-progress. Retries up to 3 times."
+  [url ^File file on-progress & {:keys [headers start end]}]
+  (u/auto-retry 3
+    (with-open [file-stream (progress-file-input-stream file on-progress)]
+      (let [[stream length] (if (and start end)
+                              [(sub-stream file-stream start end) (- end start)]
+                              [file-stream (.length file)])]
+        (http/put url {:headers headers :length length :body stream})))))
+
+;; ~100mb
+(def ^:private part-size 100e6)
+
+(defn- upload [{:keys [id external_id upload_url]} ^File dump-file]
+  (let [;; memoize so we don't have repeats for each percent and don't go back on retries
+        set-progress-memo (memoize set-progress)
+        on-progress       #(set-progress-memo id :upload (int (+ 50 (* 50 (/ % 100)))))
+        ;; the migration-dump-file setting is used for testing older dumps in the rich comment
+        ;; at the end of this file
+        file              (if (migration-dump-file)
+                            (io/file (migration-dump-file))
+                            dump-file)
+        file-length       (.length file)]
+    (if-not (> file-length part-size)
+      ;; single put uses SSE, but multipart doesn't support it.
+      (put-file upload_url file on-progress :headers {"x-amz-server-side-encryption" "aws:kms"})
+      (let [parts
+            (partition 2 1 (-> (range 0 file-length part-size)
+                               vec
+                               (conj file-length)))
+
+            {:keys [multipart-upload-id multipart-urls]}
+            (-> (http/put (migration-action-url external_id "/multipart")
+                          {:form-params  {:part_count (count parts)}
+                           :content-type :json})
+                :body
+                (json/parse-string keyword))
+
+            etags
+            (->> (map (fn [[start end] [part-number url]]
+                        [part-number
+                         (get-in (put-file url file on-progress :start start :end end)
+                                 [:headers "ETag"])])
+                      parts multipart-urls)
+                 (into {}))]
+        (http/put (migration-action-url external_id "/multipart/complete")
+                  {:form-params  {:multipart_upload_id multipart-upload-id
+                                  :multipart_etags     etags}
+                   :content-type :json})))))
+
 (defn migrate!
   "Migrate this instance to Metabase Cloud.
   Will exit early if migration has been cancelled in any cluster instance.
   Should run in a separate thread since it can take a long time to complete."
-  [{:keys [id external_id upload_url]} & {:keys [retry?]}]
+  [{:keys [id external_id] :as migration} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
   ;; in the same process.
-  (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))
-        ;; Note: this will still set progress up to twice for each percent
-        ;; because e.g. 70 and 71 upload percent both map to 50+35 migration percent.
-        on-upload-progress #(set-progress id :upload (int (+ 50 (* 50 (/ % 100)))))]
+  (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
         (t2/update! :model/CloudMigration :id id {:state :init}))
@@ -183,17 +240,10 @@
 
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
-      ;; custom-dump-file is used for testing older dumps in the rich comment below
-      (let [upload-file (if (migration-dump-file)
-                          (io/file (migration-dump-file))
-                          dump-file)]
-        (http/put upload_url {:headers {"x-amz-server-side-encryption" "aws:kms"}
-                              :length  (.length ^File upload-file)
-                              :body    (progress-file-input-stream
-                                        upload-file on-upload-progress)}))
+      (upload migration dump-file)
 
       (log/info "Notifying store that upload is done")
-      (http/put (str (metabase-store-migration-url) "/" external_id "/uploaded"))
+      (http/put (migration-action-url external_id "/uploaded"))
 
       (log/info "Migration finished")
       (set-progress id :done 100)
@@ -233,6 +283,8 @@
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java -jar metabase.jar dump-to-h2 dump --dump-plaintext
   #_(migration-dump-file! "/path/to/dump.mv.db")
+  ;; force migration with a smaller multipart threshold (~6mb is minimum)
+  #_(def ^:private part-size 6e6)
 
   ;; add new
   (t2/insert-returning-instance! :model/CloudMigration (get-store-migration))
