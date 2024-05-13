@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
+  cartesianChartCircle,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -98,5 +99,20 @@ describe("scenarios > metrics > question", () => {
       .click();
     popover().findByText("Year").click();
     assertQueryBuilderRowCount(5);
+  });
+
+  it("should be able to drill-thru with a metric", () => {
+    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
+      visitMetric(card.id),
+    );
+    cartesianChartCircle()
+      .eq(23) // random dot
+      .click({ force: true });
+    popover().within(() => {
+      cy.findByText("Break out by…").click();
+      cy.findByText("Category").click();
+      cy.findByText("Source").click();
+    });
+    echartsContainer().findByText("User → Source").should("be.visible");
   });
 });
