@@ -1,27 +1,33 @@
-export const DASHBOARD_TEXT_FILTERS = {
-  Is: {
+export const DASHBOARD_TEXT_FILTERS = [
+  {
+    operator: "Is",
     value: "Organic",
     representativeResult: "39.58",
   },
-  "Is not": {
+  {
+    operator: "Is not",
     value: "Organic",
     representativeResult: "37.65",
   },
   // It is important to keep multiple values as a single string in the value field.
-  Contains: {
+  {
+    operator: "Contains",
     value: "oo,aa",
     representativeResult: "148.23",
   },
-  "Does not contain": {
+  {
+    operator: "Does not contain",
     value: "oo,aa",
     representativeResult: "37.65",
   },
-  "Starts with": {
+  {
+    operator: "Starts with",
     value: "A,b",
     representativeResult: "85.72",
   },
-  "Ends with": {
+  {
+    operator: "Ends with",
     value: "e,s",
     representativeResult: "47.68",
   },
-};
+];

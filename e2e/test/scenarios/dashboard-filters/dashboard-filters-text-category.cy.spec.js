@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
@@ -26,6 +28,8 @@ import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
+const operators = _.uniq(DASHBOARD_TEXT_FILTERS.map(f => f.operator));
+
 describe("scenarios > dashboard > filters > text/category", () => {
   beforeEach(() => {
     restore();
@@ -47,24 +51,23 @@ describe("scenarios > dashboard > filters > text/category", () => {
   });
 
   it("should work when set through the filter widget", () => {
-    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Text or Category", filter);
+    operators.forEach(operator => {
+      cy.log(`Make sure we can connect ${operator} filter`);
+      setFilter("Text or Category", operator);
 
       cy.findByText("Select…").click();
       popover().contains("Source").click();
     });
-
     saveDashboard();
     waitDashboardCardQuery();
 
-    Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
+    DASHBOARD_TEXT_FILTERS.forEach(
+      ({ operator, value, representativeResult }, index) => {
         filterWidget().eq(index).click();
-        applyFilterByType(filter, value);
+        applyFilterByType(operator, value);
         waitDashboardCardQuery();
 
-        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.log(`Make sure ${operator} filter returns correct result`);
         cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
