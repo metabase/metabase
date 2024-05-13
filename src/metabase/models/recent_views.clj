@@ -1,6 +1,6 @@
 (ns metabase.models.recent-views
   "The Recent Views table is used to track the most recent views of objects such as Cards, Models, Tables, Dashboards,
-  and Collections for each user, for an up to date list, see [[models-of-interest]].
+  and Collections for each user. For an up to date list, see [[models-of-interest]].
 
   It offers a simple API to add a recent, and fetch the list of recents.
 
@@ -206,7 +206,7 @@
     {:id model_id
      :name (:name card)
      :description (:description card)
-     :display (when-let [display (:display card)] (name display))
+     :display (some-> card :display name)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)

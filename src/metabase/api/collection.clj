@@ -958,16 +958,15 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
-  (u/prog1 (first
-            (t2/insert-returning-instances!
-             :model/Collection
-             (merge
-              {:name            name
-               :description     description
-               :authority_level authority_level
-               :namespace       namespace}
-              (when parent_id
-                {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))}))))
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (merge
+             {:name            name
+              :description     description
+              :authority_level authority_level
+              :namespace       namespace}
+             (when parent_id
+               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"

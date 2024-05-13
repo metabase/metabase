@@ -8,12 +8,10 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def test-user :rasta)
-
 (defn- clear-test-user-recent-views
   []
-  (log/infof "Clearing %s's recent views" (pr-str test-user))
-  (t2/delete! :model/RecentViews :user_id (mt/user->id test-user)))
+  (log/infof "Clearing %s's recent views" (pr-str :rasta))
+  (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta)))
 
 ;; use fixtures, each:
 ;; call clear-test-user-recent-views
@@ -28,14 +26,14 @@
                              :model/Card      {model-id-2   :id} {:type "model"}
                              :model/Dashboard {dashboard-id :id} {}]
       ;; insert 6
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card model-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card model-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card model-id-2)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card model-id-2)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dashboard-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dashboard-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
       ;; only see 3
-      (is (= 3 (count (recent-views/get-list (mt/user->id test-user))))))))
+      (is (= 3 (count (recent-views/get-list (mt/user->id :rasta))))))))
 
 (deftest most-recently-viewed-dashboard-id-test
   (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
@@ -43,27 +41,27 @@
                              :model/Dashboard {dash-id-2 :id} {}
                              :model/Dashboard {dash-id-3 :id} {}]
 
-      (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id test-user))))
+      (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id)
-      (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id test-user))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id-2)
-      (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id test-user))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2)
+      (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dash-id-3)
-      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id test-user)))))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3)
+      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))))
 
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
     (mt/with-temp [:model/Card {card-id :id} {:type "question"}]
       ;; twenty five views
-      (dotimes [_ 25] (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card card-id))
-      (is (= 0 (count (filter (comp #{:dataset} :model) (recent-views/get-list (mt/user->id test-user))))))
-      (is (= 1 (count (filter (comp #{:card} :model) (recent-views/get-list (mt/user->id test-user)))))))))
+      (dotimes [_ 25] (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id))
+      (is (= 0 (count (filter (comp #{:dataset} :model) (recent-views/get-list (mt/user->id :rasta))))))
+      (is (= 1 (count (filter (comp #{:card} :model) (recent-views/get-list (mt/user->id :rasta)))))))))
 
 (deftest update-users-recent-views!-bucket-filling-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
@@ -95,17 +93,17 @@
                                              [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
                                              [:model/Table :table [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id test-user) model model-id))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
           (testing (format "When user views %s %ss, the latest %s per model are kept. "
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
-            (is (= 2 (count (filter (comp #{out-model} :model) (recent-views/get-list (mt/user->id test-user))))))))
+            (is (= 2 (count (filter (comp #{out-model} :model) (recent-views/get-list (mt/user->id :rasta))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
              :dataset recent-views/*recent-views-stored-per-user-per-model*,
              :dashboard recent-views/*recent-views-stored-per-user-per-model*,
              :collection recent-views/*recent-views-stored-per-user-per-model*,
              :table recent-views/*recent-views-stored-per-user-per-model*}
-            (frequencies (map :model (recent-views/get-list (mt/user->id test-user)))))
+            (frequencies (map :model (recent-views/get-list (mt/user->id :rasta)))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
 
@@ -128,16 +126,16 @@
          :model/Table      {table-id        :id} {:db_id db-id, :is_upload true}
          :model/Table      {table-id-2      :id} {:db_id db-id, :is_upload true}
          :model/Table      {table-id-3      :id} {:db_id db-id, :is_upload true}]
-        (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Dashboard dashboard-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
         (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
                                    [:model/Card       [model-id model-id-2 model-id-3]]
                                    [:model/Collection [collection-id collection-id-2 collection-id-3]]
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id test-user) model model-id)
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)
             (is (= [dashboard-id]
                    (keep #(when ((comp #{:dashboard} :model) %) (:id %))
-                         (recent-views/get-list (mt/user->id test-user)))))))))))
+                         (recent-views/get-list (mt/user->id :rasta)))))))))))
 
 (deftest table-per-user-size-shrinks-or-grows-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 30]
@@ -170,15 +168,15 @@
                                    [:model/Collection [collection-id collection-id-2 collection-id-3]]
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id test-user) model model-id)))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
         (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 3}
-               (frequencies (map :model (recent-views/get-list (mt/user->id test-user))))))
+               (frequencies (map :model (recent-views/get-list (mt/user->id :rasta))))))
         (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
           (is (= 5
-                 (count (set (recent-views/ids-to-prune (mt/user->id test-user))))))
-          (recent-views/update-users-recent-views! (mt/user->id test-user) :model/Card card-id-4)
+                 (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
           (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 2}
-                 (frequencies (map :model (recent-views/get-list (mt/user->id test-user)))))))))))
+                 (frequencies (map :model (recent-views/get-list (mt/user->id :rasta)))))))))))
 
 (deftest id-pruning-test
   (mt/with-temp [:model/Database a-db     {}
@@ -188,26 +186,26 @@
                  :model/Card a-model      {:type "model"    :table_id (mt/id :reviews)}
                  :model/Dashboard a-dash  {}
 
-                 :model/RecentViews rv15  {:id 1336998, :user_id (mt/user->id test-user), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:00+08:00"}
-                 :model/RecentViews rv14  {:id 1336999, :user_id (mt/user->id test-user), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:01+08:00"}
-                 :model/RecentViews _rv13 {:id 1337000, :user_id (mt/user->id test-user), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:02+08:00"}
-                 :model/RecentViews rv12  {:id 1337001, :user_id (mt/user->id test-user), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1971-01-01T08:03+08:00"}
-                 :model/RecentViews rv11  {:id 1337002, :user_id (mt/user->id test-user), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1972-11-31T18:02:00.001-06:00"}
-                 :model/RecentViews _rv10 {:id 1337003, :user_id (mt/user->id test-user), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1973-01-01T01:01:00.003+01:00"}
-                 :model/RecentViews rv9   {:id 1337004, :user_id (mt/user->id test-user), :model "collection", :model_id (:id a-coll),  :timestamp #t "1974-01-01T06:22:59.999+06:30"}
-                 :model/RecentViews _rv8  {:id 1337005, :user_id (mt/user->id test-user), :model "collection", :model_id (:id a-coll),  :timestamp #t "1975-01-01T06:22:59.999+06:30"}
-                 :model/RecentViews rv7   {:id 1337006, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1976-01-01T06:29:59.999+06:30"}
-                 :model/RecentViews rv6   {:id 1337007, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1977-01-01T09:00+09:00"}
-                 :model/RecentViews rv5   {:id 1337008, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1978-01-01T01:00:00.001+01:00"}
-                 :model/RecentViews rv4   {:id 1337009, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1979-01-01T04:59:59.998+05:00"}
-                 :model/RecentViews rv3   {:id 1337010, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1980-01-01T00:00Z"}
-                 :model/RecentViews _rv2  {:id 1337011, :user_id (mt/user->id test-user), :model "table",      :model_id (:id a-table), :timestamp #t "1981-01-01T05:59:59.999+06:00"}
-                 :model/RecentViews rv1   {:id 1337012, :user_id (mt/user->id test-user), :model "card",       :model_id (:id a-card),  :timestamp #t "1982-01-01T00:00Z"}
-                 :model/RecentViews _rv0  {:id 1337013, :user_id (mt/user->id test-user), :model "card",       :model_id (:id a-card),  :timestamp #t "1983-10-01T00:00Z"}]
-    (let [query-result (recent-views/get-list (mt/user->id test-user))]
+                 :model/RecentViews rv15  {:id 1336998, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:00+08:00"}
+                 :model/RecentViews rv14  {:id 1336999, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:01+08:00"}
+                 :model/RecentViews _rv13 {:id 1337000, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-model), :timestamp #t "1971-01-01T08:02+08:00"}
+                 :model/RecentViews rv12  {:id 1337001, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1971-01-01T08:03+08:00"}
+                 :model/RecentViews rv11  {:id 1337002, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1972-11-31T18:02:00.001-06:00"}
+                 :model/RecentViews _rv10 {:id 1337003, :user_id (mt/user->id :rasta), :model "dashboard",  :model_id (:id a-dash),  :timestamp #t "1973-01-01T01:01:00.003+01:00"}
+                 :model/RecentViews rv9   {:id 1337004, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1974-01-01T06:22:59.999+06:30"}
+                 :model/RecentViews _rv8  {:id 1337005, :user_id (mt/user->id :rasta), :model "collection", :model_id (:id a-coll),  :timestamp #t "1975-01-01T06:22:59.999+06:30"}
+                 :model/RecentViews rv7   {:id 1337006, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1976-01-01T06:29:59.999+06:30"}
+                 :model/RecentViews rv6   {:id 1337007, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1977-01-01T09:00+09:00"}
+                 :model/RecentViews rv5   {:id 1337008, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1978-01-01T01:00:00.001+01:00"}
+                 :model/RecentViews rv4   {:id 1337009, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1979-01-01T04:59:59.998+05:00"}
+                 :model/RecentViews rv3   {:id 1337010, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1980-01-01T00:00Z"}
+                 :model/RecentViews _rv2  {:id 1337011, :user_id (mt/user->id :rasta), :model "table",      :model_id (:id a-table), :timestamp #t "1981-01-01T05:59:59.999+06:00"}
+                 :model/RecentViews rv1   {:id 1337012, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1982-01-01T00:00Z"}
+                 :model/RecentViews _rv0  {:id 1337013, :user_id (mt/user->id :rasta), :model "card",       :model_id (:id a-card),  :timestamp #t "1983-10-01T00:00Z"}]
+    (let [query-result (recent-views/get-list (mt/user->id :rasta))]
       (is (apply t/after? (map (comp t/zoned-date-time :timestamp) query-result))
           "recent-views/get-list should be in chronological order, newest first:"))
-    (let [ids-to-prune (#'recent-views/duplicate-model-ids (mt/user->id test-user))]
+    (let [ids-to-prune (#'recent-views/duplicate-model-ids (mt/user->id :rasta))]
       (is (= #{(:id rv1)                                         ;; dupe cards
                (:id rv3) (:id rv4) (:id rv5) (:id rv6) (:id rv7) ;; dupe tables
                (:id rv9)                                         ;; dupe collections
@@ -222,12 +220,12 @@
                  :model/Card d-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card e-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card f-card {:type "question" :table_id (mt/id :reviews)}
-                 :model/RecentViews _ {:id 1337000 :user_id (mt/user->id test-user), :model "card", :model_id (:id a-card), :timestamp #t "2000-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337001 :user_id (mt/user->id test-user), :model "card", :model_id (:id b-card), :timestamp #t "2001-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337002 :user_id (mt/user->id test-user), :model "card", :model_id (:id c-card), :timestamp #t "2002-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337003 :user_id (mt/user->id test-user), :model "card", :model_id (:id d-card), :timestamp #t "2003-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337004 :user_id (mt/user->id test-user), :model "card", :model_id (:id e-card), :timestamp #t "2004-10-01T00:00Z"}
-                 :model/RecentViews _ {:id 1337005 :user_id (mt/user->id test-user), :model "card", :model_id (:id f-card), :timestamp #t "2005-10-01T00:00Z"}]
+                 :model/RecentViews _ {:id 1337000 :user_id (mt/user->id :rasta), :model "card", :model_id (:id a-card), :timestamp #t "2000-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337001 :user_id (mt/user->id :rasta), :model "card", :model_id (:id b-card), :timestamp #t "2001-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337002 :user_id (mt/user->id :rasta), :model "card", :model_id (:id c-card), :timestamp #t "2002-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337003 :user_id (mt/user->id :rasta), :model "card", :model_id (:id d-card), :timestamp #t "2003-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337004 :user_id (mt/user->id :rasta), :model "card", :model_id (:id e-card), :timestamp #t "2004-10-01T00:00Z"}
+                 :model/RecentViews _ {:id 1337005 :user_id (mt/user->id :rasta), :model "card", :model_id (:id f-card), :timestamp #t "2005-10-01T00:00Z"}]
     (doseq [{:keys [ids-to-prune bucket-size]} [{:ids-to-prune [0 1 2 3 4 5] :bucket-size 0} ;; delete them all!
                                                 {:ids-to-prune [0 1 2 3 4]   :bucket-size 1}
                                                 {:ids-to-prune [0 1 2 3]     :bucket-size 2}
@@ -240,4 +238,4 @@
         (testing (str "Bucket size: " bucket-size)
           (is (= ids-to-prune
                  (vec (sort (map #(- % 1337000)
-                                 (#'recent-views/ids-to-prune (mt/user->id test-user))))))))))))
+                                 (#'recent-views/ids-to-prune (mt/user->id :rasta))))))))))))
