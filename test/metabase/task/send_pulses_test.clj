@@ -222,18 +222,18 @@
                                         daily-at-8am)]
         ;; if its want to be fired at 8 am utc+7, then it should be fired at 1am utc
         (is (= (next-fire-hour 1)
-               (send-pusle-triggers-next-fire-time pulse))))))
+               (send-pusle-triggers-next-fire-time pulse)))))
 
-  (mt/with-temporary-setting-values [report-timezone "UTC"]
-    (mt/with-temp
-      [:model/Pulse        {pulse :id} {}
-       :model/PulseChannel {_pc :id} (merge
-                                      {:pulse_id     pulse
-                                       :channel_type :slack
-                                       :details      {:channel "#random"}}
-                                      daily-at-8am)]
-      (is (= (next-fire-hour 8)
-             (send-pusle-triggers-next-fire-time pulse))))))
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (mt/with-temp
+        [:model/Pulse        {pulse :id} {}
+         :model/PulseChannel {_pc :id} (merge
+                                        {:pulse_id     pulse
+                                         :channel_type :slack
+                                         :details      {:channel "#random"}}
+                                        daily-at-8am)]
+        (is (= (next-fire-hour 8)
+               (send-pusle-triggers-next-fire-time pulse)))))))
 
 (deftest change-report-timezone-will-update-triggers-timezone-test
   (pulse-channel-test/with-send-pulse-setup!
