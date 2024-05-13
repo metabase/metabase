@@ -2,7 +2,12 @@ import { t } from "ttag";
 
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { checkNotNull, checkNumber, isNotNull } from "metabase/lib/types";
+import {
+  checkNotNull,
+  checkNumber,
+  isNotNull,
+  isNumber,
+} from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -331,6 +336,15 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
+function getRowValueForSorting(value: RowValue) {
+  if (isNumber(value)) {
+    return value;
+  }
+  // For ranking series to group into the "other" series, we consider null
+  // values to be the smallest
+  return -Infinity;
+}
+
 function groupSeriesIntoOther(
   dataset: ChartDataset,
   seriesDataKeys: DataKey[],
@@ -342,9 +356,11 @@ function groupSeriesIntoOther(
 
   const groupedSeriesKeys = [...seriesDataKeys]
     .sort(
-      (keyA, keyB) => (lastDatum[keyB] as number) - (lastDatum[keyA] as number),
+      (keyA, keyB) =>
+        getRowValueForSorting(lastDatum[keyB]) -
+        getRowValueForSorting(lastDatum[keyA]),
     )
-    .slice(maxCategories); // TODO remove casts
+    .slice(maxCategories);
 
   const transformedDataset: ChartDataset = [];
 
@@ -355,15 +371,15 @@ function groupSeriesIntoOther(
     });
 
     transformedDatum[OTHER_DATA_KEY] = groupedSeriesKeys.reduce(
-      (sum, key) => (sum += datum[key] || 0),
+      (sum, key) => sum + checkNumber(datum[key] ?? 0),
       0,
-    ); // TODO use constant, remove cast
+    );
 
     transformedDataset.push(transformedDatum);
   });
 
   return { groupedSeriesKeys, transformedDataset };
-} // TODO make sure this works with goal line, trend line, y-axis range, y-axis scales
+}
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],
@@ -632,7 +648,6 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
-  // TODO check for breakout
   let groupedSeriesKeys: DataKey[] = [];
   if (
     settings["graph.max_categories"] != null &&
