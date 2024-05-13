@@ -205,18 +205,9 @@ const config = (module.exports = {
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
-      cacheGroups: {
-        vendors: {
-          test: /[\\/]node_modules[\\/](?!sql-formatter[\\/])/,
-          chunks: "all",
-          name: "vendor",
-        },
-        sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
-          chunks: "all",
-          name: "sql-formatter",
-        },
-      },
+      // include all types of chunks every dynamic import like await
+      // import("jspdf") will automatically create a new chunk
+      chunks: "all",
     },
     minimizer: [
       new TerserPlugin({
