@@ -23,6 +23,11 @@ describe("Transform Embedding Theme Override", () => {
       },
       other: {
         fontSize: "2rem",
+        table: {
+          cell: {
+            backgroundColor: "#ffffff",
+          },
+        },
       },
     });
   });
