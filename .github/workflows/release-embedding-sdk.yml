@@ -9,6 +9,10 @@ on:
         required: true
       commit:
         description: 'Optional full-length commit SHA-1 hash'
+  # Force trigger the workflow
+  pull_request:
+    branches:
+      - 42498-automate-sdk-release
 
 
 concurrency:
