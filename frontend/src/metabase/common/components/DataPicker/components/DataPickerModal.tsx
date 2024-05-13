@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -19,6 +19,7 @@ import type {
   NotebookDataPickerValueItem,
 } from "../types";
 import {
+  createDatabaseIdItemFilter,
   isModelItem,
   isQuestionItem,
   isTableItem,
@@ -58,6 +59,14 @@ export const DataPickerModal = ({
 }: Props) => {
   const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
+  const shouldShowItem = useMemo(() => {
+    return createDatabaseIdItemFilter(databaseId);
+  }, [databaseId]);
+
+  const searchParams = useMemo(() => {
+    return databaseId ? { table_db_id: databaseId } : undefined;
+  }, [databaseId]);
+
   const handleChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
       if (!isValidValueItem(item.model)) {
@@ -92,10 +101,10 @@ export const DataPickerModal = ({
           icon: "model",
           element: (
             <QuestionPicker
-              databaseId={databaseId}
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
               options={options}
+              shouldShowItem={shouldShowItem}
               onItemSelect={handleCardChange}
             />
           ),
@@ -120,10 +129,10 @@ export const DataPickerModal = ({
           icon: "folder",
           element: (
             <QuestionPicker
-              databaseId={databaseId}
               initialValue={isQuestionItem(value) ? value : undefined}
               models={QUESTION_PICKER_MODELS}
               options={options}
+              shouldShowItem={shouldShowItem}
               onItemSelect={handleCardChange}
             />
           ),
@@ -137,9 +146,9 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
-      databaseId={databaseId}
       initialValue={value}
       options={options}
+      searchParams={searchParams}
       selectedItem={value ?? null}
       tabs={tabs}
       title={title}

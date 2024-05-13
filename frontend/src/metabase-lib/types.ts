@@ -578,6 +578,7 @@ export interface ClickObject {
   seriesIndex?: number;
   cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

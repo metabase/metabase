@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -12,7 +12,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   CollectionItemModel,
-  DatabaseId,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -24,13 +23,7 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
-import {
-  createDatabaseIdItemFilter,
-  generateKey,
-  getCollectionIdPath,
-  getStateFromIdPath,
-  isFolder,
-} from "../utils";
+import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -39,14 +32,11 @@ export const defaultOptions: QuestionPickerOptions = {
 };
 
 interface QuestionPickerProps {
-  /**
-   * Limit selection to a particular database
-   */
-  databaseId?: DatabaseId;
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
   models?: CollectionItemModel[];
+  shouldShowItem?: (item: QuestionPickerItem) => boolean;
 }
 
 const useGetInitialCollection = (
@@ -82,11 +72,11 @@ const useGetInitialCollection = (
 };
 
 export const QuestionPicker = ({
-  databaseId,
   onItemSelect,
   initialValue,
   options,
   models = ["dataset", "card"],
+  shouldShowItem,
 }: QuestionPickerProps) => {
   const [path, setPath] = useState<
     PickerState<QuestionPickerItem, ListCollectionItemsRequest>
@@ -105,10 +95,6 @@ export const QuestionPicker = ({
   } = useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
-
-  const shouldShowItem = useMemo(() => {
-    return createDatabaseIdItemFilter(databaseId);
-  }, [databaseId]);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
@@ -181,7 +167,6 @@ export const QuestionPicker = ({
     <NestedItemPicker
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
-      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}

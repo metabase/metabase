@@ -32,23 +32,25 @@ Drop entity IDs for instances of serializable models. Useful for migrating from 
 
 Serializes Metabase instance into directory `path`.
 
-Options:
+**Options:**
 
--u, --user EMAIL Export collections owned by the specified user
--s, --state (active|all) all When set to `active`, do not dump archived entities. Default behavior is `all`.
+`-u`, `--user EMAIL` Export collections owned by the specified user
+
+`-s`, `--state (active|all) all` When set to `active`, do not dump archived entities. Default behavior is `all`.
 
 ## `dump-to-h2 h2-filename & opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
 
-Options:
+**Options:**
 
--k, --keep-existing Do not delete target H2 file if it exists.
--p, --dump-plaintext Do not encrypt dumped contents.
+`-k`, `--keep-existing` Do not delete target H2 file if it exists.
+
+`-p`, `--dump-plaintext` Do not encrypt dumped contents.
 
 ## `environment-variables-documentation`
 
-Generates a markdown file containing documentation for environment variables relevant to configuring Metabase. The command only includes environment variables registered as defsettings. For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.
+Generates a markdown file containing documentation for environment variables relevant to configuring Metabase. The command only includes environment variables registered as defsettings. For a full list of environment variables, see [Environment variables](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables).
 
 ## `export path & options`
 
@@ -56,14 +58,19 @@ Generates a markdown file containing documentation for environment variables rel
 
 Serialize Metabase instance into directory at `path`.
 
-Options:
+**Options:**
 
--c, --collection ID Export only specified ID(s). Use commas to separate multiple IDs.
--C, --no-collections Do not export any content in collections.
--S, --no-settings Do not export settings.yaml
--D, --no-data-model Do not export any data model entities; useful for subsequent exports.
--f, --include-field-values Include field values along with field metadata.
--s, --include-database-secrets Include database connection details (in plain text; use caution).
+`-c`, `--collection ID` Export only specified ID(s). Use commas to separate multiple IDs.
+
+`-C`, `--no-collections` Do not export any content in collections.
+
+`-S`, `--no-settings` Do not export settings.yaml
+
+`-D`, `--no-data-model` Do not export any data model entities; useful for subsequent exports.
+
+`-f`, `--include-field-values` Include field values along with field metadata.
+
+`-s`, `--include-database-secrets` Include database connection details (in plain text; use caution).
 
 ## `help`
 
@@ -81,10 +88,11 @@ Load serialized Metabase instance as created by the export command from director
 
 Load serialized Metabase instance as created by [[dump]] command from directory `path`.
 
-Options:
+**Options:**
 
--m, --mode (skip|update) skip Update or skip on conflicts.
--e, --on-error (continue|abort) continue Abort or continue on error.
+`-m`, `--mode (skip|update) skip` Update or skip on conflicts.
+
+`-e`, `--on-error (continue|abort)` continue Abort or continue on error.
 
 ## `load-from-h2`
 
@@ -108,7 +116,7 @@ Reset the password for a user with `email-address`.
 
 ## `rotate-encryption-key new-key`
 
-Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
+Rotate the encryption key of a Metabase database. The `MB_ENCRYPTION_SECRET_KEY` environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
 
 ## `version`
 

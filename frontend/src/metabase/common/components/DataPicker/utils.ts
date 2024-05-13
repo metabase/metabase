@@ -1,9 +1,11 @@
 import { humanize, titleize } from "metabase/lib/formatting";
+import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import TableEntity from "metabase-lib/v1/metadata/Table";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
+  CollectionItem,
   Database,
   DatabaseId,
   SchemaName,
@@ -11,6 +13,8 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
+
+import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {
   DataPickerValue,
@@ -170,4 +174,24 @@ export const isTableItem = (
 
 export const isValidValueItem = (model: SearchModel): boolean => {
   return ["dataset", "card", "table"].includes(model);
+};
+
+export const createDatabaseIdItemFilter = (databaseId?: DatabaseId) => {
+  return (item: QuestionPickerItem) => {
+    if (
+      isNullOrUndefined(databaseId) ||
+      !hasDatabaseId(item) ||
+      isNullOrUndefined(item.database_id)
+    ) {
+      return true;
+    }
+
+    return item.database_id === databaseId;
+  };
+};
+
+const hasDatabaseId = (
+  value: unknown,
+): value is Pick<CollectionItem, "database_id"> => {
+  return typeof value === "object" && value != null && "database_id" in value;
 };

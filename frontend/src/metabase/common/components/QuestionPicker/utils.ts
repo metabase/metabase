@@ -1,12 +1,9 @@
 import _ from "underscore";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   CollectionId,
-  CollectionItem,
   CollectionItemModel,
-  DatabaseId,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -105,27 +102,4 @@ export const isFolder = (
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
         .length > 0)
   );
-};
-
-export const generateKey = (query?: ListCollectionItemsRequest) =>
-  JSON.stringify(query ?? "root");
-
-export const createDatabaseIdItemFilter = (databaseId?: DatabaseId) => {
-  return (item: QuestionPickerItem) => {
-    if (
-      isNullOrUndefined(databaseId) ||
-      !hasDatabaseId(item) ||
-      isNullOrUndefined(item.database_id)
-    ) {
-      return true;
-    }
-
-    return item.database_id === databaseId;
-  };
-};
-
-const hasDatabaseId = (
-  value: unknown,
-): value is Pick<CollectionItem, "database_id"> => {
-  return typeof value === "object" && value != null && "database_id" in value;
 };

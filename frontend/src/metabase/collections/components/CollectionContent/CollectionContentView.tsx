@@ -18,10 +18,8 @@ import type {
 } from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
-import {
-  Sort,
-  type SortingOptions,
-} from "metabase/components/ItemsTable/BaseItemsTable";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -97,7 +95,7 @@ export const CollectionContentView = ({
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
       sort_column: "name",
-      sort_direction: Sort.Asc,
+      sort_direction: SortDirection.Asc,
     });
 
   const [
@@ -352,41 +350,43 @@ export const CollectionContentView = ({
                     }
 
                     return (
-                      <CollectionTable data-testid="collection-table">
-                        <ItemsTable
-                          databases={databases}
-                          bookmarks={bookmarks}
-                          createBookmark={createBookmark}
-                          deleteBookmark={deleteBookmark}
-                          items={unpinnedItems}
-                          collection={collection}
-                          sortingOptions={unpinnedItemsSorting}
-                          onSortingOptionsChange={
-                            handleUnpinnedItemsSortingChange
-                          }
-                          selectedItems={selected}
-                          hasUnselected={hasUnselected}
-                          getIsSelected={getIsSelected}
-                          onToggleSelected={toggleItem}
-                          onDrop={clear}
-                          onMove={handleMove}
-                          onCopy={handleCopy}
-                          onSelectAll={handleSelectAll}
-                          onSelectNone={clear}
-                        />
-                        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-                          {hasPagination && (
-                            <PaginationControls
-                              showTotal
-                              page={page}
-                              pageSize={PAGE_SIZE}
-                              total={metadata.total}
-                              itemsLength={unpinnedItems.length}
-                              onNextPage={handleNextPage}
-                              onPreviousPage={handlePreviousPage}
-                            />
-                          )}
-                        </div>
+                      <>
+                        <CollectionTable data-testid="collection-table">
+                          <ItemsTable
+                            databases={databases}
+                            bookmarks={bookmarks}
+                            createBookmark={createBookmark}
+                            deleteBookmark={deleteBookmark}
+                            items={unpinnedItems}
+                            collection={collection}
+                            sortingOptions={unpinnedItemsSorting}
+                            onSortingOptionsChange={
+                              handleUnpinnedItemsSortingChange
+                            }
+                            selectedItems={selected}
+                            hasUnselected={hasUnselected}
+                            getIsSelected={getIsSelected}
+                            onToggleSelected={toggleItem}
+                            onDrop={clear}
+                            onMove={handleMove}
+                            onCopy={handleCopy}
+                            onSelectAll={handleSelectAll}
+                            onSelectNone={clear}
+                          />
+                          <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+                            {hasPagination && (
+                              <PaginationControls
+                                showTotal
+                                page={page}
+                                pageSize={PAGE_SIZE}
+                                total={metadata.total}
+                                itemsLength={unpinnedItems.length}
+                                onNextPage={handleNextPage}
+                                onPreviousPage={handlePreviousPage}
+                              />
+                            )}
+                          </div>
+                        </CollectionTable>
                         <CollectionBulkActions
                           selected={selected}
                           collection={collection}
@@ -398,7 +398,7 @@ export const CollectionContentView = ({
                           selectedItems={selectedItems}
                           selectedAction={selectedAction}
                         />
-                      </CollectionTable>
+                      </>
                     );
                   }}
                 </Search.ListLoader>

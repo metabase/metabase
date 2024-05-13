@@ -12,7 +12,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import type { CollectionItem } from "metabase-types/api";
+import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
@@ -40,7 +40,7 @@ export const Columns = {
       onSelectAll,
       onSelectNone,
     }: {
-      selectedItems?: CollectionItem[];
+      selectedItems?: (CollectionItem | SearchResult)[];
       hasUnselected?: boolean;
       onSelectAll?: () => void;
       onSelectNone?: () => void;
@@ -129,13 +129,15 @@ export const Columns = {
       item,
       testIdPrefix = "table",
       includeDescription = true,
+      onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
+      onClick?: () => void;
     }) => (
       <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemLink to={item.getUrl()}>
+        <ItemLink to={item.getUrl()} onClick={onClick}>
           <EntityItem.Name name={item.name} variant="list" />
           <PLUGIN_MODERATION.ModerationStatusIcon
             size={16}
@@ -288,3 +290,8 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 };
+
+export enum SortDirection {
+  Asc = "asc",
+  Desc = "desc",
+}

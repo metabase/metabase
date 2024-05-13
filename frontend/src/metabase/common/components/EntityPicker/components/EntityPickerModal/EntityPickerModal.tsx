@@ -7,8 +7,8 @@ import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type {
-  DatabaseId,
   SearchModel,
+  SearchRequest,
   SearchResult,
   SearchResultId,
 } from "metabase-types/api";
@@ -45,10 +45,6 @@ export const defaultOptions: EntityPickerModalOptions = {
 export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
 export interface EntityPickerModalProps<Model extends string, Item> {
-  /**
-   * Limit selection to a particular database
-   */
-  databaseId?: DatabaseId;
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
@@ -59,6 +55,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
@@ -68,7 +65,6 @@ export function EntityPickerModal<
   Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
-  databaseId,
   title = t`Choose an item`,
   onItemSelect,
   canSelectItem,
@@ -81,6 +77,7 @@ export function EntityPickerModal<
   actionButtons = [],
   searchResultFilter,
   trapFocus = true,
+  searchParams,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
@@ -128,12 +125,12 @@ export function EntityPickerModal<
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
-                databaseId={databaseId}
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 searchFilter={searchResultFilter}
+                searchParams={searchParams}
               />
             )}
           </GrowFlex>
