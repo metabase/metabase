@@ -27,6 +27,7 @@ on:
     inputs:
       commit:
         description: 'Optional full-length commit SHA-1 hash'
+        type: string
 
 jobs:
   build:
