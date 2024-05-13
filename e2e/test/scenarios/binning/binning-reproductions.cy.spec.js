@@ -104,8 +104,8 @@ describe("binning related reproductions", () => {
     );
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
+    modal().within(() => {
+      cy.findByText("Saved questions").click();
       cy.findByText("17975").click();
     });
 
