@@ -397,6 +397,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Maximum number of categories`,
     widget: "number",
     getDefault: getDefaultMaxCategories,
+    getHidden: series => series.length < 2,
   },
 };
 
