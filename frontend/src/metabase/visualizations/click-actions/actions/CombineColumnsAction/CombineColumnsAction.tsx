@@ -39,6 +39,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
         query={query}
         stageIndex={stageIndex}
         onSubmit={handleSubmit}
+        width={474}
       />
     );
   };
