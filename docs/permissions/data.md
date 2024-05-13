@@ -54,7 +54,7 @@ In order to view the data in the [Browse data](../exploration-and-organization/e
 
 ### Granular view data permission
 
-{% include plans-blockquote.html feature="Granular view data permissions" %}
+{% include plans-blockquote.html feature="Granular view data permission" %}
 
 This option lets you set View data permissions for individual schemas or tables. Available only for databases and schemas. If you select Granular for a database or schema, Metabase will open that data source and ask you to set permissions for each individual schema or table.
 
@@ -62,7 +62,7 @@ For tables, you have the option to set either **Can view** or **Sandboxed**.
 
 ### Sandboxed view data permission
 
-{% include plans-blockquote.html feature="Sandboxed view data permissions" %}
+{% include plans-blockquote.html feature="Sandboxed view data permission" %}
 
 Allows you to set row-level permissions based on user attributes.
 
@@ -70,7 +70,7 @@ See [Data sandboxes](./data-sandboxes.md).
 
 ### Impersonated view data permission
 
-{% include plans-blockquote.html feature="Impersonated view data permissions" %}
+{% include plans-blockquote.html feature="Impersonated view data permission" %}
 
 The **Impersonated** option lets you use a role in your database to specify what data people can view and query. Impersonation can only be set at the database level, as Metabase will defer to the permissions granted to the database role.
 
