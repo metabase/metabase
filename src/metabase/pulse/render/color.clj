@@ -16,7 +16,7 @@
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
 (def ^:private ^{:arglists '([])} js-engine
-  ;; As of 2024/05/13, a single js-engine takes 3.5 MiB of memory
+  ;; As of 2024/05/13, a single color selector js engine takes 3.5 MiB of memory
   (js/threadlocal-fifo-memoizer
    (fn []
      (let [file-url (io/resource js-file-path)]
