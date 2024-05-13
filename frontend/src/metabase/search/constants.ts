@@ -14,6 +14,7 @@ export const enabledSearchTypes: EnabledSearchModel[] = [
   "dashboard",
   "card",
   "dataset",
+  "metric",
   "collection",
   "database",
   "table",
