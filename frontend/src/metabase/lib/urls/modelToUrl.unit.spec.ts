@@ -2,8 +2,8 @@ import { modelToUrl } from "./modelToUrl";
 describe("urls > modelToUrl", () => {
   it("should return null for unknown model", () => {
     expect(
+      // @ts-expect-error - testing the error case
       modelToUrl({
-        // @ts-expect-error - testing the error case
         model: "pikachu",
       }),
     ).toBeNull();
@@ -15,11 +15,6 @@ describe("urls > modelToUrl", () => {
         model: "card",
         name: "My Cool Question",
         id: 101,
-        parent_collection: {
-          id: 1,
-          name: "My Cool Collection",
-        },
-        timestamp: "2021-01-01T00:00:00.000Z",
       }),
     ).toBe("/question/101-my-cool-question");
   });
@@ -29,12 +24,7 @@ describe("urls > modelToUrl", () => {
       modelToUrl({
         model: "dataset",
         name: "My Cool Dataset",
-        parent_collection: {
-          id: 1,
-          name: "My Cool Collection",
-        },
         id: 101,
-        timestamp: "2021-01-01T00:00:00.000Z",
       }),
     ).toBe("/model/101-my-cool-dataset");
   });
@@ -44,12 +34,7 @@ describe("urls > modelToUrl", () => {
       modelToUrl({
         model: "dashboard",
         name: "My Cool Dashboard",
-        parent_collection: {
-          id: 1,
-          name: "My Cool Collection",
-        },
         id: 101,
-        timestamp: "2021-01-01T00:00:00.000Z",
       }),
     ).toBe("/dashboard/101-my-cool-dashboard");
   });
@@ -60,11 +45,6 @@ describe("urls > modelToUrl", () => {
         model: "collection",
         name: "My Cool Collection",
         id: 1,
-        parent_collection: {
-          id: 1,
-          name: "My Cool Collection",
-        },
-        timestamp: "2021-01-01T00:00:00.000Z",
       }),
     ).toBe("/collection/1-my-cool-collection");
   });
@@ -74,14 +54,10 @@ describe("urls > modelToUrl", () => {
       modelToUrl({
         model: "table",
         name: "MY_COOL_TABLE",
-        display_name: "My Cool Table",
         id: 33,
         database: {
           id: 22,
-          name: "My Cool Database",
-          initial_sync_status: "complete",
         },
-        timestamp: "2021-01-01T00:00:00.000Z",
       }),
     ).toBe("/question#?db=22&table=33");
   });
