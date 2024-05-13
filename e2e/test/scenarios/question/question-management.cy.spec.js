@@ -92,7 +92,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, true);
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -122,7 +122,9 @@ describe(
                   openQuestionActions();
                   cy.findByTestId("move-button").click();
                   entityPickerModal().within(() => {
-                    cy.findByRole("tab", { name: /Collections/ }).click();
+                    if (user === "admin") {
+                      cy.findByRole("tab", { name: /Collections/ }).click();
+                    }
                     cy.findByText(/Personal Collection/).click();
                     cy.findByText("Create a new collection").click();
                   });
@@ -156,7 +158,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, user === "admin");
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -249,7 +251,7 @@ describe(
 
                   cy.log("Move the question to a personal collection");
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, true);
 
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
@@ -258,9 +260,6 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-                    entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -269,7 +268,7 @@ describe(
                   });
 
                   cy.log("Move the question to the root collection");
-                  moveQuestionTo("Our analytics");
+                  moveQuestionTo("Our analytics", true);
 
                   cy.log("assert all collections are visible");
                   openQuestionActions();
@@ -278,6 +277,7 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
+
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -312,9 +312,6 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-                    entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
                     findInactivePickerItem("Orders in a dashboard");
 
                     // before visiting the dashboard, we don't have any history
@@ -346,11 +343,13 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-
-                    // no access - no dashboard
                     entityPickerModal()
                       .findByRole("tab", { name: /Dashboards/ })
                       .click();
+
+                    // backend bug for can_write in root collection?
+
+                    // no access - no dashboard
                     entityPickerModal()
                       .findByText(/Orders in a dashboard/)
                       .should("be.disabled");
@@ -506,11 +505,11 @@ function findInactivePickerItem(name) {
   });
 }
 
-function moveQuestionTo(newCollectionName) {
+function moveQuestionTo(newCollectionName, clickTab = false) {
   openQuestionActions();
   cy.findByTestId("move-button").click();
   entityPickerModal().within(() => {
-    cy.findByRole("tab", { name: /Collections/ }).click();
+    clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });

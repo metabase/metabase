@@ -88,9 +88,7 @@ function moveModel(modelName, collectionName) {
   popover().findByText("Move").click();
 
   entityPickerModal().within(() => {
-    entityPickerModal()
-      .findByRole("tab", { name: /Collections/ })
-      .click();
+    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(collectionName).click();
     cy.button("Move").click();
   });

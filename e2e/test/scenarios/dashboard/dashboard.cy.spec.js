@@ -327,9 +327,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
-          entityPickerModal()
-            .findByRole("tab", { name: /Dashboards/ })
-            .click();
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -348,6 +346,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });

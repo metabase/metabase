@@ -84,7 +84,10 @@ export const moveOpenedCollectionTo = newParent => {
   entityPickerModal().should("not.exist");
 };
 
-export function pickEntity({ path, select }) {
+export function pickEntity({ path, select, tab = /Collections/ }) {
+  if (tab) {
+    cy.findByRole("tab", { name: tab }).click();
+  }
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {
