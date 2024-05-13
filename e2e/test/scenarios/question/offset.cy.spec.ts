@@ -224,6 +224,9 @@ describe("scenarios > question > offset", () => {
     cy.icon("sum").click();
     addCustomAggregation({ formula, name });
 
+    cy.findAllByTestId("notebook-cell-item").contains(name).click();
+    cy.findByTestId("expression-editor-textfield").should("contain", formula);
+
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Error normalizing")).not.to.be.true;
     });
