@@ -69,7 +69,7 @@ jobs:
       - name: Upload built package as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ github.sha }}-sdk
           path: ./resources/embedding-sdk
 
   build-jar:
