@@ -144,10 +144,8 @@ describe("binning related reproductions", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Raw Data").click();
-      cy.findByTextEnsureVisible("Saved Questions").click();
+    modal().within(() => {
+      cy.findByTextEnsureVisible("Saved questions").click();
       cy.findByText("18646").click();
     });
 
