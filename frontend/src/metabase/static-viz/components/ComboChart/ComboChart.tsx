@@ -47,7 +47,10 @@ export const ComboChart = ({
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
+  const legendItems = getLegendItems(
+    chartModel.seriesModels,
+    chartModel.otherSeriesModel,
+  );
   const isReversed = computedVisualizationSettings["legend.is_reversed"];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
