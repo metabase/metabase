@@ -128,6 +128,7 @@ describe("scenarios > dashboard", () => {
       });
 
       entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
         cy.findByText(dashboardName)
           .closest("button")
           .then($button => {
@@ -219,6 +220,9 @@ describe("scenarios > dashboard", () => {
         cy.button("Yes please!").click();
       });
 
+      entityPickerModal()
+        .findByRole("tab", { name: /Dashboards/ })
+        .click();
       entityPickerModal().findByText("Create a new dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
@@ -323,6 +327,9 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          entityPickerModal()
+            .findByRole("tab", { name: /Dashboards/ })
+            .click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });

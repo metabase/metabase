@@ -39,6 +39,7 @@ export const RecentsTab = <
           isSelectedItem={item =>
             isSelectedItem(item as unknown as Item, selectedItem)
           }
+          // TODO: handle disable/hide option
         />
       ) : (
         <Flex direction="column" justify="center" h="100%">

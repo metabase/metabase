@@ -466,6 +466,9 @@ describe("scenarios > organization > timelines > collection", () => {
       popover().findByText("Move timeline").click();
 
       entityPickerModal().within(() => {
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         cy.findByText("Bobby Tables's Personal Collection").click();
         cy.button("Move").click();
         cy.wait("@updateTimeline");

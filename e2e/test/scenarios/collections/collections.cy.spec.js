@@ -400,6 +400,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       entityPickerModal().within(() => {
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         cy.findByText("Bobby Tables's Personal Collection").click();
         cy.findByText(COLLECTION).click();
         cy.button("Move").should("not.be.disabled");
@@ -425,13 +428,15 @@ describe("scenarios > collection defaults", () => {
       popover().findByText("Move").click();
 
       // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
-      cy.wait([
-        "@getCollectionItems",
-        "@getCollectionItems",
-        "@getCollectionItems",
-      ]);
+
       entityPickerModal().within(() => {
         cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.wait([
+          "@getCollectionItems",
+          "@getCollectionItems",
+          "@getCollectionItems",
+        ]);
         // make sure the first collection (current parent) is selected
         findPickerItem("First collection").should(
           "have.attr",
@@ -577,6 +582,7 @@ describe("scenarios > collection defaults", () => {
           popover().findByText("Move").click();
 
           entityPickerModal().within(() => {
+            cy.findByRole("tab", { name: /Collections/ }).click();
             cy.log("parent collection should be selected");
             findPickerItem("First collection").should(
               "have.attr",
@@ -599,6 +605,7 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
+            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("Second collection").should(
               "have.attr",
               "data-active",
@@ -623,6 +630,7 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
+            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("First collection").should("have.attr", "disabled");
             findPickerItem("Another collection").should(
               "have.attr",

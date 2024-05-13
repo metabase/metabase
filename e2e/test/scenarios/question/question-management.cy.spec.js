@@ -122,6 +122,7 @@ describe(
                   openQuestionActions();
                   cy.findByTestId("move-button").click();
                   entityPickerModal().within(() => {
+                    cy.findByRole("tab", { name: /Collections/ }).click();
                     cy.findByText(/Personal Collection/).click();
                     cy.findByText("Create a new collection").click();
                   });
@@ -257,6 +258,9 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -308,7 +312,9 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
                     findInactivePickerItem("Orders in a dashboard");
 
                     // before visiting the dashboard, we don't have any history
@@ -319,6 +325,9 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
 
                     findActivePickerItem("Orders in a dashboard");
 
@@ -340,8 +349,11 @@ describe(
 
                     // no access - no dashboard
                     entityPickerModal()
-                      .findByText("Orders in a dashboard")
-                      .should("not.exist");
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
+                    entityPickerModal()
+                      .findByText(/Orders in a dashboard/)
+                      .should("be.disabled");
                   });
                 });
               });
@@ -498,6 +510,7 @@ function moveQuestionTo(newCollectionName) {
   openQuestionActions();
   cy.findByTestId("move-button").click();
   entityPickerModal().within(() => {
+    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });

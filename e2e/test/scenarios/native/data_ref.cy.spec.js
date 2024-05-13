@@ -57,6 +57,9 @@ describe("scenarios > native question > data reference sidebar", () => {
     popover().findByTestId("move-button").click();
 
     entityPickerModal().within(() => {
+      entityPickerModal()
+        .findByRole("tab", { name: /Collections/ })
+        .click();
       cy.findByText("Bobby Tables's Personal Collection").click();
       cy.button("Move").click();
     });
