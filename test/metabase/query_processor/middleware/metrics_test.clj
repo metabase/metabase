@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is]]
-   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -151,38 +150,17 @@
 
 (deftest ^:parallel adjust-joined-metric-test
   (let [[source-metric mp] (mock-metric)
-        query (-> (lib/query mp (meta/table-metadata :orders))
-                  (lib/join (lib/join-clause (lib.metadata/card mp (:id source-metric))
-                                             [(lib/= (meta/field-metadata :orders :product-id)
-                                                     (meta/field-metadata :products :id))])))]
+        query (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                (lib/join $q (lib/join-clause (lib.metadata/card mp (:id source-metric))
+                                              [(lib/= (meta/field-metadata :orders :product-id)
+                                                      (meta/field-metadata :products :id))]))
+                (lib/aggregate $q (lib.options/ensure-uuid [:metric {:join-alias "Mock metric - Product"} (:id source-metric)])))]
     (is (=?
           ;; joins get an extra, empty stage from 'fetch-source-query'
           {:stages [{:joins [{:stages [{:source-table (meta/id :products)} {}]}]
                      :aggregation [[:avg {:name "mock_metric___product"}
                                     [:field {} (meta/id :products :rating)]]]}]}
           (adjust query)))))
-
-(deftest ^:parallel adjust-multi-metric-join-aliases-in-aggregations
-  (let [mp meta/metadata-provider
-        source-query (-> (lib/query mp (meta/table-metadata :orders))
-                         (lib/filter (lib/< (meta/field-metadata :orders :tax) 3000)))
-        mp (-> mp
-               (lib.tu/metadata-provider-with-card-from-query 1 (lib/aggregate source-query (lib/count)) {:type :metric})
-               (lib.tu/metadata-provider-with-card-from-query 2 (lib/aggregate source-query (lib/avg (meta/field-metadata :orders :tax))) {:type :metric})
-               (lib.tu/metadata-provider-with-card-from-query 3 (lib/aggregate source-query (lib/sum (meta/field-metadata :orders :tax))) {:type :metric}))]
-    (mt/with-metadata-provider mp
-      (let [products-table (meta/table-metadata :products)
-            m1 (lib.metadata/card mp 1)
-            m2 (lib.metadata/card mp 2)
-            m3 (lib.metadata/card mp 3)
-            q (-> (lib/query mp products-table)
-                (lib/join (lib/join-clause m1))
-                (lib/join (lib/join-clause m2))
-                (lib/join (lib/join-clause m3)))]
-        (is (=? {:stages [{:aggregation [[:count {}]
-                                         [:avg {} [:field {:join-alias (:name m2)} (meta/id :orders :tax)]]
-                                         [:sum {} [:field {:join-alias (:name m3)} (meta/id :orders :tax)]]]}]}
-               (adjust q)))))))
 
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -215,61 +193,3 @@
                                       (lib/limit 1))))
               (mt/rows
                 (qp/process-query query))))))))
-
-
-(deftest ^:parallel e2e-join-to-table-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/filter (lib/< (lib.metadata/field mp (mt/id :orders :tax)) 3000))
-                         (lib/aggregate (lib/count)))
-        find-by-id (fn [id columns]
-                     (m/find-first (comp #{id} :id) columns))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}]
-
-      (let [source-metric-id (:id source-metric)
-            metric (lib.metadata/card mp source-metric-id)
-            join-alias (:name metric)
-            q (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $q
-                (lib/join $q (lib/join-clause
-                               metric
-                               [(lib/= (lib/with-join-alias
-                                         (find-by-id (mt/id :orders :id) (lib/joinable-columns $q -1 metric))
-                                         join-alias)
-                                       (lib.metadata/field mp (mt/id :products :id)))]))
-                (lib/breakout $q (lib/with-temporal-bucket
-                                   (find-by-id (mt/id :orders :created_at) (lib/breakoutable-columns $q))
-                                   :month))
-                (lib/breakout $q (find-by-id (mt/id :products :vendor) (lib/breakoutable-columns $q)))
-                (lib/filter $q (lib/between (find-by-id (mt/id :orders :quantity) (lib/filterable-columns $q))
-                                            1 5))
-                (lib/append-stage $q)
-                (lib/filter $q (lib/= (find-by-id (mt/id :products :vendor) (lib/filterable-columns $q))
-                                      "Americo Sipes and Sons"
-                                      "Aufderhar-Boehm"
-                                      "Balistreri-Muller"))
-                (lib/filter $q (lib/between
-                                 (m/find-first (comp #{"new_metric"} :name) (lib/filterable-columns $q))
-                                 10 100)))]
-        (is (= [["2016-05-01T00:00:00Z" "Americo Sipes and Sons" 19]
-                ["2016-05-01T00:00:00Z" "Aufderhar-Boehm" 19]
-                ["2016-05-01T00:00:00Z" "Balistreri-Muller" 19]
-                ["2016-06-01T00:00:00Z" "Americo Sipes and Sons" 16]
-                ["2016-06-01T00:00:00Z" "Aufderhar-Boehm" 16]
-                ["2016-06-01T00:00:00Z" "Balistreri-Muller" 16]
-                ["2016-07-01T00:00:00Z" "Americo Sipes and Sons" 50]
-                ["2016-07-01T00:00:00Z" "Aufderhar-Boehm" 50]
-                ["2016-07-01T00:00:00Z" "Balistreri-Muller" 50]
-                ["2016-08-01T00:00:00Z" "Americo Sipes and Sons" 21]
-                ["2016-08-01T00:00:00Z" "Aufderhar-Boehm" 21]
-                ["2016-08-01T00:00:00Z" "Balistreri-Muller" 21]
-                ["2016-09-01T00:00:00Z" "Americo Sipes and Sons" 74]
-                ["2016-09-01T00:00:00Z" "Aufderhar-Boehm" 74]
-                ["2016-09-01T00:00:00Z" "Balistreri-Muller" 74]
-                ["2016-10-01T00:00:00Z" "Americo Sipes and Sons" 83]
-                ["2016-10-01T00:00:00Z" "Aufderhar-Boehm" 83]
-                ["2016-10-01T00:00:00Z" "Balistreri-Muller" 83]]
-               (mt/rows
-                 (qp/process-query q))))))))

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
-   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -15,7 +14,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metric.basics :as lib.metric.basics]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -518,11 +516,9 @@
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
          a-join              (cond-> a-join
                                (seq suggested-conditions) (with-join-conditions suggested-conditions))
-         a-join              (add-default-alias query stage-number a-join)
-         metric              (lib.metric.basics/join-metric query a-join)]
-     (cond-> (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
-                                                                             (conj (vec existing-joins) a-join)))
-       metric (lib.aggregation/aggregate stage-number (lib.ref/ref metric))))))
+         a-join              (add-default-alias query stage-number a-join)]
+     (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
+                                                                     (conj (vec existing-joins) a-join))))))
 
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
@@ -796,10 +792,7 @@
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
   Question, or another query. Suggested conditions will be returned if the source Table has a foreign key to the
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
-  conditions are suggested.
-
-  For queries on metrics, the suggested join condition will be the first breakout of the source and join target,
-  provided that both are metrics with at least one breakout, and the types of these first breakouts are compatible."
+  conditions are suggested."
   ([query joinable]
    (suggested-join-conditions query -1 joinable nil))
 
@@ -838,40 +831,18 @@
                (let [x (dissoc x ::lib.card/force-broken-id-refs)
                      y (dissoc y ::lib.card/force-broken-id-refs)]
                  (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y)))]
-
-       (if-let [source (lib.metric.basics/source-metric query (lib.util/query-stage query stage-number))]
-         ;; Metrics: if both the query stage and the joinable are metrics with at least one breakout, and those
-         ;; breakouts have the same type, suggest joining on those breakout columns.
-         ;; But if the `source` is a metric and the joinable not, then we don't want to return other join conditions.
-         (when-let [target (lib.metric.basics/join-metric query joinable)]
-           ;; Both are metrics, now check that each has a breakout.
-           (let [source-breakout (some->> source (lib.metric.basics/primary-breakout unjoined))
-                 target-breakout (some->> target (lib.metric.basics/primary-breakout unjoined))
-                 source-type     (:base-type source-breakout)
-                 target-type     (:base-type target-breakout)]
-             (when (and source-breakout target-breakout
-                        source-type target-type
-                        (= source-type target-type))
-               ;; Everything lines up, so return the suggested condition.
-               ;; If the source has a temporal bucket applied, overwrite the target's bucket to match.
-               (let [source-bucket   (lib.temporal-bucket/temporal-bucket source-breakout)
-                     target-breakout (cond-> target-breakout
-                                       source-bucket (lib.temporal-bucket/with-temporal-bucket source-bucket))]
-                 [(filter-clause source-breakout target-breakout)]))))
-
-         ;; Source isn't a metric, so run the normal table cases.
-         (or
-           ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
-          (when-let [fks (fks stage joinable)]
-            (mapv (fn [fk]
-                    (filter-clause fk (::target fk)))
-                  fks))
-           ;; find cases where the `joinable` has FK(s) pointing to us. Note our column is the target this time around --
-           ;; keep in on the LHS.
-          (when-let [fks (fks joinable stage)]
-            (mapv (fn [fk]
-                    (filter-clause (::target fk) fk))
-                  fks))))))))
+       (or
+        ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
+        (when-let [fks (fks stage joinable)]
+          (mapv (fn [fk]
+                  (filter-clause fk (::target fk)))
+                fks))
+        ;; find cases where the `joinable` has FK(s) pointing to us. Note our column is the target this time around --
+        ;; keep in on the LHS.
+        (when-let [fks (fks joinable stage)]
+          (mapv (fn [fk]
+                  (filter-clause (::target fk) fk))
+                fks)))))))
 
 (defn- xform-add-join-alias [metadata-providerable a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]

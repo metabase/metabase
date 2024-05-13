@@ -86,16 +86,6 @@
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :metric))))
 
-(defn metadata-provider-with-mock-metrics
-  ([metrics]
-   (metadata-provider-with-mock-metrics meta/metadata-provider metrics))
-  ([metadata-provider metrics]
-   (lib/composed-metadata-provider
-     metadata-provider
-     (mock-metadata-provider
-       ;; Yes, cards, since v2 metrics are cards with `:type :metric`.
-       {:cards (mapv #(assoc % :type :metric) metrics)}))))
-
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
   'exports' two columns, `USER_ID` and `count`."
