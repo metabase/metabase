@@ -192,6 +192,7 @@ describe("scenarios > question > offset", () => {
     addCustomAggregation({
       formula: "Offset(Sum([Total]), -1)",
       name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+      isFirst: true,
     });
     addBreakout(breakoutName);
 
@@ -235,28 +236,25 @@ describe("scenarios > question > offset", () => {
     addCustomAggregation({
       formula: "Sum([Total])",
       name: totalSalesName,
+      isFirst: true,
     });
     addCustomAggregation({
       formula: "Offset(Sum([Total]), -1)",
       name: totalSalesLastMonthName,
-      isFirst: false,
     });
     addCustomAggregation({
       formula: "Sum([Total]) / Offset(Sum([Total]), -1) - 1",
       name: percentSalesGrowthName,
-      isFirst: false,
     });
     addCustomAggregation({
       formula:
         "Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)",
       name: rollingTotalName,
-      isFirst: false,
     });
     addCustomAggregation({
       formula:
         "(Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)) / 3",
       name: rollingAverageName,
-      isFirst: false,
     });
     addBreakout(breakoutName);
 
@@ -287,7 +285,7 @@ describe("scenarios > question > offset", () => {
     createQuestion({ query }, { visitQuestion: true });
     openNotebook();
     cy.icon("sum").click();
-    addCustomAggregation({ formula, name });
+    addCustomAggregation({ formula, name, isFirst: true });
 
     cy.findAllByTestId("notebook-cell-item").contains(name).click();
     cy.findByTestId("expression-editor-textfield").should("contain", formula);
@@ -301,7 +299,7 @@ describe("scenarios > question > offset", () => {
 function addCustomAggregation({
   formula,
   name,
-  isFirst = true,
+  isFirst,
 }: {
   formula: string;
   name: string;
