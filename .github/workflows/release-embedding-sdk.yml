@@ -30,7 +30,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.commit }}
-          fetch-tags: true
 
       - name: Setup git user
         run: |
@@ -40,12 +39,12 @@ jobs:
       - name: Create a new git tag
         run: |
           git tag embedding-sdk-${{ inputs.sdk_version }}
-      - if: failure()
-        run: echo "Make sure the tag 'embedding-sdk-${{ inputs.sdk_version }}' doesn't exist."
 
       - name: Push the new tag
         run: |
           git push origin embedding-sdk-${{ inputs.sdk_version }}
+      - if: failure()
+        run: echo "Make sure the tag 'embedding-sdk-${{ inputs.sdk_version }}' doesn't exist."
 
   test:
     needs: git-tag
