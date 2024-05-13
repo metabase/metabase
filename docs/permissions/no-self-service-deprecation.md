@@ -14,14 +14,14 @@ If you're migrating from Metabase 50 or earlier, Metabase will (with [one except
 
 ## Why we updated our permissions system
 
-The original Data access permission setting contained five levels of access: unrestricted, granular, no self-service, and block. These levels aren’t at the same axis. They combined on one axis, whether you could view data, and on another axis, whether you could query that data. This created a two-dimensional setting:
+The original Data access permission setting contained five levels of access: unrestricted, impersonated, granular, no self-service, and block. These levels aren’t at the same axis. They combined on one axis, whether you could view data, and on another axis, whether you could query that data. This created a two-dimensional setting:
 
 - **No self-service.** Restricts groups from using the query builder to create or edit questions.
 - **Sandbox and block.** Restricts view _and_ query builder access to the underlying data.
 
 Mixing two axes (querying + viewing) to a single permissions setting could yield unexpected behavior. For example, by changing access from "Sandboxed" to "No self-service", an admin might think that they would be _restricting_ that group's access to data. But in that case, the group could potentially see _more_ data, provided the group also had access to collections with existing models, questions, or dashboards.
 
-## What our overhaul of permissions accomplishes
+## What our overhaul of data permissions accomplishes
 
 - Splits [view access](./data.md#view-data-permissions) and [query access](./data.md#create-queries-permissions) into two permission dimensions.
 - Makes permissions easier to reason about. A more restrictive permission never gives more access than a less restrictive one.
@@ -46,7 +46,7 @@ Before, Metabase had **Data access** and **Native query editing**. Now, Metabase
 
 ## The `No self-service (deprecated)` View access level
 
-If you see the `No self-service (deprecated)` permission setting in **View data** for any group, you should (but don't _need_ to) manually change it at some point.
+If you see the `No self-service (deprecated)` permission setting in **View data** for any group, you should manually change it at some point.
 
 For any group that has their **View data** access set to `No self-service (deprecated)`, you'll need to change the **View data** permission to one of the new types:
 
