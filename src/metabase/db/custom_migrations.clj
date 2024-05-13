@@ -1268,18 +1268,6 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
     (qs/shutdown scheduler)))
 
-(define-migration BackfillQueryField
-  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
-        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                              :select    [:c.id]
-                                                              :where     [:and
-                                                                          [:not :c.archived]
-                                                                          [:= :c.query_type "native"]
-                                                                          [:= :f.id nil]]}])]
-    (doseq [card cards]
-      (update-query-fields! card))))
-
 (define-reversible-migration MigrateMetricsToV2
   (metrics-v2/migrate-up)
   (metrics-v2/migrate-down))
