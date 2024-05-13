@@ -4,7 +4,7 @@ title: Offset
 
 # Offset
 
-The `Offset` function returns the value of an expression in a different row.
+The `Offset` function returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
 Syntax: `Offset(expression, rowOffset)`
 
@@ -30,29 +30,47 @@ The `Offset` function returns whatever value is in the offset row.
 
 In the Sample database, you can use `Offset` to compare the count of orders year over year (YoY).
 
-First, summarize by Sum of Total. Then summarize that summation again, this time using `Offset` to offset the Sum of Total by one. Then group the results by `Created At` by year:
+First, summarize by Sum of Total. Then summarize that summation again, this time using `Offset` to offset the Sum of Total by one.
 
-![Comparing year over year](../../images/offset-example.png)
+```
+Offset(Sum([Total]), -1)
+```
+
+Then group the results by `Created At` by year:
+
+![Comparing year over year](../../images/sum-of-totals-for-previous-period.png)
 
 Which yields:
 
-![Year over year order count results](../../images/offset-results.png)
+![Year over year order sum of order totals](../../images/year-over-year-sum-totals.png)
 
-With these offsets (the Sums in the "Previous Sum" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums, and the percentage change year to year:
+With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
+
+```
+[Sum of total] - [Previous period]
+```
+
+And the percentage change year to year:
+
+```
+[Difference] / [Previous period] * 100
+```
 
 ![Difference and percentage change](../../images/diff-and-percentage.png)
 
-## Example rolling average
+## Example rolling average using `Offset`
 
-You can use `Offset` to calculate rolling averages.
+You can use a custom expression with `Offset` to calculate rolling averages.
 
-For example, let's say you want to calculate the rolling average sum of order totals over the past three months. You'd use an expression like:
+For example, let's say you want to calculate the rolling average sum of order totals over the past three months. You could create a custom expression to calculate these rolling averages:
 
 ```
 (Sum([Total]) + Offset(Sum([Total]), -1) + Offset(Sum([Total]), -2)) / 3
 ```
 
-Which takes this period's total, plus the previous two periods: offset by `-1` and `-2`, and divides by three to get the average across those periods.
+The above expression adds up this period's total, plus the totals for the previous two periods (offset by `-1` and `-2`), and then divides by three to get the average across those periods.
+
+![Rolling average](../../images/rolling-average.png)
 
 ## Related functions
 

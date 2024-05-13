@@ -722,7 +722,7 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ### Offset
 
-Returns the value of an expression in a different row.
+Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
 Syntax: `Offset(expression, rowOffset)`
 
@@ -730,7 +730,7 @@ The `expression` is the value to get from a different row.
 
 The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
 
-Example: `Offset([Total], -1)` would get the `Total` value from the previous row.
+Example: `Offset([Sum of Total], -1)` would get the `Sum of Total` value from the previous row.
 
 See [Offset](./expressions/offset.md).
 
