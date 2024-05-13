@@ -12,7 +12,9 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .type(formula);
 
   if (name) {
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .clear()
+      .type(name);
   }
 }
 

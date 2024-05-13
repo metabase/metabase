@@ -12,18 +12,15 @@ const ENABLED_SEARCH_MODELS = [
   "collection",
   "dashboard",
   "card",
+  "dataset",
+  "metric",
   "database",
   "table",
-  "dataset",
   "action",
   "indexed-entity",
 ] as const;
 
-export const SEARCH_MODELS = [
-  ...ENABLED_SEARCH_MODELS,
-  "segment",
-  "metric",
-] as const;
+export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
 export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
 

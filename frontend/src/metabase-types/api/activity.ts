@@ -6,6 +6,7 @@ export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
+  "metric",
   "dashboard",
 ] as const;
 export type ActivityModel = typeof ACTIVITY_MODELS[number];

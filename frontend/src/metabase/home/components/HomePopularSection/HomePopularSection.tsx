@@ -60,6 +60,8 @@ const getTitle = (popularItems: PopularItem[]) => {
       return t`Here are some popular questions`;
     case "dataset":
       return t`Here are some popular models`;
+    case "metric":
+      return t`Here are some popular metrics`;
     case "dashboard":
       return t`Here are some popular dashboards`;
     default:
