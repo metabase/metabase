@@ -2,10 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
-import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 
 export const Content = styled.div`
   display: flex;
@@ -55,7 +54,7 @@ AddButton.defaultProps = {
   borderless: true,
 };
 
-export const ColumnTypeIcon = styled(Icon)`
+export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
   color: ${color("text-medium")};
 `;
 
@@ -64,10 +63,6 @@ export const Title = styled.div`
   word-break: break-word;
   font-size: 0.875rem;
   font-weight: 700;
-`;
-
-export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
-  margin-left: auto;
 `;
 
 const selectedStyle = css`
