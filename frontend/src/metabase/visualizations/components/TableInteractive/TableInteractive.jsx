@@ -117,12 +117,7 @@ class TableInteractive extends Component {
   static defaultProps = {
     isPivoted: false,
     hasMetadataPopovers: true,
-    renderTableHeaderWrapper: (
-      children,
-      column,
-      columnIndex,
-      { theme } = {},
-    ) => {
+    renderTableHeaderWrapper: children => {
       return (
         <Box className={TableS.cellData} data-testid="cell-data" c="brand">
           {children}
