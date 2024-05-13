@@ -67,17 +67,15 @@ describeEE("scenarios > metrics > search", () => {
     setTokenFeatures("all");
   });
 
-  it.skip("should see metrics in popular items on the homepage", () => {
-    createQuestion({ ...ORDERS_SCALAR_METRIC, type: "question" }).then(
-      ({ body: card }) => {
-        visitMetric(card.id);
-        cy.wait("@dataset");
-      },
-    );
+  it.skip("should see metrics in popular items on the homepage (metabase#42607)", () => {
+    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+      visitMetric(card.id);
+      cy.wait("@dataset");
+    });
     cy.signInAsNormalUser();
     cy.visit("/");
     cy.findByTestId("home-page").within(() => {
-      cy.findByText("Here are some popular questions").should("be.visible");
+      cy.findByText("Here are some popular metrics").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       cy.wait("@dataset");
     });
