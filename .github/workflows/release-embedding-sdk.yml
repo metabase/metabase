@@ -22,7 +22,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  git-tag:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided commit, or HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit }}
+          fetch-tags: true
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
+      - name: Create a new git tag
+        run: |
+          git tag embedding-sdk-${{ github.event.inputs.sdk_version }}
+      - if: failure()
+        run: echo "Make sure the tag 'embedding-sdk-${{ github.event.inputs.sdk_version }}' doesn't exist."
+
+      - name: Push the new tag
+        run: |
+          git push origin embedding-sdk-${{ github.event.inputs.sdk_version }}
+
   test:
+    needs: git-tag
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -108,34 +134,9 @@ jobs:
           DATE=$(date '+%Y-%m-%d')
           aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$BUCKET_PATH
 
-  git-tag:
-    needs: build-sdk
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - name: Check out the code using the provided commit, or HEAD
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit }}
-          fetch-tags: true
-
-      - name: Setup git user
-        run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
-
-      - name: Create a new git tag
-        run: |
-          git tag embedding-sdk-${{ github.event.inputs.sdk_version }}
-      - if: failure()
-        run: echo "Make sure the tag 'embedding-sdk-${{ github.event.inputs.sdk_version }}' doesn't exist."
-
-      - name: Push the new tag
-        run: |
-          git push origin embedding-sdk-${{ github.event.inputs.sdk_version }}
 
   publish-npm:
-    needs: [git-tag, upload-jar]
+    needs: [build-sdk, upload-jar]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
