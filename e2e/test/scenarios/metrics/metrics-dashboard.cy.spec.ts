@@ -99,11 +99,11 @@ describe("scenarios > metrics > editing", () => {
     });
   });
 
-  it("should be able to combine scalar metrics in a dashcard", () => {
+  it("should be able to combine scalar metrics on a dashcard", () => {
     combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
   });
 
-  it.skip("should be able to combine timeseries metrics in a dashcard (metabase#42575)", () => {
+  it.skip("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
     combineAndVerifyMetrics(
       ORDERS_TIMESERIES_METRIC,
       PRODUCTS_TIMESERIES_METRIC,
