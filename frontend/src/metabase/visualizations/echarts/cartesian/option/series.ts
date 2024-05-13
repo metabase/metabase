@@ -91,7 +91,7 @@ export function getDataLabelFormatter(
 ) {
   const isCompact = shouldRenderCompact({
     dataset,
-    getValue: (datum: Datum) => datum[labelDataKey],
+    getValue: (datum: Datum) => getDataValue(datum, labelDataKey),
     formattingOptions,
     renderingContext,
     seriesModel,
@@ -115,6 +115,9 @@ export function getDataLabelFormatter(
   };
 }
 
+export function getDataValue(datum: Datum, labelDataKey: DataKey) {
+  return datum[labelDataKey];
+}
 function shouldRenderCompact({
   dataset,
   getValue,
