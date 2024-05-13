@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.error :as me]
@@ -11,7 +12,7 @@
    [metabase.util :as u])
   (:import
    (java.net URI)
-   (java.nio.file Files FileSystem FileSystems NoSuchFileException #_OpenOption)))
+   (java.nio.file Files FileSystem FileSystems NoSuchFileException)))
 
 (set! *warn-on-reflection* true)
 
@@ -80,21 +81,6 @@
     (catch NoSuchFileException _
       nil)))
 
-#_(defn- consuming-card-path
-  [instance]
-  (.getPath (FileSystems/getDefault)
-            "/Volumes/My Passport for Mac/work/metabase/metrics-v2/migration-test/cards"
-            (into-array String [(str instance ".csv")])))
-
-#_(defn- delete-cards
-  [instance ids]
-  (when (seq ids)
-    (let [id-set (set ids)
-          rows (with-open [r (-> instance card-path Files/newBufferedReader)]
-                 (into [] (remove #(-> % second parse-long id-set)) (csv/read-csv r)))]
-      (with-open [w (-> instance consuming-card-path (Files/newBufferedWriter (into-array OpenOption [])))]
-        (csv/write-csv w rows)))))
-
 (defn- read-instance
   []
   (let [current-dir (System/getProperty "user.dir")
@@ -106,12 +92,9 @@
                    :let [[instance metrics] (read-metrics metric-file)
                          cards (read-cards instance)]
                    :when (seq cards)]
-               (let [metric-consuming-cards (into {} (filter #(-> % val :query uses-metric?)) cards)
-                     #_#_non-consuming-cards (apply dissoc cards (keys metric-consuming-cards))]
-                 #_(delete-cards instance (keys non-consuming-cards))
-                 {:instance instance
-                  :metrics  metrics
-                  :cards    metric-consuming-cards})))))))
+               {:instance instance
+                :metrics  metrics
+                :cards    (into {} (filter #(-> % val :query uses-metric?)) cards)}))))))
 
 (def ^:private card-id-offset
   (quot Long/MAX_VALUE 2))
@@ -194,8 +177,9 @@
    (when print-stats?
      (flush))))
 
-(deftest metabase-cloud-instance-rewrite-test
-  (process-instances))
+(when (.canRead (io/file data-file))
+  (deftest metabase-cloud-instance-rewrite-test
+    (process-instances)))
 
 (comment
   (process-instances {:print-stats? true})
