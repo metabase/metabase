@@ -102,8 +102,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      modal().within(() => {
+        cy.findByText("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -116,8 +116,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("4 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      modal().within(() => {
+        cy.findByText("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
