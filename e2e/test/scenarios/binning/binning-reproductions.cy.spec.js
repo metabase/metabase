@@ -1,6 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  modal,
   restore,
   popover,
   visualize,
@@ -31,10 +32,10 @@ describe("binning related reproductions", () => {
     });
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("16327").click();
+    modal().within(() => {
+      cy.findByText("Saved questions").click();
+      cy.findByText("16327").click();
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();
