@@ -91,18 +91,21 @@ export function DashboardInfoSidebar({
         />
       </ContentSection>
 
-      <ContentSection>
-        <Switch
-          disabled={!canWrite}
-          label={t`Auto-apply filters`}
-          labelPosition="left"
-          variant="stretch"
-          size="sm"
-          id={autoApplyFilterToggleId}
-          checked={dashboard.auto_apply_filters}
-          onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
-        />
-      </ContentSection>
+      {!dashboard.archived && (
+        <ContentSection>
+          <Switch
+            disabled={!canWrite}
+            label={t`Auto-apply filters`}
+            labelPosition="left"
+            variant="stretch"
+            size="sm"
+            id={autoApplyFilterToggleId}
+            checked={dashboard.auto_apply_filters}
+            onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+          />
+        </ContentSection>
+      )}
+
       {showCaching && (
         <ContentSection>
           <PLUGIN_CACHING.DashboardCacheSection

@@ -27,7 +27,7 @@ import {
 import { setIsShowingTemplateTagsEditor } from "../native";
 import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
-import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
+import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
@@ -258,6 +258,10 @@ export const setArchivedQuestion = createThunkAction(
           shouldStartAdHocQuestion: false,
         }),
       );
+
+      if (archived) {
+        dispatch(setUIControls({ isNativeEditorOpen: false }));
+      }
 
       if (!undoing) {
         dispatch(
