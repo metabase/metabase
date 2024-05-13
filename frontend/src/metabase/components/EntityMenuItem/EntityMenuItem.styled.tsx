@@ -23,10 +23,9 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   padding: 0.85em 1.45em;
   text-decoration: none;
   :hover {
-    color: ${props =>
-      (!props.disabled && props.hoverBgColor) || color("brand")};
+    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
     background-color: ${props =>
-      (!props.disabled && props.hoverBgColor) || color("bg-light")};
+      color((!props.disabled && props.hoverBgColor) || "bg-light")};
   }
   > .Icon {
     color: ${props =>
@@ -34,8 +33,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
     margin-right: 0.65em;
   }
   :hover > .Icon {
-    color: ${props =>
-      (!props.disabled && props.hoverBgColor) || color("brand")};
+    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
   },
   /* icon specific tweaks
      the alert icon should be optically aligned  with the x-height of the text */

@@ -126,23 +126,25 @@ const DashboardInfoSidebarBody = ({
         />
       </ContentSection>
 
-      <ContentSection>
-        <Stack spacing="md">
-          <Switch
-            disabled={!canWrite}
-            label={t`Auto-apply filters`}
-            labelPosition="left"
-            variant="stretch"
-            size="sm"
-            id={autoApplyFilterToggleId}
-            checked={dashboard.auto_apply_filters}
-            onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
-          />
-          {showCaching && isCacheable && (
-            <DashboardCacheSection dashboard={dashboard} setPage={setPage} />
-          )}
-        </Stack>
-      </ContentSection>
+      {!dashboard.archived && (
+        <ContentSection>
+          <Stack spacing="md">
+            <Switch
+              disabled={!canWrite}
+              label={t`Auto-apply filters`}
+              labelPosition="left"
+              variant="stretch"
+              size="sm"
+              id={autoApplyFilterToggleId}
+              checked={dashboard.auto_apply_filters}
+              onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+            />
+            {showCaching && isCacheable && (
+              <DashboardCacheSection dashboard={dashboard} setPage={setPage} />
+            )}
+          </Stack>
+        </ContentSection>
+      )}
 
       <ContentSection>
         <HistoryHeader>{t`History`}</HistoryHeader>

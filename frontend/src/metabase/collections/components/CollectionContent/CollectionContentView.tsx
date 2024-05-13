@@ -23,6 +23,7 @@ import type {
 import {
   isRootTrashCollection,
   isPersonalCollectionChild,
+  isTrashedCollection,
 } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -205,7 +206,11 @@ export const CollectionContentView = ({
     deleteBookmark(collectionId.toString(), "collection");
   };
 
-  const canUpload = uploadsEnabled && canUploadToDb && collection.can_write;
+  const canUpload =
+    uploadsEnabled &&
+    canUploadToDb &&
+    collection.can_write &&
+    !isTrashedCollection(collection);
 
   const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
