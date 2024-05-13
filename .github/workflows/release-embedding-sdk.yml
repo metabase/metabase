@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
+
       - name: Run unit tests
         run: yarn embedding-sdk:test-unit
 
@@ -96,7 +97,7 @@ jobs:
           aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$BUCKET_PATH
 
   git-tag:
-    needs: build
+    needs: build-sdk
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -121,19 +122,19 @@ jobs:
           git push origin embedding-sdk-${{ github.event.inputs.sdk_version }}
 
   publish-npm:
-    needs: git-tag
+    needs: [git-tag, upload-jar]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-        - name: Check out the code using the provided commit, or HEAD
-          uses: actions/checkout@v4
-          with:
-            ref: ${{ github.event.inputs.commit }}
+      - name: Check out the code using the provided commit, or HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit }}
 
       - name: Setup git user
-          run: |
-            git config --global user.email "metabase-bot@metabase.com"
-            git config --global user.name "Metabase bot"
+        run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
 
       - name: Update readme
         run: |
