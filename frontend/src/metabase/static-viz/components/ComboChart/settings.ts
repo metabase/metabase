@@ -14,6 +14,7 @@ import {
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
   getDefaultLegendIsReversed,
+  getDefaultMaxCategories,
   getDefaultShowDataLabels,
   getDefaultStackDisplayValue,
   getDefaultStackingValue,
@@ -245,6 +246,12 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.label_value_frequency",
     getDefaultDataLabelsFrequency(),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.max_categories",
+    getDefaultMaxCategories(),
   );
 
   fillWithDefaultValue(

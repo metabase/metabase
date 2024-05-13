@@ -210,6 +210,7 @@ export const getDefaultLegendIsReversed = (
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";
+export const getDefaultMaxCategories = () => 8;
 
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
