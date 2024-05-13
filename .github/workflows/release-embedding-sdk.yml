@@ -61,6 +61,7 @@ jobs:
 
   build-jar:
     needs: test
+    # TODO: Make it so that it only build EE jar, so we don't have to waste another runner for the image we don't use.
     uses: ./.github/workflows/uberjar.yml
     with:
       commit: ${{ github.event.inputs.commit }}
