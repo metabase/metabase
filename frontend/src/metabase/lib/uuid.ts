@@ -21,7 +21,7 @@ function s4() {
     .substring(1);
 }
 
-export function isUuid(uuid: unknown) {
+export function isUuid(uuid: unknown): uuid is string {
   return (
     typeof uuid === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)
