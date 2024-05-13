@@ -190,8 +190,8 @@ describe("binning related reproductions", () => {
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
+    modal().within(() => {
+      cy.findByText("Saved questions").click();
       cy.findByText("11439").click();
     });
 
