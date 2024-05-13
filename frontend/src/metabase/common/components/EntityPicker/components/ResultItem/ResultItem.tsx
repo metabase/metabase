@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
+import { getName } from "metabase/lib/name";
 import { Icon, Flex, Tooltip } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
@@ -50,7 +51,9 @@ export const ResultItem = ({
             flexShrink: 0,
           }}
         />
-        <Ellipsified style={{ fontWeight: "bold" }}>{item.name}</Ellipsified>
+        <Ellipsified style={{ fontWeight: "bold" }}>
+          {getName(item)}
+        </Ellipsified>
         {item.description && (
           <Tooltip
             maw="20rem"
