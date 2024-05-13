@@ -1,6 +1,6 @@
 import type { QueryClickActionsMode } from "../../types";
 import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
-import { CombineColumnsAction } from "../actions/CombineColumns";
+import { CombineColumnsAction } from "../actions/CombineColumnsAction";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
 import { ExtractColumnAction } from "../actions/ExtractColumn";
 import { HideColumnAction } from "../actions/HideColumnAction";
