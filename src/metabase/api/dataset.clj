@@ -76,9 +76,9 @@
       (binding [qp.perms/*card-id* source-card-id]
         (qp.streaming/streaming-response [rff export-format]
           (if was-pivot
-            (qp.pivot/run-pivot-query (assoc query
-                                             :constraints (qp.constraints/default-query-constraints)
-                                             :info        info)
+            (qp.pivot/run-pivot-query (-> query
+                                          (assoc :constraints (qp.constraints/default-query-constraints))
+                                          (update query :info merge info))
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
