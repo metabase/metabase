@@ -1,7 +1,11 @@
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 
-export const EllipsifiedWithMarkdown = ({ children }: { children: string }) => {
+export const EllipsifiedWithMarkdownTooltip = ({
+  children,
+}: {
+  children: string;
+}) => {
   return (
     <Ellipsified
       tooltip={
@@ -10,7 +14,7 @@ export const EllipsifiedWithMarkdown = ({ children }: { children: string }) => {
         </Markdown>
       }
     >
-      <Markdown disallowHeading>{children.replace(/\s/g, " ")}</Markdown>
+      {children}
     </Ellipsified>
   );
 };
