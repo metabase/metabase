@@ -29,7 +29,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
           fetch-tags: true
 
       - name: Setup git user
@@ -39,13 +39,13 @@ jobs:
 
       - name: Create a new git tag
         run: |
-          git tag embedding-sdk-${{ github.event.inputs.sdk_version }}
+          git tag embedding-sdk-${{ inputs.sdk_version }}
       - if: failure()
-        run: echo "Make sure the tag 'embedding-sdk-${{ github.event.inputs.sdk_version }}' doesn't exist."
+        run: echo "Make sure the tag 'embedding-sdk-${{ inputs.sdk_version }}' doesn't exist."
 
       - name: Push the new tag
         run: |
-          git push origin embedding-sdk-${{ github.event.inputs.sdk_version }}
+          git push origin embedding-sdk-${{ inputs.sdk_version }}
 
   test:
     needs: git-tag
@@ -55,7 +55,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -76,7 +76,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -103,7 +103,7 @@ jobs:
     # TODO: Make it so that it only build EE jar, so we don't have to waste another runner for the image we don't use.
     uses: ./.github/workflows/uberjar.yml
     with:
-      commit: ${{ github.event.inputs.commit }}
+      commit: ${{ inputs.commit }}
       only_ee: true
     secrets: inherit
 
@@ -127,7 +127,7 @@ jobs:
       - name: Upload uberjar to S3
         env:
           BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
-          BUCKET_PATH: sdk/v${{ github.event.inputs.sdk_version }}/metabase.jar
+          BUCKET_PATH: sdk/v${{ inputs.sdk_version }}/metabase.jar
           OUTPUT_FILE: ./target/uberjar/metabase.jar
         shell: bash
         run: | # sh
@@ -143,7 +143,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
 
       - name: Setup git user
         run: |
@@ -152,21 +152,21 @@ jobs:
 
       - name: Update readme
         run: |
-          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ github.event.inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
-          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ github.event.inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
 
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ github.event.inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
 
       - name: Create a PR updating readme + published version
         run: |
-          git checkout -b update-sdk-version-${{ github.event.inputs.sdk_version }}
-          git commit -a -m 'Update Readme version references and published npm version to ${{ github.event.inputs.sdk_version }}'
+          git checkout -b update-sdk-version-${{ inputs.sdk_version }}
+          git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
           gh pr create --base master\
                        --assignee "${GITHUB_ACTOR}"\
-                       --title "Update SDK version to ${{ github.event.inputs.sdk_version }}"\
-                       --body "Update Readme version references and published npm package version to ${{ github.event.inputs.sdk_version }}"
+                       --title "Update SDK version to ${{ inputs.sdk_version }}"\
+                       --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
 
       - name: Publish to NPM
         run: echo Implement this step once you've ensure other steps works correctly.

@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
+        edition: ${{ fromJSON(inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -44,7 +44,7 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.commit }}
+        ref: ${{ inputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
+        edition: ${{ fromJSON(inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
@@ -90,7 +90,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
+        edition: ${{ fromJSON(inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     services:
       registry:
         image: registry:2
@@ -106,7 +106,7 @@ jobs:
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.commit }}
+        ref: ${{ inputs.commit }}
     - name: Download uploaded artifacts to insert into container
       uses: actions/download-artifact@v4
       with:
@@ -207,7 +207,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: ${{ fromJSON(github.event.inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
+        edition: ${{ fromJSON(inputs.only_ee && '["ee"]' || '["ee", "oss"]') }}
     services:
       registry:
         image: registry:2
@@ -223,7 +223,7 @@ jobs:
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
       - name: Download uploaded artifacts to insert into container
         uses: actions/download-artifact@v4
         with:
