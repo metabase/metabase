@@ -68,7 +68,7 @@ const PRODUCTS_TIMESERIES_METRIC = {
   display: "line",
 };
 
-describe("scenarios > metrics > editing", () => {
+describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
