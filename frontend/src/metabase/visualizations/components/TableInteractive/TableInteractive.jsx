@@ -26,7 +26,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { getTableCellTheme } from "metabase/visualizations/components/TableInteractive/interactive-table-theme";
 import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
@@ -50,6 +49,7 @@ import {
   ResizeHandle,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
+import { getCellDataTheme } from "./table-theme-utils";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -135,7 +135,7 @@ class TableInteractive extends Component {
     const { theme } = this.props;
 
     const hasChildren = children != null && children !== "";
-    const cellTheme = getTableCellTheme({ theme, isIDColumn });
+    const cellTheme = getCellDataTheme({ theme, isIDColumn });
 
     return (
       <Box

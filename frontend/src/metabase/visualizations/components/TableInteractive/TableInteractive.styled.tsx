@@ -3,10 +3,11 @@ import styled from "@emotion/styled";
 import Draggable from "react-draggable";
 
 import Button from "metabase/core/components/Button";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, lighten } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
 
 import TableS from "./TableInteractive.module.css";
+import { getCellHoverBackground } from "./table-theme-utils";
 
 export const TableInteractiveRoot = styled(Box)`
   .${TableS.TableInteractiveHeaderCellData} .${TableS.cellData} {
@@ -19,8 +20,7 @@ export const TableInteractiveRoot = styled(Box)`
   }
 
   .${TableS.TableInteractiveCellWrapper}:hover {
-    background-color: ${({ theme }) =>
-      alpha(theme.fn.themeColor("brand"), 0.1)};
+    background-color: ${getCellHoverBackground};
   }
 `;
 
@@ -50,24 +50,25 @@ export const HeaderCell = styled(Box)`
 
 export const ResizeHandle = styled.div`
   &:active {
-    background-color: ${color("brand")};
+    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
   }
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
   }
 `;
 
 export const ExpandButton = styled(Button)`
-  border: 1px solid ${lighten(color("brand"), 0.3)};
+  border: 1px solid
+    ${({ theme }) => lighten(theme.fn?.themeColor("brand"), 0.3)};
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  color: ${color("brand")};
+  color: ${({ theme }) => theme.fn?.themeColor("brand")};
   margin-right: 0.5rem;
   margin-left: auto;
 
   &:hover {
-    color: ${color("text-white")};
-    background-color: ${color("brand")};
+    color: ${({ theme }) => theme.fn?.themeColor("text-white")};
+    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
   }
 `;
