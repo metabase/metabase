@@ -28,8 +28,8 @@ import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
-import { ModelTableRow } from "./ModelsTable.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
+import { ModelTableRow } from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
