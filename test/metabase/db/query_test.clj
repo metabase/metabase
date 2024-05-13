@@ -111,7 +111,7 @@
                                                            (.countDown latch)
                                                            (.await latch)
                                                            {other-col (str (random-uuid))})))
-                  results (mt/repeat-concurrently threads thunk)
+                  results (set (mt/repeat-concurrently threads thunk))
                   n       (count results)
                   latest  (t2/select-one Setting search-col search-value)]
 
@@ -171,7 +171,7 @@
                                                                   (.countDown latch)
                                                                   (.await latch)
                                                                   {other-col <>}))))
-                    values-set (mt/repeat-concurrently threads thunk)
+                    values-set (set (mt/repeat-concurrently threads thunk))
                     latest     (get (t2/select-one Setting search-col search-value) other-col)]
 
                 (testing "each update tried to set a different value"
@@ -189,7 +189,7 @@
                 (testing "After the database is created, it does not create further duplicates"
                   (let [count (t2/count Setting search-col search-value)]
                     (is (pos? count))
-                    (is (empty? (set/intersection values-set (mt/repeat-concurrently threads thunk))))
+                    (is (empty? (set/intersection values-set (set (mt/repeat-concurrently threads thunk)))))
                     (is (= count (t2/count Setting search-col search-value))))))
 
               ;; Since we couldn't use with-temp, we need to clean up manually.
