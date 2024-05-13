@@ -12,6 +12,7 @@ import type {
   SearchResultId,
   SearchRequest,
   SearchResult,
+  RecentItem,
 } from "metabase-types/api";
 
 import type {
@@ -61,6 +62,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  recentFilter?: (results: RecentItem[]) => RecentItem[];
   searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
@@ -82,6 +84,7 @@ export function EntityPickerModal<
   options,
   actionButtons = [],
   searchResultFilter,
+  recentFilter,
   trapFocus = true,
   searchParams,
 }: EntityPickerModalProps<Model, Item>) {
@@ -107,13 +110,16 @@ export function EntityPickerModal<
     [passedTabs],
   );
 
-  const filteredRecents = useMemo(
-    () =>
+  const filteredRecents = useMemo(() => {
+    const relevantModelRecents =
       recentItems?.filter(recentItem =>
         tabModels.includes(recentItem.model as Model),
-      ) || [],
-    [recentItems, tabModels],
-  );
+      ) || [];
+
+    return recentFilter
+      ? recentFilter(relevantModelRecents)
+      : relevantModelRecents;
+  }, [recentItems, tabModels, recentFilter]);
 
   const tabs: EntityTab<Model | "recents">[] = useMemo(
     () =>

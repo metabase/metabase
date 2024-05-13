@@ -6,7 +6,6 @@ import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
-import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
