@@ -31,6 +31,14 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit }}
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+
       - name: Run unit tests
         run: yarn embedding-sdk:test-unit
 
