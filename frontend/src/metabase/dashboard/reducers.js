@@ -518,10 +518,7 @@ const autoApplyFilters = handleActions(
 );
 
 const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
-  builder.addCase(
-    SET_DISPLAY_THEME,
-    (state, { payload }) => payload ?? "light",
-  );
+  builder.addCase(SET_DISPLAY_THEME, (state, { payload }) => payload || null);
 });
 
 export const dashboardReducers = reduceReducers(
