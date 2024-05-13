@@ -441,8 +441,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      modal().within(() => {
+        cy.findByText("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
