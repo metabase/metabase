@@ -28,6 +28,19 @@ describe("scenarios > metrics > search", () => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/search?q=*").as("search");
+  });
+
+  it("should be able to search for metrics in global search", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    cy.visit("/");
+    appBar().findByPlaceholderText("Search…").type(ORDERS_SCALAR_METRIC.name);
+    cy.wait("@search");
+    cy.findByTestId("search-results-floating-container")
+      .findByText(ORDERS_SCALAR_METRIC.name)
+      .click();
+    cy.wait("@dataset");
+    cy.findByTestId("scalar-container").should("be.visible");
   });
 
   it("should see metrics in recent items in global search", () => {
