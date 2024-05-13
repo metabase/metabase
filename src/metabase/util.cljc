@@ -944,3 +944,16 @@
    (fn [acc x] (if (pred x) (reduced x) acc))
    nil
    coll))
+
+(defmacro case-enum
+  "Like `case`, but explicitly dispatch on Java enum ordinals."
+  [value & clauses]
+  (letfn [(enum-ordinal [e] `(let [^Enum e# ~e] (.ordinal e#)))]
+    `(case ~(enum-ordinal value)
+       ~@(concat
+          (mapcat (fn [[test result]]
+                    #_ {:clj-kondo/ignore [:discouraged-var]}
+                    [(eval (enum-ordinal test)) result])
+                  (partition 2 clauses))
+          (when (odd? (count clauses))
+            (list (last clauses)))))))
