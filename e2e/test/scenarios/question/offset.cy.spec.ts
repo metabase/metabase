@@ -81,10 +81,45 @@ describe("scenarios > question > offset", () => {
 
     createQuestion({ query }, { visitQuestion: true });
 
+    verifyNoQuestionError();
     verifyTableContent([
       ["April 2022", ""],
       ["May 2022", "52.76"],
     ]);
+  });
+
+  it("works with a single breakout and sorting by breakout", () => {
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
+      breakout: [ORDERS_CREATED_AT_BREAKOUT],
+      limit: 5,
+      "order-by": [["desc", ORDERS_CREATED_AT_BREAKOUT]],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyNoQuestionError();
+    verifyTableContent([
+      ["April 2026", "45,683.68"],
+      ["March 2026", "47,403.97"],
+    ]);
+  });
+
+  it.skip("works with a single breakout and sorting by aggregation", () => {
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
+      breakout: [ORDERS_CREATED_AT_BREAKOUT],
+      limit: 5,
+      "order-by": [["desc", ["aggregation", 0]]],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyNoQuestionError();
+    /* TODO: assert actual values */
+    // verifyTableContent([[]]);
   });
 
   it("works with multiple breakouts", () => {
@@ -96,6 +131,7 @@ describe("scenarios > question > offset", () => {
 
     createQuestion({ query }, { visitQuestion: true });
 
+    verifyNoQuestionError();
     verifyTableContent([
       ["April 2022", "", "", "", ""],
       ["May 2022", "", "52.76", "", ""],
@@ -113,6 +149,7 @@ describe("scenarios > question > offset", () => {
 
     createQuestion({ query }, { visitQuestion: true });
 
+    verifyNoQuestionError();
     verifyTableContent([
       ["April 2022", "", "", "", ""],
       ["May 2022", "", "52.76", "", ""],
@@ -130,6 +167,7 @@ describe("scenarios > question > offset", () => {
 
     createQuestion({ query }, { visitQuestion: true });
 
+    verifyNoQuestionError();
     verifyTableContent([
       ["April 2022", "Gadget", "52.76", ""],
       ["May 2022", "Doohickey", "339.14", ""],
@@ -158,6 +196,7 @@ describe("scenarios > question > offset", () => {
     addBreakout(breakoutName);
 
     visualize();
+    verifyNoQuestionError();
     verifyLineChart({
       xAxis: breakoutName,
       yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
@@ -165,6 +204,7 @@ describe("scenarios > question > offset", () => {
 
     saveQuestion().then(({ response }) => {
       visitQuestion(response?.body.id);
+      verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName,
         yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
@@ -246,6 +286,13 @@ function verifyQuestionError(error: string) {
     cy.findByText("There was a problem with your question").should("exist");
     cy.findByText("Show error details").click();
     cy.findByText(error).should("exist");
+  });
+}
+
+function verifyNoQuestionError() {
+  cy.findByTestId("query-builder-main").within(() => {
+    cy.findByText("There was a problem with your question").should("not.exist");
+    cy.findByText("Show error details").should("not.exist");
   });
 }
 
