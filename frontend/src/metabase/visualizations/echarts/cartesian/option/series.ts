@@ -665,6 +665,10 @@ export const buildEChartsSeries = (
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
+  const barSeriesDisplayCount =
+    settings["graph.max_categories"] == null
+      ? barSeriesCount
+      : Math.min(settings["graph.max_categories"] + 1, barSeriesCount);
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
@@ -702,9 +706,7 @@ export const buildEChartsSeries = (
             seriesModel,
             settings,
             yAxisIndex,
-            settings["graph.max_categories"] != null
-              ? settings["graph.max_categories"] + 1
-              : barSeriesCount, // TODO improve this check
+            barSeriesDisplayCount,
             yAxisWithBarSeriesCount,
             hasMultipleSeries,
             renderingContext,

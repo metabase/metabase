@@ -14,6 +14,13 @@ export function getOtherSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
+  if (
+    settings["graph.max_categories"] == null ||
+    chartModel.groupedSeriesKeys?.length === 0
+  ) {
+    return null;
+  }
+
   // TODO handle area chart
   return buildEChartsBarSeries(
     chartModel.dataset,
@@ -22,7 +29,7 @@ export function getOtherSeriesOption(
     chartMeasurements,
     chartModel.otherSeriesModel,
     settings,
-    0,
+    0, // TODO fix
     settings["graph.max_categories"] + 1, // TODO extract this?
     1, // TODO fix
     true,
