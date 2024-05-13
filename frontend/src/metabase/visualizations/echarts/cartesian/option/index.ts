@@ -24,7 +24,6 @@ import type { TimelineEventId } from "metabase-types/api";
 import type { ChartMeasurements } from "../chart-measurements/types";
 
 import { getGoalLineSeriesOption } from "./goal-line";
-import { getOtherSeriesOption } from "./other";
 import { getTrendLinesOption } from "./trend-line";
 
 export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
@@ -77,12 +76,6 @@ export const getCartesianChartOption = (
     renderingContext,
   );
   const trendSeriesOption = getTrendLinesOption(chartModel);
-  const otherSeriesOption = getOtherSeriesOption(
-    chartModel,
-    chartMeasurements,
-    settings,
-    renderingContext,
-  );
 
   const seriesOption = [
     // Data series should always come first for correct labels positioning
@@ -91,7 +84,6 @@ export const getCartesianChartOption = (
     goalSeriesOption,
     trendSeriesOption,
     timelineEventsSeries,
-    otherSeriesOption,
   ].flatMap(option => option ?? []);
 
   const groupedSeriesKeysSet = new Set(chartModel.groupedSeriesKeys);

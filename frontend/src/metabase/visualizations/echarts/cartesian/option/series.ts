@@ -742,5 +742,28 @@ export const buildEChartsSeries = (
     );
   }
 
+  if (
+    settings["graph.max_categories"] != null &&
+    chartModel.groupedSeriesKeys?.length !== 0 &&
+    chartModel.otherSeriesModel
+  ) {
+    // TODO handle area chart
+    series.push(
+      buildEChartsBarSeries(
+        chartModel.dataset,
+        chartModel.xAxisModel,
+        chartModel.yAxisScaleTransforms,
+        chartMeasurements,
+        chartModel.otherSeriesModel,
+        settings,
+        0, // TODO fix after updating y-axis split
+        barSeriesDisplayCount,
+        yAxisWithBarSeriesCount,
+        true,
+        renderingContext,
+      ),
+    );
+  }
+
   return series;
 };
