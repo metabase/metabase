@@ -33,7 +33,7 @@ const ORDERS_COUNT_MODEL_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
-    "source-table": ORDERS_MODEL_ID,
+    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
