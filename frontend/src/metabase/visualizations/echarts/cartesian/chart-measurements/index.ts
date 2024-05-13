@@ -19,6 +19,7 @@ import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 import type {
   ChartBoundsCoords,
   ChartMeasurements,
+  LabelRotation,
   Padding,
   TicksDimensions,
 } from "./types";
@@ -500,6 +501,22 @@ const areHorizontalXAxisTicksOverlapping = (
       dimensionWidth
     );
   });
+};
+
+const getStackedBarLabelsRotation = (
+  chartModel: BaseCartesianChartModel,
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+): LabelRotation => {
+  const barSeriesModels = chartModel.seriesModels.filter(
+    seriesModel =>
+      settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
+      "bar",
+  );
+
+  barSeriesModels;
+
+  return "horizontal";
 };
 
 export const getChartMeasurements = (

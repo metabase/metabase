@@ -22,6 +22,8 @@ export interface ChartBoundsCoords {
   right: number;
 }
 
+export type LabelRotation = "horizontal" | "vertical";
+
 export interface ChartMeasurements {
   padding: Padding;
   ticksDimensions: TicksDimensions;
@@ -29,4 +31,5 @@ export interface ChartMeasurements {
   boundaryWidth: number;
   outerHeight: number;
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
+  stackedBarLabelsRotation?: "horizontal" | "vertical";
 }

@@ -374,6 +374,23 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getDefault: getDefaultDataLabelsFrequency,
     readDependencies: ["graph.show_values"],
   },
+  "graph.stack_values": {
+    section: t`Display`,
+    title: t`Stack values to show`,
+    widget: "segmentedControl",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] == null,
+    props: {
+      options: [
+        { name: t`Total`, value: "total" },
+        { name: t`Insides`, value: "insides" },
+        { name: t`Both`, value: "all" },
+      ],
+    },
+    default: "total",
+    readDependencies: ["graph.show_values", "stackable.stack_type"],
+  },
   "graph.label_value_formatting": {
     section: t`Display`,
     title: t`Auto formatting`,

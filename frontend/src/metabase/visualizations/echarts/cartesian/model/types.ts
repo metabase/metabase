@@ -13,6 +13,7 @@ import type {
   DateTimeAbsoluteUnit,
   RowValue,
 } from "metabase-types/api";
+import type { Formatter } from "metabase/visualizations/types";
 
 export type BreakoutValue = RowValue;
 export type ColumnName = string;
@@ -93,7 +94,9 @@ export type Datum = Record<DataKey, RowValue> & {
 export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
-export type AxisFormatter = (value: RowValue) => string;
+export type RawValueFormatter = (value: RowValue) => string;
+export type LabelFormatter = RawValueFormatter;
+export type AxisFormatter = RawValueFormatter;
 export type TimeSeriesAxisFormatter = (
   value: RowValue,
   unit?: DateTimeAbsoluteUnit,
@@ -198,6 +201,7 @@ export type BaseCartesianChartModel = {
   seriesIdToDataKey?: Record<string, DataKey>;
 
   trendLinesModel?: TrendLinesModel;
+  seriesLabelsFormatters?: Record<DataKey, LabelFormatter>;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

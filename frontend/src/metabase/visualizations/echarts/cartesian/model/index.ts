@@ -13,6 +13,7 @@ import {
 import {
   getCardsSeriesModels,
   getDimensionModel,
+  getSeriesLabelsFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
@@ -155,6 +156,13 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
+  const seriesLabelsFormatters = getSeriesLabelsFormatters(
+    seriesModels,
+    dataset,
+    settings,
+    renderingContext,
+  );
+
   return {
     dataset,
     transformedDataset,
@@ -167,5 +175,6 @@ export const getCartesianChartModel = (
     rightAxisModel,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
+    seriesLabelsFormatters,
   };
 };
