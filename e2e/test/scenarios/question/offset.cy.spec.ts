@@ -12,6 +12,7 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
+import { uuid } from "metabase/lib/uuid";
 import type {
   Aggregation,
   Breakout,
@@ -254,14 +255,4 @@ function createOffsetOptions(name = "offset") {
     name,
     "display-name": name,
   };
-}
-
-let nextUuid = 0;
-
-function uuid() {
-  const uuids = "0123456789abcdef".split("").map(character => {
-    return `355c4922-b77c-43b5-9787-46918e11217${character}`;
-  });
-
-  return uuids[++nextUuid % uuids.length];
 }
