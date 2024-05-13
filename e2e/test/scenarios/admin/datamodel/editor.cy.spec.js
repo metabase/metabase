@@ -6,6 +6,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
+  modal,
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
@@ -54,8 +55,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Table display_name").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      modal().within(() => {
+        cy.findByText("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
