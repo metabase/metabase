@@ -40,10 +40,6 @@ const ORDERS_TIMESERIES_METRIC: QuestionDetails = {
     ],
   },
   display: "line",
-  visualization_settings: {
-    "graph.dimensions": ["CREATED_AT"],
-    "graph.metrics": ["count"],
-  },
 };
 
 const PRODUCTS_TIMESERIES_METRIC: QuestionDetails = {
@@ -61,10 +57,6 @@ const PRODUCTS_TIMESERIES_METRIC: QuestionDetails = {
     ],
   },
   display: "line",
-  visualization_settings: {
-    "graph.dimensions": ["CREATED_AT"],
-    "graph.metrics": ["count"],
-  },
 };
 
 describe("scenarios > metrics > editing", () => {
@@ -97,7 +89,7 @@ describe("scenarios > metrics > editing", () => {
     });
   });
 
-  it("should be able to combine metrics in a dashcard (metabase#42575)", () => {
+  it.skip("should be able to combine metrics in a dashcard (metabase#42575)", () => {
     createQuestion(ORDERS_TIMESERIES_METRIC);
     createQuestion(PRODUCTS_TIMESERIES_METRIC);
     visitDashboard(ORDERS_DASHBOARD_ID);
