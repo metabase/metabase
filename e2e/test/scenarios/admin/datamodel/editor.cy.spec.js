@@ -510,7 +510,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      modal().within(() => {
+        cy.findByText("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
