@@ -8,6 +8,7 @@
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
+   [metabase.pulse :as pulse]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.pulse.util :as pu]
@@ -692,7 +693,7 @@
   [content-to-match]
   (fn [loc]
     (let [{:keys [content]} (zip/node loc)]
-      (= content content-to-match ))))
+      (= content content-to-match))))
 
 (defn- parse-transform [s]
   (let [numbers (-> (re-find #"matrix\((.+)\)" s)
@@ -719,7 +720,7 @@
                     :Gizmo     {:axis dir}
                     :Widget    {:axis dir}},
                    :graph.dimensions ["PRICE" "CATEGORY"],
-                   :graph.metrics    ["count"]}) ]
+                   :graph.metrics    ["count"]})]
         (mt/with-temp [:model/Card {left-card-id :id} {:display                :bar
                                                        :visualization_settings (viz "left")
                                                        :dataset_query          q}
@@ -751,3 +752,30 @@
                                          :e)]
               (is (= 1 (count axis-label-element)))
               (is (< 200 axis-y-transform)))))))))
+
+(defn- render-card
+  [render-type card data]
+  (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
+
+(defn execute-n-times-in-parallel
+  "Execute f n times in parallel and derefs all the results."
+  [f n]
+  (mapv deref (for [_ (range n)]
+               (future (f)))))
+
+(deftest render-cards-are-thread-safe-test-for-js-visualization
+  (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
+                                                                          {:aggregation [[:count]]
+                                                                           :breakout    [$orders.created_at]
+                                                                           :limit       1})
+                                   :display                :line
+                                   :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                            :graph.metrics    ["count"]}}]
+    (let [data (:data (qp/process-query (:dataset_query card)))]
+      (is (every? some? (execute-n-times-in-parallel #(render-card :javascript_visualization card data) 3))))))
+
+(deftest render-cards-are-thread-safe-test-for-table
+  (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})
+                                   :display       :table}]
+    (let [data (:data (qp/process-query (:dataset_query card)))]
+      (is (every? some? (execute-n-times-in-parallel #(render-card :table card data) 3))))))

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -7,7 +8,6 @@ import {
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
-  ColumnHeader,
   ItemCell,
   ItemLink,
   ItemNameCell,
@@ -18,7 +18,7 @@ import {
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
 import { Icon, type IconProps } from "metabase/ui";
@@ -29,6 +29,7 @@ import { getCollectionName, getIcon } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
+import { ModelTableRow } from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
@@ -45,14 +46,18 @@ const collectionProps: ResponsiveProps = {
   containerName: "ItemsTableContainer",
 };
 
+const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+  sort_column: "collection",
+  sort_direction: SortDirection.Asc,
+};
+
 export const ModelsTable = ({ models }: ModelsTableProps) => {
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
 
-  const [sortingOptions, setSortingOptions] = useState<SortingOptions>({
-    sort_column: "name",
-    sort_direction: SortDirection.Asc,
-  });
+  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
+    DEFAULT_SORTING_OPTIONS,
+  );
 
   const sortedModels = sortModels(models, sortingOptions, localeCode);
 
@@ -76,7 +81,9 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
             sortingOptions={sortingOptions}
             onSortingOptionsChange={setSortingOptions}
           />
-          <ColumnHeader {...descriptionProps}>{t`Description`}</ColumnHeader>
+          <SortableColumnHeader name="description" {...descriptionProps}>
+            {t`Description`}
+          </SortableColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
@@ -100,9 +107,22 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
 const TBodyRow = ({ model }: { model: ModelResult }) => {
   const icon = getIcon(model);
   const containerName = `collections-path-for-${model.id}`;
+  const dispatch = useDispatch();
+  const { id, name } = model;
 
   return (
-    <tr>
+    <ModelTableRow
+      onClick={(e: React.MouseEvent) => {
+        const url = Urls.model({ id, name });
+        if ((e.ctrlKey || e.metaKey) && e.button === 0) {
+          window.open(url, "_blank");
+        } else {
+          dispatch(push(url));
+        }
+      }}
+      tabIndex={0}
+      key={model.id}
+    >
       {/* Name */}
       <NameCell
         model={model}
@@ -138,7 +158,7 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
-    </tr>
+    </ModelTableRow>
   );
 };
 
