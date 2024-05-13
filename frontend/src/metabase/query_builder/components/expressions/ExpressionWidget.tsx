@@ -221,7 +221,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
             !startRule && {
               shortcut: true,
               name: t`Extract columns`,
-              icon: "split",
+              icon: "arrow_split",
               group: "shortcuts",
               action: () => setIsExtractingColumn(true),
             },

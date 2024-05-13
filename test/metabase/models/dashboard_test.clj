@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.automagic-dashboards.core :as magic]
    [metabase.models :refer [Action Card Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Revision Table]]
    [metabase.models.collection :as collection]
@@ -18,6 +17,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.xrays.automagic-dashboards.core :as magic]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import

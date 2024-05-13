@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
-import { isProduction } from "metabase/env";
+import { isChartsDebugLoggingEnabled } from "metabase/env";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -14,11 +14,11 @@ export function useChartDebug({
 }: {
   isQueryBuilder: boolean;
   rawSeries: RawSeries;
-  option: EChartsOption;
+  option: EChartsCoreOption;
   chartModel: BaseCartesianChartModel;
 }) {
   useEffect(() => {
-    if (!isQueryBuilder || isProduction) {
+    if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
       return;
     }
     console.log("-------------- ECHARTS DEBUG INFO START --------------");

@@ -372,6 +372,6 @@ export const parse = pipe(
   recursiveParse,
   adjustOptions,
   useShorthands,
-  adjustCase,
   adjustOffset,
+  adjustCase,
 );

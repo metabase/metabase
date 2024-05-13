@@ -346,15 +346,13 @@
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
      (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
-     :else            [:case
-                       [:=
-                        (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
-                        (inline-num 0)]
-                       (inline-num 7)
-                       :else
-                       (mod-fn
-                        (h2x/+ day-of-week-honeysql-expr offset)
-                        (inline-num 7))])))
+     :else            (-> [:coalesce
+                           [:nullif
+                            (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
+                            [:inline 0]]
+                           [:inline 7]]
+                          (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
+                                                           "integer"))))))
 
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
@@ -883,9 +881,7 @@
     (recur (second denominator))
 
     :else
-    [:case
-     [:= denominator (inline-num 0)] nil
-     :else                           denominator]))
+    [:nullif denominator [:inline 0]]))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
@@ -1258,7 +1254,8 @@
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
   (if-let [field-arg (lib.util.match/match-one args
-                       :field          &match)]
+                       :field          &match
+                       :expression     &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or

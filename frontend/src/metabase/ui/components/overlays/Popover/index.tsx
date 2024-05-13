@@ -41,3 +41,4 @@ const Popover: typeof MantinePopover & {
 } = MantinePopover;
 
 export { Popover };
+export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.styled";

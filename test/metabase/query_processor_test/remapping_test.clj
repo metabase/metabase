@@ -294,7 +294,7 @@
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset test-data
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                             qp.test-util/mock-fks-metadata-provider
+                                             qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
           (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
             (let [query (mt/mbql-query products

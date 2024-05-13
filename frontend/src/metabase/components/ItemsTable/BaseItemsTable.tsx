@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
@@ -24,12 +25,12 @@ import {
   Table,
   TBody,
 } from "./BaseItemsTable.styled";
-import { Columns } from "./Columns";
+import { Columns, SortDirection } from "./Columns";
 import type { ResponsiveProps } from "./utils";
 
 export type SortingOptions = {
   sort_column: string;
-  sort_direction: "asc" | "desc";
+  sort_direction: SortDirection;
 };
 
 export type SortableColumnHeaderProps = {
@@ -38,36 +39,38 @@ export type SortableColumnHeaderProps = {
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
-export enum Sort {
-  Asc = "asc",
-  Desc = "desc",
-}
-
 export const SortableColumnHeader = ({
-  name = "",
-  sortingOptions = {
-    sort_column: "",
-    sort_direction: Sort.Asc,
-  },
+  name,
+  sortingOptions,
   onSortingOptionsChange,
   children,
   hideAtContainerBreakpoint,
   containerName,
   ...props
 }: SortableColumnHeaderProps & ResponsiveProps) => {
-  const isSortable = !!onSortingOptionsChange;
-  const isSortingThisColumn = sortingOptions.sort_column === name;
+  const isSortable = !!onSortingOptionsChange && !!name;
+  const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
-    ? sortingOptions.sort_direction
-    : Sort.Desc;
+    ? sortingOptions?.sort_direction
+    : SortDirection.Desc;
 
-  const onSortingControlClick = () => {
-    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
-    onSortingOptionsChange?.({
-      sort_column: name,
-      sort_direction: nextDirection,
-    });
-  };
+  const onSortingControlClick = useMemo(() => {
+    if (!isSortable) {
+      return undefined;
+    }
+    const handler = () => {
+      const nextDirection =
+        direction === SortDirection.Asc
+          ? SortDirection.Desc
+          : SortDirection.Asc;
+      const newSortingOptions = {
+        sort_column: name,
+        sort_direction: nextDirection,
+      };
+      onSortingOptionsChange?.(newSortingOptions);
+    };
+    return handler;
+  }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
     <ColumnHeader
@@ -84,7 +87,7 @@ export const SortableColumnHeader = ({
         {children}
         {isSortable && (
           <SortingIcon
-            name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
+            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
           />
         )}
       </SortingControlContainer>

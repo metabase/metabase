@@ -6,6 +6,7 @@
     "no-console": 0,
     "@typescript-eslint/no-namespace": "off",
     "cypress/no-async-tests": "error",
+    "cypress/no-pause": "error",
     "quotes": ["error", "double", { "avoidEscape": true }],
     "no-restricted-imports": [
       "error",

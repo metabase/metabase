@@ -161,8 +161,9 @@
                  (isa? k :Relation/*))))]
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
-(def Field
-  "Schema for a valid Field for API usage."
+(def LegacyFieldOrExpressionReference
+  "Schema for a valid legacy `:field` or `:expression` reference for API usage. TODO -- why are these passed into the
+  REST API at all? MBQL clauses are not things we should ask for as API parameters."
   (mu/with-api-error-message
     [:fn (fn [k]
            ((comp (mc/validator mbql.s/Field)
@@ -271,8 +272,8 @@
     [:map
      [:values {:optional true} [:* :any]]
      [:card_id {:optional true} PositiveInt]
-     [:value_field {:optional true} Field]
-     [:label_field {:optional true} Field]]))
+     [:value_field {:optional true} LegacyFieldOrExpressionReference]
+     [:label_field {:optional true} LegacyFieldOrExpressionReference]]))
 
 (def RemappedFieldValue
   "Has two components:

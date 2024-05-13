@@ -1,4 +1,4 @@
-import { useRegisterActions, useKBar } from "kbar";
+import { useRegisterActions, useKBar, Priority } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -78,7 +78,7 @@ export const useCommandPalette = () => {
       {
         id: "search_docs",
         name: debouncedSearchText
-          ? `Search documentation for "${debouncedSearchText}"`
+          ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
@@ -107,7 +107,7 @@ export const useCommandPalette = () => {
       return [
         {
           id: "search-is-loading",
-          name: "Loading...",
+          name: t`Loading...`,
           keywords: searchQuery,
           section: "search",
         },
@@ -121,28 +121,57 @@ export const useCommandPalette = () => {
         },
       ];
     } else if (debouncedSearchText) {
-      if (searchResults?.data?.length) {
-        return searchResults.data.map<PaletteAction>(result => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          return {
-            id: `search-result-${result.model}-${result.id}`,
-            name: result.name,
-            icon: wrappedResult.getIcon().name,
+      if (searchResults?.data.length) {
+        return [
+          {
+            id: `search-results-metadata`,
+            name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            subtitle: result.description || "",
+            icon: "link" as const,
             perform: () => {
-              // Need to keep this logic here for when user selects via keyboard
-              dispatch(push(wrappedResult.getUrl()));
+              dispatch(
+                push({
+                  pathname: "search",
+                  query: {
+                    q: debouncedSearchText,
+                  },
+                }),
+              );
             },
+            priority: Priority.HIGH,
             extra: {
-              parentCollection: wrappedResult.getCollection().name,
-              isVerified: result.moderated_status === "verified",
-              database: result.database_name,
-              href: wrappedResult.getUrl(),
+              href: {
+                pathname: "search",
+                query: {
+                  q: debouncedSearchText,
+                },
+              },
             },
-          };
-        });
+          },
+        ].concat(
+          searchResults.data.map(result => {
+            const wrappedResult = Search.wrapEntity(result, dispatch);
+            return {
+              id: `search-result-${result.model}-${result.id}`,
+              name: result.name,
+              subtitle: result.description || "",
+              icon: wrappedResult.getIcon().name,
+              section: "search",
+              keywords: debouncedSearchText,
+              priority: Priority.NORMAL,
+              perform: () => {
+                dispatch(push(wrappedResult.getUrl()));
+              },
+              extra: {
+                parentCollection: wrappedResult.getCollection().name,
+                isVerified: result.moderated_status === "verified",
+                database: result.database_name,
+                href: wrappedResult.getUrl(),
+              },
+            };
+          }),
+        );
       } else {
         return [
           {

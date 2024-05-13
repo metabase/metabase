@@ -160,27 +160,27 @@
            xform)
      (completing conj #(t2/hydrate % :collection))
      []
-     (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
-                                            [{:select   [:status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :moderated_item_id :report_card.id]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1}
-                                             :moderated_status]]
-                                 :from     [:report_card]
-                                 :where    (into [:and
-                                                  [:not= :result_metadata nil]
-                                                  [:= :archived false]
-                                                  [:= :type (u/qualified-name card-type)]
-                                                  [:in :database_id ids-of-dbs-that-support-source-queries]
-                                                  (collection/visible-collection-ids->honeysql-filter-clause
-                                                   (collection/permissions-set->visible-collection-ids
-                                                    @api/*current-user-permissions-set*))]
-                                                 additional-constraints)
-                                 :order-by [[:%lower.name :asc]]}))))
+     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                     [{:select   [:status]
+                                       :from     [:moderation_review]
+                                       :where    [:and
+                                                  [:= :moderated_item_type "card"]
+                                                  [:= :moderated_item_id :report_card.id]
+                                                  [:= :most_recent true]]
+                                       :order-by [[:id :desc]]
+                                       :limit    1}
+                                      :moderated_status]]
+                          :from     [:report_card]
+                          :where    (into [:and
+                                           [:not= :result_metadata nil]
+                                           [:= :archived false]
+                                           [:= :type (u/qualified-name card-type)]
+                                           [:in :database_id ids-of-dbs-that-support-source-queries]
+                                           (collection/visible-collection-ids->honeysql-filter-clause
+                                            (collection/permissions-set->visible-collection-ids
+                                             @api/*current-user-permissions-set*))]
+                                          additional-constraints)
+                          :order-by [[:%lower.name :asc]]}))))
 
 (mu/defn ^:private source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
