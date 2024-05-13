@@ -186,6 +186,9 @@ const config = (module.exports = {
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
       "embedding-sdk": SDK_SRC_PATH,
+      // dependencies
+      classnames: path.resolve(__dirname, "node_modules", "classnames"),
+      "react-redux": path.resolve(__dirname, "node_modules", "react-redux"),
     },
   },
   cache: useFilesystemCache
