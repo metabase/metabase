@@ -56,8 +56,6 @@
                :visualization_settings "{}"
                :display "line"))))
 
-;; TODO prevent inserting duplicates if a partial migration is retried
-;; (not sure if such a thing can happen with liquibase)
 (defn- create-metric-v2
   "Create and persist a metric v2 question from `metric-v1` in `metric-v2-coll`."
   [metric-v1 metric-v2-coll]
@@ -132,7 +130,6 @@
       (doseq [card metric-consuming-cards
               :let [rewritten (rewrite-metric-consuming-card card metric-id->metric-card)]
               :when (and rewritten (not= card rewritten))]
-        ;; TODO document that updated_at changes
         (t2/update! :report_card
                     (:id card)
                     (-> rewritten
