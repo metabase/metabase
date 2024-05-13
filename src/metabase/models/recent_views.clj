@@ -249,30 +249,36 @@
      :authority_level (:authority_level collection)
      :parent_collection (get-parent-coll collection)}))
 
-(defn ellide-inactive
+(mu/defn ellide-inactive
   "Used to filter out inactive tables in [[fill-recent-view-info]] for `:table`."
-  [table]
-  (condp = (:archived table)
-    true nil
-    false table
-    ;; IF it's missing, query for the value, and use that one.
-    nil (ellide-inactive (t2/select-one [:model/Table :active] (:id table)))))
+  [model-object :- [:maybe [:map [:id [:int {:min 1}]]]]
+   model-id]
+  (if-let [is-active? (and model-object
+                           (contains? model-object :active)
+                           (:active model-object))]
+    [model-object is-active?]
+    ;; if we don't have the :active key, we need to do a query for it:
+    (let [table (t2/select-one :model/Table model-id)]
+      (if (nil? table)
+        (throw (ex-info "Table not found" {:table-id model-id}))
+        [table (:active table)]))))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
-  (when-let [table (ellide-inactive (or model_object (t2/select-one :model/Table model_id)))]
-    {:id model_id
-     :name (:name table)
-     :description (:description table)
-     :model :table
-     :display_name (:display_name table)
-     :can_write (mi/can-write? table)
-     :timestamp (str timestamp)
-     :database (let [{:keys [name initial_sync_status]}
-                     (t2/select-one [:model/Database :name :initial_sync_status]
-                                    (:db_id table))]
-                 {:id (:db_id table)
-                  :name name
-                  :initial_sync_status initial_sync_status})}))
+  (let [[table is-active?] (ellide-inactive model_object model_id)]
+    (when is-active?
+      {:id model_id
+       :name (:name table)
+       :description (:description table)
+       :model :table
+       :display_name (:display_name table)
+       :can_write (mi/can-write? table)
+       :timestamp (str timestamp)
+       :database (let [{:keys [name initial_sync_status]}
+                       (t2/select-one [:model/Database :name :initial_sync_status]
+                                      (:db_id table))]
+                   {:id (:db_id table)
+                    :name name
+                    :initial_sync_status initial_sync_status})})))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (#{:question} model) :card model))

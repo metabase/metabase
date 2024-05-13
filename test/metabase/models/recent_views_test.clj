@@ -161,9 +161,9 @@
          :model/Collection {collection-id-3 :id} {}
 
          :model/Database   {db-id           :id} {} ;; just needed for these temp tables
-         :model/Table      {table-id        :id} {:db_id db-id, :is_upload true}
-         :model/Table      {table-id-2      :id} {:db_id db-id, :is_upload true}
-         :model/Table      {table-id-3      :id} {:db_id db-id, :is_upload true}]
+         :model/Table      {table-id        :id} {:db_id db-id, :active true}
+         :model/Table      {table-id-2      :id} {:db_id db-id, :active true}
+         :model/Table      {table-id-3      :id} {:db_id db-id, :active false}]
         (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
                                    [:model/Card       [model-id model-id-2 model-id-3]]
                                    [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
@@ -171,13 +171,15 @@
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
-        (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 3}
+        (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 2}
+               ;; There are 3 tables in recent_view, but 1 gets filtered out.
                (frequencies (map :model (recent-views/get-list (mt/user->id :rasta))))))
         (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
           (is (= 5
                  (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
-          (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 2}
+          (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
+                 ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
                  (frequencies (map :model (recent-views/get-list (mt/user->id :rasta)))))))))))
 
 (deftest id-pruning-test
