@@ -42,6 +42,16 @@ const ORDERS_TIMESERIES_METRIC: QuestionDetails = {
   display: "line",
 };
 
+const PRODUCTS_SCALAR_METRIC: QuestionDetails = {
+  name: "Count of products",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
 const PRODUCTS_TIMESERIES_METRIC: QuestionDetails = {
   name: "Count of products over time",
   type: "metric",
@@ -89,30 +99,44 @@ describe("scenarios > metrics > editing", () => {
     });
   });
 
-  it.skip("should be able to combine metrics in a dashcard (metabase#42575)", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC);
-    createQuestion(PRODUCTS_TIMESERIES_METRIC);
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findByTestId("dashboard-header").within(() => {
-      cy.findByLabelText("Edit dashboard").click();
-      cy.findByLabelText("Add questions").click();
-    });
-    cy.findByTestId("add-card-sidebar")
-      .findByText(ORDERS_TIMESERIES_METRIC.name)
-      .click();
-    getDashboardCard(1).realHover().findByTestId("add-series-button").click();
-    modal().within(() => {
-      cy.findByText(PRODUCTS_TIMESERIES_METRIC.name).click();
-      cy.findByLabelText("Legend").within(() => {
-        cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-        cy.findByText(PRODUCTS_TIMESERIES_METRIC.name).should("be.visible");
-      });
-      cy.button("Done").click();
-    });
-    saveDashboard();
-    getDashboardCard(1).within(() => {
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      cy.findByText(PRODUCTS_TIMESERIES_METRIC.name).should("be.visible");
-    });
+  it("should be able to combine scalar metrics in a dashcard", () => {
+    combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
+  });
+
+  it.skip("should be able to combine timeseries metrics in a dashcard (metabase#42575)", () => {
+    combineAndVerifyMetrics(
+      ORDERS_TIMESERIES_METRIC,
+      PRODUCTS_TIMESERIES_METRIC,
+    );
   });
 });
+
+function combineAndVerifyMetrics(
+  metric1: QuestionDetails,
+  metric2: QuestionDetails,
+) {
+  createQuestion(metric1);
+  createQuestion(metric2);
+  visitDashboard(ORDERS_DASHBOARD_ID);
+  cy.findByTestId("dashboard-header").within(() => {
+    cy.findByLabelText("Edit dashboard").click();
+    cy.findByLabelText("Add questions").click();
+  });
+  cy.findByTestId("add-card-sidebar").findByText(metric1.name).click();
+  getDashboardCard(1).realHover().findByTestId("add-series-button").click();
+  modal().within(() => {
+    cy.findByText(metric2.name).click();
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText(metric1.name).should("be.visible");
+      cy.findByText(metric2.name).should("be.visible");
+    });
+    cy.button("Done").click();
+  });
+  saveDashboard();
+  getDashboardCard(1).within(() => {
+    cy.findByLabelText("Legend").within(() => {
+      cy.findByText(metric1.name).should("be.visible");
+      cy.findByText(metric2.name).should("be.visible");
+    });
+  });
+}
