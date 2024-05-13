@@ -11,11 +11,26 @@ If your question results don't change frequently, you may want to store the resu
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
 
-Metabase gives you the ability to automatically cache question results that meet a [minimum query duration](#minimum-query-duration).
+You can set up caching at different levels, from largest to smallest scope:
 
-If your questions share a common model, you can enable [model caching](../data-modeling/models.md#model-caching) instead.
+- [Default policy (across all databases)](#default-caching-policy)
+- [Database policy (specific to each connected database)](#database-policy)
+- [Model caching](../data-modeling/models.md#model-caching)
+- [Dashboard](#Dashboard-caching)
+- [Question](#question-caching)
 
-## Enabling global caching
+Caching settings at smaller scopes override caching settings at large scopes. So caching settings for a question will override the database caching settings.
+
+## Turn on caching for your Metabase or specific databases
+
+Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**.
+
+Or, click through **Gear** settings icon > **Admin settings**
+- **Performance** > **Data caching settings**.
+
+## Default policy
+
+To set up global caching
 
 1. Go to **Admin settings** > **Caching** (in the sidebar).
 2. Click the toggle under **Saved Questions**.
@@ -36,7 +51,7 @@ Questions that use the cache will display a "last cached at" timestamp in the qu
 
 ## Getting fresh results
 
-To override a cached question result, re-run the question using the **refresh** button (counterclockwise arrow).
+To override a cached question result, re-run the question using the **refresh** button (clockwise arrow icon).
 
 ## Average query execution time
 
