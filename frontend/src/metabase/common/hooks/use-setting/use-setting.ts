@@ -16,17 +16,25 @@ export const useUserSetting = <T extends keyof UserSettings>(
   key: T,
   {
     shouldRefresh = false,
+    shouldMemoize = false,
     shouldDebounce = true,
     debounceTimeout = 200,
     debounceOnLeadingEdge,
   }: {
     shouldRefresh?: boolean;
+    /** If true, only the first value retrieved from the API will be used */
+    shouldMemoize?: boolean;
     shouldDebounce?: boolean;
     debounceTimeout?: number;
     debounceOnLeadingEdge?: boolean;
   } = {},
 ): [UserSettings[T], (value: UserSettings[T]) => void] => {
   const currentValue = useSetting(key);
+  const memoizedValue = useMemo(
+    () => currentValue,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Update only when currentValue first becomes defined
+    [currentValue === undefined],
+  );
   const dispatch = useDispatch();
   const setter = useCallback(
     (value: UserSettings[T]) => {
@@ -38,5 +46,8 @@ export const useUserSetting = <T extends keyof UserSettings>(
     () => _.debounce(setter, debounceTimeout, debounceOnLeadingEdge),
     [setter, debounceTimeout, debounceOnLeadingEdge],
   );
-  return [currentValue, shouldDebounce ? debouncedSetter : setter];
+  return [
+    shouldMemoize ? memoizedValue : currentValue,
+    shouldDebounce ? debouncedSetter : setter,
+  ];
 };
