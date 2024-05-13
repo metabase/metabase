@@ -3,8 +3,10 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
   echartsContainer,
+  filterWidget,
   getDashboardCard,
   modal,
+  popover,
   restore,
   saveDashboard,
   visitDashboard,
@@ -94,6 +96,38 @@ describe("scenarios > metrics > editing", () => {
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
       echartsContainer().should("be.visible");
     });
+  });
+
+  it("should be able to add a filter and drill thru", () => {
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_SCALAR_METRIC],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard().findByText("18,760").should("be.visible");
+    cy.findByTestId("dashboard-header").within(() => {
+      cy.findByLabelText("Edit dashboard").click();
+      cy.findByLabelText("Add a filter").click();
+    });
+    popover().findByText("Text or Category").click();
+    getDashboardCard().findByText("Select…").click();
+    popover().findByText("Category").click();
+    saveDashboard();
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("4,939").should("be.visible");
+      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Product → Category is Gadget")
+      .should("be.visible");
+    cy.findByTestId("scalar-container")
+      .findByText("4,939")
+      .should("be.visible");
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {
