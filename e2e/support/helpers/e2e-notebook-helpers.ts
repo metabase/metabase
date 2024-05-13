@@ -1,6 +1,6 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
-import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 /**
@@ -138,16 +138,11 @@ export function removeSummaryGroupingField({
  * Expects a join popover to be open!
  *
  */
-export function joinTable(
-  tableName: string,
-  lhsColumnName?: string,
-  rhsColumnName?: string,
-) {
-  popover().findByText(tableName).click();
-  if (lhsColumnName && rhsColumnName) {
-    popover().findByText(lhsColumnName).click();
-    popover().findByText(rhsColumnName).click();
-  }
+export function joinTable(tableName: string) {
+  modal().within(() => {
+    cy.findByText("Tables").click();
+    cy.findByText(tableName).click();
+  });
 }
 
 /**
