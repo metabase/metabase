@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, memo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -205,4 +205,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(MainNavbarContainer);
+)(memo(MainNavbarContainer));
