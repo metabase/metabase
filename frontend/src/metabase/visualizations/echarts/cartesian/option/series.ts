@@ -750,7 +750,7 @@ export const buildEChartsSeries = (
     // TODO handle area chart
     series.push(
       buildEChartsBarSeries(
-        chartModel.dataset,
+        chartModel.transformedDataset,
         chartModel.xAxisModel,
         chartModel.yAxisScaleTransforms,
         chartMeasurements,
