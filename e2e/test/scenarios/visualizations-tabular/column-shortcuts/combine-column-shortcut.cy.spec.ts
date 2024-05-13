@@ -74,11 +74,5 @@ function combineColumns({
 
 function selectColumn(name: string) {
   popover().findAllByText("Select a column...").first().click();
-  popover()
-    .last()
-    .within(() => {
-      if (name) {
-        cy.findByText(name).click();
-      }
-    });
+  popover().last().findByText(name).click();
 }
