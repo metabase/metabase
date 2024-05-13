@@ -245,12 +245,12 @@ jobs:
         version:
           - name: MariaDB 10.2
             junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+            image: mariadb:10.2.23
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
           - name: MySQL 8.0
@@ -296,6 +296,8 @@ jobs:
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: circle_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: circle_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
