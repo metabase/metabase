@@ -12,6 +12,9 @@ export const NEGATIVE_STACK_TOTAL_DATA_KEY =
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x` as const;
 
+// Key for the "other" series for the "Maxium number of categories" settings
+export const OTHER_DATA_KEY = `${NULL_CHAR}_other` as const;
+
 // In some cases a datum in `chartModel.transformedDataset` may include this
 // key, its value is equal to the index of that same datum in the original
 // dataset (e.g. `chartModel.dataset`)

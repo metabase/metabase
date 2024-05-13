@@ -1,3 +1,6 @@
+import { t } from "ttag";
+
+import { color } from "metabase/lib/colors";
 import {
   getXAxisModel,
   getYAxesModels,
@@ -16,6 +19,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
+  OtherSeriesModel,
   ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
@@ -26,6 +30,8 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
+
+import { OTHER_DATA_KEY } from "../constants/dataset";
 
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
@@ -133,6 +139,12 @@ export const getCartesianChartModel = (
       showWarning,
     );
 
+  const otherSeriesModel: OtherSeriesModel = {
+    name: t`Other`,
+    color: color("text-light"), // TODO setting,
+    dataKey: OTHER_DATA_KEY,
+  };
+
   const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
     rawSeries[0].card.display,
   );
@@ -160,7 +172,6 @@ export const getCartesianChartModel = (
     dataset,
     transformedDataset,
     seriesModels,
-    groupedSeriesKeys,
     yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,
@@ -168,6 +179,8 @@ export const getCartesianChartModel = (
     leftAxisModel,
     rightAxisModel,
     trendLinesModel,
+    groupedSeriesKeys,
+    otherSeriesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
   };
 };

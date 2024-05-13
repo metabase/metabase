@@ -8,6 +8,7 @@ import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
+  OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -353,7 +354,7 @@ function groupSeriesIntoOther(
       delete transformedDatum[key];
     });
 
-    transformedDatum["_other"] = groupedSeriesKeys.reduce(
+    transformedDatum[OTHER_DATA_KEY] = groupedSeriesKeys.reduce(
       (sum, key) => (sum += datum[key] || 0),
       0,
     ); // TODO use constant, remove cast
@@ -363,8 +364,6 @@ function groupSeriesIntoOther(
 
   return { groupedSeriesKeys, transformedDataset };
 } // TODO make sure this works with goal line, trend line, y-axis range, y-axis scales
-// TODO update tooltip
-// TODO legend
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],
