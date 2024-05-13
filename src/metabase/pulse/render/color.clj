@@ -16,16 +16,13 @@
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
 (def ^:private ^{:arglists '([])} js-engine
-  ;; The code that loads the JS engine is behind a delay so that we don't incur that cost on startup. The below
-  ;; assertion till look for the javascript file at startup and fail if it doesn't find it. This is to avoid a big
-  ;; delay in finding out that the system is broken
-  (let [file-url (io/resource js-file-path)]
-    (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-    (let [dlay (delay
-                 (doto (js/context)
-                   (js/load-resource js-file-path)))]
-      (fn []
-        @dlay))))
+  (js/threadlocal-fifo-memoizer
+   (fn []
+     (let [file-url (io/resource js-file-path)]
+       (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
+       (doto (js/context)
+         (js/load-resource  js-file-path))))
+   5))
 
 (def ^:private QueryResults
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
