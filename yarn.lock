@@ -8730,13 +8730,6 @@ color-diff@^1.1.0:
   resolved "https://registry.yarnpkg.com/color-diff/-/color-diff-1.4.0.tgz#f63c7020c4819b3f7bc379e61d8d19eabf6e1b8a"
   integrity sha512-4oDB/o78lNdppbaqrg0HjOp7pHmUc+dfCxWKWFnQg6AB/1dkjtBDop3RZht5386cq9xBUDRvDvSCA7WUlM9Jqw==
 
-color-harmony@^0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/color-harmony/-/color-harmony-0.3.0.tgz#3e19aea2e0baf6aa49563448678fec3b4f37905e"
-  integrity sha1-PhmuouC69qpJVjRIZ4/sO083kF4=
-  dependencies:
-    onecolor "^2.5.0"
-
 color-name@1.1.3:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/color-name/-/color-name-1.1.3.tgz#a7d0558bd89c42f795dd42328f740831ca53bc25"
@@ -17635,11 +17628,6 @@ once@^1.3.0, once@^1.3.1, once@^1.4.0:
   integrity sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==
   dependencies:
     wrappy "1"
-
-onecolor@^2.5.0:
-  version "2.5.0"
-  resolved "https://registry.yarnpkg.com/onecolor/-/onecolor-2.5.0.tgz#2256b651dc807c101f00aedbd49925c57a4431c1"
-  integrity sha1-Ila2UdyAfBAfAK7b1JklxXpEMcE=
 
 onetime@^5.1.0, onetime@^5.1.2:
   version "5.1.2"
