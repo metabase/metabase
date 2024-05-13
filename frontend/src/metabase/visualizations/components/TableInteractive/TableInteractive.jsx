@@ -26,8 +26,8 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box, Icon, DelayGroup } from "metabase/ui";
 import { getTableCellTheme } from "metabase/visualizations/components/TableInteractive/interactive-table-theme";
+import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -1045,6 +1045,7 @@ class TableInteractive extends Component {
       className,
       scrollToColumn,
       theme,
+      question,
     } = this.props;
 
     if (!width || !height) {
@@ -1053,6 +1054,9 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
+    const shortcutColumn = 1;
+    const query = question?.query();
+    const info = query && Lib.queryDisplayInfo(query);
 
     const tableTheme = theme?.other?.table;
     const gutterBackground = tableTheme?.cell?.backgroundColor || "white";
@@ -1122,6 +1126,18 @@ class TableInteractive extends Component {
                     </Box>
                   </>
                 )}
+                {shortcutColumn && (
+                  <ColumnShortcut
+                    height={headerHeight - 1}
+                    isEditable={info?.isEditable}
+                    onClick={evt => {
+                      this.onVisualizationClick(
+                        { columnShortcuts: true },
+                        evt.target,
+                      );
+                    }}
+                  />
+                )}
                 <Grid
                   ref={ref => (this.header = ref)}
                   style={{
@@ -1141,16 +1157,24 @@ class TableInteractive extends Component {
                   height={headerHeight}
                   rowCount={1}
                   rowHeight={headerHeight}
-                  columnCount={cols.length + gutterColumn}
+                  columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
-                  cellRenderer={props =>
-                    gutterColumn && props.columnIndex === 0
-                      ? null // we need a phantom cell to properly offset columns
-                      : this.tableHeaderRenderer({
-                          ...props,
-                          columnIndex: props.columnIndex - gutterColumn,
-                        })
-                  }
+                  cellRenderer={props => {
+                    if (props.columnIndex === 0 && gutterColumn) {
+                      // we need a phantom cell to properly offset gutter columns
+                      return null;
+                    }
+
+                    if (props.columnIndex === cols.length + gutterColumn) {
+                      // we need a phantom cell to properly offset the shortcut column
+                      return null;
+                    }
+
+                    return this.tableHeaderRenderer({
+                      ...props,
+                      columnIndex: props.columnIndex - gutterColumn,
+                    });
+                  }}
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                   tabIndex={null}
@@ -1168,18 +1192,26 @@ class TableInteractive extends Component {
                   }}
                   width={width}
                   height={height - headerHeight}
-                  columnCount={cols.length + gutterColumn}
+                  columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
                   rowCount={rows.length}
                   rowHeight={ROW_HEIGHT}
-                  cellRenderer={props =>
-                    gutterColumn && props.columnIndex === 0
-                      ? null // we need a phantom cell to properly offset columns
-                      : this.cellRenderer({
-                          ...props,
-                          columnIndex: props.columnIndex - gutterColumn,
-                        })
-                  }
+                  cellRenderer={props => {
+                    if (props.columnIndex === 0 && gutterColumn) {
+                      // we need a phantom cell to properly offset gutter columns
+                      return null;
+                    }
+
+                    if (props.columnIndex === cols.length + gutterColumn) {
+                      // we need a phantom cell to properly offset the shortcut column
+                      return null;
+                    }
+
+                    return this.cellRenderer({
+                      ...props,
+                      columnIndex: props.columnIndex - gutterColumn,
+                    });
+                  }}
                   scrollTop={scrollTop}
                   onScroll={({ scrollLeft, scrollTop }) => {
                     this.props.onActionDismissal();
@@ -1271,3 +1303,22 @@ const DetailShortcut = forwardRef((_props, ref) => (
 ));
 
 DetailShortcut.displayName = "DetailShortcut";
+
+function ColumnShortcut({ height, onClick, isEditable }) {
+  if (!isEditable) {
+    return null;
+  }
+
+  return (
+    <div className={TableS.shortcutsWrapper} style={{ height }}>
+      <UIButton
+        variant="filled"
+        compact
+        leftIcon={<Icon name="add" />}
+        title={t`Add column`}
+        aria-label={t`Add column`}
+        onClick={onClick}
+      />
+    </div>
+  );
+}

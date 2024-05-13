@@ -94,3 +94,16 @@
 .TableInteractiveCellWrapperFirstColumn.padLeft {
   padding-left: 1.5em;
 }
+
+.shortcutsWrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  padding: 0 0.5em;
+  box-sizing: border-box;
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+}

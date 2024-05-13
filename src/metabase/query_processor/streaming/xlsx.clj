@@ -461,7 +461,7 @@
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
         (setup-header-row! sheet (count ordered-cols))
-        (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings)))
+        (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings true)))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order

@@ -196,9 +196,6 @@ export const DashboardApi = {
   cardQueryPivot: POST(
     "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
-  exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
-  ),
 };
 
 export const CollectionsApi = {
