@@ -1071,7 +1071,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                bg={backgroundColor || "white"}
+                bg={backgroundColor}
                 className={cx(
                   className,
                   TableS.TableInteractive,
