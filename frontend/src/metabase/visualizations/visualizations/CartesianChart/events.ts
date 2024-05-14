@@ -272,7 +272,7 @@ const getStackedTooltipModel = (
   );
 
   if (!seriesStack) {
-    return null;
+    return undefined;
   }
 
   const column =

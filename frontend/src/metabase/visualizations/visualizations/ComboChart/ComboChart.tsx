@@ -18,7 +18,10 @@ import {
   TOOLTIP_SETTINGS,
   STACKABLE_SETTINGS,
 } from "../../lib/settings/graph";
-import type { VisualizationProps } from "../../types";
+import type {
+  VisualizationProps,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 
 Object.assign(
   ComboChart,
@@ -38,8 +41,8 @@ Object.assign(
       ...GRAPH_DISPLAY_VALUES_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
       ...TOOLTIP_SETTINGS,
-      "stackable.stack_type": STACKABLE_SETTINGS["stackable.stack_type"] as any,
-    },
+      "stackable.stack_type": STACKABLE_SETTINGS["stackable.stack_type"],
+    } as any as VisualizationSettingsDefinitions,
   }),
 );
 
