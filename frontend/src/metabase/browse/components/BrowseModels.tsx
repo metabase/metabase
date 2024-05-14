@@ -22,7 +22,7 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 
-const { availableModelFilters, useModelFilterSettings } =
+const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
@@ -45,7 +45,7 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
-            <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
+            <ModelFilterControls
               actualModelFilters={actualModelFilters}
               setActualModelFilters={setActualModelFilters}
             />
@@ -75,10 +75,10 @@ export const BrowseModelsBody = ({
   };
   const { data, error, isLoading } = useSearchQuery(query);
 
-  const models = useMemo(() => {
+  const filteredModels = useMemo(() => {
     const unfilteredModels = (data?.data as ModelResult[]) ?? [];
     const filteredModels = filterModels(
-      unfilteredModels || [],
+      unfilteredModels,
       actualModelFilters,
       availableModelFilters,
     );
@@ -95,11 +95,11 @@ export const BrowseModelsBody = ({
     );
   }
 
-  if (models.length) {
+  if (filteredModels.length) {
     return (
-      <Stack spacing="md" mb="lg">
+      <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <ModelsTable models={models} />
+        <ModelsTable models={filteredModels} />
       </Stack>
     );
   }

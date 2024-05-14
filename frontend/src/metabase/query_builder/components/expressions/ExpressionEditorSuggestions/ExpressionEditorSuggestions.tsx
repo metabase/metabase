@@ -100,6 +100,11 @@ export function ExpressionEditorSuggestions({
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}
+      middlewares={{
+        flip: false,
+        shift: false,
+        inline: false,
+      }}
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>

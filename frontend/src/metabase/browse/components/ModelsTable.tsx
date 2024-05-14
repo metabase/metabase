@@ -28,7 +28,7 @@ import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
-import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
+import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import { ModelTableRow } from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
@@ -134,9 +134,9 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
 
       {/* Description */}
       <ItemCell {...descriptionProps}>
-        <EllipsifiedWithMarkdown>
+        <EllipsifiedWithMarkdownTooltip>
           {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdown>
+        </EllipsifiedWithMarkdownTooltip>
       </ItemCell>
 
       {/* Collection */}

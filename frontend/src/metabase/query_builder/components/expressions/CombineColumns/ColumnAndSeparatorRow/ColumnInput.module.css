@@ -14,7 +14,7 @@ button.root {
 
   &.open,
   &:focus-visible {
-    border-color: var(--color-brand);
+    border-color: var(--mb-color-brand);
     outline: none;
   }
 }
