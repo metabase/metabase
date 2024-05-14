@@ -31,7 +31,6 @@
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
     "@visx/mock-data": "^2.1.2",
-    "@visx/responsive": "^2.10.0",
     "@visx/scale": "1.7.0",
     "@visx/shape": "2.12.2",
     "@visx/text": "1.7.0",
