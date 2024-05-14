@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   mockScrollBy,
@@ -156,6 +160,7 @@ interface SetupOpts {
 const commonSetup = () => {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,
@@ -363,6 +368,7 @@ describe("QuestionPickerModal", () => {
   });
 
   it("should automatically switch to the search tab when a search query is provided", async () => {
+    await setupSearchEndpoints([]);
     await setupModal();
 
     const searchInput = await screen.findByPlaceholderText(/search/i);
@@ -380,9 +386,13 @@ describe("QuestionPickerModal", () => {
       "aria-selected",
       "true",
     );
+
+    await screen.findByText(/loading/i);
+    await screen.findByText(/Didn't find anything/i);
   });
 
   it("should switch back to the default tab when the search query is cleared", async () => {
+    await setupSearchEndpoints([]);
     await setupModal();
 
     const searchInput = await screen.findByPlaceholderText(/search/i);
@@ -400,6 +410,9 @@ describe("QuestionPickerModal", () => {
       "aria-selected",
       "true",
     );
+
+    await screen.findByText(/loading/i);
+    await screen.findByText(/Didn't find anything/i);
 
     await userEvent.clear(searchInput);
 

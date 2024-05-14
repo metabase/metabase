@@ -35,6 +35,7 @@ export type ClickActionSection =
   | "filter"
   | "info"
   | "records"
+  | "new-column"
   | "sort"
   | "standalone_filter"
   | "sum"

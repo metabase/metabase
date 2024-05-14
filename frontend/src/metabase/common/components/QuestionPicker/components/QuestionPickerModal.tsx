@@ -117,6 +117,13 @@ export const QuestionPickerModal = ({
       initialValue={value}
       tabs={filteredTabs}
       options={options}
+      searchParams={
+        options.showRootCollection === false
+          ? { filter_items_in_personal_collection: "only" }
+          : options.showPersonalCollections === false
+          ? { filter_items_in_personal_collection: "exclude" }
+          : undefined
+      }
       searchResultFilter={results => results}
       actionButtons={[]}
     />

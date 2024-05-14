@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
@@ -191,28 +192,29 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse data link", () => {
     it("should render", async () => {
       await setup();
-      const link = screen.getByRole("link", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      const link = within(listItem).getByRole("link");
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/browse");
+      expect(link).toHaveAttribute("href", "/browse/databases");
     });
 
     it("should not render when a user has no data access", async () => {
       await setup({ hasDataAccess: false });
       expect(
-        screen.queryByRole("link", { name: /Browse data/i }),
+        screen.queryByRole("listitem", { name: /Browse data/i }),
       ).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {
-      await setup({ pathname: "/browse" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      await setup({ pathname: "/browse/databases" });
+      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
 
     it("should be highlighted if child route selected", async () => {
       await setup({ pathname: "/browse/databases/1" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
   });
 

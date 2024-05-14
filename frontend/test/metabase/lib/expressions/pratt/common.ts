@@ -25,7 +25,7 @@ interface Opts {
 
 export function compile(source: string, type: Type, opts: Opts = {}) {
   const { throwOnError } = opts;
-  const passes = [adjustOptions, useShorthands, adjustCase, adjustOffset];
+  const passes = [adjustOptions, useShorthands, adjustOffset, adjustCase];
   return newCompile(
     parse(lexify(source), {
       throwOnError,

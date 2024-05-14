@@ -11,6 +11,7 @@
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.db :as mdb]
+   [metabase.events :as events]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -637,6 +638,8 @@
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
+    ;; moving the collection triggers the touch event:
+    (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
