@@ -101,6 +101,7 @@ export type TimeSeriesAxisFormatter = (
   unit?: DateTimeAbsoluteUnit,
 ) => string;
 export type SeriesFormatters = Record<DataKey, LabelFormatter>;
+export type StackedSeriesFormatters = { [T in StackDisplay]?: LabelFormatter };
 
 export type DateRange = [Dayjs, Dayjs];
 
@@ -184,9 +185,10 @@ export type TrendLinesModel = {
   seriesModels: TrendLineSeriesModel[];
 };
 
+export type StackDisplay = "bar" | "area";
 export type StackModel = {
   axis: "left" | "right";
-  display: "bar" | "area";
+  display: StackDisplay;
   seriesKeys: DataKey[];
 };
 
@@ -210,6 +212,7 @@ export type BaseCartesianChartModel = {
 
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
+  stackedLabelsFormatters?: StackedSeriesFormatters;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

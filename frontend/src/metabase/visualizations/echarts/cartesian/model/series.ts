@@ -1,13 +1,18 @@
+import _ from "underscore";
+
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ChartDataset,
   DataKey,
+  Datum,
   DimensionModel,
-  LabelFormatter,
   LegacySeriesSettingsObjectKey,
   SeriesFormatters,
   SeriesModel,
+  StackModel,
+  StackTotalDataKey,
+  StackedSeriesFormatters,
   VizSettingsKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -29,6 +34,10 @@ import type {
   CardId,
 } from "metabase-types/api";
 
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+} from "../constants/dataset";
 import { cachedFormatter } from "../utils/formatter";
 
 export const getSeriesVizSettingsKey = (
@@ -263,8 +272,29 @@ export const getDimensionModel = (
   };
 };
 
+export function getStackTotalValue(
+  data: Datum,
+  stackDataKeys: DataKey[],
+  signKey: StackTotalDataKey,
+): number | null {
+  let stackValue: number | null = null;
+  stackDataKeys.forEach(stackDataKey => {
+    const seriesValue = data[stackDataKey];
+    if (
+      typeof seriesValue === "number" &&
+      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+        (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
+    ) {
+      stackValue = (stackValue ?? 0) + seriesValue;
+    }
+  });
+
+  return stackValue;
+}
+
 function shouldRenderCompact(
   dataset: ChartDataset,
+  getValue: (datum: Datum) => RowValue | null,
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
@@ -278,7 +308,7 @@ function shouldRenderCompact(
   // for "auto" we use compact if it shortens avg label length by >3 chars
   const getAvgLength = (compact: boolean) => {
     const lengths = dataset.map(datum => {
-      const value = datum[seriesModel.dataKey];
+      const value = getValue(datum);
       return renderingContext.formatValue(value, {
         ...(settings.column?.(seriesModel.column) ?? {}),
         jsx: false,
@@ -295,17 +325,79 @@ function shouldRenderCompact(
   return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
+export const getStackedLabelsFormatters = (
+  seriesModels: SeriesModel[],
+  stackModels: StackModel[],
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): StackedSeriesFormatters => {
+  const formatters: StackedSeriesFormatters = {};
+
+  const hasDataLabels =
+    settings["graph.show_values"] &&
+    settings["stackable.stack_type"] === "stacked";
+
+  if (!hasDataLabels) {
+    return formatters;
+  }
+
+  stackModels.forEach(({ display: stackName, seriesKeys }) => {
+    const seriesModel = seriesModels.find(s => s.dataKey === seriesKeys[0]);
+    if (!seriesModel) {
+      return [];
+    }
+
+    // if either positive or negative need to be compact formatted
+    // compact format both
+    const isCompact = [
+      POSITIVE_STACK_TOTAL_DATA_KEY,
+      NEGATIVE_STACK_TOTAL_DATA_KEY,
+    ]
+      .map(signKey => {
+        const getValue = (datum: Datum) =>
+          getStackTotalValue(datum, seriesKeys, signKey);
+        return shouldRenderCompact(
+          dataset,
+          getValue,
+          seriesModel,
+          settings,
+          renderingContext,
+        );
+      })
+      .some(isCompact => isCompact);
+
+    const stackedFormatter = cachedFormatter((value: RowValue) => {
+      if (typeof value !== "number") {
+        return " ";
+      }
+
+      return renderingContext.formatValue(value, {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: isCompact,
+      });
+    });
+
+    formatters[stackName] = stackedFormatter;
+  });
+
+  return formatters;
+};
+
 export const getSeriesLabelsFormatters = (
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): Record<DataKey, LabelFormatter> => {
+): SeriesFormatters => {
   const formatters: SeriesFormatters = {};
 
   seriesModels.forEach(seriesModel => {
+    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
     const isCompact = shouldRenderCompact(
       dataset,
+      getValue,
       seriesModel,
       settings,
       renderingContext,

@@ -14,6 +14,7 @@ import {
   getCardsSeriesModels,
   getDimensionModel,
   getSeriesLabelsFormatters,
+  getStackedLabelsFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
@@ -148,6 +149,14 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
+  const stackedLabelsFormatters = getStackedLabelsFormatters(
+    seriesModels,
+    stackModels,
+    transformedDataset,
+    settings,
+    renderingContext,
+  );
+
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
     transformedDataset,
@@ -183,5 +192,6 @@ export const getCartesianChartModel = (
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters,
+    stackedLabelsFormatters,
   };
 };
