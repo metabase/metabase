@@ -110,7 +110,12 @@ export function QuestionList({
           <>
             <SelectList>
               {list.map(item => (
-                <HoverCard key={item.id} position="right-end">
+                <HoverCard
+                  key={item.id}
+                  position="right-end"
+                  openDelay={600}
+                  closeDelay={200}
+                >
                   <HoverCard.Target>
                     <div>
                       <QuestionListItem
