@@ -30,11 +30,9 @@ import {
   selectFilterOperator,
   focusNativeEditor,
   echartsContainer,
-} from "e2e/support/helpers";
-import {
   entityPickerModal,
   questionInfoButton,
-} from "e2e/support/helpers/e2e-ui-elements-helpers";
+} from "e2e/support/helpers";
 
 import {
   turnIntoModel,
@@ -334,7 +332,7 @@ describe("scenarios > models", () => {
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
       startNewQuestion();
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");
         cy.findByText("Tables").should("not.exist");
