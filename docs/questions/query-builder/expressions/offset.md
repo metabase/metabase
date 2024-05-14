@@ -14,6 +14,12 @@ The `rowOffset` is the number relative to the current row. For example, `-1` for
 
 Example: `Offset([Total], -1)` would get the `Total` value from the previous row.
 
+## The order of the breakouts matter
+
+Because `Offset` refers to other rows, the order of the breakouts matters (the breakouts are the groups in the "Group By" section in the Summarization step). Metabase will sort by the first group, then partition by any additional breakouts.
+
+For example, if you want to see the counts of orders by product category over time, and the counts by product category for the previous period, you should first group by `Created At`, then by the product category.
+
 ## Data types
 
 The `Offset` function returns whatever value is in the offset row.
