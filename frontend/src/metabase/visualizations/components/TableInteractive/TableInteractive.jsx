@@ -742,7 +742,7 @@ class TableInteractive extends Component {
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = Boolean(
-      mode.hasDrills &&
+      mode?.hasDrills &&
         query &&
         Lib.queryDisplayInfo(query, stageIndex).isEditable,
     );
