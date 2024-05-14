@@ -25,7 +25,7 @@ describe("Transform Embedding Theme Override", () => {
         fontSize: "2rem",
         table: {
           cell: {
-            backgroundColor: "#ffffff",
+            backgroundColor: "white",
           },
         },
       },

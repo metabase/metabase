@@ -57,8 +57,8 @@ describe("Table", () => {
       );
 
     expect(bgColors).toEqual([
-      "rgb(255, 255, 255)",
-      "rgb(255, 255, 255)",
+      "",
+      "",
       "rgba(255, 0, 0, 0.65)",
       "rgba(255, 0, 0, 0.65)",
     ]);
