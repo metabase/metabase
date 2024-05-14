@@ -20,7 +20,7 @@ export const ChevronDown = styled(Icon)`
   opacity: 0.75;
 `;
 
-export const TriggerButton = styled.button<{ hasDot?: boolean }>`
+export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
   min-width: 0;

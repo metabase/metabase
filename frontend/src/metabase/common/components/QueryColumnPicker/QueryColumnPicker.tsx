@@ -155,7 +155,6 @@ export function QueryColumnPicker({
             isEditing={checkIsColumnSelected(item)}
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
-            hasDot={withInfoIcons}
             hasChevronDown={withInfoIcons}
             color={color}
             onSelect={handleSelect}

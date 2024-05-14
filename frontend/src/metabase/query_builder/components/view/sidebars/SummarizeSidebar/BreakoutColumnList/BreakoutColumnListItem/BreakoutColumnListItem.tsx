@@ -84,7 +84,6 @@ export function BreakoutColumnListItem({
             column={item.column}
             color="summarize"
             isEditing={isSelected}
-            hasDot
             hasChevronDown
             hasBinning
             hasTemporalBucketing
