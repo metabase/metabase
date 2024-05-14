@@ -45,7 +45,6 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { signedLog, signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -342,7 +341,7 @@ const getStackedAreasInterpolateTransform = (
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],
-  valueTransform: (value: number) => number,
+  valueTransform: (value: number) => number | null,
 ): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
@@ -369,13 +368,15 @@ function getStackedValueTransformFunction(
         }, 0);
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
 
+      const transformedRawBelowTotal = valueTransform(rawBelowTotal) ?? 0;
       // 2. Transform this total
-      const transformedTotal = valueTransform(rawTotal);
+      const transformedTotal = valueTransform(rawTotal) ?? 0;
 
       // 3. Subtract the transformed total of the already stacked values (not
       //    including the value we are currently stacking)
+
       transformedSeriesValues[seriesDataKey] =
-        transformedTotal - valueTransform(rawBelowTotal);
+        transformedTotal - transformedRawBelowTotal;
     }
 
     seriesDataKeys.forEach(seriesDataKey => {
@@ -391,25 +392,20 @@ function getStackedValueTransformFunction(
 
 function getStackedValueTransfom(
   settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   stackModels: StackModel[],
-): ConditionalTransform {
+): ConditionalTransform[] {
   const isPow = settings["graph.y_axis.scale"] === "pow";
   const isLog = settings["graph.y_axis.scale"] === "log";
-
-  // In `getStackedValueTransformFunction`, each iteration of the loop ends with
-  // `transformedTotal - valueTransform(rawBelowTotal)`. However, in the first
-  // iteration `rawBelowTotal` will 0 because nothing is stacked yet, so to
-  // handle this case we want the `valueTransform` function to just return 0.
-  const logValueTransform = (value: number) =>
-    value === 0 ? value : signedLog(value);
-
-  const valueTransform = isPow ? signedSquareRoot : logValueTransform;
 
   const isNonLinearAxis = isPow || isLog;
 
   return stackModels.map(stackModel => ({
     condition: isNonLinearAxis,
-    fn: getStackedValueTransformFunction(stackModel.seriesKeys, valueTransform),
+    fn: getStackedValueTransformFunction(
+      stackModel.seriesKeys,
+      yAxisScaleTransforms.toEChartsAxisValue,
+    ),
   }));
 }
 
@@ -573,6 +569,32 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+const getYAxisScaleTransforms = (
+  seriesModels: SeriesModel[],
+  stackModels: StackModel[],
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+  settings: ComputedVisualizationSettings,
+) => {
+  const stackedSeriesKeys = new Set(
+    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+  );
+  const nonStackedSeriesKeys = seriesModels
+    .filter(seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey))
+    .map(seriesModel => seriesModel.dataKey);
+
+  const nonStackedTransform = getKeyBasedDatasetTransform(
+    nonStackedSeriesKeys,
+    value => yAxisScaleTransforms.toEChartsAxisValue(value),
+  );
+  const stackedTransforms = getStackedValueTransfom(
+    settings,
+    yAxisScaleTransforms,
+    stackModels,
+  );
+
+  return [nonStackedTransform, ...stackedTransforms];
+};
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -620,10 +642,12 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(stackModels),
     },
-    getKeyBasedDatasetTransform(seriesDataKeys, value =>
-      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ...getYAxisScaleTransforms(
+      seriesModels,
+      stackModels,
+      yAxisScaleTransforms,
+      settings,
     ),
-    ...getStackedValueTransfom(settings, stackModels),
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {

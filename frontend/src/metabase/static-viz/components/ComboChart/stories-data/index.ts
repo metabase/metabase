@@ -1,3 +1,6 @@
+import twoBarsTwoAreasOneLineLinear from "./2-bars-2-areas-1-line-linear.json";
+import twoBarsTwoAreasOneLineLog from "./2-bars-2-areas-1-line-log.json";
+import twoBarsTwoAreasOneLinePower from "./2-bars-2-areas-1-line-power.json";
 import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json";
 import areaOverBar from "./area-over-bar-40209.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
@@ -22,7 +25,6 @@ import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
-import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
@@ -152,7 +154,6 @@ export const data = {
   areaStackLinearXAxis,
   nullCategoryValueFormatting,
   areaStackInterpolateMissingValues,
-  barStackDisplayOverridesSeriesDisplays,
   areaStackAllSeriesWithoutInterpolation,
   areaOverBar,
   barAutoFormattingCompact,
@@ -176,4 +177,7 @@ export const data = {
   lineReplaceMissingValuesZero,
   comboStackedBarsAreasNormalized,
   comboStackedBarsAreas,
+  twoBarsTwoAreasOneLineLinear,
+  twoBarsTwoAreasOneLinePower,
+  twoBarsTwoAreasOneLineLog,
 };

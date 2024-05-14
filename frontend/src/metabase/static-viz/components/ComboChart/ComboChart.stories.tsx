@@ -493,13 +493,6 @@ AreaStackInterpolateMissingValues.args = {
   renderingContext,
 };
 
-export const BarStackDisplayOverridesSeriesDisplays = Template.bind({});
-BarStackDisplayOverridesSeriesDisplays.args = {
-  rawSeries: data.barStackDisplayOverridesSeriesDisplays as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
 export const AreaStackAllSeriesWithoutInterpolation = Template.bind({});
 AreaStackAllSeriesWithoutInterpolation.args = {
   rawSeries: data.areaStackAllSeriesWithoutInterpolation as any,
@@ -636,6 +629,27 @@ ComboStackedBarsAreasNormalized.args = {
 export const ComboStackedBarsAreas = Template.bind({});
 ComboStackedBarsAreas.args = {
   rawSeries: data.comboStackedBarsAreas as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLineLinear = Template.bind({});
+TwoBarsTwoAreasOneLineLinear.args = {
+  rawSeries: data.twoBarsTwoAreasOneLineLinear as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLinePower = Template.bind({});
+TwoBarsTwoAreasOneLinePower.args = {
+  rawSeries: data.twoBarsTwoAreasOneLinePower as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLineLog = Template.bind({});
+TwoBarsTwoAreasOneLineLog.args = {
+  rawSeries: data.twoBarsTwoAreasOneLineLog as any,
   dashcardSettings: {},
   renderingContext,
 };
