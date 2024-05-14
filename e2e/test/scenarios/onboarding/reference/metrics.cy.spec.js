@@ -63,6 +63,16 @@ describe("scenarios > reference > metrics", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of orders under $100");
+
+    cy.log(
+      "Make sure this is reflected in the revision history (metabase#42633)",
+    );
+    cy.findAllByRole("listitem")
+      .filter(':contains("Revision history for orders < 100")')
+      .click();
+
+    cy.location("pathname").should("eq", "/reference/metrics/1/revisions");
+    cy.findAllByRole("listitem").should("contain", "Renaming the description");
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
