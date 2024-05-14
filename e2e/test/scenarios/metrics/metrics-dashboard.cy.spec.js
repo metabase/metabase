@@ -10,12 +10,14 @@ import {
   cartesianChartCircle,
   createQuestion,
   echartsContainer,
+  editDashboard,
   filterWidget,
   getDashboardCard,
   modal,
   popover,
   restore,
   saveDashboard,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -89,6 +91,7 @@ describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be possible to add metrics to a dashboard", () => {
@@ -171,6 +174,35 @@ describe("scenarios > metrics > dashboard", () => {
       ORDERS_TIMESERIES_METRIC,
       PRODUCTS_TIMESERIES_METRIC,
     );
+  });
+
+  it("should be able to use click behaviors with metrics on a dashboard", () => {
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    editDashboard();
+    getDashboardCard().realHover().findByLabelText("Click behavior").click();
+    sidebar().within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+    modal().findByText("Orders").click();
+    sidebar().findByText("User ID").click();
+    popover().findByText("Count").click();
+    sidebar().button("Done").click();
+    saveDashboard();
+    getDashboardCard().within(() => {
+      cartesianChartCircle()
+        .eq(5) // random dot
+        .click({ force: true });
+    });
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("User ID is 92")
+      .should("be.visible");
+    assertQueryBuilderRowCount(8);
   });
 
   it("should be able to view a model-based metric without data access", () => {
