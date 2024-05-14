@@ -125,7 +125,6 @@ export const getCartesianChartModel = (
 
   const stackModels = getStackModels(seriesModels, settings);
 
-  // TODO: update normalized transform based on stack models
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
     stackModels,
