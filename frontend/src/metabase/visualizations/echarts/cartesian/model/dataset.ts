@@ -368,12 +368,12 @@ function getStackedValueTransformFunction(
         }, 0);
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
 
-      const transformedRawBelowTotal = valueTransform(rawBelowTotal) ?? 0;
       // 2. Transform this total
       const transformedTotal = valueTransform(rawTotal) ?? 0;
 
       // 3. Subtract the transformed total of the already stacked values (not
       //    including the value we are currently stacking)
+      const transformedRawBelowTotal = valueTransform(rawBelowTotal) ?? 0;
 
       transformedSeriesValues[seriesDataKey] =
         transformedTotal - transformedRawBelowTotal;
