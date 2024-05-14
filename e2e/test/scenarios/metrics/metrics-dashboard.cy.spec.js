@@ -156,6 +156,20 @@ describe("scenarios > metrics > dashboard", () => {
     );
   });
 
+  it("should be able to view a model-based metric without data access", () => {
+    cy.signInAsAdmin();
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_SCALAR_METRIC],
+    }).then(({ dashboard }) => {
+      cy.signIn("nodata");
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard()
+      .findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
+  });
+
   it("should be able to view a model-based metric without collection access to the source model", () => {
     cy.signInAsAdmin();
     cy.updateCollectionGraph({
