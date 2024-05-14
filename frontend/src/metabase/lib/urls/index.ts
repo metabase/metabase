@@ -7,6 +7,7 @@ export * from "./collections";
 export * from "./dashboards";
 export * from "./indexed-entities";
 export * from "./metabot";
+export * from "./modelToUrl";
 export * from "./misc";
 export * from "./models";
 export * from "./pulses";

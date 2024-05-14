@@ -234,7 +234,7 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = useMemo(
+  const legendItems = useMemo(
     () => getLegendItems(series, seriesColors, settings),
     [series, seriesColors, settings],
   );
@@ -279,8 +279,7 @@ const RowChartVisualization = ({
       )}
       <RowChartLegendLayout
         hasLegend={hasLegend}
-        labels={labels}
-        colors={colors}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         onHoverChange={onHoverChange}
