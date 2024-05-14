@@ -123,8 +123,7 @@ jobs:
           BUCKET_PATH: sdk/v${{ inputs.sdk_version }}/metabase.jar
           OUTPUT_FILE: ./target/uberjar/metabase.jar
         shell: bash
-        run: | # sh
-          DATE=$(date '+%Y-%m-%d')
+        run: |
           aws s3 cp ${OUTPUT_FILE} s3://$BUCKET/$BUCKET_PATH
 
 
