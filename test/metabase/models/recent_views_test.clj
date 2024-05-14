@@ -65,6 +65,88 @@
       (is (= 0 (count (filter (comp #{:dataset} :model) (recent-views/get-list (mt/user->id :rasta))))))
       (is (= 1 (count (filter (comp #{:card} :model) (recent-views/get-list (mt/user->id :rasta)))))))))
 
+(deftest recent-views-content-test
+  (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
+      (mt/with-temp
+        [:model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card"}
+         :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model"}
+
+         :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash"}
+
+         :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection"}
+
+         :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
+         :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
+        (doseq [[model model-id] [[:model/Card card-id]
+                                  [:model/Card model-id]
+                                  [:model/Dashboard dashboard-id]
+                                  [:model/Collection collection-id]
+                                  [:model/Table table-id]]]
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
+        (is (= [{:id           "ID",
+                 :name         "tablet",
+                 :description  nil,
+                 :model        :table,
+                 :display_name "I am the table",
+                 :can_write    false,
+                 :database     {:id "ID", :name "My DB", :initial_sync_status "incomplete"}}
+                {:id                "ID"
+                 :name              "my collection",
+                 :description       "this is my collection",
+                 :model             :collection,
+                 :can_write         false,
+                 ;;:timestamp "2024-05-14T18:17:48.465020Z",
+                 :authority_level   nil,
+                 :parent_collection {:id "ID", :name "my collection", :authority_level nil}}
+                {:id                "ID"
+                 :name              "my dash",
+                 :description       "this is my dash",
+                 :model             :dashboard,
+                 :can_write         false,
+                 ;;:timestamp "2024-05-14T18:17:48.462363Z",
+                 :parent_collection {:metabase.models.collection.root/is-root? true,
+                                     :authority_level                          nil,
+                                     :name                                     "Our analytics",
+                                     :namespace                                {},
+                                     :is_personal                              false,
+                                     :id                                       "root"}}
+                {:id                "ID"
+                 :name              "my model",
+                 :description       "this is my model",
+                 :model             :dataset,
+                 :can_write         false,
+                 ;;:timestamp "2024-05-14T18:17:48.459569Z",
+                 :moderated_status  nil,
+                 :parent_collection {:metabase.models.collection.root/is-root? true,
+                                     :authority_level                          nil,
+                                     :name                                     "Our analytics",
+                                     :namespace                                {},
+                                     :is_personal                              false,
+                                     :id                                       "root"}}
+                {:id                "ID"
+                 :description       "this is my card",
+                 :can_write         false,
+                 :name              "my card",
+                 :parent_collection {:metabase.models.collection.root/is-root? true,
+                                     :authority_level                          nil,
+                                     :name                                     "Our analytics",
+                                     :namespace                                {},
+                                     :is_personal                              false,
+                                     :id                                       "root"},
+                 :moderated_status  nil,
+                 :display           "table",
+                 ;;:timestamp "2024-05-14T18:17:48.456310Z",
+                 :model             :card}]
+               (->> (recent-views/get-list (mt/user->id :rasta))
+                    (mapv (fn [rv] (cond-> rv
+                                     true                                       (assoc :id "ID")
+                                     true                                       (dissoc :timestamp)
+                                     (-> rv :database :id)                      (assoc-in [:database :id] "ID")
+                                     (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
+                                     (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))
+        "After inserting 2 views of each model, we should have 2 views PER each model."))))
+
 (deftest update-users-recent-views!-bucket-filling-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
