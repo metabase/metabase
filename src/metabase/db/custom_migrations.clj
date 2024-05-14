@@ -22,9 +22,9 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -104,6 +104,38 @@
   ^String [s]
   (when s
     (.toLowerCase (str s) Locale/US)))
+
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
+  (if (string? obj)
+    obj
+    (json/generate-string obj)))
+
+(defn- json-out [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable e
+        (log/error e "Error parsing JSON")
+        s))
+    s))
+
+(def ^:private encrypted-json-in
+  (comp encryption/maybe-encrypt json-in))
+
+(defn- encrypted-json-out
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -716,9 +748,9 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (mi/encrypted-json-out settings)
-                            options      (mi/json-out-with-keywordization options)
-                            new-settings (mi/encrypted-json-in (merge settings options))]
+                      (let [settings     (encrypted-json-out settings)
+                            options      (json-out options true)
+                            new-settings (encrypted-json-in (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -729,12 +761,12 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (mi/encrypted-json-out settings)
-                              options  (mi/json-out-with-keywordization options)]
+                        (let [settings (encrypted-json-out settings)
+                              options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
-                                                :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -1080,7 +1112,7 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details (json/parse-string keyword) :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
                               (t2/select :metabase_database)))]
     (classloader/the-classloader)
