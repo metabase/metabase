@@ -155,6 +155,12 @@ type StdDevAgg = ["stddev", ConcreteFieldReference];
 type SumAgg = ["sum", ConcreteFieldReference];
 type MinAgg = ["min", ConcreteFieldReference];
 type MaxAgg = ["max", ConcreteFieldReference];
+type OffsetAgg = [
+  "offset",
+  { "lib/uuid": string; name: string; "display-name": string },
+  Aggregation,
+  number,
+];
 
 type CommonAggregation =
   | CountAgg
@@ -166,7 +172,8 @@ type CommonAggregation =
   | StdDevAgg
   | SumAgg
   | MinAgg
-  | MaxAgg;
+  | MaxAgg
+  | OffsetAgg;
 
 type MetricAgg = ["metric", MetricId];
 

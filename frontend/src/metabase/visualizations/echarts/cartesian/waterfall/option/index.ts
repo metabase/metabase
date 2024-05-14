@@ -1,5 +1,4 @@
-import type { EChartsOption, SeriesOption } from "echarts";
-import type { DatasetOption } from "echarts/types/dist/shared";
+import type { EChartsCoreOption } from "echarts/core";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -21,6 +20,7 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
+import type { WaterfallSeriesOption } from "metabase/visualizations/echarts/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import type {
   ComputedVisualizationSettings,
@@ -127,7 +127,7 @@ export const buildEChartsWaterfallSeries = (
     ),
   });
 
-  const series: SeriesOption[] = [
+  const series: WaterfallSeriesOption[] = [
     {
       id: seriesModel.dataKey,
       type: "custom",
@@ -214,7 +214,7 @@ export const getWaterfallChartOption = (
   settings: ComputedVisualizationSettings,
   isPlaceholder: boolean,
   renderingContext: RenderingContext,
-): EChartsOption => {
+): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
@@ -231,7 +231,7 @@ export const getWaterfallChartOption = (
     renderingContext,
   );
 
-  const seriesOption: SeriesOption[] = [
+  const seriesOption: WaterfallSeriesOption[] = [
     dataSeriesOptions,
     timelineEventsSeries,
   ].flatMap(option => option ?? []);
@@ -243,8 +243,8 @@ export const getWaterfallChartOption = (
     grid: {
       ...chartMeasurements.padding,
     },
-    dataset: echartsDataset as DatasetOption,
-    series: seriesOption as SeriesOption,
+    dataset: echartsDataset,
+    series: seriesOption,
     ...buildAxes(
       chartModel,
       chartWidth,
@@ -254,5 +254,5 @@ export const getWaterfallChartOption = (
       null,
       renderingContext,
     ),
-  } as EChartsOption;
+  };
 };

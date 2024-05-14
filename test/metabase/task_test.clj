@@ -5,11 +5,14 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.db.connection :as mdb.connection]
    [metabase.task :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util :as u]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail)))
 
@@ -121,3 +124,34 @@
       (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "FALSE"]
         (task/start-scheduler!)
         (is (qs/started? (#'task/scheduler))))))))
+
+(defn- capitalize-if-mysql [s]
+  (cond-> (name s)
+    (= :mysql (mdb.connection/db-type))
+    u/upper-case-en
+    true keyword))
+
+(deftest start-scheduler-will-cleanup-jobs-without-class-test
+  ;; we can't use the temp scheduler in this test because the temp scheduler use an in-memory jobstore
+  ;; and we need update the job class in the database to trigger the cleanup
+  (let [scheduler-initialized? (some? (#'task/scheduler))]
+   (try
+     (when-not scheduler-initialized?
+       (task/start-scheduler!))
+     (task/schedule-task! (job) (trigger-1))
+     (testing "make sure the job is in the database before we start the scheduler"
+       (is (t2/exists? (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job")))
+
+     ;; update the job class to a non-existent class
+     (t2/update! (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job"
+                 {(capitalize-if-mysql :job_class_name) "NOT_A_REAL_CLASS"})
+     ;; stop the scheduler then restart so [[task/delete-jobs-with-no-class!]] is triggered
+     (task/stop-scheduler!)
+     (task/start-scheduler!)
+     (testing "the job should be removed from the database when the scheduler starts"
+       (is (not (t2/exists? (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job"))))
+     (finally
+       ;; restore the state of scheduler before we start the test
+       (if scheduler-initialized?
+         (task/start-scheduler!)
+         (task/stop-scheduler!))))))

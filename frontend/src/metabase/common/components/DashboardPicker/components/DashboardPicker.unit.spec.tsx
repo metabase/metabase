@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   mockScrollBy,
@@ -157,6 +160,7 @@ interface SetupOpts {
 }
 
 const commonSetup = () => {
+  setupRecentViewsEndpoints([]);
   mockGetBoundingClientRect();
   mockScrollBy();
 

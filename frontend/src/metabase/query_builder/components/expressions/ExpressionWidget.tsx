@@ -14,7 +14,7 @@ import {
   trackColumnExtractViaShortcut,
 } from "../../analytics";
 
-import { CombineColumns } from "./CombineColumns/CombineColumns";
+import { CombineColumns } from "./CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,

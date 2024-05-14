@@ -48,7 +48,6 @@
    [metabase.api.tiles :as api.tiles]
    [metabase.api.timeline :as api.timeline]
    [metabase.api.timeline-event :as api.timeline-event]
-   [metabase.api.transform :as api.transform]
    [metabase.api.user :as api.user]
    [metabase.api.util :as api.util]
    [metabase.config :as config]
@@ -147,7 +146,6 @@
   (context "/tiles"                [] (+auth api.tiles/routes))
   (context "/timeline"             [] (+auth api.timeline/routes))
   (context "/timeline-event"       [] (+auth api.timeline-event/routes))
-  (context "/transform"            [] (+auth api.transform/routes))
   (context "/user"                 [] (+auth api.user/routes))
   (context "/api-key"              [] (+auth api.api-key/routes))
   (context "/util"                 [] api.util/routes)

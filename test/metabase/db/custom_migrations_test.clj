@@ -1637,46 +1637,74 @@
 (deftest delete-scan-field-values-trigger-test
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
-      (api.database-test/with-db-scheduler-setup
-        (let [db-with-full-schedules (new-instance-with-default :metabase_database
-                                                                {:metadata_sync_schedule      "0 0 * * * ? *"
-                                                                 :cache_field_values_schedule "0 0 1 * * ? *"
-                                                                 :is_full_sync                true
-                                                                 :is_on_demand                false})
-              db-manual-schedule     (new-instance-with-default :metabase_database
-                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
-                                                                 :is_full_sync                true
-                                                                 :is_on_demand                false
-                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
-                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
-              db-on-demand           (new-instance-with-default :metabase_database
-                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
-                                                                 :is_full_sync                false
-                                                                 :is_on_demand                true
-                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
-                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
-              db-never-scan          (new-instance-with-default :metabase_database
-                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
-                                                                 :is_full_sync                false
-                                                                 :is_on_demand                false
-                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
-                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
-              db-with-scan-fv        [db-with-full-schedules db-manual-schedule]
-              db-without-scan-fv     [db-on-demand db-never-scan]]
-          (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
-            (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
-            (testing "sanity check that the schedule exists"
-              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
-                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+      (letfn [(do-test []
+                (api.database-test/with-db-scheduler-setup
+                  (let [db-with-full-schedules (new-instance-with-default :metabase_database
+                                                                          {:metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 1 * * ? *"
+                                                                           :is_full_sync                true
+                                                                           :is_on_demand                false})
+                        db-manual-schedule     (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                true
+                                                                           :is_on_demand                false
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-on-demand           (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                false
+                                                                           :is_on_demand                true
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-never-scan          (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                false
+                                                                           :is_on_demand                false
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-with-scan-fv        [db-with-full-schedules db-manual-schedule]
+                        db-without-scan-fv     [db-on-demand db-never-scan]]
+                    (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
+                      (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
+                      (testing "sanity check that the schedule exists"
+                        (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
 
+                    (migrate!)
+                    (testing "default options and scan with manual schedules should have scan field values"
+                      (doseq [db db-with-scan-fv]
+                        (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+
+                    (testing "never scan and on demand should not have scan field values"
+                      (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
+                        (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
+                        (is (nil? (:cache_field_values_schedule db))))))))]
+        (testing "without encryption key"
+          (do-test))
+        (testing "with encryption key"
+          (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+            (do-test)))))))
+
+(deftest migration-works-when-have-encryption-key-test
+  ;; this test is here to warn developers that they should test their migrations with and without encryption key
+  (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+    ;; run migration to the latest migration
+    (impl/test-migrations ["v49.2024-04-09T10:00:03"] [migrate!]
+      ;; create a db because db.details should be encrypted
+      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
+            db-detail (fn []
+                        (:details (t2/query-one {:select [:details]
+                                                 :from   [:metabase_database]
+                                                 :where  [:= :id db-id]})))]
+        (testing "sanity check that db details is encrypted"
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+
+        (testing "after migrate up, db details should still be encrypted"
           (migrate!)
-          (testing "default options and scan with manual schedules should have scan field values"
-            (doseq [db db-with-scan-fv]
-              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
-                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
 
-          (testing "never scan and on demand should not have scan field values"
-            (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
-              (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
-                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
-              (is (nil? (:cache_field_values_schedule db))))))))))
+        (migrate! :down 48)
+        (testing "after migrate down, db details should still be encrypted"
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
