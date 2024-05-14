@@ -1,9 +1,10 @@
 import {
-  restore,
+  modal,
   openOrdersTable,
-  visualize,
   popover,
+  restore,
   summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("issue 18589", () => {
@@ -32,7 +33,10 @@ describe("issue 18589", () => {
 
 function joinTable(table) {
   cy.findByText("Join data").click();
-  popover().findByText(table).click();
+  modal().within(() => {
+    cy.findByText("Tables").click();
+    cy.findByText(table).click();
+  });
 }
 
 function selectFromDropdown(option, clickOpts) {
