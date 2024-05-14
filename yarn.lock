@@ -5428,13 +5428,6 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-collapse@^5.0.1":
-  version "5.0.1"
-  resolved "https://registry.yarnpkg.com/@types/react-collapse/-/react-collapse-5.0.1.tgz#078ea1ad15e00ba2063f2e4d8d6760c9375a2023"
-  integrity sha512-Iq3OrqvzCIP0DmAawU4T2VKH6XAplbjo/D7Qk14mcfQ92plU+OrA2SF10r2XrcFg1Wvya/5f8w1vS29RVpdoLQ==
-  dependencies:
-    "@types/react" "*"
-
 "@types/react-color@^2.17.6":
   version "2.17.6"
   resolved "https://registry.yarnpkg.com/@types/react-color/-/react-color-2.17.6.tgz#584946f17c40fcd0828fde5f72a9c23ccea6f037"
@@ -19368,13 +19361,6 @@ react-beautiful-dnd@^13.1.1:
     react-redux "^7.2.0"
     redux "^4.0.4"
     use-memo-one "^1.1.1"
-
-react-collapse@^4.0.3:
-  version "4.0.3"
-  resolved "https://registry.yarnpkg.com/react-collapse/-/react-collapse-4.0.3.tgz#b96de959ed0092a43534630b599a4753dd76d543"
-  integrity sha512-OO4NhtEqFtz+1ma31J1B7+ezdRnzHCZiTGSSd/Pxoks9hxrZYhzFEddeYt05A/1477xTtdrwo7xEa2FLJyWGCQ==
-  dependencies:
-    prop-types "^15.5.8"
 
 react-color@^2.14.1:
   version "2.18.1"
