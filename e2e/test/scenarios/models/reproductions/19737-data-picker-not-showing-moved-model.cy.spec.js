@@ -1,4 +1,5 @@
 import {
+  modal,
   restore,
   popover,
   navigationSidebar,
@@ -28,9 +29,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Your personal collection").click();
+    modal().within(() => {
+      cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
   });
