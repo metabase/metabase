@@ -39,7 +39,7 @@
                (slurp body)
                (is (= request-method :put))
                {:status 200})
-             (str (cloud-migration/metabase-store-migration-url) "/" (:external_id migration) "/uploaded")
+             (str (cloud-migration/migration-store-url) "/" (:external_id migration) "/uploaded")
              (constantly {:status 201})}
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))

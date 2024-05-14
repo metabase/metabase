@@ -33,10 +33,12 @@
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
 
-(defsetting metabase-store-migration-url
+(defsetting migration-store-url
   (deferred-tru "Store URL for migrations. Internal test use only.")
   :visibility :internal
-  :default    "https://store-api.metabase.com/api/v2/migration"
+  :default    (if config/is-dev?
+               "https://store-api.staging.metabase.com/api/v2/migration"
+               "https://store-api.metabase.com/api/v2/migration")
   :doc        false
   :export?    false)
 
@@ -50,7 +52,10 @@
 (defsetting migration-dump-version
   (deferred-tru "Custom dump version for migrations. Internal test use only.")
   :visibility :internal
-  :default    nil
+  ;; Use a known and already released version override when in dev.
+  ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
+  ;; a dump from that version, but it lets you test everything else up to that point works.
+  :default    (when config/is-dev? "v0.49.7")
   :doc        false
   :export?    false)
 
@@ -69,7 +74,7 @@
   (->> copy/entities (map t2/table-name) (into #{})))
 
 (def ^:private read-only-mode-exceptions
-  (->> #{ ;; Migrations need to update their own state
+  (->> #{;; Migrations need to update their own state
          :model/CloudMigration :model/Setting
          ;; Users need to login, make queries, and we need need to audit them.
          :model/User :model/Session :model/LoginHistory
@@ -103,7 +108,7 @@
 ;; Helpers
 
 (defn- migration-action-url [external-id path]
-  (str (metabase-store-migration-url) "/" external-id path))
+  (str (migration-store-url) "/" external-id path))
 
 (def terminal-states
   "Cloud migration states that are terminal."
@@ -262,7 +267,7 @@
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
-  (-> (metabase-store-migration-url)
+  (-> (migration-store-url)
       (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
                                                        (config/mb-version-info :tag))}
                   :content-type :json})
@@ -275,11 +280,11 @@
   ;; are we in read-only-mode ?
   (read-only-mode)
 
-  ;; test settings.
-  ;; use staging
-  (metabase-store-migration-url! "https://store-api.staging.metabase.com/api/v2/migration")
+  ;; test settings you might want to change manually
+  ;; force prod if even in dev
+  #_(migration-store-url! "https://store-api.metabase.com/api/v2/migration")
   ;; make sure to use a version that store supports, and a dump for that version.
-  (migration-dump-version! "v0.49.7")
+  #_(migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java -jar metabase.jar dump-to-h2 dump --dump-plaintext
   #_(migration-dump-file! "/path/to/dump.mv.db")
