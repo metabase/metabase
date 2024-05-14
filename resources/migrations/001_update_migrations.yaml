@@ -6909,6 +6909,18 @@ databaseChangeLog:
             columnName: ended_at
             defaultValueComputed: current_timestamp
 
+  - changeSet:
+      id: v50.2024-05-08T09:00:04
+      author: qnkhuat
+      comment: Add null as default value for task_history.ended_at
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: task_history
+            columnName: ended_at
+      # the migration above will add one
+      rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
