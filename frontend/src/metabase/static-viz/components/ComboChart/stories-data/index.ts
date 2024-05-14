@@ -1,3 +1,6 @@
+import twoBarsTwoAreasOneLineLinear from "./2-bars-2-areas-1-line-linear.json";
+import twoBarsTwoAreasOneLineLog from "./2-bars-2-areas-1-line-log.json";
+import twoBarsTwoAreasOneLinePower from "./2-bars-2-areas-1-line-power.json";
 import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json";
 import areaOverBar from "./area-over-bar-40209.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
@@ -22,7 +25,6 @@ import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
-import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
@@ -33,8 +35,9 @@ import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
-import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
 import comboHistogram from "./combo-histogram.json";
+import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
+import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
@@ -138,7 +141,6 @@ export const data = {
   trendComboPower,
   trendComboLog,
   comboHistogram,
-  comboBarsBecomeStackedInStaticViz38827,
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
   compactXAxisDoesNotWork38917,
@@ -152,7 +154,6 @@ export const data = {
   areaStackLinearXAxis,
   nullCategoryValueFormatting,
   areaStackInterpolateMissingValues,
-  barStackDisplayOverridesSeriesDisplays,
   areaStackAllSeriesWithoutInterpolation,
   areaOverBar,
   barAutoFormattingCompact,
@@ -174,4 +175,9 @@ export const data = {
   lineUnpinFromZero,
   lineSettings,
   lineReplaceMissingValuesZero,
+  comboStackedBarsAreasNormalized,
+  comboStackedBarsAreas,
+  twoBarsTwoAreasOneLineLinear,
+  twoBarsTwoAreasOneLinePower,
+  twoBarsTwoAreasOneLineLog,
 };

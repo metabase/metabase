@@ -185,7 +185,14 @@ const UploadTableRow = ({
       </td>
       <td>
         <Link
-          to={Urls.modelToUrl({ model_object: item, model: "table" }) ?? "/"}
+          to={
+            Urls.modelToUrl({
+              id: item.id as number,
+              name: item.name,
+              model: "table",
+              database: { id: item.db_id },
+            }) ?? "/"
+          }
           variant="brand"
         >
           {item.name}

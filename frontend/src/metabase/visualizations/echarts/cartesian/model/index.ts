@@ -28,6 +28,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
+import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
 
@@ -121,11 +122,14 @@ export const getCartesianChartModel = (
   );
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
-    settings["stackable.stack_type"],
   );
 
+  const stackModels = getStackModels(seriesModels, settings);
+
+  // TODO: update normalized transform based on stack models
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
+    stackModels,
     xAxisModel,
     seriesModels,
     yAxisScaleTransforms,
@@ -150,6 +154,7 @@ export const getCartesianChartModel = (
     settings,
     columnByDataKey,
     isAutoSplitSupported,
+    stackModels,
     renderingContext,
   );
 
@@ -160,10 +165,12 @@ export const getCartesianChartModel = (
     seriesModels,
     transformedDataset,
     settings,
+    stackModels,
     renderingContext,
   );
 
   return {
+    stackModels,
     dataset,
     transformedDataset,
     seriesModels,
