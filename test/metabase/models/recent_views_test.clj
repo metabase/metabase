@@ -246,7 +246,11 @@
 
 (deftest recent-views-for-non-existent-entity-test
   (testing "If a user views a model that doesn't exist, it should not be added to recent views"
-    (mt/with-temp [:model/Card       {card-id         :id} {:type "question"}]
+    (mt/with-temp [:model/Database   a-db          {}
+                   :model/Table      _             {:db_id (:id a-db)}
+                   :model/Collection _             {}
+                   :model/Dashboard  _             {}
+                   :model/Card       {card-id :id} {:type "question"}]
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
       (let [before-ghosts (recent-views/get-list (mt/user->id :rasta))
             missing-card-id (inc (apply max (t2/select-pks-vec :model/Card)))
@@ -257,9 +261,11 @@
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard missing-dashboard-id)
-
+        (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
+            "If a user views a model that doesn't exist, it should not be added to recent views")
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection missing-collection-id)
-
+        (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
+            "If a user views a model that doesn't exist, it should not be added to recent views")
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table missing-table-id)
-
-        ))))
+        (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
+            "If a user views a model that doesn't exist, it should not be added to recent views")))))
