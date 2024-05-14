@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.util :as u]
@@ -397,19 +397,27 @@
 (def ^:private TimedSyncMetadata
   "Metadata common to both sync steps and an entire sync/analyze operation run"
   [:map
-   [:start-time (ms/InstanceOfClass Temporal)]
-   [:end-time   (ms/InstanceOfClass Temporal)]])
+   [:start-time                  (ms/InstanceOfClass Temporal)]
+   [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
+
+(declare LogSummaryFunction)
 
 (mr/def ::StepRunMetadata
   [:merge
    TimedSyncMetadata
    [:map
-    [:log-summary-fn [:maybe [:=> [:cat :string] [:ref ::StepRunMetadata]]]]]])
+    ;; will have task history id after the step is executed
+    [:task-history-id {:optional true} [:maybe pos-int?]]
+    [:log-summary-fn [:maybe LogSummaryFunction]]]])
 
 (def ^:private StepRunMetadata
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
   specific information"
   [:ref ::StepRunMetadata])
+
+(def ^:private LogSummaryFunction
+  "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
+  [:=> [:cat StepRunMetadata] :string])
 
 (mr/def ::StepNameWithMetadata
   [:tuple
@@ -429,10 +437,6 @@
    [:map
     [:steps [:maybe [:sequential StepNameWithMetadata]]]]])
 
-(def ^:private LogSummaryFunction
-  "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
-  [:=> [:cat :string] StepRunMetadata])
-
 (def ^:private StepDefinition
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging"
@@ -451,7 +455,7 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(mu/defn run-step-with-metadata :- StepNameWithMetadata
+(mu/defn ^:private run-step-with-metadata! :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
@@ -461,12 +465,16 @@
                                                                 (name-for-logging database))
                      (fn [& args]
                        (try
-                         (apply sync-fn database args)
+                         (task-history/with-task-history {:task            step-name
+                                                          :db_id           (u/the-id database)
+                                                          :on-success-info (fn [result]
+                                                                             {:task_details (dissoc result :start-time :end-time :log-summary-fn)})}
+                           (apply sync-fn database args))
                          (catch Throwable e
                            (if *log-exceptions-and-continue?*
                              (do
-                               (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
-                               {:throwable e})
+                              (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
+                              {:throwable e})
                              (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
@@ -505,7 +513,7 @@
                         (format "Duration: %s" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
-(mu/defn ^:private  log-sync-summary
+(mu/defn ^:private log-sync-summary
   "Log a sync/analyze summary message with info from each step"
   [operation :- :string
    database :- i/DatabaseInstance
@@ -513,41 +521,6 @@
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
   (log/debug (make-log-sync-summary-str operation database sync-metadata)))
-
-(def ^:private SyncOperationOrStepRunMetadata
-  [:multi
-   {:dispatch
-    #(contains? % :steps)}
-   [true  SyncOperationMetadata]
-   [false StepRunMetadata]])
-
-(mu/defn ^:private create-task-history
-  [task-name :- ms/NonBlankString
-   database  :- i/DatabaseInstance
-   {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
-  {:task       task-name
-   :db_id      (u/the-id database)
-   :started_at start-time
-   :ended_at   end-time
-   :duration   (.toMillis (t/duration start-time end-time))})
-
-(mu/defn ^:private store-sync-summary!
-  [operation :- :string
-   database  :- i/DatabaseInstance
-   {:keys [steps] :as sync-md} :- SyncOperationMetadata]
-  (try
-    (->> (for [[step-name step-info] steps
-               :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
-           (assoc (create-task-history step-name database step-info)
-                  :task_details (when (seq task-details)
-                                  task-details)))
-         (cons (create-task-history operation database sync-md))
-         ;; can't do `(t2/insert-returning-instances!)` with a seq because of this bug https://github.com/camsaul/toucan2/issues/130
-         (map #(t2/insert-returning-pks! TaskHistory %))
-         (map first)
-         doall)
-    (catch Throwable e
-      (log/warn e  "Error saving task history"))))
 
 (defn- do-not-retry-exception? [e]
   (or (isa? (class e) ::exception-class-not-to-retry)
@@ -567,7 +540,7 @@
   (let [start-time    (t/zoned-date-time)
         step-metadata (loop [[step-defn & rest-defns] sync-steps
                              result                   []]
-                        (let [[step-name r] (run-step-with-metadata database step-defn)
+                        (let [[step-name r] (run-step-with-metadata! database step-defn)
                               new-result    (conj result [step-name r])]
                           (cond (abandon-sync? r) new-result
                                 (not (seq rest-defns)) new-result
@@ -576,7 +549,6 @@
         sync-metadata {:start-time start-time
                        :end-time   end-time
                        :steps      step-metadata}]
-    (store-sync-summary! operation database sync-metadata)
     (log-sync-summary operation database sync-metadata)
     sync-metadata))
 

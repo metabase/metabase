@@ -71,28 +71,36 @@
 (def ^:private TaskHistoryInfo
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
-   [:task                          ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
-   [:db_id        {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   [:task_details {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
+   [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
+   [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
+   ;; a function that takes the result of the task and returns a map of additional info to update task history when the task succeeds
+   [:on-success-info {:optional true} [:maybe [:=> [:cat :any] :map]]]
+   [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
-(defn- update-task-history! [th-id startime-ms info]
-  (let [end-time-ms (System/currentTimeMillis)]
-    (t2/update! :model/TaskHistory th-id (merge {:ended_at (t/instant end-time-ms)
-                                                 :duration (- end-time-ms startime-ms)}
-                                                info))))
+(defn- update-task-history!
+  [th-id startime-ms info]
+  (let [end-time-ms (System/currentTimeMillis)
+        updated-info   (merge {:ended_at (t/instant end-time-ms)
+                               :duration (- end-time-ms startime-ms)}
+                              info)]
+    (t2/update! :model/TaskHistory th-id updated-info)))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
   [info :- TaskHistoryInfo f]
-  (let [start-time-ms (System/currentTimeMillis)
-        th-id         (t2/insert-returning-pk! :model/TaskHistory
-                                               (assoc info
-                                                      :status     :started
-                                                      :started_at (t/instant start-time-ms)))]
-
+  (let [on-success-info (:on-success-info info)
+        info            (dissoc info :on-success-info)
+        start-time-ms   (System/currentTimeMillis)
+        th-id           (t2/insert-returning-pk! :model/TaskHistory
+                                                 (assoc info
+                                                        :status     :started
+                                                        :started_at (t/instant start-time-ms)))]
     (try
-      (u/prog1 (f)
-        (update-task-history! th-id start-time-ms {:status :success}))
+      (let [result (f)]
+        (update-task-history! th-id start-time-ms (cond-> {:status :success}
+                                                    (some? on-success-info)
+                                                    (merge (on-success-info result))))
+        result)
       (catch Throwable e
         (update-task-history! th-id start-time-ms {:task_details {:status        :failed
                                                                   :exception     (class e)
