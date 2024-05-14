@@ -11,8 +11,11 @@ import {
   echartsContainer,
   enterCustomColumnDetails,
   modal,
+  openQuestionActions,
   popover,
+  queryBuilderHeader,
   restore,
+  undoToast,
   visitMetric,
 } from "e2e/support/helpers";
 
@@ -60,6 +63,23 @@ describe("scenarios > metrics > question", () => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should be able to move a metric to a different collection", () => {
+    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+      visitMetric(card.id),
+    );
+    openQuestionActions();
+    popover().findByText("Move").click();
+    modal().within(() => {
+      cy.findByText("First collection").click();
+      cy.button("Move").click();
+    });
+    undoToast().within(() => {
+      cy.findByText(/Metric moved to/).should("be.visible");
+      cy.findByText("First collection").should("be.visible");
+    });
+    queryBuilderHeader().findByText("First collection").should("be.visible");
   });
 
   it("should be able to add a filter with an ad-hoc question", () => {
