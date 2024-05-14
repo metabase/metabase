@@ -1,10 +1,10 @@
 import {
+  commandPaletteSearch,
   describeEE,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  getSearchBar,
   popover,
   resetSnowplow,
   restore,
@@ -28,7 +28,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
   it("should send snowplow events for global search queries", () => {
     cy.visit("/");
-    getSearchBar().type("Orders").blur();
+    commandPaletteSearch("Orders", false);
     expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
   });
 

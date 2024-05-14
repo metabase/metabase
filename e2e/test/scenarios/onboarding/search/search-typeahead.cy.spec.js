@@ -1,12 +1,16 @@
 import { USERS } from "e2e/support/cypress_data";
-import { restore } from "e2e/support/helpers";
+import { restore, visitFullAppEmbeddingUrl } from "e2e/support/helpers";
 
 ["admin", "normal"].forEach(user => {
   describe(`search > ${user} user`, () => {
     beforeEach(() => {
       restore();
       cy.signIn(user);
-      cy.visit("/");
+      // cy.visit("/");
+      visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { top_nav: true, search: true },
+      });
     });
 
     // There was no issue for this, but it was implemented in pull request #15614

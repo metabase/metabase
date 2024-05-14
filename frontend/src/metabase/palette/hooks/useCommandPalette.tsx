@@ -60,6 +60,7 @@ export const useCommandPalette = ({
   } = useSearchQuery(
     {
       q: debouncedSearchText,
+      context: "command-palette",
       limit: 20,
     },
     {
