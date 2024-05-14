@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   assertQueryBuilderRowCount,
   cartesianChartCircle,
@@ -18,6 +19,16 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const ORDERS_SCALAR_MODEL_METRIC = {
+  name: "Orders model metric",
+  type: "metric",
+  query: {
+    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -133,5 +144,33 @@ describe("scenarios > metrics > question", () => {
       .findByText("Created At is Mar 1–31, 2024")
       .should("be.visible");
     assertQueryBuilderRowCount(445);
+  });
+
+  it("should be able to view a table-based metric without data access", () => {
+    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+      cy.signInAsSandboxedUser();
+      visitMetric(card.id, { hasDataAccess: false });
+    });
+    cy.findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.button("Filter").should("not.exist");
+      cy.button("Summarize").should("not.exist");
+    });
+  });
+
+  it("should be able to view a model-based metric without data access", () => {
+    createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) => {
+      cy.signInAsSandboxedUser();
+      visitMetric(card.id, { hasDataAccess: false });
+    });
+    cy.findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.button("Filter").should("not.exist");
+      cy.button("Summarize").should("not.exist");
+    });
   });
 });
