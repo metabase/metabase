@@ -21,14 +21,15 @@ import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
 export const InvalidateNowButton = ({
   targetId,
+  targetModel,
   targetName,
 }: InvalidateNowButtonProps) => {
   const dispatch = useDispatch();
 
-  const invalidateTargetDatabase = useCallback(async () => {
+  const invalidateTarget = useCallback(async () => {
     try {
       const invalidate = CacheConfigApi.invalidate(
-        { include: "overrides", database: targetId },
+        { include: "overrides", [targetModel]: targetId },
         { hasBody: false },
       );
       await resolveSmoothly(invalidate);
@@ -45,10 +46,10 @@ export const InvalidateNowButton = ({
       }
       throw e;
     }
-  }, [dispatch, targetId]);
+  }, [dispatch, targetId, targetModel]);
 
   return (
-    <FormProvider initialValues={{}} onSubmit={invalidateTargetDatabase}>
+    <FormProvider initialValues={{}} onSubmit={invalidateTarget}>
       <InvalidateNowFormBody targetName={targetName} />
     </FormProvider>
   );
