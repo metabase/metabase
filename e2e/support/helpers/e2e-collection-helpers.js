@@ -84,7 +84,7 @@ export const moveOpenedCollectionTo = newParent => {
   entityPickerModal().should("not.exist");
 };
 
-export function pickEntity({ path, select, tab = /Collections/ }) {
+export function pickEntity({ path, select, tab }) {
   if (tab) {
     cy.findByRole("tab", { name: tab }).click();
   }

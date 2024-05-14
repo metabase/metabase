@@ -387,7 +387,11 @@ describe("scenarios > question > new", () => {
         .findByLabelText(/Which collection/)
         .click();
 
-      pickEntity({ path: [myPersonalCollectionName], select: true });
+      pickEntity({
+        path: [myPersonalCollectionName],
+        select: true,
+        tab: /Collections/,
+      });
 
       cy.findByTestId("save-question-modal").button("Save").click();
       cy.wait("@createQuestion");
@@ -401,9 +405,6 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        entityPickerModal()
-          .findByRole("tab", { name: /Dashboards/ })
-          .click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );

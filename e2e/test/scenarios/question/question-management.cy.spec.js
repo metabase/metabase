@@ -92,7 +92,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/, true);
+                  moveQuestionTo(/Personal Collection/, user === "admin");
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -298,6 +298,10 @@ describe(
 
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
+
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
 
                     findActivePickerItem("Orders in a dashboard");
                   });
