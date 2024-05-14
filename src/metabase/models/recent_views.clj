@@ -195,6 +195,10 @@
   (cond
     (false? (:archived model)) model
 
+    ;; The model for this recent view doesn't exist in the database, so we can't check if it's archived, so just
+    ;; filter it out.
+    (not model) nil
+
     (true? (:archived model)) nil
 
     (nil? (:archived model))
@@ -260,12 +264,12 @@
     ;; if we don't have the :active key, we need to do a query for it:
     (let [table (t2/select-one :model/Table model-id)]
       (if (nil? table)
-        (throw (ex-info "Table not found" {:table-id model-id}))
+        [nil nil]
         [table (:active table)]))))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [[table is-active?] (ellide-inactive model_object model_id)]
-    (when is-active?
+    (when (and table is-active?)
       {:id model_id
        :name (:name table)
        :description (:description table)
