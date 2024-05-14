@@ -182,6 +182,7 @@ export type TrendLinesModel = {
 };
 
 export type StackModel = {
+  axis: "left" | "right";
   display: "bar" | "area";
   seriesKeys: DataKey[];
 };
