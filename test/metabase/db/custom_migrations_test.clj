@@ -1683,7 +1683,7 @@
                         (is (nil? (:cache_field_values_schedule db))))))))]
         (testing "without encryption key"
           (do-test))
-        (testing "without encryption key"
+        (testing "with encryption key"
           (encryption-test/with-secret-key "dont-tell-anyone-about-this"
             (do-test)))))))
 
