@@ -158,6 +158,12 @@
                          {:state state :progress progress}))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
+(defn abs-progress
+  "Returns absolute progress from a relative progress.
+  E.g. if you're at relative 50 from 51 to 99, that's absolute 75."
+  [relative-progress from to]
+  (int (+ from (* (- to from) (/ relative-progress 100)))))
+
 (defn sub-stream
   "Like subs, but for input-streams.
   Returns a sub-stream that should be used inside with-open."
@@ -181,7 +187,8 @@
 (defn- upload [{:keys [id external_id upload_url]} ^File dump-file]
   (let [;; memoize so we don't have repeats for each percent and don't go back on retries
         set-progress-memo (memoize set-progress)
-        on-progress       #(set-progress-memo id :upload (int (+ 50 (* 50 (/ % 100)))))
+        ;; 50 is set before we start the upload
+        on-progress       #(set-progress-memo id :upload (abs-progress % 51 99))
         ;; the migration-dump-file setting is used for testing older dumps in the rich comment
         ;; at the end of this file
         file              (if (migration-dump-file)
