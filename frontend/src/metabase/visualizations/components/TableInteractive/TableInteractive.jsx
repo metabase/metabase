@@ -727,13 +727,13 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
+      question,
       mode,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
-    const question = this.props.question;
     const query = question?.query();
     const stageIndex = -1;
 
