@@ -13,7 +13,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.api.database-test :as api.database-test]
-   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -1706,6 +1705,6 @@
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
 
-        (migrate! :down (dec (config/current-major-version)))
+        (migrate! :down 48)
         (testing "after migrate down, db details should still be encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
