@@ -158,14 +158,23 @@ jobs:
         run: |
           sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
 
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
       - name: Create a PR updating readme + published version
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
+          git push origin HEAD
           gh pr create --base master\
                        --assignee "${GITHUB_ACTOR}"\
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Publish to NPM
         run: echo Implement this step once you've ensure other steps works correctly.
