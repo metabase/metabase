@@ -350,7 +350,13 @@ describe("dataset transform functions", () => {
     it("should return an array of normalized datasets", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
-        [],
+        [
+          {
+            seriesKeys: seriesModels.map(seriesModel => seriesModel.dataKey),
+            display: "bar",
+            axis: "left",
+          },
+        ],
         xAxisModel,
         seriesModels,
         yAxisScaleTransforms,
