@@ -104,7 +104,7 @@ The **user attribute value** must be an exact, case-sensitive match for the filt
 
 Examples of user attributes in play:
 
-- [Restricting rows in basic sandboxes](./data-sandbox-examples.md#basic-sandbox-setup-filtering-rows-based-on-user-attributes)
+- [Restricting rows in basic sandboxes](./data-sandbox-examples.md#basic-sandbox-setup---filtering-rows-based-on-user-attributes)
 - [Restricting rows in custom sandboxes](./data-sandbox-examples.md#custom-example-2-filtering-rows-and-columns)
 - [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 

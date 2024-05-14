@@ -27,12 +27,9 @@ If a person has the wrong level of access to the data that's returned by a quest
 1. Ensure scripts are loading by disabling browser extensions and refreshing the browser.
 2. Go to **Admin** > **Permissions** and select the relevant group.
 3. Find the database that you want to grant SQL access to.
-4. Select **Unrestricted** from the **Data access** dropdown.
-5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
-
-**Explanation**
-
-To give a group access to the [native SQL editor][native-query-editing], you must grant that group **Unrestricted** access to the database.
+4. From the  **View data** dropdown.elect **Can view**.
+5. From the **Create queries** dropdown, select **Query builder and native**.
+6. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 For more information about the different types of database permissions, check out the [section on data access][data-access] in our permissions documentation.
 
@@ -111,17 +108,17 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [admin-permissions]: ../permissions/introduction.md
-[block-data-permission]: ../permissions/data.md#block-access
+[block-data-permission]: ../permissions/data.md#blocked-view-data-permission
 [cant-see-tables]: ./cant-see-tables.md
 [collection-permissions]: ../permissions/collections.md
-[data-access]: ../permissions/data.md#data-access
+[data-access]: ../permissions/data.md#data-permissions
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [groups]: ../people-and-groups/managing.md#groups
 [group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/permissions
-[native-query-editing]: ../permissions/data.md#native-query-editing
+[native-query-editing]: ../permissions/data.md#query-builder-and-native-create-queries-permission
 [no-self-service]: ../permissions/data.md#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.md
@@ -130,5 +127,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-permissions]: ./permissions.md
-[unrestricted]: ../permissions/data.md#unrestricted-access
+[unrestricted]: ../permissions/data.md#can-view-data-permission
 [view-edit]: ./cant-view-or-edit.md

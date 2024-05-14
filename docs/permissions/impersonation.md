@@ -49,11 +49,9 @@ Metabase will use whatever role you specify in the user attribute for each perso
 
 You can use impersonation to give people access to the native/SQL editor, while at the same time restricting their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively, you can use impersonation to set up data sandbox-like access to your data, while letting people use the SQL editor to query that data. The difference is that, _instead of setting up a data sandbox in Metabase, you need to set up that row-level security via the privileges granted to a role in your database._
 
-When you connect Metabase to a database, Metabase uses the database user account you provided that has one or more database roles. When you give a group in Metabase unrestricted access to a database, that group will have the same privileges as the user account that you used to connect Metabase to that database.
-
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
 
-Connection impersonation does not apply to people in the Metabase admins group, as their more permissive privileges take precedence.
+Connection impersonation doesn't apply to people in the Metabase admins group, as their more permissive privileges take precedence.
 
 For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/permissions/impersonation).
 
