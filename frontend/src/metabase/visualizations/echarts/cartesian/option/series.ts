@@ -13,6 +13,7 @@ import {
 import {
   CHART_STYLE,
   LINE_SIZE,
+  Z_INDEXES,
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
@@ -202,7 +203,7 @@ const buildEChartsBarSeries = (
       },
     },
     type: "bar",
-    z: CHART_STYLE.series.zIndex,
+    z: Z_INDEXES.series,
     yAxisIndex,
     barGap: 0,
     stack,
@@ -352,7 +353,7 @@ const buildEChartsLineAreaSeries = (
       },
       areaStyle: { opacity: CHART_STYLE.opacity.area },
     },
-    z: CHART_STYLE.series.zIndexLineArea,
+    z: Z_INDEXES.lineAreaSeries,
     id: seriesModel.dataKey,
     type: "line",
     lineStyle: {
@@ -436,7 +437,7 @@ const generateStackOption = (
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
-    z: CHART_STYLE.seriesLabels.zIndex,
+    z: Z_INDEXES.dataLabels,
     blur: {
       label: {
         opacity: 1,

@@ -7,8 +7,8 @@ import type {
 
 import type { EChartsCartesianCoordinateSystem } from "../../types";
 import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE } from "../constants/style";
-import type { ChartDataset, CartesianChartModel } from "../model/types";
+import { CHART_STYLE, Z_INDEXES } from "../constants/style";
+import type { CartesianChartModel, ChartDataset } from "../model/types";
 
 export const GOAL_LINE_DASH = [3, 4];
 
@@ -43,7 +43,7 @@ export function getGoalLineSeriesOption(
     data: [
       [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
     ],
-    z: CHART_STYLE.goalLine.zIndex,
+    z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
     },

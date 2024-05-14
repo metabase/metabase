@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
-import { CHART_STYLE } from "../constants/style";
+import { Z_INDEXES } from "../constants/style";
 import type { CartesianChartModel } from "../model/types";
 
 import { getSeriesYAxisIndex } from "./utils";
@@ -30,7 +30,7 @@ export function getTrendLinesOption(
         type: TREND_LINE_DASH,
         width: 2,
       },
-      z: CHART_STYLE.trendLine.zIndex,
+      z: Z_INDEXES.trendLine,
     })) ?? []
   );
 }
