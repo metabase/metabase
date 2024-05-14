@@ -5,6 +5,7 @@ import {
   startNewQuestion,
   openNavigationSidebar,
   navigationSidebar,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const QUESTION_NAME = "Foo";
@@ -15,12 +16,11 @@ describe("issue 9027", () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-
-    // Wait for the existing questions to load
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders");
+    entityPickerModal().within(() => {
+      cy.findByText("Saved questions").click();
+      cy.findByText("Orders").should("exist");
+      cy.button("Close").click();
+    });
 
     openNativeEditor({ fromCurrentPage: true });
 
@@ -43,9 +43,11 @@ describe("issue 9027", () => {
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   startNewQuestion();
-  cy.findByText("Saved Questions").click();
-
-  cy.findByText(questionName).should(exists ? "exist" : "not.exist");
+  entityPickerModal().within(() => {
+    cy.findByText("Saved questions").click();
+    cy.findByText(questionName).should(exists ? "exist" : "not.exist");
+    cy.button("Close").click();
+  });
 }
 
 function saveQuestion(name) {
