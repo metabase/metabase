@@ -243,45 +243,33 @@ describe("scenarios > models", () => {
     it("transforms the data picker", () => {
       startNewQuestion();
 
-      popover().within(() => {
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for some data…",
-          query: "Ord",
-          models: true,
-          cards: true,
-          tables: true,
-        });
-
+      modal().within(() => {
         cy.findByText("Models").click();
-        cy.findByTestId("select-list").within(() => {
-          cy.findByText("Orders");
-          cy.findByText("Orders, Count").should("not.exist");
-        });
+        cy.findByText("First collection").should("exist");
+        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders Model").should("exist");
+        cy.findByText("Orders, Count").should("not.exist");
+
+        cy.findByText("Saved questions").click();
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Orders Model").should("not.exist");
+        cy.findByText("Orders, Count").should("exist");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").should(
+          "exist",
+        );
+        cy.findByText("Products").should("exist");
+
+        cy.findByText("Tables").click();
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
+        cy.findByText("Orders, Count").should("not.exist");
+
         testDataPickerSearch({
-          inputPlaceholderText: "Search for a model…",
           query: "Ord",
           models: true,
-        });
-        cy.icon("chevronleft").click();
-
-        cy.findByText("Saved Questions").click();
-        cy.findByTestId("select-list").within(() => {
-          cy.findByText("Orders, Count");
-          cy.findByText("Orders").should("not.exist");
-        });
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for a question…",
-          query: "Ord",
           cards: true,
-        });
-        cy.icon("chevronleft").click();
-
-        cy.findByText("Raw Data").click();
-        cy.findByText("Sample Database").click(); // go back to db list
-        cy.findByText("Saved Questions").should("not.exist");
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for a table…",
-          query: "Ord",
           tables: true,
         });
       });
@@ -612,16 +600,15 @@ function getCollectionItemCard(itemName) {
 }
 
 function testDataPickerSearch({
-  inputPlaceholderText,
   query,
   models = false,
   cards = false,
   tables = false,
 } = {}) {
-  cy.findByPlaceholderText(inputPlaceholderText).type(query);
+  cy.findByPlaceholderText("Search…").type(query);
   cy.wait("@search");
 
-  const searchResultItems = cy.findAllByTestId("search-result-item");
+  const searchResultItems = cy.findAllByTestId("result-item");
 
   searchResultItems.then($results => {
     const modelTypes = {};
@@ -653,6 +640,4 @@ function testDataPickerSearch({
       expect(Object.keys(modelTypes)).not.to.include("table");
     }
   });
-
-  cy.icon("close").click();
 }
