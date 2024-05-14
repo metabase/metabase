@@ -9,6 +9,7 @@ export interface Task {
   ended_at: string;
   task: string;
   task_details: Record<string, unknown> | null;
+  status: "success" | "started" | "failed" | "unknown";
 }
 export type ListTasksRequest = PaginationRequest;
 
