@@ -10,7 +10,7 @@ redirect_from:
 
 Data sandboxes let you give granular permissions to rows and columns for different groups of people. You can sandbox what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
-You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that customers only see the data relevant to them.
+You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that each customer only sees the data relevant to them.
 
 ## Data sandbox examples
 
@@ -87,18 +87,18 @@ Data sandbox permissions are unavailable for non-SQL databases such as Apache Dr
 - A [group](../people-and-groups/managing.md#groups) of people to be added to the basic sandbox.
 - [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each person in the group.
 
-A basic sandbox displays a filtered table in place of an original table, to a specific group. The filter on the table will change for each person in the group, depending on the value of a person's user attribute.
+A basic sandbox displays a filtered table, in place of an original table, to a specific group. How Metabase filters that table depends on the value in each person's user attribute.
 
 For example, you can set up a basic sandbox so that:
 
-- Someone with the user attribute value "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
-- Someone with a "Premium" attribute will see a version of the Accounts table with the filter `Plan = "Premium"`.
+- Someone with the user attribute with key of "plan" and a value of "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (that is, only the rows where the Plan column matches the value "Basic").
+- Someone with a "plan" user attribute set to "Premium" will see a different version of the Accounts table with the filter `Plan = "Premium"` applied.
 
 ## Choosing user attributes for data sandboxes
 
 **User attributes are required for basic sandboxes, and optional for custom sandboxes**. When [adding a new user attribute](../people-and-groups/managing.md#adding-a-user-attribute), you'll set up a key-value pair for each person.
 
-The user attribute key is used to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
+Metabase uses the user attribute key to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
 
 The **user attribute value** must be an exact, case-sensitive match for the filter value of a sandboxed table. For example, if you're creating a [basic sandbox](#basic-data-sandboxes-filter-by-a-column-in-the-table) on the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the sandboxed person will get an empty result instead of the sandboxed table.
 
@@ -114,10 +114,10 @@ Examples of user attributes in play:
 2. Go to **Admin settings** > **Permissions**.
 3. Select the database and table that you want to sandbox.
 4. Find the group that you want to put in the sandbox.
-5. Click on the dropdown under **Data access** for that group.
+5. Click on the dropdown under **View data** for that group.
 6. Select "Sandboxed".
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
-8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "User's Plan".
+8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "Plan".
 
 > If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions-cannot-be-sandboxed).
 
@@ -174,7 +174,7 @@ You can set up an custom sandbox to restrict different rows for each person depe
 4. Save the SQL question.
 5. Go to **Admin settings** > **Permissions**.
 6. Find the group and table for your custom sandbox.
-7. Open the dropdown under **Data access**.
+7. Open the dropdown under **View data**.
 8. Click **Edit sandboxed access**.
 9. Scroll down and set **Parameter or variable** to the name of the parameter in your saved SQL question (such as "Plan Variable").
 10. Set the **User attribute** to a [user attribute key](#choosing-user-attributes-for-data-sandboxes) (such as the key "User's Plan", _not_ the value "Basic").
