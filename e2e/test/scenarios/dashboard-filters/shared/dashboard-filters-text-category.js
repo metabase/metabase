@@ -29,7 +29,7 @@ export const DASHBOARD_TEXT_FILTERS = [
     operator: "Does not contain",
     value: "oo,tt",
     representativeResult: "39.58",
-    negativeASsertion: "37.65",
+    negativeAssertion: "37.65",
   },
   {
     operator: "Does not contain",
