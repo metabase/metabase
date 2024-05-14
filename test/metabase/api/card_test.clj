@@ -3512,3 +3512,13 @@
                            :crowberto :post 200
                            (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+
+(deftest ^:parallel can-restore
+  (t2.with-temp/with-temp [:model/Collection collection-a {:name "A"}
+                           :model/Card {card-id :id} {:name "My Card"
+                                                      :collection_id (u/the-id collection-a)}]
+    ;; trash the card
+    (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+    ;; trash the parent collection
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))

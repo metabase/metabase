@@ -202,7 +202,8 @@
                  hydrate-card-details
                  ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
                  (last-edit/with-last-edit-info :card)
-                 collection.root/hydrate-root-collection)]
+                 collection.root/hydrate-root-collection
+                 (assoc :can_restore false))]
     (u/prog1 card
       (when-not ignore_view
         (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))

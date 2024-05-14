@@ -484,6 +484,7 @@
       (update :archived api/bit->boolean)
       (t2/hydrate :can_write)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+      (assoc :can_restore false)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -631,6 +632,7 @@
           (t2/hydrate :can_write :effective_location)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
+          (assoc :can_restore false)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
@@ -870,6 +872,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
+      (assoc :can_restore false)
       (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
 
 (api/defendpoint GET "/:id"

@@ -4453,3 +4453,14 @@
                            :crowberto :post 200
                            (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+
+
+(deftest ^:parallel can-restore
+  (t2.with-temp/with-temp [:model/Collection collection-a {:name "A"}
+                           :model/Dashboard {dash-id :id} {:name "My Dashboard"
+                                                      :collection_id (u/the-id collection-a)}]
+    ;; trash the dashboard
+    (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+    ;; trash the parent collection
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "dashboard/" dash-id)))))))

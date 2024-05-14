@@ -2156,3 +2156,12 @@
     (is (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
   (testing "Trash collection is NOT included if `exclude-archived` is passed"
     (is (not (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))
+
+(deftest ^:parallel can-restore
+  (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                           Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}]
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection-a)) {:archived true})
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+    (is (every? #(false? (:can_restore %)) (get-items :crowberto (collection/trash-collection-id))))
+    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id subcollection-a))))))
+    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-a))))))))

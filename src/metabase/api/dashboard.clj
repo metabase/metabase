@@ -252,7 +252,8 @@
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
         hide-unreadable-cards
-        add-query-average-durations)))
+        add-query-average-durations
+        (assoc :can_restore false))))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
