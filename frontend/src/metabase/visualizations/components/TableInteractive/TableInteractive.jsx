@@ -727,16 +727,25 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
+      question,
+      mode,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
+    const query = question?.query();
+    const stageIndex = -1;
+
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
-    const isClickable = this.visualizationIsClickable(clicked);
+    const isClickable = Boolean(
+      mode?.hasDrills &&
+        query &&
+        Lib.queryDisplayInfo(query, stageIndex).isEditable,
+    );
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
@@ -745,9 +754,6 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const columnInfoPopoverTestId = "field-info-popover";
-    const question = this.props.question;
-    const query = question?.query();
-    const stageIndex = -1;
 
     return (
       <TableDraggable
