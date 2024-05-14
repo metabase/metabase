@@ -6815,6 +6815,21 @@ databaseChangeLog:
             columnDataType: int
             columnName: duration
 
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
+      comment: Drop defautl value task_history.ended_at
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+      rollback:
+        - addDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

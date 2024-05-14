@@ -92,7 +92,7 @@
 
     (try
       (u/prog1 (f)
-        (update-task-history! th-id start-time-ms {:status :sucess}))
+        (update-task-history! th-id start-time-ms {:status :success}))
       (catch Throwable e
         (update-task-history! th-id start-time-ms {:task_details {:status        :failed
                                                                   :exception     (class e)
