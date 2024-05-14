@@ -277,19 +277,23 @@ describe("scenarios > models", () => {
 
     it("allows to create a question based on a model", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
-      startNewQuestion();
 
-      popover().within(() => {
+      startNewQuestion();
+      modal().within(() => {
         cy.findByText("Models").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
-      selectFromDropdown("Models");
-      selectFromDropdown("Raw Data");
-      selectFromDropdown("Sample Database");
-      cy.findAllByRole("option").should("have.length", 4);
-      selectFromDropdown("Products");
+      modal().within(() => {
+        cy.findByText("Tables").click();
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
+
+        cy.findByText("Products").click();
+      });
 
       getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
