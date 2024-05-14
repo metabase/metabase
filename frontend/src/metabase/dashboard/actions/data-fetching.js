@@ -37,6 +37,7 @@ import {
   getDashCardById,
   getSelectedTabId,
   getQuestions,
+  getInitialSelectedTabId,
 } from "../selectors";
 import {
   expandInlineDashboard,
@@ -227,10 +228,11 @@ export const fetchDashboard = createAsyncThunk(
       fetchDashboardCancellation = null;
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        const selectedTabId = getSelectedTabId(getState());
+        const selectedTabId =
+          getSelectedTabId(getState()) ?? getInitialSelectedTabId(result);
 
         const cards =
-          selectedTabId === undefined
+          selectedTabId == null
             ? result.dashcards
             : result.dashcards.filter(
                 c => c.dashboard_tab_id === selectedTabId,
