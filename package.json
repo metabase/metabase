@@ -28,7 +28,6 @@
     "@types/redux-auth-wrapper": "^2.0.16",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
-    "@visx/event": "^2.6.0",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
     "@visx/legend": "^2.10.0",
