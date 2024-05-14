@@ -320,7 +320,7 @@
 
 (defn- poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
-  [{:keys [thunk done? timeout-ms interval-ms]}]
+  [{:keys [thunk done? timeout-ms ^long interval-ms]}]
   (let [start-time (System/currentTimeMillis)]
     (loop []
       (let [response (thunk)]
