@@ -122,9 +122,11 @@
     s))
 
 (def ^:private encrypted-json-in
+  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
   (comp encryption/maybe-encrypt json-in))
 
 (defn- encrypted-json-out
+  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
@@ -135,7 +137,6 @@
           (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
