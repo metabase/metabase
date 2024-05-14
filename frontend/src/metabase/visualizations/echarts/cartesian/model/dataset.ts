@@ -45,7 +45,6 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { signedLog, signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -297,15 +296,17 @@ export const getNullReplacerTransform = (
   };
 };
 
-const hasInterpolatedSeries = (
+const hasInterpolatedAreaSeries = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ) => {
   return seriesModels.some(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
     return (
-      settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-        "line.missing"
-      ] !== "none"
+      seriesSettings["line.missing"] !== "none" &&
+      seriesSettings.display === "area"
     );
   });
 };
@@ -316,11 +317,13 @@ const hasInterpolatedSeries = (
  */
 const getStackedAreasInterpolateTransform = (
   seriesModels: SeriesModel[],
+  areaStackSeriesKeys: DataKey[],
 ): TransformFn => {
-  const seriesKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-
+  const areaStackSeriesKeysSet = new Set(areaStackSeriesKeys);
   return (datum: Datum) => {
-    const hasAtLeastOneSeriesValue = seriesKeys.some(key => datum[key] != null);
+    const hasAtLeastOneSeriesValue = areaStackSeriesKeys.some(
+      key => datum[key] != null,
+    );
     if (!hasAtLeastOneSeriesValue) {
       return datum;
     }
@@ -328,7 +331,9 @@ const getStackedAreasInterpolateTransform = (
     const transformedDatum = { ...datum };
     for (const seriesModel of seriesModels) {
       const dataKey = seriesModel.dataKey;
-      transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
+      if (areaStackSeriesKeysSet.has(dataKey)) {
+        transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
+      }
     }
     return transformedDatum;
   };
@@ -336,7 +341,7 @@ const getStackedAreasInterpolateTransform = (
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],
-  valueTransform: (value: number) => number,
+  valueTransform: (value: number) => number | null,
 ): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
@@ -363,13 +368,15 @@ function getStackedValueTransformFunction(
         }, 0);
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
 
+      const transformedRawBelowTotal = valueTransform(rawBelowTotal) ?? 0;
       // 2. Transform this total
-      const transformedTotal = valueTransform(rawTotal);
+      const transformedTotal = valueTransform(rawTotal) ?? 0;
 
       // 3. Subtract the transformed total of the already stacked values (not
       //    including the value we are currently stacking)
+
       transformedSeriesValues[seriesDataKey] =
-        transformedTotal - valueTransform(rawBelowTotal);
+        transformedTotal - transformedRawBelowTotal;
     }
 
     seriesDataKeys.forEach(seriesDataKey => {
@@ -385,24 +392,21 @@ function getStackedValueTransformFunction(
 
 function getStackedValueTransfom(
   settings: ComputedVisualizationSettings,
-  seriesDataKeys: DataKey[],
-): ConditionalTransform {
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+  stackModels: StackModel[],
+): ConditionalTransform[] {
   const isPow = settings["graph.y_axis.scale"] === "pow";
   const isLog = settings["graph.y_axis.scale"] === "log";
 
-  // In `getStackedValueTransformFunction`, each iteration of the loop ends with
-  // `transformedTotal - valueTransform(rawBelowTotal)`. However, in the first
-  // iteration `rawBelowTotal` will 0 because nothing is stacked yet, so to
-  // handle this case we want the `valueTransform` function to just return 0.
-  const logValueTransform = (value: number) =>
-    value === 0 ? value : signedLog(value);
+  const isNonLinearAxis = isPow || isLog;
 
-  const valueTransform = isPow ? signedSquareRoot : logValueTransform;
-
-  return {
-    condition: (isPow || isLog) && settings["stackable.stack_type"] != null,
-    fn: getStackedValueTransformFunction(seriesDataKeys, valueTransform),
-  };
+  return stackModels.map(stackModel => ({
+    condition: isNonLinearAxis,
+    fn: getStackedValueTransformFunction(
+      stackModel.seriesKeys,
+      yAxisScaleTransforms.toEChartsAxisValue,
+    ),
+  }));
 }
 
 function getStackedDataLabelTransform(
@@ -565,6 +569,32 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+const getYAxisScaleTransforms = (
+  seriesModels: SeriesModel[],
+  stackModels: StackModel[],
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+  settings: ComputedVisualizationSettings,
+) => {
+  const stackedSeriesKeys = new Set(
+    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+  );
+  const nonStackedSeriesKeys = seriesModels
+    .filter(seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey))
+    .map(seriesModel => seriesModel.dataKey);
+
+  const nonStackedTransform = getKeyBasedDatasetTransform(
+    nonStackedSeriesKeys,
+    value => yAxisScaleTransforms.toEChartsAxisValue(value),
+  );
+  const stackedTransforms = getStackedValueTransfom(
+    settings,
+    yAxisScaleTransforms,
+    stackModels,
+  );
+
+  return [nonStackedTransform, ...stackedTransforms];
+};
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -612,10 +642,12 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(stackModels),
     },
-    getKeyBasedDatasetTransform(seriesDataKeys, value =>
-      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ...getYAxisScaleTransforms(
+      seriesModels,
+      stackModels,
+      yAxisScaleTransforms,
+      settings,
     ),
-    getStackedValueTransfom(settings, seriesDataKeys),
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
@@ -636,9 +668,12 @@ export const applyVisualizationSettingsDataTransformations = (
     {
       condition:
         settings["stackable.stack_type"] != null &&
-        settings["stackable.stack_display"] === "area" &&
-        hasInterpolatedSeries(seriesModels, settings),
-      fn: getStackedAreasInterpolateTransform(seriesModels),
+        hasInterpolatedAreaSeries(seriesModels, settings),
+      fn: getStackedAreasInterpolateTransform(
+        seriesModels,
+        stackModels.find(stackModel => stackModel.display === "area")
+          ?.seriesKeys ?? [],
+      ),
     },
   ]);
 };

@@ -41,7 +41,7 @@ Object.assign(
       ...GRAPH_DISPLAY_VALUES_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
       ...TOOLTIP_SETTINGS,
-      "stackable.stack_type": STACKABLE_SETTINGS["stackable.stack_type"],
+      ...STACKABLE_SETTINGS,
     } as any as VisualizationSettingsDefinitions,
   }),
 );
