@@ -1,11 +1,13 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  entityPickerModal,
   openNotebook,
   openOrdersTable,
   popover,
   queryBuilderHeader,
   restore,
   saveQuestion,
+  startNewQuestion,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
@@ -48,10 +50,9 @@ function removeSourceColumns() {
 }
 
 function createAdHocQuestion(questionName) {
-  cy.findByTestId("app-bar").findByText("New").click();
-  popover().within(() => {
-    cy.findByText("Question").click();
-    cy.findByText("Saved Questions").click();
+  startNewQuestion();
+  entityPickerModal().within(() => {
+    cy.findByText("Saved questions").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();
