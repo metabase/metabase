@@ -20,6 +20,11 @@
 (deftest cluster?-test
   (is (boolean? (cloud-migration/cluster?))))
 
+(deftest abs-progress-test
+  (is (= 51 (cloud-migration/abs-progress 0 51 99)))
+  (is (= 75 (cloud-migration/abs-progress 50 51 99)))
+  (is (= 99 (cloud-migration/abs-progress 100 51 99))))
+
 (deftest migrate!-test
   (testing "works"
     (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
@@ -44,6 +49,8 @@
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))
               "several progress calls during upload")
+          (is (->> @progress-calls :upload (every? #(and (<= 50 %) (< % 100))))
+              "progress calls are between 50 (inclusive) and 100 (exclusive)")
           (is (= {:setup [1] :dump [20] :done [100]}
                  (dissoc @progress-calls :upload))
               "one progress call during other stages")))))
