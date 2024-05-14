@@ -9,7 +9,11 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -231,8 +235,8 @@
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]
     (let [add-timestamps (fn [entity]
                            (assoc entity
-                                  :created_at (java.util.Date.)
-                                  :updated_at (java.util.Date.)))
+                                  :created_at (Instant/now)
+                                  :updated_at (Instant/now)))
           user-id (t2/insert-returning-pk! :core_user
                                            {:first_name  "Howard"
                                             :last_name   "Hughes"
