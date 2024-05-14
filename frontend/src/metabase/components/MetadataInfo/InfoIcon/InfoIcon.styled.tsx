@@ -6,11 +6,8 @@ export const PopoverHoverTarget = styled(Icon)<{ hasDescription: boolean }>`
   flex-shrink: 0;
   display: none;
 
-  opacity: ${props => (props.hasDescription ? 0.75 : 0.5)};
-
   [aria-expanded="true"] & {
     display: block;
-    opacity: 1;
   }
 `;
 
