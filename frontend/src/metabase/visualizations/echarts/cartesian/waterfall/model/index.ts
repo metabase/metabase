@@ -102,6 +102,7 @@ export const getWaterfallChartModel = (
   );
 
   return {
+    stackModels: [],
     dataset: originalDatasetWithTotal,
     transformedDataset,
     seriesModels: [seriesModel],
