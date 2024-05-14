@@ -1,4 +1,9 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
   echartsContainer,
@@ -12,6 +17,7 @@ import {
   undo,
   undoToast,
   undoToastList,
+  visitCollection,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -21,6 +27,17 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+  collection_position: 1,
+};
+
+const ORDERS_SCALAR_MODEL_METRIC = {
+  name: "Orders model metric",
+  type: "metric",
+  query: {
+    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -155,6 +172,27 @@ describe("scenarios > metrics > collection", () => {
     getArchivedList()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
+  });
+
+  it("should be able to view a model-based metric without collection access to the source model", () => {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        root: "none",
+        [FIRST_COLLECTION_ID]: "read",
+      },
+    });
+    createQuestion({
+      ...ORDERS_SCALAR_MODEL_METRIC,
+      collection_id: FIRST_COLLECTION_ID,
+    }).then(({ body: card }) => {
+      cy.signIn("nocollection");
+      visitCollection(FIRST_COLLECTION_ID);
+    });
+    getPinnedSection()
+      .findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
   });
 });
 
