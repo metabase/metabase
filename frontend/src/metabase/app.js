@@ -1,7 +1,5 @@
 import "regenerator-runtime/runtime";
 
-import "number-to-locale-string";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import

@@ -74,7 +74,6 @@
     "moment-timezone": "^0.5.38",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
-    "number-to-locale-string": "^1.0.1",
     "password-generator": "^2.0.1",
     "postcss-discard-comments": "^6.0.1",
     "prop-types": "^15.5.7",
