@@ -1,4 +1,9 @@
-import { restore, popover, openNavigationSidebar } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  openNavigationSidebar,
+  entityPickerModal,
+} from "e2e/support/helpers";
 
 describe("issue 19742", () => {
   beforeEach(() => {
@@ -12,11 +17,12 @@ describe("issue 19742", () => {
     cy.visit("/");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    selectFromDropdown("Question");
-    selectFromDropdown("Raw Data");
 
-    popover().within(() => {
+    popover().findByText("Question").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText("Orders").should("exist");
+      cy.button("Close").click();
     });
 
     openNavigationSidebar();
@@ -31,14 +37,15 @@ describe("issue 19742", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    selectFromDropdown("Question");
-    selectFromDropdown("Raw Data");
+    popover().findByText("Question").click();
 
-    popover().within(() => {
-      cy.findByText("Products");
-      cy.findByText("Reviews");
-      cy.findByText("People");
+    entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
+
       cy.findByText("Orders").should("not.exist");
+      cy.findByText("Products").should("exist");
+      cy.findByText("Reviews").should("exist");
+      cy.findByText("People").should("exist");
     });
   });
 });
