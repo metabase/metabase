@@ -628,10 +628,9 @@
       (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
           (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location)
+          (t2/hydrate :can_write :effective_location :collection/can_restore)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
-          (assoc :can_restore false)
           update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
@@ -871,8 +870,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (assoc :can_restore false)
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :collection/can_restore)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"

@@ -2192,5 +2192,14 @@
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
         (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
   (testing "can_restore is correctly populated for collection"
-    (testing "when I can actually restore it")
-    (testing "and when I can't")))
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection)))))))))
