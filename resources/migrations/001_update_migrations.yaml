@@ -6905,7 +6905,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-04-29T14:07:18
+      id: v50.2024-05-14T12:42:16
       author: johnswanson
       comment: Drop foreign key constraint fk_snippet_collection_id
       rollback:
@@ -6922,7 +6922,7 @@ databaseChangeLog:
             constraintName: fk_snippet_collection_id
 
   - changeSet:
-      id: v50.2024-04-29T14:07:24
+      id: v50.2024-05-14T12:42:27
       author: johnswanson
       comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
       rollback:
@@ -6939,7 +6939,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-29T14:07:33
+      id: v50.2024-05-14T12:42:29
       author: johnswanson
       comment: Drop foreign key constraint fk_pulse_collection_id
       rollback:
@@ -6956,7 +6956,7 @@ databaseChangeLog:
             constraintName: fk_pulse_collection_id
 
   - changeSet:
-      id: v50.2024-04-29T14:07:37
+      id: v50.2024-05-14T12:42:32
       author: johnswanson
       comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
       rollback:
@@ -6973,7 +6973,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-29T14:07:40
+      id: v50.2024-05-14T12:42:33
       author: johnswanson
       comment: Drop foreign key constraint fk_card_collection_id
       rollback:
@@ -6990,7 +6990,7 @@ databaseChangeLog:
             constraintName: fk_card_collection_id
 
   - changeSet:
-      id: v50.2024-04-29T14:07:47
+      id: v50.2024-05-14T12:42:36
       author: johnswanson
       comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
       rollback:
@@ -7007,7 +7007,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-04-29T14:07:49
+      id: v50.2024-05-14T12:42:37
       author: johnswanson
       comment: Drop foreign key constraint fk_dashboard_collection_id
       rollback:
@@ -7024,7 +7024,7 @@ databaseChangeLog:
             constraintName: fk_dashboard_collection_id
 
   - changeSet:
-      id: v50.2024-04-29T14:07:53
+      id: v50.2024-05-14T12:42:40
       author: johnswanson
       comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
       rollback:
@@ -7041,7 +7041,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v50.2024-05-03T16:29:53
+      id: v50.2024-05-14T12:42:42
       author: johnswanson
       comment: Create the Trash collection
       changes:
@@ -7065,7 +7065,7 @@ databaseChangeLog:
               DELETE FROM collection WHERE type = 'trash';
 
   - changeSet:
-      id: v50.2024-05-09T15:55:06
+      id: v50.2024-05-14T12:42:44
       author: johnswanson
       comment: Move existing archived collections to the Trash - (Postgres)
       preConditions:
@@ -7088,7 +7088,7 @@ databaseChangeLog:
               WHERE archived = true AND namespace IS NULL;
 
   - changeSet:
-      id: v50.2024-05-09T16:16:24
+      id: v50.2024-05-14T12:42:46
       author: johnswanson
       comment: Move existing archived collections to the Trash - (H2)
       preConditions:
@@ -7110,7 +7110,7 @@ databaseChangeLog:
               WHERE archived = true AND namespace IS NULL;
 
   - changeSet:
-      id: v50.2024-05-09T16:16:31
+      id: v50.2024-05-14T12:42:48
       author: johnswanson
       comment: Move existing archived collections to the Trash - (MySQL/MariaDB)
       preConditions:
@@ -7135,7 +7135,7 @@ databaseChangeLog:
               WHERE archived = true AND namespace IS NULL;
 
   - changeSet:
-      id: v50.2024-05-09T16:16:38
+      id: v50.2024-05-14T12:42:50
       author: johnswanson
       comment: Move existing archived dashboards to the Trash
       changes:
@@ -7152,7 +7152,7 @@ databaseChangeLog:
               WHERE archived = true;
 
   - changeSet:
-      id: v50.2024-05-09T16:16:42
+      id: v50.2024-05-14T12:42:52
       author: johnswanson
       comment: Move existing archived cards to the Trash
       changes:
