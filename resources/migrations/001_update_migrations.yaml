@@ -6939,7 +6939,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
 
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
