@@ -1,6 +1,5 @@
 (ns metabase.driver.druid-jdbc.query-processor-test
   (:require
-   #_[toucan2.tools.with-temp :as t2.with-temp]
    [clojure.test :refer :all]
    [metabase.models :refer [Card]]
    [metabase.test :as mt]
@@ -17,6 +16,7 @@
                                                           :filter      [:> $venue_price 1]
                                                           :source-table (mt/id :checkins)})
                                                        :type :metric}]
+          (is (= 0 1) "the test is really running")
           (is (= [[2 1231]
                   [3  346]
                   [4  197]]
