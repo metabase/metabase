@@ -13,9 +13,25 @@ import {
   getFieldType,
   isString,
   isInteger,
+  isDimension,
 } from "metabase-lib/v1/types/utils/isa";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 describe("isa", () => {
+  describe("isDimension", () => {
+    it("should should return false for aggregation columns", () => {
+      expect(isDimension(createMockColumn({ source: "aggregation" }))).toBe(
+        false,
+      );
+    });
+
+    it("should should return true for description column types", () => {
+      expect(
+        isDimension(createMockColumn({ semantic_type: TYPE.Description })),
+      ).toBe(true);
+    });
+  });
+
   describe("getFieldType", () => {
     it("should know a date", () => {
       expect(getFieldType({ base_type: TYPE.Date })).toEqual(TEMPORAL);
