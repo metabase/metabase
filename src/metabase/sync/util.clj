@@ -400,15 +400,13 @@
    [:start-time                  (ms/InstanceOfClass Temporal)]
    [:end-time   {:optional true} (ms/InstanceOfClass Temporal)]])
 
-(declare LogSummaryFunction)
-
 (mr/def ::StepRunMetadata
   [:merge
    TimedSyncMetadata
    [:map
     ;; will have task history id after the step is executed
     [:task-history-id {:optional true} [:maybe pos-int?]]
-    [:log-summary-fn [:maybe LogSummaryFunction]]]])
+    [:log-summary-fn [:maybe [:=> [:cat [:ref ::StepRunMetadata]] :string]]]]])
 
 (def ^:private StepRunMetadata
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
