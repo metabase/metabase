@@ -1,5 +1,4 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ChartDataset,
@@ -269,7 +268,6 @@ function shouldRenderCompact(
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-  formattingOptions = {},
 ) {
   if (settings["graph.label_value_formatting"] === "compact") {
     return true;
@@ -285,7 +283,6 @@ function shouldRenderCompact(
         ...(settings.column?.(seriesModel.column) ?? {}),
         jsx: false,
         compact: compact,
-        ...formattingOptions,
       }).length;
     });
 
@@ -303,7 +300,6 @@ export const getSeriesLabelsFormatters = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-  formattingOptions: OptionsType = {},
 ): Record<DataKey, LabelFormatter> => {
   const formatters: SeriesFormatters = {};
 
@@ -313,7 +309,6 @@ export const getSeriesLabelsFormatters = (
       seriesModel,
       settings,
       renderingContext,
-      formattingOptions,
     );
 
     const seriesSettings =
@@ -333,7 +328,6 @@ export const getSeriesLabelsFormatters = (
         ...(settings.column?.(seriesModel.column) ?? {}),
         jsx: false,
         compact: isCompact,
-        ...formattingOptions,
       });
     });
 
