@@ -1,11 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visualize,
+  modal,
   openProductsTable,
   queryBuilderHeader,
   queryBuilderMain,
+  restore,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -35,11 +35,10 @@ describe("issue 15578", () => {
     openProductsTable({ mode: "notebook" });
 
     cy.button("Join data").click();
-
-    popover().findByText("Sample Database").click();
-    popover().findByText("Raw Data").click();
-    popover().findByText("Saved Questions").click();
-    popover().findByText(JOINED_QUESTION_NAME).click();
+    modal().within(() => {
+      cy.findByText("Saved questions").click();
+      cy.findByText(JOINED_QUESTION_NAME).click();
+    });
 
     visualize();
 
