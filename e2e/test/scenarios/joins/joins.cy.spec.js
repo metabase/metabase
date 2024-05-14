@@ -11,6 +11,7 @@ import {
   getNotebookStep,
   join,
   joinTable,
+  modal,
   openNotebook,
   openOrdersTable,
   popover,
@@ -352,7 +353,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
-    popover().findByText("People").click();
+    modal().findByText("People").click();
 
     getNotebookStep("join").should("not.exist");
 
