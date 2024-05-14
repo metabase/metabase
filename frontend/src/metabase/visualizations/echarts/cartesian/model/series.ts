@@ -409,7 +409,8 @@ export const getSeriesLabelsFormatters = (
     const hasDataLabels =
       settings["graph.show_values"] &&
       seriesSettings["show_series_values"] &&
-      settings["stackable.stack_type"] == null;
+      (settings["stackable.stack_type"] == null ||
+        seriesSettings.display === "line");
 
     if (!hasDataLabels) {
       return;
