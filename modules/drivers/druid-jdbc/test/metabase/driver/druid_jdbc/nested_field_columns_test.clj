@@ -15,6 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel json-details-only-test
+  (is (= 0 1) "the nested test gets invoked")
   (mt/test-driver
    :druid-jdbc
    (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
