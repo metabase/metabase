@@ -1,8 +1,13 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
+  ChartDataset,
+  DataKey,
   DimensionModel,
+  LabelFormatter,
   LegacySeriesSettingsObjectKey,
+  SeriesFormatters,
   SeriesModel,
   VizSettingsKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -24,6 +29,8 @@ import type {
   RawSeries,
   CardId,
 } from "metabase-types/api";
+
+import { cachedFormatter } from "../utils/formatter";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -255,4 +262,83 @@ export const getDimensionModel = (
       return columnByCardId;
     }, {} as Record<CardId, DatasetColumn>),
   };
+};
+
+function shouldRenderCompact(
+  dataset: ChartDataset,
+  seriesModel: SeriesModel,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+  formattingOptions = {},
+) {
+  if (settings["graph.label_value_formatting"] === "compact") {
+    return true;
+  }
+  if (settings["graph.label_value_formatting"] === "full") {
+    return false;
+  }
+  // for "auto" we use compact if it shortens avg label length by >3 chars
+  const getAvgLength = (compact: boolean) => {
+    const lengths = dataset.map(datum => {
+      const value = datum[seriesModel.dataKey];
+      return renderingContext.formatValue(value, {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: compact,
+        ...formattingOptions,
+      }).length;
+    });
+
+    return (
+      lengths.reduce((sum: number, length: number) => sum + length, 0) /
+      lengths.length
+    );
+  };
+
+  return getAvgLength(true) + 3 < getAvgLength(false);
+}
+
+export const getSeriesLabelsFormatters = (
+  seriesModels: SeriesModel[],
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+  formattingOptions: OptionsType = {},
+): Record<DataKey, LabelFormatter> => {
+  const formatters: SeriesFormatters = {};
+
+  seriesModels.forEach(seriesModel => {
+    const isCompact = shouldRenderCompact(
+      dataset,
+      seriesModel,
+      settings,
+      renderingContext,
+      formattingOptions,
+    );
+
+    const seriesSettings =
+      settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
+
+    const hasDataLabels =
+      settings["graph.show_values"] &&
+      seriesSettings["show_series_values"] &&
+      settings["stackable.stack_type"] == null;
+
+    if (!hasDataLabels) {
+      return;
+    }
+
+    const seriesFormatter = cachedFormatter((value: RowValue) => {
+      return renderingContext.formatValue(value, {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: isCompact,
+        ...formattingOptions,
+      });
+    });
+
+    formatters[seriesModel.dataKey] = seriesFormatter;
+  });
+
+  return formatters;
 };

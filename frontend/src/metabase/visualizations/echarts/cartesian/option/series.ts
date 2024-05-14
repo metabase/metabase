@@ -3,7 +3,6 @@ import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -26,6 +25,7 @@ import type {
   TimeSeriesXAxisModel,
   NumericXAxisModel,
   NumericAxisScaleTransforms,
+  LabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -82,93 +82,29 @@ export const getBarLabelLayout =
 
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
-  dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
-  labelDataKey: DataKey,
-  renderingContext: RenderingContext,
-  formattingOptions: OptionsType = {},
+  formatter: LabelFormatter,
 ) {
-  const isCompact = shouldRenderCompact({
-    dataset,
-    getValue: (datum: Datum) => datum[labelDataKey],
-    formattingOptions,
-    renderingContext,
-    seriesModel,
-    settings,
-  });
-  const valueFormatter = (value: RowValue) =>
-    renderingContext.formatValue(value, {
-      ...(settings.column?.(seriesModel.column) ?? {}),
-      jsx: false,
-      compact: isCompact,
-      ...formattingOptions,
-    });
-
   return (params: CallbackDataParams) => {
-    const value = (params.data as Datum)[labelDataKey];
+    const value = (params.data as Datum)[seriesModel.dataKey];
 
     if (typeof value !== "number") {
       return " ";
     }
-    return valueFormatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
+    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
   };
-}
-
-function shouldRenderCompact({
-  dataset,
-  getValue,
-  formattingOptions = {},
-  renderingContext,
-  seriesModel,
-  settings,
-}: {
-  dataset: ChartDataset;
-  getValue: (datum: Datum) => RowValue;
-  formattingOptions?: OptionsType;
-  renderingContext: RenderingContext;
-  seriesModel: SeriesModel;
-  settings: ComputedVisualizationSettings;
-}) {
-  if (settings["graph.label_value_formatting"] === "compact") {
-    return true;
-  }
-  if (settings["graph.label_value_formatting"] === "full") {
-    return false;
-  }
-  // for "auto" we use compact if it shortens avg label length by >3 chars
-  const getAvgLength = (compact: boolean) => {
-    const lengths = dataset.map(datum => {
-      const value = getValue(datum);
-      return renderingContext.formatValue(value, {
-        ...(settings.column?.(seriesModel.column) ?? {}),
-        jsx: false,
-        compact: compact,
-        ...formattingOptions,
-      }).length;
-    });
-
-    return (
-      lengths.reduce((sum: number, length: number) => sum + length, 0) /
-      lengths.length
-    );
-  };
-
-  return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
 export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
-  dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-  show?: boolean,
+  formatter: LabelFormatter,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
   return {
     silent: true,
-    show,
+    show: true,
     position,
     opacity: 1,
     fontFamily: renderingContext.fontFamily,
@@ -179,11 +115,8 @@ export const buildEChartsLabelOptions = (
     textBorderWidth: 3,
     formatter: getDataLabelFormatter(
       seriesModel,
-      dataset,
       yAxisScaleTransforms,
-      settings,
-      seriesModel.dataKey,
-      renderingContext,
+      formatter,
     ),
   };
 };
@@ -252,6 +185,7 @@ const buildEChartsBarSeries = (
   barSeriesCount: number,
   yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
+  labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): BarSeriesOption => {
   const stackName =
@@ -287,14 +221,14 @@ const buildEChartsBarSeries = (
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
-    label: buildEChartsLabelOptions(
-      seriesModel,
-      dataset,
-      yAxisScaleTransforms,
-      settings,
-      renderingContext,
-      settings["graph.show_values"] && settings["stackable.stack_type"] == null,
-    ),
+    label: !labelFormatter
+      ? undefined
+      : buildEChartsLabelOptions(
+          seriesModel,
+          yAxisScaleTransforms,
+          renderingContext,
+          labelFormatter,
+        ),
     labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
       color: seriesModel.color,
@@ -338,14 +272,13 @@ const buildEChartsLineAreaSeries = (
   yAxisIndex: number,
   hasMultipleSeries: boolean,
   chartWidth: number,
+  labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): LineSeriesOption => {
   const display = seriesSettings?.display ?? "line";
 
   const stackName =
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
-
-  const showSeriesValues = seriesSettings?.["show_series_values"];
 
   const isSymbolVisible = getShowSymbol(
     seriesModel,
@@ -396,15 +329,15 @@ const buildEChartsLineAreaSeries = (
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
-    label: buildEChartsLabelOptions(
-      seriesModel,
-      dataset,
-      yAxisScaleTransforms,
-      settings,
-      renderingContext,
-      (settings["graph.show_values"] || showSeriesValues) && stackName == null,
-      "top",
-    ),
+    label: labelFormatter
+      ? buildEChartsLabelOptions(
+          seriesModel,
+          yAxisScaleTransforms,
+          renderingContext,
+          labelFormatter,
+          "top",
+        )
+      : undefined,
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
@@ -681,6 +614,7 @@ export const buildEChartsSeries = (
             yAxisIndex,
             hasMultipleSeries,
             chartWidth,
+            chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
         case "bar":
@@ -695,6 +629,7 @@ export const buildEChartsSeries = (
             barSeriesCount,
             yAxisWithBarSeriesCount,
             hasMultipleSeries,
+            chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
         case "scatter":
