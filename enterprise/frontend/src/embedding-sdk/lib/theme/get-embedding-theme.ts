@@ -8,7 +8,7 @@ import type {
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
-import { DEFAULT_COMPONENT_THEME } from "./default-component-theme";
+import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -18,7 +18,7 @@ export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
 ): EmbeddingThemeOverride {
   const components: MetabaseComponentTheme = merge(
-    DEFAULT_COMPONENT_THEME,
+    DEFAULT_EMBEDDED_COMPONENT_THEME,
     theme.components,
   );
 

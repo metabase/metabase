@@ -583,8 +583,7 @@ class TableInteractive extends Component {
 
     const backgroundColor =
       this.getCellBackgroundColor(settings, value, rowIndex, column.name) ||
-      tableTheme?.cell?.backgroundColor ||
-      "white";
+      tableTheme?.cell?.backgroundColor;
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -820,7 +819,6 @@ class TableInteractive extends Component {
       >
         <HeaderCell
           c={cellColor}
-          bg="white"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -1054,7 +1052,7 @@ class TableInteractive extends Component {
     const info = query && Lib.queryDisplayInfo(query);
 
     const tableTheme = theme?.other?.table;
-    const backgroundColor = tableTheme?.cell?.backgroundColor || "white";
+    const backgroundColor = tableTheme?.cell?.backgroundColor;
 
     return (
       <DelayGroup>

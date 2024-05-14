@@ -13,7 +13,7 @@ export function getCellDataTheme({
 
   if (isIDColumn) {
     return {
-      color: idTheme?.textColor || "brand",
+      color: idTheme?.textColor,
       background:
         idTheme?.backgroundColor || alpha(theme.fn.themeColor("brand"), 0.08),
       border: `1px solid ${alpha(
@@ -23,7 +23,7 @@ export function getCellDataTheme({
     };
   }
 
-  return { color: cellTheme?.textColor || "text-brand" };
+  return { color: cellTheme?.textColor };
 }
 
 export const getCellHoverBackground = ({
