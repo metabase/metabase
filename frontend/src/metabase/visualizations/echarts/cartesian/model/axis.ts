@@ -265,12 +265,10 @@ const getYAxisSplit = (
       .map(seriesModel => seriesModel.dataKey)
       .filter(seriesKey => !stackedKeys.has(seriesKey)),
   );
-  // Stacked series use left y-axis by default unless every stacked series has right y-axis selected
-  const stackedSeriesAxis = seriesModels
-    .map(seriesModel =>
-      settings.series(seriesModel.legacySeriesSettingsObjectKey),
-    )
-    .every(seriesSettings => seriesSettings?.axis === "right")
+
+  const stackedSeriesAxis = stackModels.every(
+    stackModel => stackModel.axis === "right",
+  )
     ? "right"
     : "left";
 
@@ -285,10 +283,12 @@ const getYAxisSplit = (
       seriesModel.legacySeriesSettingsObjectKey,
     );
 
-    // Stacked series always use left axis
-    acc[seriesModel.dataKey] = stackedKeys.has(seriesModel.dataKey)
-      ? stackedSeriesAxis
-      : seriesSettings?.["axis"];
+    const seriesStack = stackModels.find(stackModel =>
+      stackModel.seriesKeys.includes(seriesModel.dataKey),
+    );
+
+    acc[seriesModel.dataKey] =
+      seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
     return acc;
   }, {} as Record<DataKey, string | undefined>);
 
@@ -434,8 +434,33 @@ const getYAxisLabel = (
   return seriesNames[0];
 };
 
+function findWidestRange(extents: Extent[]): Extent {
+  if (extents.length === 0) {
+    throw new Error("The array of extents cannot be empty.");
+  }
+
+  let min = Infinity;
+  let max = -Infinity;
+
+  extents.forEach(([start, end]) => {
+    if (start < min) {
+      min = start;
+    }
+    if (end > max) {
+      max = end;
+    }
+  });
+
+  if (min === Infinity || max === -Infinity) {
+    return [0, 0];
+  }
+
+  return [min, max];
+}
+
 function getYAxisExtent(
   seriesKeys: DataKey[],
+  stackModels: StackModel[],
   dataset: ChartDataset,
   stackType?: StackType,
 ): Extent {
@@ -447,14 +472,22 @@ function getYAxisExtent(
     return NORMALIZED_RANGE;
   }
 
-  return stackType === "stacked"
-    ? calculateStackedExtent(seriesKeys, dataset)
-    : calculateNonStackedExtent(seriesKeys, dataset);
+  const stacksExtents = stackModels.map(stackModel =>
+    calculateStackedExtent(stackModel.seriesKeys, dataset),
+  );
+
+  const nonStackedKeys = seriesKeys.filter(seriesKey =>
+    stackModels.every(stackModel => !stackModel.seriesKeys.includes(seriesKey)),
+  );
+  const nonStackedExtent = calculateNonStackedExtent(nonStackedKeys, dataset);
+
+  return findWidestRange([...stacksExtents, nonStackedExtent]);
 }
 
 export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
+  stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
@@ -465,7 +498,7 @@ export function getYAxisModel(
     return null;
   }
 
-  const extent = getYAxisExtent(seriesKeys, dataset, stackType);
+  const extent = getYAxisExtent(seriesKeys, stackModels, dataset, stackType);
   const column = columnByDataKey[seriesKeys[0]];
   const label = getYAxisLabel(seriesNames, settings);
   const formatter = getYAxisFormatter(
@@ -521,10 +554,16 @@ export function getYAxesModels(
     }
   });
 
+  const [leftStackModels, rightStackModels] = _.partition(
+    stackModels,
+    stackModel => stackModel.axis === "left",
+  );
+
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
+      leftStackModels,
       dataset,
       settings,
       columnByDataKey,
@@ -534,10 +573,13 @@ export function getYAxesModels(
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
+      rightStackModels,
       dataset,
       settings,
       columnByDataKey,
-      null,
+      settings["stackable.stack_type"] === "normalized"
+        ? null
+        : settings["stackable.stack_type"] ?? null,
       renderingContext,
     ),
   };

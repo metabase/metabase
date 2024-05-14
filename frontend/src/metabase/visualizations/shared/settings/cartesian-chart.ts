@@ -104,22 +104,6 @@ export const getDefaultStackingValue = (
   return shouldStack ? "stacked" : null;
 };
 
-export const getDefaultStackDisplayValue = (
-  cardDisplay: string,
-  seriesDisplays: string[],
-) => {
-  const firstStackable = _.find(seriesDisplays, display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
-  );
-  if (firstStackable) {
-    return firstStackable;
-  }
-  if (STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return cardDisplay;
-  }
-  return "bar";
-};
-
 export const getSeriesOrderVisibilitySettings = (
   settings: ComputedVisualizationSettings,
   seriesKeys: string[],
@@ -252,9 +236,7 @@ export const getDefaultXAxisScale = (
 
 export const getDefaultLegendIsReversed = (
   vizSettings: ComputedVisualizationSettings,
-) =>
-  vizSettings["stackable.stack_display"] != null &&
-  vizSettings["stackable.stack_type"] != null;
+) => vizSettings["stackable.stack_type"] != null;
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";

@@ -121,10 +121,9 @@ export const getCartesianChartModel = (
   );
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
-    settings["stackable.stack_type"],
   );
 
-  const stackModels = getStackModels(rawSeries, seriesModels, settings);
+  const stackModels = getStackModels(seriesModels, settings);
 
   // TODO: update normalized transform based on stack models
   const transformedDataset = applyVisualizationSettingsDataTransformations(

@@ -18,7 +18,6 @@ import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import {
   getDefaultIsHistogram,
   getDefaultStackingValue,
-  getDefaultStackDisplayValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
@@ -257,45 +256,23 @@ export const STACKABLE_SETTINGS = {
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
-  "stackable.stack_display": {
-    section: t`Display`,
-    title: t`Stacked chart type`,
-    widget: "segmentedControl",
-    props: {
-      options: [
-        { icon: "area", value: "area" },
-        { icon: "bar", value: "bar" },
-      ],
-    },
-    getDefault: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      return getDefaultStackDisplayValue(series[0].card.display, displays);
-    },
-    getHidden: (series, settings) => settings["stackable.stack_type"] == null,
-    readDependencies: ["stackable.stack_type", "series"],
-  },
 };
 
 export const LEGEND_SETTINGS = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
-    readDependencies: ["stackable.stack_display"],
   },
 };
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
     getDefault: (series, settings) => {
-      const isComboChart = series[0].card.display === "combo";
-      // On combo charts there is no single stack_type for all series so we ignore it
       const shouldShowComparisonTooltip =
-        settings["stackable.stack_type"] != null &&
-        (settings["stackable.stack_display"] != null || isComboChart);
+        settings["stackable.stack_type"] != null;
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
-    readDependencies: ["stackable.stack_display"],
   },
 };
 
