@@ -257,7 +257,7 @@ describe("scenarios > question > joined questions", () => {
     addSummaryGroupingField({ table: "Product", field: "ID" });
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    joinTable("Reviews", "ID", "Product ID");
+    joinTable("Reviews");
     visualize();
 
     assertJoinValid({
