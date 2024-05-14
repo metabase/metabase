@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import { isRootTrashCollection } from "metabase/collections/utils";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
@@ -238,8 +237,6 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(query);
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-    const canRestore =
-      !!card.collection && isRootTrashCollection(card.collection);
 
     return (
       <QueryBuilderViewHeaderContainer>
@@ -248,7 +245,7 @@ class View extends Component {
             name={card.name}
             entityType={card.type}
             canWrite={card.can_write}
-            canRestore={canRestore}
+            canRestore={card.can_restore}
             onUnarchive={() => onUnarchive(question)}
             onMove={id => onMove(card.id, id)}
             onDeletePermanently={() => onDeletePermanently(card.id)}

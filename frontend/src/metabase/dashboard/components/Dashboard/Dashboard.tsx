@@ -7,7 +7,6 @@ import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
@@ -267,12 +266,10 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const canWrite = Boolean(dashboard?.can_write);
+  const canRestore = Boolean(dashboard?.can_restore);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
   const hasVisibleParameters = visibleParameters.length > 0;
-  const canRestore =
-    !!dashboard?.collection_id &&
-    isRootTrashCollection({ type: dashboard?.collection?.type });
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 

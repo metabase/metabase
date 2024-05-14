@@ -18,7 +18,6 @@ import {
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
-  canUnarchiveItem,
   canDeleteItem,
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
@@ -98,7 +97,7 @@ function ActionMenu({
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const canUnarchive = canUnarchiveItem(item, collection);
+  const canRestore = item.can_restore;
   const canDelete = canDeleteItem(item, collection);
   const canCopy = canCopyItem(item);
   const canUseMetabot =
@@ -135,7 +134,7 @@ function ActionMenu({
     item?.setCollectionPreview?.(!isPreviewEnabled(item));
   }, [item]);
 
-  const handleUnarchive = useCallback(async () => {
+  const handleRestore = useCallback(async () => {
     const Entity = entityForObject(item);
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
@@ -181,7 +180,7 @@ function ActionMenu({
           onArchive={canArchive ? handleArchive : undefined}
           onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
           onTogglePreview={canPreview ? handleTogglePreview : undefined}
-          onUnarchive={canUnarchive ? handleUnarchive : undefined}
+          onRestore={canRestore ? handleRestore : undefined}
           onDeletePermanently={
             canDelete ? handleStartDeletePermanently : undefined
           }

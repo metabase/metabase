@@ -7,7 +7,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetCollectionQuery } from "metabase/api";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
@@ -112,9 +111,6 @@ export const CollectionContentView = ({
     { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
   ] = useToggle(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
-  // TODO: temp fix until we have the type field on effective_ancestors
-  const { data: trashCollection } = useGetCollectionQuery("trash");
 
   const saveFile = (file: File) => {
     setUploadedFile(file);
@@ -250,14 +246,6 @@ export const CollectionContentView = ({
           list && !isRootTrashCollection(collection) ? list : [];
         const hasPinnedItems = pinnedItems.length > 0;
         const actionId = { id: collectionId };
-        const parentCollection =
-          collection.effective_ancestors &&
-          _.last(collection.effective_ancestors);
-        const canRestore =
-          // !!parentCollection && isRootTrashCollection(parentCollection);
-          // TODO: temporarily use the fetched trashCollection to check if this is the root trash collection
-          // as we don't currently have the "type" field on the effective_ancestors
-          !!parentCollection && parentCollection.id === trashCollection?.id;
 
         return (
           <CollectionRoot {...dropzoneProps}>
@@ -281,7 +269,7 @@ export const CollectionContentView = ({
                 name={collection.name}
                 entityType="collection"
                 canWrite={collection.can_write}
-                canRestore={canRestore}
+                canRestore={collection.can_restore}
                 onUnarchive={() => {
                   const input = { ...actionId, name: collection.name };
                   dispatch(Collections.actions.setArchived(input, false));
