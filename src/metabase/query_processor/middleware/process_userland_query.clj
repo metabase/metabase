@@ -125,13 +125,14 @@
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys [executed-by query-hash context action-id card-id dashboard-id pulse-id original-query]} :info
-    database-id                                                                                     :database
-    query-type                                                                                      :type
-    :as                                                                                             query}]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+     :pivot/keys [original-query]} :info
+    database-id                    :database
+    query-type                     :type
+    :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
-                     (-> (read-string original-query)
+                     (-> original-query
                          (dissoc :info)
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)

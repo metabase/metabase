@@ -181,7 +181,8 @@
                               remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)
                               (add-pivot-group-breakout group-bitmask)))]
-      (concat [(assoc-in (first all-queries) [:info :original-query] (str query))] (rest all-queries)))
+      (conj (rest all-queries)
+            (assoc-in (first all-queries) [:info :pivot/original-query] query)))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}
