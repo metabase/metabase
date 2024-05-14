@@ -23,29 +23,21 @@ describe("scenarios > reference > metrics", () => {
     });
   });
 
-  it("should see the listing", () => {
+  it("should let an admin edit details about the metric", () => {
+    cy.log("Should see the listing");
     cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME);
+    cy.location("pathname").should("eq", "/reference/metrics");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(METRIC_DESCRIPTION);
-  });
 
-  it("should let the user navigate to details", () => {
-    cy.visit("/reference/metrics");
+    cy.log("Should let the user navigate to details");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(METRIC_NAME).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Why this metric is interesting");
-  });
-
-  it("should let an admin edit details about the metric", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
+    cy.location("pathname").should("eq", "/reference/metrics/1");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit").click();
+    cy.location("pathname").should("eq", "/reference/metrics/1/edit");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Description")
       .parent()
@@ -76,12 +68,7 @@ describe("scenarios > reference > metrics", () => {
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
+    cy.visit("/reference/metrics/1/edit");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Why this metric is interesting")
       .parent()
@@ -92,17 +79,7 @@ describe("scenarios > reference > metrics", () => {
     cy.findByText("Cancel").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Because it's very nice").should("have.length", 0);
-  });
-
-  it("should have different URI while editing the metric", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-
-    cy.url().should("match", /\/reference\/metrics\/\d+$/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
-    cy.url().should("match", /\/reference\/metrics\/\d+\/edit$/);
+    cy.findByText("Because it's very nice").should("not.exist");
+    cy.location("pathname").should("eq", "/reference/metrics/1");
   });
 });
