@@ -1,6 +1,8 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
+import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+
 import {
   getAccordionOverrides,
   getActionIconOverrides,
@@ -142,4 +144,5 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getHoverCardOverrides(),
     ...getListOverrides(),
   },
+  other: DEFAULT_METABASE_COMPONENT_THEME,
 });
