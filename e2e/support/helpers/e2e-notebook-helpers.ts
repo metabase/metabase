@@ -138,11 +138,20 @@ export function removeSummaryGroupingField({
  * Expects a join popover to be open!
  *
  */
-export function joinTable(tableName: string) {
+export function joinTable(
+  tableName: string,
+  lhsColumnName?: string,
+  rhsColumnName?: string,
+) {
   modal().within(() => {
     cy.findByText("Tables").click();
     cy.findByText(tableName).click();
   });
+
+  if (lhsColumnName && rhsColumnName) {
+    popover().findByText(lhsColumnName).click();
+    popover().findByText(rhsColumnName).click();
+  }
 }
 
 /**
