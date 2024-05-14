@@ -1,5 +1,9 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   assertQueryBuilderRowCount,
   cartesianChartCircle,
@@ -163,6 +167,30 @@ describe("scenarios > metrics > question", () => {
   it("should be able to view a model-based metric without data access", () => {
     createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) => {
       cy.signInAsSandboxedUser();
+      visitMetric(card.id, { hasDataAccess: false });
+    });
+    cy.findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.button("Filter").should("not.exist");
+      cy.button("Summarize").should("not.exist");
+    });
+  });
+
+  it("should be able to view a model-based metric without collection access to the source model", () => {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        root: "none",
+        [FIRST_COLLECTION_ID]: "read",
+      },
+    });
+    createQuestion({
+      ...ORDERS_SCALAR_MODEL_METRIC,
+      collection_id: FIRST_COLLECTION_ID,
+    }).then(({ body: card }) => {
+      cy.signIn("nocollection");
       visitMetric(card.id, { hasDataAccess: false });
     });
     cy.findByTestId("scalar-container")
