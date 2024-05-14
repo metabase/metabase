@@ -1,4 +1,4 @@
-import type { EChartsOption, EChartsType } from "echarts";
+import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -35,7 +35,7 @@ export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  option: EChartsOption,
+  option: EChartsCoreOption,
   {
     card,
     rawSeries,

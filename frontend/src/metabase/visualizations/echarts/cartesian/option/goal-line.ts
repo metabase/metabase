@@ -1,4 +1,4 @@
-import type { RegisteredSeriesOption } from "echarts";
+import type { CustomSeriesOption } from "echarts/charts";
 
 import type {
   ComputedVisualizationSettings,
@@ -30,7 +30,7 @@ export function getGoalLineSeriesOption(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): RegisteredSeriesOption["custom"] | null {
+): CustomSeriesOption | null {
   if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
     return null;
   }

@@ -214,21 +214,6 @@
   :visibility :public
   :audit      :getter)
 
-(defsetting ga-code
-  (deferred-tru "Google Analytics tracking code.")
-  :default    "UA-60817802-1"
-  :visibility :public
-  :doc        false)
-
-(defsetting ga-enabled
-  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
-  :type       :boolean
-  :setter     :none
-  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
-  :visibility :public
-  :audit      :never
-  :doc        false)
-
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -755,6 +740,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
+                      :upload_management              (premium-features/enable-upload-management?)
                       :whitelabel                     (premium-features/enable-whitelabeling?)
                       :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)

@@ -417,6 +417,10 @@
   "Should we enable advanced configuration for Google Sign-In authentication?"
   :sso-google)
 
+(define-premium-feature enable-scim?
+  "Should we enable user/group provisioning via SCIM?"
+  :scim)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -465,6 +469,10 @@
 (define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
+
+(define-premium-feature enable-upload-management?
+  "Should we allow admins to clean up tables created from uploads?"
+  :upload-management)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

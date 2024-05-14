@@ -243,6 +243,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  repeat-concurrently
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
 import { isChartsDebugLoggingEnabled } from "metabase/env";
@@ -14,7 +14,7 @@ export function useChartDebug({
 }: {
   isQueryBuilder: boolean;
   rawSeries: RawSeries;
-  option: EChartsOption;
+  option: EChartsCoreOption;
   chartModel: BaseCartesianChartModel;
 }) {
   useEffect(() => {

@@ -841,20 +841,38 @@
                          {:kvs kvs})))
        ret))))
 
-(defn classify-changes
+(defn row-diff
   "Given 2 lists of seq maps of changes, where each map an has an `id` key,
   return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-  :to-create is a list of maps that ids in `new-items`
-  :to-update is a list of maps that has ids in both `current-items` and `new-items`
-  :to delete is a list of maps that has ids only in `current-items`"
-  [current-items new-items]
-  (let [[delete-ids create-ids update-ids] (diff (set (map :id current-items))
-                                                 (set (map :id new-items)))]
-    {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
-     :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
-     :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))
+  - `:to-create` is a list of maps that ids in `new-rows`
+  - `:to-delete` is a list of maps that has ids only in `current-rows`
+  - `:to-skip`   is a list of identical maps that has ids in both lists
+  - `:to-update` is a list of different maps that has ids in both lists
+
+  Optional arguments:
+  - `id-fn` - function to get row-matching identifiers
+  - `to-compare` - function to get rows into a comparable state
+  "
+  [current-rows new-rows & {:keys [id-fn to-compare]
+                            :or   {id-fn   :id
+                                   to-compare identity}}]
+  (let [[delete-ids
+         create-ids
+         update-ids]     (diff (set (map id-fn current-rows))
+                               (set (map id-fn new-rows)))
+        known-map        (m/index-by id-fn current-rows)
+        {to-update false
+         to-skip   true} (when (seq update-ids)
+                           (group-by (fn [x]
+                                       (let [y (get known-map (id-fn x))]
+                                         (= (to-compare x) (to-compare y))))
+                                     (filter #(update-ids (id-fn %)) new-rows)))]
+    {:to-create (when (seq create-ids) (filter #(create-ids (id-fn %)) new-rows))
+     :to-delete (when (seq delete-ids) (filter #(delete-ids (id-fn %)) current-rows))
+     :to-update to-update
+     :to-skip   to-skip}))
 
 (defn empty-or-distinct?
   "True if collection `xs` is either [[empty?]] or all values are [[distinct?]]."
@@ -917,3 +935,12 @@
               (map-all f (rest s1) (rest s2)))))))
   ([f c1 c2 & colls]
    (map-all* f (list* c1 c2 colls))))
+
+(defn seek
+  "Like (first (filter ... )), but doesn't realize chunks of the sequence. Returns the first item in `coll` for which
+  `pred` returns a truthy value, or `nil` if no such item is found."
+  [pred coll]
+  (reduce
+   (fn [acc x] (if (pred x) (reduced x) acc))
+   nil
+   coll))

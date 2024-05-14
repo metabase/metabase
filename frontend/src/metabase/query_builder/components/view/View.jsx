@@ -61,8 +61,28 @@ class View extends Component {
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
+      const {
+        question,
+        result,
+        addField,
+        initialChartSetting,
+        onReplaceAllVisualizationSettings,
+        onOpenChartType,
+        visualizationSettings,
+        showSidebarTitle,
+      } = this.props;
       return (
-        <ChartSettingsSidebar {...this.props} onClose={onCloseChartSettings} />
+        <ChartSettingsSidebar
+          question={question}
+          result={result}
+          addField={addField}
+          initialChartSetting={initialChartSetting}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          onOpenChartType={onOpenChartType}
+          visualizationSettings={visualizationSettings}
+          showSidebarTitle={showSidebarTitle}
+          onClose={onCloseChartSettings}
+        />
       );
     }
 

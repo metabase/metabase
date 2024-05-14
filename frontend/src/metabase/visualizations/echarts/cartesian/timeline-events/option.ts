@@ -1,4 +1,4 @@
-import type { LineSeriesOption } from "echarts";
+import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine1DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
 import type { IconName } from "metabase/ui/components/icons/Icon/icons";

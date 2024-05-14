@@ -24,7 +24,6 @@ describe("issue 40660", () => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
     );
-    cy.intercept("GET", "/api/dashboard/**/params/**/values").as("values");
 
     restore();
     cy.signInAsAdmin();

@@ -9,7 +9,7 @@ import type {
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Record<string, string | string[] | undefined>,
+  queryParams: Record<string, string | string[] | null | undefined>,
 ) {
   queryParams = queryParams || {};
 
@@ -99,7 +99,7 @@ function normalizeParameterValueForWidget(
 
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
-  queryParams: Record<string, string | string[] | undefined>,
+  queryParams: Record<string, string | string[] | null | undefined>,
 ) {
   return Object.fromEntries(
     parameters.map(parameter => [

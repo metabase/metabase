@@ -205,9 +205,9 @@
                                           (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                        (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                             :from            [:report_card]
+                                                             :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -563,11 +563,11 @@
                   (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                 {:dataset #{}
                  :card    #{}}
-                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                            :from            [:report_card]
-                                            :where           [:and
-                                                              [:= :archived false]
-                                                              [:in :collection_id descendant-collection-ids]]}))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
@@ -958,16 +958,16 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
-  (first
-    (t2/insert-returning-instances!
-      Collection
-      (merge
-        {:name        name
-         :description description
-         :authority_level authority_level
-         :namespace   namespace}
-        (when parent_id
-          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (merge
+             {:name            name
+              :description     description
+              :authority_level authority_level
+              :namespace       namespace}
+             (when parent_id
+               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
+    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
@@ -1054,7 +1054,8 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notifications! {:collection-before-update collection-before-update
                                          :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*}))
+                                         :actor                    @api/*current-user*})
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

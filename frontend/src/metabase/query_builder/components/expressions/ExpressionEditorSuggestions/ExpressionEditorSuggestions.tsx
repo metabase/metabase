@@ -100,6 +100,11 @@ export function ExpressionEditorSuggestions({
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}
+      middlewares={{
+        flip: false,
+        shift: false,
+        inline: false,
+      }}
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
@@ -312,7 +317,7 @@ function colorForIcon(icon: string | undefined | null) {
       return { normal: color("accent1"), highlighted: color("brand-white") };
     case "function":
     case "combine":
-    case "split":
+    case "arrow_split":
       return { normal: color("brand"), highlighted: color("brand-white") };
     default:
       return {
