@@ -8,7 +8,6 @@ import {
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
-  ItemCell,
   ItemLink,
   ItemNameCell,
   Table,
@@ -17,6 +16,7 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -29,21 +29,27 @@ import { getCollectionName, getIcon } from "../utils";
 
 import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
-import { ModelTableRow } from "./ModelsTable.styled";
+import {
+  ModelCell,
+  ModelNameColumn,
+  ModelTableRow,
+} from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models: ModelResult[];
 }
 
+export const itemsTableContainerName = "ItemsTableContainer";
+
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
-  containerName: "ItemsTableContainer",
+  containerName: itemsTableContainerName,
 };
 
 const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "xs",
-  containerName: "ItemsTableContainer",
+  containerName: itemsTableContainerName,
 };
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions = {
@@ -61,36 +67,60 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
 
   const sortedModels = sortModels(models, sortingOptions, localeCode);
 
+  /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
+  const collectionWidth = 38.5;
+  const descriptionWidth = 100 - collectionWidth;
+
   return (
     <Table>
       <colgroup>
         {/* <col> for Name column */}
-        <TableColumn style={{ width: "200px" }} />
-
-        {/* <col> for Description column */}
-        <TableColumn {...descriptionProps} />
+        <ModelNameColumn containerName={itemsTableContainerName} />
 
         {/* <col> for Collection column */}
-        <TableColumn {...collectionProps} />
+        <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
+
+        {/* <col> for Description column */}
+        <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
 
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
         <tr>
-          <Columns.Name.Header
+          <SortableColumnHeader
+            name="name"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={setSortingOptions}
-          />
-          <SortableColumnHeader name="description" {...descriptionProps}>
-            {t`Description`}
+            style={{ paddingInlineStart: ".625rem" }}
+            columnHeaderProps={{
+              style: { paddingInlineEnd: ".5rem" },
+            }}
+          >
+            {t`Name`}
           </SortableColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={setSortingOptions}
             {...collectionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
           >
-            {t`Collection`}
+            <Ellipsified>{t`Collection`}</Ellipsified>
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            name="description"
+            {...descriptionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
+          >
+            {t`Description`}
           </SortableColumnHeader>
           <Columns.RightEdge.Header />
         </tr>
@@ -132,15 +162,8 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
         }}
       />
 
-      {/* Description */}
-      <ItemCell {...descriptionProps}>
-        <EllipsifiedWithMarkdownTooltip>
-          {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdownTooltip>
-      </ItemCell>
-
       {/* Collection */}
-      <ItemCell
+      <ModelCell
         data-testid={`path-for-collection: ${
           model.collection
             ? getCollectionName(model.collection)
@@ -154,7 +177,14 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
             collection={model.collection}
           />
         )}
-      </ItemCell>
+      </ModelCell>
+
+      {/* Description */}
+      <ModelCell {...descriptionProps}>
+        <EllipsifiedWithMarkdownTooltip>
+          {getModelDescription(model) || ""}
+        </EllipsifiedWithMarkdownTooltip>
+      </ModelCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
@@ -176,7 +206,15 @@ const NameCell = ({
   const { id, name } = model;
   return (
     <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-      <ItemLink to={Urls.model({ id, name })} onClick={onClick}>
+      <ItemLink
+        to={Urls.model({ id, name })}
+        onClick={onClick}
+        style={{
+          // To align the icons with "Name" in the <th>
+          paddingInlineStart: "1.4rem",
+          paddingInlineEnd: ".5rem",
+        }}
+      >
         <Icon
           size={16}
           {...icon}
