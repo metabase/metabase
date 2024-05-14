@@ -177,4 +177,4 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Publish to NPM
-        run: echo Implement this step once you've ensure other steps works correctly.
+        run: echo "Implement this step once you've ensure other steps works correctly.""
