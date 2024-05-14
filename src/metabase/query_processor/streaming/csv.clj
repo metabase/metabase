@@ -3,7 +3,7 @@
    [clojure.data.csv :as csv]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.post-process]
+   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -69,7 +69,7 @@
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when @pivot-options
-          (let [pivot-table-rows (qp.pivot.post-process/pivot-builder @rows! @pivot-options)]
+          (let [pivot-table-rows (qp.pivot.postprocess/pivot-builder @rows! @pivot-options)]
             (doseq [xf-row pivot-table-rows]
               (csv/write-csv writer [xf-row]))))
         (.flush writer)
