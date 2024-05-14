@@ -182,17 +182,21 @@
   get-parent-coll
   (memoize/ttl get-parent-coll* :ttl/threshold 1000))
 
-(mu/defn get-moderated-status
+(mu/defn get-moderated-status*
   "Returns moderated_status for a given model and model-id.
 
   (Currently only used for cards and models, but ought to be extended to dashboards in the future)"
-  [model :- [:enum :card] model-id] :- [:maybe "verified"]
+  [model-id] :- [:maybe "verified"]
   (-> (t2/select-one [:model/ModerationReview :status]
                      {:where [:and
                               [:= :moderated_item_id model-id]
-                              [:= :moderated_item_type (name model)]
+                              [:= :moderated_item_type "card"]
                               [:= :most_recent true]]})
       :status))
+
+(def ^{:private true :arglists '([model-id])}
+  get-moderated-status
+  (memoize/ttl get-moderated-status* :ttl/threshold 1000))
 
 (defn- ellide-archived
   "Returns the model when it's not archived.
@@ -209,7 +213,7 @@
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
-     :moderated_status (get-moderated-status :card model_id)
+     :moderated_status (get-moderated-status model_id)
      :parent_collection (get-parent-coll (:collection_id card))}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
@@ -221,7 +225,7 @@
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
-     :moderated_status (get-moderated-status :card model_id)
+     :moderated_status (get-moderated-status model_id)
      :parent_collection (get-parent-coll (:collection_id dataset))}))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
