@@ -336,26 +336,22 @@ describe(
 
                     cy.signInAsAdmin();
 
-                    // Let's revoke access to "Our analytics"
+                    // Let's revoke write access to "Our analytics"
                     cy.updateCollectionGraph({
-                      [USER_GROUPS.COLLECTION_GROUP]: { root: "none" },
+                      [USER_GROUPS.COLLECTION_GROUP]: { root: "read" },
                     });
                     cy.signOut();
+                    cy.reload();
                     cy.signIn(user);
+                    visitQuestion(ORDERS_QUESTION_ID);
 
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-                    entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
 
-                    // backend bug for can_write in root collection?
-
-                    // no access - no dashboard
                     entityPickerModal()
-                      .findByText(/Orders in a dashboard/)
+                      .button(/Orders in a dashboard/)
                       .should("be.disabled");
                   });
                 });
