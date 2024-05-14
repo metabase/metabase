@@ -201,6 +201,14 @@
       ;; no idea how to force it to use BigDecimal here
       (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row))))))
 
+(deftest ^:parallel key-limit-test
+  (testing "we don't read too many keys even from long jsons"
+    (let [data (into {} (for [i (range (* 2 @#'sql-jdbc.describe-table/max-nested-field-columns))]
+                          [(str "key" i) i]))]
+      ;; +2 to limit since we go 1 over the limit, see comment in `json->types`
+      (is (> (+ 2 @#'sql-jdbc.describe-table/max-nested-field-columns)
+             (count (#'sql-jdbc.describe-table/json-map->types {:k (json/encode data)})))))))
+
 (deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
