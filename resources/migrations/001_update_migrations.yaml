@@ -6898,7 +6898,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-08T09:00:03
       author: qnkhuat
-      comment: Drop defautl value task_history.ended_at
+      comment: Drop default value task_history.ended_at
       changes:
         - dropDefaultValue:
             tableName: task_history
