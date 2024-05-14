@@ -45,9 +45,9 @@ describe("scenarios > question > new", () => {
       }
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
-        cy.findByText("Sample3").isVisibleInPopover();
+      entityPickerModal().within(() => {
+        cy.findByText("Tables").click();
+        cy.findByText("Sample3").should("be.visible");
       });
     });
 
