@@ -45,7 +45,6 @@ import TableS from "./TableInteractive.module.css";
 import {
   TableDraggable,
   ExpandButton,
-  HeaderCell,
   ResizeHandle,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
@@ -817,7 +816,7 @@ class TableInteractive extends Component {
           });
         }}
       >
-        <HeaderCell
+        <Box
           c={cellColor}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
@@ -925,7 +924,7 @@ class TableInteractive extends Component {
               }}
             />
           </TableDraggable>
-        </HeaderCell>
+        </Box>
       </TableDraggable>
     );
   };

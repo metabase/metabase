@@ -42,12 +42,6 @@ export const TableDraggable = styled(Draggable)<TableDraggableProps>`
     `}
 `;
 
-export const HeaderCell = styled(Box)`
-  &:hover {
-    color: ${({ theme }) => theme.fn?.themeColor("text-brand")};
-  }
-`;
-
 export const ResizeHandle = styled.div`
   &:active {
     background-color: ${({ theme }) => theme.fn?.themeColor("brand")};

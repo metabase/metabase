@@ -12,9 +12,6 @@ import type { MetabaseComponentTheme } from "embedding-sdk";
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
-    cell: {
-      textColor: "text-brand",
-    },
     idColumn: {
       textColor: "brand",
     },
