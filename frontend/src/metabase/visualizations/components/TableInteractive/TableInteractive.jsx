@@ -765,8 +765,6 @@ class TableInteractive extends Component {
     const query = question?.query();
     const stageIndex = -1;
 
-    const cellColor = isSorted ? "brand" : "text-medium";
-
     return (
       <TableDraggable
         enableUserSelectHack={false}
@@ -817,7 +815,6 @@ class TableInteractive extends Component {
         }}
       >
         <Box
-          c={cellColor}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,

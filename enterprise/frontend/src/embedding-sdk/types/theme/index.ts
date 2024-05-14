@@ -47,7 +47,7 @@ export interface MetabaseComponentTheme {
   /** Data tables **/
   table?: {
     cell?: {
-      /** Text color of cells, defaults to `text-brand` */
+      /** Text color of cells, defaults to `text-dark`. */
       textColor?: string;
 
       /** Default background color of cells, defaults to `white` */
