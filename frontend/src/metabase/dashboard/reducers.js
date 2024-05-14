@@ -352,7 +352,9 @@ const parameterValues = handleActions(
       },
     },
     [fetchDashboard.fulfilled]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
+      next: (state, { payload: { parameterValues } }) => {
+        return parameterValues;
+      },
     },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value, isDraft } }) => {

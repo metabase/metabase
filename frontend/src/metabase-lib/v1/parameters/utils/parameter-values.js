@@ -18,10 +18,11 @@ export function getParameterValue({
   parameter,
   values = {},
   defaultRequired = false,
+  recentlyUsedValue = null,
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
-  return value ?? (useDefault ? parameter.default : null);
+  return recentlyUsedValue ?? value ?? (useDefault ? parameter.default : null);
 }
 
 /**
@@ -33,6 +34,7 @@ export function getValuePopulatedParameters({
   values = {},
   defaultRequired = false,
   collectionPreview = false,
+  dashboardId = null,
 }) {
   // pinned native question can have default values on parameters, usually we
   // get them from URL, which is not the case for collection preview. to force
@@ -41,14 +43,24 @@ export function getValuePopulatedParameters({
     return [];
   }
 
-  return parameters.map(parameter => ({
-    ...parameter,
-    value: getParameterValue({
-      parameter,
-      values,
-      defaultRequired,
-    }),
-  }));
+  let localDashboardParameters = {};
+  if (dashboardId) {
+    localDashboardParameters = getLocalDashboardParametersById(dashboardId);
+  }
+
+  return parameters.map(parameter => {
+    const recentlyUsedValue = localDashboardParameters[parameter.id];
+
+    return {
+      ...parameter,
+      value: getParameterValue({
+        parameter,
+        values,
+        defaultRequired,
+        recentlyUsedValue,
+      }),
+    };
+  });
 }
 
 export function getDefaultValuePopulatedParameters(
@@ -133,10 +145,82 @@ export function normalizeParameterValue(type, value) {
 export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
+
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
+}
+
+export function getLocalDashboardParametersById(dashboardId) {
+  if (!dashboardId) {
+    return {};
+  }
+
+  const localParametersStringified = safeGetItem("dashboardParameters");
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  return localParameters[dashboardId] ?? {};
+}
+
+export function setLocalDashboardParameterValue(
+  dashboardId,
+  parameterId,
+  value,
+) {
+  if (!dashboardId) {
+    return;
+  }
+
+  const localParametersStringified = safeGetItem("dashboardParameters");
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  const localDashboardParameters = localParameters[dashboardId] ?? {};
+  localDashboardParameters[parameterId] = value;
+  localParameters[dashboardId] = localDashboardParameters;
+
+  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
+}
+
+export function unsetLocalDashboardParameterValue(dashboardId, parameterId) {
+  if (!dashboardId) {
+    return;
+  }
+
+  const localParametersStringified = safeGetItem("dashboardParameters");
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  const localDashboardParameters = localParameters[dashboardId] ?? {};
+  delete localDashboardParameters[parameterId];
+
+  localParameters[dashboardId] = localDashboardParameters;
+
+  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
+}
+
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    // temp solution for PoC only
+    alert("Error reading from localStorage: " + e.message);
+    return null;
+  }
+}
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    // temp solution for PoC only
+    alert("Error writing to localStorage: " + e.message);
+  }
 }
