@@ -19,6 +19,8 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   standalone_filter: {},
   summarize: {},
   sum: {},
+  combine: {},
+  "combine-popover": {},
   extract: {},
   "extract-popover": {},
   auto: {},
@@ -27,6 +29,7 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   filter: {},
   details: {},
   custom: {},
+  "new-column": {},
 };
 Object.values(SECTIONS).map((section, index) => {
   section.index = index;
@@ -80,6 +83,9 @@ export const getSectionTitle = (
 
     case "extract-popover":
       return t`Select a part to extract`;
+
+    case "new-column":
+      return t`New column`;
   }
 
   return null;

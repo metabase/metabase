@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { isNotNull } from "metabase/lib/types";
 import type {
   TimeSeriesInterval,
   ShowWarning,
@@ -93,6 +94,8 @@ export function computeTimeseriesDataInverval(
   xValues: RowValue[],
   unit: DateTimeAbsoluteUnit | null,
 ) {
+  xValues = xValues.filter(isNotNull);
+
   if (unit && INTERVAL_INDEX_BY_UNIT[unit] != null) {
     return TIMESERIES_INTERVALS[INTERVAL_INDEX_BY_UNIT[unit]];
   }

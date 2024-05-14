@@ -84,10 +84,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (->> (mt/normal-drivers)
-                          ;; athena is a special case because connections aren't made with a single database,
-                          ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -119,10 +116,7 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (->> (mt/normal-drivers)
-                          ;; athena is a special case because connections aren't made with a single database,
-                          ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef

@@ -64,6 +64,18 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
   },
+  offset: {
+    displayName: `Offset`,
+    type: "aggregation",
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator: function (_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
+  },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
   median: {
     displayName: `Median`,
@@ -472,6 +484,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "cum-sum",
   "distinct",
   "stddev",
+  "offset",
   "avg",
   "median",
   "min",

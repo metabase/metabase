@@ -1,4 +1,4 @@
-import type { EChartsOption, EChartsType } from "echarts";
+import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -35,7 +35,7 @@ export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  option: EChartsOption,
+  option: EChartsCoreOption,
   {
     card,
     rawSeries,
@@ -101,7 +101,12 @@ export const useChartEvents = (
             return;
           }
 
-          const hoveredData = getSeriesHoverData(chartModel, settings, event);
+          const hoveredData = getSeriesHoverData(
+            chartModel,
+            settings,
+            rawSeries[0].card.display,
+            event,
+          );
 
           const isSameDatumHovered =
             hoveredData?.index === hovered?.index &&
@@ -111,7 +116,7 @@ export const useChartEvents = (
             return;
           }
 
-          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
+          onHoverChange?.(hoveredData);
         },
       },
       {

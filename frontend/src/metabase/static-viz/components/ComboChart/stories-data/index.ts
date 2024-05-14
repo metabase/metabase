@@ -51,9 +51,12 @@ import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
 import lineLinearXScale from "./line-linear-x-scale.json";
 import lineLogYScaleNegative from "./line-log-y-scale-negative.json";
 import lineLogYScale from "./line-log-y-scale.json";
+import lineReplaceMissingValuesZero from "./line-replace-missing-values-zero.json";
+import lineSettings from "./line-settings.json";
 import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
+import lineUnpinFromZero from "./line-unpin-from-zero.json";
 import logYScaleCustomYAxisRange from "./log-y-scale-custom-y-axis-range.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
 import messedUpAxis from "./messed-up-axis.json";
@@ -168,4 +171,7 @@ export const data = {
   noGoodAxisSplit,
   histogramTicks45Degrees,
   histogramTicks90Degrees,
+  lineUnpinFromZero,
+  lineSettings,
+  lineReplaceMissingValuesZero,
 };

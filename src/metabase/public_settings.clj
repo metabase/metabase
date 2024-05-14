@@ -177,7 +177,10 @@
                   ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
                   (when-not https?
                     (redirect-all-requests-to-https! false))
-                  (setting/set-value-of-type! :string :site-url new-value))))
+                  (setting/set-value-of-type! :string :site-url new-value)))
+  :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
+        Even difference with `http://` vs `https://` can cause problems.
+        Make sure that the address defined is how Metabase is being accessed.")
 
 (defsetting site-locale
   (deferred-tru
@@ -210,21 +213,6 @@
   :default    true
   :visibility :public
   :audit      :getter)
-
-(defsetting ga-code
-  (deferred-tru "Google Analytics tracking code.")
-  :default    "UA-60817802-1"
-  :visibility :public
-  :doc        false)
-
-(defsetting ga-enabled
-  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
-  :type       :boolean
-  :setter     :none
-  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
-  :visibility :public
-  :audit      :never
-  :doc        false)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
@@ -357,7 +345,31 @@
   :type       :json
   :feature    :whitelabel
   :default    {}
-  :audit      :getter)
+  :audit      :getter
+  :doc "To change the user interface colors:
+
+```
+{
+ \"brand\":\"#ff003b\",
+ \"filter\":\"#FF003B\",
+ \"summarize\":\"#FF003B\"
+}
+```
+
+To change the chart colors:
+
+```
+{
+ \"accent0\":\"#FF0005\",
+ \"accent1\":\"#E6C367\",
+ \"accent2\":\"#B9E68A\",
+ \"accent3\":\"#8AE69F\",
+ \"accent4\":\"#8AE6E4\",
+ \"accent5\":\"#8AA2E6\",
+ \"accent6\":\"#B68AE6\",
+ \"accent7\":\"#E68AD0\"
+}
+```")
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
@@ -379,7 +391,25 @@
   :export?    true
   :type       :json
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :doc "Example value:
+
+```
+[
+  {
+    \"src\": \"https://example.com/resources/font-400\",
+    \"fontFormat\": \"ttf\",
+    \"fontWeight\": 400
+  },
+  {
+    \"src\": \"https://example.com/resources/font-700\",
+    \"fontFormat\": \"woff\",
+    \"fontWeight\": 700
+  }
+]
+```
+
+See [fonts](../configuring-metabase/fonts.md).")
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -398,7 +428,8 @@
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "app/assets/img/logo.svg")
+  :default    "app/assets/img/logo.svg"
+  :doc "Inline styling and inline scripts are not supported.")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
@@ -709,6 +740,7 @@
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
+                      :upload_management              (premium-features/enable-upload-management?)
                       :whitelabel                     (premium-features/enable-whitelabeling?)
                       :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)

@@ -74,6 +74,7 @@
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
+    :model/UserParameterValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation})

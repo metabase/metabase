@@ -27,6 +27,7 @@ import {
   dashboardParametersContainer,
   openQuestionActions,
   spyRequestFinished,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
@@ -354,9 +355,9 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText(/Add a string variable to this question/).should(
-        "be.visible",
-      );
+      cy.findByText(
+        /A text variable in this card can only be connected to a text filter with Is operator/,
+      ).should("be.visible");
     });
   });
 
@@ -1190,7 +1191,11 @@ function addQuestionFromQueryBuilder({
 
   openQuestionActions();
   popover().findByText("Add to dashboard").click();
-  modal().findByText("36275").click();
+
+  entityPickerModal().within(() => {
+    modal().findByText("36275").click();
+    cy.button("Select").click();
+  });
 
   undoToast().should("be.visible");
   if (saveDashboardAfterAdd) {

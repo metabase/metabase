@@ -194,7 +194,6 @@ describe("utils", () => {
 
     it("should return false for non-SQL engines and unsupported SQL engines", () => {
       expect(canFormatForEngine("mongo")).toBe(false);
-      expect(canFormatForEngine("googleanalytics")).toBe(false);
       expect(canFormatForEngine("druid")).toBe(false);
       expect(canFormatForEngine("sqlite")).toBe(false);
       expect(canFormatForEngine("sqlserver")).toBe(false);

@@ -211,7 +211,8 @@ function recursiveParse(source) {
 }
 
 const modify = (node, transform) => {
-  if (Array.isArray(node)) {
+  // MBQL clause?
+  if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
     const [operator, ...operands] = node;
     return withAST(
       transform([operator, ...operands.map(sub => modify(sub, transform))]),
@@ -306,6 +307,18 @@ export const adjustCase = tree =>
     return node;
   });
 
+export const adjustOffset = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [tag, expr, n] = node;
+      if (tag === "offset") {
+        const opts = {};
+        return withAST([tag, opts, expr, n], node);
+      }
+    }
+    return node;
+  });
+
 export const adjustBooleans = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
@@ -359,5 +372,6 @@ export const parse = pipe(
   recursiveParse,
   adjustOptions,
   useShorthands,
+  adjustOffset,
   adjustCase,
 );

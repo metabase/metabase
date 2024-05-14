@@ -7,7 +7,6 @@ import {
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 import { Flex, Loader } from "metabase/ui";
@@ -78,22 +77,18 @@ const EntityCopyModal = ({
   };
 
   return (
-    <CreateCollectionOnTheGo>
-      {({ resumedValues }) => (
-        <ModalContent
-          title={title || t`Duplicate "${resolvedObject.name}"`}
-          onClose={onClose}
-        >
-          {!collections?.length ? (
-            <Flex justify="center" p="lg">
-              <Loader />
-            </Flex>
-          ) : (
-            renderForm({ ...props, resumedValues, initialValues })
-          )}
-        </ModalContent>
+    <ModalContent
+      title={title || t`Duplicate "${resolvedObject.name}"`}
+      onClose={onClose}
+    >
+      {!collections?.length ? (
+        <Flex justify="center" p="lg">
+          <Loader />
+        </Flex>
+      ) : (
+        renderForm({ ...props, initialValues })
       )}
-    </CreateCollectionOnTheGo>
+    </ModalContent>
   );
 };
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -160,42 +161,42 @@
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
-  (testing "Should be PARTIONED BY first BREAKOUT and ORDERED BY the second BREAKOUT (#2862)"
+  (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-count]]
-                         :breakout    [!year.created_at !month.created_at]
+                         :breakout    [!month.created_at !year.created_at]
                          :limit       12})
                       (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (is (= [[#t "2016-01-01" #t "2016-04-01" 1]
-                  [#t "2016-01-01" #t "2016-05-01" 20]
-                  [#t "2016-01-01" #t "2016-06-01" 57]
-                  [#t "2016-01-01" #t "2016-07-01" 121]
-                  [#t "2016-01-01" #t "2016-08-01" 200]
-                  [#t "2016-01-01" #t "2016-09-01" 292]
-                  [#t "2016-01-01" #t "2016-10-01" 429]
-                  [#t "2016-01-01" #t "2016-11-01" 579]
-                  [#t "2016-01-01" #t "2016-12-01" 744]
-                  [#t "2017-01-01" #t "2017-01-01" 205] ; <--- total should reset here, when first breakout changes
-                  [#t "2017-01-01" #t "2017-02-01" 411]
-                  [#t "2017-01-01" #t "2017-03-01" 667]]
+          (is (= [[#t "2016-04-01" #t "2016-01-01" 1]
+                  [#t "2016-05-01" #t "2016-01-01" 20]
+                  [#t "2016-06-01" #t "2016-01-01" 57]
+                  [#t "2016-07-01" #t "2016-01-01" 121]
+                  [#t "2016-08-01" #t "2016-01-01" 200]
+                  [#t "2016-09-01" #t "2016-01-01" 292]
+                  [#t "2016-10-01" #t "2016-01-01" 429]
+                  [#t "2016-11-01" #t "2016-01-01" 579]
+                  [#t "2016-12-01" #t "2016-01-01" 744]
+                  [#t "2017-01-01" #t "2017-01-01" 205] ; <--- total should reset here, when second breakout changes
+                  [#t "2017-02-01" #t "2017-01-01" 411]
+                  [#t "2017-03-01" #t "2017-01-01" 667]]
                  (mt/formatted-rows [->local-date ->local-date int]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-three-breakouts-test
-  (testing "Three breakouts: should be PARTIONED BY first and second BREAKOUTS and ORDERED BY the last BREAKOUT (#2862)"
+  (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY second and third BREAKOUTS (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-count]]
-                         :breakout    [!year.created_at !month.created_at !day.created_at]
+                         :breakout    [!day.created_at !year.created_at !month.created_at]
                          :limit       4})
                       (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (is (= [[#t "2016-01-01" #t "2016-04-01" #t "2016-04-30" 1]
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-04" 1] ; <- count should reset here, when first two breakouts change
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-06" 2]
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-08" 3]]
+          (is (= [[#t "2016-04-30" #t "2016-01-01" #t "2016-04-01" 1]
+                  [#t "2016-05-04" #t "2016-01-01" #t "2016-05-01" 1] ; <- count should reset here, when last two breakouts change
+                  [#t "2016-05-06" #t "2016-01-01" #t "2016-05-01" 2]
+                  [#t "2016-05-08" #t "2016-01-01" #t "2016-05-01" 3]]
                  (mt/formatted-rows [->local-date ->local-date ->local-date int]
                    (qp/process-query query)))))))))
 
@@ -216,7 +217,7 @@
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count with a temporally bucketed breakout"
-      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -233,50 +234,50 @@
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
-  (testing "Should be PARTIONED BY first BREAKOUT and ORDERED BY the second BREAKOUT (#2862)"
+  (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-sum $total]]
-                         :breakout    [!year.created_at !month.created_at]
+                         :breakout    [!month.created_at !year.created_at]
                          :limit       12})
                       (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually
-          (is (= [[#t "2016-01-01" #t "2016-04-01" 52.76]
-                  [#t "2016-01-01" #t "2016-05-01" 1318.49]
-                  [#t "2016-01-01" #t "2016-06-01" 3391.41]
-                  [#t "2016-01-01" #t "2016-07-01" 7126.13]
-                  [#t "2016-01-01" #t "2016-08-01" 12086.78]
-                  [#t "2016-01-01" #t "2016-09-01" 17458.87]
-                  [#t "2016-01-01" #t "2016-10-01" 25161.80]
-                  [#t "2016-01-01" #t "2016-11-01" 33088.49]
-                  [#t "2016-01-01" #t "2016-12-01" 42156.94]
-                  [#t "2017-01-01" #t "2017-01-01" 11094.77] ; <--- total should reset here, when first breakout changes
-                  [#t "2017-01-01" #t "2017-02-01" 22338.43]
-                  [#t "2017-01-01" #t "2017-03-01" 36454.11]]
+          (is (= [[#t "2016-04-01" #t "2016-01-01" 52.76]
+                  [#t "2016-05-01" #t "2016-01-01" 1318.49]
+                  [#t "2016-06-01" #t "2016-01-01" 3391.41]
+                  [#t "2016-07-01" #t "2016-01-01" 7126.13]
+                  [#t "2016-08-01" #t "2016-01-01" 12086.78]
+                  [#t "2016-09-01" #t "2016-01-01" 17458.87]
+                  [#t "2016-10-01" #t "2016-01-01" 25161.80]
+                  [#t "2016-11-01" #t "2016-01-01" 33088.49]
+                  [#t "2016-12-01" #t "2016-01-01" 42156.94]
+                  [#t "2017-01-01" #t "2017-01-01" 11094.77] ; <--- total should reset here, when second breakout changes
+                  [#t "2017-02-01" #t "2017-01-01" 22338.43]
+                  [#t "2017-03-01" #t "2017-01-01" 36454.11]]
                  (mt/formatted-rows [->local-date ->local-date 2.0]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-with-three-breakouts-test
-  (testing "Three breakouts: should be PARTIONED BY first and second BREAKOUTS and ORDERED BY the last BREAKOUT (#2862)"
+  (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY last two BREAKOUTS (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-sum $total]]
-                         :breakout    [!year.created_at !month.created_at !day.created_at]
+                         :breakout    [!day.created_at !year.created_at !month.created_at]
                          :limit       4})
                       (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually.
-          (is (= [[#t "2016-01-01" #t "2016-04-01" #t "2016-04-30" 52.76]
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-04" 98.78]  ; <-- total should reset here, when first two breakouts change
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-06" 186.07]
-                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-08" 270.94]]
+          (is (= [[#t "2016-04-30" #t "2016-01-01" #t "2016-04-01" 52.76]
+                  [#t "2016-05-04" #t "2016-01-01" #t "2016-05-01" 98.78]  ; <-- total should reset here, when last two breakouts change
+                  [#t "2016-05-06" #t "2016-01-01" #t "2016-05-01" 186.07]
+                  [#t "2016-05-08" #t "2016-01-01" #t "2016-05-01" 270.94]]
                  (mt/formatted-rows [->local-date ->local-date ->local-date 2.0]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -289,21 +290,22 @@
                                   ;; 3. cumulative sum of order total
                                   (lib/aggregate (lib/cum-sum orders-total))
                                   ;; 4. cumulative average order total (cumulative sum of total / cumulative count)
-                                  (lib/aggregate (lib// (lib/cum-sum orders-total)
-                                                        (lib/cum-count)))
+                                  (lib/aggregate (lib/+ (lib// (lib/cum-sum orders-total)
+                                                               (lib/cum-count))
+                                                        1.0))
                                   (lib/limit 3)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;;       1               2  3       4
-          (is (= [[#t "2016-04-01" 1  52.76   52.76]
-                  [#t "2016-05-01" 20 1318.49 65.92]
-                  [#t "2016-06-01" 57 3391.41 59.50]]
+          (is (= [[#t "2016-04-01" 1  52.76   53.76]
+                  [#t "2016-05-01" 20 1318.49 66.92]
+                  [#t "2016-06-01" 57 3391.41 60.50]]
                  (mt/formatted-rows [->local-date int 2.0 2.0]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel expressions-inside-cumulative-aggregations-test
   (testing "Expressions inside of cumulative aggregations should work correctly"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -321,7 +323,7 @@
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -346,25 +348,36 @@
                  (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
-  (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          orders            (lib.metadata/table metadata-provider (mt/id :orders))
-          orders-quantity   (lib.metadata/field metadata-provider (mt/id :orders :quantity))
-          orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
-          orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
-          query             (-> (lib/query metadata-provider orders)
-                                (lib/filter (lib/> orders-id 5000))
-                                (lib/aggregate (lib/cum-count))
-                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
-                                (lib/breakout orders-quantity)
-                                (lib/limit 5)
-                                (assoc-in [:middleware :format-rows?] false))]
-      (mt/with-native-query-testing-context query
-        (is (= [[#t "2016-04-01" 2 1]
-                [#t "2016-05-01" 2 1]
-                [#t "2016-05-01" 3 4]
-                [#t "2016-05-01" 4 10]
-                [#t "2016-05-01" 5 17]]
-               (mt/formatted-rows
-                [->local-date int int]
-                (qp/process-query query))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :window-functions/cumulative)
+    (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
+            products-category (m/find-first (fn [col]
+                                              (= (:id col) (mt/id :products :category)))
+                                            (lib/visible-columns (lib/query metadata-provider orders)))
+            _                 (assert (some? products-category))
+            query             (-> (lib/query metadata-provider orders)
+                                  (lib/filter (lib/> orders-id 5000))
+                                  (lib/aggregate (lib/count))
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/breakout products-category)
+                                  (lib/limit 10)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          ;;       YEAR            CATEGORY   COUNT CUM-COUNT
+          (is (= [[#t "2016-01-01" "Doohickey" 131  131]
+                  [#t "2016-01-01" "Gadget"    145  145]
+                  [#t "2016-01-01" "Gizmo"     115  115]
+                  [#t "2016-01-01" "Widget"    146  146]
+                  [#t "2017-01-01" "Doohickey" 617  748] ; 131 + 617 = 748
+                  [#t "2017-01-01" "Gadget"    690  835] ; 145 + 690 = 835
+                  [#t "2017-01-01" "Gizmo"     616  731]
+                  [#t "2017-01-01" "Widget"    718  864]
+                  [#t "2018-01-01" "Doohickey" 865  1613]
+                  [#t "2018-01-01" "Gadget"    1109 1944]]
+                 (mt/formatted-rows
+                  [->local-date str int int]
+                  (qp/process-query query)))))))))

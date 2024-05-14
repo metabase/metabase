@@ -205,9 +205,9 @@
                                           (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                        (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                             :from            [:report_card]
+                                                             :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -470,7 +470,8 @@
       true)))
 
 (defn- post-process-card-row [row]
-  (-> row
+  (-> (t2/instance :model/Card row)
+      (t2/hydrate :can_write)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
@@ -502,12 +503,15 @@
   [_ collection options]
   (dashboard-query collection options))
 
+(defn- post-process-dashboard [dashboard]
+  (-> (t2/instance :model/Dashboard dashboard)
+      (t2/hydrate :can_write)
+      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+              :dataset_query :table_id :query_type :is_upload)))
+
 (defmethod post-process-collection-children :dashboard
   [_ _ rows]
-  (map #(dissoc %
-                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query :table_id :query_type :is_upload)
-       rows))
+  (map post-process-dashboard rows))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -559,11 +563,11 @@
                   (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                 {:dataset #{}
                  :card    #{}}
-                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                            :from            [:report_card]
-                                            :where           [:and
-                                                              [:= :archived false]
-                                                              [:in :collection_id descendant-collection-ids]]}))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
@@ -954,16 +958,16 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
-  (first
-    (t2/insert-returning-instances!
-      Collection
-      (merge
-        {:name        name
-         :description description
-         :authority_level authority_level
-         :namespace   namespace}
-        (when parent_id
-          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (merge
+             {:name            name
+              :description     description
+              :authority_level authority_level
+              :namespace       namespace}
+             (when parent_id
+               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
+    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
@@ -1050,7 +1054,8 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notifications! {:collection-before-update collection-before-update
                                          :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*}))
+                                         :actor                    @api/*current-user*})
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

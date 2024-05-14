@@ -203,6 +203,12 @@ import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
 import line_source from "./line.svg?source";
+import line_style_dashed_component from "./line_style-dashed.svg?component";
+import line_style_dashed_source from "./line_style-dashed.svg?source";
+import line_style_dotted_component from "./line_style-dotted.svg?component";
+import line_style_dotted_source from "./line_style-dotted.svg?source";
+import line_style_solid_component from "./line_style-solid.svg?component";
+import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
 import link_component from "./link.svg?component";
@@ -309,6 +315,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import split_component from "./split.svg?component";
+import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
 import sql_source from "./sql.svg?source";
 import star_component from "./star.svg?component";
@@ -779,6 +787,18 @@ export const Icons = {
     component: lineandbar_component,
     source: lineandbar_source,
   },
+  line_style_dashed: {
+    component: line_style_dashed_component,
+    source: line_style_dashed_source,
+  },
+  line_style_dotted: {
+    component: line_style_dotted_component,
+    source: line_style_dotted_source,
+  },
+  line_style_solid: {
+    component: line_style_solid_component,
+    source: line_style_solid_source,
+  },
   list: {
     component: list_component,
     source: list_source,
@@ -906,6 +926,10 @@ export const Icons = {
   share: {
     component: share_component,
     source: share_source,
+  },
+  split: {
+    component: split_component,
+    source: split_source,
   },
   sql: {
     component: sql_component,

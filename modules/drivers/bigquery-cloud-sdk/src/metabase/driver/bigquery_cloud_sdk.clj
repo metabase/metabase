@@ -30,8 +30,9 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema StandardTableDefinition
-                              Table TableDefinition$Type TableId TableResult)))
+                              DatasetId Field Field$Mode FieldValue FieldValueList MaterializedViewDefinition QueryJobConfiguration Schema
+                              RangePartitioning TimePartitioning
+                              StandardTableDefinition Table TableDefinition TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -120,11 +121,29 @@
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
 
+(defn- tabledef->range-partition
+  [^TableDefinition tabledef]
+  (condp = (.getType tabledef)
+    TableDefinition$Type/TABLE
+    (.getRangePartitioning ^StandardTableDefinition tabledef)
+    TableDefinition$Type/MATERIALIZED_VIEW
+    (.getRangePartitioning ^MaterializedViewDefinition tabledef)
+    nil))
+
+(defn- tabledef->time-partition
+  [^TableDefinition tabledef]
+  (condp = (.getType tabledef)
+    TableDefinition$Type/TABLE
+    (.getTimePartitioning ^StandardTableDefinition tabledef)
+    TableDefinition$Type/MATERIALIZED_VIEW
+    (.getTimePartitioning ^MaterializedViewDefinition tabledef)
+    nil))
+
 (defn- table-is-partitioned?
-  [^StandardTableDefinition tabledef]
+  [^TableDefinition tabledef]
   (when (#{TableDefinition$Type/TABLE TableDefinition$Type/MATERIALIZED_VIEW} (.getType tabledef))
-    (or (.getRangePartitioning tabledef)
-        (.getTimePartitioning tabledef))))
+    (or (tabledef->range-partition tabledef)
+        (tabledef->time-partition tabledef))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
@@ -132,7 +151,7 @@
     {:tables (set (for [^Table table tables
                         :let  [^TableId                 table-id   (.getTableId table)
                                ^String                  dataset-id (.getDataset table-id)
-                               ^StandardTableDefinition tabledef   (.getDefinition table)
+                               ^TableDefinition         tabledef   (.getDefinition table)
                                                         table-name (str (.getTable table-id))]]
                     {:schema                  dataset-id
                      :name                    table-name
@@ -200,17 +219,17 @@
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  (let [table                  (get-table database dataset-id table-name)
-        ^StandardTableDefinition tabledef (.getDefinition table)
-        is-partitioned?        (table-is-partitioned? tabledef)
+  (let [table                     (get-table database dataset-id table-name)
+        ^TableDefinition tabledef (.getDefinition table)
+        is-partitioned?           (table-is-partitioned? tabledef)
         ;; a table can only have one partitioned field
-        partitioned-field-name (when is-partitioned?
-                                 (or (some-> (.getRangePartitioning tabledef) .getField)
-                                     (some-> (.getTimePartitioning tabledef) .getField)))
-        fields                 (set
-                                (map
-                                 #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
-                                 (table-schema->metabase-field-info (. tabledef getSchema))))]
+        partitioned-field-name    (when is-partitioned?
+                                   (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
+                                       (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
+        fields                    (set
+                                   (map
+                                    #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
+                                    (table-schema->metabase-field-info (. tabledef getSchema))))]
     {:schema dataset-id
      :name   table-name
      :fields (cond-> fields
@@ -218,7 +237,7 @@
                ;; meaning this table is partitioned by ingestion time
                ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
                (and is-partitioned?
-                    (some? (.getTimePartitioning tabledef))
+                    (some? (tabledef->time-partition tabledef))
                     (nil? partitioned-field-name))
                (conj
                 {:name                 partitioned-time-field-name

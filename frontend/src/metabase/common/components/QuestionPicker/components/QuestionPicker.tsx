@@ -23,12 +23,7 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
-import {
-  generateKey,
-  getCollectionIdPath,
-  getStateFromIdPath,
-  isFolder,
-} from "../utils";
+import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -63,9 +58,7 @@ const useGetInitialCollection = (
   const { data: currentCollection, error: collectionError } =
     useGetCollectionQuery(
       !isQuestion || !!currentQuestion
-        ? {
-            id: (isValidCollectionId(collectionId) && collectionId) || "root",
-          }
+        ? (isValidCollectionId(collectionId) && collectionId) || "root"
         : skipToken,
     );
 
@@ -172,7 +165,6 @@ export const QuestionPicker = ({
     <NestedItemPicker
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
-      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}

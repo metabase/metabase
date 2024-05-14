@@ -31,7 +31,6 @@
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
      metabase.test.util/with-all-users-permission
-     metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
      metabase.test.util/with-locale
@@ -49,7 +48,6 @@
      metabase.test/with-actions-test-data-and-actions-enabled
      metabase.test/with-actions-test-data-tables
      metabase.test/with-all-users-permission
-     metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages
@@ -108,6 +106,7 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.pulse/send-pulse!
      metabase.query-processor.store/store-database!
      next.jdbc/execute!})
 

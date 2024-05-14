@@ -1,6 +1,7 @@
-import { KBarProvider, useKBar } from "kbar";
+import { useKBar } from "kbar";
 import { useEffect } from "react";
-import { withRouter, type WithRouterProps } from "react-router";
+import { Route, withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
@@ -10,18 +11,17 @@ import {
 import {
   renderWithProviders,
   screen,
-  mockGetBoundingClientRect,
   within,
   waitFor,
-  mockOffsetHeightAndWidth,
+  mockScrollTo,
+  mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -74,27 +74,29 @@ const dashboard = createMockCollectionItem({
   model: "dashboard",
   name: "Bar Dashboard",
   collection: collection_1,
+  description: "Such Bar. Much Wow.",
 });
 
-const recents_1 = createMockRecentItem({
+const recents_1 = createMockRecentCollectionItem({
+  ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  model_object: createMockModelObject({
-    ...model_1,
-    collection_id: null,
-  }),
+  moderated_status: "verified",
+  parent_collection: {
+    id: null,
+    name: "Our analytics",
+  },
 });
-
-const recents_2 = createMockRecentItem({
+const recents_2 = createMockRecentCollectionItem({
+  ..._.pick(dashboard, "id", "name"),
   model: "dashboard",
-  model_object: createMockModelObject({
-    ...dashboard,
-    collection_id: dashboard.collection?.id,
-    collection_name: dashboard.collection?.name,
-  }),
+  parent_collection: {
+    id: dashboard.collection?.id as number,
+    name: dashboard.collection?.name as string,
+  },
 });
 
-mockGetBoundingClientRect();
-mockOffsetHeightAndWidth(10); // This is absurdley small, but it allows all the items to render in the "virtual list"
+mockScrollTo();
+mockScrollIntoView();
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
@@ -102,10 +104,10 @@ const setup = ({ query }: { query?: string } = {}) => {
   setupRecentViewsEndpoints([recents_1, recents_2]);
 
   renderWithProviders(
-    <KBarProvider>
-      <TestComponent q={query} isLoggedIn />
-    </KBarProvider>,
+    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
     {
+      withKBar: true,
+      withRouter: true,
       storeInitialState: {
         admin: createMockAdminState({
           app: createMockAdminAppState({
@@ -143,6 +145,11 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("lame collection");
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
     expect(
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
@@ -163,8 +170,20 @@ describe("PaletteResults", () => {
     });
 
     expect(
+      await screen.findByRole("option", { name: /View and filter/i }),
+    ).toBeInTheDocument();
+
+    expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
       await screen.findByText('Search documentation for "Bar"'),
     ).toBeInTheDocument();

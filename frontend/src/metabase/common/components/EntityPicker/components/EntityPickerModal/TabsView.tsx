@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useMount, usePrevious } from "react-use";
 
 import { Icon, Tabs } from "metabase/ui";
+import type {
+  SearchResult,
+  SearchResultId,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {
@@ -10,7 +15,7 @@ import {
 } from "../EntityPickerSearch";
 
 export const TabsView = <
-  Id,
+  Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
@@ -24,19 +29,26 @@ export const TabsView = <
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
+  searchParams?: Partial<SearchRequest>;
 }) => {
   const hasSearchTab = !!searchQuery;
+  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
   const previousSearchQuery = usePrevious(searchQuery);
-  const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
+  const defaultTab = hasSearchTab
+    ? { model: "search" }
+    : hasRecentsTab
+    ? { model: "recents" }
+    : tabs[0];
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
 
   useMount(() => {
     if (
       initialValue?.model &&
-      tabs.some(tab => tab.model === initialValue.model)
+      tabs.some(tab => tab.model === initialValue.model) &&
+      !hasRecentsTab
     ) {
       setSelectedTab(initialValue.model);
     }

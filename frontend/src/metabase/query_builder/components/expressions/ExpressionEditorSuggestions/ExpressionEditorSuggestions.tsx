@@ -14,7 +14,13 @@ import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
-import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
+import {
+  DelayGroup,
+  Icon,
+  type IconName,
+  Popover,
+  DEFAULT_POPOVER_Z_INDEX,
+} from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
   Suggestion,
@@ -93,7 +99,12 @@ export function ExpressionEditorSuggestions({
       opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
-      zIndex={300}
+      zIndex={DEFAULT_POPOVER_Z_INDEX}
+      middlewares={{
+        flip: false,
+        shift: false,
+        inline: false,
+      }}
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
@@ -306,6 +317,7 @@ function colorForIcon(icon: string | undefined | null) {
       return { normal: color("accent1"), highlighted: color("brand-white") };
     case "function":
     case "combine":
+    case "arrow_split":
       return { normal: color("brand"), highlighted: color("brand-white") };
     default:
       return {

@@ -283,7 +283,7 @@
           ;; their API error messages
           route-doc                                           (route-dox method route docstr args
                                                                          (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                            body)]
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."

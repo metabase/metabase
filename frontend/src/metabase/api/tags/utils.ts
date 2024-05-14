@@ -19,7 +19,6 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  ListCollectionsResponse,
   Metric,
   NativeQuerySnippet,
   ModelCacheRefreshStatus,
@@ -82,7 +81,7 @@ export function provideActivityItemListTags(
 export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function provideAlertListTags(
@@ -150,19 +149,19 @@ export function provideCollectionItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideCollectionListTags(
+  collections: Collection[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.flatMap(collection => provideCollectionTags(collection)),
+  ];
+}
+
 export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
-}
-
-export function provideCollectionListTags(
-  collections: ListCollectionsResponse,
-): TagDescription<TagType>[] {
-  return [
-    listTag("collection"),
-    ...collections.map(collection => idTag("collection", collection.id)),
-  ];
 }
 
 export function provideDatabaseCandidateListTags(

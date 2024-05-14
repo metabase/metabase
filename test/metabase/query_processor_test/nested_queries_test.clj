@@ -286,11 +286,11 @@
                                             :breakout    [[:expression "Price level"]]
                                             :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
                                             :limit       2})])
-        (is (= [["budget"    81]
-                ["expensive" 19]]
-               (mt/rows
-                (qp/process-query
-                 (query-with-source-card 1)))))))))
+        (let [query (query-with-source-card 1)]
+          (mt/with-native-query-testing-context query
+            (is (= [["budget"    81]
+                    ["expensive" 19]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)

@@ -55,7 +55,7 @@
    (java.io File FileInputStream)
    (java.net ServerSocket)
    (java.util Locale)
-   (java.util.concurrent TimeoutException)
+   (java.util.concurrent CountDownLatch TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
@@ -409,9 +409,10 @@
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
   is thrown if the `setting-k` already exists.
 
-  If `skip-init`?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
+  If `skip-init?` is `true`, this will skip any `:init` function on the setting, and return `nil` if it is not defined.
 
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function
+  directly."
   [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
@@ -586,6 +587,8 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
+(def in-memory-scheduler-thread-count 1)
+
 (defn- in-memory-scheduler
   "An in-memory Quartz Scheduler separate from the usual database-backend one we normally use. Every time you call this
   it returns the same scheduler! So make sure you shut it down when you're done using it."
@@ -595,7 +598,7 @@
     (doto (java.util.Properties.)
       (.setProperty StdSchedulerFactory/PROP_SCHED_INSTANCE_NAME (str `in-memory-scheduler))
       (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
-      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") "1")))))
+      (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") (str in-memory-scheduler-thread-count))))))
 
 (defn do-with-unstarted-temp-scheduler [thunk]
   (let [temp-scheduler (in-memory-scheduler)
@@ -855,7 +858,7 @@
     (deliver pause-query true)
     ::success))
 
-(defmacro throw-if-called
+(defmacro throw-if-called!
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
   [fn-symb & body]
@@ -1406,3 +1409,15 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                                 (when model-id [:= :model_id model-id])]})))
+
+(defn repeat-concurrently
+  "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."
+  [n f]
+  ;; Use a latch to ensure that the functions start as close to simultaneously as possible.
+  (let [latch   (CountDownLatch. n)
+        futures (atom [])]
+    (dotimes [_ n]
+      (swap! futures conj (future (.countDown latch)
+                                  (.await latch)
+                                  (f))))
+    (mapv deref @futures)))

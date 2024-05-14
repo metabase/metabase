@@ -67,11 +67,11 @@ On the Slack site for your newly created app, in the **Settings** > **Basic Info
 
 On the Slack site page for your Slack app, on the left in the **Features** section, click on **OAuth and Permissions** in the Slack Apps sidebar and then copy the **Bot User OAuth Token**. Return to the Slack settings page in your Metabase and paste this token in the Metabase field with the same name.
 
-## Create a dedicated Metabase channel in your Slack
+## Create a channel in your Slack to store image files
 
-In your Slack workspace, create a public channel named whatever you want — we think something like "metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Make sure the channel you create is the same channel that you enter in this field in Metabase (omit the "#" prefix).
+In your Slack workspace, create a public channel named whatever you want — we think something like "metabase" does just fine — then enter that channel's name in the **Public channel to store image files** field in Metabase. We'll upload charts and tables here before sending out [dashboard subscriptions](../dashboards/subscriptions.md#slack-subscription-options). This allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Make sure the channel you create is the same channel that you enter in this field in Metabase (omit the "#" prefix).
 
-> If you rename the channel in Slack, you'll need to update the **Slack Channel Name** in Metabase to that new name.
+> If you rename the channel in Slack, you'll need to update the **Public channel to store image files** in Metabase to that new name. This channel does not have to be the same as the channel where you send dashboard subscriptions. It's only used for storing image files.
 
 ## Save your changes in Metabase
 
@@ -79,7 +79,7 @@ In Metabase, click on the **Save changes** button and that’s it! Metabase will
 
 ## Sending alerts and subscriptions to private Slack channels
 
-In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase app to the private channel. 
+In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase app to the private channel.
 
 In Slack, go to the private channel and mention the Metabase app. For example, if you called your Slack app "Metabase", you'd just type `@Metabase`. Slack will ask you if you want to invite your app to your channel, which you should.
 
@@ -92,4 +92,3 @@ Once your Metabase app is added to the private channel, you'll need to type out 
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up email](./email.md)
 - [Auditing Metabase](../usage-and-performance-tools/audit.md)
-

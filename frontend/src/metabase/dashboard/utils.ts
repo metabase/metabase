@@ -3,7 +3,8 @@ import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
@@ -138,15 +139,15 @@ export function showVirtualDashCardInfoText(
 
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   if (isDateParameter(parameter)) {
-    return t`Add a date variable to this question to connect it to a dashboard filter.`;
+    return t`A date variable in this card can only be connected to a time type with the single date option.`;
   }
 
   if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
   }
 
   if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
   }
 
   return t`Add a variable to this question to connect it to a dashboard filter.`;
@@ -182,7 +183,7 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (isUUID(id)) {
+  } else if (isUuid(id)) {
     return "public";
   } else if (isJWT(id)) {
     return "embed";

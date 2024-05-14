@@ -3422,7 +3422,6 @@ databaseChangeLog:
               SET r.most_recent = true;
       rollback: # nothing to do since the most_recent will be dropped anyway
 
-
   - changeSet:
       id: v48.00-009
       validCheckSum: 8:dfd90256380263274ea7f5cc0c5ed413
@@ -5800,6 +5799,34 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
 
   - changeSet:
+      id: v49.2024-05-07T10:00:00
+      author: qnkhuat
+      comment: Set revision.most_recent = true to latest revision and false to others. A redo of v48.00-008 for mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE revision AS r
+              JOIN (
+                  SELECT inner_revision.id,
+                        ROW_NUMBER() OVER (PARTITION BY inner_revision.model, inner_revision.model_id ORDER BY inner_revision.timestamp DESC, inner_revision.id DESC) AS row_num
+                    FROM revision AS inner_revision
+                    JOIN (
+                          SELECT model, model_id
+                          FROM revision
+                          WHERE most_recent = true
+                          GROUP BY model, model_id
+                          HAVING count(*) > 1
+                        ) AS infected_revision ON inner_revision.model = infected_revision.model AND inner_revision.model_id = infected_revision.model_id
+              ) AS n ON r.id = n.id
+              SET r.most_recent = (n.row_num = 1);
+      rollback: # nothing
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6562,12 +6589,19 @@ databaseChangeLog:
       rollback: # no rollback necessary, we're not removing the columns yet
 
   - changeSet:
-      id: v50.2024-04-18T14:33:19
-      author: piranha
-      comment: Backfill query_field
+      id: v50.2024-04-15T16:30:35
+      author: qnkhuat
+      comment: Add report_card.last_used_at
       changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.BackfillQueryField"
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the card is last used
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v50.2024-04-19T17:04:04
@@ -6578,6 +6612,46 @@ databaseChangeLog:
         - sql:
             sql: >
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:04
+      author: qnkhuat
+      comment: Delete the old SendPulses job and trigger
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:01
+      author: noahmoss
+      comment: Add entity_id to core_user
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: core_user
+
+  - changeSet:
+      id: v50.2024-04-25T03:15:02
+      author: noahmoss
+      comment: Add entity_id to permissions_group
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  remarks: NanoID tag for each user
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+            tableName: permissions_group
 
   - changeSet:
       id: v50.2024-04-25T16:29:31
@@ -6664,6 +6738,127 @@ databaseChangeLog:
                   AND v.model_id = c.id
               );
       rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:35
+      author: calherries
+      comment: Add metabase_table.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of card views
+                  constraints:
+                    nullable: false
+            tableName: metabase_table
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:36
+      author: calherries
+      comment: Populate metabase_table.view_count
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              SET t.view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_table t
+              SET view_count = (
+                  SELECT count(*)
+                  FROM view_log v
+                  WHERE v.model = 'table'
+                  AND v.model_id = t.id
+              );
+      rollback: # nothing to do, since view_count didn't exist in v49
+
+  - changeSet:
+      id: v50.2024-04-26T09:19:00
+      author: adam-james
+      comment: Added 0.50.0 - Per-user Dashboard Parameter values table
+      changes:
+        - createTable:
+            tableName: user_parameter_value
+            remarks: Table holding last set value of a parameter per user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who has set the parameter value'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_user_parameter_value_user_id
+                    deleteCascade: true
+              - column:
+                  name: parameter_id
+                  type: varchar(36)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: Value of the parameter
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-26T09:25:00
+      author: adam-james
+      comment: Index user_parameter_value.user_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id
+            columns:
+              column:
+                name: user_id
+
+  - changeSet:
+      id: v50.2024-04-30T23:57:23
+      author: noahmoss
+      comment: Add `scope` column to api_key to support SCIM authentication
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: scope
+                  type: varchar(64)
+                  remarks: The scope of the API key, if applicable
+                  constraints:
+                    nullable: true
+            tableName: api_key
+
+  - changeSet:
+      id: v50.2024-04-30T23:58:24
+      author: noahmoss
+      comment: Drop NOT NULL constraint on api_key.user_id to support SCIM-scoped API keys
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnName: user_id
+            columnDataType: integer
+      rollback: # we can't reliably add back the constraint while downgrading
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

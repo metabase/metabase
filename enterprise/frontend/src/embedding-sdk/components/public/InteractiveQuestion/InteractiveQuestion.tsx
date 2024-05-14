@@ -2,9 +2,12 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  withPublicComponentWrapper,
+  SdkError,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
+import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
@@ -20,6 +23,7 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
+  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
@@ -35,6 +39,7 @@ interface InteractiveQuestionProps {
   withTitle?: boolean;
   customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
+  height?: string | number;
 }
 
 export const _InteractiveQuestion = ({
@@ -43,6 +48,7 @@ export const _InteractiveQuestion = ({
   withTitle = false,
   customTitle,
   plugins: componentPlugins,
+  height,
 }: InteractiveQuestionProps): JSX.Element | null => {
   const globalPlugins = useSdkSelector(getPlugins);
 
@@ -53,13 +59,15 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
+  const queryResults = useSelector(getQueryResults);
+  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
 
-  const [loading, setLoading] = useState(true);
+  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
-  const { isRunning } = uiControls;
+  const { isRunning: isQueryRunning } = uiControls;
 
   if (question) {
     // FIXME: remove "You can also get an alert when there are some results." feature for question
@@ -70,15 +78,14 @@ export const _InteractiveQuestion = ({
     dispatch: ReturnType<typeof useDispatch>,
     questionId: CardId,
   ) => {
-    setLoading(true);
+    setIsQuestionLoading(true);
 
     const { location, params } = getQuestionParameters(questionId);
     try {
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
-    } finally {
-      setLoading(false);
+      setIsQuestionLoading(false);
     }
   };
 
@@ -90,16 +97,22 @@ export const _InteractiveQuestion = ({
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
-  if (loading) {
+  useEffect(() => {
+    if (queryResults) {
+      setIsQuestionLoading(false);
+    }
+  }, [queryResults]);
+
+  if (isQuestionLoading || isQueryRunning) {
     return <Loader data-testid="loading-spinner" />;
   }
 
-  if (!question) {
+  if (!queryResults || !question) {
     return <SdkError message={t`Question not found`} />;
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}>
+    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&
@@ -127,10 +140,10 @@ export const _InteractiveQuestion = ({
         )}
         <Group h="100%" pos="relative" align="flex-start">
           <QueryVisualization
-            className={cx(CS.flexFull, CS.fullWidth)}
+            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
             question={question}
             rawSeries={[{ card, data: result && result.data }]}
-            isRunning={isRunning}
+            isRunning={isQueryRunning}
             isObjectDetail={false}
             isResultDirty={false}
             isNativeEditorOpen={false}
