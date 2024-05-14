@@ -173,14 +173,15 @@
                                                            [:pivot-rows {:optional true} [:maybe ::pivot-rows]]
                                                            [:pivot-cols {:optional true} [:maybe ::pivot-cols]]]]
   (try
-    (let [all-breakouts  (lib/breakouts query)]
-      (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
-                               (log/tracef "Using breakout combinations: %s" (pr-str <>)))
-            :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
-        (-> (assoc-in query [:info :original-query] (str query))
-            remove-non-aggregation-order-bys
-            (keep-breakouts-at-indexes breakout-indexes)
-            (add-pivot-group-breakout group-bitmask))))
+    (let [all-breakouts (lib/breakouts query)
+          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
+                                                 (log/tracef "Using breakout combinations: %s" (pr-str <>)))
+                              :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
+                          (-> query
+                              remove-non-aggregation-order-bys
+                              (keep-breakouts-at-indexes breakout-indexes)
+                              (add-pivot-group-breakout group-bitmask)))]
+      (concat [(assoc-in (first all-queries) [:info :original-query] (str query))] (rest all-queries)))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}

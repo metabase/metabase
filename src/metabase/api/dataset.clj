@@ -78,7 +78,7 @@
           (if was-pivot
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints (qp.constraints/default-query-constraints))
-                                          (update query :info merge info))
+                                          (update :info merge info))
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
