@@ -44,6 +44,7 @@ describe("scenarios > metrics > question", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be able to add a filter with an ad-hoc question", () => {
@@ -102,9 +103,10 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to drill-thru with a metric", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) => {
+      visitMetric(card.id);
+      cy.wait("@dataset");
+    });
     cartesianChartCircle()
       .eq(23) // random dot
       .click({ force: true });
@@ -113,6 +115,23 @@ describe("scenarios > metrics > question", () => {
       cy.findByText("Category").click();
       cy.findByText("Source").click();
     });
+    cy.wait("@dataset");
     echartsContainer().findByText("User → Source").should("be.visible");
+  });
+
+  it("should be able to drill-thru with a metric without the aggregation clause", () => {
+    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) => {
+      visitMetric(card.id);
+      cy.wait("@dataset");
+    });
+    cartesianChartCircle()
+      .eq(23) // random dot
+      .click({ force: true });
+    popover().findByText("See these records").click();
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Created At is Mar 1–31, 2024")
+      .should("be.visible");
+    assertQueryBuilderRowCount(445);
   });
 });
