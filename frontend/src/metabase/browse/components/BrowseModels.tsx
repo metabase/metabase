@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useSearchQuery } from "metabase/api";
+import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
@@ -21,6 +21,7 @@ import {
 } from "./BrowseContainer.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
+import { RecentModels } from "./RecentModels";
 
 const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
@@ -82,10 +83,26 @@ export const BrowseModelsBody = ({
       actualModelFilters,
       availableModelFilters,
     );
-    return filteredModels;
+    return filteredModels.slice(0, 100);
   }, [data, actualModelFilters]);
 
-  if (error || isLoading) {
+  const { data: recentItems, isLoading: isLoadingRecents } =
+    useListRecentItemsQuery();
+
+  const filteredRecentItems = useMemo(() => {
+    if (!recentItems) {
+      return [];
+    }
+    const recentModels = recentItems.filter(item => item.model === "dataset");
+    const filteredModels = filterModels(
+      recentModels,
+      actualModelFilters,
+      availableModelFilters,
+    );
+    return filteredModels.slice(0, 8);
+  }, [recentItems, actualModelFilters]);
+
+  if (error || isLoading || isLoadingRecents) {
     return (
       <LoadingAndErrorWrapper
         error={error}
@@ -99,6 +116,7 @@ export const BrowseModelsBody = ({
     return (
       <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
+        <RecentModels models={filteredRecentItems} />
         <ModelsTable models={filteredModels} />
       </Stack>
     );
