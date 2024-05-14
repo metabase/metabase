@@ -2064,7 +2064,7 @@
 
 (deftest move-to-trash-test
   (testing "existing archived items should be moved to the Trash"
-    (impl/test-migrations ["v50.2024-05-09T15:55:06" "v50.2024-05-09T16:16:42"] [migrate!]
+    (impl/test-migrations ["v50.2024-05-14T12:42:44" "v50.2024-05-14T12:42:52"] [migrate!]
       (let [user       (create-raw-user! (mt/random-email))
             db         (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
                                                                        (update :details json/generate-string)
