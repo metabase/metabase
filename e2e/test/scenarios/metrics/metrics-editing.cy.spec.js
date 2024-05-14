@@ -17,7 +17,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_COUNT_METRIC = {
   name: "Orders metric",
@@ -30,7 +30,7 @@ const ORDERS_COUNT_METRIC = {
 };
 
 const ORDERS_COUNT_MODEL_METRIC = {
-  name: "Orders metric",
+  name: "Orders model metric",
   type: "metric",
   query: {
     "source-table": `card__${ORDERS_MODEL_ID}`,
@@ -40,7 +40,7 @@ const ORDERS_COUNT_MODEL_METRIC = {
 };
 
 const ORDERS_COUNT_FILTER_METRIC = {
-  name: "Orders metric",
+  name: "Orders metric with filter",
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
@@ -50,8 +50,18 @@ const ORDERS_COUNT_FILTER_METRIC = {
   display: "scalar",
 };
 
+const PRODUCTS_COUNT_METRIC = {
+  name: "Products metric",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
 const MULTI_STAGE_METRIC = {
-  name: "Orders metric",
+  name: "Orders metric mutli-stage",
   type: "metric",
   query: {
     "source-query": {
@@ -72,7 +82,7 @@ const MULTI_STAGE_METRIC = {
 };
 
 const MULTI_STAGE_QUESTION = {
-  name: "Multi-stage orders",
+  name: "Orders question multi-stage",
   type: "question",
   query: {
     "source-query": {
@@ -521,28 +531,26 @@ describe("scenarios > metrics > editing", () => {
       runQuery();
       verifyScalarValue("29,554.86");
     });
+  });
 
+  describe("compatible metrics", () => {
     it.skip("should allow adding an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
       createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_COUNT_FILTER_METRIC);
+      createQuestion(PRODUCTS_COUNT_METRIC);
       startNewQuestion();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       startNewAggregation();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().within(() => {
+        cy.findByText(ORDERS_COUNT_METRIC.name).should("be.visible");
+        cy.findByText(ORDERS_COUNT_FILTER_METRIC.name).should("be.visible");
+        cy.findByText(PRODUCTS_COUNT_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_COUNT_MODEL_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_COUNT_METRIC.name).click();
+      });
       visualize();
       verifyScalarValue("18,760");
-    });
-
-    it("should not allow adding an aggregation based on a compatible metric for the same table in metrics (metabase#42470)", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      startNewAggregation();
-      popover().within(() => {
-        cy.findByText("Count of rows").should("be.visible");
-        cy.findByText(ORDERS_COUNT_METRIC.name).should("not.exist");
-      });
     });
   });
 });
