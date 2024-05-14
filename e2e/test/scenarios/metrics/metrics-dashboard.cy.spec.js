@@ -6,6 +6,8 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertQueryBuilderRowCount,
+  cartesianChartCircle,
   createQuestion,
   echartsContainer,
   filterWidget,
@@ -143,6 +145,21 @@ describe("scenarios > metrics > dashboard", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
+  });
+
+  it.skip("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard().within(() => {
+      cartesianChartCircle()
+        .eq(23) // random dot
+        .click({ force: true });
+    });
+    popover().findByText("See these Orders").click();
+    assertQueryBuilderRowCount(445);
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {
