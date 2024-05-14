@@ -2176,4 +2176,21 @@
                                :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id subcollection)}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
-        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard)))))))))
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
+  (testing "can_restore is correctly populated for card"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Card card {:name "Card" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Card card {:name "Card" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
+  (testing "can_restore is correctly populated for collection"
+    (testing "when I can actually restore it")
+    (testing "and when I can't")))

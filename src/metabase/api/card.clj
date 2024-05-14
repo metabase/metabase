@@ -186,6 +186,7 @@
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
+                    :card/can_restore
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
@@ -202,8 +203,7 @@
                  hydrate-card-details
                  ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
                  (last-edit/with-last-edit-info :card)
-                 collection.root/hydrate-root-collection
-                 (assoc :can_restore false))]
+                 collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
         (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))

@@ -482,7 +482,7 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write)
+      (t2/hydrate :can_write :card/can_restore)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
