@@ -2,9 +2,11 @@ import type { EChartsCoreOption } from "echarts/core";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
   DataKey,
+  OtherSeriesModel,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
@@ -67,11 +69,15 @@ export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
 
 export const getHoveredSeriesDataKey = (
   seriesModels: SeriesModel[],
+  otherSeriesModel: OtherSeriesModel | undefined,
   hovered: HoveredObject | undefined,
 ): DataKey | null => {
   const seriesIndex = hovered?.index;
   if (seriesIndex == null) {
     return null;
+  }
+  if (seriesIndex >= seriesModels.length && otherSeriesModel) {
+    return OTHER_DATA_KEY;
   }
 
   return seriesModels[seriesIndex]?.dataKey ?? null;
@@ -79,17 +85,22 @@ export const getHoveredSeriesDataKey = (
 
 export const getHoveredEChartsSeriesIndex = (
   seriesModels: SeriesModel[],
+  otherSeriesModel: OtherSeriesModel | undefined,
   option: EChartsCoreOption,
   hovered: HoveredObject | undefined,
 ): number | null => {
-  const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);
+  const hoveredSeriesDataKey = getHoveredSeriesDataKey(
+    seriesModels,
+    otherSeriesModel,
+    hovered,
+  );
 
   const seriesOptions = Array.isArray(option?.series)
     ? option?.series
     : [option?.series].filter(isNotNull);
 
-  // ECharts series contain goal line, trend lines, and timeline events so the series index
-  // is different from one in chartModel.seriesModels
+  // ECharts series contain goal line, trend lines, timeline events, so the
+  // series index is different from one in chartModel.seriesModels
   const eChartsSeriesIndex = seriesOptions.findIndex(
     series => series.id === hoveredSeriesDataKey,
   );

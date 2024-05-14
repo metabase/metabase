@@ -108,8 +108,13 @@ export function useModelsAndOption({
   );
 
   const hoveredSeriesDataKey = useMemo(
-    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
-    [chartModel.seriesModels, hovered],
+    () =>
+      getHoveredSeriesDataKey(
+        chartModel.seriesModels,
+        chartModel.otherSeriesModel,
+        hovered,
+      ),
+    [chartModel.seriesModels, chartModel.otherSeriesModel, hovered],
   );
 
   const option = useMemo(() => {

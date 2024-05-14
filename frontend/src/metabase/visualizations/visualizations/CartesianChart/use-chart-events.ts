@@ -207,6 +207,7 @@ export const useChartEvents = (
 
       const hoveredEChartsSeriesIndex = getHoveredEChartsSeriesIndex(
         chartModel.seriesModels,
+        chartModel.otherSeriesModel,
         option,
         hovered,
       );
@@ -247,6 +248,7 @@ export const useChartEvents = (
     },
     [
       chartModel.seriesModels,
+      chartModel.otherSeriesModel,
       chartModel.transformedDataset,
       chartRef,
       hovered,
