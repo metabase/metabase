@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import { setupDashboardsEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
   createMockDashboard,
@@ -13,32 +13,38 @@ import { dashboardReducers } from "../reducers";
 
 import { fetchDashboard } from "./data-fetching-typed";
 
-describe("fetchDashboard", () => {
-  let store;
+function setup({ dashboards = [] }) {
+  const state = {
+    dashboard: createMockDashboardState(),
+    entities: createMockEntitiesState({
+      databases: [createMockDatabase()],
+    }),
+    settings: createMockSettings(),
+  };
 
-  beforeEach(() => {
-    const state = {
-      dashboard: createMockDashboardState(),
-      entities: createMockEntitiesState({
-        databases: [createMockDatabase()],
-      }),
-      settings: createMockSettings(),
-    };
-
-    store = configureStore({
-      reducer: {
-        dashboard: dashboardReducers,
-        entities: (state = {}) => state,
-        settings: (state = {}) => state,
-      },
-      preloadedState: state,
-    });
-
-    setupDashboardEndpoints(createMockDashboard({ id: 1 }));
-    setupDashboardEndpoints(createMockDashboard({ id: 2 }));
+  const store = configureStore({
+    reducer: {
+      dashboard: dashboardReducers,
+      entities: (state = {}) => state,
+      settings: (state = {}) => state,
+    },
+    preloadedState: state,
   });
 
+  setupDashboardsEndpoints(dashboards);
+
+  return store;
+}
+
+describe("fetchDashboard", () => {
   it("should cancel previous dashboard fetch when a new one is initiated (metabase#35959)", async () => {
+    const store = setup({
+      dashboards: [
+        createMockDashboard({ id: 1 }),
+        createMockDashboard({ id: 2 }),
+      ],
+    });
+
     const firstFetch = store.dispatch(
       fetchDashboard({
         dashId: 1,
