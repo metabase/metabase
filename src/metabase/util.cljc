@@ -945,15 +945,22 @@
    nil
    coll))
 
-(defmacro case-enum
-  "Like `case`, but explicitly dispatch on Java enum ordinals."
-  [value & clauses]
-  (letfn [(enum-ordinal [e] `(let [^Enum e# ~e] (.ordinal e#)))]
-    `(case ~(enum-ordinal value)
-       ~@(concat
-          (mapcat (fn [[test result]]
-                    #_ {:clj-kondo/ignore [:discouraged-var]}
-                    [(eval (enum-ordinal test)) result])
-                  (partition 2 clauses))
-          (when (odd? (count clauses))
-            (list (last clauses)))))))
+#?(:clj
+   (defmacro case-enum
+     "Like `case`, but explicitly dispatch on Java enum ordinals."
+     [value & clauses]
+     #_ {:clj-kondo/ignore [:discouraged-var]}
+     (let [types (map (comp type eval first) (partition 2 clauses))]
+       ;; doesn't check for the value of `case`, but that's on user
+       (if-not (apply = types)
+         `(throw (ex-info (str "`case-enum` only works if all supplied enums are of a same type: " ~(vec types))
+                          {:types ~(vec types)}))
+         (letfn [(enum-ordinal [e] `(let [^Enum e# ~e] (.ordinal e#)))]
+           `(case ~(enum-ordinal value)
+              ~@(concat
+                 (mapcat (fn [[test result]]
+                           #_ {:clj-kondo/ignore [:discouraged-var]}
+                           [(eval (enum-ordinal test)) result])
+                         (partition 2 clauses))
+                 (when (odd? (count clauses))
+                   (list (last clauses))))))))))

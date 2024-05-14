@@ -9,7 +9,8 @@
    [flatland.ordered.map :refer [ordered-map]]
    #_:clj-kondo/ignore
    [malli.generator :as mg]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  #?(:clj (:import [java.time Month DayOfWeek])))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -508,3 +509,21 @@
        (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
              sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
          (= expected sum)))))
+
+#?(:clj
+   (deftest ^:parallel case-enum-test
+     (testing "case does not work"
+       (is (not (case Month/MAY
+                  Month/APRIL false
+                  Month/MAY   true
+                  false))))
+     (testing "case-enum works"
+       (is (u/case-enum Month/MAY
+             Month/APRIL false
+             Month/MAY   true
+             false)))
+     (testing "checks for type"
+       (is (thrown? Exception #"`case-enum` only works.*"
+                    (u/case-enum Month/JANUARY
+                      Month/JANUARY    true
+                      DayOfWeek/SUNDAY true))))))
