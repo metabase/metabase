@@ -535,20 +535,22 @@
   [operation :- :string
    database :- i/DatabaseInstance
    sync-steps :- [:maybe [:sequential StepDefinition]]]
-  (let [start-time    (t/zoned-date-time)
-        step-metadata (loop [[step-defn & rest-defns] sync-steps
-                             result                   []]
-                        (let [[step-name r] (run-step-with-metadata! database step-defn)
-                              new-result    (conj result [step-name r])]
-                          (cond (abandon-sync? r) new-result
-                                (not (seq rest-defns)) new-result
-                                :else (recur rest-defns new-result))))
-        end-time      (t/zoned-date-time)
-        sync-metadata {:start-time start-time
-                       :end-time   end-time
-                       :steps      step-metadata}]
-    (log-sync-summary operation database sync-metadata)
-    sync-metadata))
+  (task-history/with-task-history {:task  operation
+                                   :db_id (u/the-id database)}
+    (let [start-time    (t/zoned-date-time)
+          step-metadata (loop [[step-defn & rest-defns] sync-steps
+                               result                   []]
+                          (let [[step-name r] (run-step-with-metadata! database step-defn)
+                                new-result    (conj result [step-name r])]
+                            (cond (abandon-sync? r) new-result
+                                  (not (seq rest-defns)) new-result
+                                  :else (recur rest-defns new-result))))
+          end-time      (t/zoned-date-time)
+          sync-metadata {:start-time start-time
+                         :end-time   end-time
+                         :steps      step-metadata}]
+      (log-sync-summary operation database sync-metadata)
+      sync-metadata)))
 
 (defn sum-numbers
   "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`. Used mainly for

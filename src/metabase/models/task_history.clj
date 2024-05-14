@@ -79,10 +79,10 @@
 
 (defn- update-task-history!
   [th-id startime-ms info]
-  (let [end-time-ms (System/currentTimeMillis)
-        updated-info   (merge {:ended_at (t/instant end-time-ms)
-                               :duration (- end-time-ms startime-ms)}
-                              info)]
+  (let [end-time-ms  (System/currentTimeMillis)
+        updated-info (merge {:ended_at (t/instant end-time-ms)
+                             :duration (- end-time-ms startime-ms)}
+                            info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
 
 (mu/defn do-with-task-history
