@@ -1,6 +1,11 @@
 import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { alpha, isDark, lighten } from "metabase/lib/colors";
 
+/**
+ * Cell data is the inner container within a table cell.
+ * It is primarily used to display the ID column.
+ * The styling here does not apply to the outer cell container.
+ */
 export function getCellDataTheme({
   theme,
   isIDColumn,
