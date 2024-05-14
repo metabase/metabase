@@ -167,6 +167,7 @@ const config = {
 // Theme Options
 const theme = {
   fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
+  fontSize: "14px", // Optional: Specify a base font size. Defaults to the parent container's font size.
   colors: { brand: "#9b59b6" }
 }
 
