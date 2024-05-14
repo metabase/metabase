@@ -13,12 +13,15 @@ import {
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
-import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import type { MetabaseColors, MetabaseTheme } from "embedding-sdk/types/theme";
+import { colors } from "metabase/lib/colors";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
+
+const originalColors = { ...colors };
 
 interface MetabaseProviderProps {
   children: ReactNode;
@@ -34,6 +37,16 @@ const MetabaseProviderInternal = ({
   theme,
 }: MetabaseProviderProps): JSX.Element => {
   const themeOverride = useMemo(() => {
+    if (theme?.colors) {
+      Object.entries(theme.colors).forEach(([key, value]) => {
+        colors[key as keyof MetabaseColors] = value;
+      });
+    } else {
+      Object.entries(originalColors).forEach(([key, value]) => {
+        colors[key as keyof MetabaseColors] = value;
+      });
+    }
+
     return theme && getEmbeddingThemeOverride(theme);
   }, [theme]);
 
