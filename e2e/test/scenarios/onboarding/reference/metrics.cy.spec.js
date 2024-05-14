@@ -30,33 +30,30 @@ describe("scenarios > reference > metrics", () => {
       cy.log("Should see the listing");
       cy.visit("/reference/metrics");
       cy.location("pathname").should("eq", "/reference/metrics");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText(METRIC_DESCRIPTION);
 
       cy.log("Should let the user navigate to details");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText(METRIC_NAME).click();
       cy.location("pathname").should("eq", `/reference/metrics/${id}`);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit").click();
       cy.location("pathname").should("eq", `/reference/metrics/${id}/edit`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText("Description")
         .parent()
         .parent()
         .find("textarea")
         .clear()
         .type("Count of orders under $100");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText("Save").click();
 
       modal().find("textarea").type("Renaming the description");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of orders under $100");
 
       cy.log(
@@ -80,16 +77,15 @@ describe("scenarios > reference > metrics", () => {
   it("should let an admin start to edit and cancel without saving", () => {
     cy.get("@metricId").then(id => {
       cy.visit(`/reference/metrics/${id}/edit`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText("Why this metric is interesting")
         .parent()
         .parent()
         .find("textarea")
         .type("Because it's very nice");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByText("Cancel").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Because it's very nice").should("not.exist");
       cy.location("pathname").should("eq", `/reference/metrics/${id}`);
     });
