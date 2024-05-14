@@ -170,25 +170,22 @@ export function selectSavedQuestionsToJoin(
   secondQuestionName: string,
 ) {
   cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  cy.findAllByTestId("data-bucket-list-item")
-    .contains("Saved Questions")
-    .click();
+  modal().within(() => {
+    cy.findByText("Models").should("exist");
+    cy.findByText("Tables").should("exist");
+    cy.findByText("Saved questions").click();
+    cy.findByText(firstQuestionName).click();
+  });
 
-  cy.findByTestId("select-list")
-    .findAllByRole("menuitem")
-    .contains(firstQuestionName)
-    .click();
   cy.wait("@loadSchemas");
 
   // join to question b
   cy.icon("join_left_outer").click();
 
-  popover().within(() => {
-    cy.findByText("Sample Database").should("be.visible").click();
-    cy.findByText("Raw Data").should("be.visible").click();
-    cy.findAllByTestId("data-bucket-list-item")
-      .contains("Saved Questions")
-      .click();
+  modal().within(() => {
+    cy.findByText("Models").should("exist");
+    cy.findByText("Tables").should("exist");
+    cy.findByText("Saved questions").click();
     cy.findByText(secondQuestionName).click();
   });
 }
