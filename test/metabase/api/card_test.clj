@@ -1208,7 +1208,8 @@
                    :collection_id          (u/the-id collection)
                    :collection             (into {:is_personal false} collection)
                    :result_metadata        (mt/obj->json->obj (:result_metadata card))
-                   :metabase_version       config/mb-version-string})
+                   :metabase_version       config/mb-version-string
+                   :dataset_query_metrics_v2_migration_backup nil})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [:model/User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}

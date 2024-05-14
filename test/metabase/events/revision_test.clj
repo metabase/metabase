@@ -38,7 +38,8 @@
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
-   :visualization_settings {}})
+   :visualization_settings {}
+   :dataset_query_metrics_v2_migration_backup nil})
 
 (defn- dashboard->revision-object [dashboard]
   {:collection_id       (:collection_id dashboard)
