@@ -1,6 +1,7 @@
 import { useKBar } from "kbar";
 import { useEffect } from "react";
 import { Route, withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
@@ -20,8 +21,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -77,21 +77,22 @@ const dashboard = createMockCollectionItem({
   description: "Such Bar. Much Wow.",
 });
 
-const recents_1 = createMockRecentItem({
+const recents_1 = createMockRecentCollectionItem({
+  ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  model_object: createMockModelObject({
-    ...model_1,
-    collection_id: null,
-  }),
+  moderated_status: "verified",
+  parent_collection: {
+    id: null,
+    name: "Our analytics",
+  },
 });
-
-const recents_2 = createMockRecentItem({
+const recents_2 = createMockRecentCollectionItem({
+  ..._.pick(dashboard, "id", "name"),
   model: "dashboard",
-  model_object: createMockModelObject({
-    ...dashboard,
-    collection_id: dashboard.collection?.id,
-    collection_name: dashboard.collection?.name,
-  }),
+  parent_collection: {
+    id: dashboard.collection?.id as number,
+    name: dashboard.collection?.name as string,
+  },
 });
 
 mockScrollTo();

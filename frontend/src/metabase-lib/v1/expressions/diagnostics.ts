@@ -228,8 +228,8 @@ function prattCompiler({
     passes: [
       adjustOptions,
       useShorthands,
-      adjustCase,
       adjustOffset,
+      adjustCase,
       expression =>
         resolve({
           expression,

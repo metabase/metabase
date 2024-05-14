@@ -32,8 +32,6 @@
                         (.update (.getBytes (slurp (io/resource resource-filename))))))))]
     (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
-                     ;; inline script in index.html that loads Google Analytics
-                     "frontend_client/inline_js/index_ganalytics.js"
                      ;; inline script in init.html
                      "frontend_client/inline_js/init.js"])))
 

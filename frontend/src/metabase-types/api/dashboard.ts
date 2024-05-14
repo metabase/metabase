@@ -184,7 +184,7 @@ export type UnrestrictedLinkEntity = {
   model: SearchModel;
   name: string;
   display_name?: string;
-  description?: string;
+  description?: string | null;
   display?: CardDisplayType;
 };
 

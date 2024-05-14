@@ -73,6 +73,12 @@ export const isValidSortColumn = (
   return ["name", "collection"].includes(sort_column);
 };
 
+export const getSecondarySortColumn = (
+  sort_column: string,
+): keyof ModelResult => {
+  return sort_column === "name" ? "collection" : "name";
+};
+
 export const sortModels = (
   models: ModelResult[],
   sortingOptions: SortingOptions,
@@ -85,15 +91,21 @@ export const sortModels = (
     return models;
   }
 
-  return [...models].sort((a, b) => {
-    const aValue = getValueForSorting(a, sort_column);
-    const bValue = getValueForSorting(b, sort_column);
-    const [firstValue, secondValue] =
-      sort_direction === SortDirection.Asc
-        ? [aValue, bValue]
-        : [bValue, aValue];
-    return firstValue.localeCompare(secondValue, localeCode, {
-      sensitivity: "base",
-    });
+  const compare = (a: string, b: string) =>
+    a.localeCompare(b, localeCode, { sensitivity: "base" });
+
+  return [...models].sort((modelA, modelB) => {
+    const a = getValueForSorting(modelA, sort_column);
+    const b = getValueForSorting(modelB, sort_column);
+
+    let result = compare(a, b);
+    if (result === 0) {
+      const sort_column2 = getSecondarySortColumn(sort_column);
+      const a2 = getValueForSorting(modelA, sort_column2);
+      const b2 = getValueForSorting(modelB, sort_column2);
+      result = compare(a2, b2);
+    }
+
+    return sort_direction === SortDirection.Asc ? result : -result;
   });
 };
