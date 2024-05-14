@@ -18,12 +18,11 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
-  setLocalDashboardParameterValue,
-  unsetLocalDashboardParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   CardId,
+  DashboardId,
   DashCardId,
   Parameter,
   ParameterId,
@@ -56,7 +55,11 @@ import {
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
-import { setDashboardAttributes, setDashCardAttributes } from "./core";
+import {
+  setDashboardAttributes,
+  setDashCardAttributes,
+  unsetLastUsedParamValues,
+} from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -150,9 +153,6 @@ export const removeParameter = createThunkAction(
       parameters.filter(p => p.id !== parameterId),
     );
 
-    const dashboardId = getDashboardId(getState());
-    unsetLocalDashboardParameterValue(dashboardId, parameterId);
-
     return { id: parameterId };
   },
 );
@@ -171,9 +171,6 @@ export const setParameterMapping = createThunkAction(
       dispatch(closeAutoWireParameterToast());
 
       const dashcard = getDashCardById(getState(), dashcardId);
-
-      const dashboardId = getDashboardId(getState());
-      unsetLocalDashboardParameterValue(dashboardId, parameterId);
 
       if (target !== null && isQuestionDashCard(dashcard)) {
         dispatch(
@@ -383,9 +380,6 @@ export const setParameterFilteringParameters = createThunkAction(
         filteringParameters,
       }));
 
-      const dashboardId = getDashboardId(getState());
-      unsetLocalDashboardParameterValue(dashboardId, parameterId);
-
       return { id: parameterId, filteringParameters };
     },
 );
@@ -393,18 +387,21 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: any) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const dashboardId = getDashboardId(getState());
+  (parameterId: ParameterId, value: any, dashboardId?: DashboardId) =>
+    (dispatch, getState) => {
+      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+      const isValueEmpty = isParameterValueEmpty(value);
 
-    setLocalDashboardParameterValue(dashboardId, parameterId, value);
+      if (isValueEmpty && dashboardId) {
+        dispatch(unsetLastUsedParamValues(dashboardId, parameterId));
+      }
 
-    return {
-      id: parameterId,
-      value: isParameterValueEmpty(value) ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
+      return {
+        id: parameterId,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+        isDraft: isSettingDraftParameterValues,
+      };
+    },
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
@@ -484,9 +481,6 @@ export const setParameterIsMultiSelect = createThunkAction(
       isMultiSelect: isMultiSelect,
     }));
 
-    const dashboardId = getDashboardId(getState());
-    unsetLocalDashboardParameterValue(dashboardId, parameterId);
-
     return { id: parameterId, isMultiSelect };
   },
 );
@@ -502,9 +496,6 @@ export const setParameterQueryType = createThunkAction(
         values_query_type: queryType,
       }));
 
-      const dashboardId = getDashboardId(getState());
-      unsetLocalDashboardParameterValue(dashboardId, parameterId);
-
       return { id: parameterId, queryType };
     },
 );
@@ -519,9 +510,6 @@ export const setParameterSourceType = createThunkAction(
         ...parameter,
         values_source_type: sourceType,
       }));
-
-      const dashboardId = getDashboardId(getState());
-      unsetLocalDashboardParameterValue(dashboardId, parameterId);
 
       return { id: parameterId, sourceType };
     },

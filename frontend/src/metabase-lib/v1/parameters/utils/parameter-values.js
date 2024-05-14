@@ -34,18 +34,13 @@ export function getValuePopulatedParameters({
   values = {},
   defaultRequired = false,
   collectionPreview = false,
-  dashboardId = null,
+  localDashboardParameters = {},
 }) {
   // pinned native question can have default values on parameters, usually we
   // get them from URL, which is not the case for collection preview. to force
   // BE to apply default values to those filters, empty array is provided
   if (collectionPreview) {
     return [];
-  }
-
-  let localDashboardParameters = {};
-  if (dashboardId) {
-    localDashboardParameters = getLocalDashboardParametersById(dashboardId);
   }
 
   return parameters.map(parameter => {
@@ -152,75 +147,4 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
-}
-
-export function getLocalDashboardParametersById(dashboardId) {
-  if (!dashboardId) {
-    return {};
-  }
-
-  const localParametersStringified = safeGetItem("dashboardParameters");
-  const localParameters = localParametersStringified
-    ? JSON.parse(localParametersStringified)
-    : {};
-
-  return localParameters[dashboardId] ?? {};
-}
-
-export function setLocalDashboardParameterValue(
-  dashboardId,
-  parameterId,
-  value,
-) {
-  if (!dashboardId) {
-    return;
-  }
-
-  const localParametersStringified = safeGetItem("dashboardParameters");
-  const localParameters = localParametersStringified
-    ? JSON.parse(localParametersStringified)
-    : {};
-
-  const localDashboardParameters = localParameters[dashboardId] ?? {};
-  localDashboardParameters[parameterId] = value;
-  localParameters[dashboardId] = localDashboardParameters;
-
-  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
-}
-
-export function unsetLocalDashboardParameterValue(dashboardId, parameterId) {
-  if (!dashboardId) {
-    return;
-  }
-
-  const localParametersStringified = safeGetItem("dashboardParameters");
-  const localParameters = localParametersStringified
-    ? JSON.parse(localParametersStringified)
-    : {};
-
-  const localDashboardParameters = localParameters[dashboardId] ?? {};
-  delete localDashboardParameters[parameterId];
-
-  localParameters[dashboardId] = localDashboardParameters;
-
-  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
-}
-
-function safeGetItem(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    // temp solution for PoC only
-    alert("Error reading from localStorage: " + e.message);
-    return null;
-  }
-}
-
-function safeSetItem(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch (e) {
-    // temp solution for PoC only
-    alert("Error writing to localStorage: " + e.message);
-  }
 }

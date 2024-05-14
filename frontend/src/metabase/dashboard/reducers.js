@@ -49,6 +49,7 @@ import {
   SET_DISPLAY_THEME,
   fetchDashboard,
 } from "./actions";
+import { UNSET_LAST_USED_PARAM_VALUES } from "./actions/core";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   calculateDashCardRowAfterUndo,
@@ -160,6 +161,22 @@ const dashboards = handleActions(
           dashboard.enable_embedding = payload.enable_embedding;
           dashboard.initially_published_at = payload.initially_published_at;
         }),
+    },
+    /**
+     * If we stay on the dashboard page and reset filter value,
+     * last_used_param_values are not updated as we do not fetch dashboard
+     * again, so we have to update it manually
+     */
+    [UNSET_LAST_USED_PARAM_VALUES]: (
+      state,
+      { payload: { parameterId, id } },
+    ) => {
+      return produce(state, draftState => {
+        const dashboard = draftState[id];
+        if (dashboard && dashboard.last_used_param_values) {
+          delete dashboard.last_used_param_values[parameterId];
+        }
+      });
     },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {

@@ -5,6 +5,7 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardId,
+  ParameterId,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -90,5 +91,15 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   (id: DashCardId, settings: DashCardVisualizationSettings) => ({
     id,
     settings,
+  }),
+);
+
+export const UNSET_LAST_USED_PARAM_VALUES =
+  "metabase/dashboard/UNSET_LAST_USED_PARAM_VALUES";
+export const unsetLastUsedParamValues = createAction(
+  UNSET_LAST_USED_PARAM_VALUES,
+  (dashboardId: DashboardId, parameterId: ParameterId) => ({
+    id: dashboardId,
+    parameterId,
   }),
 );

@@ -20,7 +20,6 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import { getLocalDashboardParametersById } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { DashboardCard } from "metabase-types/api";
 
 // normalizr schemas
@@ -169,7 +168,7 @@ export const fetchDashboard = createAsyncThunk(
       );
 
       const recentlyUsedDashboardParameters =
-        getLocalDashboardParametersById(dashId);
+        result["last_used_param_values"] ?? {};
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
