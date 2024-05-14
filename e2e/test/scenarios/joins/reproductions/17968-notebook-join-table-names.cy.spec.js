@@ -1,8 +1,9 @@
 import {
-  restore,
   getNotebookStep,
+  modal,
   openOrdersTable,
   popover,
+  restore,
   summarize,
 } from "e2e/support/helpers";
 
@@ -24,7 +25,10 @@ describe("issue 17968", () => {
     popover().findByText("Created At").click();
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    popover().findByText("Products").click();
+    modal().within(() => {
+      cy.findByText("Tables").click();
+      cy.findByText("Products").click();
+    });
     popover().findByText("Count").click();
 
     getNotebookStep("join", { stage: 1 })
