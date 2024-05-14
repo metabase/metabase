@@ -131,7 +131,7 @@ jobs:
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
-          aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$BUCKET_PATH
+          aws s3 cp ${OUTPUT_FILE} s3://$BUCKET/$BUCKET_PATH
 
 
   publish-npm:
