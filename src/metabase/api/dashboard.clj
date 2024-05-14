@@ -96,6 +96,7 @@
                            :series
                            :dashcard/action
                            :dashcard/linkcard-info]
+                :can_restore
                 :last_used_param_values
                 :tabs
                 :collection_authority_level
@@ -252,8 +253,7 @@
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
         hide-unreadable-cards
-        add-query-average-durations
-        (assoc :can_restore false))))
+        add-query-average-durations)))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to

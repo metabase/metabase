@@ -781,8 +781,7 @@
   `:crowberto`."
   [user coll]
   (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id coll) "/items"))
-       :data
-       mt/boolean-ids-and-timestamps))
+       :data))
 
 (deftest collections-are-moved-to-trash-when-archived
   (let [set-of-item-names (fn [user coll] (->> (get-items user coll)
@@ -794,9 +793,9 @@
                                              :location (collection/children-location collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
+        (is (partial= [{:name "Art Collection", :description nil, :model "collection"}]
                       (get-items :crowberto (collection/trash-collection-id))))
-        (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
+        (is (partial= [{:name "Baby Collection", :model "collection"}]
                       (get-items :crowberto collection)))))
     (testing "I can untrash something by marking it as not archived"
       (t2.with-temp/with-temp [Collection collection {:name "A"}]
@@ -2157,11 +2156,24 @@
   (testing "Trash collection is NOT included if `exclude-archived` is passed"
     (is (not (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))
 
+(defn- get-item-with-id-in-coll
+  [coll-id item-id]
+  (->> (get-items :crowberto coll-id)
+       (filter #(= (:id %) item-id))
+       first))
+
 (deftest ^:parallel can-restore
-  (t2.with-temp/with-temp [Collection collection-a {:name "A"}
-                           Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}]
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection-a)) {:archived true})
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
-    (is (every? #(false? (:can_restore %)) (get-items :crowberto (collection/trash-collection-id))))
-    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id subcollection-a))))))
-    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-a))))))))
+  (testing "can_restore is correctly populated for dashboard"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard)))))))))

@@ -484,7 +484,6 @@
       (update :archived api/bit->boolean)
       (t2/hydrate :can_write)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
-      (assoc :can_restore false)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -519,7 +518,7 @@
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write)
+      (t2/hydrate :can_write :can_restore)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
