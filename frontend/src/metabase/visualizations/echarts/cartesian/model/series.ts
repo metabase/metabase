@@ -7,6 +7,7 @@ import type {
   DataKey,
   Datum,
   DimensionModel,
+  LabelFormatter,
   LegacySeriesSettingsObjectKey,
   SeriesFormatters,
   SeriesModel,
@@ -39,6 +40,7 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "../constants/dataset";
 import { cachedFormatter } from "../utils/formatter";
+import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -428,4 +430,35 @@ export const getSeriesLabelsFormatters = (
   });
 
   return formatters;
+};
+
+export const getWaterfallLabelFormatter = (
+  seriesModel: SeriesModel,
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): LabelFormatter | undefined => {
+  const getValue = (datum: Datum) => datum[WATERFALL_VALUE_KEY];
+  const isCompact = shouldRenderCompact(
+    dataset,
+    getValue,
+    seriesModel,
+    settings,
+    renderingContext,
+  );
+
+  const hasDataLabels = settings["graph.show_values"];
+
+  if (!hasDataLabels) {
+    return;
+  }
+
+  return cachedFormatter((value: RowValue) => {
+    return renderingContext.formatValue(value, {
+      ...(settings.column?.(seriesModel.column) ?? {}),
+      jsx: false,
+      compact: isCompact,
+      negativeInParentheses: true,
+    });
+  });
 };

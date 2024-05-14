@@ -8,6 +8,7 @@ import {
 import {
   getCardSeriesModels,
   getDimensionModel,
+  getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   BaseCartesianChartModel,
@@ -102,6 +103,13 @@ export const getWaterfallChartModel = (
     settings,
   );
 
+  const waterfallLabelFormatter = getWaterfallLabelFormatter(
+    seriesModel,
+    transformedDataset,
+    settings,
+    renderingContext,
+  );
+
   return {
     stackModels: [],
     dataset: originalDatasetWithTotal,
@@ -116,5 +124,6 @@ export const getWaterfallChartModel = (
     seriesIdToDataKey: {
       [WATERFALL_TOTAL_KEY]: seriesModel.dataKey,
     },
+    waterfallLabelFormatter,
   };
 };

@@ -213,6 +213,7 @@ export type BaseCartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
   stackedLabelsFormatters?: StackedSeriesFormatters;
+  waterfallLabelFormatter?: LabelFormatter;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

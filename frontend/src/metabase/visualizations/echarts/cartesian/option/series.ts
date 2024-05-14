@@ -86,9 +86,12 @@ export function getDataLabelFormatter(
   seriesModel: SeriesModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   formatter: LabelFormatter,
+  labelDataKey?: DataKey,
 ) {
+  const accessKey = labelDataKey ?? seriesModel.dataKey;
+
   return (params: CallbackDataParams) => {
-    const value = (params.data as Datum)[seriesModel.dataKey];
+    const value = (params.data as Datum)[accessKey];
 
     if (typeof value !== "number") {
       return " ";
