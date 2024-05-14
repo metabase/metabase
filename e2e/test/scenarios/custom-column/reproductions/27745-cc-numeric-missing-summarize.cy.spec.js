@@ -1,6 +1,6 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  modal,
+  entityPickerModal,
   restore,
   startNewQuestion,
   enterCustomColumnDetails,
@@ -24,7 +24,7 @@ import {
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByPlaceholderText("Search…").type("colors");
         cy.findByTestId("result-item")
           .contains(/colors/i)

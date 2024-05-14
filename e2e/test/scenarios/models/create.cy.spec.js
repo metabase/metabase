@@ -1,5 +1,10 @@
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, restore, visitCollection } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  modal,
+  restore,
+  visitCollection,
+} from "e2e/support/helpers";
 
 const modelName = "A name";
 
@@ -67,7 +72,7 @@ describe("scenarios > models > create", () => {
 
     navigateToNewModelPage("structured");
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText("Orders").click();
     });

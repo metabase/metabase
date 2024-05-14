@@ -1,6 +1,6 @@
 import {
   getNotebookStep,
-  modal,
+  entityPickerModal,
   popover,
   restore,
   startNewQuestion,
@@ -19,19 +19,19 @@ describe("issue 15342", { tags: "@external" }, () => {
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("People").click();
     });
 
     cy.icon("join_left_outer").click();
-    modal().findByText("Orders").click();
+    entityPickerModal().findByText("Orders").click();
     getNotebookStep("join").findByLabelText("Right column").click();
     popover().findByText("Product ID").click();
 
     cy.icon("join_left_outer").last().click();
-    modal().findByText("Products").click();
+    entityPickerModal().findByText("Products").click();
     getNotebookStep("join").icon("join_left_outer").click();
     popover().findByText("Inner join").click();
 

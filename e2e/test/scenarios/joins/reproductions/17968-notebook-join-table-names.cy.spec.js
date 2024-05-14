@@ -1,6 +1,6 @@
 import {
+  entityPickerModal,
   getNotebookStep,
-  modal,
   openOrdersTable,
   popover,
   restore,
@@ -25,7 +25,7 @@ describe("issue 17968", () => {
     popover().findByText("Created At").click();
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText("Products").click();
     });

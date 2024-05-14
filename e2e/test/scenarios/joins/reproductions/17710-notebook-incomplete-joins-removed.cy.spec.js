@@ -1,6 +1,6 @@
 import {
+  entityPickerModal,
   getNotebookStep,
-  modal,
   openOrdersTable,
   restore,
   visualize,
@@ -17,7 +17,7 @@ describe("issue 17710", () => {
     openOrdersTable({ mode: "notebook" });
 
     cy.button("Join data").click();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText("Products").click();
     });

@@ -5,7 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
-  modal,
+  entityPickerModal,
   popover,
   appBar,
   restore,
@@ -237,7 +237,7 @@ describeEE("scenarios > embedding > full app", () => {
 
         cy.button("New").click();
         popover().findByText("Question").click();
-        modal().within(() => {
+        entityPickerModal().within(() => {
           cy.findByText("Tables").click();
           cy.findByText("Orders").click();
         });

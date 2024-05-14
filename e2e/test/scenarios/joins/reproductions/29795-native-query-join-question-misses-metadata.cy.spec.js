@@ -1,5 +1,5 @@
 import {
-  modal,
+  entityPickerModal,
   restore,
   visualize,
   popover,
@@ -27,7 +27,7 @@ describe("issue 29795", () => {
 
     cy.icon("join_left_outer").click();
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findByText(NATIVE_QUESTION).click();
     });

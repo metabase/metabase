@@ -1,8 +1,9 @@
 import {
-  popover,
+  entityPickerModal,
+  interceptIfNotPreviouslyDefined,
   modal,
   openQuestionActions,
-  interceptIfNotPreviouslyDefined,
+  popover,
 } from "e2e/support/helpers";
 
 export function assertQuestionIsBasedOnModel({
@@ -106,5 +107,5 @@ export function selectFromDropdown(option, clickOpts) {
 export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
-  modal().findByText(modelName).click();
+  entityPickerModal().findByText(modelName).click();
 }

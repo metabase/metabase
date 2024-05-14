@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { modal, restore, visualize } from "e2e/support/helpers";
+import { entityPickerModal, restore, visualize } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -30,7 +30,7 @@ describe("issue 17767", () => {
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText("Reviews").click();
     });

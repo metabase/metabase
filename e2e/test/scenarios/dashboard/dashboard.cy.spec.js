@@ -112,7 +112,7 @@ describe("scenarios > dashboard", () => {
         .findByRole("link", { name: "ask a new one" })
         .click();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });

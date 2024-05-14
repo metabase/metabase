@@ -1,6 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  modal,
+  entityPickerModal,
   openProductsTable,
   queryBuilderHeader,
   queryBuilderMain,
@@ -35,7 +35,7 @@ describe("issue 15578", () => {
     openProductsTable({ mode: "notebook" });
 
     cy.button("Join data").click();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findByText(JOINED_QUESTION_NAME).click();
     });

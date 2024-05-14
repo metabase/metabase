@@ -1,6 +1,10 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { modal, restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -31,7 +35,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
 
     // It shouldn't show in a new question data picker
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.contains("Products").should("exist");
       cy.contains("Orders").should("not.exist");

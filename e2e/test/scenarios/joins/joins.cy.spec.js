@@ -7,11 +7,11 @@ import {
   assertJoinValid,
   assertQueryBuilderRowCount,
   enterCustomColumnDetails,
+  entityPickerModal,
   filter,
   getNotebookStep,
   join,
   joinTable,
-  modal,
   openNotebook,
   openOrdersTable,
   popover,
@@ -353,7 +353,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
-    modal().findByText("People").click();
+    entityPickerModal().findByText("People").click();
 
     getNotebookStep("join").should("not.exist");
 

@@ -1,6 +1,9 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  entityPickerModal,
+  popover,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 /**
@@ -143,7 +146,7 @@ export function joinTable(
   lhsColumnName?: string,
   rhsColumnName?: string,
 ) {
-  modal().within(() => {
+  entityPickerModal().within(() => {
     cy.findByText("Tables").click();
     cy.findByText(tableName).click();
   });
@@ -170,7 +173,7 @@ export function selectSavedQuestionsToJoin(
   secondQuestionName: string,
 ) {
   cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  modal().within(() => {
+  entityPickerModal().within(() => {
     cy.findByText("Models").should("exist");
     cy.findByText("Tables").should("exist");
     cy.findByText("Saved questions").click();
@@ -182,7 +185,7 @@ export function selectSavedQuestionsToJoin(
   // join to question b
   cy.icon("join_left_outer").click();
 
-  modal().within(() => {
+  entityPickerModal().within(() => {
     cy.findByText("Models").should("exist");
     cy.findByText("Tables").should("exist");
     cy.findByText("Saved questions").click();

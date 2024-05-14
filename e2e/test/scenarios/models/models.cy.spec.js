@@ -31,7 +31,10 @@ import {
   focusNativeEditor,
   echartsContainer,
 } from "e2e/support/helpers";
-import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  entityPickerModal,
+  questionInfoButton,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,
@@ -243,7 +246,7 @@ describe("scenarios > models", () => {
     it("transforms the data picker", () => {
       startNewQuestion();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Models").click();
         cy.findByText("First collection").should("exist");
         cy.findByText("Orders").should("exist");
@@ -279,13 +282,13 @@ describe("scenarios > models", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
 
       startNewQuestion();
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Models").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Tables").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");

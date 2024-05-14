@@ -2,7 +2,11 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { modal, restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const collectionName = "Parent";
 
@@ -22,7 +26,7 @@ describe("issue 24660", () => {
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findAllByText(collectionName).first().click();
 

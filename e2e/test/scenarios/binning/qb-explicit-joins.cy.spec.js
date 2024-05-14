@@ -1,6 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  modal,
+  entityPickerModal,
   restore,
   visualize,
   changeBinningForDimension,
@@ -67,7 +67,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       startNewQuestion();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Saved questions").click();
         cy.findByText("QB Binning").click();
       });
@@ -133,7 +133,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       startNewQuestion();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Saved questions").click();
         cy.findByText("QB Binning").click();
       });
@@ -206,7 +206,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       startNewQuestion();
 
-      modal().within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Saved questions").click();
         cy.findByText("QB Binning").click();
       });

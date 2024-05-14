@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  modal,
+  entityPickerModal,
   restore,
   popover,
   summarize,
@@ -249,7 +249,7 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText("Products").click();
     });

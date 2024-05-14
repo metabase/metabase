@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  modal,
+  entityPickerModal,
   restore,
   popover,
   visualize,
@@ -32,7 +32,7 @@ describe("binning related reproductions", () => {
     });
 
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findByText("16327").click();
     });
@@ -104,7 +104,7 @@ describe("binning related reproductions", () => {
     );
 
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findByText("17975").click();
     });
@@ -144,7 +144,7 @@ describe("binning related reproductions", () => {
 
     cy.icon("join_left_outer").click();
 
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByTextEnsureVisible("Saved questions").click();
       cy.findByText("18646").click();
     });
@@ -190,7 +190,7 @@ describe("binning related reproductions", () => {
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Saved questions").click();
       cy.findByText("11439").click();
     });
@@ -379,7 +379,7 @@ describe("binning related reproductions", () => {
 
 function openSummarizeOptions(questionType) {
   startNewQuestion();
-  modal().within(() => {
+  entityPickerModal().within(() => {
     cy.findByText("Saved questions").click();
     cy.findByText("16379").click();
   });

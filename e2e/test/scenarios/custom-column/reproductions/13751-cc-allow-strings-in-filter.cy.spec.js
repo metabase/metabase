@@ -2,7 +2,7 @@ import {
   addCustomColumn,
   enterCustomColumnDetails,
   getNotebookStep,
-  modal,
+  entityPickerModal,
   popover,
   visualize,
   restore,
@@ -20,7 +20,7 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Tables").click();
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
