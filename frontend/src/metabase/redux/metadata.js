@@ -249,7 +249,7 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
 );
 
 export const loadMetadataForDependentItems =
-  (dependentItems, { reload } = {}) =>
+  (dependentItems, { reload = false } = {}) =>
   dispatch => {
     const options = { reload, noEvent: true };
     const uniqueDependentItems = _.uniq(
