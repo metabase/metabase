@@ -131,7 +131,7 @@ export const fetchDashboard = createAsyncThunk(
           getSelectedTabId(getState()) ?? getInitialSelectedTabId(result);
 
         const cards =
-          selectedTabId === undefined
+          selectedTabId == null
             ? result.dashcards
             : result.dashcards.filter(
                 (c: DashboardCard) => c.dashboard_tab_id === selectedTabId,
