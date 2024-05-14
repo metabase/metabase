@@ -4,7 +4,6 @@ import { useCancelCloudMigrationMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Text, List, Button, Box, Modal, Progress } from "metabase/ui";
@@ -72,10 +71,7 @@ export const MigrationInProgress = ({
           <Text size="md" c="text-medium">
             {progressMessage[migration.state]}
           </Text>
-          <Progress value={migration.progress} />
-          <Text size="md" fw="bold" color={color("brand")}>
-            {t`Progress`} - {migration.progress} / 100%
-          </Text>
+          <Progress value={migration.progress} mt=".25rem" />
         </Box>
 
         <Button

@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import { isProduction } from "metabase/env";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -38,7 +39,7 @@ export const isInProgressMigration = (
 
 const SECOND = 1000;
 
-export const pollingIntervalsByState: Record<
+const defaultPollingIntervalsByState: Record<
   InternalCloudMigrationState,
   number | undefined
 > = {
@@ -52,10 +53,26 @@ export const pollingIntervalsByState: Record<
   done: undefined,
 };
 
+export const getPollingInterval = (
+  migration: CloudMigration,
+): number | undefined => {
+  const { progress, state } = migration;
+  const defaultPollingInterval = defaultPollingIntervalsByState[state];
+  const isAlmostDone = progress > 90 && progress < 100;
+
+  if (isAlmostDone) {
+    return 1 * SECOND;
+  }
+
+  return defaultPollingInterval;
+};
+
 export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
-// TODO: handle staging / prod linking
 export const getCheckoutUrl = (migration: CloudMigration) => {
-  return `https://store.staging.metabase.com/checkout?migration-id=${migration.id}`;
+  const baseUrl = isProduction
+    ? `https://store.metabase.com`
+    : `https://store.staging.metabase.com`;
+  return `${baseUrl}/checkout?migration-id=${migration.external_id}`;
 };

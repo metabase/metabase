@@ -2,12 +2,11 @@ import { c, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
-import { getStoreUrl } from "metabase/selectors/settings";
 import { Flex, Icon, Text, List, Button, Divider, Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
-import { getMigrationEventTime } from "./utils";
+import { getCheckoutUrl, getMigrationEventTime } from "./utils";
 
 interface MigrationSuccessProps {
   migration: CloudMigration;
@@ -46,7 +45,7 @@ export const MigrationSuccess = ({
           </Text>
 
           <Box mt="1.5rem">
-            <ExternalLink href={getStoreUrl()}>
+            <ExternalLink href={getCheckoutUrl(migration)}>
               <Button variant="filled">{t`Go to Metabase store`}</Button>
             </ExternalLink>
           </Box>

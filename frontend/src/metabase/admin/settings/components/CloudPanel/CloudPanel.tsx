@@ -19,7 +19,7 @@ import {
   getCheckoutUrl,
   isInProgressMigration,
 } from "./utils";
-import { getStartedVisibleStates, pollingIntervalsByState } from "./utils";
+import { getStartedVisibleStates, getPollingInterval } from "./utils";
 
 export const CloudPanel = () => {
   const dispatch = useDispatch();
@@ -41,9 +41,11 @@ export const CloudPanel = () => {
 
   useEffect(
     function syncPollingInterval() {
-      setPollingInterval(pollingIntervalsByState[migrationState]);
+      if (migration) {
+        setPollingInterval(getPollingInterval(migration));
+      }
     },
-    [migrationState],
+    [migration],
   );
 
   useEffect(
@@ -55,7 +57,8 @@ export const CloudPanel = () => {
     [dispatch, migrationState],
   );
 
-  const [createCloudMigration] = useCreateCloudMigrationMutation();
+  const [createCloudMigration, createCloudMigrationResult] =
+    useCreateCloudMigrationMutation();
 
   const handleCreateMigration = async () => {
     const migration = await createCloudMigration().unwrap();
@@ -69,7 +72,10 @@ export const CloudPanel = () => {
         <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
 
         {getStartedVisibleStates.has(migrationState) && (
-          <MigrationStart startNewMigration={handleCreateMigration} />
+          <MigrationStart
+            startNewMigration={handleCreateMigration}
+            isStarting={createCloudMigrationResult.isLoading}
+          />
         )}
 
         <Box mt="2rem">

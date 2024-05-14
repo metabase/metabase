@@ -8,9 +8,13 @@ import { Modal, Box, Button, Text, List, Flex } from "metabase/ui";
 
 interface MigrationStartProps {
   startNewMigration: () => void;
+  isStarting: boolean;
 }
 
-export const MigrationStart = ({ startNewMigration }: MigrationStartProps) => {
+export const MigrationStart = ({
+  startNewMigration,
+  isStarting,
+}: MigrationStartProps) => {
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
@@ -66,6 +70,7 @@ export const MigrationStart = ({ startNewMigration }: MigrationStartProps) => {
             <Flex justify="end">
               <Button
                 variant="filled"
+                disabled={isStarting}
                 onClick={startNewMigration}
               >{t`Migrate now`}</Button>
             </Flex>
