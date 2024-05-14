@@ -169,7 +169,6 @@ describeWithSnowplow("extract shortcut", () => {
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
-              fields: [["field", PEOPLE.EMAIL, null]],
             },
           },
           {
@@ -210,7 +209,6 @@ describeWithSnowplow("extract shortcut", () => {
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
-              fields: [["field", PEOPLE.EMAIL, { "base-type": "type/String" }]],
             },
           },
           {
@@ -262,7 +260,12 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  cy.findAllByRole("columnheader")
+    .last()
+    .should("have.text", newColumn)
+    .should("be.visible");
+
+  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
