@@ -9,6 +9,9 @@ import {
   openUnpinnedItemMenu,
   popover,
   restore,
+  undo,
+  undoToast,
+  undoToastList,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -115,4 +118,67 @@ describe("scenarios > metrics > collection", () => {
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
   });
+
+  it("should be possible to archive, unarchive, and delete a metric", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    createQuestion({ ...ORDERS_TIMESERIES_METRIC, collection_position: null });
+    cy.visit("/collection/root");
+
+    openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    popover().findByText("Archive").click();
+    getPinnedSection().should("not.exist");
+    undoToast().findByText("Archived metric").should("be.visible");
+    undo();
+    getPinnedSection()
+      .findByText(ORDERS_SCALAR_METRIC.name)
+      .should("be.visible");
+
+    openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    popover().findByText("Archive").click();
+    getUnpinnedSection()
+      .findByText(ORDERS_TIMESERIES_METRIC.name)
+      .should("not.exist");
+    undoToastList().findByText("Archived metric").should("be.visible");
+
+    openArchive();
+    unarchiveArchivedItem(ORDERS_TIMESERIES_METRIC.name);
+    getArchivedList()
+      .findByText(ORDERS_TIMESERIES_METRIC.name)
+      .should("not.exist");
+    undoToastList().findByText("Unarchived metric").should("be.visible");
+
+    navigationSidebar().findByText("Our analytics").click();
+    openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    popover().findByText("Archive").click();
+    openArchive();
+    deleteArchivedItem(ORDERS_TIMESERIES_METRIC.name);
+    getArchivedList()
+      .findByText(ORDERS_TIMESERIES_METRIC.name)
+      .should("not.exist");
+  });
 });
+
+function openArchive() {
+  navigationSidebar().icon("ellipsis").click();
+  popover().findByText("View archive").click();
+}
+
+function getArchivedList() {
+  return cy.findByTestId("archived-list");
+}
+
+function unarchiveArchivedItem(name) {
+  getArchivedList()
+    .findByTestId(`archive-item-${name}`)
+    .realHover()
+    .icon("unarchive")
+    .click();
+}
+
+function deleteArchivedItem(name) {
+  getArchivedList()
+    .findByTestId(`archive-item-${name}`)
+    .realHover()
+    .icon("trash")
+    .click();
+}
