@@ -67,7 +67,7 @@ function ParametersList({
       setValue={
         setParameterValue &&
         (value =>
-          setParameterValue(valuePopulatedParameter.id, value, dashboard.id))
+          setParameterValue(valuePopulatedParameter.id, value, dashboard?.id))
       }
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
