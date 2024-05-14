@@ -331,24 +331,22 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-function getOtherSeriesValues(
-  dataset: ChartDataset,
+function getOtherSeriesTransform(
   groupedSeriesKeys: DataKey[],
-) {
-  const transformedDataset: ChartDataset = [];
+): ConditionalTransform {
+  return {
+    condition: groupedSeriesKeys.length > 0,
+    fn: datum => {
+      const transformedDatum = { ...datum };
 
-  dataset.forEach(datum => {
-    const transformedDatum = { ...datum };
+      transformedDatum[OTHER_DATA_KEY] = groupedSeriesKeys.reduce(
+        (sum, key) => sum + checkNumber(datum[key] ?? 0),
+        0,
+      );
 
-    transformedDatum[OTHER_DATA_KEY] = groupedSeriesKeys.reduce(
-      (sum, key) => sum + checkNumber(datum[key] ?? 0),
-      0,
-    );
-
-    transformedDataset.push(transformedDatum);
-  });
-
-  return transformedDataset;
+      return transformedDatum;
+    },
+  };
 }
 
 function getStackedValueTransformFunction(
@@ -619,10 +617,6 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
-  if (groupedSeriesKeys.length > 0) {
-    dataset = getOtherSeriesValues(dataset, groupedSeriesKeys);
-  }
-
   if (isTimeSeriesAxis(xAxisModel)) {
     dataset = interpolateTimeSeriesData(dataset, xAxisModel);
   }
@@ -633,6 +627,7 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(seriesDataKeys),
     },
+    getOtherSeriesTransform(groupedSeriesKeys),
     getKeyBasedDatasetTransform(seriesDataKeys, value =>
       yAxisScaleTransforms.toEChartsAxisValue(value),
     ),
