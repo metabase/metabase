@@ -12,7 +12,7 @@ The `expression` is the value to get from a different row.
 
 The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
 
-Example: `Offset([Total], -1)` would get the `Total` value from the previous row.
+Example: `Offset(Sum([Total]), -1)` would get the value of `Sum([Total])` from the previous row.
 
 ## The order of the breakouts matter
 

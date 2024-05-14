@@ -730,7 +730,7 @@ The `expression` is the value to get from a different row.
 
 The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
 
-Example: `Offset([Sum of Total], -1)` would get the `Sum of Total` value from the previous row.
+Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the previous row.
 
 See [Offset](./expressions/offset.md).
 
