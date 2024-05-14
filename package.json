@@ -30,7 +30,6 @@
     "@visx/clip-path": "^2.1.0",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
-    "@visx/legend": "^2.10.0",
     "@visx/mock-data": "^2.1.2",
     "@visx/responsive": "^2.10.0",
     "@visx/scale": "1.7.0",
