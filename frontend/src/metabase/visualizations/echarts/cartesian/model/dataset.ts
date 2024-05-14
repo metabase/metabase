@@ -339,9 +339,6 @@ function getOtherSeriesValues(
 
   dataset.forEach(datum => {
     const transformedDatum = { ...datum };
-    groupedSeriesKeys.forEach(key => {
-      delete transformedDatum[key];
-    });
 
     transformedDatum[OTHER_DATA_KEY] = groupedSeriesKeys.reduce(
       (sum, key) => sum + checkNumber(datum[key] ?? 0),
