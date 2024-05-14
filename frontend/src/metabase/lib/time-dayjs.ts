@@ -18,9 +18,7 @@ const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
 
 /**
  * This function is used to get a tolerance for the difference between two dates
- * across the daylight savings time change, using dayjs' date.diff method. For
- * example between March 10th (when daylight savings beigns) and March 11th, the
- * .diff method will return
+ * across the daylight savings time change, using dayjs' date.diff method.
  */
 export function getDaylightSavingsChangeTolerance(unit: string) {
   return unit in DAYLIGHT_SAVINGS_CHANGE_TOLERANCE
