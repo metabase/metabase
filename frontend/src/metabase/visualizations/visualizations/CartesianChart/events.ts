@@ -197,7 +197,11 @@ const getTooltipFooterData = (
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
-  if (display === "scatter" || !isTimeSeriesAxis(chartModel.xAxisModel)) {
+  if (
+    display === "scatter" ||
+    display === "waterfall" ||
+    !isTimeSeriesAxis(chartModel.xAxisModel)
+  ) {
     return [];
   }
 

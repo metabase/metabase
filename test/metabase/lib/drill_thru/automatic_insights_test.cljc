@@ -50,12 +50,13 @@
     (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
       (canned/canned-test
         :drill-thru/automatic-insights
-        (fn [_test-case context {:keys [click]}]
-          (or ;; Any pivot or legend click is good.
-              (#{:pivot :legend} click)
-              ;; As are cell clicks with at least 1 breakout.
-              (and (= click :cell)
-                   (seq (:dimensions context)))))))
+        (fn [test-case context {:keys [click]}]
+          (and (not (:native? test-case))
+               (or ;; Any pivot or legend click is good.
+                   (#{:pivot :legend} click)
+                   ;; As are cell clicks with at least 1 breakout.
+                   (and (= click :cell)
+                        (seq (:dimensions context))))))))
     (testing "not available at all with xrays disabled"
       (canned/canned-test
         :drill-thru/automatic-insights

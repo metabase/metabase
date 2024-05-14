@@ -619,6 +619,13 @@ LineReplaceMissingValuesZero.args = {
   renderingContext,
 };
 
+export const LineChartBrokenDimensionsMetricsSettings = Template.bind({});
+LineChartBrokenDimensionsMetricsSettings.args = {
+  rawSeries: data.lineChartBrokenDimensionsMetricsSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const ComboStackedBarsAreasNormalized = Template.bind({});
 ComboStackedBarsAreasNormalized.args = {
   rawSeries: data.comboStackedBarsAreasNormalized as any,
