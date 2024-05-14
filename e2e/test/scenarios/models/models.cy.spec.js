@@ -331,9 +331,15 @@ describe("scenarios > models", () => {
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
       startNewQuestion();
-      popover().within(() => {
+      modal().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");
+        cy.findByText("Tables").should("not.exist");
+
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
       });
     });
   });
