@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeWithSnowplow,
@@ -11,6 +12,9 @@ import {
   restore,
   visualize,
   createQuestion,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -20,31 +24,37 @@ const DATE_CASES = [
     option: "Hour of day",
     value: "21",
     example: "0, 1",
+    expressions: ["get-hour"],
   },
   {
     option: "Day of month",
     value: "11",
     example: "1, 2",
+    expressions: ["get-day"],
   },
   {
     option: "Day of week",
     value: "Tuesday",
     example: "Monday, Tuesday",
+    expressions: ["day-name", "get-day-of-week"],
   },
   {
     option: "Month of year",
     value: "Feb",
     example: "Jan, Feb",
+    expressions: ["month-name", "get-month"],
   },
   {
     option: "Quarter of year",
     value: "Q1",
     example: "Q1, Q2",
+    expressions: ["quarter-name", "get-quarter"],
   },
   {
     option: "Year",
     value: "2,025",
     example: "2023, 2024",
+    expressions: ["get-year"],
   },
 ];
 
@@ -53,11 +63,13 @@ const EMAIL_CASES = [
     option: "Domain",
     value: "yahoo",
     example: "example, online",
+    expressions: ["domain"],
   },
   {
     option: "Host",
     value: "yahoo.com",
     example: "example.com, online.com",
+    expressions: ["host"],
   },
 ];
 
@@ -66,28 +78,37 @@ const URL_CASES = [
     option: "Domain",
     value: "yahoo",
     example: "example, online",
+    expressions: ["domain"],
   },
   {
     option: "Subdomain",
     value: "",
     example: "www, maps",
+    expressions: ["subdomain"],
   },
   {
     option: "Host",
     value: "yahoo.com",
     example: "example.com, online.com",
+    expressions: ["host"],
   },
 ];
 
 describeWithSnowplow("extract shortcut", () => {
   beforeEach(() => {
     restore();
+    resetSnowplow();
+
     cy.signInAsAdmin();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
   });
 
   describe("date columns", () => {
     describe("should add a date expression for each option", () => {
-      DATE_CASES.forEach(({ option, value, example }) => {
+      DATE_CASES.forEach(({ option, value, example, expressions }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
@@ -95,6 +116,11 @@ describeWithSnowplow("extract shortcut", () => {
             option,
             value,
             example,
+          });
+          expectGoodSnowplowEvent({
+            event: "column_extract_via_plus_modal",
+            custom_expressions_used: expressions,
+            database_id: SAMPLE_DB_ID,
           });
         });
       });
@@ -136,7 +162,7 @@ describeWithSnowplow("extract shortcut", () => {
       cy.signInAsAdmin();
     });
 
-    EMAIL_CASES.forEach(({ option, value, example }) => {
+    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
       it(option, () => {
         createQuestion(
           {
@@ -157,6 +183,11 @@ describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
+        expectGoodSnowplowEvent({
+          event: "column_extract_via_plus_modal",
+          custom_expressions_used: expressions,
+          database_id: SAMPLE_DB_ID,
+        });
       });
     });
   });
@@ -172,7 +203,7 @@ describeWithSnowplow("extract shortcut", () => {
       });
     });
 
-    URL_CASES.forEach(({ option, value, example }) => {
+    URL_CASES.forEach(({ option, value, example, expressions }) => {
       it(option, () => {
         createQuestion(
           {
@@ -192,6 +223,11 @@ describeWithSnowplow("extract shortcut", () => {
           option,
           value,
           example,
+        });
+        expectGoodSnowplowEvent({
+          event: "column_extract_via_plus_modal",
+          custom_expressions_used: expressions,
+          database_id: SAMPLE_DB_ID,
         });
       });
     });

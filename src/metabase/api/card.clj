@@ -615,7 +615,9 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil}))))))
+                      {:collection_id new-collection-id-or-nil})))))
+  (when new-collection-id-or-nil
+    (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with

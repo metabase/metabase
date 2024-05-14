@@ -1,3 +1,4 @@
+import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
   Dashboard,
   DashboardId,
@@ -112,4 +113,6 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
+
+  theme: DisplayTheme | null;
 }

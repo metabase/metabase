@@ -757,12 +757,6 @@
   [render-type card data]
   (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
 
-(defn execute-n-times-in-parallel
-  "Execute f n times in parallel and derefs all the results."
-  [f n]
-  (mapv deref (for [_ (range n)]
-               (future (f)))))
-
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
                                                                           {:aggregation [[:count]]
@@ -772,10 +766,10 @@
                                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                             :graph.metrics    ["count"]}}]
     (let [data (:data (qp/process-query (:dataset_query card)))]
-      (is (every? some? (execute-n-times-in-parallel #(render-card :javascript_visualization card data) 3))))))
+      (is (every? some? (mt/repeat-concurrently 3 #(render-card :javascript_visualization card data)))))))
 
 (deftest render-cards-are-thread-safe-test-for-table
   (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})
                                    :display       :table}]
     (let [data (:data (qp/process-query (:dataset_query card)))]
-      (is (every? some? (execute-n-times-in-parallel #(render-card :table card data) 3))))))
+      (is (every? some? (mt/repeat-concurrently 3 #(render-card :table card data)))))))
