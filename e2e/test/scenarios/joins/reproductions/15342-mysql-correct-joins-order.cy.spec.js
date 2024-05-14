@@ -1,8 +1,10 @@
 import {
-  restore,
+  getNotebookStep,
+  modal,
   popover,
-  visualize,
+  restore,
   startNewQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
@@ -17,22 +19,21 @@ describe("issue 15342", { tags: "@external" }, () => {
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    modal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("People").click();
     });
 
-    addJoin({
-      leftColumn: "ID",
-      rightTable: "Orders",
-      rightColumn: "Product ID",
-    });
+    cy.icon("join_left_outer").click();
+    modal().findByText("Orders").click();
+    getNotebookStep("join").findByLabelText("Right column").click();
+    popover().findByText("Product ID").click();
 
-    addJoin({
-      rightTable: "Products",
-      joinType: "inner",
-    });
+    cy.icon("join_left_outer").last().click();
+    modal().findByText("Products").click();
+    getNotebookStep("join").icon("join_left_outer").click();
+    popover().findByText("Inner join").click();
 
     visualize();
 
@@ -43,45 +44,3 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
   });
 });
-
-function selectFromDropdown(itemName) {
-  return popover().findByText(itemName);
-}
-
-const JOIN_LABEL = {
-  left: "Left outer join",
-  right: "Right outer join",
-  inner: "Inner join",
-};
-
-function addJoin({
-  leftTable,
-  leftColumn,
-  rightTable,
-  rightColumn,
-  joinType = "left",
-} = {}) {
-  cy.icon("join_left_outer").last().click();
-
-  selectFromDropdown(rightTable).click();
-
-  if (leftTable) {
-    selectFromDropdown(leftTable).click();
-  }
-
-  if (leftColumn) {
-    selectFromDropdown(leftColumn).click();
-  }
-
-  if (rightColumn) {
-    selectFromDropdown(rightColumn).click();
-  }
-
-  cy.findAllByText("Join data")
-    .last()
-    .next()
-    .within(() => {
-      cy.icon("join_left_outer").click();
-    });
-  selectFromDropdown(JOIN_LABEL[joinType]).click();
-}
