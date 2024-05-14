@@ -7,7 +7,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, Text, List, Button, Box, Modal } from "metabase/ui";
+import { Flex, Text, List, Button, Box, Modal, Progress } from "metabase/ui";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
@@ -72,6 +72,7 @@ export const MigrationInProgress = ({
           <Text size="md" c="text-medium">
             {progressMessage[migration.state]}
           </Text>
+          <Progress value={migration.progress} />
           <Text size="md" fw="bold" color={color("brand")}>
             {t`Progress`} - {migration.progress} / 100%
           </Text>
