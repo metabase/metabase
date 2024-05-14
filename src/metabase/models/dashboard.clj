@@ -102,8 +102,7 @@
      (params/assert-valid-parameters dashboard)
      (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
-     (when (and (contains? changes :archived)
-                (:archived changes))
+     (when (:archived changes))
        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
