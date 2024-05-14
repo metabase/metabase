@@ -12,7 +12,7 @@ Metabase lets you add and edit metadata to your tables and columns so that you c
 - [Hide outdated data](#table-visibility).
 - [Cast a text or number column to a date column](#casting-to-a-specific-data-type).
 - [Change the style of a filter widget](#changing-the-filter-widget).
-- [Link column values to URLs](#linking-a-column-to-a-url).
+- [Display a column as a link](#displaying-a-column-as-a-link).
 
 > The **Table Metadata** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
 
