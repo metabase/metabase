@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.core :as mc]
    [malli.error :as me]
@@ -105,7 +104,7 @@
                   (is (some? trigger) "Index trigger not found")
                   (is (= (:schedule model-index) (:schedule trigger)))
                   (is (= {"model-index-id" (:id model-index)}
-                         (qc/from-job-data (:data trigger))))))
+                         (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
                 (t2/delete! ModelIndex :id (:id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
