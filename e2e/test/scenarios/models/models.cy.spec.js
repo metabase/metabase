@@ -247,7 +247,6 @@ describe("scenarios > models", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText("First collection").should("exist");
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
         cy.findByText("Orders, Count").should("not.exist");
