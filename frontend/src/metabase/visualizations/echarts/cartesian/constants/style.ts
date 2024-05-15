@@ -29,7 +29,7 @@ export const CHART_STYLE = {
     size: 12,
     weight: 700,
   },
-  axisNameMargin: 12,
+  axisNameMargin: 17,
   padding: {
     x: 8,
     y: 12,
