@@ -18,7 +18,7 @@ You can export the results of a question as:
 - .json
 
 
-If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
+If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
 
 ### Maximum number of rows you can download
 
@@ -69,7 +69,7 @@ From here you can select:
 
 To export the raw, unformatted results, hold down the `option` key for Macs, or `Alt` key for Windows, then click on the download file format.
 
-If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
+If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
 
 ### Exporting results of a dashboard via dashboard subscriptions
 

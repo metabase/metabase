@@ -45,6 +45,7 @@
                         full-exception-chain
                         generate-nano-id
                         host-port-up?
+                        poll
                         host-up?
                         ip-address?
                         metabase-namespace-symbols
@@ -935,3 +936,12 @@
               (map-all f (rest s1) (rest s2)))))))
   ([f c1 c2 & colls]
    (map-all* f (list* c1 c2 colls))))
+
+(defn seek
+  "Like (first (filter ... )), but doesn't realize chunks of the sequence. Returns the first item in `coll` for which
+  `pred` returns a truthy value, or `nil` if no such item is found."
+  [pred coll]
+  (reduce
+   (fn [acc x] (if (pred x) (reduced x) acc))
+   nil
+   coll))

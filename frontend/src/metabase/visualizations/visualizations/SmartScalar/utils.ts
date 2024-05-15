@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { measureText } from "metabase/lib/measure-text";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
