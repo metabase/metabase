@@ -197,6 +197,10 @@ describe("Notebook Editor > Join Step", () => {
       .mockReturnValue({ height: 1, width: 1 });
   });
 
+  afterAll(() => {
+    jest.resetAllMocks();
+  });
+
   it("should display a join correctly", () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 

@@ -105,6 +105,10 @@ describe("DataStep", () => {
       .mockReturnValue({ height: 1, width: 1 });
   });
 
+  afterAll(() => {
+    jest.resetAllMocks();
+  });
+
   it("should render without a table selected", async () => {
     await setupEmptyQuery();
 
