@@ -1,3 +1,4 @@
+import type { Query } from "history";
 import { useRegisterActions, useKBar, Priority } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
@@ -24,7 +25,11 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
-export const useCommandPalette = () => {
+export const useCommandPalette = ({
+  locationQuery,
+}: {
+  locationQuery: Query;
+}) => {
   const dispatch = useDispatch();
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -55,6 +60,7 @@ export const useCommandPalette = () => {
   } = useSearchQuery(
     {
       q: debouncedSearchText,
+      context: "command-palette",
       limit: 20,
     },
     {
@@ -123,6 +129,13 @@ export const useCommandPalette = () => {
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
+        const searchLocation = {
+          pathname: "search",
+          query: {
+            ...locationQuery,
+            q: debouncedSearchText,
+          },
+        };
         return [
           {
             id: `search-results-metadata`,
@@ -131,23 +144,11 @@ export const useCommandPalette = () => {
             keywords: debouncedSearchText,
             icon: "link" as const,
             perform: () => {
-              dispatch(
-                push({
-                  pathname: "search",
-                  query: {
-                    q: debouncedSearchText,
-                  },
-                }),
-              );
+              dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
             extra: {
-              href: {
-                pathname: "search",
-                query: {
-                  q: debouncedSearchText,
-                },
-              },
+              href: searchLocation,
             },
           },
         ].concat(
@@ -192,6 +193,7 @@ export const useCommandPalette = () => {
     isSearchLoading,
     searchError,
     searchResults,
+    locationQuery,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
