@@ -9,13 +9,16 @@
    [java-time.api :as t]
    [metabase.models.database :refer [Database]]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
-  (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
+  (:import
+   (metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues)
+   (org.quartz TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +29,26 @@
 
 (defn- replace-trailing-id-with-<id> [s]
   (some-> s (str/replace #"\d+$" "<id>")))
+
+(defn all-db-sync-triggers-name
+  "Returns the name of trigger for DB.
+  These are all the trigger names that a database SHOULD have."
+  [db]
+  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
+            @#'task.sync-databases/all-tasks)))
+
+(defn query-all-db-sync-triggers-name
+  "Find the all triggers for DB \"db\".
+  These are all the trigger names that a database HAS in the scheduler."
+  [db]
+  (let [db (t2/instance :model/Database db)]
+    (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
+    (->> (for [task-info @#'task.sync-databases/all-tasks]
+           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
+                    (:key %))
+                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
+         flatten
+         set)))
 
 (defn- replace-ids-with-<id> [current-tasks]
   (vec (for [task current-tasks]
