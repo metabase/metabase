@@ -133,16 +133,15 @@ describe("scenarios > notebook > data source", () => {
       openReviewsTable();
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
-      popover().within(() => {
-        cy.findByTestId("source-database").should(
-          "have.text",
-          "Sample Database",
-        );
-        cy.findByLabelText("Reviews").should(
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        // should not show databases step if there's only 1 database
+        cy.findByText("Sample Database").should("not.exist");
+        cy.button(/Reviews/).should("have.attr", "data-active", "true");
       });
     });
 
@@ -150,16 +149,15 @@ describe("scenarios > notebook > data source", () => {
       visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      popover().within(() => {
-        cy.findByTestId("source-database").should(
-          "have.text",
-          "Sample Database",
-        );
-        cy.findByLabelText("Orders").should(
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        // should not show databases step if there's only 1 database
+        cy.findByText("Sample Database").should("not.exist");
+        cy.button(/Orders/).should("have.attr", "data-active", "true");
       });
     });
 
