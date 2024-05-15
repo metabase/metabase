@@ -9,3 +9,6 @@ export const DEFAULT_SEARCH_LIMIT = 50;
 export const NULL_NUMERIC_VALUE = -Infinity;
 
 export const NULL_DISPLAY_VALUE = t`(empty)`;
+
+/** The normal sidebar width, in pixels, of the righthand info sidebar on Dashboard and Question pages */
+export const DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS = 384;

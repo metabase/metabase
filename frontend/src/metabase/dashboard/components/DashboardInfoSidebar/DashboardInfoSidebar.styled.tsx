@@ -3,13 +3,13 @@ import styled from "@emotion/styled";
 import EditableText from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
 import { color } from "metabase/lib/colors";
+import { DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS } from "metabase/lib/constants";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-import { SIDEBAR_WIDTH } from "../Sidebar";
-
 export const DashboardInfoSidebarRoot = styled.aside`
-  width: ${SIDEBAR_WIDTH}px;
-  min-width: ${SIDEBAR_WIDTH}px;
+  width: ${DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS}px;
+  min-width: ${DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS}px;
+  padding: 0 2rem 0.5rem;
   background: ${color("white")};
   border-left: 1px solid ${color("border")};
   align-self: stretch;
