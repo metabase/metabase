@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalLevel,
   navigationSidebar,
   openNavigationSidebar,
   popover,
@@ -74,8 +75,9 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-      cy.findByTestId("item-picker-level-2").should("not.exist");
+      cy.findByText("First collection").should("not.exist");
+      entityPickerModalLevel(1).should("not.exist");
+      entityPickerModalLevel(2).should("not.exist");
     });
   });
 });
