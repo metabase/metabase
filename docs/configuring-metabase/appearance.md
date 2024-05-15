@@ -92,7 +92,7 @@ If you use a relative path, that path isn't relative to the Metabase JAR, but to
 
 ## Conceal Metabase
 
-In the Conceal Metabase tab, you can show or hide Metabase-branded UI elements and links (like in-app links to Metabase's documentation). If you're embedding Metabase in your app, here are some settings you might want to change:
+Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs
 
 - [Application name](#application-name)
 - [Documentation and references](#documentation-and-references)
