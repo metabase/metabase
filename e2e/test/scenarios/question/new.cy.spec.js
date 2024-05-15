@@ -139,8 +139,8 @@ describe("scenarios > question > new", () => {
       });
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Saved questions/ }).click();
         // Note: collection name's first letter is capitalized
         cy.findByText(/foo:bar/i).click();
         cy.findByText("Orders");
