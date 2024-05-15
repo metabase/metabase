@@ -12,6 +12,8 @@
    [metabase.util :as u])
   #?(:clj (:import [java.time Month DayOfWeek])))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
          (u/add-period "This sentence needs a period")))
@@ -513,17 +515,17 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
-       (is (not (case Month/MAY
-                  Month/APRIL false
-                  Month/MAY   true
-                  false))))
+       (is (= 3 (case Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
      (testing "case-enum works"
-       (is (u/case-enum Month/MAY
-             Month/APRIL false
-             Month/MAY   true
-             false)))
-     (testing "checks for type"
+       (is (= 2 (u/case-enum Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "checks for type of cases"
        (is (thrown? Exception #"`case-enum` only works.*"
                     (u/case-enum Month/JANUARY
-                      Month/JANUARY    true
-                      DayOfWeek/SUNDAY true))))))
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))

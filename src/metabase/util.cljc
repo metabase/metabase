@@ -25,11 +25,14 @@
               [potemkin :as p]
               [ring.util.codec :as codec])))
   #?(:clj (:import
+           (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
   #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
                             [metabase.util])))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
@@ -946,21 +949,25 @@
    coll))
 
 #?(:clj
-   (defmacro case-enum
-     "Like `case`, but explicitly dispatch on Java enum ordinals."
-     [value & clauses]
-     #_ {:clj-kondo/ignore [:discouraged-var]}
-     (let [types (map (comp type eval first) (partition 2 clauses))]
-       ;; doesn't check for the value of `case`, but that's on user
-       (if-not (apply = types)
-         `(throw (ex-info (str "`case-enum` only works if all supplied enums are of a same type: " ~(vec types))
-                          {:types ~(vec types)}))
-         (letfn [(enum-ordinal [e] `(let [^Enum e# ~e] (.ordinal e#)))]
-           `(case ~(enum-ordinal value)
+   (let [sym->enum (fn ^Enum [sym]
+                    (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
+                                                  "valueOf"
+                                                  (to-array [(name sym)])))
+         ordinal (fn [^Enum e] (.ordinal e))]
+     (defmacro case-enum
+       "Like `case`, but explicitly dispatch on Java enum ordinals.
+
+       Passing the same enum type as the ones you're checking in is on you, this is not checked."
+       [value & clauses]
+       (let [types (map (comp type sym->enum first) (partition 2 clauses))]
+         ;; doesn't check for the value of `case`, but that's on user
+         (if-not (apply = types)
+           `(throw (ex-info (str "`case-enum` only works if all supplied enums are of a same type: " ~(vec types))
+                            {:types ~(vec types)}))
+           `(case (int (~ordinal ~value))
               ~@(concat
                  (mapcat (fn [[test result]]
-                           #_ {:clj-kondo/ignore [:discouraged-var]}
-                           [(eval (enum-ordinal test)) result])
+                           [(ordinal (sym->enum test)) result])
                          (partition 2 clauses))
                  (when (odd? (count clauses))
                    (list (last clauses))))))))))
