@@ -74,7 +74,7 @@
   (->> copy/entities (map t2/table-name) (into #{})))
 
 (def ^:private read-only-mode-exceptions
-  (->> #{ ;; Migrations need to update their own state
+  (->> #{;; Migrations need to update their own state
          :model/CloudMigration :model/Setting
          ;; Users need to login, make queries, and we need need to audit them.
          :model/User :model/Session :model/LoginHistory

@@ -275,8 +275,15 @@ const STORE_LINK = `https://store.staging.metabase.com/checkout?migration-id=${B
 
 function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
   let called = 0;
-  return fetchMock.get(`path:/api/cloud-migration`, () => responses[called++], {
-    repeat: responses.length,
-    overwriteRoutes: true,
-  });
+
+  return fetchMock.get(
+    `path:/api/cloud-migration`,
+    () => {
+      // hold the last response
+      return responses[Math.min(called++, responses.length - 1)];
+    },
+    {
+      overwriteRoutes: true,
+    },
+  );
 }

@@ -274,13 +274,11 @@ describe("scenarios > admin > settings", () => {
     () => {
       isEE && setTokenFeatures("all");
 
-      const lastItem = isOSS ? "Caching" : "Appearance";
-
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {
         cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
         cy.get("@settingsOptions").first().contains("Setup");
-        cy.get("@settingsOptions").last().contains(lastItem);
+        cy.get("@settingsOptions").last().contains("Cloud");
       });
     },
   );
