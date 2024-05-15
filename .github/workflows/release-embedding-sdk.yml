@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
+env:
+  tag: embedding-sdk-${{ inputs.sdk_version }}
+
 jobs:
   git-tag:
     runs-on: ubuntu-22.04
@@ -34,13 +37,13 @@ jobs:
 
       - name: Create a new git tag
         run: |
-          git tag embedding-sdk-${{ inputs.sdk_version }}
+          git tag ${{ env.tag }}
 
       - name: Push the new tag
         run: |
-          git push origin embedding-sdk-${{ inputs.sdk_version }}
+          git push origin ${{ env.tag }}
       - if: failure()
-        run: echo "Make sure the tag 'embedding-sdk-${{ inputs.sdk_version }}' doesn't exist."
+        run: echo "Make sure the tag '${{ env.tag }}' doesn't exist."
 
   test:
     needs: git-tag
@@ -50,7 +53,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ env.tag }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -71,7 +74,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ env.tag }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -97,7 +100,7 @@ jobs:
     needs: test
     uses: ./.github/workflows/uberjar.yml
     with:
-      commit: ${{ inputs.commit }}
+      commit: ${{ env.tag }}
       only_ee: true
     secrets: inherit
 
@@ -136,7 +139,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ env.tag }}
 
       - name: Setup git user
         run: |
