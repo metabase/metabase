@@ -1496,24 +1496,27 @@
                                  (filter :archived)
                                  (map u/the-id))
           coll-id->restore-coll* (if (seq ids-to-fetch)
-                              (into {}
-                                    (map (juxt :unarchiving_coll_id identity))
-                                    (t2/select :model/Collection
-                                               {:select    [:trashed_from_coll.*
-                                                            [:coll.id :unarchiving_coll_id]]
-                                                :from      [[:collection :coll]]
-                                                :left-join [[:collection :trashed_from_coll] [:=
-                                                                                              [:concat :trashed_from_coll.location :trashed_from_coll.id "/"]
-                                                                                              :coll.trashed_from_location]]
-                                                :where     [:in :coll.id (into #{} ids-to-fetch)]}))
-                              {})
+                                   (into {}
+                                         (map (juxt :unarchiving_coll_id identity))
+                                         (t2/select :model/Collection
+                                                    {:select    [:trashed_from_coll.*
+                                                                 [:coll.id :unarchiving_coll_id]
+                                                                 [:coll.trashed_from_location :unarchiving_trashed_from_location]]
+                                                     :from      [[:collection :coll]]
+                                                     :left-join [[:collection :trashed_from_coll] [:=
+                                                                                                   [:concat :trashed_from_coll.location :trashed_from_coll.id "/"]
+                                                                                                   :coll.trashed_from_location]]
+                                                     :where     [:in :coll.id (into #{} ids-to-fetch)]}))
+                                   {})
           ;; given a collection, return the collection we will be restoring TO.
           coll->restore-coll  (fn [coll]
-                           (when (not (or (collection.root/is-root-collection? coll)
-                                          (not (:archived coll))))
-                             (let [restore-destination (coll-id->restore-coll* (u/the-id coll))]
-                               (when (:id restore-destination)
-                                 restore-destination))))]
+                                (when (not (or (collection.root/is-root-collection? coll)
+                                               (not (:archived coll))))
+                                  (let [restore-destination (coll-id->restore-coll* (u/the-id coll))]
+                                    (cond
+                                      (:id restore-destination) restore-destination
+                                      (= "/" (:unarchiving_trashed_from_location restore-destination)) collection.root/root-collection
+                                      :else nil))))]
       (for [coll colls]
         (cond-> coll
           (:archived coll) (assoc :can_restore (if-let [restore-destination (coll->restore-coll coll)]
