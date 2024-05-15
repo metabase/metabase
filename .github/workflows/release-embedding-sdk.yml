@@ -84,6 +84,10 @@ jobs:
         with:
           m2-cache-key: "cljs"
 
+      - name: Bump published npm package version
+        run: |
+          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
 
