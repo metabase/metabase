@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Transition } from "metabase/ui";
@@ -12,10 +13,15 @@ export const DelayedLoadingAndErrorWrapper = ({
   error,
   loading,
   delay = 300,
+  children,
+  blankComponent = null,
 }: {
   error: unknown;
   loading: boolean;
   delay?: number;
+  children?: ReactNode;
+  /** This is shown during the delay if `loading` is true */
+  blankComponent?: ReactNode;
 }) => {
   const [showWrapper, setShowWrapper] = useState(false);
 
@@ -26,8 +32,11 @@ export const DelayedLoadingAndErrorWrapper = ({
     return () => clearTimeout(timeout);
   }, [delay]);
 
+  if (!loading && !error) {
+    return <>{children}</>;
+  }
   if (!showWrapper) {
-    return null;
+    return <>{blankComponent}</>;
   }
   return (
     <Transition
@@ -38,7 +47,9 @@ export const DelayedLoadingAndErrorWrapper = ({
     >
       {styles => (
         <div style={styles}>
-          <LoadingAndErrorWrapper error={error} loading={loading} />
+          <LoadingAndErrorWrapper error={error} loading={loading}>
+            {children}
+          </LoadingAndErrorWrapper>
         </div>
       )}
     </Transition>
