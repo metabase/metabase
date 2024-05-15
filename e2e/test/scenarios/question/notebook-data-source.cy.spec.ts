@@ -98,25 +98,14 @@ describe("scenarios > notebook > data source", () => {
       });
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByPlaceholderText("Search for some data…");
-        cy.findAllByTestId("data-bucket-list-item")
-          .as("sources")
-          .should("have.length", 2);
-        cy.get("@sources")
-          .first()
-          .should("contain", "Models")
-          .and("have.attr", "aria-selected", "false");
-        cy.get("@sources")
-          .last()
-          .should("contain", "Raw Data")
-          .and("have.attr", "aria-selected", "false");
+      entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("have.length", 2);
+        cy.findByRole("tab", { name: /Saved questions/ }).should("not.exist");
+        cy.findByRole("tab", { name: /Models/ }).should("exist");
+        cy.findByRole("tab", { name: /Tables/ }).should("exist");
       });
     });
 
-    // There is a huge discrepancy between how we render this popover vs the one for models
-    // That's the reason this test is a bit vague. Will be reported as a separate issue
-    // and covered in a separate reproduction.
     it("should not show models if only saved questions exist", () => {
       createQuestion({
         name: "GUI Question",
@@ -125,11 +114,11 @@ describe("scenarios > notebook > data source", () => {
       });
 
       startNewQuestion();
-      popover().within(() => {
-        cy.get("[data-element-id=list-section-title]")
-          .should("have.length", 2)
-          .and("contain", "Saved Questions")
-          .and("not.contain", "Models");
+      entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("have.length", 2);
+        cy.findByRole("tab", { name: /Saved questions/ }).should("exist");
+        cy.findByRole("tab", { name: /Models/ }).should("not.exist");
+        cy.findByRole("tab", { name: /Tables/ }).should("exist");
       });
     });
   });
