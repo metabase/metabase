@@ -1,10 +1,16 @@
 import { act, screen } from "__support__/ui";
 
-import { changeInput, getSaveButton, setup } from "./test-utils";
+import {
+  changeInput,
+  getSaveButton,
+  setupStrategyEditorForDatabases as setup,
+} from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {
+  beforeEach(() => {
     setup();
+  });
+  it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
