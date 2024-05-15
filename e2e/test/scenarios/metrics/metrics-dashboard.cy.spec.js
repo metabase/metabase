@@ -150,7 +150,7 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 
-  it.skip("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
+  it("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
     cy.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
     }).then(({ dashboard }) => {
