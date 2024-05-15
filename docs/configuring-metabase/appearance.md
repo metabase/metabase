@@ -92,7 +92,7 @@ If you use a relative path, that path isn't relative to the Metabase JAR, but to
 
 ## Conceal Metabase
 
-Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs
+Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs.
 
 - [Application name](#application-name)
 - [Documentation and references](#documentation-and-references)
