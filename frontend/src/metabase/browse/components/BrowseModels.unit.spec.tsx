@@ -1,21 +1,27 @@
 import {
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import type { SearchResult } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import type { RecentItem, SearchResult } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockModelResult,
+  createMockRecentCollectionItem,
+} from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
 import { createMockModelResult } from "../test-utils";
 
 import { BrowseModels } from "./BrowseModels";
 
-const setup = (modelCount: number) => {
+const setup = (modelCount: number, recentlyViewedModels: RecentItem[] = []) => {
   const models = mockModels.slice(0, modelCount);
   setupSearchEndpoints(models);
   setupSettingsEndpoints([]);
+  setupRecentViewsEndpoints(recentlyViewedModels);
   return renderWithProviders(<BrowseModels />, {
     storeInitialState: {
       setup: createMockSetupState({
@@ -261,6 +267,19 @@ const mockModels: SearchResult[] = [
   }),
 ].map(model => createMockModelResult(model));
 
+const mockRecentItems: RecentItem[] = [
+  {
+    id: 2,
+    name: "Model 2",
+    model: "dataset" as const,
+  },
+  {
+    id: 3,
+    name: "Model 3",
+    model: "dataset" as const,
+  },
+].map(createMockRecentCollectionItem);
+
 describe("BrowseModels", () => {
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
     setup(0);
@@ -284,5 +303,15 @@ describe("BrowseModels", () => {
     expect(
       await screen.findAllByTestId("breadcrumbs-for-collection: Alpha"),
     ).toHaveLength(3);
+  });
+
+  it("displays recently viewed models", async () => {
+    setup(25, mockRecentItems);
+    const grid = await screen.findByTestId("recent-models");
+
+    expect(within(grid).queryByText("Model 1")).not.toBeInTheDocument();
+    expect(within(grid).getByText("Model 2")).toBeInTheDocument();
+    expect(within(grid).getByText("Model 3")).toBeInTheDocument();
+    expect(within(grid).queryByText("Model 4")).not.toBeInTheDocument();
   });
 });

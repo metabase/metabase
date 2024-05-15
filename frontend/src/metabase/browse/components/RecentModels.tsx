@@ -10,7 +10,7 @@ export function RecentModels({ models }: { models: RecentCollectionItem[] }) {
   }
 
   return (
-    <Box my="lg">
+    <Box my="lg" data-testid="recent-models">
       <Text
         fw="bold"
         size={16}

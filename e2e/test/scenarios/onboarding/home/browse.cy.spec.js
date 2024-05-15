@@ -100,14 +100,13 @@ describeWithSnowplow("scenarios > browse", () => {
       });
     });
 
-    cy.visit("/");
-    navigationSidebar().findByLabelText("Browse models").click();
+    cy.visit("/browse/models");
 
     cy.log("Model 1 is on the page");
     cy.findByRole("heading", { name: "Model 1" }).should("exist");
 
     cy.log("Model 1 is not in the Recents section");
-    cy.findByRole("heading", { name: "Recents" }).within(() => {
+    cy.findByTestId("recent-models").within(() => {
       cy.findByRole("heading", { name: "Model 1" }).should("not.exist");
     });
 
@@ -117,7 +116,7 @@ describeWithSnowplow("scenarios > browse", () => {
     cy.visit("/");
     navigationSidebar().findByLabelText("Browse models").click();
 
-    cy.findByRole("heading", { name: "Recents" }).within(() => {
+    cy.findByTestId("recent-models").within(() => {
       cy.findByRole("heading", { name: "Model 1" }).should("exist");
     });
   });
