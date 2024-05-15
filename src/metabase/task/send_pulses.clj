@@ -11,15 +11,18 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.driver :as driver]
    [metabase.models.pulse :as pulse]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
+   (java.util TimeZone)
    (org.quartz CronTrigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -35,12 +38,13 @@
                                      u.cron/schedule-map->cron-string
                                      (str/replace " " "_")))))
 
-(defn- send-pulse-trigger-key->schedule-map
+(defn- send-pulse-trigger-key->info
   [trigger-key]
-  (let [[_ _pulse-id schedule-str] (re-matches #"metabase\.task\.send-pulse\.trigger\.(\d+)\.(.*)" trigger-key)]
-    (-> schedule-str
-        (str/replace "_" " ")
-        u.cron/cron-string->schedule-map)))
+  (let [[_ pulse-id schedule-str] (re-matches #"metabase\.task\.send-pulse\.trigger\.(\d+)\.(.*)" trigger-key)]
+    {:pulse-id     (parse-long pulse-id)
+     :schedule-map (-> schedule-str
+                       (str/replace "_" " ")
+                       u.cron/cron-string->schedule-map)}))
 
 (defn- send-pulse!
   [pulse-id channel-ids]
@@ -56,16 +60,24 @@
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
 
+(defn- send-trigger-timezone
+  []
+  (or (driver/report-timezone)
+      (qp.timezone/system-timezone-id)
+      "UTC"))
+
 (mu/defn ^:private send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   ([pulse-id     :- pos-int?
     schedule-map :- u.cron/ScheduleMap
-    pc-ids       :- [:set pos-int?]]
-   (send-pulse-trigger pulse-id schedule-map pc-ids 6))
+    pc-ids       :- [:set pos-int?]
+    timezone     :- :string]
+   (send-pulse-trigger pulse-id schedule-map pc-ids timezone 6))
  ([pulse-id     :- pos-int?
    schedule-map :- u.cron/ScheduleMap
    pc-ids       :- [:set pos-int?]
+   timezone     :- :string
    priority     :- pos-int?]
   (triggers/build
    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
@@ -75,6 +87,7 @@
    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+      (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
       ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
       ;; Just wait until the next sync cycle.
       ;;
@@ -129,21 +142,39 @@
             priority (ms-duration->priority (- end start))]
         (when (= :done result)
           (log/infof "Updating priority of trigger %s to %d" (.getName ^TriggerKey (send-pulse-trigger-key pulse-id schedule-map)) priority)
-          (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids priority))))
+          (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids (send-trigger-timezone) priority))))
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
+
+;; called in [driver/report-timezone] setter
+(defn update-send-pulse-triggers-timezone!
+  "Update the timezone of all SendPulse triggers if the report timezone changes."
+  []
+  (let [triggers     (-> send-pulse-job-key task/job-info :triggers)
+        new-timezone (send-trigger-timezone)]
+    (doseq [trigger triggers
+            :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
+      (let [trigger-key            (:key trigger)
+            channel-ids            (get-in trigger [:data "channel-ids"])
+            {:keys [pulse-id
+                    schedule-map]} (send-pulse-trigger-key->info trigger-key)]
+        (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
+        (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids new-timezone (:priority trigger)))))))
 
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
         trigger-key                    (.. context getTrigger getKey getName)]
-    (send-pulse!* (send-pulse-trigger-key->schedule-map trigger-key) pulse-id channel-ids)))
+    (send-pulse!* (:schedule-map (send-pulse-trigger-key->info trigger-key)) pulse-id channel-ids)))
 
 ;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
 
 (declare update-send-pulse-trigger-if-needed!)
 
-(defn- init-send-pulse-triggers!
+(defn init-send-pulse-triggers!
+  "Update send pulse triggers for all active pulses.
+  Called once when Metabase starts up to create triggers for all existing PulseChannels
+  and whenever the report timezone changes."
   []
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
                                               {:select    [:pc.*]
@@ -227,7 +258,7 @@
      (do
       (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
       (task/delete-trigger! trigger-key)
-      (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids))))))
+      (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 

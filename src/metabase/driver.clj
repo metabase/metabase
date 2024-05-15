@@ -51,6 +51,11 @@
     timezone-id
     (str (t/zone-id))))
 
+(defn- update-send-pulse-triggers-timezone!
+  []
+  (classloader/require 'metabase.task.send-pulses)
+  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -59,7 +64,8 @@
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+    (notify-all-databases-updated)
+    (update-send-pulse-triggers-timezone!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"

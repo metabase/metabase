@@ -422,11 +422,10 @@
    :schedule_frame nil})
 
 (defn send-pulse-triggers
-  [pulse-id]
+  [pulse-id & {:keys [additional-keys]}]
   (->> (task/job-info @#'task.send-pulses/send-pulse-job-key)
        :triggers
-       (map #(select-keys % [:key :schedule :data :priority]))
-       (map #(update % :data (fn [data] (into {} data))))
+       (map #(select-keys % (concat [:key :schedule :data :priority] additional-keys)))
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))
        set))
 
