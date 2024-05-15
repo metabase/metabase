@@ -70,10 +70,10 @@
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
         orig-log-fn              @#'sync-util/log-sync-summary
-        origin-update-th!            @#'task-history/update-task-history!]
-    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
-                                                  (swap! step-info-atom conj operation-metadata)
-                                                  (orig-log-fn operation database operation-metadata))
+        origin-update-th!        @#'task-history/update-task-history!]
+    (with-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
+                                                      (swap! step-info-atom conj operation-metadata)
+                                                      (orig-log-fn operation database operation-metadata))
 
                   task-history/update-task-history! (fn [th-id startime-ms info]
                                                       (swap! created-task-history-ids conj th-id)

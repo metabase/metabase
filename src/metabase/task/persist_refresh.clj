@@ -88,29 +88,38 @@
                                          :error error})
             (update :error inc))))))
 
-(defn send-persist-refresh-email-if-error!
+(defn- error-details
+  [results]
+  (some-> results :error-details seq))
+
+(defn- send-persist-refresh-email-if-error!
   "Send an email to the admin if there are any errors in the persisted model refresh task."
   [db-id task-details]
-  (when-let [error-details (seq (:error-details task-details))]
-    (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-          persisted-infos (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
-                                           [:card :collection] :database)
-                               (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
+  (try
+    (let [error-details       (error-details task-details)
+          error-details-by-id (m/index-by :persisted-info-id error-details)
+          persisted-infos     (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
+                                               [:card :collection] :database)
+                                   (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
       (messages/send-persistent-model-error-email!
        db-id
        persisted-infos
-       (:trigger task-details)))))
+       (:trigger task-details)))
+    (catch Exception e
+      (log/error e "Error sending persist refresh email"))))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
   and :task_details will be the result of `thunk`."
   [task-type db-id thunk]
-  (task-history/with-task-history {:task  task-type
-                                   :db_id db-id
+  (task-history/with-task-history {:task            task-type
+                                   :db_id           db-id
                                    :on-success-info (fn [task-details]
-                                                      (when (= "persist-refresh" task-type)
-                                                        (send-persist-refresh-email-if-error! db-id task-details))
-                                                      {:task_details task-details})}
+                                                      (let [error (error-details task-details)]
+                                                        (when (and error (= "persist-refresh" task-type))
+                                                          (send-persist-refresh-email-if-error! db-id task-details))
+                                                        {:task_details task-details
+                                                         :status       (if error :failed :success)}))}
     (thunk)))
 
 (defn- prune-deletables!

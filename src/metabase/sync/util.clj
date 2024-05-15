@@ -404,18 +404,12 @@
   [:merge
    TimedSyncMetadata
    [:map
-    ;; will have task history id after the step is executed
-    [:task-history-id {:optional true} [:maybe pos-int?]]
     [:log-summary-fn [:maybe [:=> [:cat [:ref ::StepRunMetadata]] :string]]]]])
 
 (def ^:private StepRunMetadata
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
   specific information"
   [:ref ::StepRunMetadata])
-
-(def ^:private LogSummaryFunction
-  "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
-  [:=> [:cat StepRunMetadata] :string])
 
 (mr/def ::StepNameWithMetadata
   [:tuple
@@ -435,6 +429,10 @@
    [:map
     [:steps [:maybe [:sequential StepNameWithMetadata]]]]])
 
+(def ^:private LogSummaryFunction
+  "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
+  [:=> [:cat StepRunMetadata] :string])
+
 (def ^:private StepDefinition
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging"
@@ -453,7 +451,7 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(mu/defn ^:private run-step-with-metadata! :- StepNameWithMetadata
+(mu/defn ^:private run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
@@ -540,7 +538,7 @@
     (let [start-time    (t/zoned-date-time)
           step-metadata (loop [[step-defn & rest-defns] sync-steps
                                result                   []]
-                          (let [[step-name r] (run-step-with-metadata! database step-defn)
+                          (let [[step-name r] (run-step-with-metadata database step-defn)
                                 new-result    (conj result [step-name r])]
                             (cond (abandon-sync? r) new-result
                                   (not (seq rest-defns)) new-result
