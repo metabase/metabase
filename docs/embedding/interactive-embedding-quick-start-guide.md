@@ -228,7 +228,7 @@ Now to apply permissions to that group so that people only see data specific to 
 
 Metabase ships with two initial groups: "Admins" and "All Users". By default, Metabase gives the "All Users" group access to connected data sources. And since Metabase grants people the privileges of their most permissive group, you'll want to restrict what the "All Users" groups can see before you add them to groups with limited or no access to data sources and collections.
 
-To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **Data access** column, select **No self-service**. Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
+To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
 
 ![Resetting permissions of the All Users group to](./images/all-users.png)
 

@@ -1296,6 +1296,34 @@
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.job"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
     (qs/shutdown scheduler)))
+
+;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
+;; jobclass not found. And when they migrate up to 50 again, these triggers will not be triggered because it's in
+;; an error state. See https://www.quartz-scheduler.org/api/1.8.6/org/quartz/Trigger.html#STATE_ERROR
+;; So we need to delete this on migrate down, so when they migrate up, the triggers will be recreated.
+(define-reversible-migration DeleteSendPulseTaskOnDowngrade
+  (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+     (qs/shutdown scheduler))))
+
+;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
+;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
+;; on the second migrate up.
+(define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
+  (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     ;; delete the job will also delete all of its triggers
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+     (qs/shutdown scheduler))))

@@ -11,12 +11,10 @@ export const TablesDivider = styled.span`
   user-select: none;
 `;
 
-export const TableInfoIcon = styled(_TableInfoIcon)`
+export const IconWrapper = styled.span`
   color: ${color("text-light")};
-  visibility: visible;
-  font-size: min(1rem, 1em);
-  padding: 0;
-  margin-left: 0.5em;
-  position: relative;
-  top: 1px;
+  display: inline-block;
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
 `;

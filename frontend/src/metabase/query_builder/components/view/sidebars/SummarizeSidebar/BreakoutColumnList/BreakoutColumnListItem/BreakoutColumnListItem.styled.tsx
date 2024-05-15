@@ -2,10 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
-import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 
 export const Content = styled.div`
   display: flex;
@@ -55,7 +54,7 @@ AddButton.defaultProps = {
   borderless: true,
 };
 
-export const ColumnTypeIcon = styled(Icon)`
+export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
   color: ${color("text-medium")};
 `;
 
@@ -66,14 +65,9 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
-  margin-left: auto;
-`;
-
 const selectedStyle = css`
   ${Content},
-  ${ColumnTypeIcon},
-  ${QueryColumnInfoIcon} {
+  ${ColumnTypeIcon} {
     background-color: ${color("summarize")};
     color: ${color("white")};
   }
@@ -81,8 +75,6 @@ const selectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
     color: ${alpha("white", 0.65)};
-    padding-left: 0;
-    border-left: 0;
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
@@ -95,11 +87,9 @@ const unselectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
     color: ${color("text-light")};
-    padding-left: 0;
-    border-left: 0;
   }
 
-  ${QueryColumnInfoIcon} {
+  ${ColumnTypeIcon} {
     color: ${color("text-light")};
   }
 

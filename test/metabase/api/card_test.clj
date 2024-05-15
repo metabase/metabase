@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
@@ -2945,7 +2944,7 @@
   (some->> (deref #'task.persist-refresh/refresh-job-key)
            task/job-info
            :triggers
-           (map (comp qc/from-job-data :data))
+           (map :data)
            (filter (comp #{"individual"} #(get % "type")))
            (map #(get % "persisted-id"))
            set))
