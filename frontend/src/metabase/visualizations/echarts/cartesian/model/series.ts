@@ -324,7 +324,7 @@ function shouldRenderCompact(
     );
   };
 
-  return getAvgLength(true) + 2 < getAvgLength(false);
+  return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
 export const getStackedLabelsFormatters = (
