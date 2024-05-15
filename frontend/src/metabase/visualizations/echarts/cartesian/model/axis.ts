@@ -565,12 +565,13 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
-  const isLeftAxisCompact = compactSeriesByDataKey.some(dataKey =>
-    leftAxisSeriesKeysSet.has(dataKey),
-  );
-  const isRightAxisCompact = compactSeriesByDataKey.some(dataKey =>
-    rightAxisSeriesKeysSet.has(dataKey),
-  );
+  const isCompact = settings["graph.label_value_formatting"] === "compact";
+  const isLeftAxisCompact =
+    isCompact ||
+    compactSeriesByDataKey.some(dataKey => leftAxisSeriesKeysSet.has(dataKey));
+  const isRightAxisCompact =
+    isCompact ||
+    compactSeriesByDataKey.some(dataKey => rightAxisSeriesKeysSet.has(dataKey));
 
   return {
     leftAxisModel: getYAxisModel(

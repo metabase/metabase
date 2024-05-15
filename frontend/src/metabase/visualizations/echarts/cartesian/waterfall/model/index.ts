@@ -101,7 +101,10 @@ export const getWaterfallChartModel = (
     { [WATERFALL_END_KEY]: seriesModel.column },
     null,
     renderingContext,
-    { compact: isCompact },
+    {
+      compact:
+        settings["graph.label_value_formatting"] === "compact" || isCompact,
+    },
   );
 
   // Extending the original dataset with total datum for tooltips
