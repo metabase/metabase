@@ -9,13 +9,13 @@
   --color-text-medium: #696e7b;
   --color-text-light: #949aab;
   --color-text-white: #fff;
-  --color-bg-black: #2e353b;
+  --mb-color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
-  --color-bg-white: #fff;
-  --color-shadow: rgba(0, 0, 0, 0.13);
-  --color-border: #eeecec;
+  --mb-color-bg-white: #fff;
+  --mb-color-shadow: rgba(0, 0, 0, 0.13);
+  --mb-color-border: #eeecec;
 }
 
 .textDefault {
@@ -42,7 +42,7 @@
 }
 
 .bgErrorInput {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .textSlate {
@@ -83,7 +83,7 @@
 }
 
 .bgWhite {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .bgLightBlue {
@@ -91,7 +91,7 @@
 }
 
 .DashboardNight .bgLight {
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
 }
 
 .DashboardNight .bgMedium {

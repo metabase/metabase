@@ -42,10 +42,10 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-brand-alpha-88: ${({ theme }) =>
     alpha(theme.fn.themeColor("brand"), 0.88)};
   --mb-color-focus: ${({ theme }) => theme.fn.themeColor("focus")};
-  --color-bg-white: ${({ theme }) => theme.fn.themeColor("bg-white")};
-  --color-bg-black: ${({ theme }) => theme.fn.themeColor("bg-black")};
-  --color-shadow: ${({ theme }) => theme.fn.themeColor("shadow")};
-  --color-border: ${({ theme }) => theme.fn.themeColor("border")};
+  --mb-color-bg-white: ${({ theme }) => theme.fn.themeColor("bg-white")};
+  --mb-color-bg-black: ${({ theme }) => theme.fn.themeColor("bg-black")};
+  --mb-color-shadow: ${({ theme }) => theme.fn.themeColor("shadow")};
+  --mb-color-border: ${({ theme }) => theme.fn.themeColor("border")};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}

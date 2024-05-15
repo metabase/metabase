@@ -1,5 +1,5 @@
 :root {
-  --input-border-color: var(--color-border);
+  --input-border-color: var(--mb-color-border);
   --input-border-radius: 8px;
 }
 
