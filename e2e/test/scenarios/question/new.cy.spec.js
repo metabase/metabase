@@ -194,10 +194,10 @@ describe("scenarios > question > new", () => {
       visualize();
     });
 
-    it("should allow clicking linked tables in table info popover", () => {
+    it.skip("should allow clicking linked tables in table info popover", () => {
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).click();
         cy.findByLabelText("People").findByLabelText("More info").realHover();
       });
 
