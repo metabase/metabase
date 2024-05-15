@@ -47,12 +47,12 @@ const defaultOptions: QuestionPickerOptions = {
 };
 
 export const QuestionPickerModal = ({
-  title = t`Select a question`,
+  title = t`Select a question or model`,
   onChange,
   onClose,
   value = { model: "collection", id: "root" },
   options = defaultOptions,
-  models = ["card", "dataset", "metric"],
+  models = ["card", "dataset"],
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(

@@ -155,14 +155,14 @@ describe("scenarios > metrics > collection", () => {
     getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    undoToastList().findByText("Archived metric").should("be.visible");
+    undoToastList().last().findByText("Archived metric").should("be.visible");
 
     openArchive();
     unarchiveArchivedItem(ORDERS_TIMESERIES_METRIC.name);
     getArchivedList()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    undoToastList().findByText("Unarchived metric").should("be.visible");
+    undoToastList().last().findByText("Unarchived metric").should("be.visible");
 
     navigationSidebar().findByText("Our analytics").click();
     openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);

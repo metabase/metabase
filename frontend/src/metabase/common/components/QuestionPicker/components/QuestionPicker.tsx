@@ -23,7 +23,12 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
-import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
+import {
+  getCollectionIdPath,
+  getQuestionPickerModel,
+  getStateFromIdPath,
+  isFolder,
+} from "../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -42,7 +47,7 @@ const useGetInitialCollection = (
   initialValue?: Pick<QuestionPickerItem, "model" | "id">,
 ) => {
   const isQuestion =
-    initialValue && ["card", "dataset"].includes(initialValue.model);
+    initialValue && ["card", "dataset", "metric"].includes(initialValue.model);
 
   const cardId = isQuestion ? Number(initialValue.id) : undefined;
 
@@ -139,7 +144,7 @@ export const QuestionPicker = ({
           ? {
               id: currentQuestion.id,
               name: currentQuestion.name,
-              model: currentQuestion.type === "model" ? "dataset" : "card",
+              model: getQuestionPickerModel(currentQuestion.type),
             }
           : {
               id: currentCollection.id,

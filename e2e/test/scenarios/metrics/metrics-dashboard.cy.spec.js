@@ -175,13 +175,19 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText("Metrics").click();
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    undoToastList().findByText("Question replaced").should("be.visible");
+    undoToastList().last().findByText("Question replaced").should("be.visible");
     getDashboardCard().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByText("18,760").should("be.visible");
     });
     getDashboardCard().realHover().findByLabelText("Replace").click();
-    modal().findByText("Orders").click();
+    modal().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByText("Questions").click();
+      cy.findByText("Orders").click();
+    });
+    undoToastList().last().findByText("Metric replaced").should("be.visible");
+    getDashboardCard().findByText("Orders").should("be.visible");
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {

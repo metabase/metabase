@@ -67,6 +67,7 @@ function DashCardPlaceholderInner({
                 }
               : undefined
           }
+          models={["card", "dataset", "metric"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
         />

@@ -443,6 +443,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
             ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
+        models={["card", "dataset", "metric"]}
         onChange={handleSelect}
         onClose={handleClose}
       />
