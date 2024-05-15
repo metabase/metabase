@@ -284,14 +284,39 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
 
       openDataSelector();
-      assertSourceCollection("Our analytics");
-      assertDataSource("Orders Model");
+      entityPickerModal().within(() => {
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-1")
+          .findByText("Orders Model")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.button("Close").click();
+      });
 
       moveToCollection("First collection");
 
       openDataSelector();
-      assertSourceCollection("First collection");
-      assertDataSource("Orders Model");
+      entityPickerModal().within(() => {
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-1")
+          .findByText("First collection")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-2")
+          .findByText("Orders Model")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+      });
     });
 
     it("moving the source question should immediately reflect in the data selector for the nested question that depends on it (metabase#39812-2)", () => {
