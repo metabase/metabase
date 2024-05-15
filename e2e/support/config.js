@@ -22,7 +22,12 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
-const uploadReplayRecordings = process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
+/**
+ * CI coerces the value of this env var to a string (even if it's `false` or `0`!
+ * Just omit it from any workflow that doesn't need to upload test recordings,
+ * like we do in the `e2e-stress-test-flake-fix` workflow.
+ */
+const uploadReplayRecordings = !!process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 

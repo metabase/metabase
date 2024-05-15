@@ -47,9 +47,6 @@ jobs:
       QA_DB_ENABLED: true
       CYPRESS_QA_DB_MONGO: true
       CYPRESS_REPLAYIO_ENABLED: 1
-      CYPRESS_REPLAYIO_ENABLE_UPLOAD: 0
-      RECORD_REPLAY_NO_RECORD: 1 # No need to record since we're not uploading anything
-      REPLAY_API_KEY: ${{ secrets.REPLAY_IO_TOKEN }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
