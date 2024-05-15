@@ -205,8 +205,8 @@
   (testing "we don't read too many keys even from long jsons"
     (let [data (into {} (for [i (range (* 2 @#'sql-jdbc.describe-table/max-nested-field-columns))]
                           [(str "key" i) i]))]
-      ;; +2 to limit since we go 1 over the limit, see comment in `json->types`
-      (is (> (+ 2 @#'sql-jdbc.describe-table/max-nested-field-columns)
+      ;; inc the limit since we go 1 over the limit, see comment in `json->types`
+      (is (= (inc @#'sql-jdbc.describe-table/max-nested-field-columns)
              (count (#'sql-jdbc.describe-table/json-map->types {:k (json/encode data)})))))))
 
 (deftest ^:parallel get-table-pks-test
@@ -244,7 +244,7 @@
   (testing "json-map->types"
     (let [row   {:bob (json/encode {:dobbs {:robbs 123} :cobbs [1 2 3]})}
           types {[:bob "cobbs"] clojure.lang.PersistentVector
-                 [:bob "dobbs" "robbs"] java.lang.Integer}]
+                 [:bob "dobbs" "robbs"] java.lang.Long}]
       (is (= types (#'sql-jdbc.describe-table/json-map->types row)))))
   (testing "JSON json-map->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")})}]

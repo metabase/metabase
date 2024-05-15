@@ -373,12 +373,13 @@
 
 (defn- number-type [t]
   (u/case-enum t
-    JsonParser$NumberType/INT Integer
-    JsonParser$NumberType/LONG Long
-    JsonParser$NumberType/FLOAT Float
-    JsonParser$NumberType/DOUBLE Double
-    JsonParser$NumberType/BIG_DECIMAL BigDecimal
-    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt))
+    JsonParser$NumberType/INT         Long
+    JsonParser$NumberType/LONG        Long
+    JsonParser$NumberType/FLOAT       Double
+    JsonParser$NumberType/DOUBLE      Double
+    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+    ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
+    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
 (defn- json->types
   "Parses given json (a string or a reader) into a map of paths to types, i.e. `{[\"bob\"} String}`.
@@ -396,8 +397,9 @@
           (persistent! res)
 
           ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
-          ;; but this limit could be hit by multiple json fields rather than only by this one. So for the sake of
-          ;; issuing only a single warning in logs we'll spill over limit by a single entry (instead of doing `<=`).
+          ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
+          ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
+          ;; entry (instead of doing `<=`).
           (< max-nested-field-columns (count res))
           (persistent! res)
 
