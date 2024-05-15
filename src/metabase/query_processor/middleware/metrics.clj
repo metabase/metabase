@@ -52,8 +52,8 @@
 
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
-  [query]
-  (if-let [lookup (fetch-referenced-metrics query (lib/aggregations query 0))]
+  [query path expanded-stages]
+  (if-let [lookup (fetch-referenced-metrics query (:aggregation (first expanded-stages)))]
     (let [new-query (reduce
                       (fn [query [_metric-id {metric-query :query}]]
                         (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
@@ -65,27 +65,28 @@
                               (update-in $q [:stages 0 :aggregation] replace-metric-aggregation-refs lookup)))
                           (throw (ex-info "Incompatible metric" {:query query
                                                                  :metric metric-query}))))
-                      query
+                      (cond-> query
+                        path (lib.walk/query-for-stage-at-path path))
                       lookup)]
       (:stages new-query))
-    (:stages query)))
+    expanded-stages))
 
 (defn- find-metric-transition
   "Finds an unadjusted transition between a metric source-card and the next stage."
   [query expanded-stages]
   (some (fn [[[idx-a stage-a] [_idx-b stage-b]]]
-                                      (let [stage-a-source (:qp/stage-is-from-source-card stage-a)
-                                            metric-metadata (some->> stage-a-source (lib.metadata/card query))]
-                                        (when (and
-                                                stage-a-source
-                                                (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
-                                                (= (:type metric-metadata) :metric)
-                                                ;; This indicates this stage has not been processed
-                                                ;; because metrics must have aggregations
-                                                ;; if it is missing, then it has been removed in this process
-                                                (:aggregation stage-a))
-                                          [idx-a metric-metadata])))
-                                    (partition-all 2 1 (m/indexed expanded-stages))))
+          (let [stage-a-source (:qp/stage-is-from-source-card stage-a)
+                metric-metadata (some->> stage-a-source (lib.metadata/card query))]
+            (when (and
+                    stage-a-source
+                    (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
+                    (= (:type metric-metadata) :metric)
+                    ;; This indicates this stage has not been processed
+                    ;; because metrics must have aggregations
+                    ;; if it is missing, then it has been removed in this process
+                    (:aggregation stage-a))
+              [idx-a metric-metadata])))
+        (partition-all 2 1 (m/indexed expanded-stages))))
 
 (defn- update-metric-transition-stages
   "Adjusts source-card metrics referencing themselves in the next stage.
@@ -126,16 +127,16 @@
    We look for the transition between the last stage of a metric and the next stage following it.
    We adjust those two stages - as explained in `expand`.
    "
-  [query expanded-stages]
+  [query path expanded-stages]
   ;; Find a transition point, if it exists
   (let [[idx metric-metadata] (find-metric-transition query expanded-stages)
         [first-stage] expanded-stages]
     (cond
       idx
-      (recur query (update-metric-transition-stages expanded-stages idx metric-metadata))
+      (recur query path (update-metric-transition-stages expanded-stages idx metric-metadata))
 
       (:source-table first-stage)
-      (splice-compatible-metrics query)
+      (splice-compatible-metrics query path expanded-stages)
 
       :else
       expanded-stages)))
@@ -157,14 +158,13 @@
   [query]
   (let [query (lib.walk/walk
                 query
-                (fn [_query path-type _path stage-or-join]
+                (fn [_query path-type path stage-or-join]
                   (case path-type
                     :lib.walk/join
-                    (update stage-or-join :stages #(adjust-metric-stages query %))
-                    stage-or-join)))
-        new-stages (adjust-metric-stages query (:stages query))]
+                    (update stage-or-join :stages #(adjust-metric-stages query path %))
+                    stage-or-join)))]
     (u/prog1
-      (assoc query :stages new-stages)
+      (update query :stages #(adjust-metric-stages query nil %))
       (when-let [metric (lib.util.match/match-one <>
                           [:metric _ _] &match)]
         (log/warn "Failed to replace metric"
