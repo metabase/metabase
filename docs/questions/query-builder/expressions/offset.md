@@ -16,9 +16,7 @@ Example: `Offset(Sum([Total]), -1)` would get the value of `Sum([Total])` from t
 
 ## The order of the breakouts matter
 
-Because `Offset` refers to other rows, the order of the breakouts matters (the breakouts are the groups in the "Group By" section in the Summarization step). Metabase will sort by the first group, then partition by any additional breakouts.
-
-For example, if you want to see the counts of orders by product category over time, and the counts by product category for the previous period, you should first group by `Created At`, then by the product category.
+Because `Offset` refers to other rows, the order of the breakouts matters (the breakouts are the groups in the "Group By" section in the Summarization step). Metabase will sort by the first group, then partition by any additional breakouts. For example, if you want to see the counts of orders by product category over time, and the counts by product category for the previous period, you should first group by `Created At`, then by the product category.
 
 ## Data types
 
@@ -26,17 +24,17 @@ The `Offset` function returns whatever value is in the offset row.
 
 | [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Returned by `Offset` |
 | ------------------------------------------------------------------------------------------------ | -------------------- |
-| String                                                                                           | ✅                   |
-| Number                                                                                           | ✅                   |
-| Timestamp                                                                                        | ✅                   |
-| Boolean                                                                                          | ✅                   |
-| JSON                                                                                             | ✅                   |
+| String                                                                                           | ✅                    |
+| Number                                                                                           | ✅                    |
+| Timestamp                                                                                        | ✅                    |
+| Boolean                                                                                          | ✅                    |
+| JSON                                                                                             | ✅                    |
 
 ## Example year-over-year (YoY) time series comparison using `Offset`
 
 In the Sample database, you can use `Offset` to compare the count of orders year over year (YoY).
 
-First, summarize by Sum of Total. Then summarize that summation again, this time using `Offset` to offset the Sum of Total by one.
+First, summarize by Sum of Total. Then summarize that summation again, this time using `Offset` to grab the previous row's value.
 
 ```
 Offset(Sum([Total]), -1)
