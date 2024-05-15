@@ -23,12 +23,8 @@
 
     :else
     (try
-      ;;(let [cloud-migration (t2/insert-returning-instance! :model/CloudMigration
-      ;;                                                     (cloud-migration/get-store-migration))]
-      (let [cloud-migration (->> "v0.49.7"
-                            ;;  (config/mb-version-info :tag)
-                                 cloud-migration/get-store-migration
-                                 (t2/insert-returning-instance! :model/CloudMigration))]
+      (let [cloud-migration (t2/insert-returning-instance! :model/CloudMigration
+                                                           (cloud-migration/get-store-migration))]
         (future (cloud-migration/migrate! cloud-migration))
         cloud-migration)
       (catch Exception e
