@@ -542,14 +542,16 @@
   (let [combined-cards-results (if dashcard
                                  (pu/execute-multi-card card dashcard)
                                  [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
-        cards-with-data        (map
-                                (comp
-                                 add-dashcard-timeline-events
-                                 (fn [c d] {:card c :data d}))
-                                (cond-> (map :card combined-cards-results)
-                                  dashcard (conj card))
-                                (cond-> (map #(get-in % [:result :data]) combined-cards-results)
-                                  dashcard (conj data)))
+        cards-with-data        (m/distinct-by
+                                #(get-in % [:card :id])
+                                (map
+                                 (comp
+                                  add-dashcard-timeline-events
+                                  (fn [c d] {:card c :data d}))
+                                 (cond-> (map :card combined-cards-results)
+                                   dashcard (conj card))
+                                 (cond-> (map #(get-in % [:result :data]) combined-cards-results)
+                                   dashcard (conj data))))
         dashcard-viz-settings  (get dashcard :visualization_settings)
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type
