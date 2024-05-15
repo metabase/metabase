@@ -11,6 +11,8 @@ const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
 
+process.env.IS_SDK_BUILD = "true";
+
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const ENTERPRISE_SRC_PATH =

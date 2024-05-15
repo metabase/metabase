@@ -1,4 +1,4 @@
-import type { MetabaseTheme, MetabaseColor } from "../../types/theme";
+import type { MetabaseTheme, MetabaseColors } from "../../types/theme";
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
@@ -25,7 +25,7 @@ export function getEmbeddingThemeOverride(
 
     // Apply color palette overrides
     for (const name in theme.colors) {
-      const color = theme.colors[name as MetabaseColor];
+      const color = theme.colors[name as keyof MetabaseColors];
 
       if (color) {
         override.colors[name] = colorTuple(color);

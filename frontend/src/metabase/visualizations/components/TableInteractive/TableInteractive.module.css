@@ -111,7 +111,7 @@
   top: 0;
   right: 0;
   z-index: 50;
-  background: white;
+  background: var(--color-bg-white);
   padding: 0 0.5em;
   box-sizing: border-box;
   border-left: 1px solid var(--color-border);
