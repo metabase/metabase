@@ -28,6 +28,7 @@ export const createMockRecentCollectionItem = (
   model: "card",
   name: "My Cool Question",
   timestamp: "2021-03-01T00:00:00.000Z",
+  can_write: true,
   parent_collection: {
     id: 1,
     name: "My Cool Collection",
