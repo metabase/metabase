@@ -36,8 +36,8 @@ export const MigrationInProgress = ({
   const [cancelCloudMigration] = useCancelCloudMigrationMutation();
 
   const handleCancelMigration = async () => {
-    await cancelCloudMigration();
     closeModal();
+    await cancelCloudMigration();
     dispatch(
       addUndo({
         icon: "info_filled",

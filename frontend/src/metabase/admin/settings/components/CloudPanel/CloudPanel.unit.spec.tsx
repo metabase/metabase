@@ -1,3 +1,5 @@
+/* eslint-disable jest/expect-expect */
+
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 
@@ -6,29 +8,32 @@ import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { CloudPanel } from "./CloudPanel";
 
+const POLL_INTERVAL = 50;
+
 const setup = () => {
   const mockMigrationStart = jest.fn();
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <CloudPanel
-      // TODO: get fake timers working - tet currently takes ~5s
-      getPollingInterval={() => 250}
+      getPollingInterval={() => POLL_INTERVAL}
       onMigrationStart={mockMigrationStart}
     />,
   );
 
-  return { mockMigrationStart };
+  return { mockMigrationStart, store };
 };
 
 describe("CloudPanel", () => {
   beforeEach(() => {
     fetchMock.get("path:/api/session/properties", 200);
     fetchMock.post(`path:/api/cloud-migration`, INIT_RESPONSE);
+    fetchMock.put(`path:/api/cloud-migration/cancel`, 200);
   });
 
-  // TODO: clean this up a bit
-  // TODO: pull out shared logic for later tests
-  // TODO: leave comments about what / why things are being asserts
+  afterEach(() => {
+    fetchMock.reset();
+  });
+
   it("should be able to successfully go through migration flow", async () => {
     const migrationProgressResponses = [
       INIT_RESPONSE,
@@ -42,37 +47,12 @@ describe("CloudPanel", () => {
       ...migrationProgressResponses,
       DONE_RESPONSE,
     ];
-    fetchMockCloudMigrationGetSequence(migrationResponses);
-    const { mockMigrationStart } = setup();
 
-    expect(
-      await screen.findByText(
-        "It only takes a few clicks to migrate this instance to Metabase Cloud.",
-      ),
-    ).toBeInTheDocument();
+    await startMigration(migrationResponses);
 
-    await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+    await expectProgressState();
 
-    expect(
-      await screen.findByText("Migrate this instance to Metabase Cloud now?"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
-
-    expect(mockMigrationStart).toHaveBeenCalledTimes(1);
-
-    expect(
-      await screen.findByText("You have started migration to Metabase Cloud"),
-    ).toBeInTheDocument();
-
-    const storeLink = screen.getByRole("link", { name: /Metabase Store/ });
-    expect(storeLink).toBeInTheDocument();
-    expect(storeLink).toHaveAttribute("href", STORE_LINK);
-
-    expect(
-      screen.getByRole("button", { name: /Cancel migration/ }),
-    ).toBeInTheDocument();
-
+    // should see the progress bar update as progress increases
     for (const { progress } of migrationProgressResponses) {
       await waitFor(async () => {
         expect(await screen.findByRole("progressbar")).toHaveAttribute(
@@ -82,30 +62,96 @@ describe("CloudPanel", () => {
       });
     }
 
-    expect(
-      await screen.findByText("The snapshot has been uploaded to the Cloud"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Go to Metabase store/ }),
-    ).toHaveAttribute("href", STORE_LINK);
+    await expectSuccessState();
   });
 
-  it.todo("should be able to cancel a migration");
-  // - start -> is started
-  // - hit cancel -> is canceled
+  it("should be able to cancel a migration", async () => {
+    const { store } = await startMigration([
+      UNINITIALIZED_RESPONSE,
+      INIT_RESPONSE,
+      SETUP_RESPONSE,
+      CANCELED_RESPONSE,
+    ]);
 
-  it.todo("should show user error if something fails");
-  // - start -> is started
+    await expectProgressState();
 
-  it.todo("should be able to start a new migration after a failed migration");
-  // - error start
-  // - try starting -> check is started
+    const cancelButton = await screen.findByRole("button", {
+      name: /Cancel migration/,
+    });
+    expect(cancelButton).toBeInTheDocument();
+    await userEvent.click(cancelButton);
 
-  it.todo(
-    "should be able to start a new migration after a successful migration",
-  );
-  // - success start
-  // - try starting -> check is started
+    await expectCancelConfirmationModal();
+    expect((store.getState() as any).undo).toHaveLength(0);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Cancel migration/ }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.called(`path:/api/cloud-migration/cancel`, {
+          method: "PUT",
+        }),
+      ).toBeTruthy();
+    });
+    expect((store.getState() as any).undo).toHaveLength(1);
+  });
+
+  it("should show user error if something fails", async () => {
+    await startMigration([
+      UNINITIALIZED_RESPONSE,
+      INIT_RESPONSE,
+      SETUP_RESPONSE,
+      ERROR_RESPONSE,
+    ]);
+
+    await expectProgressState();
+
+    await expectErrorState();
+  });
+
+  it("should be able to start a new migration after a failed migration", async () => {
+    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE);
+    const { mockMigrationStart } = setup();
+
+    await expectErrorState();
+    await expectInitState();
+    await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+    await expectStartConfirmationModal();
+    await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
+
+    fetchMockCloudMigrationGetSequence([
+      { ...INIT_RESPONSE, id: 2 },
+      { ...SETUP_RESPONSE, id: 2 },
+    ]);
+
+    await expectProgressState();
+
+    expect(mockMigrationStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("should be able to start a new migration after a successful migration", async () => {
+    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE);
+
+    const { mockMigrationStart } = setup();
+
+    await expectSuccessState();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Restart the process/ }),
+    );
+
+    fetchMockCloudMigrationGetSequence([
+      { ...INIT_RESPONSE, id: 2 },
+      { ...SETUP_RESPONSE, id: 2 },
+      { ...DUMP_RESPONSE, id: 2 },
+    ]);
+
+    await expectProgressState();
+
+    expect(mockMigrationStart).toHaveBeenCalledTimes(1);
+  });
 });
 
 const UNINITIALIZED_RESPONSE = 204;
@@ -152,19 +198,78 @@ const DONE_RESPONSE: CloudMigration = {
   updated_at: "2024-05-14T17:13:05.530546Z",
 };
 
-// const ERROR_RESPONSE: CloudMigration = {
-//   ...BASE_RESPONSE,
-//   state: "error",
-//   progress: 75,
-//   updated_at: "2024-05-14T17:13:05.630546Z",
-// };
+const CANCELED_RESPONSE: CloudMigration = {
+  ...BASE_RESPONSE,
+  state: "cancelled",
+  progress: 75,
+  updated_at: "2024-05-14T17:13:05.730546Z",
+};
 
-// const CANCELED_RESPONSE: CloudMigration = {
-//   ...BASE_RESPONSE,
-//   state: "cancelled",
-//   progress: 75,
-//   updated_at: "2024-05-14T17:13:05.730546Z",
-// };
+const ERROR_RESPONSE: CloudMigration = {
+  ...BASE_RESPONSE,
+  state: "error",
+  progress: 75,
+  updated_at: "2024-05-14T17:13:05.630546Z",
+};
+
+const expectInitState = async () => {
+  expect(
+    await screen.findByText(
+      "It only takes a few clicks to migrate this instance to Metabase Cloud.",
+    ),
+  ).toBeInTheDocument();
+};
+
+const expectStartConfirmationModal = async () => {
+  expect(
+    await screen.findByText("Migrate this instance to Metabase Cloud now?"),
+  ).toBeInTheDocument();
+};
+
+const expectProgressState = async () => {
+  expect(
+    await screen.findByText("You have started migration to Metabase Cloud"),
+  ).toBeInTheDocument();
+
+  // expect to have correct store link for this exact migration
+  const storeLink = screen.getByRole("link", { name: /Metabase Store/ });
+  expect(storeLink).toBeInTheDocument();
+  expect(storeLink).toHaveAttribute("href", STORE_LINK);
+};
+
+const expectSuccessState = async () => {
+  expect(
+    await screen.findByText("The snapshot has been uploaded to the Cloud"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: /Go to Metabase store/ }),
+  ).toHaveAttribute("href", STORE_LINK);
+};
+
+const expectCancelConfirmationModal = async () => {
+  expect(await screen.findByText("Cancel migration?")).toBeInTheDocument();
+};
+
+const expectErrorState = async () => {
+  expect(
+    await screen.findByText(`Migration to cloud failed`),
+  ).toBeInTheDocument();
+};
+
+const startMigration = async (migrationResponses: MockResponse[]) => {
+  fetchMockCloudMigrationGetSequence(migrationResponses);
+  const { mockMigrationStart, store } = setup();
+
+  await expectInitState();
+  await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await expectStartConfirmationModal();
+  await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
+
+  expect(mockMigrationStart).toHaveBeenCalledTimes(1);
+
+  return { store };
+};
 
 const STORE_LINK = `https://store.staging.metabase.com/checkout?migration-id=${BASE_RESPONSE.external_id}`;
 
@@ -172,5 +277,6 @@ function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
   let called = 0;
   return fetchMock.get(`path:/api/cloud-migration`, () => responses[called++], {
     repeat: responses.length,
+    overwriteRoutes: true,
   });
 }
