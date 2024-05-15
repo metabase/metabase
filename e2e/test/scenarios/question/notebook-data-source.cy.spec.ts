@@ -182,8 +182,8 @@ describe("scenarios > notebook > data source", () => {
         });
 
         startNewQuestion();
-        popover().within(() => {
-          cy.findByText("Raw Data").click();
+        entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Tables/ }).click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
@@ -193,9 +193,19 @@ describe("scenarios > notebook > data source", () => {
 
         openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
-        popover().within(() => {
-          cy.findByTestId("source-database").should("have.text", dbName);
-          cy.findByTestId("source-schema").should("have.text", schemaName);
+        entityPickerModal().within(() => {
+          cy.findByTestId("item-picker-level-0")
+            .findByText(dbName)
+            .parents("button")
+            .should("have.attr", "data-active", "true");
+          cy.findByTestId("item-picker-level-1")
+            .findByText(schemaName)
+            .parents("button")
+            .should("have.attr", "data-active", "true");
+          cy.findByTestId("item-picker-level-2")
+            .findByText(tableName)
+            .parents("button")
+            .should("have.attr", "data-active", "true");
         });
       },
     );
