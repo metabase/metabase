@@ -74,11 +74,9 @@
           replacements))
 
 (defn replace-names
-  "Given a card and a map of renames (with keys `:tables` and `:colums`, as in Macaw), return a new _query_ with the
+  "Given a query and a map of renames (with keys `:tables` and `:colums`, as in Macaw), return a new one with the
   appropriate replacements made."
-  [{query :dataset_query :as card} renames]
-  (when-not (= :native (:type query))
-    (throw (ex-info "Expected a native query" {:card card})))
+  [query renames]
   (let [raw-query    (get-in query [:native :query])
         parsed-query (params.parse/parse raw-query)
         {clean-query :query

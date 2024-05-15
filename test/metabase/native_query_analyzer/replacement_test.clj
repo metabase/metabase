@@ -5,9 +5,9 @@
    [metabase.test :as mt]))
 
 (defn- q
-  "Make a card-like whose native query is the concatenation of the args"
+  "Make a native query from the concatenation of the args"
   [& args]
-  {:dataset_query (mt/native-query {:query (apply str args)})})
+  (mt/native-query {:query (apply str args)}))
 
 (deftest ^:parallel replace-names-simple-test
   (testing "columns can be renamed"
