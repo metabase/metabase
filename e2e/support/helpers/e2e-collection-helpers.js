@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalLevel,
   entityPickerModalTab,
   getFullName,
   popover,
@@ -96,7 +97,7 @@ export function pickEntity({ path, select, tab }) {
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {
-        cy.findByTestId(`item-picker-level-${index}`).findByText(name).click();
+        entityPickerModalLevel(index).findByText(name).click();
       }
     });
   }
