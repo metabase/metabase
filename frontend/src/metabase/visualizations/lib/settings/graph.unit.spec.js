@@ -9,6 +9,7 @@ import {
 import {
   STACKABLE_SETTINGS,
   GRAPH_AXIS_SETTINGS,
+  GRAPH_DISPLAY_VALUES_SETTINGS,
   getDefaultDimensionLabel,
 } from "./graph";
 
@@ -192,5 +193,95 @@ describe("GRAPH_AXIS_SETTINGS", () => {
         expect(isEnabled).toBe(expectedDefault);
       },
     );
+  });
+});
+
+describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
+  describe("graph.show_values", () => {
+    const getHidden =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"].getHidden;
+    it("should be hidden on normalized charts without line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stacked": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be visible on normalized charts with line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "line" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stacked": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+  });
+
+  describe("graph.label_value_frequency", () => {
+    const getHidden =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_frequency"].getHidden;
+
+    it("should be hidden when data values are hidden", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "line" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "graph.show_values": false,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+    it("should be hidden on normalized charts without line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stacked": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be visible on normalized charts with line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "line" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stacked": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
   });
 });
