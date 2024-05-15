@@ -51,6 +51,11 @@
     timezone-id
     (str (t/zone-id))))
 
+(defn- update-send-pulse-triggers-timezone!
+  []
+  (classloader/require 'metabase.task.send-pulses)
+  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -59,7 +64,8 @@
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+    (notify-all-databases-updated)
+    (update-send-pulse-triggers-timezone!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -460,8 +466,14 @@
 
 (def features
   "Set of all features a driver can support."
-  #{;; Does this database support foreign key relationships?
+  #{;; Does this database support following foreign key relationships while querying?
+    ;; Note that this is different from supporting primary key and foreign key constraints in the schema; see below.
     :foreign-keys
+
+    ;; Does this database track and enforce primary key and foreign key constraints in the schema?
+    ;; SQL query engines like Presto and Athena do not track these, though they can query across FKs.
+    ;; See :foreign-keys above.
+    :metadata/key-constraints
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
@@ -597,6 +609,12 @@
 
     ;; Does the driver support fingerprint the fields. Default is true
     :fingerprint
+
+    ;; Does a connection to this driver correspond to a single database (false), or to multiple databases (true)?
+    ;; Default is false; ie. a single database. This is common for classic relational DBs and some cloud databases.
+    ;; Some have access to many databases from one connection; eg. Athena connects to an S3 bucket which might have
+    ;; many databases in it.
+    :connection/multiple-databases
 
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative

@@ -320,7 +320,7 @@
 
 (defn- poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
-  [{:keys [thunk done? timeout-ms interval-ms]}]
+  [{:keys [thunk done? timeout-ms ^long interval-ms]}]
   (let [start-time (System/currentTimeMillis)]
     (loop []
       (let [response (thunk)]
@@ -357,12 +357,12 @@
                                (boolean (some-> response :files first :shares not-empty)))
         _ (when-not (or
                      (uploaded-to-channel? complete-response)
-                     (poll {:thunk       complete!
-                            :done?       uploaded-to-channel?
-                            ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                            ;; If it takes more than 10 seconds, something else is wrong and we should abort.
-                            :timeout-ms  3000
-                            :interval-ms 500}))
+                     (u/poll {:thunk       complete!
+                              :done?       uploaded-to-channel?
+                              ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
+                              ;; If it takes more than 10 seconds, something else is wrong and we should abort.
+                              :timeout-ms  3000
+                              :interval-ms 500}))
             (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
                             {:channel-id channel-id, :filename filename})))]
     (get-in complete-response [:files 0 :url_private])))

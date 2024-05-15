@@ -32,11 +32,8 @@ export const HomePopularSection = (): JSX.Element => {
         {popularItems.map((item, index) => (
           <HomeModelCard
             key={index}
-            title={getName(item.model_object)}
-            icon={getIcon(
-              { ...item.model_object, model: item.model },
-              { variant: "secondary" },
-            )}
+            title={getName(item)}
+            icon={getIcon(item, { variant: "secondary" })}
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}

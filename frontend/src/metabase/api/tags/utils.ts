@@ -81,7 +81,7 @@ export function provideActivityItemListTags(
 export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function provideAlertListTags(

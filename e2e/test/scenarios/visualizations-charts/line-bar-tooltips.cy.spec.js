@@ -35,7 +35,7 @@ function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   testTooltipText([
     ["Created At", "2023"],
     ["Sum of Total", "205,256.02"],
-    ["Compared to previous year", "386.89%"],
+    ["Compared to previous year", "+386.89%"],
   ]);
 }
 
@@ -106,7 +106,7 @@ function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   testTooltipText([
     ["Created At", "2023"],
     ["Average of Total", "56.86"],
-    ["Compared to previous year", "0.34%"],
+    ["Compared to previous year", "+0.34%"],
   ]);
 }
 
@@ -140,7 +140,7 @@ function testCumSumChange(testFirstTooltip = true) {
   testTooltipText([
     ["Created At", "2023"],
     ["Cumulative sum of Quantity", "17,587"],
-    ["Compared to previous year", "443.48%"],
+    ["Compared to previous year", "+443.48%"],
   ]);
 }
 
@@ -169,7 +169,7 @@ function testAvgDiscountChange() {
   testTooltipText([
     ["Created At", "2023"],
     ["Average of Discount", "5.41"],
-    ["Compared to previous year", "7.54%"],
+    ["Compared to previous year", "+7.54%"],
   ]);
 }
 
@@ -185,7 +185,7 @@ function testSumDiscountChange() {
   testTooltipText([
     ["Created At", "2023"],
     ["Sum of Discount", "1,953.08"],
-    ["Compared to previous year", "470.93%"],
+    ["Compared to previous year", "+470.93%"],
   ]);
 }
 
@@ -531,7 +531,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipText([
         ["Created At", "May 2022"],
         ["Sum of Total", "1,265.72"],
-        ["Compared to previous month", "2,299.19%"],
+        ["Compared to previous month", "+2,299.19%"],
       ]);
     });
 
@@ -560,7 +560,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipText([
         ["Created At", "July 2022"],
         ["Sum of Total", "3,734.69"],
-        ["Compared to previous month", "80.16%"],
+        ["Compared to previous month", "+80.16%"],
       ]);
 
       showTooltipForCircleInSeries("#88BF4D");
@@ -611,7 +611,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       display: "line",
     };
 
-    const APRIL_CHANGES = [null, "-10.89%", "11.1%", "-2.89%"];
+    const APRIL_CHANGES = [null, "-10.89%", "+11.1%", "-2.89%"];
 
     const SUM_OF_TOTAL_DST_WEEK = {
       name: "Q1",
@@ -629,7 +629,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       display: "line",
     };
 
-    const DST_WEEK_CHANGES = [null, "191.48%", "4.76%", "-2.36%"];
+    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
 
     const SUM_OF_TOTAL_DST_DAY = {
       name: "Q1",
@@ -647,7 +647,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       display: "line",
     };
 
-    const DST_DAY_CHANGES = [null, "27.5%", "-26.16%"];
+    const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
 
     it("should not omit percent change on April", () => {
       setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {

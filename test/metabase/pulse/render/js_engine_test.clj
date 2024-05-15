@@ -1,8 +1,8 @@
 (ns metabase.pulse.render.js-engine-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.render.body-test :as body-test]
-   [metabase.pulse.render.js-engine :as js]))
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,6 +23,5 @@
     (let [context (js/context)]
       (js/load-js-string context "function plus (x, y) { return x + y }" "plus test")
       (is (= (repeat 10 2)
-             (body-test/execute-n-times-in-parallel
-              #(.asLong (js/execute-fn-name context "plus" 1 1))
-              10))))))
+             (mt/repeat-concurrently 10
+              #(.asLong (js/execute-fn-name context "plus" 1 1))))))))
