@@ -19,7 +19,7 @@
 }
 
 .action {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: inherit;

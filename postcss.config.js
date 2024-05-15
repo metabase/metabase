@@ -6,7 +6,7 @@ const glob = require("glob");
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const CSS_SRC = glob.sync(SRC_PATH + "/css/**/*.css");
 
-const IS_SDK_BUILD = process.env.IS_SDK_BUILD === true;
+const IS_SDK_BUILD = process.env.IS_SDK_BUILD === "true";
 
 module.exports = {
   plugins: {
