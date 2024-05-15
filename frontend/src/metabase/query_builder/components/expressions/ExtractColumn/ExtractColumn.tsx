@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-
-import { Text, Box, Stack, Button, Flex } from "metabase/ui";
+import { Text, Box, Stack, Button, Title, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
