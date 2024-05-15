@@ -9,6 +9,7 @@
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse]
+   [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
@@ -148,17 +149,44 @@
                                              :pulse_id     pulse-2
                                              :channel_type :slack
                                              :details      {:channel "#general"}}
-                                            daily-at-6pm)]
-        (#'task.send-pulses/init-send-pulse-triggers!)
-        (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
-                  ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
-                  ;; different schedule
-                  (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-1am [pc-2-1])
-                  ;; there is no pc-2--3 because it's disabled
-                  (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-6pm [pc-2-2])}
-                (set/union
-                 (pulse-channel-test/send-pulse-triggers pulse-1)
-                 (pulse-channel-test/send-pulse-triggers pulse-2))))))))
+                                            daily-at-6pm)
+         :model/Dashboard    {dash-id :id} {}
+         :model/Pulse        {pulse-3 :id} {:dashboard_id dash-id}
+         :model/PulseChannel {pc-3-1 :id}  (merge
+                                            {:enabled      true
+                                             :pulse_id     pulse-3
+                                             :channel_type :slack
+                                             :details      {:channel "#general"}}
+                                            daily-at-6pm)
+         ;; pulse of archived dashboard shouldn't be scheduled
+         :model/Dashboard    {dash-id-2 :id} {:archived true}
+         :model/Pulse        {pulse-4 :id}   {:dashboard_id dash-id-2}
+         :model/PulseChannel {_pc-4-1 :id}   (merge
+                                              {:enabled      true
+                                               :pulse_id     pulse-4
+                                               :channel_type :slack
+                                               :details      {:channel "#general"}}
+                                              daily-at-6pm)]
+        (let [all-send-pulse-triggers #(set/union
+                                        (pulse-channel-test/send-pulse-triggers pulse-1)
+                                        (pulse-channel-test/send-pulse-triggers pulse-2)
+                                        (pulse-channel-test/send-pulse-triggers pulse-3)
+                                        (pulse-channel-test/send-pulse-triggers pulse-4))]
+          ;; delete all triggers created by PulseChanne hooks
+          (doseq [trigger-info (all-send-pulse-triggers)]
+            (task/delete-trigger! (triggers/key (:key trigger-info))))
+          (testing "sanity check that there are no triggers"
+            (is (empty? (all-send-pulse-triggers))))
+          (testing "init-send-pulse-triggers! should create triggers for each pulse-channel"
+            (#'task.send-pulses/init-send-pulse-triggers!)
+            (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
+                      ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
+                      ;; different schedule
+                      (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-1am [pc-2-1])
+                      ;; there is no pc-2--3 because it's disabled
+                      (pulse-channel-test/pulse->trigger-info pulse-2 daily-at-6pm [pc-2-2])
+                      (pulse-channel-test/pulse->trigger-info pulse-3 daily-at-6pm [pc-3-1])}
+                    (all-send-pulse-triggers)))))))))
 
 (deftest send-pulses-exceed-thread-pool-test
   (testing "test that if we have more send-pulse triggers than the number of available threads, all channels will still be sent"

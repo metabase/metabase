@@ -176,7 +176,19 @@
   Called once when Metabase starts up to create triggers for all existing PulseChannels
   and whenever the report timezone changes."
   []
-  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel :enabled true) results
+  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
+                                              {:select    [:pc.*]
+                                               :from      [[:pulse_channel :pc]]
+                                               :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
+                                                           [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                                               :where     [:and
+                                                           [:= :pc.enabled true]
+                                                           [:or
+                                                            ;; alerts
+                                                            [:= :p.dashboard_id nil]
+                                                            ;; if dashboard subscriptions, make sure it's not archived
+                                                            [:= :d.archived false]]]})
+                                   results
                                (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                                (update-vals results #(map :id %)))]
     (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
