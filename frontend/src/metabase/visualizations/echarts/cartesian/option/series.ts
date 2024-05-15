@@ -315,7 +315,7 @@ function getShowAutoSymbols(
   const seriesWithSymbols = seriesModels.filter(seriesModel => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     if (["area", "line"].includes(seriesSettings.display ?? "")) {
-      return seriesSettings["line.marker_enabled"] !== false;
+      return true;
     }
     return false;
   });
