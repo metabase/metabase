@@ -251,16 +251,10 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log(
       "There should only be one filter remaining and its value is preserved",
     );
-    filterWidget().within(() => {
-      cy.contains(new RegExp(`${endsWith.name}`, "i"));
-      // clear filter value
-      cy.icon("close").click();
-    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65");
+    filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
-    cy.location("search").should("eq", `?${endsWith.slug}=`);
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
   });
 
   it("should handle mismatch between filter types (metabase#9299, metabase#16181)", () => {
