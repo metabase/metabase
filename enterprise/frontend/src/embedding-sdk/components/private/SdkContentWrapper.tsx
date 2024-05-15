@@ -6,7 +6,7 @@ import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
@@ -36,10 +36,12 @@ const SdkContentWrapperInner = styled.div<
   }
 >`
   --mb-default-font-family: "${({ theme }) => getFontFamily(theme)}";
-  --mb-color-brand: ${color("brand")};
-  --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
-  --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
-  --mb-color-focus: ${color("focus")};
+  --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
+  --mb-color-brand-alpha-04: ${({ theme }) =>
+    alpha(theme.fn.themeColor("brand"), 0.04)};
+  --mb-color-brand-alpha-88: ${({ theme }) =>
+    alpha(theme.fn.themeColor("brand"), 0.88)};
+  --mb-color-focus: ${({ theme }) => theme.fn.themeColor("focus")};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
