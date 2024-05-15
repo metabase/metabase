@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   getObjectEntries,
   getObjectKeys,
@@ -390,6 +391,7 @@ const getYAxisFormatter = (
   settings: ComputedVisualizationSettings,
   stackType: StackType,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ): AxisFormatter => {
   const isNormalized = stackType === "normalized";
 
@@ -409,6 +411,7 @@ const getYAxisFormatter = (
     return renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
+      ...formattingOptions,
     });
   };
 };
@@ -493,6 +496,7 @@ export function getYAxisModel(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
     return null;
@@ -506,6 +510,7 @@ export function getYAxisModel(
     settings,
     stackType,
     renderingContext,
+    formattingOptions,
   );
 
   return {
@@ -525,6 +530,7 @@ export function getYAxesModels(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
+  compactSeriesByDataKey: DataKey[],
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -559,6 +565,13 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
+  const isLeftAxisCompact = compactSeriesByDataKey.some(dataKey =>
+    leftAxisSeriesKeysSet.has(dataKey),
+  );
+  const isRightAxisCompact = compactSeriesByDataKey.some(dataKey =>
+    rightAxisSeriesKeysSet.has(dataKey),
+  );
+
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
@@ -569,6 +582,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       renderingContext,
+      { compact: isLeftAxisCompact },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -581,6 +595,7 @@ export function getYAxesModels(
         ? null
         : settings["stackable.stack_type"] ?? null,
       renderingContext,
+      { compact: isRightAxisCompact },
     ),
   };
 }

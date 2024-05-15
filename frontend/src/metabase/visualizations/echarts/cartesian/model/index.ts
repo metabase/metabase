@@ -141,20 +141,22 @@ export const getCartesianChartModel = (
     rawSeries[0].card.display,
   );
 
-  const seriesLabelsFormatters = getSeriesLabelsFormatters(
-    seriesModels,
-    transformedDataset,
-    settings,
-    renderingContext,
-  );
+  const { formatters: seriesLabelsFormatters, compactSeriesByDataKey } =
+    getSeriesLabelsFormatters(
+      seriesModels,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
 
-  const stackedLabelsFormatters = getStackedLabelsFormatters(
-    seriesModels,
-    stackModels,
-    transformedDataset,
-    settings,
-    renderingContext,
-  );
+  const { formatters: stackedLabelsFormatters, compactStackedSeriesByDataKey } =
+    getStackedLabelsFormatters(
+      seriesModels,
+      stackModels,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
@@ -163,6 +165,7 @@ export const getCartesianChartModel = (
     columnByDataKey,
     isAutoSplitSupported,
     stackModels,
+    [...compactSeriesByDataKey, ...compactStackedSeriesByDataKey],
     renderingContext,
   );
 
