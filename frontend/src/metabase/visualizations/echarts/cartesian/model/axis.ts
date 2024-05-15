@@ -530,7 +530,7 @@ export function getYAxesModels(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
-  compactSeriesByDataKey: DataKey[],
+  compactSeriesDataKeys: DataKey[],
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -568,10 +568,10 @@ export function getYAxesModels(
   const isCompact = settings["graph.label_value_formatting"] === "compact";
   const isLeftAxisCompact =
     isCompact ||
-    compactSeriesByDataKey.some(dataKey => leftAxisSeriesKeysSet.has(dataKey));
+    compactSeriesDataKeys.some(dataKey => leftAxisSeriesKeysSet.has(dataKey));
   const isRightAxisCompact =
     isCompact ||
-    compactSeriesByDataKey.some(dataKey => rightAxisSeriesKeysSet.has(dataKey));
+    compactSeriesDataKeys.some(dataKey => rightAxisSeriesKeysSet.has(dataKey));
 
   return {
     leftAxisModel: getYAxisModel(
