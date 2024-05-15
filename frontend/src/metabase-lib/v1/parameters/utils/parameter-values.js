@@ -22,6 +22,7 @@ export function getParameterValue({
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
+
   return recentlyUsedValue ?? value ?? (useDefault ? parameter.default : null);
 }
 
