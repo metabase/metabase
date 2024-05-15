@@ -30,7 +30,7 @@ describe("QuestionInfoSidebar", () => {
       "enable-query-caching": true,
     });
     await setupGranularCacheControls({ card, settings });
-    expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
+    expect(screen.getByText("Caching policy")).toBeInTheDocument();
   });
 
   it("should not show caching controls if caching is disabled", async () => {
@@ -41,6 +41,6 @@ describe("QuestionInfoSidebar", () => {
       "enable-query-caching": false,
     });
     await setupGranularCacheControls({ card, settings });
-    expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cache policy")).not.toBeInTheDocument();
   });
 });

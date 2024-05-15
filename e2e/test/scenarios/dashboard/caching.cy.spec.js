@@ -16,6 +16,10 @@ describeEE("scenarios > dashboard > caching", () => {
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
+  /**
+   * @note There is a similar test for the cache config form that appears in the question sidebar.
+   * It's in the Cypress describe block labeled "scenarios > question > caching"
+   */
   it("can configure cache for a dashboard, on an enterprise instance", () => {
     cy.intercept("PUT", "/api/cache").as("putCacheConfig");
     visitDashboard(ORDERS_DASHBOARD_ID);
