@@ -22,6 +22,7 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
+const uploadReplayRecordings = process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
@@ -40,7 +41,7 @@ const defaultConfig = {
     if (runWithReplay) {
       on = replay.wrapOn(on);
       replay.default(on, config, {
-        upload: true,
+        upload: uploadReplayRecordings,
         apiKey: process.env.REPLAY_API_KEY,
         filter: r => {
           const hasCrashed = r.status === "crashed";
