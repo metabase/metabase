@@ -246,7 +246,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Remove").click();
     cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
-    cy.button("Save").click();
+    saveDashboard();
 
     cy.log(
       "There should only be one filter remaining and its value is preserved",
