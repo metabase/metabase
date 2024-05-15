@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models.pulse :refer [Pulse]]
