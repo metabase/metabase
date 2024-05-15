@@ -194,20 +194,9 @@ describe("scenarios > notebook > data source", () => {
         openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
         entityPickerModal().within(() => {
-          cy.findByTestId("item-picker-level-0")
-            .findByText(dbName)
-            .parents("button")
-            .should("have.attr", "data-active", "true");
-
-          cy.findByTestId("item-picker-level-1")
-            .findByText(schemaName)
-            .parents("button")
-            .should("have.attr", "data-active", "true");
-
-          cy.findByTestId("item-picker-level-2")
-            .findByText(tableName)
-            .parents("button")
-            .should("have.attr", "data-active", "true");
+          assertEntitySelected(0, dbName);
+          assertEntitySelected(1, schemaName);
+          assertEntitySelected(2, tableName);
         });
       },
     );
@@ -257,25 +246,10 @@ describe("scenarios > notebook > data source", () => {
           "true",
         );
 
-        cy.findByTestId("item-picker-level-0")
-          .findByText("Our analytics")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-1")
-          .findByText("First collection")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-2")
-          .findByText("Second collection")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-3")
-          .findByText(checkNotNull(modelDetails.name))
-          .parents("button")
-          .should("have.attr", "data-active", "true");
+        assertEntitySelected(0, "Our analytics");
+        assertEntitySelected(1, "First collection");
+        assertEntitySelected(2, "Second collection");
+        assertEntitySelected(3, checkNotNull(modelDetails.name));
       });
     });
 
@@ -285,16 +259,8 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        cy.findByTestId("item-picker-level-0")
-          .findByText("Our analytics")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-1")
-          .findByText("Orders Model")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
+        assertEntitySelected(0, "Our analytics");
+        assertEntitySelected(1, "Orders Model");
         cy.button("Close").click();
       });
 
@@ -302,20 +268,9 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        cy.findByTestId("item-picker-level-0")
-          .findByText("Our analytics")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-1")
-          .findByText("First collection")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
-
-        cy.findByTestId("item-picker-level-2")
-          .findByText("Orders Model")
-          .parents("button")
-          .should("have.attr", "data-active", "true");
+        assertEntitySelected(0, "Our analytics");
+        assertEntitySelected(1, "First collection");
+        assertEntitySelected(2, "Orders Model");
       });
     });
 
@@ -341,8 +296,11 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
 
       openDataSelector();
-      assertSourceCollection("Our analytics");
-      assertDataSource(sourceQuestionName);
+      entityPickerModal().within(() => {
+        assertEntitySelected(0, "Our analytics");
+        assertEntitySelected(1, sourceQuestionName);
+        cy.button("Close").click();
+      });
 
       cy.log("Move the source question to another collection");
       visitQuestion(SOURCE_QUESTION_ID);
@@ -354,8 +312,11 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
 
       openDataSelector();
-      assertSourceCollection("First collection");
-      assertDataSource(sourceQuestionName);
+      entityPickerModal().within(() => {
+        assertEntitySelected(0, "Our analytics");
+        assertEntitySelected(1, "First collection");
+        assertEntitySelected(2, sourceQuestionName);
+      });
     });
   });
 });
@@ -377,14 +338,9 @@ function openDataSelector() {
   cy.findByTestId("data-step-cell").click();
 }
 
-function assertItemSelected(item: string) {
-  cy.findByLabelText(item).should("have.attr", "aria-selected", "true");
-}
-
-function assertSourceCollection(collection: string) {
-  return assertItemSelected(collection);
-}
-
-function assertDataSource(questionOrModel: string) {
-  return assertItemSelected(questionOrModel);
+function assertEntitySelected(level: number, name: string) {
+  cy.findByTestId(`item-picker-level-${level}`)
+    .findByText(name)
+    .parents("button")
+    .should("have.attr", "data-active", "true");
 }
