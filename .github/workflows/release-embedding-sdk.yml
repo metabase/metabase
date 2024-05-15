@@ -94,10 +94,10 @@ jobs:
       - name: Generate SDK package.json in the build directory
         run: yarn run embedding-sdk:generate-package
 
-      - name: Upload built package as artifact
+      - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: metabase-${{ github.sha }}-sdk
+          name: metabase-sdk
           path: ./resources/embedding-sdk
 
   build-jar:
@@ -178,5 +178,14 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
+      - name: Retrieve build SDK package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-sdk
+          path: sdk
+
       - name: Publish to NPM
-        run: echo "Implement this step once you've ensure other steps works correctly."
+        run: |
+          cd sdk
+          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          npm publish --dry-run
