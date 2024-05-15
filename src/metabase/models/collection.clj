@@ -1474,7 +1474,7 @@
                            ;; EITHER:
                            (or
                             ;; the item was trashed from the root collection
-                            (nil? trashed-from-coll)
+                            (nil? (:trashed_from_collection_id item))
                             ;; or the collection we'll restore to actually exists.
                             (some? trashed-from-coll))
 
