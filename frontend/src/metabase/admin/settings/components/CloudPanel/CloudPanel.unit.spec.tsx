@@ -8,7 +8,7 @@ import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { CloudPanel } from "./CloudPanel";
 
-const POLL_INTERVAL = 50;
+const POLL_INTERVAL = 200;
 
 const setup = () => {
   const mockMigrationStart = jest.fn();
