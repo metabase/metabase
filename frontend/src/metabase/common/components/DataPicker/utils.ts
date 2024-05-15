@@ -182,7 +182,12 @@ export const createShouldShowItem = (databaseId?: DatabaseId) => {
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      return contents.includes("card") || contents.includes("dataset");
+      const hasQuestionsOrModels =
+        contents.includes("card") || contents.includes("dataset");
+
+      if (!hasQuestionsOrModels) {
+        return false;
+      }
     }
 
     if (
