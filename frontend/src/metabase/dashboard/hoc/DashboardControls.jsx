@@ -5,10 +5,18 @@ import { replace } from "react-router-redux";
 import screenfull from "screenfull";
 
 import HideS from "metabase/css/core/hide.module.css";
+import { setDisplayTheme } from "metabase/dashboard/actions";
+import { getDisplayTheme } from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 const TICK_PERIOD = 1; // seconds
+
+const mapStateToProps = (state, props) => ({
+  theme: getDisplayTheme(state),
+});
+
+const mapDispatchToProps = { replace, setDisplayTheme };
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
@@ -16,7 +24,10 @@ const TICK_PERIOD = 1; // seconds
  * @deprecated HOCs are deprecated
  */
 export const DashboardControls = ComposedComponent =>
-  connect(null, { replace })(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class extends Component {
       static displayName =
         "DashboardControls[" +
@@ -25,10 +36,7 @@ export const DashboardControls = ComposedComponent =>
 
       state = {
         isFullscreen: false,
-        theme: null,
-
         refreshPeriod: null,
-
         hideParameters: null,
       };
 
@@ -71,9 +79,10 @@ export const DashboardControls = ComposedComponent =>
             ? null
             : options.refresh,
         );
-        this.setTheme(options.theme);
+
         this.setFullscreen(options.fullscreen);
         this.setHideParameters(options.hide_parameters);
+        this.props.setDisplayTheme(options.theme);
       };
 
       syncUrlHashToState() {
@@ -82,7 +91,7 @@ export const DashboardControls = ComposedComponent =>
         const { refresh, fullscreen, theme } = parseHashOptions(location.hash);
         this.setRefreshPeriod(refresh);
         this.setFullscreen(fullscreen);
-        this.setTheme(theme);
+        this.props.setDisplayTheme(theme);
       }
 
       syncStateToUrlHash = () => {
@@ -98,7 +107,7 @@ export const DashboardControls = ComposedComponent =>
         };
         setValue("refresh", this.state.refreshPeriod);
         setValue("fullscreen", this.state.isFullscreen);
-        setValue("theme", this.state.theme);
+        setValue("theme", this.props.theme);
 
         delete options.night; // DEPRECATED: options.night
 
@@ -143,12 +152,7 @@ export const DashboardControls = ComposedComponent =>
 
       // Preserve existing behavior, while keeping state in a new `theme` key
       setNightMode = isNightMode => {
-        const theme = isNightMode ? "night" : null;
-        this.setState({ theme });
-      };
-
-      setTheme = theme => {
-        this.setState({ theme });
+        this.props.setDisplayTheme(isNightMode ? "night" : null);
       };
 
       setFullscreen = async (isFullscreen, browserFullscreen = true) => {
@@ -236,8 +240,8 @@ export const DashboardControls = ComposedComponent =>
           <ComposedComponent
             {...this.props}
             {...this.state}
-            isNightMode={this.state.theme === "night"}
-            hasNightModeToggle={this.state.theme !== "transparent"}
+            isNightMode={this.props.theme === "night"}
+            hasNightModeToggle={this.props.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
             onNightModeChange={this.setNightMode}

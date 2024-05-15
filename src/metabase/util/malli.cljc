@@ -118,3 +118,16 @@
               value)
        (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
        value)))
+
+(core/defn map-schema-assoc
+  "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
+   If kvs are provided, they are also associated with the schema."
+  [map-schema & kvs]
+  (if kvs
+    (if (next kvs)
+      (let [key (first kvs)
+            val (first (next kvs))
+            ret (mut/assoc map-schema key val)]
+        (recur ret (nnext kvs)))
+      (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
+    map-schema))

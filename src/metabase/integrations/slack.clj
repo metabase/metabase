@@ -318,6 +318,22 @@
         channel-id' (get name->id channel-id channel-id)]
     channel-id'))
 
+(defn- poll
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
+  [{:keys [thunk done? timeout-ms ^long interval-ms]}]
+  (let [start-time (System/currentTimeMillis)]
+    (loop []
+      (let [response (thunk)]
+        (if (done? response)
+          response
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              nil ; timeout reached
+              (do
+                (Thread/sleep interval-ms)
+                (recur)))))))))
+
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."

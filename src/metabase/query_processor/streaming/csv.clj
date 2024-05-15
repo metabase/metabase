@@ -31,7 +31,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]
+        (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)]
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)

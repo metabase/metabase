@@ -25,7 +25,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Icon, DelayGroup } from "metabase/ui";
+import { Button as UIButton, Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -727,16 +727,25 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
+      question,
+      mode,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
+    const query = question?.query();
+    const stageIndex = -1;
+
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
-    const isClickable = this.visualizationIsClickable(clicked);
+    const isClickable = Boolean(
+      mode?.hasDrills &&
+        query &&
+        Lib.queryDisplayInfo(query, stageIndex).isEditable,
+    );
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
@@ -745,9 +754,6 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const columnInfoPopoverTestId = "field-info-popover";
-    const question = this.props.question;
-    const query = question?.query();
-    const stageIndex = -1;
 
     return (
       <TableDraggable
@@ -1017,6 +1023,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      question,
     } = this.props;
 
     if (!width || !height) {
@@ -1025,6 +1032,9 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
+    const shortcutColumn = 1;
+    const query = question?.query();
+    const info = query && Lib.queryDisplayInfo(query);
 
     return (
       <DelayGroup>
@@ -1091,6 +1101,18 @@ class TableInteractive extends Component {
                     </div>
                   </>
                 )}
+                {shortcutColumn && (
+                  <ColumnShortcut
+                    height={headerHeight - 1}
+                    isEditable={info?.isEditable}
+                    onClick={evt => {
+                      this.onVisualizationClick(
+                        { columnShortcuts: true },
+                        evt.target,
+                      );
+                    }}
+                  />
+                )}
                 <Grid
                   ref={ref => (this.header = ref)}
                   style={{
@@ -1110,16 +1132,24 @@ class TableInteractive extends Component {
                   height={headerHeight}
                   rowCount={1}
                   rowHeight={headerHeight}
-                  columnCount={cols.length + gutterColumn}
+                  columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
-                  cellRenderer={props =>
-                    gutterColumn && props.columnIndex === 0
-                      ? null // we need a phantom cell to properly offset columns
-                      : this.tableHeaderRenderer({
-                          ...props,
-                          columnIndex: props.columnIndex - gutterColumn,
-                        })
-                  }
+                  cellRenderer={props => {
+                    if (props.columnIndex === 0 && gutterColumn) {
+                      // we need a phantom cell to properly offset gutter columns
+                      return null;
+                    }
+
+                    if (props.columnIndex === cols.length + gutterColumn) {
+                      // we need a phantom cell to properly offset the shortcut column
+                      return null;
+                    }
+
+                    return this.tableHeaderRenderer({
+                      ...props,
+                      columnIndex: props.columnIndex - gutterColumn,
+                    });
+                  }}
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                   tabIndex={null}
@@ -1137,18 +1167,26 @@ class TableInteractive extends Component {
                   }}
                   width={width}
                   height={height - headerHeight}
-                  columnCount={cols.length + gutterColumn}
+                  columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
                   rowCount={rows.length}
                   rowHeight={ROW_HEIGHT}
-                  cellRenderer={props =>
-                    gutterColumn && props.columnIndex === 0
-                      ? null // we need a phantom cell to properly offset columns
-                      : this.cellRenderer({
-                          ...props,
-                          columnIndex: props.columnIndex - gutterColumn,
-                        })
-                  }
+                  cellRenderer={props => {
+                    if (props.columnIndex === 0 && gutterColumn) {
+                      // we need a phantom cell to properly offset gutter columns
+                      return null;
+                    }
+
+                    if (props.columnIndex === cols.length + gutterColumn) {
+                      // we need a phantom cell to properly offset the shortcut column
+                      return null;
+                    }
+
+                    return this.cellRenderer({
+                      ...props,
+                      columnIndex: props.columnIndex - gutterColumn,
+                    });
+                  }}
                   scrollTop={scrollTop}
                   onScroll={({ scrollLeft, scrollTop }) => {
                     this.props.onActionDismissal();
@@ -1239,3 +1277,22 @@ const DetailShortcut = forwardRef((_props, ref) => (
 ));
 
 DetailShortcut.displayName = "DetailShortcut";
+
+function ColumnShortcut({ height, onClick, isEditable }) {
+  if (!isEditable) {
+    return null;
+  }
+
+  return (
+    <div className={TableS.shortcutsWrapper} style={{ height }}>
+      <UIButton
+        variant="filled"
+        compact
+        leftIcon={<Icon name="add" />}
+        title={t`Add column`}
+        aria-label={t`Add column`}
+        onClick={onClick}
+      />
+    </div>
+  );
+}

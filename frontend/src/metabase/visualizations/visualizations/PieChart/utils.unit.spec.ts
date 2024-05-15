@@ -19,6 +19,33 @@ const slices = [
   },
 ];
 
+const slicesWithOther = [
+  {
+    key: "foo",
+    value: 100,
+    displayValue: 100,
+    percentage: 0.28571429,
+    rowIndex: 0,
+    color: "green",
+  },
+  {
+    key: "bar",
+    value: 200,
+    displayValue: 200,
+    percentage: 0.57142857,
+    rowIndex: 1,
+    color: "red",
+  },
+  {
+    key: "Other",
+    value: 50,
+    displayValue: 50,
+    percentage: 0.14285714,
+    rowIndex: 2,
+    color: "grey",
+  },
+];
+
 const stateSlices = [
   {
     key: "AK",
@@ -144,6 +171,20 @@ describe("utils", () => {
       ]);
       expect(showTotal).toBe(true);
       expect(showPercentages).toBe(true);
+    });
+
+    it("should return a `value` for the `other` slice #42458", () => {
+      const { bodyRows } = getTooltipModel(
+        slicesWithOther,
+        0,
+        dimensionColumnName,
+        dimensionFormatter,
+        metricFormatter,
+      );
+
+      expect(bodyRows?.[bodyRows.length - 1].value).toBe(
+        slicesWithOther[slicesWithOther.length - 1].displayValue,
+      );
     });
 
     it("is not affected by minimum slice percentage setting #32430 #33342", () => {

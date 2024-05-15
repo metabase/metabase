@@ -21,7 +21,10 @@ const mapDispatchToProps = { fetchRevisions };
 class RevisionHistoryApp extends Component {
   componentDidMount() {
     const { id, objectType } = this.props;
-    this.props.fetchRevisions({ entity: objectType, id });
+    this.props.fetchRevisions({
+      entity: objectType === "metric" ? "legacy-metric" : objectType,
+      id,
+    });
   }
 
   render() {
