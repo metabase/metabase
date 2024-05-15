@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   openOrdersTable,
   restore,
@@ -18,7 +19,7 @@ describe("issue 17710", () => {
 
     cy.button("Join data").click();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Products").click();
     });
 

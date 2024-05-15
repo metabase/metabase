@@ -15,6 +15,7 @@ import {
   rightSidebar,
   chartPathWithFillColor,
   cartesianChartCircle,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -33,7 +34,7 @@ describe("binning related reproductions", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("16327").click();
     });
 
@@ -105,7 +106,7 @@ describe("binning related reproductions", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("17975").click();
     });
 
@@ -145,7 +146,7 @@ describe("binning related reproductions", () => {
     cy.icon("join_left_outer").click();
 
     entityPickerModal().within(() => {
-      cy.findByTextEnsureVisible("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("18646").click();
     });
 
@@ -191,7 +192,7 @@ describe("binning related reproductions", () => {
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("11439").click();
     });
 
@@ -380,7 +381,7 @@ describe("binning related reproductions", () => {
 function openSummarizeOptions(questionType) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    cy.findByText("Saved questions").click();
+    entityPickerModalTab("Saved questions").click();
     cy.findByText("16379").click();
   });
 

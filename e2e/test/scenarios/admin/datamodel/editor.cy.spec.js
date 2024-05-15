@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   entityPickerModal,
+  entityPickerModalTab,
   moveDnDKitElement,
   openOrdersTable,
   openProductsTable,
@@ -56,7 +57,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -103,7 +104,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -117,7 +118,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -229,7 +230,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -412,7 +413,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -442,7 +443,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -511,7 +512,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

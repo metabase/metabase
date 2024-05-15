@@ -1,7 +1,8 @@
 import {
   enterCustomColumnDetails,
-  getNotebookStep,
   entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
   popover,
   restore,
   startNewQuestion,
@@ -17,7 +18,7 @@ describe("issue 29094", () => {
     startNewQuestion();
 
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 

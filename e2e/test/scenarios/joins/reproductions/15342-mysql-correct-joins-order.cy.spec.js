@@ -1,6 +1,7 @@
 import {
-  getNotebookStep,
   entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
   popover,
   restore,
   startNewQuestion,
@@ -20,7 +21,7 @@ describe("issue 15342", { tags: "@external" }, () => {
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("People").click();
     });

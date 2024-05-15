@@ -16,6 +16,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
   cartesianChartCircle,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -250,7 +251,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Join data").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Products").click();
     });
 

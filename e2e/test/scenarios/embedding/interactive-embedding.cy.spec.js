@@ -21,6 +21,7 @@ import {
   goToTab,
   visitFullAppEmbeddingUrl,
   getDashboardCardMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -238,7 +239,7 @@ describeEE("scenarios > embedding > full app", () => {
         cy.button("New").click();
         popover().findByText("Question").click();
         entityPickerModal().within(() => {
-          cy.findByText("Tables").click();
+          entityPickerModalTab("Tables").click();
           cy.findByText("Orders").click();
         });
       });

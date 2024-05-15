@@ -9,6 +9,7 @@ import {
   echartsContainer,
   cartesianChartCircle,
   chartPathWithFillColor,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -68,7 +69,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -134,7 +135,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -207,7 +208,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("QB Binning").click();
       });
 

@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   entityPickerModal,
+  entityPickerModalTab,
   restore,
   startNewQuestion,
   visualize,
@@ -87,7 +88,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   it("third level of nesting with joins should result in proper column aliasing (metabase#22859-2)", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("22859-Q2").click();
     });
 

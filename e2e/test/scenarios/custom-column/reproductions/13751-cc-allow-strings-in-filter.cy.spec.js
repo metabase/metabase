@@ -9,6 +9,7 @@ import {
   startNewQuestion,
   queryBuilderMain,
   selectFilterOperator,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const CC_NAME = "C-States";
@@ -21,7 +22,7 @@ describe("issue 13751", { tags: "@external" }, () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });

@@ -1,9 +1,10 @@
 import {
   entityPickerModal,
+  entityPickerModalTab,
+  openOrdersTable,
+  popover,
   restore,
   visualize,
-  popover,
-  openOrdersTable,
 } from "e2e/support/helpers";
 
 describe("issue 29795", () => {
@@ -28,7 +29,7 @@ describe("issue 29795", () => {
     cy.icon("join_left_outer").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText(NATIVE_QUESTION).click();
     });
 

@@ -4,6 +4,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalTab,
   restore,
   startNewQuestion,
 } from "e2e/support/helpers";
@@ -27,7 +28,7 @@ describe("issue 24660", () => {
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findAllByText(collectionName).first().click();
 
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
