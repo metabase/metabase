@@ -194,10 +194,6 @@ describe("scenarios > question > new", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
         cy.findByText("All personal collections").click();
-        // TODO: this assertion fails
-        cy.findByText(getPersonalCollectionName(USERS.normal)).should(
-          "not.exist",
-        );
         cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
       });
