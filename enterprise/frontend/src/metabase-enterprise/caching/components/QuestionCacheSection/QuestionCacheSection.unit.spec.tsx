@@ -22,7 +22,7 @@ const setup = ({ card = createMockCard() }: SetupOpts) => {
   const question = checkNotNull(metadata.question(card.id));
 
   renderWithProviders(
-    <QuestionCacheSection question={question} onSave={jest.fn()} />,
+    <QuestionCacheSection question={question} setPage={jest.fn()} />,
     { storeInitialState: state },
   );
 };
@@ -59,7 +59,7 @@ describe("QuestionCacheSection", () => {
       }),
     });
 
-    expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
+    expect(screen.getByText("Caching policy")).toBeInTheDocument();
     expect(screen.queryByText(/Question last cached/)).not.toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import {
   setupRevisionsEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
@@ -37,6 +38,7 @@ export const setup = async ({
   setupCardEndpoints(card);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
+  setupPerformanceEndpoints([]);
 
   const state = createMockState({
     currentUser,
