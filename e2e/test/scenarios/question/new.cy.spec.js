@@ -155,10 +155,18 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("First collection");
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Saved questions/ }).click();
+        cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
+        cy.findByText("Third collection").should("not.exist");
+
+        cy.findByText("First collection").click();
+        cy.findByText("Second collection").should("exist");
+        cy.findByText("Third collection").should("not.exist");
+
+        cy.findByText("Second collection").click();
+        cy.findByText("Third collection").should("exist");
       });
     });
 
