@@ -18,12 +18,14 @@ export function getParameterValue({
   parameter,
   values = {},
   defaultRequired = false,
-  recentlyUsedValue = null,
+  lastUsedParameterValue = null,
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
 
-  return recentlyUsedValue ?? value ?? (useDefault ? parameter.default : null);
+  return (
+    lastUsedParameterValue ?? value ?? (useDefault ? parameter.default : null)
+  );
 }
 
 /**
@@ -35,6 +37,7 @@ export function getValuePopulatedParameters({
   values = {},
   defaultRequired = false,
   collectionPreview = false,
+  // should be a better name for it
   localDashboardParameters = {},
 }) {
   // pinned native question can have default values on parameters, usually we
@@ -45,7 +48,7 @@ export function getValuePopulatedParameters({
   }
 
   return parameters.map(parameter => {
-    const recentlyUsedValue = localDashboardParameters[parameter.id];
+    const lastUsedParameterValue = localDashboardParameters[parameter.id];
 
     return {
       ...parameter,
@@ -53,7 +56,7 @@ export function getValuePopulatedParameters({
         parameter,
         values,
         defaultRequired,
-        recentlyUsedValue,
+        lastUsedParameterValue,
       }),
     };
   });

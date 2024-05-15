@@ -11,10 +11,10 @@ import type {
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
   queryParams: Record<string, string | string[] | null | undefined>,
-  recentlyUsedParameters?: Record<ParameterId, unknown>,
+  lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   queryParams = queryParams || {};
-  recentlyUsedParameters = recentlyUsedParameters || {};
+  lastUsedParametersValues = lastUsedParametersValues || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
@@ -24,7 +24,7 @@ export function getParameterValueFromQueryParams(
   } else if (maybeParameterValue == null) {
     // first try to use recently used parameter
     // then try to use the default if the parameter is not present in the query params
-    return recentlyUsedParameters[parameter.id] ?? parameter.default ?? null;
+    return lastUsedParametersValues[parameter.id] ?? parameter.default ?? null;
   }
 
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
@@ -105,7 +105,7 @@ function normalizeParameterValueForWidget(
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
   queryParams: Record<string, string | string[] | null | undefined>,
-  recentlyUsedParameters?: Record<ParameterId, unknown>,
+  lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
     parameters.map(parameter => [
@@ -113,7 +113,7 @@ export function getParameterValuesByIdFromQueryParams(
       getParameterValueFromQueryParams(
         parameter,
         queryParams,
-        recentlyUsedParameters,
+        lastUsedParametersValues,
       ),
     ]),
   );
