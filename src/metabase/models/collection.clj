@@ -1461,25 +1461,28 @@
   :can_restore
   "Efficiently hydrate the `:can_restore` of a sequence of items with a `trashed_from_collection_id`."
   [items]
-  (for [item (t2/hydrate items :trashed_from_collection)
-        :let [trashed-from-coll (:trashed_from_collection item)]]
-    (assoc item :can_restore (and
-                              ;; the item is directly in the trash (it was moved to the trash independently, not as
-                              ;; part of a collection)
-                              (= (:collection_id item) (trash-collection-id))
+  (for [{trashed-from-coll :trashed_from_collection
+         :as item*} (t2/hydrate items :trashed_from_collection)
+        :let [item (dissoc item* :trashed_from_collection)]]
+    (cond-> item
+      (:archived item)
+      (assoc :can_restore (and
+                           ;; the item is directly in the trash (it was moved to the trash independently, not as
+                           ;; part of a collection)
+                           (= (:collection_id item) (trash-collection-id))
 
-                              ;; EITHER:
-                              (or
-                               ;; the item was trashed from the root collection
-                               (nil? (:trashed_from_collection_id item))
-                               ;; or the collection we'll restore to actually exists.
-                               (some? trashed-from-coll))
+                           ;; EITHER:
+                           (or
+                            ;; the item was trashed from the root collection
+                            (nil? trashed-from-coll)
+                            ;; or the collection we'll restore to actually exists.
+                            (some? trashed-from-coll))
 
-                              ;; the collection we'll restore to is not archived
-                              (not (:archived trashed-from-coll))
+                           ;; the collection we'll restore to is not archived
+                           (not (:archived trashed-from-coll))
 
-                              ;; we have perms on the collection
-                              (mi/can-write? (or trashed-from-coll root-collection))))))
+                           ;; we have perms on the collection
+                           (mi/can-write? (or trashed-from-coll root-collection)))))))
 
 (mi/define-batched-hydration-method collection-can-restore
   :collection/can_restore
@@ -1512,8 +1515,9 @@
                                (when (:id restore-destination)
                                  restore-destination))))]
       (for [coll colls]
-        (assoc coll :can_restore (if-let [restore-destination (coll->restore-coll coll)]
-                                   (perms/set-has-full-permissions-for-set?
-                                    @api/*current-user-permissions-set*
-                                    (perms-for-moving coll restore-destination))
-                                   false))))))
+        (cond-> coll
+          (:archived coll) (assoc :can_restore (if-let [restore-destination (coll->restore-coll coll)]
+                                                 (perms/set-has-full-permissions-for-set?
+                                                  @api/*current-user-permissions-set*
+                                                  (perms-for-moving coll restore-destination))
+                                                 false)))))))
