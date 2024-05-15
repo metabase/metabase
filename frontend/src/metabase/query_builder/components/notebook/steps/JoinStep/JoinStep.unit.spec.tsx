@@ -4,10 +4,17 @@ import { useState } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
@@ -122,6 +129,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints([createMockCollectionItem(MODEL)]);
+  setupRecentViewsEndpoints([]);
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);
@@ -187,6 +195,14 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 }
 
 describe("Notebook Editor > Join Step", () => {
+  beforeAll(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   it("should display a join correctly", () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
@@ -205,14 +221,12 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const popover = await screen.findByTestId("popover");
+    const modal = await screen.findByTestId("entity-picker-modal");
+    await waitForLoaderToBeRemoved();
 
-    await waitFor(() => {
-      expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
-    });
-    expect(within(popover).getByText("Products")).toBeInTheDocument();
-    expect(within(popover).getByText("People")).toBeInTheDocument();
-    expect(within(popover).getByText("Reviews")).toBeInTheDocument();
+    expect(within(modal).getByText("Products")).toBeInTheDocument();
+    expect(within(modal).getByText("People")).toBeInTheDocument();
+    expect(within(modal).getByText("Reviews")).toBeInTheDocument();
   });
 
   it("should not allow picking a right table from another database", async () => {
