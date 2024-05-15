@@ -23,7 +23,6 @@ import {
   collectionOnTheGoModal,
   modal,
   pickEntity,
-  hovercard,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -192,18 +191,6 @@ describe("scenarios > question > new", () => {
         cy.findByText("Personal question").click();
       });
       visualize();
-    });
-
-    it.skip("should allow clicking linked tables in table info popover", () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Tables/ }).click();
-        cy.findByLabelText("People").findByLabelText("More info").realHover();
-      });
-
-      hovercard().findByText("Orders").click();
-
-      cy.url().should("include", "question#");
     });
   });
 
