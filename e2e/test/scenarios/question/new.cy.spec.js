@@ -174,18 +174,17 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Orders").click();
-      });
+      entityPickerModal().findByText("Orders").click();
       visualize();
       saveQuestion("Personal question");
 
       cy.signOut();
       cy.signInAsAdmin();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Saved questions/ }).click();
         cy.findByText("All personal collections").click();
+        // TODO: this assertion fails
         cy.findByText(getPersonalCollectionName(USERS.normal)).should(
           "not.exist",
         );
