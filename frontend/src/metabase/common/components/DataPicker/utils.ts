@@ -178,6 +178,13 @@ export const isValidValueItem = (model: SearchModel): boolean => {
 
 export const createShouldShowItem = (databaseId?: DatabaseId) => {
   return (item: QuestionPickerItem) => {
+    if (item.model === "collection") {
+      const below = item.below ?? [];
+      const here = item.here ?? [];
+      const contents = [...below, ...here];
+      return contents.includes("card") || contents.includes("dataset");
+    }
+
     if (
       isNullOrUndefined(databaseId) ||
       !hasDatabaseId(item) ||
