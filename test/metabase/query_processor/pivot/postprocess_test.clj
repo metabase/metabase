@@ -31,7 +31,7 @@
                                                 [4 false [1]]]]
       (testing (format "Column index %s has correct expected values." idx)
         (is (= expected-values
-               (#'qp.pivot.postprocess/all-values-for (rest pivot-base-rows) idx include-nil?)))))))
+               (#'qp.pivot.postprocess/all-values-for pivot-base-rows idx include-nil?)))))))
 
 (deftest header-builder-test
   (testing "The `header-builder` function returns the correctly formed header(s)."
