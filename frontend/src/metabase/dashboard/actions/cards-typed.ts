@@ -239,23 +239,33 @@ export const replaceCard =
     dashboardId && trackQuestionReplaced(dashboardId);
   };
 
-export const removeCardFromDashboard = createThunkAction<
-  [{ dashcardId: DashCardId; cardId: CardId }]
->(REMOVE_CARD_FROM_DASH, ({ dashcardId, cardId }) => dispatch => {
-  // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
-  dispatch(cancelFetchCardData(cardId, dashcardId));
-  return { dashcardId };
-});
+export const removeCardFromDashboard = createThunkAction(
+  REMOVE_CARD_FROM_DASH,
+  ({
+      dashcardId,
+      cardId,
+    }: {
+      dashcardId: DashCardId;
+      cardId: DashboardCard["card_id"];
+    }) =>
+    dispatch => {
+      // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
+      dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId };
+    },
+);
 
-export const undoRemoveCardFromDashboard = createThunkAction<
-  [{ dashcardId: DashCardId }]
->(UNDO_REMOVE_CARD_FROM_DASH, ({ dashcardId }) => (dispatch, getState) => {
-  const dashcard = getDashCardById(getState(), dashcardId);
-  const card = dashcard.card;
+export const undoRemoveCardFromDashboard = createThunkAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+  ({ dashcardId }) =>
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const card = dashcard.card;
 
-  if (!isVirtualDashCard(dashcard)) {
-    dispatch(fetchCardData(card, dashcard));
-  }
+      if (!isVirtualDashCard(dashcard)) {
+        dispatch(fetchCardData(card, dashcard));
+      }
 
-  return { dashcardId };
-});
+      return { dashcardId };
+    },
+);

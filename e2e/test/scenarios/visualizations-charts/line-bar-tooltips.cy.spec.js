@@ -35,7 +35,7 @@ function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   testTooltipText([
     ["Created At", "2023"],
     ["Sum of Total", "205,256.02"],
-    ["Compared to previous year", "386.89%"],
+    ["Compared to previous year", "+386.89%"],
   ]);
 }
 
@@ -106,7 +106,7 @@ function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   testTooltipText([
     ["Created At", "2023"],
     ["Average of Total", "56.86"],
-    ["Compared to previous year", "0.34%"],
+    ["Compared to previous year", "+0.34%"],
   ]);
 }
 
@@ -140,7 +140,7 @@ function testCumSumChange(testFirstTooltip = true) {
   testTooltipText([
     ["Created At", "2023"],
     ["Cumulative sum of Quantity", "17,587"],
-    ["Compared to previous year", "443.48%"],
+    ["Compared to previous year", "+443.48%"],
   ]);
 }
 
@@ -169,7 +169,7 @@ function testAvgDiscountChange() {
   testTooltipText([
     ["Created At", "2023"],
     ["Average of Discount", "5.41"],
-    ["Compared to previous year", "7.54%"],
+    ["Compared to previous year", "+7.54%"],
   ]);
 }
 
@@ -185,7 +185,7 @@ function testSumDiscountChange() {
   testTooltipText([
     ["Created At", "2023"],
     ["Sum of Discount", "1,953.08"],
-    ["Compared to previous year", "470.93%"],
+    ["Compared to previous year", "+470.93%"],
   ]);
 }
 
@@ -531,7 +531,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipText([
         ["Created At", "May 2022"],
         ["Sum of Total", "1,265.72"],
-        ["Compared to previous month", "2,299.19%"],
+        ["Compared to previous month", "+2,299.19%"],
       ]);
     });
 
@@ -560,7 +560,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipText([
         ["Created At", "July 2022"],
         ["Sum of Total", "3,734.69"],
-        ["Compared to previous month", "80.16%"],
+        ["Compared to previous month", "+80.16%"],
       ]);
 
       showTooltipForCircleInSeries("#88BF4D");
@@ -591,6 +591,107 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Sum of Total", "1,265.72"],
       ]);
       testTooltipExcludesText("Compared to preivous month");
+    });
+  });
+
+  describe("> percent change across daylight savings time change", () => {
+    const SUM_OF_TOTAL_APRIL = {
+      name: "Q1",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        filter: [
+          "between",
+          ["field", 39, { "base-type": "type/DateTime" }],
+          "2024-01-01",
+          "2024-05-30",
+        ],
+      },
+      display: "line",
+    };
+
+    const APRIL_CHANGES = [null, "-10.89%", "+11.1%", "-2.89%"];
+
+    const SUM_OF_TOTAL_DST_WEEK = {
+      name: "Q1",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        filter: [
+          "between",
+          ["field", 39, { "base-type": "type/DateTime" }],
+          "2024-03-01",
+          "2024-03-31",
+        ],
+      },
+      display: "line",
+    };
+
+    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
+
+    const SUM_OF_TOTAL_DST_DAY = {
+      name: "Q1",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
+        filter: [
+          "between",
+          ["field", 39, { "base-type": "type/DateTime" }],
+          "2024-03-09",
+          "2024-03-12",
+        ],
+      },
+      display: "line",
+    };
+
+    const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
+
+    it("should not omit percent change on April", () => {
+      setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      APRIL_CHANGES.forEach(change => {
+        showTooltipForCircleInSeries("#88BF4D");
+        if (change === null) {
+          testTooltipExcludesText("Compared to preivous");
+          return;
+        }
+        testPairedTooltipValues("Compared to previous month", change);
+      });
+    });
+
+    it("should not omit percent change the week after DST begins", () => {
+      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      DST_WEEK_CHANGES.forEach(change => {
+        showTooltipForCircleInSeries("#88BF4D");
+        if (change === null) {
+          testTooltipExcludesText("Compared to preivous");
+          return;
+        }
+        testPairedTooltipValues("Compared to previous week", change);
+      });
+    });
+
+    it("should not omit percent change the day after DST begins", () => {
+      setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      DST_DAY_CHANGES.forEach(change => {
+        showTooltipForCircleInSeries("#88BF4D");
+        if (change === null) {
+          testTooltipExcludesText("Compared to preivous");
+          return;
+        }
+        testPairedTooltipValues("Compared to previous day", change);
+      });
     });
   });
 });

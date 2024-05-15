@@ -59,6 +59,7 @@ const getRoutes = () => {
           path: "timelines/:timelineId/move",
           modal: MoveTimelineModal,
           modalProps: { enableTransition: false },
+          noWrap: true,
         }}
       />
       <ModalRoute

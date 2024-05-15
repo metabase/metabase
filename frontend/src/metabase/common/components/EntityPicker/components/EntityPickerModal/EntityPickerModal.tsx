@@ -3,12 +3,16 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useListRecentItemsQuery } from "metabase/api";
+import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type {
   SearchModel,
-  SearchResult,
   SearchResultId,
+  SearchRequest,
+  SearchResult,
+  RecentItem,
 } from "metabase-types/api";
 
 import type {
@@ -17,6 +21,7 @@ import type {
   TypeWithModel,
 } from "../../types";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
+import { RecentsTab } from "../RecentsTab";
 
 import { ButtonBar } from "./ButtonBar";
 import {
@@ -33,13 +38,18 @@ export type EntityPickerModalOptions = {
   allowCreateNew?: boolean;
   confirmButtonText?: string;
   cancelButtonText?: string;
+  hasRecents?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   allowCreateNew: true,
+  hasRecents: true,
 };
+
+// needs to be above popovers and bulk actions
+export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
@@ -52,6 +62,8 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  recentFilter?: (results: RecentItem[]) => RecentItem[];
+  searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
@@ -68,13 +80,17 @@ export function EntityPickerModal<
   selectedItem,
   initialValue,
   onClose,
-  tabs,
+  tabs: passedTabs,
   options,
   actionButtons = [],
   searchResultFilter,
+  recentFilter,
   trapFocus = true,
+  searchParams,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const { data: recentItems, isLoading: isLoadingRecentItems } =
+    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
@@ -89,8 +105,53 @@ export function EntityPickerModal<
 
   const { open } = useModalOpen();
 
+  const tabModels = useMemo(
+    () => passedTabs.map(t => t.model).filter(Boolean),
+    [passedTabs],
+  );
+
+  const filteredRecents = useMemo(() => {
+    const relevantModelRecents =
+      recentItems?.filter(recentItem =>
+        tabModels.includes(recentItem.model as Model),
+      ) || [];
+
+    return recentFilter
+      ? recentFilter(relevantModelRecents)
+      : relevantModelRecents;
+  }, [recentItems, tabModels, recentFilter]);
+
+  const tabs: EntityTab<Model | "recents">[] = useMemo(
+    () =>
+      hydratedOptions.hasRecents && filteredRecents.length > 0
+        ? [
+            {
+              model: "recents",
+              displayName: t`Recents`,
+              icon: "clock",
+              element: (
+                <RecentsTab
+                  isLoading={isLoadingRecentItems}
+                  recentItems={filteredRecents}
+                  onItemSelect={onItemSelect}
+                  selectedItem={selectedItem}
+                />
+              ),
+            },
+            ...passedTabs,
+          ]
+        : passedTabs,
+    [
+      selectedItem,
+      onItemSelect,
+      passedTabs,
+      isLoadingRecentItems,
+      hydratedOptions.hasRecents,
+      filteredRecents,
+    ],
+  );
+
   const hasTabs = tabs.length > 1 || searchQuery;
-  const tabModels = useMemo(() => tabs.map(t => t.model), [tabs]);
 
   useWindowEvent(
     "keydown",
@@ -109,10 +170,10 @@ export function EntityPickerModal<
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
-      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
       yOffset="10dvh"
+      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
       <ModalContent h="100%">
@@ -126,6 +187,7 @@ export function EntityPickerModal<
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 searchFilter={searchResultFilter}
+                searchParams={searchParams}
               />
             )}
           </GrowFlex>

@@ -20,7 +20,7 @@
    (java.util.zip GZIPOutputStream)
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
-   (org.eclipse.jetty.io EofException)
+   (org.eclipse.jetty.io EofException SocketChannelEndPoint)
    (org.eclipse.jetty.server Request)))
 
 (set! *warn-on-reflection* true)
@@ -130,6 +130,35 @@
   "How often to check whether the request was canceled by the client."
   1000)
 
+
+(p.types/defprotocol+ ^:private ChannelProvider
+  "Protocol to get a SocketChannel from various types of transports."
+  (^SocketChannel get-channel [transport] "Method to extract a SocketChannel."))
+
+;; Extend the protocol to SocketChannel, returning itself
+(extend-protocol ChannelProvider
+  SocketChannel
+  (get-channel [self] self)
+
+  SocketChannelEndPoint
+  (get-channel [self] (.getChannel self))
+
+  Object
+  (get-channel [_] nil))
+
+(def ^:private *reported-types
+  "A set of types returned from `.getTransport` have already been reported as errors. This is used to avoid spamming the logs with the same
+  error over and over."
+  (atom #{}))
+
+(defn log-unexpected-transport!
+  "Log an error when an unexpected transport is encountered."
+  [transport]
+  (let [transport-type (type transport)]
+    (when-not (contains? @*reported-types transport-type)
+      (log/errorf "Unexpected transport type encountered in `canceled?`: %s" transport-type))
+    (swap! *reported-types conj transport-type)))
+
 (defn- canceled?
   "Check whether the HTTP request has been canceled by the client.
 
@@ -138,15 +167,17 @@
   immediately, returning `0`."
   [^Request request]
   (try
-    (let [^SocketChannel channel (.. request getHttpChannel getEndPoint getTransport)
-          buf    (ByteBuffer/allocate 1)
-          status (.read channel buf)]
-      (log/tracef "Check cancelation status: .read returned %d" status)
-      (neg? status))
-    (catch InterruptedException _
-      false)
-    (catch ClosedChannelException _
-      true)
+    (let [transport (.. request getHttpChannel getEndPoint getTransport)]
+      (if-let [channel (get-channel transport)]
+        (let [buf        (ByteBuffer/allocate 1)
+              status     (.read channel buf)]
+          (log/tracef "Check cancelation status: .read returned %d" status)
+          (neg? status))
+        (do
+          (log-unexpected-transport! transport)
+          false)))
+    (catch InterruptedException _ false)
+    (catch ClosedChannelException _ true)
     (catch Throwable e
       (log/error e "Error determining whether HTTP request was canceled")
       false)))

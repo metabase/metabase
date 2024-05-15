@@ -114,7 +114,6 @@ describe("scenarios > dashboard", () => {
 
       popover().within(() => {
         cy.findByPlaceholderText(/Search for some/).type("Pro");
-        // cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
@@ -126,7 +125,16 @@ describe("scenarios > dashboard", () => {
       cy.wait("@createQuestion");
       modal().within(() => {
         cy.button("Yes please!").click();
-        cy.findByText(dashboardName).click();
+      });
+
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
+        cy.findByText(dashboardName)
+          .closest("button")
+          .then($button => {
+            expect($button).to.have.attr("data-active", "true");
+          });
+        cy.button("Select").click();
       });
 
       openQuestionsSidebar();
@@ -212,11 +220,15 @@ describe("scenarios > dashboard", () => {
         cy.button("Yes please!").click();
       });
 
-      modal().findByText("Create a new dashboard").click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Foo").blur();
-        cy.button("Create").click();
+      entityPickerModal()
+        .findByRole("tab", { name: /Dashboards/ })
+        .click();
+      entityPickerModal().findByText("Create a new dashboard").click();
+      cy.findByTestId("create-dashboard-on-the-go").within(() => {
+        cy.findByPlaceholderText("My new dashboard").type("Foo");
+        cy.findByText("Create").click();
       });
+      entityPickerModal().button("Select").click();
 
       saveDashboard();
 
@@ -315,6 +327,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -333,6 +346,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });

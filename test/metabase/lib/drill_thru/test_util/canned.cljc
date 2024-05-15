@@ -164,6 +164,26 @@
      :aggregations    0
      :breakouts       0}
 
+    :test.query/products-native
+    {:query          (-> (lib/native-query metadata-provider "SELECT * FROM products")
+                         (assoc-in [:stages 0 :lib/stage-metadata]
+                                   {:columns (->> (meta/fields :products)
+                                                  (map #(meta/field-metadata :products %))
+                                                  (sort-by :position)
+                                                  (map #(select-keys % [:lib/type :name :display-name :field-ref
+                                                                        :base-type :effective-type :semantic-type])))}))
+     :native?        true
+     :row            {"ID"         "3"
+                      "EAN"        "4966277046676"
+                      "TITLE"      "Synergistic Granite Chair"
+                      "CATEGORY"   "Doohickey"
+                      "VENDOR"     "Murray, Watsica and Wunsch"
+                      "PRICE"      35.38
+                      "RATING"     4
+                      "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
+     :aggregations    0
+     :breakouts       0}
+
     :test.query/reviews
     {:query          (lib/query metadata-provider (meta/table-metadata :reviews))
      :row            {"ID"         "301"
@@ -297,6 +317,22 @@
 
          ;; Simple query against Products.
          (let [tc (test-case metadata-provider :test.query/products)]
+           [(click tc :cell "ID"         :basic :pk)
+            (click tc :cell "EAN"        :basic :string)
+            (click tc :cell "TITLE"      :basic :string)
+            (click tc :cell "PRICE"      :basic :number)
+            (click tc :cell "RATING"     :basic :number)
+            (click tc :cell "CREATED_AT" :basic :datetime)
+
+            (click tc :header "ID"         :basic :pk)
+            (click tc :header "EAN"        :basic :string)
+            (click tc :header "TITLE"      :basic :string)
+            (click tc :header "PRICE"      :basic :number)
+            (click tc :header "RATING"     :basic :number)
+            (click tc :header "CREATED_AT" :basic :datetime)])
+
+         ;; Native query against products
+         (let [tc (test-case metadata-provider :test.query/products-native)]
            [(click tc :cell "ID"         :basic :pk)
             (click tc :cell "EAN"        :basic :string)
             (click tc :cell "TITLE"      :basic :string)

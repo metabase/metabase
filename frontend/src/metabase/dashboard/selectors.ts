@@ -22,11 +22,13 @@ import type {
   DashboardCard,
   DashboardParameterMapping,
   ParameterId,
+  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
+  StoreDashboard,
 } from "metabase-types/store";
 
 import { isQuestionCard, isQuestionDashCard } from "./utils";
@@ -423,12 +425,16 @@ export const getSelectedTabId = createSelector(
   [getDashboard, state => state.dashboard.selectedTabId],
   (dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return dashboard.tabs?.[0]?.id || null;
+      return getInitialSelectedTabId(dashboard);
     }
 
     return selectedTabId;
   },
 );
+
+export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+  return dashboard.tabs?.[0]?.id || null;
+}
 
 export const getParameterMappingsBeforeEditing = createSelector(
   [getDashboardBeforeEditing],
@@ -463,4 +469,11 @@ export const getParameterMappingsBeforeEditing = createSelector(
 
     return map;
   },
+);
+
+export const getDisplayTheme = (state: State) => state.dashboard.theme;
+
+export const getIsNightMode = createSelector(
+  [getDisplayTheme],
+  theme => theme === "night",
 );

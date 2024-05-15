@@ -275,7 +275,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("does not run question query in notebook mode", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.question(card as Card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });
@@ -310,7 +310,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets QB mode to notebook if opening /notebook route", async () => {
-          const baseUrl = Urls.question(card);
+          const baseUrl = Urls.question(card as Card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });

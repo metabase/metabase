@@ -9,6 +9,7 @@ import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
+  SearchRequest,
   SearchResult,
   SearchResultId,
 } from "metabase-types/api";
@@ -19,13 +20,7 @@ import { ResultItem, ChunkyList } from "../ResultItem";
 
 import { getSearchTabText } from "./utils";
 
-const defaultSearchFilter = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->(
-  results: Item[],
-) => results;
+const defaultSearchFilter = (results: SearchResult[]) => results;
 
 export function EntityPickerSearchInput({
   searchQuery,
@@ -33,12 +28,14 @@ export function EntityPickerSearchInput({
   setSearchResults,
   models,
   searchFilter = defaultSearchFilter,
+  searchParams = {},
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
   models: SearchModel[];
   searchFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -47,6 +44,7 @@ export function EntityPickerSearchInput({
     {
       q: debouncedSearchQuery,
       models,
+      ...searchParams,
     },
     {
       skip: !debouncedSearchQuery,
@@ -94,7 +92,7 @@ export const EntityPickerSearchResults = <
   return (
     <Box h="100%" bg="bg-light">
       {searchResults.length > 0 ? (
-        <Stack h="100%">
+        <Stack h="100%" bg="bg-light">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
               <Box p="xl" {...props}>
@@ -131,16 +129,12 @@ export const EntityPickerSearchResults = <
   );
 };
 
-export const EntityPickerSearchTab = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
   onClick,
 }: {
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   searchQuery: string;
   onClick: () => void;
 }) => (

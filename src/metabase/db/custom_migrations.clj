@@ -22,9 +22,9 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -104,6 +104,39 @@
   ^String [s]
   (when s
     (.toLowerCase (str s) Locale/US)))
+
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
+  (if (string? obj)
+    obj
+    (json/generate-string obj)))
+
+(defn- json-out [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable e
+        (log/error e "Error parsing JSON")
+        s))
+    s))
+
+(def ^:private encrypted-json-in
+  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
+  (comp encryption/maybe-encrypt json-in))
+
+(defn- encrypted-json-out
+  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -716,9 +749,9 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (mi/encrypted-json-out settings)
-                            options      (mi/json-out-with-keywordization options)
-                            new-settings (mi/encrypted-json-in (merge settings options))]
+                      (let [settings     (encrypted-json-out settings)
+                            options      (json-out options true)
+                            new-settings (encrypted-json-in (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -729,12 +762,12 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (mi/encrypted-json-out settings)
-                              options  (mi/json-out-with-keywordization options)]
+                        (let [settings (encrypted-json-out settings)
+                              options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
-                                                :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -1080,9 +1113,9 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
-                              (t2/select :model/Database)))]
+                              (t2/select :metabase_database)))]
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
@@ -1258,23 +1291,39 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
 
-(define-migration BackfillQueryField
-  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
-        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                              :select    [:c.id]
-                                                              :where     [:and
-                                                                          [:not :c.archived]
-                                                                          [:= :c.query_type "native"]
-                                                                          [:= :f.id nil]]}])]
-    (doseq [card cards]
-      (update-query-fields! card))))
-
 (define-migration DeleteSendPulsesTask
   (classloader/the-classloader)
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
     (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.job"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
     (qs/shutdown scheduler)))
+
+;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
+;; jobclass not found. And when they migrate up to 50 again, these triggers will not be triggered because it's in
+;; an error state. See https://www.quartz-scheduler.org/api/1.8.6/org/quartz/Trigger.html#STATE_ERROR
+;; So we need to delete this on migrate down, so when they migrate up, the triggers will be recreated.
+(define-reversible-migration DeleteSendPulseTaskOnDowngrade
+  (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+     (qs/shutdown scheduler))))
+
+;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
+;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
+;; on the second migrate up.
+(define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
+  (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     ;; delete the job will also delete all of its triggers
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+     (qs/shutdown scheduler))))

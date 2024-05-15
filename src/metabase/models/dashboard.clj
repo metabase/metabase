@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.automagic-dashboards.populate :as populate]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -21,7 +20,7 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -35,6 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -97,11 +97,13 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 (maybe-populate-initially-published-at dashboard)
-    (params/assert-valid-parameters dashboard)
-    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
-  (maybe-populate-initially-published-at dashboard))
+  (let [changes (t2/changes dashboard)]
+    (u/prog1 (maybe-populate-initially-published-at dashboard)
+     (params/assert-valid-parameters dashboard)
+     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
+     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+     (when (:archived changes)
+       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -140,7 +142,7 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! Pulse {:dashboard_id dashboard-id}
+            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
@@ -268,7 +270,7 @@
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -501,7 +503,7 @@
          tabs           :tabs
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (populate/create-collection!
+        collection (xrays/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
                     "Automatically generated cards."
                     parent-collection-id)
