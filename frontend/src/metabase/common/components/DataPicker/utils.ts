@@ -176,7 +176,7 @@ export const isValidValueItem = (model: SearchModel): boolean => {
   return ["dataset", "card", "table"].includes(model);
 };
 
-export const createDatabaseIdItemFilter = (databaseId?: DatabaseId) => {
+export const createShouldShowItem = (databaseId?: DatabaseId) => {
   return (item: QuestionPickerItem) => {
     if (
       isNullOrUndefined(databaseId) ||

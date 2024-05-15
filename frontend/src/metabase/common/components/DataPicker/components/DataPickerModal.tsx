@@ -20,7 +20,7 @@ import type {
   NotebookDataPickerValueItem,
 } from "../types";
 import {
-  createDatabaseIdItemFilter,
+  createShouldShowItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
@@ -63,7 +63,7 @@ export const DataPickerModal = ({
   const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
   const shouldShowItem = useMemo(() => {
-    return createDatabaseIdItemFilter(databaseId);
+    return createShouldShowItem(databaseId);
   }, [databaseId]);
 
   const searchParams = useMemo(() => {
