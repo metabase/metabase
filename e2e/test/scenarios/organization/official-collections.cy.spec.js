@@ -202,8 +202,6 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  // appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
-
   commandPaletteSearch(searchQuery);
 
   cy.findByTestId("search-app").within(() => {

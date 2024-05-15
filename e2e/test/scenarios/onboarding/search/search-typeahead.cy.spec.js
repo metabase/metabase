@@ -6,7 +6,6 @@ import { restore, visitFullAppEmbeddingUrl } from "e2e/support/helpers";
     beforeEach(() => {
       restore();
       cy.signIn(user);
-      // cy.visit("/");
       visitFullAppEmbeddingUrl({
         url: "/",
         qs: { top_nav: true, search: true },
