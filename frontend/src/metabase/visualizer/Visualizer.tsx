@@ -1,199 +1,156 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMap, usePrevious, useSet } from "react-use";
+import { useState } from "react";
 import _ from "underscore";
 
-import { skipToken, useCardQueryQuery } from "metabase/api";
-import { QuestionPicker } from "metabase/dashboard/components/QuestionPicker";
-import { useSelector } from "metabase/lib/redux";
+import { cardApi } from "metabase/api";
+import { color } from "metabase/lib/colors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Button,
-  Card,
-  Center,
-  Flex,
-  Grid,
-  Loader,
-  Select,
-  Stack,
-} from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import { Button, Card, Grid, Stack, Switch } from "metabase/ui";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
-import {
-  isCategory,
-  isNumber,
-  isPK,
-  isFK,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
-import type {
-  CardId,
-  Dataset,
-  DatasetColumn,
-  RowValues,
-} from "metabase-types/api";
+import type { Card as ICard, Series } from "metabase-types/api";
 
-const FAKE_METRIC_COLUMN: DatasetColumn = {
-  base_type: "type/Integer",
-  effective_type: "type/Integer",
-  field_ref: ["field", "COUNT", { "base-type": "type/Integer" }],
-  name: "COUNT",
-  display_name: "COUNT (FAKE)",
-
-  source: "fake",
-};
-
-const FAKE_CATEGORY_COLUMN: DatasetColumn = {
-  base_type: "type/Text",
-  effective_type: "type/Text",
-  field_ref: ["field", "EVENT", { "base-type": "type/Text" }],
-  name: "EVENT",
-  display_name: "EVENT (FAKE)",
-
-  source: "fake",
-};
+import { DataPanel } from "./DataPanel";
+import { SeriesSettings } from "./SeriesSettings";
+import { areSeriesCompatible } from "./utils";
 
 export function Visualizer() {
-  const [cardDataMap, cardDataMapActions] = useMap<Record<CardId, Dataset>>({});
-  const [selectedCardIds, selectedCardsActions] = useSet(new Set<CardId>());
-  const [vizType, setVizType] = useState("bar");
+  const [charts, setCharts] = useState<Series[]>([]);
+  const [areTooltipsEnabled, setEnableTooltips] = useState(true);
 
-  const cardIdToFetch = Array.from(selectedCardIds).find(
-    cardId => !cardDataMap[cardId],
-  );
+  const [focusedSeriesIndexes, setFocusedSeriesIndexes] = useState<{
+    chartIndex: number;
+    seriesIndex: number;
+  }>({ chartIndex: -1, seriesIndex: -1 });
 
-  const cardQuery = useCardQueryQuery(cardIdToFetch ?? skipToken);
-  const wasFetching = usePrevious(cardQuery.isFetching);
-
+  const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  useEffect(() => {
-    if (
-      cardIdToFetch &&
-      !cardDataMap[cardIdToFetch] &&
-      cardQuery.data &&
-      !cardQuery.isFetching &&
-      wasFetching
-    ) {
-      cardDataMapActions.set(cardIdToFetch, cardQuery.data);
-    }
-  }, [cardIdToFetch, cardDataMap, cardDataMapActions, cardQuery, wasFetching]);
+  const focusedSeries =
+    charts[focusedSeriesIndexes.chartIndex]?.[focusedSeriesIndexes.seriesIndex];
 
-  const combinedRows = useMemo(() => {
-    const rows: RowValues[] = [];
+  const handleAddCard = async (card: ICard) => {
+    const { data: dataset } = await dispatch(
+      cardApi.endpoints.cardQuery.initiate(card.id),
+    );
 
-    Array.from(selectedCardIds).forEach(cardId => {
-      const dataset = cardDataMap[cardId];
-
-      if (!dataset) {
-        return;
-      }
-
-      const metricColumnIndex = dataset.data.cols.findIndex(
-        col => isNumber(col) && !isPK(col) && !isFK(col),
-      );
-
-      let categoryColumnIndex = dataset.data.cols.findIndex(col =>
-        isCategory(col),
-      );
-      if (categoryColumnIndex === -1) {
-        categoryColumnIndex = dataset.data.cols.findIndex(col => isString(col));
-      }
-
-      const lastRow = _.last(dataset.data.rows);
-
-      if (lastRow && metricColumnIndex !== -1 && categoryColumnIndex !== -1) {
-        const metricValue = lastRow[metricColumnIndex];
-        const categoryValue = lastRow[categoryColumnIndex];
-        rows.push([metricValue, categoryValue]);
-      }
-    });
-
-    return rows;
-  }, [cardDataMap, selectedCardIds]);
-
-  const combinedSeries = useMemo(() => {
-    const card = {
-      display: vizType,
-      visualization_settings: {},
-    };
-
-    const data = {
-      rows: combinedRows,
-      cols: [FAKE_METRIC_COLUMN, FAKE_CATEGORY_COLUMN],
-    };
-
-    return [{ card, data }];
-  }, [vizType, combinedRows]);
-
-  const hasMinData = combinedRows.length > 0;
-
-  const isLoading =
-    cardQuery.isFetching || (cardIdToFetch && !cardDataMap[cardIdToFetch]);
-
-  const handleQuestionSelected = (questionId: CardId) => {
-    if (isLoading) {
+    if (!dataset) {
       return;
     }
-    if (selectedCardIds.has(questionId)) {
-      selectedCardsActions.remove(questionId);
+
+    const series = { card, data: dataset.data };
+
+    const focusedChartIndex = focusedSeriesIndexes.chartIndex;
+    const mainChart = charts[focusedChartIndex];
+
+    if (!mainChart) {
+      setCharts([...charts, [series]]);
+      return;
+    }
+
+    const mainSeries = mainChart?.[0];
+    const mainCard = mainSeries?.card;
+
+    if (mainCard) {
+      const canMerge = areSeriesCompatible(mainSeries, series);
+      if (canMerge) {
+        const nextMainChart = [...mainChart, series];
+        const nextCharts = charts.map((chart, index) =>
+          index === focusedChartIndex ? nextMainChart : chart,
+        );
+        setCharts(nextCharts);
+      } else {
+        setCharts([...charts, [series]]);
+      }
     } else {
-      selectedCardsActions.add(questionId);
+      setCharts([...charts, [series]]);
     }
   };
 
-  const vizOptions = Array.from(visualizations)
-    .filter(([, viz]) => !viz.hidden)
-    .map(([vizType, viz]) => ({
-      label: viz.uiName,
-      value: vizType,
-      icon: viz.iconName,
-      disabled:
-        hasMinData && viz.isSensible && !viz.isSensible(combinedSeries[0].data),
-    }));
+  const handleChangeFocusedSeriesCard = (card: ICard) => {
+    const { chartIndex, seriesIndex } = focusedSeriesIndexes;
+    const nextCharts = charts.map((chart, index) => {
+      if (index !== chartIndex) {
+        return chart;
+      }
+
+      return chart.map((series, index) => {
+        if (index !== seriesIndex) {
+          return series;
+        }
+
+        return { ...series, card };
+      });
+    });
+    setCharts(nextCharts);
+  };
 
   return (
     <Grid p="md" w="100%" h="100%">
-      <Grid.Col span={3}>
-        <QuestionPicker onSelect={handleQuestionSelected} onClose={_.noop} />
+      <Grid.Col span={2}>
+        <DataPanel onAddCard={handleAddCard} />
       </Grid.Col>
-      <Grid.Col span={9}>
-        <Card withBorder w="100%" h="100%">
-          <Center w="100%" h="100%">
-            {isLoading ? (
-              <Loader size="xl" />
-            ) : hasMinData ? (
-              <Stack w="100%" h="100%">
-                <Flex gap="sm">
-                  <Button
-                    onClick={() => selectedCardsActions.reset()}
-                    disabled={selectedCardIds.size === 0}
-                  >
-                    Remove all
-                  </Button>
-                  <Select
-                    value={vizType}
-                    data={vizOptions}
-                    onChange={e => e && setVizType(e)}
-                    style={{ maxWidth: "240px" }}
-                    styles={{
-                      dropdown: {
-                        maxHeight: "320px !important",
-                      },
-                    }}
-                  />
-                </Flex>
-                <BaseVisualization
-                  rawSeries={combinedSeries}
-                  metadata={metadata}
-                  // isDashboard flag makes it use the TableSimple component
-                  // TableInteractive does a lot of work with Question and Metadata
-                  // and it's currently crashing
-                  isDashboard={combinedSeries[0].card.display === "table"}
-                />
-              </Stack>
-            ) : null}
-          </Center>
+      <Grid.Col span={8}>
+        <Card
+          withBorder
+          w="100%"
+          mih="100%"
+          onClick={() => {
+            setFocusedSeriesIndexes({ chartIndex: -1, seriesIndex: -1 });
+          }}
+          style={{ overflow: "auto" }}
+        >
+          {charts.map((series, index) => (
+            <div
+              key={index}
+              onClick={event => {
+                event.stopPropagation();
+                setFocusedSeriesIndexes({ chartIndex: index, seriesIndex: 0 });
+              }}
+              style={{
+                width: "600px",
+                height: "600px",
+                padding: "12px",
+                border:
+                  focusedSeriesIndexes.chartIndex === index
+                    ? `1px solid ${color("brand")}`
+                    : undefined,
+              }}
+            >
+              <BaseVisualization
+                rawSeries={series}
+                metadata={metadata}
+                enableHover={areTooltipsEnabled}
+                handleVisualizationClick={clicked => {
+                  clicked.event.stopPropagation();
+                  setFocusedSeriesIndexes({
+                    chartIndex: index,
+                    seriesIndex: clicked.seriesIndex,
+                  });
+                }}
+              />
+            </div>
+          ))}
         </Card>
+      </Grid.Col>
+      <Grid.Col span={2}>
+        <Stack spacing="1rem">
+          <Button variant="filled" onClick={() => setCharts([])}>
+            Reset all
+          </Button>
+          <Switch
+            checked={areTooltipsEnabled}
+            label="Tooltips"
+            onChange={event => setEnableTooltips(event.target.checked)}
+          />
+        </Stack>
+        {focusedSeries && (
+          <div style={{ marginTop: "18px" }}>
+            <SeriesSettings
+              series={focusedSeries}
+              onChange={handleChangeFocusedSeriesCard}
+            />
+          </div>
+        )}
       </Grid.Col>
     </Grid>
   );

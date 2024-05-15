@@ -49,6 +49,7 @@ import {
 } from "./Visualization.styled";
 
 const defaultProps = {
+  enableHover: true,
   errorMessageOverride: undefined,
   showTitle: false,
   isAction: false,
@@ -172,6 +173,10 @@ class Visualization extends PureComponent {
   };
 
   handleHoverChange = hovered => {
+    if (!this.props.enableHover) {
+      return;
+    }
+
     if (hovered) {
       const { yAxisSplit } = this.state;
       // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)

@@ -507,6 +507,7 @@ export const getSeriesClickData = (
     data,
     dimensions,
     settings,
+    seriesIndex,
   };
 };
 
