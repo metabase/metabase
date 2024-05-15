@@ -185,7 +185,7 @@ export const createShouldShowItem = (databaseId?: DatabaseId) => {
       const hasQuestionsOrModels =
         contents.includes("card") || contents.includes("dataset");
 
-      if (!hasQuestionsOrModels) {
+      if (item.id !== "root" && !item.is_personal && !hasQuestionsOrModels) {
         return false;
       }
     }
