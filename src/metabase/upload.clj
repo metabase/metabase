@@ -111,8 +111,8 @@
     (driver/upload-type->database-type driver external-type)))
 
 (defn- defaulting-database-type [driver upload-type]
-  (or (driver/upload-type->database-type driver upload-type)
-      (driver/upload-type->database-type driver ::varchar-255)))
+  (or (database-type driver upload-type)
+      (database-type driver ::upload-types/varchar-255)))
 
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
