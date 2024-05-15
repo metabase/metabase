@@ -66,12 +66,10 @@ describe("issue 42697", () => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
   });
 
   it("should display a pivot table when a new breakout is added to the query (metabase#42697)", () => {
     createQuestion(PIVOT_QUESTION, { visitQuestion: true });
-    cy.wait("@cardPivotQuery");
     openNotebook();
     getNotebookStep("summarize")
       .findByTestId("breakout-step")
