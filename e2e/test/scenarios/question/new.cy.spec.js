@@ -58,72 +58,64 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      popover()
-        .findAllByRole("menuitem")
-        .should("have.length", 3)
-        .and("contain", "Models")
-        .and("contain", "Raw Data")
-        .and("contain", "Saved Questions");
+      entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("have.length", 3);
+        cy.findByRole("tab", { name: /Models/ }).should("exist");
+        cy.findByRole("tab", { name: /Tables/ }).should("exist");
+        cy.findByRole("tab", { name: /Saved questions/ }).should("exist");
+        cy.findByRole("tab", { name: /Search/ }).should("not.exist");
 
-      // should not trigger search for an empty string
-      cy.findByPlaceholderText("Search for some data…").type("  ").blur();
-      cy.findByPlaceholderText("Search for some data…").type("ord");
-      cy.wait("@search");
-      cy.get("@searchQuery").should("have.been.calledOnce");
+        cy.findByPlaceholderText("Search…").type("  ").blur();
+        cy.findByPlaceholderText("Search…").type("ord");
+        cy.wait("@search");
+        // should not trigger search for an empty string
+        cy.get("@searchQuery").should("have.been.calledOnce");
 
-      // Search results include both saved questions and database tables
-      cy.findAllByTestId("search-result-item").should(
-        "have.length.at.least",
-        4,
-      );
+        cy.findAllByTestId("result-item").should("have.length.at.least", 4);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Our analytics");
+        const searchResultItems = cy.findAllByTestId("result-item");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Sample Database");
+        searchResultItems.then($results => {
+          const types = $results
+            .toArray()
+            .map(element => element.getAttribute("data-model-type"));
 
-      // Discarding the search query should take us back to the original selector
-      // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for some data…");
-      cy.findByTestId("input-reset-button").click();
+          // Search results include both saved questions and database tables
+          expect(types).to.include("card");
+          expect(types).to.include("dataset");
+          expect(types).to.include("table");
+        });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
+        // Discarding the search query should take us back to the original tab
+        cy.findByPlaceholderText("Search…").clear().blur();
+        cy.findByRole("tab", { name: /Search/ }).should("not.exist");
+        cy.findByRole("tab", { name: /Models/ }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
 
-      // Search is now scoped to questions only
-      cy.findByPlaceholderText("Search for a question…");
-      cy.findByTestId("select-list")
-        .as("rightSide")
-        // should display the collection tree on the left side
-        .should("contain", "Orders")
-        .and("contain", "Orders, Count");
+        cy.findByRole("tab", { name: /Saved questions/ }).click();
+        cy.findByText("Orders, Count").click();
+      });
 
-      cy.get("@rightSide")
-        .siblings()
-        .should("have.length", 1)
-        .as("leftSide")
-        // should display the collection tree on the left side
-        .should("contain", "Our analytics");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").should("not.exist");
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
       cy.icon("notebook").click();
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
-      // It is now possible to choose another saved question
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      popover().within(() => {
-        cy.contains("Raw Data").click();
-        cy.contains("Sample Database").click();
+      entityPickerModal().within(() => {
+        // It is now possible to choose another saved question
+        cy.findByRole("tab", { name: /Saved questions/ }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders, Count").should("exist");
+
+        cy.findByRole("tab", { name: /Tables/ }).click();
         cy.findByText("Products").click();
       });
       cy.findByTestId("data-step-cell").contains("Products");
@@ -272,8 +264,8 @@ describe("scenarios > question > new", () => {
 
     popover().findByText("Question").click();
 
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText("Orders").click();
     });
 
@@ -293,8 +285,8 @@ describe("scenarios > question > new", () => {
 
     cy.findByLabelText("Navigation bar").findByText("New").click();
     popover().findByText("Question").click();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
