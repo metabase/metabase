@@ -248,8 +248,14 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Save").click();
 
-    cy.log("There should only be one filter remaining and its value cleared");
-    filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
+    cy.log(
+      "There should only be one filter remaining and its value is preserved",
+    );
+    filterWidget().within(() => {
+      cy.contains(new RegExp(`${endsWith.name}`, "i"));
+      // clear filter value
+      cy.icon("close").click();
+    });
     cy.location("search").should("eq", `?${endsWith.slug}=`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -736,7 +742,7 @@ describe("scenarios > dashboard > parameters", () => {
           .should("be.visible");
 
         getDashboardCard(1).within(() => {
-          cy.findByLabelText("close icon").click();
+          cy.findByLabelText("").click();
         });
 
         selectDashboardFilter(getDashboardCard(1), "Address");
