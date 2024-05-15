@@ -324,7 +324,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Auto formatting`,
     widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
-      vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
@@ -334,7 +333,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: "auto",
-    readDependencies: ["graph.show_values"],
   },
 };
 
