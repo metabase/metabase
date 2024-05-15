@@ -256,10 +256,11 @@ describe("scenarios > dashboard > parameters", () => {
       // clear filter value
       cy.icon("close").click();
     });
-    cy.location("search").should("eq", `?${endsWith.slug}=`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
+
+    cy.location("search").should("eq", `?${endsWith.slug}=`);
   });
 
   it("should handle mismatch between filter types (metabase#9299, metabase#16181)", () => {
@@ -742,7 +743,7 @@ describe("scenarios > dashboard > parameters", () => {
           .should("be.visible");
 
         getDashboardCard(1).within(() => {
-          cy.findByLabelText("").click();
+          cy.findByLabelText("close icon").click();
         });
 
         selectDashboardFilter(getDashboardCard(1), "Address");
