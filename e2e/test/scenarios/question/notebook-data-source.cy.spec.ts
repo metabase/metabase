@@ -198,10 +198,12 @@ describe("scenarios > notebook > data source", () => {
             .findByText(dbName)
             .parents("button")
             .should("have.attr", "data-active", "true");
+
           cy.findByTestId("item-picker-level-1")
             .findByText(schemaName)
             .parents("button")
             .should("have.attr", "data-active", "true");
+
           cy.findByTestId("item-picker-level-2")
             .findByText(tableName)
             .parents("button")
@@ -214,16 +216,15 @@ describe("scenarios > notebook > data source", () => {
       cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      popover().within(() => {
-        cy.findByTestId("source-database").should(
-          "have.text",
-          "Sample Database",
-        );
-        cy.findByLabelText("Orders").should(
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        // should not show databases step if there's only 1 database
+        cy.findByText("Sample Database").should("not.exist");
+        cy.button(/Orders/).should("have.attr", "data-active", "true");
       });
     });
   });
