@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
   filterFieldPopover,
@@ -24,7 +25,7 @@ describe("issue 28971", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use the notebook editor").click();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     cy.button("Save").click();

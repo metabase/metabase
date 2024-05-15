@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { entityPickerModal, popover, restore } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
@@ -24,7 +29,7 @@ describe("issue 26091", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -41,7 +46,11 @@ describe("issue 26091", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      // cy.findByText("Models").click();
+      entityPickerModalTab("Models").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.findByText("Old model").should("be.visible");
       cy.findByText("New model").should("be.visible");
     });

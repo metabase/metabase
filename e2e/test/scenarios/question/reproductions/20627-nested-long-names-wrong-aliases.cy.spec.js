@@ -6,6 +6,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -29,7 +30,7 @@ describe("issue 20627", () => {
     cy.findByText("Join data").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText(newTableName).click();
     });
 

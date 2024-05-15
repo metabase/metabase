@@ -13,6 +13,7 @@ import {
   filterField,
   chartPathWithFillColor,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -397,7 +398,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
       entityPickerModal().within(() => {
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

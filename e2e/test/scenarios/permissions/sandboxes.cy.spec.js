@@ -26,6 +26,7 @@ import {
   selectFilterOperator,
   entityPickerModal,
   chartPathWithFillColor,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const {
@@ -827,7 +828,7 @@ describeEE("formatting > sandboxes", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

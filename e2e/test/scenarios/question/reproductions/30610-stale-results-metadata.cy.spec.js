@@ -1,6 +1,7 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalTab,
   openNotebook,
   openOrdersTable,
   popover,
@@ -52,7 +53,7 @@ function removeSourceColumns() {
 function createAdHocQuestion(questionName) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    cy.findByText("Saved questions").click();
+    entityPickerModalTab("Saved questions").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();

@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalTab,
   mockSessionProperty,
   restore,
   startNewQuestion,
@@ -27,7 +28,7 @@ describe("issue 19341", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-spinner").should("not.exist");
       cy.findByText("Orders").should("exist");
-      cy.findByText("Saved questions").should("not.exist");
+      entityPickerModalTab("Saved questions").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search…").type("Ord");
@@ -43,12 +44,14 @@ describe("issue 19341", () => {
         expect(modelTypes).to.include("table");
       });
 
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
-    entityPickerModal().findByText("Saved questions").should("not.exist");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").should("not.exist");
+    });
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");

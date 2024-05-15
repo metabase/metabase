@@ -32,6 +32,7 @@ import {
   echartsContainer,
   entityPickerModal,
   questionInfoButton,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import {
@@ -245,13 +246,13 @@ describe("scenarios > models", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByText("Models").click();
+        entityPickerModalTab("Models").click();
         cy.findByText("First collection").should("exist");
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
         cy.findByText("Orders, Count").should("not.exist");
 
-        cy.findByText("Saved questions").click();
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Orders Model").should("not.exist");
         cy.findByText("Orders, Count").should("exist");
@@ -260,7 +261,7 @@ describe("scenarios > models", () => {
         );
         cy.findByText("Products").should("exist");
 
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");
@@ -281,13 +282,13 @@ describe("scenarios > models", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Models").click();
+        entityPickerModalTab("Models").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");
@@ -333,9 +334,9 @@ describe("scenarios > models", () => {
       mockSessionProperty("enable-nested-queries", false);
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Saved Questions").should("not.exist");
-        cy.findByText("Tables").should("not.exist");
+        entityPickerModalTab("Models").should("not.exist");
+        entityPickerModalTab("Saved questions").should("not.exist");
+        entityPickerModalTab("Tables").should("not.exist");
 
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");

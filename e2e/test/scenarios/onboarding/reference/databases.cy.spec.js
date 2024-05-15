@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalTab,
   popover,
   restore,
   startNewQuestion,
@@ -88,7 +89,7 @@ describe("scenarios > reference > databases", () => {
     it("should sort databases in new UI based question data selection popover", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.get("[data-index='0']").should("have.text", "a");
         cy.get("[data-index='1']").should("have.text", "b");
         cy.get("[data-index='2']").should("have.text", "c");

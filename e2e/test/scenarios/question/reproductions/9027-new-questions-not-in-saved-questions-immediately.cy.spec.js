@@ -6,6 +6,7 @@ import {
   openNavigationSidebar,
   navigationSidebar,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const QUESTION_NAME = "Foo";
@@ -17,7 +18,7 @@ describe("issue 9027", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByText("Saved questions").click();
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -44,7 +45,7 @@ describe("issue 9027", () => {
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   startNewQuestion();
   entityPickerModal().within(() => {
-    cy.findByText("Saved questions").click();
+    entityPickerModalTab("Saved questions").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });

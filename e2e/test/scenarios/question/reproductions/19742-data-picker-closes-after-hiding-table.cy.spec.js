@@ -3,6 +3,7 @@ import {
   popover,
   openNavigationSidebar,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 describe("issue 19742", () => {
@@ -20,7 +21,7 @@ describe("issue 19742", () => {
 
     popover().findByText("Question").click();
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -40,7 +41,7 @@ describe("issue 19742", () => {
     popover().findByText("Question").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+      entityPickerModalTab("Tables").click();
 
       cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");

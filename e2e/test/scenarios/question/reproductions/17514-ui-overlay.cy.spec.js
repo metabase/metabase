@@ -9,6 +9,7 @@ import {
   openColumnOptions,
   modal,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -149,7 +150,7 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Join data").click();
       entityPickerModal().within(() => {
-        cy.findByText("Tables").click();
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
 
