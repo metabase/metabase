@@ -144,7 +144,7 @@ jobs:
       - name: Check out the code using the provided commit, or HEAD
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.tag }}
+          ref: master
 
       - name: Setup git user
         run: |
