@@ -47,7 +47,7 @@ const defaultOptions: QuestionPickerOptions = {
 };
 
 export const QuestionPickerModal = ({
-  title = t`Select a question or model`,
+  title = t`Choose a question or model`,
   onChange,
   onClose,
   value = { model: "collection", id: "root" },
