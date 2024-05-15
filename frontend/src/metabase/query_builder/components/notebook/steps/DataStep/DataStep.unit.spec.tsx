@@ -2,9 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -50,6 +51,7 @@ const setup = async (
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
 
   renderWithProviders(
     <DataStep
@@ -95,16 +97,26 @@ const setupEmptyQuery = () => {
 };
 
 describe("DataStep", () => {
+  beforeAll(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   it("should render without a table selected", async () => {
     await setupEmptyQuery();
 
-    expect(screen.getByText("Pick your starting data")).toBeInTheDocument();
+    const modal = await screen.findByTestId("entity-picker-modal");
+    expect(
+      within(modal).getByText("Pick your starting data"),
+    ).toBeInTheDocument();
 
-    // Ensure the table picker is not open
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+    // Ensure the table picker not open
+    expect(within(modal).getByText("Orders")).toBeInTheDocument();
+    expect(within(modal).getByText("Products")).toBeInTheDocument();
+    expect(within(modal).getByText("People")).toBeInTheDocument();
   });
 
   it("should render with a selected table", async () => {
