@@ -49,6 +49,22 @@
                                                                         :order-by [[:ended_at :desc]]})]
     (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
+(def ^:private task-history-status #{:started :success :failed})
+
+(defn- assert-task-history-status
+  [status]
+  (assert (task-history-status (keyword status)) "Invalid task history status"))
+
+(t2/define-after-insert :model/TaskHistory
+  [task-history]
+  (assert-task-history-status (:status task-history))
+  task-history)
+
+(t2/define-before-update :model/TaskHistory
+  [task-history]
+  (assert-task-history-status (:status task-history))
+  task-history)
+
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json
    :status       mi/transform-keyword})
