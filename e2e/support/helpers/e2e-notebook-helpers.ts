@@ -2,6 +2,7 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
   entityPickerModal,
+  entityPickerModalTab,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
@@ -147,7 +148,7 @@ export function joinTable(
   rhsColumnName?: string,
 ) {
   entityPickerModal().within(() => {
-    cy.findByText("Tables").click();
+    entityPickerModalTab("Tables").click();
     cy.findByText(tableName).click();
   });
 
@@ -174,9 +175,9 @@ export function selectSavedQuestionsToJoin(
 ) {
   cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
   entityPickerModal().within(() => {
-    cy.findByText("Models").should("exist");
-    cy.findByText("Tables").should("exist");
-    cy.findByText("Saved questions").click();
+    entityPickerModalTab("Models").should("exist");
+    entityPickerModalTab("Tables").should("exist");
+    entityPickerModalTab("Saved questions").click();
     cy.findByText(firstQuestionName).click();
   });
 
@@ -186,9 +187,9 @@ export function selectSavedQuestionsToJoin(
   cy.icon("join_left_outer").click();
 
   entityPickerModal().within(() => {
-    cy.findByText("Models").should("exist");
-    cy.findByText("Tables").should("exist");
-    cy.findByText("Saved questions").click();
+    entityPickerModalTab("Models").should("exist");
+    entityPickerModalTab("Tables").should("exist");
+    entityPickerModalTab("Saved questions").click();
     cy.findByText(secondQuestionName).click();
   });
 }
