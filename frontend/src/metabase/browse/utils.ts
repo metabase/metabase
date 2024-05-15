@@ -9,7 +9,11 @@ import {
 } from "metabase/collections/utils";
 import { entityForObject } from "metabase/lib/schema";
 import type { IconName } from "metabase/ui";
-import type { CollectionEssentials, ModelResult } from "metabase-types/api";
+import type {
+  CollectionEssentials,
+  ModelResult,
+  RecentCollectionItem,
+} from "metabase-types/api";
 
 export const getCollectionName = (collection: CollectionEssentials) => {
   if (isRootCollection(collection)) {
@@ -27,7 +31,9 @@ export const getCollectionIdForSorting = (collection: CollectionEssentials) => {
 export type AvailableModelFilters = Record<
   string,
   {
-    predicate: (value: ModelResult) => boolean;
+    predicate: <T extends ModelResult | RecentCollectionItem>(
+      value: T,
+    ) => boolean;
     activeByDefault: boolean;
   }
 >;
@@ -41,16 +47,18 @@ export type ModelFilterControlsProps = {
  * or false if it is inactive */
 export type ActualModelFilters = Record<string, boolean>;
 
-export const filterModels = (
-  unfilteredModels: ModelResult[],
+export const filterModels = <T extends ModelResult[] | RecentCollectionItem[]>(
+  unfilteredModels: T,
   actualModelFilters: ActualModelFilters,
   availableModelFilters: AvailableModelFilters,
-) => {
+): Array<T[number]> => {
   return _.reduce(
     actualModelFilters,
     (acc, shouldFilterBeActive, filterName) =>
       shouldFilterBeActive
-        ? acc.filter(availableModelFilters[filterName].predicate)
+        ? // https://devblogs.microsoft.com/typescript/announcing-typescript-5-2/#easier-method-usage-for-unions-of-arrays
+          // @ts-expect-error This would be valid without a cast in TS 5.2+
+          (acc.filter(availableModelFilters[filterName].predicate) as T)
         : acc,
     unfilteredModels,
   );

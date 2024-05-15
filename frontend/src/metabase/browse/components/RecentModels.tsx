@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import { Box, Grid, Text } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import type { RecentCollectionItem } from "metabase-types/api";
 
-export function RecentModels({ models }: { models: RecentItem[] }) {
+export function RecentModels({ models }: { models: RecentCollectionItem[] }) {
   if (models.length === 0) {
     return null;
   }

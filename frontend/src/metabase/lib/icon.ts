@@ -6,9 +6,10 @@ import type {
   CardDisplayType,
   Collection,
   SearchModel,
+  CollectionItemModel,
 } from "metabase-types/api";
 
-type IconModel = SearchModel | "schema";
+type IconModel = SearchModel | CollectionItemModel | "schema";
 
 export type ObjectWithModel = {
   model: IconModel;
@@ -32,8 +33,10 @@ const modelIconMap: Record<IconModel, IconName> = {
   dashboard: "dashboard",
   card: "table",
   segment: "segment",
-  metric: "metric",
+  metric: "funnel",
+  snippet: "unknown",
 };
+
 
 export type IconData = {
   name: IconName;

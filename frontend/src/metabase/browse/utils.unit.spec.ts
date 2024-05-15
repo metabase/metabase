@@ -186,17 +186,15 @@ describe("Browse utils", () => {
   }));
   const availableModelFilters: AvailableModelFilters = {
     onlyRed: {
-      predicate: (model: SearchResult) => model.name.startsWith("red"),
+      predicate: model => model.name.startsWith("red"),
       activeByDefault: false,
     },
     onlyGood: {
-      predicate: (model: SearchResult) =>
-        Boolean(model.moderated_status?.startsWith("good")),
+      predicate: model => Boolean(model.moderated_status?.startsWith("good")),
       activeByDefault: false,
     },
     onlyBig: {
-      predicate: (model: SearchResult) =>
-        Boolean(model.description?.startsWith("big")),
+      predicate: model => Boolean(model.description?.startsWith("big")),
       activeByDefault: true,
     },
   };

@@ -109,3 +109,16 @@ export const sortModels = (
     return sort_direction === SortDirection.Asc ? result : -result;
   });
 };
+
+export const getCountOfRecentlyViewedModelsToShow = (
+  /** How many models the user has permission to see (ignoring Metabase analytics models which are never shown) */
+  modelCount: number,
+) => {
+  if (modelCount > 20) {
+    return 8;
+  }
+  if (modelCount > 9) {
+    return 4;
+  }
+  return 0;
+};

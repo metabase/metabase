@@ -17,7 +17,7 @@ import type {
   Bookmark,
   Collection,
   CollectionItem,
-  RecentItem,
+  RecentCollectionItem,
 } from "metabase-types/api";
 
 import {
@@ -37,7 +37,7 @@ type Props = {
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
   className?: string;
-  item: CollectionItem | RecentItem;
+  item: CollectionItem | RecentCollectionItem;
   collection?: Collection;
   onCopy?: (items: CollectionItem[]) => void;
   onMove?: (items: CollectionItem[]) => void;
@@ -49,6 +49,12 @@ const DEFAULT_DESCRIPTION: Record<string, string> = {
   card: t`A question`,
   dashboard: t`A dashboard`,
   dataset: t`A model`,
+};
+
+const isCollectionItem = (
+  item: CollectionItem | RecentCollectionItem,
+): item is CollectionItem => {
+  return !("parent_collection" in item);
 };
 
 function PinnedItemCard({
@@ -63,7 +69,10 @@ function PinnedItemCard({
   onMove,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const icon = getIcon(item).name;
+  const icon = getIcon({
+    model: item.model,
+    moderated_status: item.moderated_status,
+  }).name;
   const { description, name, model } = item;
   const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
 
@@ -79,7 +88,12 @@ function PinnedItemCard({
   };
 
   const hasActions =
-    onCopy && onMove && createBookmark && deleteBookmark && collection;
+    onCopy &&
+    onMove &&
+    createBookmark &&
+    deleteBookmark &&
+    collection &&
+    isCollectionItem(item);
 
   return (
     <ItemLink className={className} to={modelToUrl(item) ?? "/"}>

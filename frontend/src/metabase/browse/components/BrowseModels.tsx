@@ -7,7 +7,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type { ModelResult, SearchRequest } from "metabase-types/api";
+import type {
+  ModelResult,
+  RecentCollectionItem,
+  RecentItem,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type { ActualModelFilters } from "../utils";
 import { filterModels } from "../utils";
@@ -22,6 +27,7 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
+import { getCountOfRecentlyViewedModelsToShow } from "./utils";
 
 const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
@@ -93,14 +99,20 @@ export const BrowseModelsBody = ({
     if (!recentItems) {
       return [];
     }
-    const recentModels = recentItems.filter(item => item.model === "dataset");
+    const recentModels = recentItems.filter(
+      (item: RecentItem): item is RecentCollectionItem =>
+        item.model === "dataset",
+    );
     const filteredModels = filterModels(
       recentModels,
       actualModelFilters,
       availableModelFilters,
     );
-    return filteredModels.slice(0, 8);
-  }, [recentItems, actualModelFilters]);
+    const modelsToShow = getCountOfRecentlyViewedModelsToShow(
+      data?.data.length ?? 0,
+    );
+    return filteredModels.slice(0, modelsToShow);
+  }, [recentItems, actualModelFilters, data?.data.length]);
 
   if (error || isLoading || isLoadingRecents) {
     return (
@@ -116,8 +128,8 @@ export const BrowseModelsBody = ({
     return (
       <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <RecentModels models={filteredRecentItems} />
-        <ModelsTable models={filteredModels} />
+        <RecentModels models={filteredRecentItems as RecentCollectionItem[]} />
+        <ModelsTable models={filteredModels as ModelResult[]} />
       </Stack>
     );
   }
