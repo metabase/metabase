@@ -63,22 +63,3 @@
         (is (= 6
                (-> (q "select v.* from venues v join checkins")
                    :indirect count)))))))
-
-(deftest ^:parallel replace-names-simple-test
-  (testing "columns can be renamed"
-    (is (= "select cost from orders"
-           (query-analyzer/replace-names "select amount from orders" {:columns {"amount" "cost"}})) ))
-  (testing "tables can be renamed"
-    (is (= "select amount from purchases"
-           (query-analyzer/replace-names "select amount from orders" {:tables {"orders" "purchases"}})) ))
-  (testing "many things can be renamed at once"
-    (is (= "select cost, tax from purchases"
-           (query-analyzer/replace-names "select amount, fee from orders" {:columns {"amount" "cost"
-                                                                                     "fee" "tax"}
-                                                                           :tables {"orders" "purchases"}})) ))
-  (testing "comments, whitespace, etc. are preserved"
-    (is (= (str"select cost, tax -- from orders\n" "from purchases")
-           (query-analyzer/replace-names (str "select amount, fee -- from orders\n" "from orders")
-                                         {:columns {"amount" "cost"
-                                                    "fee" "tax"}
-                                          :tables {"orders" "purchases"}})) )))
