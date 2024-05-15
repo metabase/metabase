@@ -89,7 +89,7 @@ export const BrowseModelsBody = ({
       actualModelFilters,
       availableModelFilters,
     );
-    return filteredModels.slice(0, 100);
+    return filteredModels;
   }, [data, actualModelFilters]);
 
   const { data: recentItems, isLoading: isLoadingRecents } =
