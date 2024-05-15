@@ -25,7 +25,7 @@ import {
 import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
 import {
   getCollectionIdPath,
-  getQuestionPickerModel,
+  getQuestionPickerValueModel,
   getStateFromIdPath,
   isFolder,
 } from "../utils";
@@ -144,7 +144,7 @@ export const QuestionPicker = ({
           ? {
               id: currentQuestion.id,
               name: currentQuestion.name,
-              model: getQuestionPickerModel(currentQuestion.type),
+              model: getQuestionPickerValueModel(currentQuestion.type),
             }
           : {
               id: currentCollection.id,

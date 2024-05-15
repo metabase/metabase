@@ -11,7 +11,11 @@ import type {
 
 import type { PickerState } from "../EntityPicker";
 
-import type { QuestionPickerItem, QuestionPickerValue } from "./types";
+import type {
+  QuestionPickerItem,
+  QuestionPickerValue,
+  QuestionPickerValueModel,
+} from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -106,20 +110,22 @@ export const isFolder = (
   );
 };
 
-export const getQuestionPickerModel = (type: CardType) => {
-  switch (type) {
-    case "question":
-      return "card" as const;
-    case "model":
-      return "dataset" as const;
-    case "metric":
-      return "metric" as const;
-  }
-};
-
 export const getQuestionPickerValue = ({
   id,
   type,
 }: Pick<Card, "id" | "type">): QuestionPickerValue => {
-  return { id, model: getQuestionPickerModel(type) };
+  return { id, model: getQuestionPickerValueModel(type) };
+};
+
+export const getQuestionPickerValueModel = (
+  type: CardType,
+): QuestionPickerValueModel => {
+  switch (type) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
 };

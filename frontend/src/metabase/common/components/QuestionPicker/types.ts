@@ -16,7 +16,7 @@ export type QuestionPickerModel = Extract<
 >;
 export type QuestionPickerValueModel = Extract<
   CollectionPickerItem["model"],
-  "card" | "dataset"
+  "card" | "dataset" | "metric"
 >;
 
 export type QuestionPickerValueItem = CollectionPickerItem & {
