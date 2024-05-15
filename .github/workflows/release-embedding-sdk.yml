@@ -104,9 +104,9 @@ jobs:
     needs: test
     uses: ./.github/workflows/uberjar.yml
     with:
-      # env context only exist within `steps`
-      commit: embedding-sdk-${{ inputs.sdk_version }}
       only_ee: true
+      # env context only exist within `steps`
+      image_name: embedding-sdk-${{ inputs.sdk_version }}
     secrets: inherit
 
   upload-jar:

@@ -28,6 +28,9 @@ on:
         description: A flag to indicate if only EE Uberjar should be built.
         type: boolean
         default: false
+      image_name:
+        description: Optional docker image name if specified
+        type: string
 
 jobs:
   build:
@@ -97,109 +100,111 @@ jobs:
         ports:
           - 5000:5000
     steps:
-    - name: Extract and clean branch name
-      shell: bash
-      run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
-      id: extract_branch
-    - name: Verify the intended tag of the container image
-      run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
-    - name: Check out the code (Dockerfile needed)
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.commit }}
-    - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v4
-      with:
-        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
-        path: bin/docker/
-    - name: Move the ${{ matrix.edition }} uberjar to the context dir
-      run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2.5.0
-      with:
-        driver-opts: network=host
-    - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v3
-      with:
-        context: bin/docker/.
-        platforms: linux/amd64
-        network: host
-        tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
-        no-cache: true
-        push: true
-    - name: Launch ${{ matrix.edition }} container
-      run: docker run --rm -dp 3000:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
-      timeout-minutes: 5
-    - name: Is Docker running?
-      run: docker ps
-    - name: Wait for Metabase to start and reach 100% health
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 3
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Retag and push images if master (ee)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
+      - name: Extract and clean branch name
+        shell: bash
+        run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
+        id: extract_branch
+      - name: Set image name to env
+        run: echo "image_name=${{ inputs.image_name || steps.extract_branch.outputs.branch }}" >> "$GITHUB_ENV"
+      - name: Verify the intended tag of the container image
+        run: echo "Container image will be tagged as ${{ env.image_name }}-${{ matrix.edition }}"
+      - name: Check out the code (Dockerfile needed)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Download uploaded artifacts to insert into container
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          path: bin/docker/
+      - name: Move the ${{ matrix.edition }} uberjar to the context dir
+        run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2.5.0
+        with:
+          driver-opts: network=host
+      - name: Build ${{ matrix.edition }} container
+        uses: docker/build-push-action@v3
+        with:
+          context: bin/docker/.
+          platforms: linux/amd64
+          network: host
+          tags: localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
+          no-cache: true
+          push: true
+      - name: Launch ${{ matrix.edition }} container
+        run: docker run --rm -dp 3000:3000 localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
+        timeout-minutes: 5
+      - name: Is Docker running?
+        run: docker ps
+      - name: Wait for Metabase to start and reach 100% health
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        timeout-minutes: 3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Retag and push images if master (ee)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
+        run: docker tag localhost:5000/metabase-dev:${{ env.image_name }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
 
-    - name: Retag and push images if master (oss)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+      - name: Retag and push images if master (oss)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
+        run: docker tag localhost:5000/metabase-dev:${{ env.image_name }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
 
-    - name: Retag and push images if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      - name: Retag and push images if dev branch
+        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+        run: docker tag localhost:5000/metabase-dev:${{ env.image_name }}-ee ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }}
 
-    - name: Run Trivy vulnerability scanner if master (ee)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
-      env:
-        TRIVY_OFFLINE_SCAN: true
-      with:
-        image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
-        format: sarif
-        output: trivy-results.sarif
+      - name: Run Trivy vulnerability scanner if master (ee)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_OFFLINE_SCAN: true
+        with:
+          image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
+          format: sarif
+          output: trivy-results.sarif
 
-    - name: Run Trivy vulnerability scanner if master (oss)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: aquasecurity/trivy-action@master
-      env:
-        TRIVY_OFFLINE_SCAN: true
-      with:
-        image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
-        format: sarif
-        output: trivy-results.sarif
+      - name: Run Trivy vulnerability scanner if master (oss)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_OFFLINE_SCAN: true
+        with:
+          image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
+          format: sarif
+          output: trivy-results.sarif
 
-    - name: Run Trivy vulnerability scanner if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@master
-      env:
-        TRIVY_OFFLINE_SCAN: true
-      with:
-        image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
-        format: sarif
-        output: trivy-results.sarif
+      - name: Run Trivy vulnerability scanner if dev branch
+        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_OFFLINE_SCAN: true
+        with:
+          image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ env.image_name }}
+          format: sarif
+          output: trivy-results.sarif
 
-    - name: Upload Trivy scan results to GitHub Security tab if master (ee)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab if master (ee)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab if master (oss)
-      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab if master (oss)
+        if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab if dev branch
+        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   containerize_multi_arch:
     runs-on: ubuntu-22.04
@@ -218,8 +223,10 @@ jobs:
         shell: bash
         run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
         id: extract_branch
+      - name: Set image name to env
+        run: echo "image_name=${{ inputs.image_name || steps.extract_branch.outputs.branch }}" >> "$GITHUB_ENV"
       - name: Verify the intended tag of the container image
-        run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
+        run: echo "Container image will be tagged as ${{ env.image_name }}-${{ matrix.edition }}"
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v4
         with:
@@ -249,11 +256,11 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: bin/docker/Dockerfile_ubuntu
           network: host
-          tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+          tags: localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}-ubuntu
           no-cache: true
           push: true
       - name: Launch ${{ matrix.edition }} Ubuntu based container
-        run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+        run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}-ubuntu
         timeout-minutes: 5
       - name: Is Docker with Ubuntu running?
         run: docker ps
@@ -277,7 +284,7 @@ jobs:
         run: regctl registry set --tls disabled localhost:5000
       - name: Retag and push ubuntu-based images if master (ee)
         if: ${{ (matrix.edition == 'ee') && (github.ref_name == 'master') }}
-        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
+        run: regctl image copy localhost:5000/metabase-dev:${{ env.image_name }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
       - name: Retag and push ubuntu-based images if master (oss)
         if: ${{ (matrix.edition == 'oss') && (github.ref_name == 'master') }}
-        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu
+        run: regctl image copy localhost:5000/metabase-dev:${{ env.image_name }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu
