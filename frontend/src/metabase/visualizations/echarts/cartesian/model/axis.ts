@@ -565,13 +565,16 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
-  const isCompact = settings["graph.label_value_formatting"] === "compact";
-  const isLeftAxisCompact =
-    isCompact ||
-    compactSeriesDataKeys.some(dataKey => leftAxisSeriesKeysSet.has(dataKey));
-  const isRightAxisCompact =
-    isCompact ||
-    compactSeriesDataKeys.some(dataKey => rightAxisSeriesKeysSet.has(dataKey));
+  const leftAxisFormattingOptions = getYAxisFormattingOptions({
+    compactSeriesDataKeys,
+    axisSeriesKeysSet: leftAxisSeriesKeysSet,
+    settings,
+  });
+  const rightAxisFormattingOptions = getYAxisFormattingOptions({
+    compactSeriesDataKeys,
+    axisSeriesKeysSet: rightAxisSeriesKeysSet,
+    settings,
+  });
 
   return {
     leftAxisModel: getYAxisModel(
@@ -583,7 +586,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       renderingContext,
-      { compact: isLeftAxisCompact },
+      leftAxisFormattingOptions,
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -596,9 +599,31 @@ export function getYAxesModels(
         ? null
         : settings["stackable.stack_type"] ?? null,
       renderingContext,
-      { compact: isRightAxisCompact },
+      rightAxisFormattingOptions,
     ),
   };
+}
+
+type GetYAxisFormattingOptions = {
+  compactSeriesDataKeys: DataKey[];
+  axisSeriesKeysSet: Set<string>;
+  settings: ComputedVisualizationSettings;
+};
+
+export function getYAxisFormattingOptions({
+  compactSeriesDataKeys,
+  axisSeriesKeysSet,
+  settings,
+}: GetYAxisFormattingOptions): OptionsType {
+  const isCompact =
+    settings["graph.label_value_formatting"] === "compact" ||
+    compactSeriesDataKeys.some(dataKey => axisSeriesKeysSet.has(dataKey));
+
+  if (isCompact) {
+    return { compact: isCompact };
+  }
+
+  return {};
 }
 
 export function getTimeSeriesXAxisModel(
