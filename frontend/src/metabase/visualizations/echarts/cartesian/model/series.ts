@@ -335,17 +335,17 @@ export const getStackedLabelsFormatters = (
   renderingContext: RenderingContext,
 ): {
   formatters: StackedSeriesFormatters;
-  compactStackedSeriesByDataKey: DataKey[];
+  compactStackedSeriesDataKeys: DataKey[];
 } => {
   const formatters: StackedSeriesFormatters = {};
-  const compactStackedSeriesByDataKey: DataKey[] = [];
+  const compactStackedSeriesDataKeys: DataKey[] = [];
 
   const hasDataLabels =
     settings["graph.show_values"] &&
     settings["stackable.stack_type"] === "stacked";
 
   if (!hasDataLabels) {
-    return { formatters, compactStackedSeriesByDataKey };
+    return { formatters, compactStackedSeriesDataKeys };
   }
 
   stackModels.forEach(({ display: stackName, seriesKeys }) => {
@@ -374,7 +374,7 @@ export const getStackedLabelsFormatters = (
       .some(isCompact => isCompact);
 
     if (isCompact) {
-      compactStackedSeriesByDataKey.push(seriesKeys[0]);
+      compactStackedSeriesDataKeys.push(seriesKeys[0]);
     }
 
     const stackedFormatter = cachedFormatter((value: RowValue) => {
@@ -392,7 +392,7 @@ export const getStackedLabelsFormatters = (
     formatters[stackName] = stackedFormatter;
   });
 
-  return { formatters, compactStackedSeriesByDataKey };
+  return { formatters, compactStackedSeriesDataKeys };
 };
 
 export const getSeriesLabelsFormatters = (
@@ -402,10 +402,10 @@ export const getSeriesLabelsFormatters = (
   renderingContext: RenderingContext,
 ): {
   formatters: SeriesFormatters;
-  compactSeriesByDataKey: DataKey[];
+  compactSeriesDataKeys: DataKey[];
 } => {
   const formatters: SeriesFormatters = {};
-  const compactSeriesByDataKey: DataKey[] = [];
+  const compactSeriesDataKeys: DataKey[] = [];
 
   seriesModels.forEach(seriesModel => {
     const seriesSettings =
@@ -431,7 +431,7 @@ export const getSeriesLabelsFormatters = (
     );
 
     if (isCompact) {
-      compactSeriesByDataKey.push(seriesModel.dataKey);
+      compactSeriesDataKeys.push(seriesModel.dataKey);
     }
 
     const seriesFormatter = cachedFormatter((value: RowValue) => {
@@ -445,7 +445,7 @@ export const getSeriesLabelsFormatters = (
     formatters[seriesModel.dataKey] = seriesFormatter;
   });
 
-  return { formatters, compactSeriesByDataKey };
+  return { formatters, compactSeriesDataKeys };
 };
 
 export const getWaterfallLabelFormatter = (
