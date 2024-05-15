@@ -1486,9 +1486,6 @@
 
               (io/delete-file file))))))))
 
-(defn- cached-model-ids []
-  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
-
 (defn- mbql [mp table]
   (let [table-metadata (lib.metadata/table mp (:id table))]
     (lib/query mp table-metadata)))
@@ -1509,6 +1506,9 @@
         (lib/join (lib/join-clause join-table-metadata
                                    [(lib/= (lib/ref base-id-metadata)
                                            (lib/ref join-id-metadata))])))))
+
+(defn- cached-model-ids []
+  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
 
 (deftest update-invalidate-model-cache-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
@@ -1654,28 +1654,28 @@
                                         [false])]
                 (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
                   (doseq [{:keys [upload-type valid invalid msg]}
-                          (cond-> [{:upload-type ::upload/int
+                          (cond-> [{:upload-type int-type
                                     :valid       1
                                     :invalid     "not an int"
                                     :msg         "'not an int' is not a recognizable number"}
-                                   {:upload-type ::upload/float
+                                   {:upload-type float-type
                                     :valid       1.1
                                     :invalid     "not a float"
                                     :msg         "'not a float' is not a recognizable number"}
-                                   {:upload-type ::upload/boolean
+                                   {:upload-type bool-type
                                     :valid       true
                                     :invalid     "correct"
                                     :msg         "'correct' is not a recognizable boolean"}
-                                   {:upload-type ::upload/date
+                                   {:upload-type date-type
                                     :valid       #t "2000-01-01"
                                     :invalid     "2023-01-01T00:00:00"
                                     :msg         "'2023-01-01T00:00:00' is not a recognizable date"}
-                                   {:upload-type ::upload/datetime
+                                   {:upload-type datetime-type
                                     :valid       #t "2000-01-01T00:00:00"
                                     :invalid     "2023-01-01T00:00:00+01"
                                     :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}]
-                            (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
-                            (conj {:upload-type ::upload/offset-datetime
+                            (driver/upload-type->database-type driver/*driver* offset-dt-type)
+                            (conj {:upload-type offset-dt-type
                                    :valid       #t "2000-01-01T00:00:00+01"
                                    :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
                                    :msg         "'2023-01-01T00:00:00[Europe/Helsinki]' is not a recognizable zoned datetime"}))]
@@ -1685,15 +1685,16 @@
                                 {:col->upload-type (columns-with-auto-pk
                                                     (ordered-map/ordered-map
                                                      :test_column upload-type
-                                                     :name        ::upload/varchar-255))
+                                                     :name        vchar-type))
                                  :rows             [[valid "Obi-Wan Kenobi"]]})]
                         (let [;; The CSV contains 50 valid rows and 1 invalid row
                               csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
-                              file  (csv-file-with csv-rows (mt/random-name))]
+                              file  (csv-file-with csv-rows)]
                           (testing "\nShould return an appropriate error message"
                             (is (= {:message msg
                                     :data    {:status-code 422}}
                                    (catch-ex-info (update-csv! action {:file file, :table-id (:id table)})))))
+                          ;; TODO in future it would be good to enhance ::replace to be atomic, i.e. to preserve the existing row
                           (testing "\nCheck the data was not uploaded into the table"
                             (is (= (case action ::upload/append 1 ::upload/replace 0)
                                    (count (rows-for-table table)))))
