@@ -100,9 +100,9 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        cy.findByRole("tab", { name: /Saved questions/ }).should("not.exist");
-        cy.findByRole("tab", { name: /Models/ }).should("exist");
-        cy.findByRole("tab", { name: /Tables/ }).should("exist");
+        getDataPickerTab("Models").and("have.attr", "aria-selected", "true");
+        getDataPickerTab("Tables").should("exist");
+        getDataPickerTab("Saved questions").should("not.exist");
       });
     });
 
@@ -116,9 +116,9 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
-        cy.findByRole("tab", { name: /Saved questions/ }).should("exist");
-        cy.findByRole("tab", { name: /Models/ }).should("not.exist");
-        cy.findByRole("tab", { name: /Tables/ }).should("exist");
+        getDataPickerTab("Models").should("not.exist");
+        getDataPickerTab("Tables").and("have.attr", "aria-selected", "true");
+        getDataPickerTab("Saved questions").should("exist");
       });
     });
   });
@@ -134,14 +134,12 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Tables/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        getDataPickerTab("Tables").and("have.attr", "aria-selected", "true");
         // should not show databases step if there's only 1 database
-        cy.findByText("Sample Database").should("not.exist");
-        cy.button(/Reviews/).should("have.attr", "data-active", "true");
+        getDataPickerLevel(0).should("not.exist");
+        // should not show schema step if there's only 1 schema
+        getDataPickerLevel(1).should("not.exist");
+        assertDataPickerEntitySelected(2, "Reviews");
       });
     });
 
@@ -150,14 +148,12 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Tables/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        getDataPickerTab("Tables").and("have.attr", "aria-selected", "true");
         // should not show databases step if there's only 1 database
-        cy.findByText("Sample Database").should("not.exist");
-        cy.button(/Orders/).should("have.attr", "data-active", "true");
+        getDataPickerLevel(0).should("not.exist");
+        // should not show schema step if there's only 1 schema
+        getDataPickerLevel(1).should("not.exist");
+        assertDataPickerEntitySelected(2, "Orders");
       });
     });
 
@@ -183,7 +179,7 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Tables/ }).click();
+          getDataPickerTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
@@ -194,9 +190,9 @@ describe("scenarios > notebook > data source", () => {
         openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
         entityPickerModal().within(() => {
-          assertEntitySelected(0, dbName);
-          assertEntitySelected(1, schemaName);
-          assertEntitySelected(2, tableName);
+          assertDataPickerEntitySelected(0, dbName);
+          assertDataPickerEntitySelected(1, schemaName);
+          assertDataPickerEntitySelected(2, tableName);
         });
       },
     );
@@ -206,14 +202,12 @@ describe("scenarios > notebook > data source", () => {
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Tables/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        getDataPickerTab("Tables").should("have.attr", "aria-selected", "true");
         // should not show databases step if there's only 1 database
-        cy.findByText("Sample Database").should("not.exist");
-        cy.button(/Orders/).should("have.attr", "data-active", "true");
+        getDataPickerLevel(0).should("not.exist");
+        // should not show schema step if there's only 1 schema
+        getDataPickerLevel(1).should("not.exist");
+        assertDataPickerEntitySelected(2, "Orders");
       });
     });
   });
@@ -240,16 +234,11 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Models/ }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-
-        assertEntitySelected(0, "Our analytics");
-        assertEntitySelected(1, "First collection");
-        assertEntitySelected(2, "Second collection");
-        assertEntitySelected(3, checkNotNull(modelDetails.name));
+        getDataPickerTab("Models").should("have.attr", "aria-selected", "true");
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "First collection");
+        assertDataPickerEntitySelected(2, "Second collection");
+        assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
       });
     });
 
@@ -259,8 +248,9 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        assertEntitySelected(0, "Our analytics");
-        assertEntitySelected(1, "Orders Model");
+        getDataPickerTab("Models").should("have.attr", "aria-selected", "true");
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "Orders Model");
         cy.button("Close").click();
       });
 
@@ -268,9 +258,10 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        assertEntitySelected(0, "Our analytics");
-        assertEntitySelected(1, "First collection");
-        assertEntitySelected(2, "Orders Model");
+        getDataPickerTab("Models").should("have.attr", "aria-selected", "true");
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "First collection");
+        assertDataPickerEntitySelected(2, "Orders Model");
       });
     });
 
@@ -297,8 +288,13 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        assertEntitySelected(0, "Our analytics");
-        assertEntitySelected(1, sourceQuestionName);
+        getDataPickerTab("Saved questions").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, sourceQuestionName);
         cy.button("Close").click();
       });
 
@@ -313,9 +309,14 @@ describe("scenarios > notebook > data source", () => {
 
       openDataSelector();
       entityPickerModal().within(() => {
-        assertEntitySelected(0, "Our analytics");
-        assertEntitySelected(1, "First collection");
-        assertEntitySelected(2, sourceQuestionName);
+        getDataPickerTab("Saved questions").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "First collection");
+        assertDataPickerEntitySelected(2, sourceQuestionName);
       });
     });
   });
@@ -338,9 +339,16 @@ function openDataSelector() {
   cy.findByTestId("data-step-cell").click();
 }
 
-function assertEntitySelected(level: number, name: string) {
-  cy.findByTestId(`item-picker-level-${level}`)
+function getDataPickerLevel(level: number) {
+  return cy.findByTestId(`item-picker-level-${level}`);
+}
+function assertDataPickerEntitySelected(level: number, name: string) {
+  getDataPickerLevel(level)
     .findByText(name)
     .parents("button")
     .should("have.attr", "data-active", "true");
+}
+
+function getDataPickerTab(name: string) {
+  return cy.findAllByRole("tab").filter(`:contains(${name})`);
 }
