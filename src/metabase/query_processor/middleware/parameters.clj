@@ -83,7 +83,8 @@
   (let [pivot-original-query (get-in outer-query [:info :pivot/original-query])]
     (cond-> outer-query
       pivot-original-query (m/dissoc-in [:info :pivot/original-query])
-      true                 move-top-level-params-to-inner-query expand-all
+      true                 move-top-level-params-to-inner-query
+      true                 expand-all
       pivot-original-query (assoc-in [:info :pivot/original-query] pivot-original-query))))
 
 (mu/defn ^:private substitute-parameters* :- :map
