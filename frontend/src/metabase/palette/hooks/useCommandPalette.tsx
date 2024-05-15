@@ -8,6 +8,7 @@ import { t } from "ttag";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -33,6 +34,7 @@ export const useCommandPalette = ({
   const dispatch = useDispatch();
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
   // Used for finding actions within the list
   const { searchQuery } = useKBar(state => ({
@@ -64,7 +66,7 @@ export const useCommandPalette = ({
       limit: 20,
     },
     {
-      skip: !debouncedSearchText,
+      skip: !debouncedSearchText || !isSearchTypeaheadEnabled,
       refetchOnMountOrArgChange: true,
     },
   );
@@ -110,7 +112,31 @@ export const useCommandPalette = ({
   ]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
-    if (isSearchLoading) {
+    const searchLocation = {
+      pathname: "search",
+      query: {
+        ...locationQuery,
+        q: debouncedSearchText,
+      },
+    };
+    if (!isSearchTypeaheadEnabled) {
+      return [
+        {
+          id: `search-disabled`,
+          name: t`View search results for "${debouncedSearchText}"`,
+          section: "search",
+          keywords: debouncedSearchText,
+          icon: "link" as const,
+          perform: () => {
+            dispatch(push(searchLocation));
+          },
+          priority: Priority.HIGH,
+          extra: {
+            href: searchLocation,
+          },
+        },
+      ];
+    } else if (isSearchLoading) {
       return [
         {
           id: "search-is-loading",
@@ -129,13 +155,6 @@ export const useCommandPalette = ({
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
-        const searchLocation = {
-          pathname: "search",
-          query: {
-            ...locationQuery,
-            q: debouncedSearchText,
-          },
-        };
         return [
           {
             id: `search-results-metadata`,
@@ -194,6 +213,7 @@ export const useCommandPalette = ({
     searchError,
     searchResults,
     locationQuery,
+    isSearchTypeaheadEnabled,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
