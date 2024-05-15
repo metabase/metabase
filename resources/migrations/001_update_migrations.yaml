@@ -6614,12 +6614,28 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
-      id: v50.2024-04-25T01:04:04
+      id: v50.2024-04-25T01:04:05
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:06
+      author: qnkhuat
+      comment: Delete SendPulse Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:07
+      author: qnkhuat
+      comment: Delete InitSendPulseTriggers Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
 
   - changeSet:
       id: v50.2024-04-25T03:15:01
@@ -6832,6 +6848,33 @@ databaseChangeLog:
             columns:
               column:
                 name: user_id
+
+  - changeSet:
+      id: v50.2024-04-30T23:57:23
+      author: noahmoss
+      comment: Add `scope` column to api_key to support SCIM authentication
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: scope
+                  type: varchar(64)
+                  remarks: The scope of the API key, if applicable
+                  constraints:
+                    nullable: true
+            tableName: api_key
+
+  - changeSet:
+      id: v50.2024-04-30T23:58:24
+      author: noahmoss
+      comment: Drop NOT NULL constraint on api_key.user_id to support SCIM-scoped API keys
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnName: user_id
+            columnDataType: integer
+      rollback: # we can't reliably add back the constraint while downgrading
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

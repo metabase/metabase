@@ -49,6 +49,7 @@ const options: DataPickerModalOptions = {
   hasConfirmButtons: false,
   showPersonalCollections: true,
   showRootCollection: true,
+  hasRecents: false, // TODO: https://github.com/metabase/metabase/issues/42675
 };
 
 export const DataPickerModal = ({

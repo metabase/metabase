@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
@@ -22,7 +22,7 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 
-const { availableModelFilters, useModelFilterSettings } =
+const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
@@ -42,10 +42,11 @@ export const BrowseModels = () => {
             <Title order={1} color="text-dark">
               <Group spacing="sm">
                 <Icon size={24} color={color("brand")} name="model" />
-                {t`Models`}
+                {c("The title of a page where you can view all the models")
+                  .t`Browsing models`}
               </Group>
             </Title>
-            <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
+            <ModelFilterControls
               actualModelFilters={actualModelFilters}
               setActualModelFilters={setActualModelFilters}
             />
@@ -75,10 +76,10 @@ export const BrowseModelsBody = ({
   };
   const { data, error, isLoading } = useSearchQuery(query);
 
-  const models = useMemo(() => {
+  const filteredModels = useMemo(() => {
     const unfilteredModels = (data?.data as ModelResult[]) ?? [];
     const filteredModels = filterModels(
-      unfilteredModels || [],
+      unfilteredModels,
       actualModelFilters,
       availableModelFilters,
     );
@@ -95,11 +96,11 @@ export const BrowseModelsBody = ({
     );
   }
 
-  if (models.length) {
+  if (filteredModels.length) {
     return (
-      <Stack spacing="md" mb="lg">
+      <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <ModelsTable models={models} />
+        <ModelsTable models={filteredModels} />
       </Stack>
     );
   }

@@ -1,53 +1,37 @@
-import fetchMock from "fetch-mock";
-
+import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockRecentTableItem,
+  createMockRecentCollectionItem,
+} from "metabase-types/api/mocks";
 
 import { RecentsList } from "./RecentsList";
 
 const recentsData = [
-  {
-    user_id: 1,
+  createMockRecentCollectionItem({
     model: "card",
-    model_id: 83,
-    cnt: 9,
-    max_ts: "2021-08-24T23:50:21.077",
-    model_object: {
-      id: 83,
-      name: "Question I visited",
-      display: "table",
-    },
-  },
-  {
-    user_id: 1,
+    id: 83,
+    timestamp: "2021-08-24T23:50:21.077",
+    name: "Question I visited",
+    display: "table",
+  }),
+  createMockRecentCollectionItem({
     model: "dashboard",
-    model_id: 1,
-    cnt: 164,
-    max_ts: "2021-08-24T23:49:34.577",
-    model_object: {
-      id: 1,
-      name: "Dashboard I visited",
-    },
-  },
-  {
-    user_id: 1,
+    id: 1,
+    name: "Dashboard I visited",
+    timestamp: "2021-08-24T23:49:34.577",
+  }),
+  createMockRecentTableItem({
     model: "table",
-    model_id: 4,
-    cnt: 164,
-    max_ts: "2021-08-24T23:49:34.577",
-    model_object: {
-      id: 1,
-      name: "table_i_visited",
-      display_name: "Table I visited",
-    },
-  },
+    id: 4,
+    timestamp: "2021-08-24T23:49:34.577",
+    name: "table_i_visited",
+    display_name: "Table I visited",
+  }),
 ];
 
-function mockRecentsEndpoint(recents) {
-  fetchMock.get("path:/api/activity/recent_views", recents);
-}
-
 async function setup(recents = recentsData) {
-  mockRecentsEndpoint(recents);
+  setupRecentViewsEndpoints(recents);
 
   renderWithProviders(<RecentsList />);
 

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics";
 import { ExtractColumn } from "metabase/query_builder/components/expressions/ExtractColumn";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
@@ -34,6 +35,13 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
 
       const nextQuestion = question.setQuery(newQuery);
       const nextCard = nextQuestion.card();
+
+      trackColumnExtractViaPlusModal(
+        newQuery,
+        stageIndex,
+        extraction,
+        nextQuestion,
+      );
 
       onChangeCardAndRun({ nextCard });
       onClose();
