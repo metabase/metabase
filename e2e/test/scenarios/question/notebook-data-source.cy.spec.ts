@@ -250,26 +250,33 @@ describe("scenarios > notebook > data source", () => {
         .should("have.text", modelDetails.name)
         .click();
 
-      cy.findByTestId("saved-entity-back-navigation").should(
-        "have.text",
-        "Models",
-      );
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Models/ }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
 
-      cy.findByTestId("saved-entity-collection-tree").within(() => {
-        cy.findByLabelText("Our analytics")
-          .should("have.attr", "aria-expanded", "false")
-          .and("have.attr", "aria-selected", "false");
-        cy.findByLabelText("First collection")
-          .should("have.attr", "aria-expanded", "true")
-          .and("have.attr", "aria-selected", "false");
-        cy.findByLabelText("Second collection")
-          .should("have.attr", "aria-expanded", "false")
-          .and("have.attr", "aria-selected", "true");
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-1")
+          .findByText("First collection")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-2")
+          .findByText("Second collection")
+          .parents("button")
+          .should("have.attr", "data-active", "true");
+
+        cy.findByTestId("item-picker-level-3")
+          .findByText(checkNotNull(modelDetails.name))
+          .parents("button")
+          .should("have.attr", "data-active", "true");
       });
-
-      cy.findByTestId("select-list")
-        .findByLabelText(checkNotNull(modelDetails.name))
-        .should("have.attr", "aria-selected", "true");
     });
 
     it("moving the model to another collection should immediately be reflected in the data selector (metabase#39812-1)", () => {
