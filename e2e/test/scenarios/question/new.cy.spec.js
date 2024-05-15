@@ -363,8 +363,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).click();
         cy.findByText("Orders").click();
       });
 
@@ -399,8 +399,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show all collections when selecting a dashboard for a question in a public collection", () => {
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Tables/ }).click();
         cy.findByText("Orders").click();
       });
 
