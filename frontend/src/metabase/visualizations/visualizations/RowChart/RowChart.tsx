@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
-  getChartColumns,
+  getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
@@ -199,7 +199,6 @@ const RowChartVisualization = ({
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
         nextCard: card,
-        seriesIndex: 0,
       });
     }
   };
@@ -235,7 +234,7 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = useMemo(
+  const legendItems = useMemo(
     () => getLegendItems(series, seriesColors, settings),
     [series, seriesColors, settings],
   );
@@ -280,8 +279,7 @@ const RowChartVisualization = ({
       )}
       <RowChartLegendLayout
         hasLegend={hasLegend}
-        labels={labels}
-        colors={colors}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         onHoverChange={onHoverChange}
@@ -367,7 +365,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     return originalMultipleSeries;
   }
 
-  const chartColumns = getChartColumns(data, settings);
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
 
   const computedSeries = getSeries(
     data,

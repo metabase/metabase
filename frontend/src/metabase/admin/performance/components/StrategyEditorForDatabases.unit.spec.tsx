@@ -1,16 +1,22 @@
 import { act, screen } from "__support__/ui";
 
-import { changeInput, getSaveButton, setup } from "./test-utils";
+import {
+  changeInput,
+  getSaveButton,
+  setupStrategyEditorForDatabases as setup,
+} from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy from Duration to TTL to No caching", async () => {
+  beforeEach(() => {
     setup();
+  });
+  it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
     const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /TTL/i,
+      name: /Adaptive/i,
     });
     ttlStrategyRadioButton.click();
 
@@ -19,7 +25,7 @@ describe("StrategyEditorForDatabases", () => {
     expect(await getSaveButton()).toBeInTheDocument();
 
     await act(async () => {
-      await changeInput(/minimum query duration/i, 60000, 70000);
+      await changeInput(/minimum query duration/i, 1, 5);
       await changeInput(/multiplier/i, 10, 3);
     });
 
@@ -30,12 +36,10 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /duration/i,
+        name: /keep the cache for a number of hours/i,
       });
       durationStrategyRadioButton.click();
-
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-
       await changeInput(/Cache results for this many hours/, 24, 48);
     });
 
@@ -46,9 +50,8 @@ describe("StrategyEditorForDatabases", () => {
         name: /Don.t cache/i,
       });
       noCacheStrategyRadioButton.click();
-
-      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     });
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
 
     (await screen.findByTestId("strategy-form-submit-button")).click();
   });

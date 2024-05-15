@@ -88,7 +88,7 @@ const _TabButton = forwardRef(function TabButton(
     showMenuProp && menuItems !== undefined && menuItems.length > 0;
 
   const handleButtonClick: MouseEventHandler<HTMLDivElement> = useCallback(
-    event => {
+    (event: React.MouseEvent<HTMLDivElement>) => {
       if (
         disabled ||
         menuButtonRef.current?.contains(event.target as Node) ||
@@ -105,7 +105,7 @@ const _TabButton = forwardRef(function TabButton(
 
   const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
     useCallback(
-      event => {
+      (event: React.KeyboardEvent) => {
         if (event.key === "Enter" && typeof inputRef === "object") {
           inputRef?.current?.blur();
         }

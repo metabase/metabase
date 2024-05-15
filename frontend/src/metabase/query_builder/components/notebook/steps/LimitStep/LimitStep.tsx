@@ -2,6 +2,7 @@ import type { ChangeEvent, FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
@@ -33,7 +34,7 @@ export function LimitStep({
   return (
     <NotebookCell color={color}>
       <LimitInput
-        className="mb1"
+        className={CS.mb1}
         type="number"
         value={value}
         placeholder={t`Enter a limit`}

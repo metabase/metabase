@@ -12,14 +12,18 @@
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.database.methods :as lib.database.methods]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -119,7 +123,7 @@
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
                      (top-level-expression-clause new-clause (or (custom-name new-clause)
-                                                             (expression-name target-clause)))
+                                                                 (expression-name target-clause)))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -475,23 +479,75 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
-(mu/defn unique-name-generator :- [:=>
-                                   [:cat ::lib.schema.common/non-blank-string]
-                                   ::lib.schema.common/non-blank-string]
+(mu/defn ^:private escape-and-truncate :- :string
+  [database :- [:maybe ::lib.schema.metadata/database]
+   s        :- :string]
+  (->> s
+       (lib.database.methods/escape-alias database)
+       ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+       truncate-alias))
+
+(mu/defn ^:private unique-alias :- :string
+  [database :- [:maybe ::lib.schema.metadata/database]
+   original :- :string
+   suffix   :- :string]
+  (->> (str original \_ suffix)
+       (escape-and-truncate database)))
+
+(mu/defn unique-name-generator :- [:function
+                                   ;; (f str) => unique-str
+                                   [:=>
+                                    [:cat :string]
+                                    ::lib.schema.common/non-blank-string]
+                                   ;; (f id str) => unique-str
+                                   [:=>
+                                    [:cat :any :string]
+                                    ::lib.schema.common/non-blank-string]]
   "Create a new function with the signature
 
     (f str) => str
 
+  or
+
+   (f id str) => str
+
   That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
-  name truncated to 60 characters (actually 51 characters plus a hash)."
-  []
-  (comp truncate-alias
-        (mbql.u/unique-name-generator
-         ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-         :name-key-fn     u/lower-case-en
-         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
-         :unique-alias-fn (fn [original suffix]
-                            (truncate-alias (str original \_ suffix))))))
+  name truncated to 60 characters (actually 51 characters plus a hash).
+
+  Optionally takes a list of names which are already defined, \"priming\" the generator with eg. all the column names
+  that currently exist on a stage of the query.
+
+  The two-arity version of the returned function can be used for idempotence. See docstring
+  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information."
+  ([metadata-provider :- [:maybe ::lib.schema.metadata/metadata-provider]]
+   (let [database     (some-> metadata-provider lib.metadata.protocols/database)
+         uniqify      (mbql.u/unique-name-generator
+                       ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+                       ;;
+                       ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
+                       ;; unique regardless of case
+                       :name-key-fn     u/lower-case-en
+                       :unique-alias-fn (partial unique-alias database))]
+     ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
+     ;; debugging things; a named function like this makes it clear where this function came from
+     (fn unique-name-generator-fn
+       ([s]
+        (->> s
+             (escape-and-truncate database)
+             uniqify
+             truncate-alias))
+       ([id s]
+        (->> s
+             (escape-and-truncate database)
+             (uniqify id)
+             truncate-alias)))))
+
+  ([metadata-provider :- [:maybe ::lib.schema.metadata/metadata-provider]
+    existing-names    :- [:sequential :string]]
+   (let [f (unique-name-generator metadata-provider)]
+     (doseq [existing existing-names]
+       (f existing))
+     f)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -561,5 +617,12 @@
     (when-let [query-type (keyword (some #(get query %)
                                          [:lib/type :type "lib/type" "type"]))]
       (when (#{:mbql/query :query :native :internal} query-type)
-        query-type)))
-)
+        query-type))))
+
+(mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
+  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
+  [coll]
+  (not-empty
+   (into #{}
+         (comp cat (filter some?))
+         (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))

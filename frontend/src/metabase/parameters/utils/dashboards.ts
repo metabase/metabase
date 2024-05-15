@@ -67,6 +67,21 @@ export function setParameterName(
   };
 }
 
+export function setParameterType(
+  parameter: Parameter,
+  type: string,
+  sectionId: string,
+): Parameter {
+  // reset default value
+  const { default: _, ...rest } = parameter;
+
+  return {
+    ...rest,
+    type,
+    sectionId,
+  };
+}
+
 export function getIsMultiSelect(parameter: Parameter): boolean {
   return parameter.isMultiSelect ?? true;
 }
@@ -77,22 +92,6 @@ export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
-}
-
-export function isDashboardParameterWithoutMapping(
-  parameter: Parameter,
-  dashboard: Dashboard,
-) {
-  if (!dashboard || !dashboard.parameters) {
-    return false;
-  }
-
-  const parameterExistsOnDashboard = dashboard.parameters.some(
-    dashParam => dashParam.id === parameter.id,
-  );
-  const parameterHasMapping = hasMapping(parameter, dashboard);
-
-  return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {

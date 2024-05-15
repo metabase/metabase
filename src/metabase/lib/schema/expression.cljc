@@ -76,6 +76,16 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+(def ^:dynamic *suppress-expression-type-check?*
+  "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in MLv2 with
+  full metadata, but it breaks during legacy conversion in some cases.
+
+  In particular, if you override the metadata for a column to eg. treat a `:type/Integer` columns as a `:type/Instant`
+  with `:Coercion/UNIXSeconds->DateTime`, it will have `:base-type :type/Integer` and `:effective-type :type/Instant`.
+  But when converting from legacy, the `:field` refs in eg. a filter will only have `:base-type :type/Integer`, and then
+  the filter fails Malli validation. See #41122."
+  false)
+
 (defn- expression-schema
   "Schema that matches the following rules:
 
@@ -94,7 +104,8 @@
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
     {:error/message description}
-    #(type-of? % base-type)]])
+    #(or *suppress-expression-type-check?*
+         (type-of? % base-type))]])
 
 (mr/def ::boolean
   (expression-schema :type/Boolean "expression returning a boolean"))
@@ -172,7 +183,15 @@
 (mr/def ::expression
   [:maybe (expression-schema :type/* "any type of expression")])
 
+(mr/def ::expression.definition
+  [:and
+   [:ref ::expression]
+   [:cat
+    #_tag :any
+    #_opts [:map
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]])
+
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:and [:ref ::expression]
-                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])
+  [:sequential {:min 1} [:ref ::expression.definition]])

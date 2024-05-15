@@ -25,7 +25,7 @@ export const DimensionPicker = ({
   onChangeDimension,
 }) => {
   return (
-    <ul className={cx(className, "px2 py1")} style={style}>
+    <ul className={cx(className, CS.px2, CS.py1)} style={style}>
       {dimensions.map((d, index) => {
         const isSelected = d.isEqual(dimension);
         return (

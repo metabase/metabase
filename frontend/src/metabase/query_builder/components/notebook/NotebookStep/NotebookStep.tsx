@@ -71,7 +71,10 @@ function NotebookStep({
           button: (
             <ActionButton
               key={`actionButton_${stepUi.title}`}
-              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                [CS.mr1]: !isLastStep,
+              })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -121,9 +124,9 @@ function NotebookStep({
           {canRevert && (
             <IconButtonWrapper
               className={cx(
-                "ml-auto",
-                "text-light",
-                "text-medium-hover",
+                CS.mlAuto,
+                CS.textLight,
+                CS.textMediumHover,
                 CS.hoverChild,
               )}
               onClick={handleClickRevert}

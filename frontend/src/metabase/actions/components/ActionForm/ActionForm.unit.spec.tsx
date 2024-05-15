@@ -296,7 +296,7 @@ describe("Actions > ActionForm", () => {
 
       expect(await screen.findByText(message)).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: action.name }),
+        await screen.findByRole("button", { name: /failed/i }),
       ).toHaveTextContent("Failed");
     });
   });

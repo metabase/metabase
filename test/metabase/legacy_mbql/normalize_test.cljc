@@ -1,4 +1,4 @@
-(ns metabase.legacy-mbql.normalize-test
+(ns ^:mb/once metabase.legacy-mbql.normalize-test
   (:require
    [clojure.set :as set]
    [clojure.test :as t]
@@ -1510,3 +1510,18 @@
                    k {"x" 1, "y" {"z" 2}, "a" nil}}]
         (t/is (= query
                  (mbql.normalize/normalize query)))))))
+
+(t/deftest ^:parallel normalize-offset-test
+  (t/is (=? [:offset
+             {:effective-type :type/Float, :lib/uuid string?}
+             [:field
+              1
+              {:base-type :type/Float, :effective-type :type/Float}]
+             -1]
+            (mbql.normalize/normalize
+             ["offset"
+              {"effective-type" "type/Float"}
+              ["field"
+               1
+               {"base-type" "type/Float", "effective-type" "type/Float"}]
+              -1]))))

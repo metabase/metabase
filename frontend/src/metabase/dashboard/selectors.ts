@@ -20,11 +20,15 @@ import type {
   DashboardId,
   DashCardId,
   DashboardCard,
+  DashboardParameterMapping,
+  ParameterId,
+  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
+  StoreDashboard,
 } from "metabase-types/store";
 
 import { isQuestionCard, isQuestionDashCard } from "./utils";
@@ -421,9 +425,55 @@ export const getSelectedTabId = createSelector(
   [getDashboard, state => state.dashboard.selectedTabId],
   (dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return dashboard.tabs?.[0]?.id || null;
+      return getInitialSelectedTabId(dashboard);
     }
 
     return selectedTabId;
   },
+);
+
+export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+  return dashboard.tabs?.[0]?.id || null;
+}
+
+export const getParameterMappingsBeforeEditing = createSelector(
+  [getDashboardBeforeEditing],
+  editingDashboard => {
+    if (!editingDashboard) {
+      return {};
+    }
+
+    const dashcards = editingDashboard.dashcards;
+    const map: Record<
+      ParameterId,
+      Record<DashCardId, DashboardParameterMapping>
+    > = {};
+
+    // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
+    for (const dashcard of dashcards) {
+      if (!dashcard.parameter_mappings) {
+        continue;
+      }
+
+      for (const parameterMapping of dashcard.parameter_mappings) {
+        const parameterId = parameterMapping.parameter_id;
+
+        if (!map[parameterId]) {
+          map[parameterId] = {};
+        }
+
+        map[parameterId][dashcard.id] =
+          parameterMapping as DashboardParameterMapping;
+      }
+    }
+
+    return map;
+  },
+);
+
+export const getDisplayTheme = (state: State) => state.dashboard.theme;
+
+export const getIsNightMode = createSelector(
+  [getDisplayTheme],
+  theme => theme === "night",
 );

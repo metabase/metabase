@@ -7,12 +7,13 @@ import {
   isValidCollectionId,
   canonicalCollectionId,
 } from "metabase/collections/utils";
-import {
-  type CollectionPickerOptions,
-  CollectionPickerModal,
+import type {
+  CollectionPickerItem,
+  CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
+import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
@@ -88,7 +89,7 @@ function FormCollectionPicker({
   );
 
   const handleChange = useCallback(
-    ({ id }) => {
+    ({ id }: CollectionPickerItem) => {
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },

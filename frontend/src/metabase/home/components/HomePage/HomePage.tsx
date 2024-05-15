@@ -24,7 +24,7 @@ import {
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
 
-const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
+const SEARCH_QUERY = { models: ["dataset" as const], limit: 1 };
 
 export const HomePage = (): JSX.Element => {
   const {

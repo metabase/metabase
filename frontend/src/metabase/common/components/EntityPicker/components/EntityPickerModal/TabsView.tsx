@@ -1,4 +1,12 @@
+import { useState, useEffect } from "react";
+import { useMount, usePrevious } from "react-use";
+
 import { Icon, Tabs } from "metabase/ui";
+import type {
+  SearchResult,
+  SearchResultId,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {
@@ -7,7 +15,7 @@ import {
 } from "../EntityPickerSearch";
 
 export const TabsView = <
-  Id,
+  Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
@@ -16,19 +24,49 @@ export const TabsView = <
   searchQuery,
   searchResults,
   selectedItem,
+  initialValue,
 }: {
-  tabs: [EntityTab<Model>, ...EntityTab<Model>[]];
+  tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   selectedItem: Item | null;
+  initialValue?: Partial<Item>;
+  searchParams?: Partial<SearchRequest>;
 }) => {
   const hasSearchTab = !!searchQuery;
-  const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
+  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  const previousSearchQuery = usePrevious(searchQuery);
+  const defaultTab = hasSearchTab
+    ? { model: "search" }
+    : hasRecentsTab
+    ? { model: "recents" }
+    : tabs[0];
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useMount(() => {
+    if (
+      initialValue?.model &&
+      tabs.some(tab => tab.model === initialValue.model) &&
+      !hasRecentsTab
+    ) {
+      setSelectedTab(initialValue.model);
+    }
+  });
+
+  useEffect(() => {
+    // when the searchQuery changes, switch to the search tab
+    if (!!searchQuery && searchQuery !== previousSearchQuery) {
+      setSelectedTab("search");
+    } else if (selectedTab === "search") {
+      setSelectedTab(defaultTab.model);
+    }
+  }, [searchQuery, previousSearchQuery, selectedTab, defaultTab.model]);
 
   return (
     <Tabs
       defaultValue={defaultTab.model}
+      value={selectedTab}
       style={{
         flexGrow: 1,
         height: 0,
@@ -43,8 +81,9 @@ export const TabsView = <
           return (
             <Tabs.Tab
               key={model}
-              value={displayName}
+              value={model}
               icon={<Icon name={icon} />}
+              onClick={() => setSelectedTab(model)}
             >
               {displayName}
             </Tabs.Tab>
@@ -52,6 +91,7 @@ export const TabsView = <
         })}
         {hasSearchTab && (
           <EntityPickerSearchTab
+            onClick={() => setSelectedTab("search")}
             searchResults={searchResults}
             searchQuery={searchQuery}
           />
@@ -59,12 +99,12 @@ export const TabsView = <
       </Tabs.List>
 
       {tabs.map(tab => {
-        const { displayName, model } = tab;
+        const { model } = tab;
 
         return (
           <Tabs.Panel
             key={model}
-            value={displayName}
+            value={model}
             style={{
               flexGrow: 1,
               height: 0,

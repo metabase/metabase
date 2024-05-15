@@ -11,7 +11,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import {
+  provideFieldTags,
+  provideFieldValuesTags,
+  idTag,
+  invalidateTags,
+  listTag,
+  tag,
+} from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -21,14 +28,14 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}`,
         body,
       }),
-      providesTags: (_, error, { id }) => [idTag("field", id)],
+      providesTags: field => (field ? provideFieldTags(field) : []),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: id => ({
         method: "GET",
         url: `/api/field/${id}/values`,
       }),
-      providesTags: (_, error, fieldId) => [idTag("field-values", fieldId)],
+      providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...body }) => ({
@@ -36,7 +43,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
       }),
-      providesTags: (_, error, { fieldId }) => [idTag("field-values", fieldId)],
+      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({

@@ -216,10 +216,14 @@
                            (count (csv/read-csv result)))))))]
         (mt/with-no-data-perms-for-all-users!
           (testing "with data perms"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (do-test))
           (testing "with collection perms only"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -277,7 +281,8 @@
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (is (malli= [:map
                      [:status [:= "failed"]]
                      [:error  [:= "You do not have permissions to run this query."]]]
@@ -322,7 +327,8 @@
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (is (malli= [:map
                          [:permissions-error? [:= true]]
                          [:message            [:= "You do not have permissions to run this query."]]]
@@ -409,7 +415,7 @@
             (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest ^:parallel pivot-dataset-test-2
+(deftest ^:parallel pivot-dataset-with-added-expression-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -435,18 +441,17 @@
                         "Sum of Quantity"
                         "test-expr"]
                        (map :display_name cols)))
-                (is (=? {:base_type       "type/Integer"
-                         :effective_type  "type/Integer"
-                         :name            "pivot-grouping"
-                         :display_name    "pivot-grouping"
-                         :expression_name "pivot-grouping"
-                         :field_ref       ["expression" "pivot-grouping"]
-                         :source          "breakout"}
-                        (nth cols 3))))
-
+                (is (= {:base_type       "type/Integer"
+                        :effective_type  "type/Integer"
+                        :name            "pivot-grouping"
+                        :display_name    "pivot-grouping"
+                        :expression_name "pivot-grouping"
+                        :field_ref       ["expression" "pivot-grouping"]
+                        :source          "breakout"}
+                       (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
-(deftest pivot-filter-dataset-test
+(deftest ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -463,7 +468,7 @@
             (is (= ["WA" nil 2 148] (nth rows 135)))
             (is (= [nil nil 3 7562] (last rows)))))))))
 
-(deftest pivot-parameter-dataset-test
+(deftest ^:parallel pivot-parameter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"

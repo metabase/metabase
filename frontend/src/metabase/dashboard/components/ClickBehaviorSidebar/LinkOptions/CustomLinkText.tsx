@@ -28,7 +28,7 @@ export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   );
 
   return (
-    <div className="mt2 mb1">
+    <div className={cx(CS.mt2, CS.mb1)}>
       <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
       <InputBlurChange
         id="link-text-template"

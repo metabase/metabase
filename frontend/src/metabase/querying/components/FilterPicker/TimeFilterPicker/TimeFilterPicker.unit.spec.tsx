@@ -247,7 +247,7 @@ describe("TimeFilterPicker", () => {
     it("should handle invalid input", async () => {
       const { getNextFilterParts } = setup();
 
-      await await typeTime(
+      await typeTime(
         screen.getByDisplayValue("00:00") as HTMLInputElement,
         "32:71",
       );

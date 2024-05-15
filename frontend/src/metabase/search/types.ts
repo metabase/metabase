@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import type { SearchFilterKeys } from "metabase/search/constants";
 import type { IconName } from "metabase/ui";
 import type {
-  EnabledSearchModelType,
+  EnabledSearchModel,
   SearchResult,
   UserId,
 } from "metabase-types/api";
@@ -20,7 +20,7 @@ export interface WrappedResult extends SearchResult {
   getCollection: () => SearchResult["collection"];
 }
 
-export type TypeFilterProps = EnabledSearchModelType[];
+export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];
 export type CreatedAtFilterProps = string | null;
 export type LastEditedByProps = UserId[];

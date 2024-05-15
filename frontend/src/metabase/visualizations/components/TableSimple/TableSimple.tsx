@@ -83,7 +83,7 @@ function TableSimpleInner({
 }: TableSimpleProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
-  const [sortColumn, setSortColumn] = useState(null);
+  const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState("asc");
 
   const headerRef = useRef(null);
@@ -104,7 +104,7 @@ function TableSimpleInner({
   }, [height, pageSize]);
 
   const setSort = useCallback(
-    colIndex => {
+    (colIndex: number) => {
       if (sortColumn === colIndex) {
         setSortDirection(direction => (direction === "asc" ? "desc" : "asc"));
       } else {
@@ -115,7 +115,7 @@ function TableSimpleInner({
   );
 
   const checkIsVisualizationClickable = useCallback(
-    clickedItem => {
+    (clickedItem: ClickObject) => {
       return Boolean(
         onVisualizationClick &&
           visualizationIsClickable &&
@@ -164,7 +164,7 @@ function TableSimpleInner({
   );
 
   const renderColumnHeader = useCallback(
-    (col, colIndex) => {
+    (col, colIndex: number) => {
       const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
       const onClick = () => setSort(colIndex);
       return (
@@ -184,7 +184,7 @@ function TableSimpleInner({
   );
 
   const renderRow = useCallback(
-    (rowIndex, index) => {
+    (rowIndex: number, index: number) => {
       const ref = index === 0 ? firstRowRef : null;
       return (
         <tr key={rowIndex} ref={ref} data-testid="table-row">

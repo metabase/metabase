@@ -30,5 +30,5 @@ export const getDraftPolicies = (state: SandboxesState) => {
 
 export const hasPolicyChanges = createSelector(
   getDraftPolicies,
-  policies => policies != null && Object.values(policies).length > 0,
+  policies => policies != null && policies.length > 0,
 );

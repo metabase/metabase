@@ -6,6 +6,7 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
+   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -35,7 +36,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -117,7 +117,7 @@
                  (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
-                     :metric (lib/uses-metric? query model-id)))))))
+                     :metric  (lib/uses-legacy-metric? query model-id)))))))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]
@@ -126,23 +126,6 @@
 (defmethod cards-for-filter-option* :using_segment
   [_filter-option model-id]
   (cards-for-segment-or-metric :segment model-id))
-
-(defmethod cards-for-filter-option* :stale
-  [_]
-  (let [card-id->query-fields (group-by :card_id
-                                        (t2/select :model/QueryField
-                                                   {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
-                                                    :from   [[(t2/table-name :model/QueryField) :qf]]
-                                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                                                             [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:and
-                                                             [:= :f.active false]
-                                                             [:= :qf.direct_reference true]]}))
-        card-ids              (keys card-id->query-fields)
-        add-query-fields      (fn [{:keys [id] :as card}]
-                                (assoc card :query_fields (card-id->query-fields id)))]
-    (when (seq card-ids)
-      (map add-query-fields (t2/select Card :id [:in card-ids] order-by-name)))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
@@ -163,7 +146,7 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
-  `using_segment`, `archived`, and `stale`. See corresponding implementation functions above for the specific behavior
+  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
@@ -632,7 +615,9 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil}))))))
+                      {:collection_id new-collection-id-or-nil})))))
+  (when new-collection-id-or-nil
+    (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with

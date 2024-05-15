@@ -27,17 +27,17 @@ function DefaultParametersSection({ className, parameters }) {
         {t`Filter values`}
         <Icon
           name="info"
-          className="text-medium ml1"
+          className={cx(CS.textMedium, CS.ml1)}
           size={12}
           tooltip={t`You can customize filter values for each subscription with paid plans.`}
         />
       </Heading>
       <div
-        className={cx("pt1", CS.textSmall, CS.textNormal, "text-medium")}
+        className={cx(CS.pt1, CS.textSmall, CS.textNormal, CS.textMedium)}
       >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((formattedValue, index) => {
         return (
-          <div className="pt1 text-medium" key={index}>
+          <div className={cx(CS.pt1, CS.textMedium)} key={index}>
             {formattedValue}
           </div>
         );

@@ -47,6 +47,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/FieldUsage
     :model/FieldValues
     :model/LegacyMetricImportantField
     :model/ModelIndex
@@ -73,6 +74,7 @@
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
+    :model/UserParameterValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation})

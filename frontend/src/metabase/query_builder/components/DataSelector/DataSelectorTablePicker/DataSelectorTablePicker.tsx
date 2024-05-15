@@ -84,6 +84,7 @@ const DataSelectorTablePicker = ({
           database: selectedDatabase,
         })),
         loading: tables.length === 0 && isLoading,
+        type: "back",
       },
     ];
 
@@ -94,10 +95,7 @@ const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: Table }) =>
-      table ? <Icon name="table" /> : null;
-
-    const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" />;
+      table ? <TableInfoIcon table={table} position="top-start" /> : null;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>
@@ -116,7 +114,7 @@ const DataSelectorTablePicker = ({
           <AccordionList
             id="TablePicker"
             key="tablePicker"
-            className="text-brand"
+            className={CS.textBrand}
             hasInitialFocus={hasInitialFocus}
             sections={sections}
             maxHeight={Infinity}
@@ -126,7 +124,6 @@ const DataSelectorTablePicker = ({
             showSpinner={showSpinner}
             itemIsSelected={checkIfItemIsSelected}
             itemIsClickable={checkIfItemIsClickable}
-            renderItemExtra={renderItemExtra}
             renderItemIcon={renderItemIcon}
             renderItemWrapper={renderItemWrapper}
             showItemArrows={hasNextStep}

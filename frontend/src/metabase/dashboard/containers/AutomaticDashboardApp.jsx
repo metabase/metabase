@@ -80,7 +80,7 @@ class AutomaticDashboardAppInner extends Component {
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
         <Link
-          className={cx(CS.link, CS.textBold, "ml1")}
+          className={cx(CS.link, CS.textBold, CS.ml1)}
           to={Urls.dashboard(newDashboard)}
         >
           {t`See it`}
@@ -124,7 +124,7 @@ class AutomaticDashboardAppInner extends Component {
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
             <div
-              className="bg-white border-bottom"
+              className={cx(CS.bgWhite, CS.borderBottom)}
               data-testid="automatic-dashboard-header"
             >
               <div className={CS.wrapper}>
@@ -135,15 +135,15 @@ class AutomaticDashboardAppInner extends Component {
                   <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                     <XrayIcon name="bolt" size={24} />
                     <div>
-                      <h2 className={cx(CS.textWrap, "mr2")}>
+                      <h2 className={cx(CS.textWrap, CS.mr2)}>
                         {dashboard && <TransientTitle dashboard={dashboard} />}
                       </h2>
                     </div>
                     {savedDashboardId != null ? (
-                      <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
                     ) : (
                       <ActionButton
-                        className={cx("ml-auto", CS.textNoWrap)}
+                        className={cx(CS.mlAuto, CS.textNoWrap)}
                         success
                         borderless
                         actionFn={this.save}
@@ -162,15 +162,15 @@ class AutomaticDashboardAppInner extends Component {
             </div>
           )}
 
-          <div className={cx(CS.wrapper, "pb4")}>
+          <div className={cx(CS.wrapper, CS.pb4)}>
             {parameters && parameters.length > 0 && (
-              <div className="px1 pt1">
+              <div className={cx(CS.px1, CS.pt1)}>
                 <FixedWidthContainer
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <SyncedParametersList
-                    className="mt1"
+                    className={CS.mt1}
                     parameters={getValuePopulatedParameters({
                       parameters,
                       values: parameterValues,
@@ -186,7 +186,7 @@ class AutomaticDashboardAppInner extends Component {
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
               <Link
                 to={more}
-                className="ml2"
+                className={CS.ml2}
                 onClick={() =>
                   MetabaseAnalytics.trackStructEvent(
                     "AutoDashboard",
@@ -247,7 +247,7 @@ const RELATED_CONTENT = {
 const SuggestionsList = ({ suggestions, section }) => (
   <ListRoot>
     {Object.keys(suggestions).map((s, i) => (
-      <li key={i} className="my2">
+      <li key={i} className={CS.my2}>
         <SuggestionSectionHeading>
           {RELATED_CONTENT[s].title}
         </SuggestionSectionHeading>
@@ -258,12 +258,12 @@ const SuggestionsList = ({ suggestions, section }) => (
               to={item.url}
               className={cx(CS.hoverParent, CS.hoverVisibility)}
             >
-              <Card className="p2" hoverable>
+              <Card className={CS.p2} hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    className="mr1"
+                    className={CS.mr1}
                   />
                   <h4 className={CS.textWrap}>{item.title}</h4>
                   <ItemDescription className={CS.hoverChild}>
@@ -287,7 +287,7 @@ const SuggestionSectionHeading = ({ children }) => (
       textTransform: "uppercase",
       color: color("text-medium"),
     }}
-    className="mb1"
+    className={CS.mb1}
   >
     {children}
   </h5>

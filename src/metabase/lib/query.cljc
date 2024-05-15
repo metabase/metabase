@@ -1,7 +1,6 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
@@ -13,12 +12,15 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _query]
@@ -62,7 +64,8 @@
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
   [query :- ::lib.schema/query]
-  (and (mc/validate ::lib.schema/query query)
+  (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+         (mr/validate ::lib.schema/query query))
        (boolean (can-run-method query))))
 
 (mu/defn can-save :- :boolean
@@ -77,7 +80,7 @@
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
+    metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
    {:lib/type     :mbql/query
     :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -182,13 +185,13 @@
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
   (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    inner-query           :- :map]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
@@ -225,15 +228,15 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-metric?]]."
+  with [[uses-legacy-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-metric? :- :boolean
+(mu/defn uses-legacy-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
-  some strange use-cases (see [[metabase.lib.metric-test/ga-metric-metadata-test]])."
+  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
   [a-query :- ::lib.schema/query
-   metric-id :- [:or ::lib.schema.id/metric :string]]
+   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

@@ -1,5 +1,7 @@
-import { KBarProvider, useKBar } from "kbar";
-import { withRouter, type WithRouterProps } from "react-router";
+import { useKBar } from "kbar";
+import { useEffect } from "react";
+import { Route, withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
@@ -9,14 +11,17 @@ import {
 import {
   renderWithProviders,
   screen,
-  mockGetBoundingClientRect,
+  within,
+  waitFor,
+  mockScrollTo,
+  mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
+  createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -33,41 +38,76 @@ const TestComponent = withRouter(
 
     const { query } = useKBar();
 
-    if (q) {
-      query.setSearch(q);
-    }
+    useEffect(() => {
+      if (q) {
+        query.setSearch(q);
+      }
+    }, [q, query]);
 
     return <PaletteResults />;
   },
 );
 
 const DATABASE = createMockDatabase();
-const model = createMockCollectionItem({
+
+const collection_1 = createMockCollection({
+  name: "lame collection",
+  id: 3,
+});
+
+//Verified, but no collection details present
+const model_1 = createMockCollectionItem({
   model: "dataset",
   name: "Foo Question",
+  moderated_status: "verified",
+  id: 1,
 });
+
+const model_2 = createMockCollectionItem({
+  model: "dataset",
+  name: "Bar Question",
+  collection: collection_1,
+  id: 2,
+});
+
 const dashboard = createMockCollectionItem({
   model: "dashboard",
   name: "Bar Dashboard",
+  collection: collection_1,
+  description: "Such Bar. Much Wow.",
 });
 
-const recents = createMockRecentItem({
+const recents_1 = createMockRecentCollectionItem({
+  ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  model_object: createMockModelObject(model),
+  moderated_status: "verified",
+  parent_collection: {
+    id: null,
+    name: "Our analytics",
+  },
+});
+const recents_2 = createMockRecentCollectionItem({
+  ..._.pick(dashboard, "id", "name"),
+  model: "dashboard",
+  parent_collection: {
+    id: dashboard.collection?.id as number,
+    name: dashboard.collection?.name as string,
+  },
 });
 
-mockGetBoundingClientRect();
+mockScrollTo();
+mockScrollIntoView();
 
 const setup = ({ query }: { query?: string } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
-  setupSearchEndpoints([model, dashboard]);
-  setupRecentViewsEndpoints([recents]);
+  setupSearchEndpoints([model_1, model_2, dashboard]);
+  setupRecentViewsEndpoints([recents_1, recents_2]);
 
   renderWithProviders(
-    <KBarProvider>
-      <TestComponent q={query} isLoggedIn />
-    </KBarProvider>,
+    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
     {
+      withKBar: true,
+      withRouter: true,
       storeInitialState: {
         admin: createMockAdminState({
           app: createMockAdminAppState({
@@ -80,6 +120,10 @@ const setup = ({ query }: { query?: string } = {}) => {
 };
 
 describe("PaletteResults", () => {
+  afterAll(() => {
+    jest.resetAllMocks();
+  });
+
   it("should show default actions", async () => {
     setup();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
@@ -98,16 +142,69 @@ describe("PaletteResults", () => {
   it("should show you recent items", async () => {
     setup();
     expect(await screen.findByText("Recent items")).toBeInTheDocument();
-    expect(await screen.findByText("Foo Question")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("lame collection");
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
+    expect(
+      await screen.findByRole("option", { name: "Foo Question" }),
+    ).toHaveTextContent("Our analytics");
+
+    //Foo Question should be displayed with a verified badge
+    expect(
+      await within(
+        await screen.findByRole("option", { name: "Foo Question" }),
+      ).findByRole("img", { name: /verified_filled/ }),
+    ).toBeInTheDocument();
   });
 
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
-    expect(await screen.findByText("Search results")).toBeInTheDocument();
-    expect(await screen.findByText("Bar Dashboard")).toBeInTheDocument();
+
+    await waitFor(async () => {
+      expect(await screen.findByText("Search results")).toBeInTheDocument();
+    });
+
+    expect(
+      await screen.findByRole("option", { name: /View and filter/i }),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
       await screen.findByText('Search documentation for "Bar"'),
     ).toBeInTheDocument();
+  });
+
+  it("should display collections that search results are from", async () => {
+    setup({ query: "ques" });
+    expect(
+      await screen.findByRole("option", { name: "Foo Question" }),
+    ).toHaveTextContent("Our analytics");
+
+    //Foo Question should be displayed with a verified badge
+    expect(
+      await within(
+        await screen.findByRole("option", { name: "Foo Question" }),
+      ).findByRole("img", { name: /verified_filled/ }),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Question" }),
+    ).toHaveTextContent("lame collection");
   });
 
   it("should provide links to settings pages", async () => {

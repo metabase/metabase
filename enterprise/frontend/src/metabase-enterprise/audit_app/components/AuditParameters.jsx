@@ -3,6 +3,7 @@ import { Component } from "react";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 import { AuditParametersInput } from "./AuditParameters.styled";
 
@@ -59,7 +60,7 @@ export default class AuditParameters extends Component {
 
     return (
       <div>
-        <div className="pt4">
+        <div className={CS.pt4}>
           {parameters.map(({ key, placeholder, icon, disabled }) => (
             <AuditParametersInput
               key={key}
@@ -75,7 +76,7 @@ export default class AuditParameters extends Component {
           ))}
           {buttons?.map(({ key, label, disabled, onClick }) => (
             <Button
-              className="ml2"
+              className={CS.ml2}
               key={key}
               primary
               disabled={isEmpty || disabled}

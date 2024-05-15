@@ -84,7 +84,7 @@ class AlertListPopoverContent extends Component {
           ))}
         </ul>
         {(!hasOwnAlerts || hasJustUnsubscribedFromOwnAlert) && (
-          <div className={cx(CS.borderTop, CS.p2, "bg-light-blue")}>
+          <div className={cx(CS.borderTop, CS.p2, CS.bgLightBlue)}>
             <a
               className={cx(
                 CS.link,
@@ -170,7 +170,7 @@ class AlertListItemInner extends Component {
     return (
       <li
         className={cx(CS.flex, CS.p3, CS.textMedium, CS.borderBottom, {
-          "bg-light-blue": highlight,
+          [CS.bgLightBlue]: highlight,
         })}
       >
         <Icon name="alert" size="20" />
@@ -180,7 +180,7 @@ class AlertListItemInner extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={cx("ml-auto", CS.textBold, CS.textSmall)}
+              className={cx(CS.mlAuto, CS.textBold, CS.textSmall)}
               style={{
                 transform: `translateY(4px)`,
               }}
@@ -190,7 +190,7 @@ class AlertListItemInner extends Component {
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className={cx(CS.link, "ml2")}
+                  className={cx(CS.link, CS.ml2)}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}
@@ -205,7 +205,7 @@ class AlertListItemInner extends Component {
           }
           <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
             <li className={cx(CS.flex, CS.alignCenter)}>
-              <Icon name="clock" size="12" className="mr1" />{" "}
+              <Icon name="clock" size="12" className={CS.mr1} />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
                 verbose={!isAdmin}
@@ -259,19 +259,19 @@ export const UnsubscribedListItem = () => (
   >
     <div
       className={cx(
-        "circle",
+        CS.circle,
         CS.flex,
         CS.alignCenter,
         CS.justifyCenter,
         CS.p1,
-        "bg-light",
+        CS.bgLight,
         CS.ml2,
       )}
     >
-      <Icon name="check" className="text-success" />
+      <Icon name="check" className={CS.textSuccess} />
     </div>
     <h3
-      className="text-dark"
+      className={CS.textDark}
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>
@@ -353,6 +353,6 @@ export class AlertCreatorTitle extends Component {
         ? t`You're receiving ${creator}'s alerts`
         : t`${creator} set up an alert`;
 
-    return <h3 className="text-dark">{text}</h3>;
+    return <h3 className={CS.textDark}>{text}</h3>;
   }
 }

@@ -5,21 +5,19 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Icon, DelayGroup } from "metabase/ui";
+import { Box, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import {
+  ColumnNameContainer,
   StyledAccordionList,
-  NameAndBucketing,
-  ItemName,
 } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
@@ -41,6 +39,10 @@ export interface QueryColumnPickerProps {
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
   "data-testid"?: string;
+  width?: string;
+  hasInitialFocus?: boolean;
+  alwaysExpanded?: boolean;
+  disableSearch?: boolean;
 }
 
 type Sections = {
@@ -62,7 +64,11 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
+  width,
   "data-testid": dataTestId,
+  hasInitialFocus = true,
+  alwaysExpanded,
+  disableSearch,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -139,8 +145,8 @@ export function QueryColumnPicker({
 
   const renderItemName = useCallback(
     (item: ColumnListItem) => (
-      <NameAndBucketing>
-        <ItemName>{item.displayName}</ItemName>
+      <ColumnNameContainer>
+        <Box mr="sm">{item.displayName}</Box>
         {(hasBinning || hasTemporalBucketing) && (
           <BucketPickerPopover
             query={query}
@@ -149,13 +155,12 @@ export function QueryColumnPicker({
             isEditing={checkIsColumnSelected(item)}
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
-            hasDot={withInfoIcons}
             hasChevronDown={withInfoIcons}
             color={color}
             onSelect={handleSelect}
           />
         )}
-      </NameAndBucketing>
+      </ColumnNameContainer>
     ),
     [
       query,
@@ -169,13 +174,13 @@ export function QueryColumnPicker({
     ],
   );
 
-  const renderItemExtra = useCallback(
-    item => (
+  const renderItemIcon = useCallback(
+    (item: ColumnListItem) => (
       <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
         column={item.column}
-        position="right"
+        position="top-start"
       />
     ),
     [query, stageIndex],
@@ -186,14 +191,13 @@ export function QueryColumnPicker({
       <StyledAccordionList
         className={className}
         sections={sections}
-        alwaysExpanded={false}
+        alwaysExpanded={alwaysExpanded}
         onChange={handleSelectColumn}
         itemIsSelected={checkIsColumnSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
         renderItemLabel={renderItemLabel}
         color={color}
         maxHeight={Infinity}
@@ -202,6 +206,11 @@ export function QueryColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
+        withBorders
+        hasInitialFocus={hasInitialFocus}
+        width={width}
+        globalSearch={!disableSearch}
+        searchable={!disableSearch}
       />
     </DelayGroup>
   );
@@ -217,8 +226,4 @@ function renderItemWrapper(content: ReactNode) {
 
 function omitItemDescription() {
   return null;
-}
-
-function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }

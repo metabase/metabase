@@ -1,9 +1,12 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
+import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+
 import {
   getAccordionOverrides,
   getActionIconOverrides,
+  getAlertOverrides,
   getAnchorOverrides,
   getAutocompleteOverrides,
   getButtonOverrides,
@@ -38,14 +41,17 @@ import {
 } from "./components";
 import { getThemeColors } from "./utils/colors";
 
+export const breakpoints = {
+  xs: "23em",
+  sm: "40em",
+  md: "60em",
+  lg: "80em",
+  xl: "120em",
+};
+export type BreakpointName = keyof typeof breakpoints;
+
 export const getThemeOverrides = (): MantineThemeOverride => ({
-  breakpoints: {
-    xs: "23em",
-    sm: "40em",
-    md: "60em",
-    lg: "80em",
-    xl: "120em",
-  },
+  breakpoints,
   colors: getThemeColors(),
   primaryColor: "brand",
   primaryShade: 0,
@@ -94,7 +100,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
       },
     },
   },
-  fontFamily: "var(--default-font-family)",
+  fontFamily: "var(--mb-default-font-family), sans-serif",
   fontFamilyMonospace: "Monaco, monospace",
   focusRingStyles: {
     styles: theme => ({
@@ -105,6 +111,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   components: {
     ...getAccordionOverrides(),
     ...getActionIconOverrides(),
+    ...getAlertOverrides(),
     ...getAnchorOverrides(),
     ...getAutocompleteOverrides(),
     ...getButtonOverrides(),
@@ -137,4 +144,5 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getHoverCardOverrides(),
     ...getListOverrides(),
   },
+  other: DEFAULT_METABASE_COMPONENT_THEME,
 });

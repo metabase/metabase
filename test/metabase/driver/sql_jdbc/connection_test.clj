@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.core :as mbc]
@@ -116,11 +117,13 @@
 
               (cond-> details
                 ;; swap localhost and 127.0.0.1
-                (= "localhost" (:host details))
-                (assoc :host "127.0.0.1")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "localhost"))
+                (update :host str/replace "localhost" "127.0.0.1")
 
-                (= "127.0.0.1" (:host details))
-                (assoc :host "localhost")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "127.0.0.1"))
+                (update :host str/replace "127.0.0.1" "localhost")
 
                 :else
                 (assoc :new-config "something"))))))
@@ -228,8 +231,16 @@
     (doto server (.start))))
 
 (deftest test-ssh-tunnel-connection
-  ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
+  ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":
+  ;; (apply disj (sql-jdbc.tu/sql-jdbc-drivers)
+  ;;        :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
+  ;;        (tqpt/timeseries-drivers))
+  ;; which does not leave very many drivers!
+  ;; That form is not extensible by 3P driver authors who need to exclude their driver as well. Since some drivers
+  ;; (eg. Oracle) do seem to support SSH tunnelling but still fail on this test, it's not clear if this should be
+  ;; controlled by a driver feature, a ^:dynamic override, or something else.
+  ;; For now I'm making this test run against only `#{:postgres :mysql :snowflake}` like the below.
+  (mt/test-drivers #{:postgres :mysql :snowflake}
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -246,7 +257,7 @@
 
 (deftest test-ssh-tunnel-reconnection
   ;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
-  (mt/test-drivers #{:postgres :mysql}
+  (mt/test-drivers #{:postgres :mysql :snowflake}
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

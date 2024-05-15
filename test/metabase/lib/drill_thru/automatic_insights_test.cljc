@@ -50,12 +50,13 @@
     (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
       (canned/canned-test
         :drill-thru/automatic-insights
-        (fn [_test-case context {:keys [click]}]
-          (or ;; Any pivot or legend click is good.
-              (#{:pivot :legend} click)
-              ;; As are cell clicks with at least 1 breakout.
-              (and (= click :cell)
-                   (seq (:dimensions context)))))))
+        (fn [test-case context {:keys [click]}]
+          (and (not (:native? test-case))
+               (or ;; Any pivot or legend click is good.
+                   (#{:pivot :legend} click)
+                   ;; As are cell clicks with at least 1 breakout.
+                   (and (= click :cell)
+                        (seq (:dimensions context))))))))
     (testing "not available at all with xrays disabled"
       (canned/canned-test
         :drill-thru/automatic-insights
@@ -115,7 +116,7 @@
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
                     :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
+                    :lib/type :metadata/legacy-metric
                     :definition
                     {"source-table" (meta/id :orders)
                      "aggregation" [["count"]]

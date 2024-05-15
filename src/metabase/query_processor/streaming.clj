@@ -2,6 +2,7 @@
   (:require
    [metabase.async.streaming-response :as streaming-response]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
@@ -11,8 +12,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -110,7 +110,7 @@
     [ordered-cols output-order]))
 
 (mu/defn ^:private streaming-rff :- ::qp.schema/rff
-  [results-writer :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)]
+  [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
@@ -134,8 +134,8 @@
          metadata)))))
 
 (mu/defn ^:private streaming-result-fn :- fn?
-  [results-writer   :- (ms/InstanceOfClass metabase.query_processor.streaming.interface.StreamingResultsWriter)
-   ^OutputStream os :- (ms/InstanceOfClass OutputStream)]
+  [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
   (let [orig qp.pipeline/*result*]
     (fn result [result]
       (when (= (:status result) :completed)

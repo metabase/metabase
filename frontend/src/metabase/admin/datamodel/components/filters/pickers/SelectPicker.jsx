@@ -92,7 +92,7 @@ export default class SelectPicker extends Component {
     return (
       <div data-testid="select-picker">
         {validOptions.length <= 10 && !regex ? null : (
-          <div className="px1 pt1">
+          <div className={cx(CS.px1, CS.pt1)}>
             <ListSearchField
               fullWidth
               autoFocus
@@ -104,7 +104,7 @@ export default class SelectPicker extends Component {
           </div>
         )}
         <div
-          className={cx("px1 pt1", PopoverS.PopoverBodyMarginBottom)}
+          className={cx(CS.px1, CS.pt1, PopoverS.PopoverBodyMarginBottom)}
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}

@@ -20,7 +20,7 @@ export type TableVisibilityType =
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
-export interface Table {
+export type Table = {
   id: TableId;
 
   name: string;
@@ -42,9 +42,12 @@ export interface Table {
   active: boolean;
   visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
+  is_upload: boolean;
   caveats?: string;
   points_of_interest?: string;
-}
+  created_at: string;
+  updated_at: string;
+};
 
 export type SchemaName = string;
 
@@ -71,6 +74,7 @@ export interface TableListQuery {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
+  skip_fields?: boolean;
 }
 
 export interface ForeignKey {
@@ -117,4 +121,11 @@ export interface UpdateTableListRequest {
 export interface UpdateTableFieldsOrderRequest {
   id: TableId;
   field_order: FieldId[];
+}
+
+export type UploadManagementResponse = Table[];
+
+export interface DeleteUploadTableRequest {
+  tableId: TableId;
+  "archive-cards"?: boolean;
 }

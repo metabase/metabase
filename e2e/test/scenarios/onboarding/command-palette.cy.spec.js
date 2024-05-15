@@ -1,11 +1,19 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   openCommandPalette,
   commandPalette,
   commandPaletteSearch,
   closeCommandPalette,
   visitFullAppEmbeddingUrl,
+  pressPageDown,
+  pressPageUp,
+  pressHome,
+  pressEnd,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -17,6 +25,13 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
+    //Add a description for a check
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      description: "The best question",
+    });
+
+    //Request to have an item in the recents list
+    cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.visit("/");
 
     cy.findByPlaceholderText("Search…").click();
@@ -40,10 +55,19 @@ describe("command palette", () => {
       cy.findByText("New collection");
       cy.findByText("New model");
 
+      cy.log("Should show recent items");
+      cy.findByRole("option", { name: "Orders in a dashboard" }).should(
+        "contain.text",
+        "Our analytics",
+      );
+
       cy.log("Should search entities and docs");
       commandPaletteSearch().type("Orders, Count");
 
-      cy.findByRole("option", { name: "Orders, Count" }).should("exist");
+      cy.findByRole("option", { name: "Orders, Count" })
+        .should("contain.text", "Our analytics")
+        .should("contain.text", "The best question");
+
       cy.findByText('Search documentation for "Orders, Count"').should("exist");
 
       // Since the command palette list is virtualized, we will search for a few
@@ -53,11 +77,70 @@ describe("command palette", () => {
 
       commandPaletteSearch().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
+
+      // When entering a query, if there are results that come before search results, highlight
+      // the first action, otherwise, highlight the first search result
+      commandPaletteSearch().clear().type("Or");
+      cy.findByRole("option", { name: "Performance" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.findByRole("option", { name: /View and filter/ }).should("exist");
+
+      // Check that we are not filtering search results by action name
+      commandPaletteSearch().clear().type("Company");
+      cy.findByRole("option", { name: /View and filter/ }).should("exist");
+      cy.findByRole("option", { name: "PEOPLE" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.findByRole("option", { name: "REVIEWS" }).should("exist");
+      cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
+      commandPaletteSearch().clear();
     });
 
     cy.log("We can close the command palette using escape");
     closeCommandPalette();
     commandPalette().should("not.exist");
+
+    openCommandPalette();
+    //wait for things to render
+    commandPalette()
+      .findByRole("option", { name: "New question" })
+      .should("exist");
+
+    pressPageDown();
+    commandPalette()
+      .findByRole("option", { name: "New dashboard" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageDown();
+    commandPalette()
+      .findByRole("option", { name: "New model" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageUp();
+    commandPalette()
+      .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageUp();
+    commandPalette()
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressEnd();
+
+    commandPalette()
+      .findByRole("option", { name: "New model" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressHome();
+    commandPalette()
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
   });
 
   it("should render links to site settings in settings pages", () => {

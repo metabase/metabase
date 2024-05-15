@@ -1,0 +1,252 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -5,
+                "q1": 1,
+                "q3": 5,
+                "max": 8,
+                "sd": 4.4121045620731465,
+                "avg": 2.6666666666666665
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -50,
+                "q1": 10,
+                "q3": 20,
+                "max": 25,
+                "sd": 28.047578623950173,
+                "avg": 6.333333333333333
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "name": "sv: unsorted numeric",
+      "creator_id": 1,
+      "updated_at": "2024-01-12T21:12:05.065178-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT * FROM (VALUES (5, 20), (3, 15), (8, 25), (1, 10), (4, 18), (-5, -50)) AS my_table(X, Y);\n"
+        }
+      },
+      "id": 143,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "line",
+      "entity_id": "d4TDahfv70Lvb4PLM2_qt",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": [
+          "X"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": [
+          "Y"
+        ]
+      },
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-12T20:48:27.668022-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT * FROM (VALUES (5, 20), (3, 15), (8, 25), (1, 10), (4, 18), (-5, -50)) AS my_table(X, Y);",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.dimensions": [
+          "X"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": [
+          "Y"
+        ],
+        "metabase.shared.models.visualization-settings/column-settings": null,
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -5,
+                  "q1": 1,
+                  "q3": 5,
+                  "max": 8,
+                  "sd": 4.4121045620731465,
+                  "avg": 2.6666666666666665
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -50,
+                  "q1": 10,
+                  "q3": 20,
+                  "max": 25,
+                  "sd": 28.047578623950173,
+                  "avg": 6.333333333333333
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          5,
+          20
+        ],
+        [
+          3,
+          15
+        ],
+        [
+          8,
+          25
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          4,
+          18
+        ],
+        [
+          -5,
+          -50
+        ]
+      ]
+    }
+  }
+]

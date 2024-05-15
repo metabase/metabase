@@ -45,8 +45,8 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
-const getQueryStatus = state => state.qb.queryStatus;
-const getLoadingControls = state => state.qb.loadingControls;
+export const getQueryStatus = state => state.qb.queryStatus;
+export const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -299,8 +299,9 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
   ),
 );
 
-const getNextRunParameters = createSelector([getParameters], parameters =>
-  normalizeParameters(parameters),
+export const getNextRunParameters = createSelector(
+  [getParameters],
+  parameters => normalizeParameters(parameters),
 );
 
 export const getQueryBuilderMode = createSelector(
@@ -992,22 +993,6 @@ export const getDataReferenceStack = createSelector(
       : [],
 );
 
-export const getNativeQueryFn = createSelector(
-  [getNextRunDatasetQuery, getNextRunParameters],
-  (datasetQuery, parameters) => {
-    let lastResult = undefined;
-
-    return async (options = {}) => {
-      lastResult ??= await MetabaseApi.native({
-        ...datasetQuery,
-        parameters,
-        ...options,
-      });
-      return lastResult;
-    };
-  },
-);
-
 export const getDashboardId = state => {
   return state.qb.parentDashboard.dashboardId;
 };
@@ -1088,3 +1073,9 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
+
+export const getIsNotebookNativePreviewShown = state =>
+  getSetting(state, "notebook-native-preview-shown");
+
+export const getNotebookNativePreviewSidebarWidth = state =>
+  getSetting(state, "notebook-native-preview-sidebar-width");

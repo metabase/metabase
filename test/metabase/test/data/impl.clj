@@ -9,7 +9,6 @@
    [metabase.models :refer [Database Field FieldValues Secret Table]]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
-   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
@@ -41,17 +40,17 @@
   [driver dbdef]
   (test.data.impl.get-or-create/default-get-or-create-database! driver dbdef))
 
-(defn- get-or-create-test-data-db!
+(defn- get-or-create-default-dataset!
   "Get or create the Test Data database for `driver`, which defaults to [[metabase.driver/*driver*]], or `:h2` if that
   is unbound."
-  ([]       (get-or-create-test-data-db! (tx/driver)))
-  ([driver] (get-or-create-database! driver defs/test-data)))
+  ([]       (get-or-create-default-dataset! (tx/driver)))
+  ([driver] (get-or-create-database! driver (tx/default-dataset driver))))
 
 (def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is [[get-or-create-test-data-db!]] for the current [[metabase.driver/*driver*]], which
+  arguments. By default, this is [[get-or-create-default-dataset!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
-  #'get-or-create-test-data-db!)
+  #'get-or-create-default-dataset!)
 
 (mu/defn db :- [:map [:id ::lib.schema.id/database]]
   []
@@ -66,7 +65,7 @@
   []
   (mdb/memoize-for-application-db
    (fn [driver]
-     (u/the-id (get-or-create-test-data-db! driver)))))
+     (u/the-id (get-or-create-default-dataset! driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -335,6 +334,7 @@
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
+      (test.data.impl.get-or-create/set-test-db-permissions! new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally

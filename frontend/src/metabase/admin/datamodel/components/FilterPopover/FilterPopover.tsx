@@ -203,7 +203,10 @@ export function FilterPopover({
         style={{ minWidth: MIN_WIDTH, overflowY: "auto", ...style }}
       >
         {fieldPickerTitle && (
-          <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          <SidebarHeader
+            className={cx(CS.mx1, CS.my2)}
+            title={fieldPickerTitle}
+          />
         )}
         <DimensionList
           style={{ color: color("filter") }}
@@ -296,7 +299,7 @@ export function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            className="ml-auto"
+            className={CS.mlAuto}
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}
@@ -328,7 +331,7 @@ export function FilterPopover({
                 <>
                   <FilterPopoverSeparator data-testid="filter-popover-separator" />
                   <FilterPopoverPicker
-                    className="px1 pt1 pb1"
+                    className={cx(CS.px1, CS.pt1, CS.pb1)}
                     filter={filter}
                     onFilterChange={handleFilterChange}
                     onCommit={handleCommit}
@@ -343,7 +346,7 @@ export function FilterPopover({
             </>
           )}
           <FilterPopoverFooter
-            className="px1 pb1"
+            className={cx(CS.px1, CS.pb1)}
             filter={filter}
             onFilterChange={handleFilterChange}
             onCommit={!noCommitButton ? handleCommit : null}

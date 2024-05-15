@@ -29,7 +29,7 @@ import GroupMembersTable from "./GroupMembersTable";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
-    <div className={cx("px2", CS.textMeasure)}>
+    <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
         {t`All users belong to the ${getGroupNameLocalized(
           group,
@@ -38,7 +38,7 @@ const GroupDescription = ({ group }) =>
       </p>
     </div>
   ) : isAdminGroup(group) ? (
-    <div className={cx("px2", CS.textMeasure)}>
+    <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
         {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
                 settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
@@ -161,7 +161,7 @@ const GroupDetail = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className="text-light ml1">
+          <span className={cx(CS.textLight, CS.ml1)}>
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,

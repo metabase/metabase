@@ -18,8 +18,8 @@ import type {
 } from "metabase-types/api";
 import {
   createMockDatabase,
-  createMockPopularItem,
-  createMockRecentItem,
+  createMockPopularTableItem,
+  createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -66,8 +66,11 @@ const setup = async ({
 
 describe("HomeContent", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-    jest.setSystemTime(new Date(2020, 0, 10));
+    jest.useFakeTimers({
+      advanceTimers: true,
+      now: new Date(2020, 0, 10),
+      doNotFake: ["setTimeout"],
+    });
     localStorage.clear();
   });
 
@@ -83,12 +86,12 @@ describe("HomeContent", () => {
         first_login: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
-      recentItems: [createMockRecentItem()],
-      popularItems: [createMockPopularItem()],
+      recentItems: [createMockRecentTableItem()],
+      popularItems: [createMockPopularTableItem()],
     });
 
     expect(
-      screen.getByText("Here are some popular tables"),
+      await screen.findByText("Here are some popular tables"),
     ).toBeInTheDocument();
   });
 
@@ -100,7 +103,7 @@ describe("HomeContent", () => {
         first_login: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
-      popularItems: [createMockPopularItem()],
+      popularItems: [createMockPopularTableItem()],
     });
 
     expect(
@@ -116,7 +119,7 @@ describe("HomeContent", () => {
         first_login: "2020-01-01T00:00:00Z",
       }),
       databases: [createMockDatabase()],
-      recentItems: [createMockRecentItem()],
+      recentItems: [createMockRecentTableItem()],
     });
 
     expect(screen.getByText("Pick up where you left off")).toBeInTheDocument();
@@ -143,7 +146,7 @@ describe("HomeContent", () => {
         first_login: "2020-01-10T00:00:00Z",
       }),
       databases: [createMockDatabase()],
-      recentItems: [createMockRecentItem()],
+      recentItems: [createMockRecentTableItem()],
     });
 
     expect(screen.getByText(/Here are some explorations/)).toBeInTheDocument();
@@ -157,7 +160,7 @@ describe("HomeContent", () => {
         first_login: "2020-01-10T00:00:00Z",
       }),
       databases: [createMockDatabase()],
-      recentItems: [createMockRecentItem()],
+      recentItems: [createMockRecentTableItem()],
       isXrayEnabled: false,
     });
 

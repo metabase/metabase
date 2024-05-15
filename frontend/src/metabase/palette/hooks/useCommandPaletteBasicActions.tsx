@@ -31,7 +31,7 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: models = [] } = useSearchListQuery({
-    query: { models: "dataset", limit: 1 },
+    query: { models: ["dataset"], limit: 1 },
     enabled: isLoggedIn,
   });
 
@@ -145,12 +145,21 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: Action[] = [
       {
+        id: "navigate_models",
+        name: t`Browse models`,
+        section: "basic",
+        icon: "model",
+        perform: () => {
+          dispatch(push("/browse/models"));
+        },
+      },
+      {
         id: "navigate_data",
-        name: t`Browse Data`,
+        name: t`Browse data`,
         section: "basic",
         icon: "database",
         perform: () => {
-          dispatch(push("/browse"));
+          dispatch(push("/browse/databases"));
         },
       },
     ];

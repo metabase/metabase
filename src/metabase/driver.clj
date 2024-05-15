@@ -51,6 +51,11 @@
     timezone-id
     (str (t/zone-id))))
 
+(defn- update-send-pulse-triggers-timezone!
+  []
+  (classloader/require 'metabase.task.send-pulses)
+  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -59,7 +64,8 @@
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
-    (notify-all-databases-updated)))
+    (notify-all-databases-updated)
+    (update-send-pulse-triggers-timezone!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -366,7 +372,8 @@
 
 (defmulti describe-fks
   "Returns a reducible collection of maps, each containing information about foreign keys.
-  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+  Takes optional keyword arguments to narrow down the results to a set of `schema-names`
+  and `table-names`.
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
@@ -459,8 +466,14 @@
 
 (def features
   "Set of all features a driver can support."
-  #{;; Does this database support foreign key relationships?
+  #{;; Does this database support following foreign key relationships while querying?
+    ;; Note that this is different from supporting primary key and foreign key constraints in the schema; see below.
     :foreign-keys
+
+    ;; Does this database track and enforce primary key and foreign key constraints in the schema?
+    ;; SQL query engines like Presto and Athena do not track these, though they can query across FKs.
+    ;; See :foreign-keys above.
+    :metadata/key-constraints
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
@@ -588,11 +601,27 @@
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
 
+    ;; Does the driver support automatically adding a primary key column to a table for uploads?
+    ;; If so, Metabase will add an auto-incrementing primary key column called `_mb_row_id` for any table created or
+    ;; updated with CSV uploads, and ignore any `_mb_row_id` column in the CSV file.
+    ;; DEFAULTS TO TRUE
+    :upload-with-auto-pk
+
     ;; Does the driver support fingerprint the fields. Default is true
     :fingerprint
 
+    ;; Does a connection to this driver correspond to a single database (false), or to multiple databases (true)?
+    ;; Default is false; ie. a single database. This is common for classic relational DBs and some cloud databases.
+    ;; Some have access to many databases from one connection; eg. Athena connects to an S3 bucket which might have
+    ;; many databases in it.
+    :connection/multiple-databases
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
-    :window-functions})
+    :window-functions/cumulative
+
+    ;; Does this driver support the new `:offset` MBQL clause added in 50? (i.e. SQL `lag` and `lead` or equivalent
+    ;; functions)
+    :window-functions/offset})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -630,7 +659,8 @@
                               :temporal-extract                       true
                               :schemas                                true
                               :test/jvm-timezone-setting              true
-                              :fingerprint                            true}]
+                              :fingerprint                            true
+                              :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias

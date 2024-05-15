@@ -5,6 +5,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
 import D from "metabase/reference/components/Detail.module.css";
 import { isTypeFK, isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
@@ -19,9 +20,9 @@ const FieldTypeDetail = ({
   <div className={cx(D.detail)}>
     <div className={D.detailBody}>
       <div className={D.detailTitle}>
-        <span className={D.detailName}>{t`Field type`}</span>
+        <span>{t`Field type`}</span>
       </div>
-      <div className={cx(D.detailSubtitle, { mt1: true })}>
+      <div className={cx(D.detailSubtitle, { [CS.mt1]: true })}>
         <span>
           {isEditing ? (
             <Select
@@ -52,7 +53,7 @@ const FieldTypeDetail = ({
             </span>
           )}
         </span>
-        <span className="ml4">
+        <span className={CS.ml4}>
           {isEditing
             ? (isTypeFK(fieldTypeFormField.value) ||
                 (isTypeFK(field.semantic_type) &&

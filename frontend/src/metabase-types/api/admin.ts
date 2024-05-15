@@ -19,7 +19,7 @@ export type ApiKey = {
 
 export type CreateApiKeyRequest = {
   name: string;
-  group_id: string;
+  group_id: number;
 };
 
 export type CreateApiKeyResponse = {
@@ -28,7 +28,7 @@ export type CreateApiKeyResponse = {
 
 export type UpdateApiKeyRequest = {
   id: ApiKeyId;
-  group_id: string;
+  group_id: number;
   name: string;
 };
 

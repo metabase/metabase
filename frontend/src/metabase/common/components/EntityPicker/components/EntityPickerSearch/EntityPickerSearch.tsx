@@ -1,87 +1,63 @@
+import { useLayoutEffect, useState } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
-import Search from "metabase/entities/search";
-import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
-import { defer } from "metabase/lib/promise";
-import { useDispatch } from "metabase/lib/redux";
-import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
-import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
-  SearchModelType,
+  SearchModel,
+  SearchRequest,
+  SearchResult,
   SearchResultId,
-  SearchResults,
 } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
+import { DelayedLoadingSpinner } from "../LoadingSpinner";
+import { ResultItem, ChunkyList } from "../ResultItem";
 
-import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 import { getSearchTabText } from "./utils";
 
-const defaultSearchFilter = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->(
-  results: Item[],
-) => results;
+const defaultSearchFilter = (results: SearchResult[]) => results;
 
-export function EntityPickerSearchInput<
-  Id extends SearchResultId,
-  Model extends SearchModelType,
-  Item extends TypeWithModel<Id, Model>,
->({
+export function EntityPickerSearchInput({
   searchQuery,
   setSearchQuery,
   setSearchResults,
   models,
   searchFilter = defaultSearchFilter,
+  searchParams = {},
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: Item[] | null) => void;
-  models: string[];
-  searchFilter?: (results: Item[]) => Item[];
+  setSearchResults: (results: SearchResult[] | null) => void;
+  models: SearchModel[];
+  searchFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
 }) {
-  useDebouncedEffectWithCleanup(
-    () => {
-      const cancelled = defer();
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-      const searchFn = () => {
-        if (searchQuery && !searchQuery.trim()) {
-          setSearchResults([]);
-          return;
-        }
-
-        if (searchQuery) {
-          Search.api
-            .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResults<Id, Model, Item>) => {
-              if (results.data) {
-                const items = results.data;
-                const filteredResults = searchFilter(items);
-                setSearchResults(filteredResults);
-              } else {
-                setSearchResults(null);
-              }
-            });
-        } else {
-          setSearchResults(null);
-        }
-      };
-
-      const cleanup = () => {
-        cancelled.resolve();
-      };
-
-      return [searchFn, cleanup];
+  const { data, isFetching } = useSearchQuery(
+    {
+      q: debouncedSearchQuery,
+      models,
+      ...searchParams,
     },
-    200,
-    [searchQuery, models, searchFilter],
+    {
+      skip: !debouncedSearchQuery,
+    },
   );
+
+  useLayoutEffect(() => {
+    if (data && !isFetching) {
+      setSearchResults(searchFilter(data.data));
+    } else {
+      setSearchResults(null);
+    }
+  }, [data, isFetching, searchFilter, setSearchResults]);
 
   return (
     <TextInput
@@ -97,7 +73,7 @@ export function EntityPickerSearchInput<
 }
 
 export const EntityPickerSearchResults = <
-  Id,
+  Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
@@ -105,32 +81,37 @@ export const EntityPickerSearchResults = <
   onItemSelect,
   selectedItem,
 }: {
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
 }) => {
-  const dispatch = useDispatch();
-
   if (!searchResults) {
-    return <SearchLoadingSpinner />;
+    return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
 
   return (
-    <Box p="lg" h="100%">
+    <Box h="100%" bg="bg-light">
       {searchResults.length > 0 ? (
-        <Stack h="100%">
-          <VirtualizedList>
-            {searchResults?.map(item => (
-              <EntityPickerSearchResult
+        <Stack h="100%" bg="bg-light">
+          <VirtualizedList
+            Wrapper={({ children, ...props }) => (
+              <Box p="xl" {...props}>
+                <ChunkyList>{children}</ChunkyList>
+              </Box>
+            )}
+          >
+            {searchResults?.map((item, index) => (
+              <ResultItem
                 key={item.model + item.id}
-                result={Search.wrapEntity(item, dispatch)}
-                onClick={(item: WrappedResult) => {
+                item={item}
+                onClick={() => {
                   onItemSelect(item as unknown as Item);
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&
                   selectedItem?.model === item.model
                 }
+                isLast={index === searchResults.length - 1}
               />
             ))}
           </VirtualizedList>
@@ -148,18 +129,16 @@ export const EntityPickerSearchResults = <
   );
 };
 
-export const EntityPickerSearchTab = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
+  onClick,
 }: {
-  searchResults: Item[] | null;
+  searchResults: SearchResult[] | null;
   searchQuery: string;
+  onClick: () => void;
 }) => (
-  <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
+  <Tabs.Tab value="search" icon={<Icon name="search" />} onClick={onClick}>
     {getSearchTabText(searchResults, searchQuery)}
   </Tabs.Tab>
 );

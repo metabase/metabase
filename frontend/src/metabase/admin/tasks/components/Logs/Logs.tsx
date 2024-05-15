@@ -40,7 +40,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
   return (
     <LogsContainer loading={!loaded} error={error}>
       {processUUIDs.length > 1 && (
-        <div className="pb1">
+        <div className={CS.pb1}>
           <label>{t`Select Metabase process:`}</label>
           <Select
             defaultValue="ALL"

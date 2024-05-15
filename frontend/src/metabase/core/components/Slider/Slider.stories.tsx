@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
 
+import CS from "metabase/css/core/index.css";
+
 import Slider from "./Slider";
 
 export default {
@@ -11,7 +13,7 @@ export default {
 const Template: ComponentStory<typeof Slider> = args => {
   const value = [10, 40];
   return (
-    <div className="pt4">
+    <div className={CS.pt4}>
       <Slider {...args} value={value} onChange={args.onChange} />
     </div>
   );

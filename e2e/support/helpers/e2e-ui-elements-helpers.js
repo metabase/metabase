@@ -23,8 +23,8 @@ export function menu() {
 }
 
 export function modal() {
-  const LEGACY_MODAL_SELECTOR = ".Modal";
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
@@ -58,15 +58,16 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("be.visible");
 }
 
 export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("not.be.visible");
 }
 
-export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return navigationSidebar().findByText("Browse data");
+export function browseData() {
+  return navigationSidebar().findByLabelText("Browse data");
 }
 
 /**
@@ -174,7 +175,9 @@ export const moveDnDKitElement = (
       button: 0,
     })
     .wait(200)
-    .trigger("pointermove", 5, 5, {
+    // This initial move needs to be greater than the activation constraint
+    // of the pointer sensor
+    .trigger("pointermove", 20, 20, {
       force: true,
       isPrimary: true,
       button: 0,

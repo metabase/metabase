@@ -7,7 +7,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideSegmentListTags,
+  provideSegmentTags,
+  tag,
+} from "./tags";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -16,17 +23,14 @@ export const segmentApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/segment",
       }),
-      providesTags: (segments = []) => [
-        listTag("segment"),
-        ...(segments.map(({ id }) => idTag("segment", id)) ?? []),
-      ],
+      providesTags: (segments = []) => provideSegmentListTags(segments),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: id => ({
         method: "GET",
         url: `/api/segment/${id}`,
       }),
-      providesTags: segment => (segment ? [idTag("segment", segment.id)] : []),
+      providesTags: segment => (segment ? provideSegmentTags(segment) : []),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: body => ({

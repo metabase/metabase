@@ -441,16 +441,10 @@ describeEE("formatting > whitelabel", () => {
           popover().findByText("Dashboard").click();
           modal().findByTestId("collection-picker-button").click();
           entityPickerModal().within(() => {
-            cy.findByText(emptyCollectionName).click();
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
               logo_data => {
                 const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
                 cy.wrap(imageDataUrl).as("imageDataUrl");
-                cy.findByAltText("No results").should(
-                  "have.attr",
-                  "src",
-                  imageDataUrl,
-                );
               },
             );
 

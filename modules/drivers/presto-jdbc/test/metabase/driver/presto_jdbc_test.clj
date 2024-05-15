@@ -129,13 +129,8 @@
   (mt/test-driver :presto-jdbc
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
       (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
-        ;; the `read-column-thunk` for `Types/TIMESTAMP` always returns an `OffsetDateTime`, not a `LocalDateTime`, as
-        ;; the original Presto version of this test expected; therefore, convert the `ZonedDateTime` corresponding to
-        ;; midnight on this date (at the report TZ) to `OffsetDateTime` for comparison's sake
-        (is (= [[(-> (t/zoned-date-time 2014 8 2 0 0 0 0 (t/zone-id "Asia/Hong_Kong"))
-                     t/offset-date-time
-                     (t/with-offset-same-instant (t/zone-offset 0)))
-                 (t/local-date 2014 8 2)]]
+        (is (= [[(t/local-date "2014-08-02")
+                 (t/local-date "2014-08-02")]]
                (mt/rows
                  (qp/process-query
                    {:database     (mt/id)

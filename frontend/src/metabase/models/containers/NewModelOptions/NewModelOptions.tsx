@@ -100,7 +100,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
         <EducationalButton
           target="_blank"
           href={EDUCATIONAL_LINK}
-          className="mt4"
+          className={CS.mt4}
         >
           {t`What's a model?`}
         </EducationalButton>

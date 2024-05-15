@@ -27,6 +27,7 @@ import {
   dashboardParametersContainer,
   openQuestionActions,
   spyRequestFinished,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
@@ -68,14 +69,11 @@ describe("scenarios > dashboard > parameters", () => {
       visitDashboard(id);
     });
 
-    cy.icon("pencil").click();
+    editDashboard();
 
     // add a category filter
-    cy.icon("filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Text or Category").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
+    setFilter("Text or Category", "Is");
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A single value").click();
 
@@ -319,9 +317,10 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByTestId("scalar-value").invoke("text").should("eq", "53");
 
       // Confirm you can't map wrong parameter type the native question's field filter (metabase#16181)
-      cy.icon("pencil").click();
-      cy.icon("filter").click();
-      cy.findByText("ID").click();
+      editDashboard();
+
+      setFilter("ID");
+
       cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
@@ -356,9 +355,9 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText(/Add a string variable to this question/).should(
-        "be.visible",
-      );
+      cy.findByText(
+        /A text variable in this card can only be connected to a text filter with Is operator/,
+      ).should("be.visible");
     });
   });
 
@@ -520,9 +519,8 @@ describe("scenarios > dashboard > parameters", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.icon("pencil").click();
-      cy.icon("filter").click();
-      popover().findByText("ID").click();
+      editDashboard();
+      setFilter("ID");
 
       selectDashboardFilter(getDashboardCard(), "User ID");
 
@@ -587,7 +585,7 @@ describe("scenarios > dashboard > parameters", () => {
     selectDashboardFilter(getDashboardCard(), "Vendor");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Linked filters").click();
-    sidebar().findByRole("switch").click();
+    sidebar().findByRole("switch").parent().get("label").click();
     saveDashboard();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -642,11 +640,11 @@ describe("scenarios > dashboard > parameters", () => {
     it("should fetch dashcard data after save when parameter is mapped", () => {
       // Connect filter to 2 cards
       editDashboard();
-      cy.icon("filter").click();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
+
       selectDashboardFilter(getDashboardCard(0), "Created At");
       saveDashboard();
 
@@ -657,7 +655,7 @@ describe("scenarios > dashboard > parameters", () => {
       // Connect filter to 1 card only
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
       selectDashboardFilter(getDashboardCard(0), "Created At");
       disconnectDashboardFilter(getDashboardCard(1));
@@ -668,7 +666,7 @@ describe("scenarios > dashboard > parameters", () => {
       // Disconnect filter from the 1st card
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Relative Date")
+        .findByText("Date Filter")
         .click();
       disconnectDashboardFilter(getDashboardCard(0));
       saveDashboard();
@@ -1193,7 +1191,11 @@ function addQuestionFromQueryBuilder({
 
   openQuestionActions();
   popover().findByText("Add to dashboard").click();
-  modal().findByText("36275").click();
+
+  entityPickerModal().within(() => {
+    modal().findByText("36275").click();
+    cy.button("Select").click();
+  });
 
   undoToast().should("be.visible");
   if (saveDashboardAfterAdd) {

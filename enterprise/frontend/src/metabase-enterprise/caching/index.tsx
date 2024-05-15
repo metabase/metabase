@@ -2,10 +2,11 @@ import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import CacheTTLField from "./components/CacheTTLField";
-import DashboardCacheSection from "./components/DashboardCacheSection";
+import { DashboardStrategySidebar } from "./components/DashboardStrategySidebar";
 import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
+import { InvalidateNowButton } from "./components/InvalidateNowButton";
 import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
@@ -29,11 +30,12 @@ if (hasPremiumFeature("cache_granular_controls")) {
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
   PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
-  PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
   PLUGIN_CACHING.canOverrideRootStrategy = true;
   PLUGIN_CACHING.GranularControlsExplanation = GranularControlsExplanation;
+  PLUGIN_CACHING.InvalidateNowButton = InvalidateNowButton;
+  PLUGIN_CACHING.DashboardStrategySidebar = DashboardStrategySidebar;
 }

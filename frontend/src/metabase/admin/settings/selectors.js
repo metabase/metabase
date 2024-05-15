@@ -3,7 +3,6 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -121,8 +120,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: (collection, index, allCollections) =>
-            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -337,7 +334,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "select",
         options: [
           { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("available-timezones"),
+          ...(MetabaseSettings.get("available-timezones") || []),
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,

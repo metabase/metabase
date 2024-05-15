@@ -8,10 +8,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type {
-  EnabledSearchModelType,
-  SearchModelType,
-} from "metabase-types/api";
+import type { EnabledSearchModel, SearchModel } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSearchResult,
@@ -19,7 +16,7 @@ import {
 
 import { TypeFilterContent } from "./TypeFilterContent";
 
-const MODEL_NAME: Record<EnabledSearchModelType, string> = {
+const MODEL_NAME: Record<EnabledSearchModel, string> = {
   action: "Action",
   card: "Question",
   collection: "Collection",
@@ -30,7 +27,7 @@ const MODEL_NAME: Record<EnabledSearchModelType, string> = {
   "indexed-entity": "Indexed record",
 };
 
-const TEST_TYPES: Array<EnabledSearchModelType> = [
+const TEST_TYPES: Array<EnabledSearchModel> = [
   "dashboard",
   "card",
   "dataset",
@@ -40,7 +37,7 @@ const TEST_TYPES: Array<EnabledSearchModelType> = [
   "action",
 ];
 
-const TEST_TYPE_SUBSET: Array<EnabledSearchModelType> = [
+const TEST_TYPE_SUBSET: Array<EnabledSearchModel> = [
   "dashboard",
   "collection",
   "database",
@@ -50,12 +47,12 @@ const TestTypeFilterComponent = ({
   initialValue = [],
   onChangeFilters,
 }: {
-  initialValue?: EnabledSearchModelType[];
+  initialValue?: EnabledSearchModel[];
   onChangeFilters: jest.Mock;
 }) => {
-  const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
+  const [value, setValue] = useState<EnabledSearchModel[]>(initialValue);
 
-  const onChange = (selectedValues: EnabledSearchModelType[]) => {
+  const onChange = (selectedValues: EnabledSearchModel[]) => {
     onChangeFilters(selectedValues);
     setValue(selectedValues);
   };
@@ -73,13 +70,13 @@ const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
 }: {
-  availableModels?: EnabledSearchModelType[];
-  initialValue?: EnabledSearchModelType[];
+  availableModels?: EnabledSearchModel[];
+  initialValue?: EnabledSearchModel[];
 } = {}) => {
   setupSearchEndpoints(
     availableModels.map((type, index) =>
       createMockSearchResult({
-        model: type as SearchModelType,
+        model: type as SearchModel,
         id: index + 1,
         database_id: TEST_DATABASE.id,
       }),

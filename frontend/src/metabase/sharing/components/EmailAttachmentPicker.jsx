@@ -219,7 +219,7 @@ export default class EmailAttachmentPicker extends Component {
         {isEnabled && (
           <div>
             <div className={cx(CS.my1, CS.flex, CS.justifyBetween)}>
-              <Label className="pt1">{t`File format`}</Label>
+              <Label className={CS.pt1}>{t`File format`}</Label>
               <SegmentedControl
                 options={[
                   { name: ".csv", value: "csv" },

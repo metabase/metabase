@@ -1,14 +1,14 @@
 import styled from "@emotion/styled";
 
 import { color, lighten } from "metabase/lib/colors";
-import type { SearchModelType } from "metabase-types/api";
+import type { SearchModel } from "metabase-types/api";
 
 function getColorForIconWrapper({
   active,
   type,
 }: {
   active: boolean;
-  type: SearchModelType;
+  type: SearchModel;
 }) {
   if (!active) {
     return color("text-medium");
@@ -21,7 +21,7 @@ function getColorForIconWrapper({
 
 export const IconWrapper = styled.div<{
   active: boolean;
-  type: SearchModelType;
+  type: SearchModel;
 }>`
   border: ${({ theme }) => `1px solid ${theme.fn.themeColor("border")}`};
   border-radius: ${({ theme }) => theme.radius.sm};

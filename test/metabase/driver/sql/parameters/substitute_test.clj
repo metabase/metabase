@@ -649,28 +649,90 @@
   (mt/with-driver :h2
     (testing "exclude date parts"
       (testing "one exclusion"
-        (is (= {:query  (str "SELECT * "
-                             "FROM checkins "
-                             "WHERE ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer))"
-                             " OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL));")
+        (is (= {:query ["SELECT"
+                        "  *"
+                        "FROM"
+                        "  checkins"
+                        "WHERE"
+                        "  ("
+                        "    ("
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) <> extract("
+                        "        month"
+                        "        from"
+                        "          ?"
+                        "      )"
+                        "    )"
+                        "    OR ("
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) IS NULL"
+                        "    )"
+                        "  );"]
                 :params [#t "2016-01-01"]}
-               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})))))))
+               (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 (deftest ^:parallel expand-exclude-field-filter-test-2
   (mt/with-driver :h2
     (testing "exclude date parts"
       (testing "two exclusions"
-        (is (= {:query (str "SELECT * "
-                            "FROM checkins "
-                            "WHERE (((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer)"
-                            " <> CAST(extract(month from ?) AS integer))"
-                            " OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL))"
-                            " AND ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer)"
-                            " <> CAST(extract(month from ?) AS integer))"
-                            " OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)));")
+        (is (= {:query ["SELECT"
+                        "  *"
+                        "FROM"
+                        "  checkins"
+                        "WHERE"
+                        "  ("
+                        "    ("
+                        "      ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) <> extract("
+                        "          month"
+                        "          from"
+                        "            ?"
+                        "        )"
+                        "      )"
+                        "      OR ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) IS NULL"
+                        "      )"
+                        "    )"
+                        "    AND ("
+                        "      ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) <> extract("
+                        "          month"
+                        "          from"
+                        "            ?"
+                        "        )"
+                        "      )"
+                        "      OR ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) IS NULL"
+                        "      )"
+                        "    )"
+                        "  );"]
                 :params [#t "2016-01-01"
                          #t "2016-02-01"]}
-               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})))))))
+               (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
@@ -805,10 +867,6 @@
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query
             (is (= [(cond
-                      ;; TIMEZONE FIXME — Busted
-                      (= driver/*driver* :vertica)
-                      "2018-04-17T00:00:00-07:00"
-
                       (qp.test-util/supports-report-timezone? driver/*driver*)
                       "2018-04-18T00:00:00-07:00"
 

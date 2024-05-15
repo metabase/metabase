@@ -13,7 +13,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
     <LimitInput
       small
       defaultValue={limit}
-      className={cx({ "text-brand border-brand": limit != null })}
+      className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
       placeholder={t`Pick a limit`}
       onKeyPress={e => {
         if (e.key === "Enter") {
@@ -33,7 +33,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
 };
 
 const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
-  <div className={cx(className, CS.textBold, "text-medium")}>
+  <div className={cx(className, CS.textBold, CS.textMedium)}>
     <Radio
       vertical
       value={limit == null ? "maximum" : "custom"}

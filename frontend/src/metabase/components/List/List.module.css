@@ -23,12 +23,12 @@
 }
 
 .headerBody {
-  composes: border-bottom from "style";
+  composes: borderBottom from "style";
   flex: 1 0 auto;
   display: flex;
   align-items: center;
   height: 100%;
-  border-color: var(--color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .headerButton {
@@ -96,7 +96,7 @@
 }
 
 .icon:hover {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 /* CHART ICON */

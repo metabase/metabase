@@ -5,6 +5,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -154,6 +156,34 @@
                      (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
                      [:absolute-datetime filter-value unit]
                      [:absolute-datetime filter-value unit]])))))))))
+
+(deftest ^:parallel optimize-less-than-or-equal-to-relative-datetime-test
+  (testing "Optimize [:<= x <16 weeks ago>] correctly (#42291)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    (lib/filter (lib/<=
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :default))
+                                 (lib/relative-datetime -16 :week))))]
+      (is (=? {:query {:filter [:<=
+                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:relative-datetime -16 :week]]}}
+              (optimize-temporal-filters (lib.convert/->legacy-MBQL query)))))))
+
+(deftest ^:parallel optimize-between-relative-datetime-test
+  (testing "Optimize [:between x <17 weeks ago> <16 weeks ago>] correctly (#42291)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    (lib/filter (lib/between
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :default))
+                                 (lib/relative-datetime -17 :week)
+                                 (lib/relative-datetime -16 :week))))]
+      (is (=? {:query {:filter [:between
+                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:relative-datetime -17 :week]
+                                [:relative-datetime -16 :week]]}}
+              (optimize-temporal-filters (lib.convert/->legacy-MBQL query)))))))
 
 (defn- optimize-filter-clauses [t]
   (let [query {:database 1
@@ -341,10 +371,7 @@
                 "  \"PUBLIC\".\"ATTEMPTS\""
                 "WHERE"
                 "  ("
-                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= DATE_TRUNC("
-                "      'month',"
-                "      DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))"
-                "    )"
+                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= DATE_TRUNC('month', DATEADD('month', -1, NOW()))"
                 "  )"
                 "  AND ("
                 "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < DATE_TRUNC('month', NOW())"
@@ -463,3 +490,62 @@
                                          [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :day}]
                                          [:relative-datetime -30 :day]
                                          [:relative-datetime -1 :day]]}}))))))
+
+(defn- optimize [filter-clause]
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (or (#'optimize-temporal-filters/optimize-filter filter-clause)
+        filter-clause)))
+
+(deftest ^:parallel optimize-with-expression-ref-test
+  (testing "Filtering a DATETIME expression by a DATE literal string should do something sane (#17807)"
+    (are [t expected-lower expected-upper] (= [:and
+                                               [:>=
+                                                [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+                                                [:absolute-datetime expected-lower :default]]
+                                               [:<
+                                                [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+                                                [:absolute-datetime expected-upper :default]]]
+                                              (optimize
+                                               [:=
+                                                [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+                                                [:absolute-datetime t :day]]))
+      #t "2017-10-07"
+      #t "2017-10-07"
+      #t "2017-10-08"
+
+      ;; this is what the values should look like AFTER we call wrap-value-literals
+      (t/offset-date-time #t "2017-10-07T00:00:00-00:00")
+      (t/offset-date-time #t "2017-10-07T00:00Z")
+      (t/offset-date-time #t "2017-10-08T00:00Z"))))
+
+(deftest ^:parallel optimize-with-expression-ref-test-2
+  (testing ":between is inclusive"
+    (is (= [:and
+            [:>=
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-07" :default]]
+            [:<
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-09" :default]]]
+           (optimize
+            [:between
+             [:expression "CC Created At" {:base-type :type/DateTimeWithLocalTZ}]
+             [:absolute-datetime #t "2017-10-07" :day]
+             [:absolute-datetime #t "2017-10-08" :day]])))))
+
+(deftest ^:parallel unoptimizable-test
+  (testing "Do not barf when things are unoptimizable (#35582)"
+    (doseq [operator [:= :!= :< :> :<= :>=]]
+      (testing operator
+        (let [clause [operator
+                      [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
+                      [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]]]
+          (is (= clause
+                 (optimize clause))))))
+    (testing :between
+      (let [clause [:between
+                    [:field 1 {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field 2 {:base-type :type/DateTime, :temporal-unit :day}]
+                    [:field 3 {:base-type :type/DateTime, :temporal-unit :day}]]]
+        (is (= clause
+               (optimize clause)))))))

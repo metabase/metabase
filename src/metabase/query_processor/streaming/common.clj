@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -95,7 +94,7 @@
 
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
-  [ordered-cols col-settings]
+  [ordered-cols col-settings format-rows?]
   (for [col ordered-cols]
     (let [id-or-name      (or (and (:remapped_from col) (:fk_field_id col))
                               (:id col)
@@ -108,7 +107,7 @@
           merged-settings (if is-currency?
                             (merge-global-settings format-settings :type/Currency)
                             format-settings)
-          column-title    (or (::mb.viz/column-title merged-settings)
+          column-title    (or (when format-rows? (::mb.viz/column-title merged-settings))
                               (:display_name col)
                               (:name col))]
       (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
@@ -174,8 +173,8 @@
   (cond-> viz-settings
     (nil? global-column-settings)
     (assoc ::mb.viz/global-column-settings
-           (m/map-vals mb.viz/db->norm-column-settings-entries
-                       (public-settings/custom-formatting)))))
+           (update-vals (public-settings/custom-formatting)
+                        mb.viz/db->norm-column-settings-entries))))
 
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."

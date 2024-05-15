@@ -79,14 +79,14 @@ function NewVersionAvailable({ currentVersion }) {
           CS.p2,
           CS.bordered,
           CS.rounded,
-          "border-success",
+          CS.borderSuccess,
           CS.flex,
           CS.flexRow,
           CS.alignCenter,
           CS.justifyBetween,
         )}
       >
-        <span className={cx("text-white", CS.textBold)}>
+        <span className={cx(CS.textWhite, CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
@@ -118,7 +118,7 @@ function NewVersionAvailable({ currentVersion }) {
         )}
         style={{ height: 330 }}
       >
-        <h3 className={cx("pb3", CS.textUppercase)}>{t`What's Changed:`}</h3>
+        <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
         <Version version={versionInfo.latest} />
 
@@ -139,12 +139,21 @@ NewVersionAvailable.propTypes = {
 
 function HostingCTA() {
   return (
-    <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
+    <HostingCTARoot
+      className={cx(
+        CS.rounded,
+        CS.bgLight,
+        CS.mt4,
+        CS.textBrand,
+        CS.py2,
+        CS.px1,
+      )}
+    >
       <HostingCTAContent>
         <HostingCTAIconContainer
           className={cx(
-            "circular",
-            "bg-medium",
+            CS.circular,
+            CS.bgMedium,
             CS.alignCenter,
             CS.justifyCenter,
             CS.ml1,
@@ -154,13 +163,15 @@ function HostingCTA() {
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>
-          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
           <Text
-            className={cx("text-brand", CS.textBold)}
+            className={cx(CS.textBrand, CS.mb0)}
+          >{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.textBold)}
           >{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
-      <div className="pr1">
+      <div className={CS.pr1}>
         <HostingInfoLink text={t`Learn more`} />
       </div>
     </HostingCTARoot>
@@ -173,15 +184,15 @@ function Version({ version }) {
   }
 
   return (
-    <div className="pb3">
-      <h3 className="text-medium">
+    <div className={CS.pb3}>
+      <h3 className={CS.textMedium}>
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
       </h3>
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className="pl1">
+            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
               {highlight}
             </li>
           ))}

@@ -9,14 +9,14 @@ import { Icon } from "metabase/ui";
 
 const MarginHostingCTA = ({ tagline }) => (
   <div
-    className="border-left border-brand text-brand px4"
+    className={cx(CS.borderLeft, CS.borderBrand, CS.textBrand, CS.px4)}
     style={{ height: 172 }}
   >
     <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
-    <div className="pb3">
-      <Text className="text-brand mb0">{tagline}</Text>
+    <div className={CS.pb3}>
+      <Text className={cx(CS.textBrand, CS.mb0)}>{tagline}</Text>
       <Text
-        className={cx("text-brand", CS.textBold)}
+        className={cx(CS.textBrand, CS.textBold)}
       >{t`Migrate to Metabase Cloud.`}</Text>
     </div>
 

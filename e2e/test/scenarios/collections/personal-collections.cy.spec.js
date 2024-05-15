@@ -96,7 +96,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 
@@ -113,7 +113,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection child
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 

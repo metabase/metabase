@@ -184,7 +184,7 @@
   `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
   with the error."
   [:map {:closed true}
-   [::error [:maybe [:fn #(instance? Throwable %)]]]])
+   [::error [:maybe (ms/InstanceOfClass Throwable)]]])
 
 (defn send-message!
   "Send an email to one or more `:recipients`. `:recipients` is a sequence of email addresses; `:message-type` must be

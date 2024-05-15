@@ -345,8 +345,8 @@ export default class DatePicker extends Component {
         {!disableOperatorSelection && (
           <DatePickerSelector
             className={cx({
-              mr2: Widget && Widget.horizontalLayout,
-              mb2: Widget && !Widget.horizontalLayout,
+              [CS.mr2]: Widget && Widget.horizontalLayout,
+              [CS.mb2]: Widget && !Widget.horizontalLayout,
             })}
             operator={operator && operator.name}
             operators={operators}

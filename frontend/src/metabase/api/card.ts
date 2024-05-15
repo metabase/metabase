@@ -8,7 +8,13 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import {
+  provideCardListTags,
+  provideCardTags,
+  idTag,
+  invalidateTags,
+  listTag,
+} from "./tags";
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -18,10 +24,7 @@ export const cardApi = Api.injectEndpoints({
         url: "/api/card",
         body,
       }),
-      providesTags: response => [
-        listTag("card"),
-        ...(response?.map(({ id }) => idTag("card", id)) ?? []),
-      ],
+      providesTags: (cards = []) => provideCardListTags(cards),
     }),
     getCard: builder.query<Card, GetCardRequest>({
       query: ({ id, ignore_error, ...body }) => ({
@@ -30,7 +33,7 @@ export const cardApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
-      providesTags: card => (card ? [idTag("card", card.id)] : []),
+      providesTags: card => (card ? provideCardTags(card) : []),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -72,6 +75,18 @@ export const cardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    refreshModelCache: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/refresh`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("card", id),
+          idTag("persisted-model", id),
+          listTag("persisted-info"),
+        ]),
+    }),
   }),
 });
 
@@ -82,4 +97,5 @@ export const {
   useUpdateCardMutation,
   useDeleteCardMutation,
   useCopyCardMutation,
+  useRefreshModelCacheMutation,
 } = cardApi;

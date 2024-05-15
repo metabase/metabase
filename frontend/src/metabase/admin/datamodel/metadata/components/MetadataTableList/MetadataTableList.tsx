@@ -54,7 +54,7 @@ interface DispatchProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
@@ -193,12 +193,12 @@ interface TableBreadcrumbsProps {
 
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
-    <h4 className={cx("p2 border-bottom", CS.breakAnywhere)}>
+    <h4 className={cx(CS.p2, CS.borderBottom, CS.breakAnywhere)}>
       <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">/</span>
+      <span className={CS.mx1}>/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
@@ -210,7 +210,7 @@ interface TableHeaderProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const TableHeader = ({
@@ -260,7 +260,7 @@ interface TableRowProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const TableRow = ({
@@ -295,7 +295,7 @@ const TableRow = ({
       >
         {table.displayName()}
         {isSyncCompleted(table) && (
-          <div className={cx(CS.hoverChild, "float-right")}>
+          <div className={cx(CS.hoverChild, CS.floatRight)}>
             <ToggleVisibilityButton
               tables={tables}
               isHidden={table.visibility_type != null}
@@ -314,7 +314,7 @@ interface ToggleVisibilityButtonProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const ToggleVisibilityButton = ({

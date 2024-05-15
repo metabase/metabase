@@ -19,6 +19,7 @@ import {
   createDashboardWithTabs,
   goToTab,
   visitFullAppEmbeddingUrl,
+  getDashboardCardMenu,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -162,10 +163,10 @@ describeEE("scenarios > embedding > full app", () => {
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
-        url: "/browse",
+        url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
-      cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");
+      cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
       cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
@@ -533,6 +534,33 @@ describeEE("scenarios > embedding > full app", () => {
             },
           }),
         ).to.be.true;
+      });
+    });
+
+    it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
+      const CSRF_TOKEN = "abcdefgh";
+      cy.intercept("GET", "/api/user/current", req => {
+        req.on("response", res => {
+          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
+        });
+      });
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
+      ).as("CsvDownload");
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      });
+
+      getDashboardCard().realHover();
+      getDashboardCardMenu().click();
+      popover().findByText("Download results").click();
+      popover().findByText(".csv").click();
+
+      cy.wait("@CsvDownload").then(interception => {
+        expect(
+          interception.request.headers["x-metabase-anti-csrf-token"],
+        ).to.equal(CSRF_TOKEN);
       });
     });
   });

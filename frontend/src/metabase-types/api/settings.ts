@@ -192,11 +192,17 @@ export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-smtp-host": string | null;
+  "email-smtp-port": number | null;
+  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-username": string | null;
+  "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
+  "example-dashboard-id": number | null;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
@@ -209,6 +215,15 @@ interface InstanceSettings {
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
 }
+
+export type EmbeddingHomepageDismissReason =
+  | "dismissed-done"
+  | "dismissed-run-into-issues"
+  | "dismissed-not-interested-now";
+export type EmbeddingHomepageStatus =
+  | EmbeddingHomepageDismissReason
+  | "visible"
+  | "hidden";
 
 interface AdminSettings {
   "active-users-count"?: number;
@@ -228,12 +243,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "embedding-homepage":
-    | "visible"
-    | "hidden"
-    | "dismissed-done"
-    | "dismissed-run-into-issues"
-    | "dismissed-not-interested-now";
+  "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
 }
@@ -271,7 +281,6 @@ interface PublicSettings {
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
-  "ga-enabled": boolean;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -282,6 +291,8 @@ interface PublicSettings {
   "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-port": number;
+  "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -303,11 +314,16 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
 }
 
-export interface UserSettings {
+export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
-}
+  "notebook-native-preview-shown"?: boolean;
+  "notebook-native-preview-sidebar-width"?: number | null;
+  "expand-browse-in-nav"?: boolean;
+  "expand-bookmarks-in-nav"?: boolean;
+  "browse-filter-only-verified-models"?: boolean;
+};
 
 export type Settings = InstanceSettings &
   PublicSettings &

@@ -96,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context
+(defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
@@ -380,7 +380,7 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or (u/slugify card-name) "query_result")
+                           (or card-name "query_result")
                            (u.date/format (t/zoned-date-time))
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)

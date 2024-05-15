@@ -42,9 +42,9 @@ export function Relationships({
 
   return (
     <ObjectRelationships>
-      <div className={cx(CS.textBold, "text-medium")}>
+      <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
-          <span className="text-dark" key={objectName}>
+          <span className={CS.textDark} key={objectName}>
             {objectName}
           </span>
         )} is connected to:`}
@@ -75,7 +75,10 @@ export function Relationships({
 
 interface RelationshipProps {
   fk: ForeignKey;
-  fkCountInfo: { status: number; value: number } | null;
+  fkCountInfo: {
+    status: number;
+    value: number;
+  } | null;
   fkCount: number;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
@@ -95,7 +98,7 @@ function Relationship({
 
   const via =
     fkCount > 1 ? (
-      <span className={cx("text-medium", CS.textNormal)}>
+      <span className={cx(CS.textMedium, CS.textNormal)}>
         {" "}
         {t`via ${fk.origin?.displayName()}`}
       </span>

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
@@ -11,7 +11,7 @@ export const ClickActionButtonIcon = styled(Icon)`
 `;
 
 export const ClickActionButtonTextIcon = styled.span`
-  margin-right: 0.25rem;
+  margin-right: ${rem(4)};
   width: 0.875rem;
   text-align: center;
   font-weight: 700;
@@ -20,33 +20,10 @@ export const ClickActionButtonTextIcon = styled.span`
   transition: all 200ms linear;
 `;
 
-export const HorizontalClickActionButton = styled(Button)`
-  display: flex;
-  flex: auto;
-  align-items: center;
-
-  border-radius: 8px;
-  border: none;
-
-  padding: 0.5rem;
-  margin: 0 -0.5rem;
-  width: auto;
-  min-width: 148px;
-
-  line-height: 1rem;
-
-  &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
-
-    ${ClickActionButtonIcon} {
-      color: ${color("white")};
-    }
-
-    ${ClickActionButtonTextIcon} {
-      color: ${color("white")};
-    }
-  }
+export const Subtitle = styled.div`
+  color: ${color("text-light")};
+  font-weight: normal;
+  margin-left: 1rem;
 `;
 
 export const TokenFilterActionButton = styled(Button)`

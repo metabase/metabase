@@ -14,6 +14,7 @@ import {
   getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -43,7 +44,7 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
-    cy.get(".dot").eq(5).click({ force: true });
+    cartesianChartCircle().eq(5).click();
     popover()
       .findByText(/Automatic Insights/i)
       .click();
@@ -262,7 +263,7 @@ describe("scenarios > question > custom column", () => {
     );
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
       .findByText("1");
   });
@@ -336,9 +337,7 @@ describe("scenarios > question > custom column", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
-    cy.findByTestId("query-visualization-root")
-      .get(".dot")
-      .should("have.length.of.at.least", 8);
+    cartesianChartCircle().should("have.length.of.at.least", 8);
   });
 
   it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
@@ -473,7 +472,7 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 

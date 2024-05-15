@@ -173,7 +173,8 @@
   with-perm-for-group-and-table!]
 
  [qp
-  process-query]
+  process-query
+  userland-query]
 
  [qp.store
   with-metadata-provider]
@@ -183,6 +184,7 @@
   col
   cols
   first-row
+  formatted-rows+column-names
   format-rows-by
   formatted-rows
   nest-query
@@ -240,7 +242,8 @@
   scheduler-current-tasks
   secret-value-equals?
   select-keys-sequentially
-  throw-if-called
+  throw-if-called!
+  repeat-concurrently
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes

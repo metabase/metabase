@@ -34,7 +34,7 @@ function ParametersList({
   enableParameterRequiredBehavior,
 }) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 5 },
+    activationConstraint: { distance: 15 },
   });
 
   const visibleValuePopulatedParameters = useMemo(

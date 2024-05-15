@@ -48,6 +48,7 @@
    "ConnectionImpersonation"
    "DashboardBookmark"
    "DataPermissions"
+   "FieldUsage"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
@@ -77,4 +78,5 @@
    "TablePrivileges"
    "TaskHistory"
    "User"
+   "UserParameterValue"
    "ViewLog"])

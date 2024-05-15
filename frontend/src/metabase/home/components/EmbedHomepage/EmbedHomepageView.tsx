@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import {
   Anchor,
   Card,
@@ -12,17 +13,18 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
-import type { EmbedHomepageDismissReason } from "./types";
+import type { EmbeddingHomepageInitialTab } from "./types";
 
 export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
-  exampleDashboardId?: number;
+  exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
-  defaultTab: "interactive" | "static";
-  onDismiss: (reason: EmbedHomepageDismissReason) => void;
+  initialTab: EmbeddingHomepageInitialTab;
+  onDismiss: (reason: EmbeddingHomepageDismissReason) => void;
   // links
   interactiveEmbeddingQuickstartUrl: string;
   embeddingDocsUrl: string;
@@ -34,7 +36,7 @@ export type EmbedHomepageViewProps = {
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
   const {
     embeddingAutoEnabled,
-    defaultTab,
+    initialTab,
     embeddingDocsUrl,
     analyticsDocsUrl,
     onDismiss,
@@ -44,12 +46,12 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <Group position="apart">
         {/*  eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
-        <Menu trigger="hover">
+        <Menu trigger="hover" closeDelay={200}>
           <Menu.Target>
             <Text
               fw="bold"
               color="brand"
-              style={{ cursor: "default" }}
+              className={CS.cursorDefault}
             >{t`Hide these`}</Text>
           </Menu.Target>
           <Menu.Dropdown>
@@ -60,7 +62,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
               onClick={() => onDismiss("dismissed-run-into-issues")}
             >{t`I ran into issues`}</Menu.Item>
             <Menu.Item
-              onClick={() => onDismiss("dismissed-run-into-issues")}
+              onClick={() => onDismiss("dismissed-not-interested-now")}
             >{t`I'm not interested right now`}</Menu.Item>
           </Menu.Dropdown>
         </Menu>
@@ -68,7 +70,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <Card px="xl" py="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
-        <Tabs defaultValue={defaultTab}>
+        <Tabs defaultValue={initialTab}>
           <Tabs.List>
             <Tabs.Tab value="interactive">{t`Interactive`}</Tabs.Tab>
             <Tabs.Tab value="static">{t`Static`}</Tabs.Tab>

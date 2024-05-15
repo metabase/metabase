@@ -1,9 +1,10 @@
+import { useMemo } from "react";
+
 import {
-  useDatabaseListQuery,
-  usePopularItemListQuery,
-  useRecentItemListQuery,
-  useSetting,
-} from "metabase/common/hooks";
+  useListRecentItemsQuery,
+  useListPopularItemsQuery,
+} from "metabase/api";
+import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -15,7 +16,7 @@ import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
@@ -23,12 +24,16 @@ export const HomeContent = (): JSX.Element | null => {
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
-  const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
-    { reload: true },
-  );
+  const { data: recentItemsRaw, error: recentItemsError } =
+    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: popularItems, error: popularItemsError } =
-    usePopularItemListQuery({ reload: true });
+    useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const error = databasesError || recentItemsError || popularItemsError;
+
+  const recentItems = useMemo(
+    () => (recentItemsRaw && recentsFilter(recentItemsRaw)) ?? [],
+    [recentItemsRaw],
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

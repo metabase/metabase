@@ -15,7 +15,9 @@
     :as content-verification]
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
+   [metabase-enterprise.scim.routes :as scim]
    [metabase-enterprise.serialization.api :as api.serialization]
+   [metabase-enterprise.upload-management.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -43,8 +45,14 @@
     "/logs" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
    (context
+    "/scim" []
+    (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
+   (context
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
    (context
     "/autodescribe" []
-    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))))
+    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
+   (context
+    "/upload-management" []
+    (ee.api.common/+require-premium-feature :upload-management (deferred-tru "Upload Management") api.uploads/routes))))

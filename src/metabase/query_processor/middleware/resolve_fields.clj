@@ -14,7 +14,7 @@
 
 (defn- resolve-fields-with-ids!
   [metadata-providerable field-ids]
-  (lib.metadata/bulk-metadata metadata-providerable :metadata/column field-ids)
+  (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column field-ids)
   (when-let [parent-ids (not-empty
                          (into #{}
                                (comp (map (fn [field-id]

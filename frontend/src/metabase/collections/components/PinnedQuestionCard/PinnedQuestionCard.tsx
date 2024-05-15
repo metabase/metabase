@@ -2,6 +2,10 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import {
   isFullyParameterized,
   isPreviewShown,
@@ -27,8 +31,8 @@ export interface PinnedQuestionCardProps {
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-  onCreateBookmark?: (id: string, model: string) => void;
-  onDeleteBookmark?: (id: string, model: string) => void;
+  onCreateBookmark?: CreateBookmark;
+  onDeleteBookmark?: DeleteBookmark;
 }
 
 const PinnedQuestionCard = ({

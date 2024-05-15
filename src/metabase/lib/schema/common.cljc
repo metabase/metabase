@@ -8,6 +8,8 @@
 
 (comment metabase.types/keep-me)
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn normalize-keyword
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
@@ -50,6 +52,7 @@
 ;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string
   [:and
+   {:error/message "non-blank string"}
    [:string {:min 1}]
    [:fn
     {:error/message "non-blank string"}
@@ -57,7 +60,9 @@
 
 ;;; Schema representing an integer than must also be greater than or equal to zero.
 (mr/def ::int-greater-than-or-equal-to-zero
-  [:int {:min 0}])
+  [:int
+   {:error/message "integer greater than or equal to zero"
+    :min           0}])
 
 (mr/def ::positive-number
   [:fn
@@ -101,6 +106,7 @@
 
 (mr/def ::semantic-or-relation-type
   [:and
+   {:doc/message "valid semantic or relation type"}
    [:keyword
     {:decode/normalize normalize-keyword}]
    [:fn
@@ -147,3 +153,18 @@
                [false :keyword]]]
    [:args     [:sequential :any]]
    [:options {:optional true} ::options]])
+
+#?(:clj
+   (defn- instance-of-class* [& classes]
+     [:fn {:error/message (str "instance of "
+                               (str/join " or "
+                                         (map #(.getName ^Class %) classes)))}
+      (fn [x]
+        (some (fn [klass]
+                (instance? klass x))
+              classes))]))
+
+#?(:clj
+   (def ^{:arglists '([& classes])} instance-of-class
+     "Convenience for defining a Malli schema for an instance of a particular Class."
+     (memoize instance-of-class*)))

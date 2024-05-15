@@ -1,52 +1,71 @@
-import { useKBar, useMatches, KBarResults, type ActionImpl } from "kbar";
-import { useState } from "react";
-import { useDebounce } from "react-use";
+import { useKBar, useMatches } from "kbar";
+import { useMemo, useEffect } from "react";
+import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import type { IconName } from "metabase/ui";
-import { Flex, Box, Icon } from "metabase/ui";
+import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
-import { processResults } from "../utils";
+import type { PaletteActionImpl } from "../types";
+import { processResults, findClosestActionIndex } from "../utils";
+
+import { PaletteResultItem } from "./PaletteResultItem";
+import { PaletteResultList } from "./PaletteResultsList";
+
+const PAGE_SIZE = 4;
 
 export const PaletteResults = () => {
   // Used for finding actions within the list
-  const { search: query } = useKBar(state => ({ search: state.searchQuery }));
-  const trimmedQuery = query.trim();
+  const { query } = useKBar();
 
-  // Used for finding objects across the Metabase instance
-  const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
-
-  useDebounce(
-    () => {
-      setDebouncedSearchText(trimmedQuery);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
-  );
-
-  useCommandPalette({
-    query: trimmedQuery,
-    debouncedSearchText,
-  });
+  useCommandPalette();
 
   const { results } = useMatches();
 
-  const processedResults = processResults(results);
+  const processedResults = useMemo(
+    () => processResults(results as (PaletteActionImpl | string)[]),
+    [results],
+  );
+
+  useEffect(() => {
+    if (processedResults[0] === t`Search results`) {
+      query.setActiveIndex(2);
+    }
+  }, [processedResults, query]);
+
+  useKeyPressEvent("End", () => {
+    const lastIndex = processedResults.length - 1;
+    query.setActiveIndex(lastIndex);
+  });
+
+  useKeyPressEvent("Home", () => {
+    query.setActiveIndex(1);
+  });
+
+  useKeyPressEvent("PageDown", () => {
+    query.setActiveIndex(i =>
+      findClosestActionIndex(processedResults, i, PAGE_SIZE),
+    );
+  });
+
+  useKeyPressEvent("PageUp", () => {
+    query.setActiveIndex(i =>
+      findClosestActionIndex(processedResults, i, -PAGE_SIZE),
+    );
+  });
 
   return (
     <Flex align="stretch" direction="column" p="0.75rem 0">
-      <KBarResults
-        items={processedResults}
+      <PaletteResultList
+        items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
         onRender={({
           item,
           active,
         }: {
-          item: string | ActionImpl;
+          item: string | PaletteActionImpl;
           active: boolean;
         }) => {
           const isFirst = processedResults[0] === item;
@@ -72,62 +91,11 @@ export const PaletteResults = () => {
                   {item}
                 </Box>
               ) : (
-                <Flex
-                  p=".75rem"
-                  mx="1.5rem"
-                  miw="0"
-                  align="center"
-                  justify="space-between"
-                  gap="0.5rem"
-                  fw={700}
-                  style={{
-                    cursor: "pointer",
-                    borderRadius: "0.5rem",
-                    flexGrow: 1,
-                    flexBasis: 0,
-                  }}
-                  bg={active ? color("brand") : "none"}
-                  c={active ? color("white") : color("text-dark")}
-                >
-                  <Flex gap=".5rem" style={{ minWidth: 0 }}>
-                    {item.icon && (
-                      <Icon
-                        aria-hidden
-                        name={(item.icon as IconName) || "click"}
-                        color={
-                          active ? color("brand-light") : color("text-light")
-                        }
-                        style={{
-                          flexBasis: "16px",
-                        }}
-                      />
-                    )}
-                    <Box
-                      component="span"
-                      style={{
-                        flexGrow: 1,
-                        flexBasis: 0,
-                        textOverflow: "ellipsis",
-                        overflowX: "hidden",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {item.name}
-                    </Box>
-                  </Flex>
-                  {active && (
-                    <Flex
-                      aria-hidden
-                      gap="0.5rem"
-                      fw={400}
-                      style={{
-                        flexBasis: 60,
-                      }}
-                    >
-                      {t`Open`} <Icon name="enter_or_return" />
-                    </Flex>
-                  )}
-                </Flex>
+                <PaletteResultItem
+                  item={item}
+                  active={active}
+                  togglePalette={query.toggle}
+                />
               )}
             </Flex>
           );

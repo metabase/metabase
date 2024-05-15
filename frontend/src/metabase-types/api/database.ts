@@ -74,7 +74,7 @@ export interface DatabaseData {
 
 export interface DatabaseSchedules {
   metadata_sync?: ScheduleSettings;
-  cache_field_values?: ScheduleSettings;
+  cache_field_values?: ScheduleSettings | null;
 }
 
 export interface DatabaseUsageInfo {

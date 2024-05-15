@@ -211,7 +211,10 @@ const DefaultLayout = ({
 }) => (
   <div>
     {fieldWidgets.map((fieldWidget, index) => (
-      <div key={index} className={index < fieldWidgets.length - 1 ? "mb1" : ""}>
+      <div
+        key={index}
+        className={index < fieldWidgets.length - 1 ? CS.mb1 : ""}
+      >
         {fieldWidget}
       </div>
     ))}

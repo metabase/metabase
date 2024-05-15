@@ -340,7 +340,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className="mb1"
+            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -466,7 +466,7 @@ function ViewTitleHeaderRightSide(props) {
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
-          className="ml2 mr1"
+          className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}

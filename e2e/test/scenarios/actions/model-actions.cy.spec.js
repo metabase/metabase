@@ -18,6 +18,7 @@ import {
   createModelFromTableName,
   queryWritableDB,
   setTokenFeatures,
+  entityPickerModal,
 } from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -219,7 +220,10 @@ describe(
       });
 
       modal().eq(1).findByText("Select a model").click();
-      popover().findByText("Order").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Order").click();
+      });
+
       cy.findByRole("button", { name: "Create" }).click();
 
       cy.get("@modelId").then(modelId => {
@@ -239,12 +243,19 @@ describe(
       // to test database picker behavior in the action editor
       setActionsEnabledForDB(SAMPLE_DB_ID);
 
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
-          [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [WRITABLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
         },
         [USER_GROUPS.DATA_GROUP]: {
-          [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+          [WRITABLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": "query-builder-and-native",
+          },
         },
       });
 
@@ -805,7 +816,16 @@ describe(
       cy.updatePermissionsGraph(
         {
           [USER_GROUPS.ALL_USERS_GROUP]: {
-            [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+            [WRITABLE_DB_ID]: {
+              "view-data": "impersonated",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+          // By default, all groups get `unrestricted` access that will override the impersonation.
+          [USER_GROUPS.COLLECTION_GROUP]: {
+            [WRITABLE_DB_ID]: {
+              "view-data": "blocked",
+            },
           },
         },
         [

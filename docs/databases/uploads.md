@@ -14,6 +14,7 @@ Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If yo
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Redshift](../databases/connections/redshift.md)
 
 ## Enabling uploads
 
@@ -53,7 +54,7 @@ Admins can optionally specify a string of text to add in front of the table that
 
 ## Add people to a group with unrestricted data access to the upload schema
 
-In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
 ## Primary key auto-generation
 

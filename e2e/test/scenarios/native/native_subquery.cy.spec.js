@@ -78,6 +78,7 @@ describe("scenarios > question > native subquery", () => {
         openQuestionActions();
         cy.findByTestId("move-button").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -275,7 +276,7 @@ describe("scenarios > question > native subquery", () => {
     );
 
     visitQuestion("@toplevelQuestionId");
-    cy.get("#main-data-grid .cellData").should("have.text", "41");
+    cy.get("#main-data-grid [data-testid=cell-data]").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {
@@ -302,7 +303,7 @@ describe("scenarios > question > native subquery", () => {
 
         runNativeQuery();
 
-        cy.get(".cellData").should("contain", "37.65");
+        cy.get("[data-testid=cell-data]").should("contain", "37.65");
       },
     );
   });
@@ -325,7 +326,7 @@ describe("scenarios > question > native subquery", () => {
 
           runNativeQuery();
 
-          cy.get(".cellData").should("contain", "1");
+          cy.get("[data-testid=cell-data]").should("contain", "1");
         },
       );
     },

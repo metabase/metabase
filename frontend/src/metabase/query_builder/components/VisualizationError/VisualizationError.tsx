@@ -100,7 +100,7 @@ export function VisualizationError({
           <h1
             className={CS.textBold}
           >{t`There was a problem with this visualization`}</h1>
-          <ErrorDetails className="pt2" details={error} />
+          <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>
     );

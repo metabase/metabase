@@ -5,6 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -26,6 +27,7 @@ import { CreateDashboardModalConnected } from "./CreateDashboardModal";
 const COLLECTION = {
   ROOT: createMockCollection({
     ...ROOT_COLLECTION,
+    name: "Our analytics",
     can_write: true,
   }),
   PARENT: createMockCollection({
@@ -53,6 +55,7 @@ function setup({
 } = {}) {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -76,6 +79,11 @@ function setup({
   setupCollectionItemsEndpoint({
     collection: COLLECTION.PARENT,
     collectionItems: [createMockCollectionItemFromCollection(COLLECTION.CHILD)],
+  });
+
+  setupCollectionItemsEndpoint({
+    collection: COLLECTION.PERSONAL,
+    collectionItems: [],
   });
 
   collections
@@ -193,6 +201,7 @@ describe("CreateDashboardModal", () => {
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
       expect(nameField()).toHaveValue(name);
     });
+
     it("should create collection inside nested folder", async () => {
       setup();
       const name = "my dashboard";

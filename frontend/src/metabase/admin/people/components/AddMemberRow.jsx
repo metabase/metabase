@@ -66,7 +66,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
             <div
               key={user.id}
               className={cx(
-                "bg-medium",
+                CS.bgMedium,
                 CS.p1,
                 CS.px2,
                 CS.mr1,
@@ -80,8 +80,8 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
                 className={cx(
                   CS.pl1,
                   CS.cursorPointer,
-                  "text-slate",
-                  "text-medium-hover",
+                  CS.textSlate,
+                  CS.textMediumHover,
                 )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}
@@ -131,7 +131,7 @@ const AddMemberTypeaheadPopover = Typeahead({
 
   return (
     <TippyPopover
-      className="bordered"
+      className={CS.bordered}
       offset={0}
       placement="bottom-start"
       visible={suggestions.length > 0}

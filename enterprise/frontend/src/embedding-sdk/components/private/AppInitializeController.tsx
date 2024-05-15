@@ -1,36 +1,35 @@
-import type * as React from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { DEFAULT_FONT } from "../../config";
-import { EmbeddingContext } from "../../context";
-import { useInitData } from "../../hooks";
-import type { SDKConfigType } from "../../types";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { useInitData } from "embedding-sdk/hooks";
+import { useSdkSelector } from "embedding-sdk/store";
+import { getIsInitialized } from "embedding-sdk/store/selectors";
+import type { SDKConfig } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
-  children: React.ReactNode;
-  config: SDKConfigType;
+  children: ReactNode;
+  config: SDKConfig;
 }
 
 export const AppInitializeController = ({
   config,
   children,
 }: AppInitializeControllerProps) => {
-  const { isLoggedIn, isInitialized } = useInitData({
+  useInitData({
     config,
   });
 
+  const isInitialized = useSdkSelector(getIsInitialized);
+
   return (
-    <EmbeddingContext.Provider
-      value={{
-        isInitialized,
-        isLoggedIn,
-      }}
+    <SdkContentWrapper
+      baseUrl={config.metabaseInstanceUrl}
+      id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
     >
-      <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>
-        {!isInitialized ? <div>{t`Loading…`}</div> : children}
-      </SdkContentWrapper>
-    </EmbeddingContext.Provider>
+      {!isInitialized ? <div>{t`Loading…`}</div> : children}
+    </SdkContentWrapper>
   );
 };

@@ -4,6 +4,7 @@ import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
@@ -26,6 +27,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
           [DashboardS.DashboardFullscreen]: isFullscreen,
           [DashboardS.DashboardNight]: isNightMode,
           [ParametersS.DashboardNight]: isNightMode,
+          [ColorS.DashboardNight]: isNightMode,
         })}
         {...props}
       />

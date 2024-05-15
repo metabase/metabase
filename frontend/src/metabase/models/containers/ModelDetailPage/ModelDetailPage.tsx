@@ -145,7 +145,7 @@ function ModelDetailPage({
   }, [model, tab, hasActionsTab, onChangeLocation]);
 
   const handleNameChange = useCallback(
-    name => {
+    (name: string | undefined) => {
       if (name && name !== model.displayName()) {
         const nextCard = model.setDisplayName(name).card();
         onChangeModel(nextCard as Card);

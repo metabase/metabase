@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -15,6 +19,8 @@ const personalCollectionsRoot: CollectionPickerItem = {
   model: "collection",
   location: "/",
   description: "",
+  here: ["collection"],
+  below: ["collection"],
 };
 
 /**
@@ -35,16 +41,29 @@ export const RootItemList = ({
   const currentUser = useSelector(getUser);
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useCollectionQuery({
-      id: currentUser?.personal_collection_id,
-      enabled: !!currentUser?.personal_collection_id,
-    });
+    useGetCollectionQuery(
+      currentUser?.personal_collection_id
+        ? currentUser?.personal_collection_id
+        : skipToken,
+    );
+
+  const {
+    data: personalCollectionItems,
+    isLoading: isLoadingPersonalCollectionItems,
+  } = useListCollectionItemsQuery(
+    currentUser?.personal_collection_id
+      ? {
+          id: currentUser?.personal_collection_id,
+          models: ["collection"],
+        }
+      : skipToken,
+  );
 
   const {
     data: rootCollection,
     isLoading: isLoadingRootCollecton,
     error: rootCollectionError,
-  } = useCollectionQuery({ id: "root" });
+  } = useGetCollectionQuery("root");
 
   const data = useMemo(() => {
     const collectionsData: CollectionPickerItem[] = [];
@@ -54,6 +73,7 @@ export const RootItemList = ({
         collectionsData.push({
           ...rootCollection,
           model: "collection",
+          here: ["collection"],
           location: "/",
           name:
             options.namespace === "snippets"
@@ -64,6 +84,7 @@ export const RootItemList = ({
         collectionsData.push({
           name: t`Collections`,
           id: "root",
+          here: ["collection"],
           description: null,
           can_write: false,
           model: "collection",
@@ -80,8 +101,9 @@ export const RootItemList = ({
     ) {
       collectionsData.push({
         ...personalCollection,
+        here: personalCollectionItems?.data.length ? ["collection"] : [],
         model: "collection",
-        location: personalCollection.location || "/",
+        can_write: true,
       });
 
       if (isAdmin) {
@@ -97,12 +119,17 @@ export const RootItemList = ({
     isAdmin,
     options,
     rootCollectionError,
+    personalCollectionItems,
   ]);
 
   return (
     <ItemList
       items={data}
-      isLoading={isLoadingRootCollecton || isLoadingPersonalCollecton}
+      isLoading={
+        isLoadingRootCollecton ||
+        isLoadingPersonalCollecton ||
+        isLoadingPersonalCollectionItems
+      }
       onClick={onClick}
       selectedItem={selectedItem}
       isFolder={isFolder}

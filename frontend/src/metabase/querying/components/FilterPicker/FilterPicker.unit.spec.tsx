@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
-  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -405,11 +404,10 @@ describe("FilterPicker", () => {
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
-      await act(async () => {
-        await userEvent.clear(input);
-        await userEvent.type(input, text, { delay });
-        await userEvent.tab();
-      });
+
+      await userEvent.clear(input);
+      await userEvent.type(input, text, { delay });
+      await userEvent.tab();
 
       await waitFor(() => expect(button).toBeEnabled());
       await userEvent.click(button);
@@ -419,7 +417,7 @@ describe("FilterPicker", () => {
       const { query, getNextFilter } = setup();
 
       await userEvent.click(screen.getByText(/Custom expression/i));
-      await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
+      await editExpressionAndSubmit("[[Total] > [[Discount]");
 
       const filter = getNextFilter();
 

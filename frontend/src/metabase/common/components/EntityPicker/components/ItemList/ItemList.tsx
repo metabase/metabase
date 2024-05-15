@@ -2,11 +2,9 @@ import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
+import { Box, Center, Icon, NavLink } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
@@ -59,24 +57,13 @@ export const ItemList = <
     return (
       <Box miw={310} h="100%" aria-label={t`loading`}>
         <Center p="lg" h="100%">
-          <DelayedLoadingSpinner delay={200} />
+          <DelayedLoadingSpinner delay={300} />
         </Center>
       </Box>
     );
   }
 
-  if (items && !items.length) {
-    // empty array
-    return (
-      <Flex justify="center" align="center" direction="column" h="100%">
-        <EmptyState
-          illustrationElement={<NoObjectError aria-label={t`empty`} />}
-        />
-      </Flex>
-    );
-  }
-
-  if (!items) {
+  if (!items || !items.length) {
     return null;
   }
 

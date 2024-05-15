@@ -35,17 +35,18 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
-type MetricListItem = Lib.MetricDisplayInfo & {
-  metric: Lib.MetricMetadata;
+type LegacyMetricListItem = Lib.LegacyMetricDisplayInfo & {
+  metric: Lib.LegacyMetricMetadata;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
+type ListItem = OperatorListItem | LegacyMetricListItem;
 
 type Section = {
   name: string;
   key: string;
   items: ListItem[];
   icon?: string;
+  type?: string;
 };
 
 function isOperatorListItem(item: ListItem): item is OperatorListItem {
@@ -89,7 +90,7 @@ export function AggregationPicker({
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const metrics = Lib.availableMetrics(query, stageIndex);
+    const metrics = Lib.availableLegacyMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
@@ -122,6 +123,7 @@ export function AggregationPicker({
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
+        type: "action",
       });
     }
 
@@ -163,7 +165,7 @@ export function AggregationPicker({
   );
 
   const handleMetricSelect = useCallback(
-    (item: MetricListItem) => {
+    (item: LegacyMetricListItem) => {
       onSelect(item.metric);
       onClose?.();
     },
@@ -253,6 +255,7 @@ export function AggregationPicker({
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
+        withBorders
       />
     </Root>
   );
@@ -327,8 +330,8 @@ function getOperatorListItem(
 function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
-  metric: Lib.MetricMetadata,
-): MetricListItem {
+  metric: Lib.LegacyMetricMetadata,
+): LegacyMetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,

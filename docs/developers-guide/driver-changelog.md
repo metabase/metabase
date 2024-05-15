@@ -13,60 +13,65 @@ title: Driver interface changelog
   efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
   a default implementation for JDBC-based drivers.
 
-- New feature `:window-functions` has been added. Drivers that implement this method are expected to implement the
-  cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native query language.
-  For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is set to `false` by
-  default; the old (broken) post-processing implementations of cumulative aggregations will continue to be used. (See
-  issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+- New feature `:window-functions/cumulative` has been added. Drivers that implement this method are expected to
+  implement the cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native
+  query language. For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is
+  set to `false` by default; the old (broken) post-processing implementations of cumulative aggregations will continue
+  to be used. (See issues [#13634](https://github.com/metabase/metabase/issues/13634) and
   [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
   broken.)
 
   Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
 
-  SQL drivers that support ordering by output column numbers in `OVER` `ORDER BY` expressions, e.g.
+  The SQL implementation uses `OVER (...)` expressions. It will automatically move `GROUP BY` expressions like
+  `date_trunc()` into a `SUBSELECT` so fussy databases like BigQuery can reference plain column identifiers. The
+  actual SQL generated will look something like
 
   ```sql
   SELECT
-    sum(sum(my_column) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING) AS cumulative_sum
-    date_trunc(my_timestamp, 'month') AS my_timestamp_month
-  FROM
-    my_table
+    created_at_month,
+    sum(sum(total) OVER (ORDER BY created_at_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+  FROM (
+    SELECT
+      date_trunc('month', created_at) AS created_at_month,
+      total
+    FROM
+      my_table
+    ) source
   GROUP BY
-    date_trunc(my_timestamp, 'month')
+    created_at_month
   ORDER BY
-    date_trunc(my_timestamp, 'month')
+    created_at_month
   ```
 
-  will work without any changes; this is the new default behavior for drivers based on the `:sql` or `:sql-jdbc`
-  drivers.
+  Non-SQL drivers can use
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation`
+  if they want to leverage the same query transformation. See the default `:sql` implementation of
+  `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
 
-  For databases that do not support ordering by output column numbers (e.g. MySQL/MariaDB), you can mark your driver
-  as not supporting the `:sql/window-functions.order-by-output-column-numbers` feature flag, e.g.
+  You can run the new tests in `metabase.query-processor-test.cumulative-aggregation-test` to verify that your driver
+  implementation is working correctly.
 
-  ```clj
-  (defmethod driver/database-supports? [:my-driver :sql/window-functions.order-by-output-column-numbers]
-    [_driver _feature _database]
-    false)
-   ```
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
 
-  In this case, the `:sql` driver will instead generate something like
+- New feature `:window-functions/offset` has been added to signify that a driver supports the new MBQL `:offset`
+  clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
+  drivers. Other drivers should add an implementation for this clause and enable the feature flag.
 
-  ```sql
-  SELECT
-    sum(sum(my_column) OVER (ORDER BY date_trunc(my_timestamp, 'month') ROWS UNBOUNDED PRECEDING) AS cumulative_sum
-    date_trunc(my_timestamp, 'month') AS my_timestamp_month
-  FROM
-    my_table
-  GROUP BY
-    date_trunc(my_timestamp, 'month')
-  ORDER BY
-    date_trunc(my_timestamp, 'month')
-  ```
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
 
-  If neither of these strategies work for you, you might need to do something more complicated -- see
-  [#40982](https://github.com/metabase/metabase/pull/40982) for an example of complex query transformations to get
-  fussy BigQuery working. (More on this soon.) If all else fails, you can always specify that your driver does not
-  support `:window-functions`, and it will fall back to using the old broken implementation.
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
 
 ## Metabase 0.49.1
 

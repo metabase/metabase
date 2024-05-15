@@ -5,10 +5,10 @@ import { Api } from "./api";
 export const datasetApi = Api.injectEndpoints({
   endpoints: builder => ({
     getNativeDataset: builder.query<NativeQueryForm, DatasetQuery>({
-      query: input => ({
+      query: body => ({
         method: "POST",
         url: "/api/dataset/native",
-        body: input,
+        body,
       }),
     }),
   }),

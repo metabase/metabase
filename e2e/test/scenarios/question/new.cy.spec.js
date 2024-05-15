@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -23,6 +24,7 @@ import {
   modal,
   pickEntity,
   hovercard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -213,16 +215,15 @@ describe("scenarios > question > new", () => {
 
     openOrdersTable();
 
-    cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", "2") // quantity for order ID#1
       .click();
     cy.wait("@dataset");
 
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length.gt",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length.gt", 1);
 
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -230,19 +231,18 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.get(".TableInteractive");
+    cy.get(".test-TableInteractive");
 
-    cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", 1)
       .click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length", 1);
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -298,6 +298,11 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
+
+    cy.log("should be able to tab through fields (metabase#41683)");
+    cy.realPress("Tab").realPress("Tab");
+    cy.findByLabelText("Description").should("be.focused");
+
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Which collection/)
       .click();
@@ -322,6 +327,35 @@ describe("scenarios > question > new", () => {
     cy.get("header").findByText(NEW_COLLECTION);
   });
 
+  it("should preserve the original question name (metabase#41196)", () => {
+    const originalQuestionName = "Foo";
+    const modifiedQuestionName = `${originalQuestionName} - Modified`;
+    const originalDescription = "Lorem ipsum dolor sit amet";
+
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      name: originalQuestionName,
+      description: originalDescription,
+    });
+
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.findByDisplayValue(originalQuestionName).should("exist");
+
+    cy.log("Change anything about this question to make it dirty");
+    cy.findByTestId("header-cell").should("have.text", "Count").click();
+    popover().icon("arrow_down").click();
+
+    cy.findByTestId("qb-header-action-panel").button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save as new question").click();
+
+      cy.findByLabelText("Name").should("have.value", modifiedQuestionName);
+      cy.findByLabelText("Description").should(
+        "have.value",
+        originalDescription,
+      );
+    });
+  });
+
   describe("add to a dashboard", () => {
     const collectionInRoot = {
       name: "Collection in root collection",
@@ -329,7 +363,6 @@ describe("scenarios > question > new", () => {
     const dashboardInRoot = {
       name: "Dashboard in root collection",
     };
-    const myPersonalCollection = "My personal collection";
     const myPersonalCollectionName = "Bobby Tables's Personal Collection";
 
     beforeEach(() => {
@@ -354,7 +387,11 @@ describe("scenarios > question > new", () => {
         .findByLabelText(/Which collection/)
         .click();
 
-      pickEntity({ path: [myPersonalCollectionName], select: true });
+      pickEntity({
+        path: [myPersonalCollectionName],
+        select: true,
+        tab: /Collections/,
+      });
 
       cy.findByTestId("save-question-modal").button("Save").click();
       cy.wait("@createQuestion");
@@ -366,12 +403,12 @@ describe("scenarios > question > new", () => {
         cy.button("Yes please!").click();
       });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
-        cy.findByText(collectionInRoot.name).should("not.exist");
-        cy.findByText(dashboardInRoot.name).should("not.exist");
-        cy.findByText("Create a new dashboard").should("not.exist");
+        cy.findByText(/bobby tables's personal collection/i).should(
+          "be.visible",
+        );
+        cy.findByText(/our analytics/i).should("not.exist");
       });
     });
 
@@ -393,9 +430,11 @@ describe("scenarios > question > new", () => {
         cy.findByText("Yes please!").click();
       });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText("Bobby Tables's Personal Collection").should(
+          "be.visible",
+        );
         cy.findByText(collectionInRoot.name).should("be.visible");
         cy.findByText(dashboardInRoot.name).should("be.visible");
         cy.findByText("Create a new dashboard").should("be.visible");

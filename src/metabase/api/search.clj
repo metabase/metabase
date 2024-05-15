@@ -27,6 +27,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -239,7 +240,6 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-
 (defmethod search-query-for-model "card"
   [_model search-ctx]
   (shared-card-impl "card" search-ctx))
@@ -320,10 +320,10 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model model search-ctx)]
-      (add-table-db-id-clause
-       base-query
-       table-db-id))))
+
+    (-> (base-query-for-model model search-ctx)
+        (add-table-db-id-clause table-db-id)
+        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -333,7 +333,8 @@
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref :location}))
+                                         :initial_sync_status :pk_ref :location
+                                         :collection_location}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -354,18 +355,27 @@
 (defmethod check-permissions-for-model :table
   [_archived instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (data-perms/user-has-permission-for-table?
-   api/*current-user-id*
-   :perms/data-access
-   :unrestricted
-   (database/table-id->database-id (:id instance))
-   (:id instance)))
+  (and
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/view-data
+    :unrestricted
+    (database/table-id->database-id (:id instance))
+    (:id instance))
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/create-queries
+    :query-builder
+    (database/table-id->database-id (:id instance))
+    (:id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [_archived? instance]
   (and
-   (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/native-query-editing :yes (:database_id instance))
-   (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/data-access (:database_id instance)))))
+   (= :query-builder-and-native
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries (:database_id instance)))
+   (= :unrestricted
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
   [archived? instance]
@@ -434,6 +444,52 @@
                    :last_editor_common_name (get user-id->common-name last_editor_id)))
           results)))
 
+(defn add-dataset-collection-hierarchy
+  "Adds `collection_effective_ancestors` to *datasets* in the search results."
+  [search-results]
+  (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
+        ;; effective location of the result.
+        result->loc (fn [{:keys [collection_id collection_location]}]
+                      (:effective_location
+                       (t2/hydrate
+                        (if (nil? collection_id)
+                          collection/root-collection
+                          {:location collection_location})
+                        :effective_location)))
+        ;; a map of collection-ids to collection info
+        col-id->name&loc (into {}
+                               (for [item search-results
+                                     :when (= (:model item) "dataset")]
+                                 [(:collection_id item)
+                                  {:name (:collection_name item)
+                                   :effective_location (result->loc item)}]))
+        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
+        ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
+        to-fetch         (into #{} (comp (keep :effective_location)
+                                         (mapcat collection/location-path->ids)
+                                         ;; already have these names
+                                         (remove col-id->name&loc))
+                               (vals col-id->name&loc))
+        ;; the complete map of collection IDs to names
+        id->name         (merge (if (seq to-fetch)
+                                  (t2/select-pk->fn :name :model/Collection :id [:in to-fetch])
+                                  {})
+                                (update-vals col-id->name&loc :name))
+        annotate         (fn [x]
+                           (cond-> x
+                             (= (:model x) "dataset")
+                             (assoc :collection_effective_ancestors
+                                    (if-let [loc (result->loc x)]
+                                      (->> (collection/location-path->ids loc)
+                                           (map (fn [id] {:id id :name (id->name id)})))
+                                      []))))]
+    (map annotate search-results)))
+
+(defn- add-can-write [row]
+  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
+    (assoc row :can_write (mi/can-write? row))
+    row))
+
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -444,7 +500,10 @@
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (mdb.query/reducible-query search-query :max-rows search.config/*db-max-results*)
+        reducible-results  (reify clojure.lang.IReduceInit
+                             (reduce [_this rf init]
+                               (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :max-rows search.config/*db-max-results*)]
+                                 (reduce rf init (t2/reducible-query search-query)))))
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
@@ -457,10 +516,13 @@
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
                             (map #(update % :pk_ref json/parse-string))
+                            (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
-        total-results      (hydrate-user-metadata
-                            (scoring/top-results reducible-results search.config/max-filtered-results xf))
+        total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                              true hydrate-user-metadata
+                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                              true (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
@@ -479,7 +541,6 @@
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -495,6 +556,7 @@
            filter-items-in-personal-collection
            offset
            search-string
+           model-ancestors?
            table-db-id
            search-native-query
            verified]}      :- [:map {:closed true}
@@ -510,6 +572,7 @@
                                [:offset                              {:optional true} [:maybe ms/Int]]
                                [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
                                [:search-native-query                 {:optional true} [:maybe boolean?]]
+                               [:model-ancestors?                    {:optional true} [:maybe boolean?]]
                                [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
   (when (some? verified)
     (premium-features/assert-has-any-features
@@ -519,7 +582,8 @@
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
-                        :models             models}
+                        :models             models
+                        :model-ancestors?   (boolean model-ancestors?)}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -580,7 +644,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection search_native_query verified]
+   filter_items_in_personal_collection model_ancestors search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -591,6 +655,7 @@
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   model_ancestors                     [:maybe :boolean]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
@@ -610,6 +675,7 @@
                              :models              models-set
                              :limit               mw.offset-paging/*limit*
                              :offset              mw.offset-paging/*offset*
+                             :model-ancestors?    model_ancestors
                              :search-native-query search_native_query
                              :verified            verified}))
         duration   (- (System/currentTimeMillis) start-time)

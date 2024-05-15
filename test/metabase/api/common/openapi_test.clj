@@ -62,14 +62,11 @@
                            :required    true
                            :description some?
                            :schema      {:type    "integer"
-                                         :minimum 1}}]
-            :requestBody {:content
-                          {"application/json"
-                           {:schema
-                            {:type       "object",
-                             :properties {:value {:description some?
-                                                  :$ref        "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}},
-                             :required   [:value]}}}}}}
+                                         :minimum 1}}
+                          {:in :query,
+                           :name :value,
+                           :required true,
+                           :schema {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}]}}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id)))
   (is (=? {:post
            {:parameters  [{:in          :path
@@ -78,10 +75,8 @@
                            :description some?
                            :schema      {:type    "integer"
                                          :minimum 1}}]
-            ;; TODO: no properties since we did not spec anything
-            :requestBody {:content
-                          {"multipart/form-data"
-                           {:schema {:type "object", :properties {}}}}}}}
+            ;; TODO: no :requestBody since we did not spec anything
+            }}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload))))
 
 (deftest ^:parallel openapi-object-test

@@ -20,13 +20,10 @@ export { default as tables } from "./tables";
 export { default as fields } from "./fields";
 export { default as metrics } from "./metrics";
 export { default as segments } from "./segments";
-export { default as tasks } from "./tasks";
 
 export { default as users } from "./users";
 export { default as groups } from "./groups";
 
 export { default as search } from "./search";
 export { default as persistedModels } from "./persisted-models";
-export { default as recentItems } from "./recent-items";
-export { default as popularItems } from "./popular-items";
 export { default as snippets } from "./snippets";

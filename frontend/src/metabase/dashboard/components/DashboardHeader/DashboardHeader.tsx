@@ -130,7 +130,7 @@ interface DashboardHeaderProps {
     browserFullscreen?: boolean,
   ) => void;
   onSharingClick: () => void;
-  onNightModeChange: () => void;
+  onNightModeChange: (isNightMode: boolean) => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   closeSidebar: () => void;
@@ -612,7 +612,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           key="expand"
           aria-label={t`Enter Fullscreen`}
           icon="expand"
-          className={cx("text-brand-hover", CS.cursorPointer)}
+          className={CS.cursorPointer}
           onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
         />,
       );

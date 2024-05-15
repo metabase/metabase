@@ -12,16 +12,20 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [User]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
    [metabase.task :as task]
+   [metabase.task.send-pulses :as task.send-pulses]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -38,25 +42,34 @@
 (jobs/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]
-  (case table
-    :core_user         {:first_name  (mt/random-name)
-                        :last_name   (mt/random-name)
-                        :email       (mt/random-email)
-                        :password    "superstrong"
-                        :date_joined :%now}
-    :metabase_database {:name       (mt/random-name)
-                        :engine     "h2"
-                        :details    "{}"
-                        :created_at :%now
-                        :updated_at :%now}
-    :report_card       {:name                   (mt/random-name)
-                        :dataset_query          "{}"
-                        :display                "table"
-                        :visualization_settings "{}"
-                        :created_at             :%now
-                        :updated_at             :%now}
-    :revision          {:timestamp :%now}
-    {}))
+  (letfn [(with-timestamped [props]
+            (merge props {:created_at :%now :updated_at :%now}))]
+   (case table
+     :core_user         {:first_name  (mt/random-name)
+                         :last_name   (mt/random-name)
+                         :email       (mt/random-email)
+                         :password    "superstrong"
+                         :date_joined :%now}
+     :metabase_database (with-timestamped
+                          {:name       (mt/random-name)
+                           :engine     "h2"
+                           :details    "{}"})
+
+     :report_card       (with-timestamped
+                         {:name                   (mt/random-name)
+                          :dataset_query          "{}"
+                          :display                "table"
+                          :visualization_settings "{}"})
+     :revision          {:timestamp :%now}
+     :pulse             (with-timestamped
+                         {:name       (mt/random-name)
+                          :parameters "{}"})
+     :pulse_channel     (with-timestamped
+                          {:channel_type  "slack"
+                           :details       (json/generate-string {:channel "general"})
+                           :schedule_type "daily"
+                           :schedule_hour 15})
+     {})))
 
 (defn- new-instance-with-default
   ([table]
@@ -303,11 +316,11 @@
     ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
-      (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                                :last_name   "Hughes"
-                                                                :email       "howard@aircraft.com"
-                                                                :password    "superstrong"
-                                                                :date_joined :%now}))
+      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                                       :last_name   "Hughes"
+                                                                                       :email       "howard@aircraft.com"
+                                                                                       :password    "superstrong"
+                                                                                       :date_joined :%now}))
             dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                             :creator_id user-id}))
             tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
@@ -393,11 +406,12 @@
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                              :last_name   "Hughes"
-                                                              :email       "howard@aircraft.com"
-                                                              :password    "superstrong"
-                                                              :date_joined :%now}))
+    (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -445,11 +459,12 @@
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                              :last_name   "Hughes"
-                                                              :email       "howard@aircraft.com"
-                                                              :password    "superstrong"
-                                                              :date_joined :%now}))
+    (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}          ; correct case
                         {:id 2 :row 0 :col 0 :sizeX 4 :sizeY 4}            ; sizeX and sizeY are legacy names
@@ -578,11 +593,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             card        {:visualization_settings visualization-settings}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
@@ -654,11 +670,12 @@
                                                                              :source-table 5}]
                                                              :source-table 2}
                                                   :type     :query}}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
@@ -704,11 +721,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
@@ -794,11 +812,12 @@
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
@@ -862,11 +881,12 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Dashboard"
@@ -928,11 +948,12 @@
                                                                    "join-alias" "Joined table"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                        {"column_title" "4"}}
                                    (update-keys json/generate-string))}
-            user-id            (t2/insert-returning-pks! :model/User {:first_name  "Howard"
-                                                                      :last_name   "Hughes"
-                                                                      :email       "howard@aircraft.com"
-                                                                      :password    "superstrong"
-                                                                      :date_joined :%now})
+            user-id            (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
             database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
@@ -1359,11 +1380,12 @@
                                  "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                                  "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                                  "graph.metrics"    ["count"]})
-                [user-id]      (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
+                [user-id]      (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
                 [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
@@ -1597,3 +1619,144 @@
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))
+
+(deftest card-revision-add-type-null-character-test
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
+  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+    (let [user-id          (:id (new-instance-with-default :core_user))
+          db-id            (:id (new-instance-with-default :metabase_database))
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+          card-revision-id (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string
+                                                                        (assoc (dissoc card :type)
+                                                                               :visualization_settings viz-settings))
+                                                            :model     "Card"
+                                                            :model_id  (:id card)
+                                                            :user_id   user-id}))]
+      (testing "sanity check revision object"
+        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (testing "doesn't have type"
+            (is (not (contains? card-revision-object "type"))))))
+      (testing "after migration card revisions should have type"
+        (migrate!)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (is (= "question" (get card-revision-object "type")))
+          (testing "original visualization_settings should be preserved"
+            (is (= viz-settings
+                   (get card-revision-object "visualization_settings")))))))))
+
+(deftest delete-scan-field-values-trigger-test
+  (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
+    (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
+      (letfn [(do-test []
+                (api.database-test/with-db-scheduler-setup
+                  (let [db-with-full-schedules (new-instance-with-default :metabase_database
+                                                                          {:metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 1 * * ? *"
+                                                                           :is_full_sync                true
+                                                                           :is_on_demand                false})
+                        db-manual-schedule     (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                true
+                                                                           :is_on_demand                false
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-on-demand           (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                false
+                                                                           :is_on_demand                true
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-never-scan          (new-instance-with-default :metabase_database
+                                                                          {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                           :is_full_sync                false
+                                                                           :is_on_demand                false
+                                                                           :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                           :cache_field_values_schedule "0 0 2 * * ? *"})
+                        db-with-scan-fv        [db-with-full-schedules db-manual-schedule]
+                        db-without-scan-fv     [db-on-demand db-never-scan]]
+                    (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
+                      (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
+                      (testing "sanity check that the schedule exists"
+                        (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+
+                    (migrate!)
+                    (testing "default options and scan with manual schedules should have scan field values"
+                      (doseq [db db-with-scan-fv]
+                        (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+
+                    (testing "never scan and on demand should not have scan field values"
+                      (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
+                        (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
+                               (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
+                        (is (nil? (:cache_field_values_schedule db))))))))]
+        (testing "without encryption key"
+          (do-test))
+        (testing "with encryption key"
+          (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+            (do-test)))))))
+
+(deftest migration-works-when-have-encryption-key-test
+  ;; this test is here to warn developers that they should test their migrations with and without encryption key
+  (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+    ;; run migration to the latest migration
+    (impl/test-migrations ["v49.2024-04-09T10:00:03"] [migrate!]
+      ;; create a db because db.details should be encrypted
+      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
+            db-detail (fn []
+                        (:details (t2/query-one {:select [:details]
+                                                 :from   [:metabase_database]
+                                                 :where  [:= :id db-id]})))]
+        (testing "sanity check that db details is encrypted"
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+
+        (testing "after migrate up, db details should still be encrypted"
+          (migrate!)
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+       (migrate! :down 48)
+       (testing "after migrate down, db details should still be encrypted"
+         (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
+
+(defn scheduler-job-keys
+  []
+  (->> (task/scheduler-info)
+       :jobs
+       (map :key)
+       set))
+
+(deftest delete-send-pulse-job-on-migrate-down-test
+  (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
+    (migrate!)
+    (pulse-channel-test/with-send-pulse-setup!
+      (let [user-id  (:id (new-instance-with-default :core_user))
+            pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
+            pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+        ;; trigger this so we schedule a trigger for send-pulse
+        (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+        (testing "sanity check that we have a send pulse trigger and 2 jobs"
+          (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+          (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                   "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                 (scheduler-job-keys))))
+        (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
+          (migrate! :down 49)
+          (is (= #{} (scheduler-job-keys)))
+          (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+        (testing "the init-send-pulse-triggers job should be re-run after migrate up"
+          (migrate!)
+          ;; we need to redef this so quarzt trigger that run on a different thread use the same db connection as this test
+          (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+            ;; simulate starting MB after migrate up, which will trigger this function
+            (task/init! ::task.send-pulses/SendPulses)
+            ;; wait a bit for the InitSendPulseTriggers to run
+            (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                     :done? #(= 1 %)})
+            (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
+              (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                     (pulse-channel-test/send-pulse-triggers pulse-id)))
+              (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                       "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                     (scheduler-job-keys))))))))))

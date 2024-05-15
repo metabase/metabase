@@ -84,7 +84,7 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
 
   render() {
     return (
-      <div className="p1 pt2">
+      <div className={cx(CS.p1, CS.pt2)}>
         <section>
           {SHORTCUTS.map((s, index) => (
             <span
@@ -176,7 +176,7 @@ export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
     return (
-      <div className="px1" style={{ maxWidth: 300 }}>
+      <div className={CS.px1} style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
           filter={
             DATE_MBQL_FILTER_MAPPING[value]

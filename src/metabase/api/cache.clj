@@ -4,30 +4,13 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.models.cache-config :as cache-config]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;; Data shape
-
-(defn row->config
-  "Transform from how cache config is stored to how it's used/exposed in the API"
-  [row]
-  {:model    (:model row)
-   :model_id (:model_id row)
-   :strategy (assoc (:config row) :type (:strategy row))})
-
-(defn config->row
-  "Transform cache config from API form into db storage from"
-  [{:keys [model model_id strategy]}]
-  {:model    model
-   :model_id model_id
-   :strategy (:type strategy)
-   :config   (dissoc strategy :type)})
 
 (defn- drop-internal-fields
   "See `metabase-enterprise.cache.strategies/CacheStrategy`"
@@ -61,7 +44,6 @@
   []
   (drop-internal-fields (CacheStrategy)))
 
-(def ^:private CachingModel [:enum "root" "database" "dashboard" "question"])
 
 (defn- assert-valid-models [model ids premium?]
   (cond
@@ -80,72 +62,71 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
-(defn- audit-caching-change! [id prev new]
-  (events/publish-event!
-   :event/cache-config-update
-   {:user-id  api/*current-user-id*
-    :model    :model/CacheConfig
-    :model-id id
-    :details  {:model     (or (:model prev) (:model new))
-               :model-id  (or (:model_id prev) (:model_id new))
-               :old-value (dissoc prev :model :model_id)
-               :new-value (dissoc new :model :model_id)}}))
-
 (api/defendpoint GET "/"
   "Return cache configuration."
-  [:as {{:strs [model collection]
+  [:as {{:strs [model collection id]
          :or   {model "root"}}
         :query-params}]
-  {model      (ms/QueryVectorOf CachingModel)
+  {model      (ms/QueryVectorOf cache-config/CachingModel)
    ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
-   collection [:maybe ms/PositiveInt]}
+   collection [:maybe ms/PositiveInt]
+   id         [:maybe ms/PositiveInt]}
   (validation/check-has-application-permission :setting)
-  (let [items (if (premium-features/enable-cache-granular-controls?)
-                (t2/select :model/CacheConfig
-                           :model [:in model]
-                           {:left-join [:report_card      [:and
-                                                           [:= :model [:inline "question"]]
-                                                           [:= :model_id :report_card.id]
-                                                           [:= :report_card.collection_id collection]]
-                                        :report_dashboard [:and
-                                                           [:= :model [:inline "dashboard"]]
-                                                           [:= :model_id :report_dashboard.id]
-                                                           [:= :report_dashboard.collection_id collection]]]
-                            :where     [:case
-                                        [:= :model [:inline "question"]]  [:!= :report_card.id nil]
-                                        [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
-                                        :else                             true]})
-                (t2/select :model/CacheConfig :model "root"))]
-    {:data (mapv row->config items)}))
+  (when (and (not (premium-features/enable-cache-granular-controls?))
+             (not= model ["root"]))
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  {:data (cache-config/get-list model collection id)})
 
 (api/defendpoint PUT "/"
   "Store cache configuration."
   [:as {{:keys [model model_id strategy] :as config} :body}]
-  {model    CachingModel
+  {model    cache-config/CachingModel
    model_id ms/IntGreaterThanOrEqualToZero
    strategy (CacheStrategyAPI)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
-  (t2/with-transaction [_tx]
-    (let [data    (config->row config)
-          current (t2/select-one :model/CacheConfig :model model :model_id model_id {:for :update})]
-      {:id (u/prog1 (mdb.query/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
-                                                 (constantly data))
-             (audit-caching-change! <> current data))})))
+  {:id (cache-config/store! api/*current-user-id* config)})
 
 (api/defendpoint DELETE "/"
-  "Delete cache configuration."
+  "Delete cache configurations."
   [:as {{:keys [model model_id]} :body}]
-  {model    CachingModel
+  {model    cache-config/CachingModel
    model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
-  (when-let [current (seq (t2/select :model/CacheConfig :model model :model_id [:in model_id]))]
-    (t2/delete! :model/CacheConfig :model model :model_id [:in model_id])
-    (doseq [item current]
-      (audit-caching-change! (:id item)
-                             (select-keys item [:strategy :config :model :model_id])
-                             nil)))
+  (cache-config/delete! api/*current-user-id* model model_id)
   nil)
+
+
+(api/defendpoint POST "/invalidate"
+  "Invalidate cache entries.
+
+  Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
+  supplied).
+
+  `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
+  touching all nested configurations, or you want your invalidation to trickle down to every card."
+  [include database dashboard question]
+  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
+   database  [:maybe {:description "A database id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   dashboard [:maybe {:description "A dashboard id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   question  [:maybe {:description "A question id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
+
+  (when-not (premium-features/enable-cache-granular-controls?)
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+
+  (let [cnt (cache-config/invalidate! {:databases       database
+                                       :dashboards      dashboard
+                                       :questions       question
+                                       :with-overrides? (= include :overrides)})]
+    {:status (if (= cnt -1) 404 200)
+     :body   {:count   cnt
+              :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
+                         [true -1]  (tru "Could not find a question for the criteria you specified.")
+                         [true 0]   (tru "No cached results to invalidate.")
+                         [true 1]   (trun "Invalidated a cached result." "Invalidated {0} cached results." cnt)
+                         [false -1] (tru "Nothing to invalidate.")
+                         [false 0]  (tru "No cache configuration to invalidate.")
+                         [false 1]  (trun "Invalidated cache configuration." "Invalidated {0} cache configurations." cnt))}}))
 
 (api/define-routes)

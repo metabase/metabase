@@ -7,7 +7,7 @@ import type {
   ColumnMetadata,
   Join,
   MetadataProvider,
-  MetricMetadata,
+  LegacyMetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
@@ -76,7 +76,12 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | LegacyMetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
@@ -100,4 +105,11 @@ export function canRun(query: Query): boolean {
 
 export function canSave(query: Query): boolean {
   return ML.can_save(query);
+}
+
+export function asReturned(
+  query: Query,
+  stageIndex: number,
+): { query: Query; stageIndex: number } {
+  return ML.as_returned(query, stageIndex);
 }

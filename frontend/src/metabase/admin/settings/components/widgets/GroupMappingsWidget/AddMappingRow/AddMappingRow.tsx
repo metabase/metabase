@@ -71,7 +71,7 @@ function AddMappingRow({
           <div>
             <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
             <Button
-              className="ml2"
+              className={CS.ml2}
               type="submit"
               primary={!!isMappingNameUnique}
               disabled={!isMappingNameUnique}

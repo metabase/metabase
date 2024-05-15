@@ -97,11 +97,139 @@ describe("ParameterSidebar", () => {
 
     expect(onChangeQueryType).toHaveBeenCalledWith("none");
   });
+
+  describe("location", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "string/=",
+          sectionId: "location",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Location")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+    });
+  });
+
+  describe("id", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "id",
+          sectionId: "id",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("ID")).toBeInTheDocument();
+    });
+
+    it("should not render operator", () => {
+      expect(screen.getAllByDisplayValue("id").length).toBe(1);
+    });
+  });
+
+  describe("string", () => {
+    describe("smoke test", () => {
+      beforeEach(() => {
+        setup({
+          parameter: createMockUiParameter({
+            type: "string/=",
+            sectionId: "string",
+          }),
+        });
+      });
+
+      it("should render type", () => {
+        expect(
+          screen.getByDisplayValue("Text or Category"),
+        ).toBeInTheDocument();
+      });
+
+      it("should render operator", () => {
+        expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+      });
+    });
+
+    it.each([
+      "string/=",
+      "string/!=",
+      "string/contains",
+      "string/does-not-contain",
+      "string/starts-with",
+      "string/ends-with",
+    ])(
+      "should be able to toggle multiple values settings for `%s` operator",
+      async type => {
+        const { onChangeIsMultiSelect } = setup({
+          parameter: createMockUiParameter({
+            type,
+            sectionId: "string",
+          }),
+        });
+
+        expect(screen.getByText("People can pick")).toBeInTheDocument();
+        expect(
+          screen.getByRole("radio", { name: "Multiple values" }),
+        ).toBeChecked();
+        await userEvent.click(
+          screen.getByRole("radio", { name: "A single value" }),
+        );
+        expect(onChangeIsMultiSelect).toHaveBeenCalledWith(false);
+      },
+    );
+  });
+
+  describe("date", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "date/single",
+          sectionId: "date",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Time")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Single Date")).toBeInTheDocument();
+    });
+  });
+
+  describe("number", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "number",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Number")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
+    });
+  });
 });
 
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
+  const onChangeIsMultiSelect = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -109,14 +237,16 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       parameter={parameter}
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
+      onChangeType={jest.fn()}
       onChangeDefaultValue={jest.fn()}
-      onChangeIsMultiSelect={jest.fn()}
+      onChangeIsMultiSelect={onChangeIsMultiSelect}
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
       onChangeRequired={jest.fn()}
+      hasMapping={false}
     />,
   );
 
-  return { onChangeQueryType, onChangeName };
+  return { onChangeQueryType, onChangeName, onChangeIsMultiSelect };
 };

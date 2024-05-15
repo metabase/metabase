@@ -93,11 +93,11 @@
   (for [db dbs]
     (assoc db
            :native_permissions
-           (if (data-perms/user-has-permission-for-database?
-                api/*current-user-id*
-                :perms/native-query-editing
-                :yes
-                (u/the-id db))
+           (if (= :query-builder-and-native
+                  (data-perms/full-db-permission-for-user
+                   api/*current-user-id*
+                   :perms/create-queries
+                   (u/the-id db)))
              :write
              :none))))
 
@@ -160,27 +160,27 @@
            xform)
      (completing conj #(t2/hydrate % :collection))
      []
-     (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
-                                            [{:select   [:status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :moderated_item_id :report_card.id]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1}
-                                             :moderated_status]]
-                                 :from     [:report_card]
-                                 :where    (into [:and
-                                                  [:not= :result_metadata nil]
-                                                  [:= :archived false]
-                                                  [:= :type (u/qualified-name card-type)]
-                                                  [:in :database_id ids-of-dbs-that-support-source-queries]
-                                                  (collection/visible-collection-ids->honeysql-filter-clause
-                                                   (collection/permissions-set->visible-collection-ids
-                                                    @api/*current-user-permissions-set*))]
-                                                 additional-constraints)
-                                 :order-by [[:%lower.name :asc]]}))))
+     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                     [{:select   [:status]
+                                       :from     [:moderation_review]
+                                       :where    [:and
+                                                  [:= :moderated_item_type "card"]
+                                                  [:= :moderated_item_id :report_card.id]
+                                                  [:= :most_recent true]]
+                                       :order-by [[:id :desc]]
+                                       :limit    1}
+                                      :moderated_status]]
+                          :from     [:report_card]
+                          :where    (into [:and
+                                           [:not= :result_metadata nil]
+                                           [:= :archived false]
+                                           [:= :type (u/qualified-name card-type)]
+                                           [:in :database_id ids-of-dbs-that-support-source-queries]
+                                           (collection/visible-collection-ids->honeysql-filter-clause
+                                            (collection/permissions-set->visible-collection-ids
+                                             @api/*current-user-permissions-set*))]
+                                          additional-constraints)
+                          :order-by [[:%lower.name :asc]]}))))
 
 (mu/defn ^:private source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -313,9 +313,9 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
-  {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
-   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
+(mu/defn ^:private expanded-schedules [db :- (ms/InstanceOf Database)]
+  {:metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))
+   :cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -339,6 +339,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
@@ -452,15 +453,14 @@
   []
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields
-                                     :has_field_values
-                                     [:target :has_field_values]]
-                            :segments
-                            :metrics]))
+               (t2/hydrate
+                (if skip-fields?
+                  [:tables :segments :metrics]
+                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -497,15 +497,17 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model remove_inactive]
+  [id include_hidden include_editable_data_model remove_inactive skip_fields]
   {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanString]
-   include_editable_data_model [:maybe ms/BooleanString]
-   remove_inactive             [:maybe ms/BooleanString]}
+   include_hidden              [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]
+   remove_inactive             [:maybe ms/BooleanValue]
+   skip_fields                 [:maybe ms/BooleanValue]}
   (db-metadata id
-               (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)
-               (Boolean/parseBoolean remove_inactive)))
+               include_hidden
+               include_editable_data_model
+               remove_inactive
+               skip_fields))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -690,7 +692,7 @@
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
-       :schema        (:schema table)})))
+       :schema        (:schema table "")})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
@@ -785,7 +787,7 @@
    engine            DBEngineString
    details           ms/Map
    is_full_sync      [:maybe {:default true} ms/BooleanValue]
-   is_on_demand      [:maybe ms/BooleanValue]
+   is_on_demand      [:maybe {:default false} ms/BooleanValue]
    schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
    auto_run_queries  [:maybe :boolean]
    cache_ttl         [:maybe ms/PositiveInt]
@@ -807,13 +809,11 @@
                                         :engine       engine
                                         :details      details-or-error
                                         :is_full_sync is_full_sync
-                                        :is_on_demand (boolean is_on_demand)
+                                        :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
-                                       (sync.schedules/schedule-map->cron-strings
-                                        (if (:let-user-control-scheduling details)
-                                          (sync.schedules/scheduling schedules)
-                                          (sync.schedules/default-randomized-schedule)))
+                                       (when schedules
+                                         (sync.schedules/schedule-map->cron-strings schedules))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
@@ -848,7 +848,7 @@
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
-  (sample-data/add-sample-database!)
+  (sample-data/extract-and-sync-sample-database!)
   (t2/select-one Database :is_sample true))
 
 
@@ -933,60 +933,51 @@
         conn-error        (when (or details-changed? engine-changed?)
                             (test-database-connection (or engine (:engine existing-database))
                                                       (or details (:details existing-database))))
-        full-sync?        (some-> is_full_sync boolean)]
+        full-sync?        (some-> is_full_sync boolean)
+        on-demand?        (boolean is_on_demand)]
     (if conn-error
       ;; failed to connect, return error
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
       (do
-        ;; TODO - is there really a reason to let someone change the engine on an existing database?
-        ;;       that seems like the kind of thing that will almost never work in any practical way
-        ;; TODO - this means one cannot unset the description. Does that matter?
-        (t2/update! Database id
+       ;; TODO - is there really a reason to let someone change the engine on an existing database?
+       ;;       that seems like the kind of thing that will almost never work in any practical way
+       ;; TODO - this means one cannot unset the description. Does that matter?
+       (t2/update! Database id
+                   (merge
                     (m/remove-vals
-                      nil?
-                      (merge
-                        {:name               name
-                         :engine             engine
-                         :details            details
-                         :refingerprint      refingerprint
-                         :is_full_sync       full-sync?
-                         :is_on_demand       (boolean is_on_demand)
-                         :description        description
-                         :caveats            caveats
-                         :points_of_interest points_of_interest
-                         :auto_run_queries   auto_run_queries}
-                        ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                        (when (seq settings)
-                          {:settings (into {}
-                                           (remove (fn [[_k v]] (nil? v)))
-                                           (merge (:settings existing-database) settings))})
-                        (cond
-                          ;; transition back to metabase managed schedules. the schedule
-                          ;; details, even if provided, are ignored. database is the
-                          ;; current stored value and check against the incoming details
-                          (and (get-in existing-database [:details :let-user-control-scheduling])
-                               (not (:let-user-control-scheduling details)))
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+                     nil?
+                     (merge
+                      {:name               name
+                       :engine             engine
+                       :details            details
+                       :refingerprint      refingerprint
+                       :is_full_sync       full-sync?
+                       :is_on_demand       on-demand?
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest
+                       :auto_run_queries   auto_run_queries}
+                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                      (when (seq settings)
+                        {:settings (into {}
+                                         (remove (fn [[_k v]] (nil? v)))
+                                         (merge (:settings existing-database) settings))})))
+                    ;; cache_field_values_schedule can be nil
+                    (when schedules
+                      (sync.schedules/schedule-map->cron-strings schedules))))
+       ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+       ;; with the advanced-config feature enabled.
+       (when (premium-features/enable-cache-granular-controls?)
+         (t2/update! Database id {:cache_ttl cache_ttl}))
 
-                          ;; if user is controlling schedules
-                          (:let-user-control-scheduling details)
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
-        ;; do nothing in the case that user is not in control of
-        ;; scheduling. leave them as they are in the db
-
-        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-        ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! Database id {:cache_ttl cache_ttl}))
-
-        (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update {:object db
-                                                         :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
-          ;; return the DB with the expanded schedules back in place
-          (add-expanded-schedules db))))))
+       (let [db (t2/select-one Database :id id)]
+         (events/publish-event! :event/database-update {:object db
+                                                        :user-id api/*current-user-id*
+                                                        :previous-object existing-database})
+         ;; return the DB with the expanded schedules back in place
+         (add-expanded-schedules db))))))
 
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
@@ -1105,10 +1096,14 @@
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
-                                                           :perms/data-access
-                                                           database-id
-                                                           schema-name))
+   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                                 :perms/view-data
+                                                                 database-id))
+        (contains? #{:query-builder :query-builder-and-native}
+                   (data-perms/schema-permission-for-user api/*current-user-id*
+                                                          :perms/create-queries
+                                                          database-id
+                                                          schema-name)))
    (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"

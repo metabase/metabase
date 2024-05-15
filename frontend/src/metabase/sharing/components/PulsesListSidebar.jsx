@@ -57,7 +57,7 @@ function _PulsesListSidebar({
               name="add"
               className={cx(
                 CS.textBrand,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
@@ -72,7 +72,7 @@ function _PulsesListSidebar({
               name="close"
               className={cx(
                 CS.textLight,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
@@ -83,7 +83,7 @@ function _PulsesListSidebar({
           </Tooltip>
         </SidebarActions>
       </div>
-      <div className="my2 mx4">
+      <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map(pulse => {
           const canEdit = canEditPulse(pulse, formInput);
 
@@ -98,8 +98,8 @@ function _PulsesListSidebar({
               }
             >
               <div
-                className={cx("px3 py2", CS.hoverParent, CS.hoverInherit, {
-                  "text-white-hover": canEdit,
+                className={cx(CS.px3, CS.py2, CS.hoverParent, CS.hoverInherit, {
+                  [CS.textWhiteHover]: canEdit,
                 })}
               >
                 <div
@@ -116,7 +116,7 @@ function _PulsesListSidebar({
                         ? "mail"
                         : "slack"
                     }
-                    className="mr1"
+                    className={CS.mr1}
                     style={{ paddingBottom: "5px" }}
                     size={16}
                   />
@@ -201,7 +201,7 @@ function PulseDetails({ pulse, parameters }) {
   const filterText = buildFilterText(pulse, parameters);
 
   return (
-    <div className={cx("text-medium", CS.hoverChild)}>
+    <div className={cx(CS.textMedium, CS.hoverChild)}>
       <ul
         className={cx(
           CS.flex,
@@ -226,11 +226,16 @@ function PulseDetails({ pulse, parameters }) {
           >
             <Icon
               name="group"
-              className={cx("text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
-              className={cx("ml1 text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -252,11 +257,16 @@ function PulseDetails({ pulse, parameters }) {
           >
             <Icon
               name="filter"
-              className={cx("text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
-              className={cx("ml1 text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {filterText}

@@ -19,7 +19,7 @@ describe("issue 20044", () => {
 
       visitQuestion(id);
 
-      cy.get(".cellData").contains("1");
+      cy.get("[data-testid=cell-data]").contains("1");
       cy.findByText("Explore results").should("not.exist");
     });
   });

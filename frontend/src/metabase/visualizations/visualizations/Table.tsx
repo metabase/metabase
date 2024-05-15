@@ -420,7 +420,7 @@ class Table extends Component<TableProps, TableState> {
             CS.flex,
             CS.flexColumn,
             CS.layoutCentered,
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img
@@ -430,7 +430,7 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
           <span
             className={cx(CS.h4, CS.textBold)}

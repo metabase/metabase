@@ -16,6 +16,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -204,9 +205,9 @@
                                           (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                        (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                             :from            [:report_card]
+                                                             :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -469,7 +470,8 @@
       true)))
 
 (defn- post-process-card-row [row]
-  (-> row
+  (-> (t2/instance :model/Card row)
+      (t2/hydrate :can_write)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :collection_preview api/bit->boolean)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
@@ -501,12 +503,15 @@
   [_ collection options]
   (dashboard-query collection options))
 
+(defn- post-process-dashboard [dashboard]
+  (-> (t2/instance :model/Dashboard dashboard)
+      (t2/hydrate :can_write)
+      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+              :dataset_query :table_id :query_type :is_upload)))
+
 (defmethod post-process-collection-children :dashboard
   [_ _ rows]
-  (map #(dissoc %
-                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query :table_id :query_type :is_upload)
-       rows))
+  (map post-process-dashboard rows))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -558,11 +563,11 @@
                   (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                 {:dataset #{}
                  :card    #{}}
-                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                            :from            [:report_card]
-                                            :where           [:and
-                                                              [:= :archived false]
-                                                              [:in :collection_id descendant-collection-ids]]}))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
@@ -634,6 +639,7 @@
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (map #(assoc % :collection_id (:id collection)))
        (map remove-unwanted-keys)
        (group-by :model)
        (into []
@@ -856,17 +862,19 @@
   [id models archived pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
-   archived       [:maybe ms/BooleanString]
+   archived       [:maybe ms/BooleanValue]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
-  (let [model-kwds (set (map keyword (u/one-or-many models)))]
-    (collection-children (api/read-check Collection id)
-                         {:models       model-kwds
-                          :archived?    (Boolean/parseBoolean archived)
-                          :pinned-state (keyword pinned_state)
-                          :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                                         (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+  (let [model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check Collection id)]
+    (u/prog1 (collection-children collection
+                                  {:models       model-kwds
+                                   :archived?    archived
+                                   :pinned-state (keyword pinned_state)
+                                   :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                                                  (or (some-> sort_direction normalize-sort-choice) :asc)]})
+      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -910,7 +918,7 @@
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
-   archived       [:maybe ms/BooleanString]
+   archived       [:maybe ms/BooleanValue]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
@@ -923,7 +931,7 @@
     (collection-children
      root-collection
      {:models       model-kwds
-      :archived?    (Boolean/parseBoolean archived)
+      :archived?    archived
       :pinned-state (keyword pinned_state)
       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
@@ -950,16 +958,16 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
-  (first
-    (t2/insert-returning-instances!
-      Collection
-      (merge
-        {:name        name
-         :description description
-         :authority_level authority_level
-         :namespace   namespace}
-        (when parent_id
-          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (merge
+             {:name            name
+              :description     description
+              :authority_level authority_level
+              :namespace       namespace}
+             (when parent_id
+               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
+    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
@@ -1046,7 +1054,8 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notifications! {:collection-before-update collection-before-update
                                          :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*}))
+                                         :actor                    @api/*current-user*})
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

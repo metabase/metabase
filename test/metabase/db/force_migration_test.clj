@@ -37,8 +37,7 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (with-redefs [liquibase/changelog-file "force-migration.yaml"]
-        (let [db-type      (mdb/db-type)
-              data-source  (mdb/data-source)
+        (let [data-source  (mdb/data-source)
               database     (->> (if (instance? java.sql.Connection conn)
                                   conn
                                   (.getConnection ^javax.sql.DataSource conn))
@@ -46,7 +45,7 @@
                                 (#'liquibase/database))
               lock-service (.getLockService (LockServiceFactory/getInstance) database)]
           (.acquireLock lock-service)
-          (db.setup/migrate! db-type data-source :force)
+          (db.setup/migrate! data-source :force)
 
           (testing "Make sure the migrations that intended to succeed are succeed"
             (is (= ["1" "2" "5"]
