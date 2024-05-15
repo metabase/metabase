@@ -9,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { MigrationError } from "./MigrationError";
 import { MigrationInProgress } from "./MigrationInProgress";
@@ -42,7 +43,6 @@ export const CloudPanel = ({
     error,
   } = useGetCloudMigrationQuery(undefined, {
     refetchOnMountOrArgChange: true,
-    skipPollingIfUnfocused: true,
     pollingInterval,
   });
 
