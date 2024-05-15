@@ -33,8 +33,14 @@ import timeseriesXScale from "./timeseries-x-scale.json";
 import unaggregatedLinear from "./unaggregated-linear.json";
 import unaggregatedOrdinal from "./unaggregated-ordinal.json";
 import unaggregatedTimeseries from "./unaggregated-timeseries.json";
+import yAxisAutoCompactWithDataLabels from "./y-axis-compact-with-data-labels.json";
+import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.json";
+import yAxisFullWithDataLabels from "./y-axis-full-with-data-labels.json";
 
 export const data = {
+  yAxisCompactWithoutDataLabels,
+  yAxisAutoCompactWithDataLabels,
+  yAxisFullWithDataLabels,
   timeseriesXScale,
   ordinalXScale,
   timeseriesXScaleUnsorted,
