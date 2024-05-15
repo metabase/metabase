@@ -37,7 +37,6 @@
    [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
 
 (def Dashboard
@@ -733,36 +732,3 @@
                                       (assoc :card_id card_id))))))
 
     {}))
-
-(mi/define-batched-hydration-method can-restore
-  :can_restore
-  "Efficiently hydrate the `:can_restore` of a sequence of dashboards."
-  [dashboards]
-  (when (seq dashboards)
-    (let [dash-id->coll (into {}
-                              (map (juxt :dashboard_id identity))
-                              (mdb.query/query {:select    [[:dashboard.id :dashboard_id]
-                                                            [:dashboard.archived :dashboard_archived]
-                                                            [:collection.archived :collection_archived]
-                                                            [:collection.id :collection_id]
-                                                            :collection.namespace
-                                                            :dashboard.trashed_from_collection_id]
-                                                :from      [[:report_dashboard :dashboard]]
-                                                :left-join [[:collection :collection] [:= :collection.id :dashboard.trashed_from_collection_id]]
-                                                :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
-      (for [dashboard dashboards]
-        (assoc dashboard :can_restore (let [coll-info (dash-id->coll (u/the-id dashboard))]
-                                        (and
-                                         ;; the dashboard is archived
-                                         (:dashboard_archived coll-info)
-                                         ;; the collection we'll restore to exists
-                                         (not (and (nil? (:collection_id coll-info))
-                                                   (not (nil? (:trashed_from_collection_id coll-info)))))
-                                         ;; the collection is NOT archived
-                                         (not (:collection_archived coll-info))
-                                         ;; we have perms on the collection
-                                         (mi/can-write? (t2.instance/instance :model/Collection
-                                                                              (if (nil? (:collection_id coll-info))
-                                                                                collection/root-collection
-                                                                                {:id        (:collection_id coll-info)
-                                                                                 :namespace (:namespace coll-info)}))))))))))

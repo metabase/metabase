@@ -95,6 +95,8 @@
   [_original-model _k]
   :model/Collection)
 
+(methodical/defmethod t2/model-for-automagic-hydration [:default :trashed_from_collection] [_original-model _k] :model/Collection)
+
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
@@ -1456,16 +1458,41 @@
      (annotate-collections child-type->parent-ids collections))))
 
 (mi/define-batched-hydration-method can-restore
+  :can_restore
+  "Efficiently hydrate the `:can_restore` of a sequence of items with a `trashed_from_collection_id`."
+  [items]
+  (for [item (t2/hydrate items :trashed_from_collection)
+        :let [trashed-from-coll (:trashed_from_collection item)]]
+    (assoc item :can_restore (and
+                              ;; the item is directly in the trash (it was moved to the trash independently, not as
+                              ;; part of a collection)
+                              (= (:collection_id item) (trash-collection-id))
+
+                              ;; EITHER:
+                              (or
+                               ;; the item was trashed from the root collection
+                               (nil? (:trashed_from_collection_id item))
+                               ;; or the collection we'll restore to actually exists.
+                               (some? trashed-from-coll))
+
+                              ;; the collection we'll restore to is not archived
+                              (not (:archived trashed-from-coll))
+
+                              ;; we have perms on the collection
+                              (mi/can-write? (or trashed-from-coll root-collection))))))
+
+(mi/define-batched-hydration-method collection-can-restore
   :collection/can_restore
-  "Efficiently hydrate the `:can_restore` property of a sequence of Collections."
+  "Collections have a `trashed_from_location` rather than a `trashed_from_collection_id`. Efficiently hydrate the
+  `:can_restore` property of a sequence of Collections."
   [colls]
   (when (seq colls)
-    ;; efficiently create a map of [coll-id]->[collection it was trashed from]
-    (let [ids-to-fetch      (->> colls
-                            (remove collection.root/is-root-collection?)
-                            (filter :archived)
-                            (map u/the-id))
-          coll-id->to-coll* (if (seq ids-to-fetch)
+    (let [;; skip any collections that aren't archived, or are the root collection
+          ids-to-fetch      (->> colls
+                                 (remove collection.root/is-root-collection?)
+                                 (filter :archived)
+                                 (map u/the-id))
+          coll-id->restore-coll* (if (seq ids-to-fetch)
                               (into {}
                                     (map (juxt :unarchiving_coll_id identity))
                                     (t2/select :model/Collection
@@ -1477,15 +1504,15 @@
                                                                                               :coll.trashed_from_location]]
                                                 :where     [:in :coll.id (into #{} ids-to-fetch)]}))
                               {})
-          ;; given a collection, return the collection we will be restoring TOO.
-          coll->to-coll  (fn [coll]
+          ;; given a collection, return the collection we will be restoring TO.
+          coll->restore-coll  (fn [coll]
                            (when (not (or (collection.root/is-root-collection? coll)
                                           (not (:archived coll))))
-                             (let [restore-destination (coll-id->to-coll* (u/the-id coll))]
+                             (let [restore-destination (coll-id->restore-coll* (u/the-id coll))]
                                (when (:id restore-destination)
                                  restore-destination))))]
       (for [coll colls]
-        (assoc coll :can_restore (if-let [restore-destination (coll->to-coll coll)]
+        (assoc coll :can_restore (if-let [restore-destination (coll->restore-coll coll)]
                                    (perms/set-has-full-permissions-for-set?
                                     @api/*current-user-permissions-set*
                                     (perms-for-moving coll restore-destination))

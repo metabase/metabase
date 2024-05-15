@@ -51,7 +51,6 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]
    [toucan2.tools.hydrate :as t2.hydrate])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))
@@ -981,36 +980,3 @@ saved later when it is ready."
   (merge (select-keys card [:name :description :database_id :table_id])
           ;; Use `model` instead of `dataset` to mirror product terminology
          {:model? (= (keyword card-type) :model)}))
-
-(mi/define-batched-hydration-method can-restore
-  :card/can_restore
-  "Efficiently hydrate the `:can_restore` of a sequence of cards."
-  [cards]
-  (when (seq cards)
-    (let [card-id->coll (into {}
-                              (map (juxt :card_id identity))
-                              (mdb.query/query {:select    [[:card.id :card_id]
-                                                            [:card.archived :card_archived]
-                                                            [:collection.archived :collection_archived]
-                                                            [:collection.id :collection_id]
-                                                            :collection.namespace
-                                                            :card.trashed_from_collection_id]
-                                                :from      [[:report_card :card]]
-                                                :left-join [[:collection :collection] [:= :collection.id :card.trashed_from_collection_id]]
-                                                :where     [:in :card.id (into #{} (map u/the-id) cards)]}))]
-      (for [card cards]
-        (assoc card :can_restore (let [coll-info (card-id->coll (u/the-id card))]
-                                        (and
-                                         ;; the card is archived
-                                         (:card_archived coll-info)
-                                         ;; the collection we'll restore to exists
-                                         (not (and (nil? (:collection_id coll-info))
-                                                   (not (nil? (:trashed_from_collection_id coll-info)))))
-                                         ;; the collection is NOT archived
-                                         (not (:collection_archived coll-info))
-                                         ;; we have perms on the collection
-                                         (mi/can-write? (t2.instance/instance :model/Collection
-                                                                              (if (nil? (:collection_id coll-info))
-                                                                                collection/root-collection
-                                                                                {:id        (:collection_id coll-info)
-                                                                                 :namespace (:namespace coll-info)}))))))))))
