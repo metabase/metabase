@@ -7,7 +7,10 @@
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
    [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])))
+   #?@(:clj [[metabase.test :as mt]]))
+  #?(:clj (:import [java.time Month DayOfWeek])))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -457,3 +460,21 @@
     2 1250.04
     1 1250.0
     0 1250.0))
+
+#?(:clj
+   (deftest ^:parallel case-enum-test
+     (testing "case does not work"
+       (is (= 3 (case Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "case-enum works"
+       (is (= 2 (u/case-enum Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "checks for type of cases"
+       (is (thrown? Exception #"`case-enum` only works.*"
+                    (u/case-enum Month/JANUARY
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))
