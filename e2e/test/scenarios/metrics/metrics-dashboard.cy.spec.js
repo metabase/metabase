@@ -18,6 +18,7 @@ import {
   restore,
   saveDashboard,
   sidebar,
+  undoToastList,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -163,6 +164,24 @@ describe("scenarios > metrics > dashboard", () => {
     });
     popover().findByText("See these Orders").click();
     assertQueryBuilderRowCount(445);
+  });
+
+  it("should be able to replace a card with a metric", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    getDashboardCard().realHover().findByLabelText("Replace").click();
+    modal().within(() => {
+      cy.findByText("Metrics").click();
+      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+    });
+    undoToastList().findByText("Question replaced").should("be.visible");
+    getDashboardCard().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByText("18,760").should("be.visible");
+    });
+    getDashboardCard().realHover().findByLabelText("Replace").click();
+    modal().findByText("Orders").click();
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {

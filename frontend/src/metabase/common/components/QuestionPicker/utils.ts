@@ -5,11 +5,12 @@ import type {
   CollectionId,
   ListCollectionItemsRequest,
   CollectionItemModel,
+  Card,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
 
-import type { QuestionPickerItem } from "./types";
+import type { QuestionPickerItem, QuestionPickerValue } from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -102,4 +103,18 @@ export const isFolder = (
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
         .length > 0)
   );
+};
+
+export const getQuestionPickerValue = ({
+  id,
+  type,
+}: Pick<Card, "id" | "type">): QuestionPickerValue => {
+  switch (type) {
+    case "question":
+      return { id, model: "card" };
+    case "model":
+      return { id, model: "dataset" };
+    case "metric":
+      return { id, model: "metric" };
+  }
 };

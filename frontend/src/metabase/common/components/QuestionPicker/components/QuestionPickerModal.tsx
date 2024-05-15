@@ -12,6 +12,7 @@ import type {
   QuestionPickerOptions,
   QuestionPickerModel,
   QuestionPickerValueItem,
+  QuestionPickerValue,
 } from "../types";
 
 import {
@@ -24,7 +25,7 @@ interface QuestionPickerModalProps {
   onChange: (item: QuestionPickerValueItem) => void;
   onClose: () => void;
   options?: QuestionPickerOptions;
-  value?: Pick<QuestionPickerItem, "id" | "model">;
+  value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
 }
 
@@ -32,9 +33,11 @@ const canSelectItem = (
   item: QuestionPickerItem | null,
 ): item is QuestionPickerValueItem => {
   return (
-    !!item &&
+    item != null &&
     item.can_write !== false &&
-    (item.model === "card" || item.model === "dataset")
+    (item.model === "card" ||
+      item.model === "dataset" ||
+      item.model === "metric")
   );
 };
 
@@ -44,12 +47,12 @@ const defaultOptions: QuestionPickerOptions = {
 };
 
 export const QuestionPickerModal = ({
-  title = t`Choose a question or model`,
+  title = t`Select a question`,
   onChange,
   onClose,
   value = { model: "collection", id: "root" },
   options = defaultOptions,
-  models = ["card", "dataset"],
+  models = ["card", "dataset", "metric"],
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
@@ -97,6 +100,19 @@ export const QuestionPickerModal = ({
           initialValue={value}
           options={options}
           models={["dataset"]}
+        />
+      ),
+    },
+    {
+      displayName: t`Metrics`,
+      model: "metric",
+      icon: "metric",
+      element: (
+        <QuestionPicker
+          onItemSelect={handleItemSelect}
+          initialValue={value}
+          options={options}
+          models={["metric"]}
         />
       ),
     },

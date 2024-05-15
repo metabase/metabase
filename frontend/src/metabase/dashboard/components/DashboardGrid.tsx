@@ -7,7 +7,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -434,18 +437,13 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     return (
       <QuestionPickerModal
-        onChange={handleSelect}
+        title={t`Pick what you want to replace this with`}
         value={
           replaceCardModalDashCard.card.id
-            ? {
-                id: replaceCardModalDashCard.card.id,
-                model:
-                  replaceCardModalDashCard.card.type === "model"
-                    ? "dataset"
-                    : "card",
-              }
+            ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
+        onChange={handleSelect}
         onClose={handleClose}
       />
     );

@@ -280,9 +280,7 @@ describe("QuestionPickerModal", () => {
   it("should render the modal", async () => {
     await setupModal();
 
-    expect(
-      await screen.findByText(/choose a question or model/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/choose a question/i)).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
@@ -297,9 +295,7 @@ describe("QuestionPickerModal", () => {
       options: { ...defaultOptions, hasConfirmButtons: true },
     });
 
-    expect(
-      await screen.findByText(/choose a question or model/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/choose a question/i)).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
@@ -322,9 +318,7 @@ describe("QuestionPickerModal", () => {
   it("can render a single tab (which hides the tab bar)", async () => {
     await setupModal({ models: ["dataset"] });
 
-    expect(
-      await screen.findByText(/choose a question or model/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/choose a question/i)).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });

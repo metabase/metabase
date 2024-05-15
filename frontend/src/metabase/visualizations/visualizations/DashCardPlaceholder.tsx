@@ -58,6 +58,7 @@ function DashCardPlaceholderInner({
       </Flex>
       {isQuestionPickerOpen && (
         <QuestionPickerModal
+          title={t`Pick what you want to replace this with`}
           value={
             dashboard.collection_id
               ? {
