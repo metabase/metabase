@@ -45,6 +45,7 @@ import histogramTicks45Degrees from "./histogram-ticks-45-degrees.json";
 import histogramTicks90Degrees from "./histogram-ticks-90-degrees.json";
 import imageCutOff37275 from "./image-cut-off-37275.json";
 import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
+import lineChartBrokenDimensionsMetricsSettings from "./line-chart-broken-dimensions-metrics-settings.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
 import lineFullyNullDimension37902 from "./line-fully-null-dimension-37902.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
@@ -174,4 +175,5 @@ export const data = {
   lineUnpinFromZero,
   lineSettings,
   lineReplaceMissingValuesZero,
+  lineChartBrokenDimensionsMetricsSettings,
 };
