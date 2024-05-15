@@ -63,7 +63,10 @@ export const MigrationInProgress = ({
           )}
           <List.Item>{c(`{0} is a link titled "Metabase Store"`)
             .jt`In the meantime, you can go to the ${(
-            <ExternalLink href={checkoutUrl}>{t`Metabase Store`}</ExternalLink>
+            <ExternalLink
+              href={checkoutUrl}
+              key="link"
+            >{t`Metabase Store`}</ExternalLink>
           )} to finish account creation and configuring your new Cloud instance.`}</List.Item>
         </List>
 

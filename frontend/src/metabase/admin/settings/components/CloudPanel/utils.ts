@@ -53,7 +53,7 @@ const defaultPollingIntervalsByState: Record<
   done: undefined,
 };
 
-export const getPollingInterval = (
+export const defaultGetPollingInterval = (
   migration: CloudMigration,
 ): number | undefined => {
   const { progress, state } = migration;
@@ -75,4 +75,8 @@ export const getCheckoutUrl = (migration: CloudMigration) => {
     ? `https://store.metabase.com`
     : `https://store.staging.metabase.com`;
   return `${baseUrl}/checkout?migration-id=${migration.external_id}`;
+};
+
+export const openCheckoutInNewTab = (migration: CloudMigration) => {
+  window.open(getCheckoutUrl(migration), "_blank")?.focus();
 };

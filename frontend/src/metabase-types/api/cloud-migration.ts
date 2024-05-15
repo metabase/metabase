@@ -9,7 +9,7 @@ export type CloudMigrationState =
 
 export type CloudMigration = {
   id: number;
-  external_id: number;
+  external_id: string;
   state: CloudMigrationState;
   progress: number;
   upload_url: string;

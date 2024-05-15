@@ -16,12 +16,21 @@ import { MigrationStart } from "./MigrationStart";
 import { MigrationSuccess } from "./MigrationSuccess";
 import {
   type InternalCloudMigrationState,
-  getCheckoutUrl,
   isInProgressMigration,
+  openCheckoutInNewTab,
+  getStartedVisibleStates,
+  defaultGetPollingInterval,
 } from "./utils";
-import { getStartedVisibleStates, getPollingInterval } from "./utils";
 
-export const CloudPanel = () => {
+interface CloudPanelProps {
+  getPollingInterval: (migration: CloudMigration) => number | undefined;
+  onMigrationStart: (migration: CloudMigration) => void;
+}
+
+export const CloudPanel = ({
+  getPollingInterval = defaultGetPollingInterval,
+  onMigrationStart = openCheckoutInNewTab,
+}: CloudPanelProps) => {
   const dispatch = useDispatch();
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
     undefined,
@@ -33,6 +42,7 @@ export const CloudPanel = () => {
     error,
   } = useGetCloudMigrationQuery(undefined, {
     refetchOnMountOrArgChange: true,
+    skipPollingIfUnfocused: true,
     pollingInterval,
   });
 
@@ -45,7 +55,7 @@ export const CloudPanel = () => {
         setPollingInterval(getPollingInterval(migration));
       }
     },
-    [migration],
+    [migration, getPollingInterval],
   );
 
   useEffect(
@@ -63,7 +73,7 @@ export const CloudPanel = () => {
   const handleCreateMigration = async () => {
     const migration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings({}));
-    window.open(getCheckoutUrl(migration), "_blank")?.focus();
+    onMigrationStart(migration);
   };
 
   return (
@@ -87,6 +97,7 @@ export const CloudPanel = () => {
             <MigrationSuccess
               migration={migration}
               restartMigration={handleCreateMigration}
+              isRestarting={createCloudMigrationResult.isLoading}
             />
           )}
 

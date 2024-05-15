@@ -11,11 +11,13 @@ import { getCheckoutUrl, getMigrationEventTime } from "./utils";
 interface MigrationSuccessProps {
   migration: CloudMigration;
   restartMigration: () => void;
+  isRestarting: boolean;
 }
 
 export const MigrationSuccess = ({
   migration,
   restartMigration,
+  isRestarting,
 }: MigrationSuccessProps) => {
   const uploadedAt = getMigrationEventTime(migration.updated_at);
 
@@ -55,6 +57,7 @@ export const MigrationSuccess = ({
           <Button
             variant="subtle"
             onClick={restartMigration}
+            disabled={isRestarting}
             px="0"
             mt="1rem"
           >{t`Restart the process`}</Button>
