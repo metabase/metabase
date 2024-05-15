@@ -1,4 +1,9 @@
-import { entityPickerModal, getFullName, popover } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  getFullName,
+  popover,
+} from "e2e/support/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
@@ -86,7 +91,7 @@ export const moveOpenedCollectionTo = newParent => {
 
 export function pickEntity({ path, select, tab }) {
   if (tab) {
-    cy.findByRole("tab", { name: tab }).click();
+    entityPickerModalTab(tab).click();
   }
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {

@@ -385,7 +385,7 @@ describe("scenarios > question > new", () => {
       pickEntity({
         path: [myPersonalCollectionName],
         select: true,
-        tab: /Collections/,
+        tab: "Collections",
       });
 
       cy.findByTestId("save-question-modal").button("Save").click();
