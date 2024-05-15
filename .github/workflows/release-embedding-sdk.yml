@@ -104,7 +104,8 @@ jobs:
     needs: test
     uses: ./.github/workflows/uberjar.yml
     with:
-      commit: ${{ env.tag }}
+      # env context only exist within `steps`
+      commit: embedding-sdk-${{ inputs.sdk_version }}
       only_ee: true
     secrets: inherit
 
