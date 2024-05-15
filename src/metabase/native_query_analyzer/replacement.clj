@@ -74,8 +74,8 @@
           replacements))
 
 (defn replace-names
-  "Given a query and a map of renames (with keys `:tables` and `:colums`, as in Macaw), return a new one with the
-  appropriate replacements made."
+  "Given a dataset_query and a map of renames (with keys `:tables` and `:columns`, as in Macaw), return a new inner query
+  with the appropriate replacements made."
   [query renames]
   (let [raw-query    (get-in query [:native :query])
         parsed-query (params.parse/parse raw-query)
