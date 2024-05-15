@@ -298,6 +298,8 @@
     :from      [[(t2/table-name :model/Card) :metric]]
     :where     [:= :metric/type "metric"]}))
 
+(derive :metadata/metric :model/Card)
+
 (t2/define-after-select :metadata/metric
   [metric]
   (let [card (instance->metadata metric :metadata/metric)]
@@ -381,6 +383,10 @@
                :table_id        table-id
                :active          true
                :visibility_type [:not-in #{"sensitive" "retired"}])
+
+
+    :metadata/metric
+    (t2/select :metadata/metric :table_id table-id,:type :metric :archived false)
 
     :metadata/legacy-metric
     (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
