@@ -249,8 +249,8 @@
 
     (testing "send an email if persist-refresh fails"
       (let [email-sent (atom false)]
-       (with-redefs [#'task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
-                                                                                   (reset! email-sent true))]
+       (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
+                                                                                 (reset! email-sent true))]
          (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
                                                     (fn []
                                                       {:error-details ["some-error"]}))
