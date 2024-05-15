@@ -176,7 +176,7 @@ describe("scenarios > question > new", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Second collection");
-        cy.findByText("Third collection").should("exist");
+        cy.findByText("Third collection").should("not.exist");
       });
     });
 
