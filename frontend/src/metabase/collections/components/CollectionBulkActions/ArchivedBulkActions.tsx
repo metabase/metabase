@@ -6,7 +6,6 @@ import { BulkDeleteConfirmModal } from "metabase/archive/components/BulkDeleteCo
 import {
   canDeleteItem,
   canMoveItem,
-  canUnarchiveItem,
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { BulkActionButton } from "metabase/components/BulkActionBar";
@@ -54,8 +53,8 @@ export const ArchivedBulkActions = ({
   const showRestore = isRootTrashCollection(collection);
 
   const canRestore = useMemo(() => {
-    return selected.every(item => canUnarchiveItem(item, collection));
-  }, [selected, collection]);
+    return selected.every(item => item.can_restore);
+  }, [selected]);
 
   const handleBulkRestore = () => {
     const actions = selected.map(item => item.setArchived(false));

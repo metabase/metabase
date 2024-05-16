@@ -5,7 +5,7 @@ import { c, t } from "ttag";
 
 import type {
   OnArchive,
-  OnUnarchive,
+  OnRestore,
   OnDeletePermanently,
   OnCopy,
   OnMove,
@@ -117,7 +117,7 @@ function EntityItemMenu({
   onMove,
   onCopy,
   onArchive,
-  onUnarchive,
+  onRestore,
   onDeletePermanently,
   onToggleBookmark,
   onTogglePreview,
@@ -131,7 +131,7 @@ function EntityItemMenu({
   onMove?: OnMove;
   onCopy?: OnCopy;
   onArchive?: OnArchive;
-  onUnarchive?: OnUnarchive;
+  onRestore?: OnRestore;
   onDeletePermanently?: OnDeletePermanently;
   onToggleBookmark?: OnToggleBookmark;
   onTogglePreview?: OnTogglePreview;
@@ -217,11 +217,11 @@ function EntityItemMenu({
       });
     }
 
-    if (onUnarchive) {
+    if (onRestore) {
       result.push({
         title: t`Restore`,
         icon: "revert",
-        action: onUnarchive,
+        action: onRestore,
       });
     }
 
@@ -252,7 +252,7 @@ function EntityItemMenu({
     onTogglePreview,
     onToggleBookmark,
     onDeletePermanently,
-    onUnarchive,
+    onRestore,
   ]);
   if (actions.length === 0) {
     return null;

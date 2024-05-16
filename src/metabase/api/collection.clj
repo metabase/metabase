@@ -482,7 +482,7 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write)
+      (t2/hydrate :can_write :can_restore)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
@@ -518,7 +518,7 @@
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
       (update :archived api/bit->boolean)
-      (t2/hydrate :can_write)
+      (t2/hydrate :can_write :can_restore)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -628,7 +628,7 @@
       (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
           (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location)
+          (t2/hydrate :can_write :effective_location :collection/can_restore)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -870,7 +870,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :collection/can_restore)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"

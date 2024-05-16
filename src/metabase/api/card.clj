@@ -186,6 +186,7 @@
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
+                    :can_restore
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card

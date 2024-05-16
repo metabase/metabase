@@ -4453,3 +4453,35 @@
                            :crowberto :post 200
                            (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+(deftest can-restore
+  (let [can-restore? (fn [dash-id user]
+                       (:can_restore (mt/user-http-request user :get 200 (str "dashboard/" dash-id))))]
+    (testing "I can restore a simply trashed dashboard"
+
+      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                               :collection_id coll-id}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+        (is (true? (can-restore? dash-id :rasta)))))
+    (testing "I can't restore a trashed dashboard if the coll it was from was trashed"
+      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                               :collection_id coll-id}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+        (is (false? (can-restore? dash-id :rasta)))))
+    (testing "I can't restore a trashed dashboard if the collection it was from was deleted"
+      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                               :collection_id coll-id}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+        (t2/delete! :model/Collection :id coll-id)
+        ;; rasta can no longer view the dashboard at all, because we can't check perms on it
+        (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "dashboard/" dash-id))))
+        ;; even the mighty crowberto can't restore it!
+        (is (false? (can-restore? dash-id :crowberto)))))
+    (testing "I can't restore a trashed dashboard if it isn't archived in the first place"
+      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
+                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                               :collection_id coll-id}]
+        (is (nil? (can-restore? dash-id :crowberto)))))))
