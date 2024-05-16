@@ -2202,7 +2202,12 @@
                                :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection)))))))
+    (testing "and when I can't because its parent was the one that was trashed"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id subcollection))))))))
   (testing "can_restore is correctly populated for collections trashed from the root collection"
     (testing "when I can actually restore it"
       (t2.with-temp/with-temp [:model/Collection collection {:name "A"}]

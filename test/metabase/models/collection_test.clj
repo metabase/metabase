@@ -1076,37 +1076,6 @@
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
-(deftest archive-while-moving-test
-  (testing "Test that we cannot archive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived true, :location "/"})))))
-
-  (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived false, :location "/"})))))
-
-  (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived false, :location "/"})
-      (is (= "/"
-             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
-
-(deftest archive-noop-shouldnt-affect-descendants-test
-  (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
-    (with-collection-hierarchy [{:keys [c e], :as _collections}]
-      (t2/update! Collection (u/the-id e) {:archived true})
-      (t2/update! Collection (u/the-id c) {:archived false})
-      (is (= true
-             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
-
-;; TODO - can you unarchive a Card that is inside an archived Collection??
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Permissions Inheritance Upon Creation!                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+

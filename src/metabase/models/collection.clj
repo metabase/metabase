@@ -753,7 +753,7 @@
       (t2/query-one
        {:update :collection
         :set    {:location              [:replace :location orig-children-location new-children-location]
-                 :trashed_from_location (when archived? (:location collection))
+                 :trashed_from_location nil
                  :archived              archived?}
         :where  [:like :location (str orig-children-location "%")]})
       (doseq [model [:model/Card
@@ -809,9 +809,11 @@
     ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
     ;; Note that if the collection is archived, we check this against the `trashed_from_location`.
     (t2/exists? Collection
-                :id                (first (location-path->ids (if (:archived collection)
-                                                                (:trashed_from_location collection)
-                                                                (:location collection))))
+                :id                (first (location-path->ids
+                                           (or
+                                            (when (:archived collection)
+                                              (:trashed_from_location collection))
+                                            (:location collection))))
                 :personal_owner_id [:not= nil]))))
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
