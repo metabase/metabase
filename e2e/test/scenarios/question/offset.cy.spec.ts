@@ -70,30 +70,43 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Custom column").click();
 
-      popover()
-        .get(".ace_text-input")
-        .type(expression.substring(0, prefixLength));
+      enterCustomColumnDetails({
+        formula: expression.substring(0, prefixLength),
+      });
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      popover()
-        .first()
-        .within(() => {
-          cy.get(".ace_text-input")
-            .type(expression.substring(prefixLength))
-            .blur();
+      enterCustomColumnDetails({
+        formula: expression.substring(prefixLength),
+      });
+      cy.realPress("Tab");
 
-          cy.button("Done").should("be.disabled");
+      popover().within(() => {
+        cy.findByText("OFFSET in a custom expression requires a sort order");
+        cy.button("Done").should("be.disabled");
+        cy.button("Cancel").click();
+      });
 
-          cy.findByPlaceholderText("Something nice and descriptive")
-            .type("My expression")
-            .blur();
+      cy.button("Sort").click();
+      popover().findByText("ID").click();
+      getNotebookStep("expression").icon("add").click();
+      enterCustomColumnDetails({
+        formula: expression,
+      });
+      cy.realPress("Tab");
 
-          cy.button("Done").should("be.enabled");
-        });
+      popover().within(() => {
+        cy.button("Done").should("be.disabled");
+
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .type("My expression")
+          .blur();
+
+        cy.button("Done").should("be.enabled");
+      });
     });
   });
 
@@ -108,19 +121,21 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
       cy.button("Filter").click();
-      popover().within(() => {
-        cy.findByText("Custom Expression").click();
-        cy.get(".ace_text-input").type(expression.substring(0, prefixLength));
+      popover().findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({
+        formula: expression.substring(0, prefixLength),
       });
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      popover().within(() => {
-        cy.get(".ace_text-input")
-          .type(expression.substring(prefixLength))
-          .blur();
+      enterCustomColumnDetails({
+        formula: expression.substring(prefixLength),
+      });
+      cy.realPress("Tab");
 
+      popover().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
@@ -143,9 +158,10 @@ describe("scenarios > question > offset", () => {
       getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().within(() => {
-        cy.findByText("Custom Expression").click();
-        cy.get(".ace_text-input").type(expression.substring(0, prefixLength));
+      popover().findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({
+        formula: expression.substring(0, prefixLength),
       });
 
       cy.log("suggests offset() in aggregation expressions");
@@ -153,21 +169,20 @@ describe("scenarios > question > offset", () => {
         .should("exist")
         .and("have.text", "Offset");
 
-      popover()
-        .first()
-        .within(() => {
-          cy.get(".ace_text-input")
-            .type(expression.substring(prefixLength))
-            .blur();
+      enterCustomColumnDetails({
+        formula: expression.substring(prefixLength),
+      });
+      cy.realPress("Tab");
 
-          cy.button("Done").should("be.disabled");
+      popover().within(() => {
+        cy.button("Done").should("be.disabled");
 
-          cy.findByPlaceholderText("Something nice and descriptive")
-            .type("My expression")
-            .blur();
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .type("My expression")
+          .blur();
 
-          cy.button("Done").should("be.enabled");
-        });
+        cy.button("Done").should("be.enabled");
+      });
     });
 
     it("does not work without a breakout", () => {
