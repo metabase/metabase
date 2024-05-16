@@ -102,7 +102,7 @@ jobs:
 
   build-jar:
     needs: test
-    uses: ./.github/workflows/uberjar.yml
+    uses: ./.github/workflows/uberjar-sdk.yml
     with:
       only_ee: true
       # env context only exist within `steps`
