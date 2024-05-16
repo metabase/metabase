@@ -206,17 +206,18 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           { card: { display: "area" } },
           { card: { display: "area" } },
           { card: { display: "bar" } },
+          { card: { display: "bar" } },
         ],
         {
           series: series => ({ display: series.card.display }),
-          "stackable.stacked": "normalized",
+          "stackable.stack_type": "normalized",
         },
       );
 
       expect(isHidden).toBe(true);
     });
 
-    it("should be visible on normalized charts with line series", () => {
+    it("should not be hidden on normalized charts with line series", () => {
       const isHidden = getHidden(
         [
           { card: { display: "area" } },
@@ -225,11 +226,11 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
         ],
         {
           series: series => ({ display: series.card.display }),
-          "stackable.stacked": "normalized",
+          "stackable.stack_type": "normalized",
         },
       );
 
-      expect(isHidden).toBe(true);
+      expect(isHidden).toBe(false);
     });
   });
 
@@ -261,14 +262,14 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
         ],
         {
           series: series => ({ display: series.card.display }),
-          "stackable.stacked": "normalized",
+          "stackable.stack_type": "normalized",
         },
       );
 
       expect(isHidden).toBe(true);
     });
 
-    it("should be visible on normalized charts with line series", () => {
+    it("should not be hidden on normalized charts with line series", () => {
       const isHidden = getHidden(
         [
           { card: { display: "area" } },
@@ -277,11 +278,12 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
         ],
         {
           series: series => ({ display: series.card.display }),
-          "stackable.stacked": "normalized",
+          "stackable.stack_type": "normalized",
+          "graph.show_values": true,
         },
       );
 
-      expect(isHidden).toBe(true);
+      expect(isHidden).toBe(false);
     });
   });
 });
