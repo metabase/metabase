@@ -79,8 +79,7 @@ export const QuestionInfoSidebar = ({
             <ContentSection extraPadding>
               <Stack spacing="0.5rem">
                 <PLUGIN_CACHING.QuestionCacheSection
-                  model="question"
-                  item={question}
+                  question={question}
                   setPage={setPage}
                 />
               </Stack>
