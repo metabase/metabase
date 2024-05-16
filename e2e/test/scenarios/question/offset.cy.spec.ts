@@ -178,6 +178,10 @@ describe("scenarios > question > offset", () => {
     it.skip("does not allow filtering on a offsetted column", () => {
       // TODO
     });
+
+    it.skip("does not allow sorting on a offsetted column", () => {
+      // TODO
+    });
   });
 
   describe("filters", () => {
