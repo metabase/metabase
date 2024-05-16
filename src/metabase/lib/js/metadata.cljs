@@ -515,7 +515,8 @@
   [metadata metadata-type table-id]
   (let [k (case metadata-type
             :metadata/column        :fields
-            :metadata/legacy-metric :metrics
+            :metadata/metric        :metrics
+            :metadata/legacy-metric :legacy-metrics
             :metadata/segment       :segments)]
     (into []
           (keep (fn [[_id dlay]]

@@ -86,6 +86,7 @@ TableSchema.define({
   db: DatabaseSchema,
   fields: [FieldSchema],
   fks: [{ origin: FieldSchema, destination: FieldSchema }],
+  metrics: [QuestionSchema],
   segments: [SegmentSchema],
   schema: SchemaSchema,
 });

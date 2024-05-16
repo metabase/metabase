@@ -125,6 +125,10 @@ export function isItemModel(item: CollectionItem) {
   return item.model === "dataset";
 }
 
+export function isItemMetric(item: CollectionItem) {
+  return item.model === "metric";
+}
+
 export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
@@ -138,7 +142,11 @@ export function canPinItem(item: CollectionItem, collection?: Collection) {
 }
 
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && isItemPinned(item) && isItemQuestion(item);
+  return (
+    collection?.can_write &&
+    isItemPinned(item) &&
+    (isItemQuestion(item) || isItemMetric(item))
+  );
 }
 
 export function canMoveItem(item: CollectionItem, collection?: Collection) {

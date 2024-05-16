@@ -176,7 +176,7 @@ function getLabel(card) {
     return t`model`;
   }
 
-  if (card.type === "metric") {
+  if (card.type === "metric" || card.model === "metric") {
     return t`metric`;
   }
 
