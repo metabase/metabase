@@ -1,7 +1,7 @@
 import type { QueryClickActionsMode } from "../../types";
 
 export const ArchivedMode: QueryClickActionsMode = {
-  name: "default",
+  name: "archived",
   hasDrills: false,
   clickActions: [],
 };

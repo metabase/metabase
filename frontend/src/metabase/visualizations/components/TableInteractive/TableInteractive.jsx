@@ -763,7 +763,8 @@ class TableInteractive extends Component {
         query &&
         Lib.queryDisplayInfo(query, stageIndex).isEditable,
     );
-    const isSortable = isClickable && column.source && !isPivoted;
+    const isSortable =
+      isClickable && column.source && !isPivoted && !card.archived;
     const isRightAligned = isColumnRightAligned(column);
 
     const sortDirection = getColumnSortDirection(columnIndex);
@@ -1050,7 +1051,7 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const shortcutColumn = 1;
+    const shortcutColumn = Number(!question?.isArchived());
     const query = question?.query();
     const info = query && Lib.queryDisplayInfo(query);
 

@@ -248,14 +248,13 @@ export const setArchivedQuestion = createThunkAction(
         Questions.actions.update({ id: question.card().id }, { archived }),
       )) as { payload: { object: Card } };
 
-      const updatedQuestion = question
-        .setArchived(archived)
-        .setCollectionId(result.payload.object.collection_id);
-
-      dispatch(
-        updateQuestion(updatedQuestion, {
+      await dispatch(
+        updateQuestion(question.setCard(result.payload.object), {
           shouldUpdateUrl: false,
           shouldStartAdHocQuestion: false,
+          // results can change after entering/leaving the trash
+          // due to references to questions in the trash or, so rerun after change
+          run: true,
         }),
       );
 

@@ -2,7 +2,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { collectionApi } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  isRootTrashCollection,
+  canonicalCollectionId,
+} from "metabase/collections/utils";
 import {
   createEntity,
   undo,
@@ -116,7 +119,10 @@ const Collections = createEntity({
     ) =>
       Collections.actions.update(
         { id },
-        { parent_id: canonicalCollectionId(collection?.id), archived: false },
+        {
+          parent_id: canonicalCollectionId(collection?.id),
+          archived: isRootTrashCollection(collection),
+        },
         undo(opts, "collection", "moved"),
       ),
   },

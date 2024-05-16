@@ -6,6 +6,7 @@ import { t } from "ttag";
 import {
   isValidCollectionId,
   canonicalCollectionId,
+  isTrashedCollection,
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,
@@ -80,11 +81,11 @@ function FormCollectionPicker({
 
   useEffect(
     function preventUsingArchivedCollection() {
-      if (selectedCollection?.archived) {
+      if (selectedCollection && isTrashedCollection(selectedCollection)) {
         setValue("root", false);
       }
     },
-    [setValue, selectedCollection?.archived],
+    [setValue, selectedCollection],
   );
 
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;

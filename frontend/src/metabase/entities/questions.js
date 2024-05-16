@@ -2,7 +2,10 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -72,11 +75,12 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
-              archived: false,
+              archived: isRootTrashCollection(collection),
             },
             undo(opts, getLabel(card), t`moved`),
           ),
         );
+
         dispatch(
           Collections.actions.fetchList(
             {
@@ -88,6 +92,7 @@ const Questions = createEntity({
         );
 
         const updatedCard = result?.payload?.question;
+
         if (updatedCard) {
           dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
         }

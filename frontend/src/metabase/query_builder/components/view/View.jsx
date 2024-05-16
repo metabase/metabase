@@ -247,7 +247,7 @@ class View extends Component {
             canWrite={card.can_write}
             canRestore={card.can_restore}
             onUnarchive={() => onUnarchive(question)}
-            onMove={id => onMove(card.id, id)}
+            onMove={collection => onMove(question, collection)}
             onDeletePermanently={() => onDeletePermanently(card.id)}
           />
         )}
@@ -469,9 +469,12 @@ class View extends Component {
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
-  onMove: (id, newCollectionId) => {
-    dispatch(Questions.actions.setCollection({ id }, { id: newCollectionId }));
-  },
+  onMove: (question, newCollection) =>
+    dispatch(
+      Questions.actions.setCollection({ id: question.id() }, newCollection, {
+        notify: { undo: false },
+      }),
+    ),
   onDeletePermanently: id => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));

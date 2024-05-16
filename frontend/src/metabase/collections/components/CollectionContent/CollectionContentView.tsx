@@ -274,7 +274,7 @@ export const CollectionContentView = ({
                   const input = { ...actionId, name: collection.name };
                   dispatch(Collections.actions.setArchived(input, false));
                 }}
-                onMove={id =>
+                onMove={({ id }) =>
                   dispatch(Collections.actions.setCollection(actionId, { id }))
                 }
                 onDeletePermanently={() =>
