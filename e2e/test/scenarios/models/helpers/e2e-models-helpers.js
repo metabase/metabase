@@ -109,7 +109,11 @@ export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
   entityPickerModal().within(() => {
-    entityPickerModalTab("Models").should("have.attr", "aria-selected", "true");
+    entityPickerModalTab("Recents").should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
     cy.findByText(modelName).click();
   });
 }
