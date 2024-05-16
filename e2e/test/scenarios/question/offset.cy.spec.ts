@@ -162,6 +162,10 @@ describe("scenarios > question > offset", () => {
         ["3", "49.21", "117.03", "39.72"],
       ]);
     });
+
+    it.skip("does not allow drilling on a offsetted column", () => {
+      // TODO
+    });
   });
 
   describe("filters", () => {
