@@ -58,6 +58,39 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
+  describe("filters", () => {
+    it("does not allow using offset() in filters", () => {
+      const expression = "offset([Total], -1) > 0";
+      const prefixLength = 3;
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+      cy.icon("notebook").click();
+
+      cy.button("Filter").click();
+      popover().within(() => {
+        cy.findByText("Custom Expression").click();
+        cy.get(".ace_text-input").type(expression.substring(0, prefixLength));
+      });
+
+      cy.log("does not suggest offset() in filter expressions");
+      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+
+      popover().within(() => {
+        cy.get(".ace_text-input")
+          .type(expression.substring(prefixLength))
+          .blur();
+
+        cy.findByText("OFFSET is not supported in custom filters").should(
+          "exist",
+        );
+        cy.button("Done").should("be.disabled");
+      });
+    });
+  });
+
   describe("aggregations", () => {
     it("does not work without a breakout", () => {
       const query: StructuredQuery = {
