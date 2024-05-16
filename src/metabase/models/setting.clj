@@ -108,7 +108,6 @@
 ;;; other things we need for `:json` settings
 (comment metabase.server.middleware.json/keep-me)
 
-;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
@@ -116,9 +115,7 @@
 
   This is normally bound automatically in Query Processor context
   by [[metabase.query-processor.middleware.resolve-database-and-driver]]. You may need to manually bind it in other
-  places where you want to use Database-local values.
-
-  TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
+  places where you want to use Database-local values."
   nil)
 
 (def ^:dynamic *user-local-values*
@@ -1286,9 +1283,7 @@
       (not (current-user-can-access-setting? setting))
       (throw (ex-info (tru "You do not have access to the setting {0}" k) setting))
 
-      ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
-      ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
-      ;; the UI.
+      ;; Settings set via an env var aren't returned for security purposes.
       (or value-is-default? value-is-from-env-var?)
       nil
 
