@@ -189,10 +189,12 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("browse data link", () => {
+  describe("browse databases link", () => {
     it("should render", async () => {
       await setup();
-      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
       const link = within(listItem).getByRole("link");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/browse/databases");
@@ -201,19 +203,23 @@ describe("nav > containers > MainNavbar", () => {
     it("should not render when a user has no data access", async () => {
       await setup({ hasDataAccess: false });
       expect(
-        screen.queryByRole("listitem", { name: /Browse data/i }),
+        screen.queryByRole("listitem", { name: /Browse databases/i }),
       ).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {
       await setup({ pathname: "/browse/databases" });
-      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
       expect(listItem).toHaveAttribute("aria-selected", "true");
     });
 
     it("should be highlighted if child route selected", async () => {
       await setup({ pathname: "/browse/databases/1" });
-      const listItem = screen.getByRole("listitem", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
       expect(listItem).toHaveAttribute("aria-selected", "true");
     });
   });
