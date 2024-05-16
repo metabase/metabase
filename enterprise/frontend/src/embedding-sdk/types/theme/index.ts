@@ -24,7 +24,7 @@ export interface MetabaseTheme {
 }
 
 export interface MetabaseColors {
-  /** Primary brand color */
+  /** Primary brand color used for buttons and links */
   brand?: string;
 
   /** Text color on dark elements. Should be a lighter color for readability. */
@@ -37,16 +37,19 @@ export interface MetabaseColors {
   "text-tertiary"?: string;
 
   /** Default background color. */
-  "background-white"?: string;
+  background?: string;
 
-  /** Darker background color for accented elements. */
-  "background-light"?: string;
+  /** Slightly darker background color used for hover and accented elements. */
+  "background-hover"?: string;
 
   /** Color used for borders */
   border?: string;
 
   /** Color used for filters context */
   filter?: string;
+
+  /** Color used for aggregations and breakouts context */
+  summarize?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

@@ -58,11 +58,20 @@ const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
   brand: "brand",
   border: "border",
   filter: "filter",
+  summarize: "summarize",
   "text-primary": "text-dark",
   "text-secondary": "text-medium",
   "text-tertiary": "text-light",
-  "background-white": "bg-white",
-  "background-light": "bg-light",
+  background: "bg-white",
+  "background-hover": "bg-light",
+
+  // shadow: "shadow",
+  // positive: "success",
+  // negative: "danger",
+  // warning: "warning",
+
+  // white
+  // black
 };
 
 const originalColors = { ...colors };
