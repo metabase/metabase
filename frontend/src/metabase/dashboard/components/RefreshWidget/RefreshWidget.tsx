@@ -1,14 +1,12 @@
-import cx from "classnames";
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { usePrevious, useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
-import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { Tooltip, Popover, Icon, Box } from "metabase/ui";
+import { Box, Popover } from "metabase/ui";
 
+import { RefreshOption } from "./RefreshOption";
 import RefreshWidgetS from "./RefreshWidget.module.css";
+import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
 
 const toSeconds = (minutes: number) => minutes * 60;
 
@@ -28,7 +26,7 @@ export const RefreshWidget = ({
   onChangePeriod,
 }: {
   setRefreshElapsedHook?: (hook: (elapsed: number | null) => void) => void;
-  period: number;
+  period: number | null;
   onChangePeriod: (period: number | null) => void;
 }) => {
   const prevProps = usePrevious({ setRefreshElapsedHook });
@@ -48,42 +46,11 @@ export const RefreshWidget = ({
     }
   });
 
-  const remaining = period - (elapsed ?? 0);
-
   return (
     <Popover position="bottom-end" opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Box onClick={() => setIsOpen(!isOpen)}>
-          {elapsed == null ? (
-            <Tooltip label={t`Auto-refresh`}>
-              <DashboardHeaderButton
-                icon="clock"
-                aria-label={t`Auto Refresh`}
-              />
-            </Tooltip>
-          ) : (
-            <Tooltip
-              label={
-                t`Refreshing in` +
-                " " +
-                Math.floor(remaining / 60) +
-                ":" +
-                (remaining % 60 < 10 ? "0" : "") +
-                Math.round(remaining % 60)
-              }
-            >
-              <DashboardHeaderButton
-                icon={
-                  <CountdownIcon
-                    width={16}
-                    height={16}
-                    percent={Math.min(0.95, (period - elapsed) / period)}
-                  />
-                }
-                aria-label={t`Auto Refresh`}
-              />
-            </Tooltip>
-          )}
+          <RefreshWidgetTarget elapsed={elapsed} period={period} />
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
@@ -91,7 +58,7 @@ export const RefreshWidget = ({
           <Box
             className={RefreshWidgetS.RefreshWidgetTitle}
           >{t`Auto Refresh`}</Box>
-          <RefreshOptionList>
+          <ul>
             {OPTIONS.map(option => (
               <RefreshOption
                 key={option.period}
@@ -104,36 +71,9 @@ export const RefreshWidget = ({
                 }}
               />
             ))}
-          </RefreshOptionList>
+          </ul>
         </Box>
       </Popover.Dropdown>
     </Popover>
   );
 };
-
-const RefreshOptionList = ({ children }: { children: ReactNode }) => (
-  <ul>{children}</ul>
-);
-
-const RefreshOption = ({
-  name,
-  period,
-  selected,
-  onClick,
-}: {
-  name: string;
-  period: number | null;
-  selected: boolean;
-  onClick: () => void;
-}) => (
-  <li
-    className={cx(RefreshWidgetS.RefreshOptionItem, {
-      [RefreshWidgetS.Selected]: selected,
-      [RefreshWidgetS.Enabled]: period != null,
-    })}
-    onClick={onClick}
-  >
-    <Icon className={RefreshWidgetS.RefreshOptionIcon} name="check" />
-    <span>{name}</span>
-  </li>
-);

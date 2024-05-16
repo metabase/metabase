@@ -27,7 +27,7 @@ type GetDashboardActionsProps = {
     isBrowserFullscreen?: boolean,
   ) => void;
   onNightModeChange: (isNightMode: boolean) => void;
-  onRefreshPeriodChange: (period: number) => void;
+  onRefreshPeriodChange: (period: number | null) => void;
   onSharingClick?: () => void;
   refreshPeriod: number | null;
   setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
