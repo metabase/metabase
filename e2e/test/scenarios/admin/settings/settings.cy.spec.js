@@ -270,7 +270,7 @@ describe("scenarios > admin > settings", () => {
     () => {
       isEE && setTokenFeatures("all");
 
-      const lastItem = isOSS ? "Caching" : "Appearance";
+      const lastItem = isOSS ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {

@@ -6876,13 +6876,68 @@ databaseChangeLog:
       rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
+      id: v50.2024-05-13T16:00:00
+      author: filipesilva
+      comment: Create cloud migration
+      changes:
+        - createTable:
+            tableName: cloud_migration
+            remarks: Migrate to cloud directly from Metabase
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  remarks: Matching ID in Cloud for this migration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_url
+                  remarks: URL where the backup will be uploaded to
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: 'Current state of the migration: init, setup, dump, upload, done, error, cancelled'
+                  type: varchar(32)
+                  defaultValue: init
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  remarks: Number between 0 to 100 representing progress as a percentage
+                  type: int
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v50.2024-05-15T13:13:13
       author: adam-james
       comment: Fix visualization settings for stacked area/bar/combo displays
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
