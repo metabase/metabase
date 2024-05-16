@@ -1821,7 +1821,14 @@
     :expected {:display                "combo"
                :visualization_settings {:series_settings {:A {:display "line"}
                                                           :B {:display "line"}
-                                                          :C {:display "line"}}}}}})
+                                                          :C {:display "line"}}}}}
+
+   "any card with stackable.stack_display should have that key removed"
+   {:card     {:display                "table"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_display :line})}
+    :expected {:display                "table"
+               :visualization_settings {}}}})
 
 (deftest migrate-stacked-area-bar-combo-display-settings-test
   (testing "Migrations v50.2024-05-15T13:13:13: Fix visualization settings for stacked area/bar/combo displays"
