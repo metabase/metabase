@@ -6,7 +6,10 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCardQuery, skipToken } from "metabase/api";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import Radio from "metabase/core/components/Radio";
@@ -171,11 +174,7 @@ const EditSandboxingModal = ({
               <QuestionPickerModal
                 value={
                   currentQuestion && policy.card_id != null
-                    ? {
-                        id: policy.card_id,
-                        model:
-                          currentQuestion.type === "model" ? "dataset" : "card",
-                      }
+                    ? getQuestionPickerValue(currentQuestion)
                     : undefined
                 }
                 onChange={newCard => {

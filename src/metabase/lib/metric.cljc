@@ -115,21 +115,32 @@
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [metric-aggregations (into {}
+   (let [first-stage? (zero? (lib.util/canonical-stage-index query stage-number))
+         metric-aggregations (into {}
                                    (keep-indexed (fn [index aggregation-clause]
                                                    (when (lib.util/clause-of-type? aggregation-clause :metric)
                                                      [[(get aggregation-clause 2)
                                                        (:join-alias (lib.options/options aggregation-clause))]
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
-         s-metric (source-metric query (lib.util/query-stage query stage-number))]
-     (when s-metric
-       (if (empty? metric-aggregations)
-         [s-metric]
-         (mapv (fn [metric-metadata]
-                 (let [aggregation-pos (-> metric-metadata
-                                           ((juxt :id ::lib.join/join-alias))
-                                           metric-aggregations)]
-                   (cond-> metric-metadata
-                     aggregation-pos (assoc :aggregation-position aggregation-pos))))
-               [s-metric]))))))
+         s-metric (source-metric query (lib.util/query-stage query stage-number))
+         source-table (lib.util/source-table-id query)
+         maybe-add-aggregation-pos (fn [metric-metadata]
+                                     (let [aggregation-pos (-> metric-metadata
+                                                               ((juxt :id ::lib.join/join-alias))
+                                                               metric-aggregations)]
+                                       (cond-> metric-metadata
+                                         aggregation-pos (assoc :aggregation-position aggregation-pos))))]
+     (cond
+       (and first-stage? s-metric)
+       (not-empty
+         (mapv maybe-add-aggregation-pos
+               [s-metric]))
+
+       (and first-stage? source-table)
+       (let [metrics (lib.metadata/metadatas-for-table query :metadata/metric source-table)]
+         (not-empty
+           (mapv (comp maybe-add-aggregation-pos #(lib.metadata/metric query %) :id)
+                 (filter (fn [metric-card]
+                           (= 1 (lib.query/stage-count (lib.query/query query (:definition metric-card)))))
+                         metrics))))))))

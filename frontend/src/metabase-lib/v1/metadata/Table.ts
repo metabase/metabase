@@ -20,13 +20,14 @@ import type Segment from "./Segment";
 interface Table
   extends Omit<
     NormalizedTable,
-    "db" | "schema" | "fields" | "fks" | "segments"
+    "db" | "schema" | "fields" | "fks" | "segments" | "metrics"
   > {
   db?: Database;
   schema?: Schema;
   fields?: Field[];
   fks?: ForeignKey[];
   segments?: Segment[];
+  metrics?: Question[];
   metadata?: Metadata;
 }
 

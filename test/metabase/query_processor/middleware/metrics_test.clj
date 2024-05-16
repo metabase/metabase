@@ -235,3 +235,25 @@
       (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
         (is (=? (mt/rows (qp/process-query source-query))
                 (mt/rows (qp/process-query query))))))))
+
+(deftest ^:parallel available-metrics-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
+                                              :database_id (mt/id)
+                                              :table_id (mt/id :products)
+                                              :name "new_metric"
+                                              :type :metric}
+                   ;; Two stage queries should not be available
+                   :model/Card _             {:dataset_query (-> source-query
+                                                                 lib/append-stage
+                                                                 (lib/aggregate (lib/count))
+                                                                 lib.convert/->legacy-MBQL)
+                                              :database_id (mt/id)
+                                              :table_id (mt/id :products)
+                                              :name "new_metric"
+                                              :type :metric}]
+      (let [query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+        (is (=? [(lib.metadata/metric mp (:id source-metric))]
+                (lib/available-metrics query)))))))
