@@ -23,7 +23,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [_query _stage-number _query]
+  [_query _stage-number _x]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
@@ -81,10 +81,11 @@
   [query :- ::lib.schema/query]
   (and (can-run query)
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
-       (let [stage (lib.util/query-stage query -1)]
-         #?(:cljs (js/console.log stage))
-         (or (seq (:order-by stage))
-             (not (lib.util.match/match-one (:expressions stage) :offset))))))
+       (every? (fn [stage]
+                 (boolean
+                   (or (seq (:order-by stage))
+                       (not (lib.util.match/match-one (:expressions stage) :offset)))))
+               (:stages query))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
