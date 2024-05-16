@@ -136,6 +136,29 @@ describe("scenarios > metrics > collection", () => {
       .should("not.exist");
   });
 
+  it("should be possible to hide the visualization for a pinned metric", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    cy.visit("/collection/root");
+    getPinnedSection().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByTestId("scalar-container").should("be.visible");
+    });
+
+    openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    popover().findByText("Don’t show visualization").click();
+    getPinnedSection().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByTestId("scalar-container").should("not.exist");
+    });
+
+    openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    popover().findByText("Show visualization").click();
+    getPinnedSection().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByTestId("scalar-container").should("be.visible");
+    });
+  });
+
   it("should be possible to archive, unarchive, and delete a metric", () => {
     createQuestion(ORDERS_SCALAR_METRIC);
     createQuestion({ ...ORDERS_TIMESERIES_METRIC, collection_position: null });
