@@ -57,8 +57,10 @@ export const filterModels = <T extends ModelResult[] | RecentCollectionItem[]>(
     (acc, shouldFilterBeActive, filterName) =>
       shouldFilterBeActive
         ? // https://devblogs.microsoft.com/typescript/announcing-typescript-5-2/#easier-method-usage-for-unions-of-arrays
-          // @ts-expect-error This would be valid without a cast in TS 5.2+
-          (acc.filter(availableModelFilters[filterName].predicate) as T)
+          // This would be valid without a cast in TS 5.2+
+          ((acc as (ModelResult | RecentCollectionItem)[]).filter(
+            availableModelFilters[filterName].predicate,
+          ) as T)
         : acc,
     unfilteredModels,
   );
