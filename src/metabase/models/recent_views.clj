@@ -401,6 +401,5 @@
     (let [entity->id->data (get-entity->id->data views)]
       (->> views
            (map (partial post-process entity->id->data))
-           (remove nil?)
-           vec))
+           (remove nil?)))
     []))
