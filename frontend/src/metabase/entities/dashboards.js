@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import {
   getCollectionType,
   normalizedCollection,
@@ -92,7 +95,7 @@ const Dashboards = createEntity({
         { id },
         {
           collection_id: canonicalCollectionId(collection && collection.id),
-          archived: false,
+          archived: isRootTrashCollection(collection),
         },
         undo(opts, "dashboard", "moved"),
       ),

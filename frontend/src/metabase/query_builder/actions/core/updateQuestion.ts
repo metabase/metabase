@@ -1,8 +1,9 @@
 import { assocIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { getTrashUndoMessage } from "metabase/archive/utils";
-import Questions from "metabase/entities/questions";
+import Questions, { getLabel } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
@@ -248,14 +249,13 @@ export const setArchivedQuestion = createThunkAction(
         Questions.actions.update({ id: question.card().id }, { archived }),
       )) as { payload: { object: Card } };
 
-      const updatedQuestion = question
-        .setArchived(archived)
-        .setCollectionId(result.payload.object.collection_id);
-
-      dispatch(
-        updateQuestion(updatedQuestion, {
+      await dispatch(
+        updateQuestion(question.setCard(result.payload.object), {
           shouldUpdateUrl: false,
           shouldStartAdHocQuestion: false,
+          // results can change after entering/leaving the trash
+          // due to references to questions in the trash or, so rerun after change
+          run: true,
         }),
       );
 
@@ -269,6 +269,53 @@ export const setArchivedQuestion = createThunkAction(
             message: getTrashUndoMessage(question.card().name, archived),
             action: () =>
               dispatch(setArchivedQuestion(question, !archived, true)),
+          }),
+        );
+      }
+    };
+  },
+);
+
+export const MOVE_QUESTION = "metabase/question/MOVE_QUESTION";
+export const moveQuestion = createThunkAction(
+  MOVE_QUESTION,
+  function (question, collectionId, undoing = false) {
+    return async function (dispatch) {
+      const originalCollectionId = question.collectionId();
+
+      const result = await dispatch(
+        Questions.actions.update(
+          { id: question.id() },
+          { collection_id: collectionId, archived: undoing },
+        ),
+      );
+
+      const updatedQuestion = question.setCard(result.payload.object);
+
+      await dispatch(
+        updateQuestion(updatedQuestion, {
+          shouldUpdateUrl: false,
+          shouldStartAdHocQuestion: false,
+          // results can change after entering/leaving the trash
+          // due to references to questions in the trash or, so rerun after change
+          run: true,
+        }),
+      );
+
+      if (updatedQuestion.isArchived()) {
+        dispatch(setUIControls({ isNativeEditorOpen: false }));
+      }
+
+      if (!undoing) {
+        const undoAction = () =>
+          dispatch(moveQuestion(question, originalCollectionId, true));
+
+        dispatch(
+          addUndo({
+            subject: getLabel(question.card()),
+            verb: t`moved`,
+            undo: true,
+            action: undoAction,
           }),
         );
       }

@@ -15,6 +15,7 @@ import Questions from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
   setArchivedQuestion,
+  moveQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
@@ -247,7 +248,7 @@ class View extends Component {
             canWrite={card.can_write}
             canRestore={card.can_restore}
             onUnarchive={() => onUnarchive(question)}
-            onMove={id => onMove(card.id, id)}
+            onMove={id => onMove(question, id)}
             onDeletePermanently={() => onDeletePermanently(card.id)}
           />
         )}
@@ -469,9 +470,8 @@ class View extends Component {
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
-  onMove: (id, newCollectionId) => {
-    dispatch(Questions.actions.setCollection({ id }, { id: newCollectionId }));
-  },
+  onMove: (question, newCollectionId) =>
+    dispatch(moveQuestion(question, newCollectionId)),
   onDeletePermanently: id => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));

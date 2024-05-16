@@ -671,10 +671,12 @@ class Question {
         originalQuestion &&
         originalQuestion._serializeForUrl({
           includeOriginalCardId: false,
+          includeCollectionId: false,
         });
 
       const currentCardSerialized = this._serializeForUrl({
         includeOriginalCardId: false,
+        includeCollectionId: false,
       });
 
       return currentCardSerialized !== origCardSerialized;
@@ -701,6 +703,7 @@ class Question {
     includeOriginalCardId = true,
     clean = true,
     includeDisplayIsLocked = false,
+    includeCollectionId = true,
     creationType,
   } = {}) {
     const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
@@ -708,11 +711,13 @@ class Question {
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
-      collection_id: this._card.collection_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
       type: this._card.type,
+      ...(includeCollectionId
+        ? { collection_id: this._card.collection_id }
+        : {}),
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {

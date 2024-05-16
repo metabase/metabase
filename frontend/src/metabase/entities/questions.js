@@ -2,7 +2,10 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -72,7 +75,7 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
-              archived: false,
+              archived: isRootTrashCollection(collection),
             },
             undo(opts, getLabel(card), t`moved`),
           ),
@@ -172,7 +175,7 @@ const Questions = createEntity({
   },
 });
 
-function getLabel(card) {
+export function getLabel(card) {
   if (card.type === "model" || card.model === "dataset") {
     return t`model`;
   }
