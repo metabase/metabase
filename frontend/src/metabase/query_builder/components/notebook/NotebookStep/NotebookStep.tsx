@@ -109,7 +109,8 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = Lib.canRun(step.query) && step.active && step.visible;
+  const canPreview = Lib.canPreview(step.query) && step.active && step.visible;
+  console.log("canPreview", canPreview);
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 

@@ -74,6 +74,18 @@
   (and (lib.metadata/editable? query)
        (can-run query)))
 
+(mu/defn can-preview :- :boolean
+  "Returns whether the query can be previewed.
+
+  See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
+  [query :- ::lib.schema/query]
+  (and (can-run query)
+       ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
+       (let [stage (lib.util/query-stage query -1)]
+         #?(:cljs (js/console.log stage))
+         (or (seq (:order-by stage))
+             (not (lib.util.match/match-one (:expressions stage) :offset))))))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
