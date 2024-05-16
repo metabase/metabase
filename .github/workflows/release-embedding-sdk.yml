@@ -62,7 +62,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: "cljs"
+          m2-cache-key: "release-sdk"
 
       - name: Run unit tests
         run: yarn embedding-sdk:test-unit
@@ -83,7 +83,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: "cljs"
+          m2-cache-key: "release-sdk"
 
       - name: Bump published npm package version
         run: |
