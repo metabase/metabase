@@ -1674,7 +1674,7 @@
                                     :valid       #t "2000-01-01T00:00:00"
                                     :invalid     "2023-01-01T00:00:00+01"
                                     :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}]
-                            (driver/upload-type->database-type driver/*driver* offset-dt-type)
+                            (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
                             (conj {:upload-type offset-dt-type
                                    :valid       #t "2000-01-01T00:00:00+01"
                                    :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
