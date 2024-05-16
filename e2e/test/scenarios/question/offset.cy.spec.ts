@@ -140,24 +140,6 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it.skip("works with multiple breakouts and a limit (metabase#42509)", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
-        limit: 5,
-      };
-
-      createQuestion({ query }, { visitQuestion: true });
-
-      verifyNoQuestionError();
-      verifyTableContent([
-        ["April 2022", "", "", "", ""],
-        ["May 2022", "", "52.76", "", ""],
-        ["June 2022", "339.14", "203.57", "493.51", "229.5"],
-      ]);
-    });
-
     it("works with multiple aggregations and breakouts", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
