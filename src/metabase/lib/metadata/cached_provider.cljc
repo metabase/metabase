@@ -81,6 +81,7 @@
 (defn- metadatas-for-table [metadata-provider cache metadata-type table-id]
   (let [k     (case metadata-type
                 :metadata/column        ::table-fields
+                :metadata/metric        ::table-metrics
                 :metadata/legacy-metric ::table-legacy-metrics
                 :metadata/segment       ::table-segments)
         thunk (fn []
