@@ -23,9 +23,7 @@ const setupGranularCacheControls = (opts: SetupOpts) => {
 
 describe("QuestionInfoSidebar", () => {
   it("should show caching controls if caching is enabled", async () => {
-    const card = createMockCard({
-      cache_ttl: 10,
-    });
+    const card = createMockCard({});
     const settings = createMockSettings({
       "enable-query-caching": true,
     });
