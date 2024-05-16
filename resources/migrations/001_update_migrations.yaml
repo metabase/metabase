@@ -6614,12 +6614,28 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
-      id: v50.2024-04-25T01:04:04
+      id: v50.2024-04-25T01:04:05
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:06
+      author: qnkhuat
+      comment: Delete SendPulse Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:07
+      author: qnkhuat
+      comment: Delete InitSendPulseTriggers Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
 
   - changeSet:
       id: v50.2024-04-25T03:15:01

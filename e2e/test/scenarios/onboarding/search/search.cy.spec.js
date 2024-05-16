@@ -9,9 +9,20 @@ import {
   getSearchBar,
   main,
   restore,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const visitEmbeddingWithSearch = (url = "/") => {
+  visitFullAppEmbeddingUrl({
+    url: url,
+    qs: {
+      top_nav: true,
+      search: true,
+    },
+  });
+};
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -22,7 +33,7 @@ describe("scenarios > search", () => {
 
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
       getSearchBar().as("searchBox").clear().type("orders count").blur();
 
       expectSearchResultContent({
@@ -68,7 +79,7 @@ describe("scenarios > search", () => {
 
     it("should work for user with permissions (metabase#12332)", () => {
       cy.signInAsNormalUser();
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
       getSearchBar().type("product{enter}");
       cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
@@ -78,7 +89,7 @@ describe("scenarios > search", () => {
 
     it("should work for user without data permissions (metabase#16855)", () => {
       cy.signIn("nodata");
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
       getSearchBar().type("product{enter}");
       cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
@@ -88,7 +99,7 @@ describe("scenarios > search", () => {
 
     it("allows to select a search result using keyboard", () => {
       cy.signInAsNormalUser();
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
       getSearchBar().type("ord");
 
       cy.wait("@search");
@@ -126,7 +137,7 @@ describe("scenarios > search", () => {
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       }).then(() => {
         cy.signInAsNormalUser();
-        cy.visit("/");
+        visitEmbeddingWithSearch("/");
         getSearchBar().type("Test");
       });
 
@@ -149,7 +160,7 @@ describe("scenarios > search", () => {
           "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
       }).then(() => {
         cy.signInAsNormalUser();
-        cy.visit("/");
+        visitEmbeddingWithSearch("/");
         getSearchBar().type("Test");
       });
 
@@ -170,7 +181,7 @@ describe("scenarios > search", () => {
     });
 
     it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+      visitEmbeddingWithSearch(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
       // Type as soon as possible, before the dashboard has finished loading
       getSearchBar().type("ord");
@@ -198,7 +209,7 @@ describe("scenarios > search", () => {
           });
         },
       );
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
 
       // Type as soon as possible, before the dashboard has finished loading
       getSearchBar().type("ord");
@@ -214,7 +225,7 @@ describe("scenarios > search", () => {
     it("should not render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
 
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
 
       getSearchBar().click().type("{enter}");
 
@@ -227,7 +238,7 @@ describe("scenarios > search", () => {
     });
 
     it("should render full page search when search text is present and user clicks 'Enter'", () => {
-      cy.visit("/");
+      visitEmbeddingWithSearch("/");
 
       getSearchBar().click().type("orders{enter}");
       cy.wait("@search");

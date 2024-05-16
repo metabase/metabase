@@ -633,6 +633,13 @@ LineReplaceMissingValuesZero.args = {
   renderingContext,
 };
 
+export const LineChartBrokenDimensionsMetricsSettings = Template.bind({});
+LineChartBrokenDimensionsMetricsSettings.args = {
+  rawSeries: data.lineChartBrokenDimensionsMetricsSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
