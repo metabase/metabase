@@ -1,0 +1,47 @@
+.RefreshWidgetPopover {
+  padding: 1rem;
+  min-width: 12.5rem;
+}
+
+.RefreshWidgetTitle {
+  color: var(--color-text-medium);
+  font-weight: bold;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  margin-bottom: 1em;
+  margin-left: 0.5em;
+}
+
+.RefreshOptionIcon {
+  margin-right: 0.5em;
+}
+
+.RefreshOptionItem {
+  font-weight: bold;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  cursor: pointer;
+  color: var(--color-text-dark);
+  display: flex;
+  align-items: center;
+}
+
+.RefreshOptionItem.Enabled.Selected {
+  color: var(--color-summarize);
+}
+
+.RefreshOptionItem .RefreshOptionIcon {
+  visibility: hidden;
+}
+
+.RefreshOptionItem.Selected .RefreshOptionIcon {
+  visibility: visible;
+}
+
+.RefreshOptionItem:hover {
+  color: var(--mb-color-brand);
+}
+
+.RefreshOptionItem:hover .RefreshOptionIcon {
+  visibility: visible;
+}
