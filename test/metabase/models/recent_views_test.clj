@@ -347,9 +347,7 @@
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")))))
 
-;; N+1 tests:
-
-#_(deftest update-users-recent-views!-bucket-filling-test
+(deftest update-users-recent-views!-bucket-filling-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
       (mt/with-temp
@@ -396,7 +394,7 @@
                                 (recent-views/get-list (mt/user->id :rasta))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
-#_(deftest table-per-user-size-shrinks-or-grows-test
+(deftest table-per-user-size-shrinks-or-grows-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 30]
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
       (mt/with-temp

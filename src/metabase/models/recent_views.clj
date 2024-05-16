@@ -286,34 +286,28 @@
 
 ;; == Recent Collections ==
 
-(defn- effective-parent
-  "Returns the collection id of the effective parent of a collection."
-  [collection]
-  (last (collection/location-path->ids (:effective_location collection))))
-
 (defn- collection-recents
   "Query to select recent collection data"
   [collection-ids]
   (if-not (seq collection-ids)
     []
-    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (map
-                       (fn [coll] (assoc coll :effective_parent (effective-parent coll)))
-                       (t2/hydrate
-                        (t2/select :model/Collection
-                                   {:select [:id :name :description :authority_level :archived :location]
-                                    :where [:in :id collection-ids]})
-                        :effective_location))
-          ;; collect all the ids to query for
-          effective-parent-colls (distinct (map :effective_parent collections))
-          id->parent-coll (if-not (seq effective-parent-colls)
-                            [] (t2/select-pk->fn identity :model/Collection
-                                                 {:select [:id :name :authority_level]
-                                                  :where [:in :id effective-parent-colls]}))]
+    (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+          collections (t2/select :model/Collection
+                                 {:select [:id :name :description :authority_level :archived :location]
+                                  :where [:and
+                                          [:in :id collection-ids]
+                                          [:= :archived false]]})
+          coll->parent-id (fn [c]
+                            (some-> c collection/effective-location-path collection/location-path->ids last))
+          parent-ids (into #{} (keep coll->parent-id) collections)
+          id->parent-coll (merge {nil (root-coll)}
+                                 (when (seq parent-ids)
+                                   (t2/select-pk->fn identity :model/Collection
+                                                     {:select [:id :name :authority_level]
+                                                      :where [:in :id parent-ids]})))]
       ;; replace the collection ids with their collection data:
-      (map
-       (fn [coll] (update coll :effective_parent id->parent-coll))
-       collections))))
+      (map (fn [c] (assoc c :effective_parent (->> c coll->parent-id id->parent-coll)))
+           collections))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
