@@ -270,7 +270,7 @@ describe("scenarios > question > offset", () => {
       cy.icon("sum").click();
       addCustomAggregation({ formula, name, isFirst: true });
 
-      cy.findAllByTestId("notebook-cell-item").contains(name).click();
+      cy.findAllByTestId("notebook-cell-item").findByText(name).click();
       cy.findByTestId("expression-editor-textfield").should("contain", formula);
 
       cy.on("uncaught:exception", error => {
@@ -297,7 +297,7 @@ function addCustomAggregation({
     getNotebookStep("summarize").icon("add").click();
   }
 
-  popover().contains("Custom Expression").click();
+  popover().findByText("Custom Expression").click();
   enterCustomColumnDetails({ formula, name });
   popover().button("Done").click();
 }
