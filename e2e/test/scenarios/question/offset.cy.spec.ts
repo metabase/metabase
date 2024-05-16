@@ -71,6 +71,7 @@ describe("scenarios > question > offset", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
+        limit: 5,
       };
 
       createQuestion({ query }, { visitQuestion: true });
@@ -130,6 +131,7 @@ describe("scenarios > question > offset", () => {
       const prefixLength = 3;
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
+        limit: 5,
       };
 
       createQuestion({ query }, { visitQuestion: true });
@@ -164,6 +166,7 @@ describe("scenarios > question > offset", () => {
       const prefixLength = 3;
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
+        limit: 5,
       };
 
       createQuestion({ query }, { visitQuestion: true });
