@@ -1051,7 +1051,7 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const shortcutColumn = Number(!question.isArchived());
+    const shortcutColumn = Number(!question?.isArchived());
     const query = question?.query();
     const info = query && Lib.queryDisplayInfo(query);
 
