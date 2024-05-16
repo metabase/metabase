@@ -33,7 +33,7 @@ export function DataPanel({ onAddCard }: DataPanelProps) {
 
   return (
     <>
-      <Card pt="xs">
+      <Card pt="xs" mih={300}>
         <Flex direction="row" align="center" justify="space-between">
           <Text fw="bold" display="block">{t`Data`}</Text>
           <Button
