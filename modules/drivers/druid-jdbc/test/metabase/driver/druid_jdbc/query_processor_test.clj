@@ -7,7 +7,6 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metrics-inside-aggregation-clauses-test
-  (is (= 0 1) "the test has been invoked")
   (mt/test-driver :druid-jdbc
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
@@ -17,7 +16,6 @@
                                                           :filter      [:> $venue_price 1]
                                                           :source-table (mt/id :checkins)})
                                                        :type :metric}]
-          (is (= 0 1) "the test is really running")
           (is (= [[2 1231]
                   [3  346]
                   [4  197]]
