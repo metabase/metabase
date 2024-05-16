@@ -12,9 +12,9 @@ As long as you're not the very first user in your team's Metabase, the easiest w
 
 ## Browse your data
 
-Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page or clicking the **Browse data** button in the side nav bar, and then selecting a database and clicking on one of its tables to see it. You can also hover over any table and click on the bolt icon to see an automatic exploration of the table's data. Give it a try!
+Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page or clicking **Browse** > **Databases** in the side nav bar, and then selecting a database and clicking on one of its tables to see it. You can also hover over any table and click on the bolt icon to see an automatic exploration of the table's data. Give it a try!
 
-![Browse data](./images/browse-data.png)
+![Browse databases](./images/browse-data.png)
 
 To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/basics/questions/data-browser.html).
 
