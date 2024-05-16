@@ -62,7 +62,7 @@ jobs:
     - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
-        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+        name: metabase-ee-uberjar
     - name: Launch uberjar
       run: java -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
@@ -96,7 +96,7 @@ jobs:
       - name: Download uploaded artifacts to insert into container
         uses: actions/download-artifact@v4
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          name: metabase-ee-uberjar
           path: bin/docker/
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
         run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
