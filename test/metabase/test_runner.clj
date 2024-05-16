@@ -58,7 +58,8 @@
   (let [excluded-driver-dirs (for [driver (excluded-drivers)]
                                (format "modules/drivers/%s" (name driver)))
         exclude-directory?   (fn [dir]
-                               (some (partial str/includes? (str dir))
+                               (some #(or (str/ends-with? (str dir) %)
+                                          (str/includes? (str dir) (str % "/")))
                                      excluded-driver-dirs))
         directories          (for [^java.io.File file (classpath/system-classpath)
                                    :when              (and (.isDirectory file)
