@@ -23,7 +23,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       source={source}
     >
       {jt`${(
-        <strong>{t`Migrate to Metabase cloud`}</strong>
+        <strong>{t`Migrate to Metabase Cloud`}</strong>
       )} for fast, reliable, and secure deployment.`}
     </UpsellCard>
   );
@@ -46,7 +46,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       source={source}
     >
       {jt`${(
-        <strong>{t`Migrate to Metabase cloud`}</strong>
+        <strong>{t`Migrate to Metabase Cloud`}</strong>
       )} for fast, reliable, and secure deployment.`}
     </UpsellCard>
   );

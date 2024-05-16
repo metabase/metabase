@@ -35,7 +35,7 @@ export default function SettingsUpdatesForm({ elements, updateSetting }) {
         </div>
       </div>
       <div>
-        <UpsellHostingUpdates />
+        <UpsellHostingUpdates source="settings-updates-migrate_to_cloud" />
       </div>
     </Flex>
   );
