@@ -625,7 +625,8 @@
                                                                         :moderator_id        user-id
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
+                [{:collection_id       (:id collection)
+                  :id                  card-id
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
