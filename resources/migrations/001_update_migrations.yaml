@@ -7078,7 +7078,13 @@ databaseChangeLog:
               WHERE permissions.object IN (
                 SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
               );
-              DELETE FROM collection WHERE type = 'trash';
+              UPDATE collection
+              SET
+                entity_id = NULL,
+                archived = true,
+                name = 'Trash (Auto-Generated)',
+                type = NULL
+              WHERE type = 'trash';
 
   - changeSet:
       id: v50.2024-05-14T12:42:44
@@ -7096,12 +7102,7 @@ databaseChangeLog:
                   location = CONCAT('/', c2.id, '/')
               FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET trashed_from_location = NULL, location = trashed_from_location
-              WHERE archived = true AND namespace IS NULL;
+      rollback: # not needed. See above: `Trash` becomes a normal collection
 
   - changeSet:
       id: v50.2024-05-14T12:42:46
@@ -7118,12 +7119,7 @@ databaseChangeLog:
               SET trashed_from_location = c1.location,
                   location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET trashed_from_location = NULL, location = trashed_from_location
-              WHERE archived = true AND namespace IS NULL;
+      rollback: # Not needed.
 
   - changeSet:
       id: v50.2024-05-14T12:42:48
@@ -7143,12 +7139,7 @@ databaseChangeLog:
               SET c1.trashed_from_location = c1.location,
                   c1.location = CONCAT('/', c2.id, '/')
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET trashed_from_location = NULL, location = trashed_from_location
-              WHERE archived = true AND namespace IS NULL;
+      rollback: # Not needed
 
   - changeSet:
       id: v50.2024-05-14T12:42:50
@@ -7160,12 +7151,7 @@ databaseChangeLog:
               UPDATE report_dashboard
               SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
               WHERE archived = true;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE report_dashboard
-              SET trashed_from_collection_id = NULL, collection_id = trashed_from_collection_id
-              WHERE archived = true;
+      rollback: # Not needed
 
   - changeSet:
       id: v50.2024-05-14T12:42:52
@@ -7177,12 +7163,7 @@ databaseChangeLog:
               UPDATE report_card
               SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
               WHERE archived = true;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE report_card
-              SET trashed_from_collection_id = NULL, collection_id = trashed_from_collection_id
-              WHERE archived = true;
+      rollback: # Not needed
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

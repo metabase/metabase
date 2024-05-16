@@ -2098,3 +2098,31 @@
         (is (set/subset? #{dash} (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
         (is (set/subset? #{card} (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
         (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
+
+(deftest trash-migrations-test
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-14T12:42:52"] [migrate!]
+    (with-redefs [collection/is-trash? (constantly false)]
+      (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
+                                                      {:name "Silly Collection"
+                                                       :slug "silly-collection"})
+            subcollection-id (t2/insert-returning-pk! (t2/table-name :model/Collection)
+                                                      {:name     "Subcollection"
+                                                       :slug     "subcollection"
+                                                       :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
+        (migrate!)
+        (mt/user-http-request :crowberto :put 200 (str "/collection/" subcollection-id) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "/collection/" collection-id) {:archived true})
+        (mt/user-http-request :crowberto :delete 200 (str "/collection/" collection-id))
+        (testing "sanity check: `collection` no longer exists"
+          (is (nil? (t2/select-one :model/Collection :id collection-id))))
+        (let [trash-collection-id (collection/trash-collection-id)]
+          (testing "After a down-migration, it stays in the trash"
+            (migrate! :down 49)
+            (is (= (str "/" trash-collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
+          (testing "but it's not really the trash anymore"
+            (is (nil? (:type (t2/select-one :model/Collection :id trash-collection-id)))))
+          (testing "we can migrate back up"
+            (migrate!)
+            (is (not= trash-collection-id (t2/select-one-pk :model/Collection :type "trash")))
+            (is (= (str "/" (t2/select-one-pk :model/Collection :type "trash") "/")
+                   (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
