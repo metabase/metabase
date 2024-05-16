@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Card, Grid, Stack, Switch } from "metabase/ui";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card as ICard, Series } from "metabase-types/api";
 
 import { DataPanel } from "./DataPanel";
@@ -100,35 +101,23 @@ export function Visualizer() {
           style={{ overflow: "auto" }}
         >
           {charts.map((series, index) => (
-            <div
+            <Chart
               key={index}
-              onClick={event => {
+              series={series}
+              isFocused={index === focusedSeriesIndexes.chartIndex}
+              areTooltipsEnabled={areTooltipsEnabled}
+              metadata={metadata}
+              onWrapperClick={event => {
                 event.stopPropagation();
                 setFocusedSeriesIndexes({ chartIndex: index, seriesIndex: 0 });
               }}
-              style={{
-                width: "600px",
-                height: "600px",
-                padding: "12px",
-                border:
-                  focusedSeriesIndexes.chartIndex === index
-                    ? `1px solid ${color("brand")}`
-                    : undefined,
+              onVisualizationClick={clicked => {
+                setFocusedSeriesIndexes({
+                  chartIndex: index,
+                  seriesIndex: clicked.seriesIndex,
+                });
               }}
-            >
-              <BaseVisualization
-                rawSeries={series}
-                metadata={metadata}
-                enableHover={areTooltipsEnabled}
-                handleVisualizationClick={clicked => {
-                  clicked.event.stopPropagation();
-                  setFocusedSeriesIndexes({
-                    chartIndex: index,
-                    seriesIndex: clicked.seriesIndex,
-                  });
-                }}
-              />
-            </div>
+            />
           ))}
         </Card>
       </Grid.Col>
@@ -153,5 +142,48 @@ export function Visualizer() {
         )}
       </Grid.Col>
     </Grid>
+  );
+}
+
+interface ChartProps {
+  series: Series;
+  isFocused: boolean;
+  areTooltipsEnabled?: boolean;
+  metadata: Metadata;
+  onWrapperClick: (event: React.MouseEvent) => void;
+  onVisualizationClick: (clicked: {
+    event: React.MouseEvent;
+    seriesIndex: number;
+  }) => void;
+}
+
+function Chart({
+  series,
+  isFocused,
+  areTooltipsEnabled,
+  metadata,
+  onWrapperClick,
+  onVisualizationClick,
+}: ChartProps) {
+  return (
+    <div
+      onClick={onWrapperClick}
+      style={{
+        width: "600px",
+        height: "600px",
+        padding: "12px",
+        border: isFocused ? `1px solid ${color("brand")}` : undefined,
+      }}
+    >
+      <BaseVisualization
+        rawSeries={series}
+        metadata={metadata}
+        enableHover={areTooltipsEnabled}
+        handleVisualizationClick={clicked => {
+          clicked.event.stopPropagation();
+          onVisualizationClick(clicked);
+        }}
+      />
+    </div>
   );
 }
