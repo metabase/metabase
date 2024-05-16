@@ -1,5 +1,3 @@
-import type { ColorPalette } from "metabase/lib/colors/types";
-
 import type { MetabaseFontFamily } from "../fonts";
 
 /**
@@ -25,7 +23,33 @@ export interface MetabaseTheme {
   components?: MetabaseComponentTheme;
 }
 
-export type MetabaseColors = ColorPalette;
+export interface MetabaseColors {
+  /** Primary brand color */
+  brand?: string;
+
+  /** Text color on dark elements. Should be a lighter color for readability. */
+  "text-primary"?: string;
+
+  /** Lighter variation of dark text on light elements. */
+  "text-secondary"?: string;
+
+  /** Text color on light elements. Should be a darker color for readability. */
+  "text-tertiary"?: string;
+
+  /** Default background color. */
+  "background-white"?: string;
+
+  /** Darker background color for accented elements. */
+  "background-light"?: string;
+
+  /** Color used for borders */
+  border?: string;
+
+  /** Color used for filters context */
+  filter?: string;
+}
+
+export type MetabaseColor = keyof MetabaseColors;
 
 /**
  * Theme options for customizing specific Metabase
