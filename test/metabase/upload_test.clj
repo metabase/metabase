@@ -1288,7 +1288,7 @@
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
-                                              (ordered-map/ordered-map :offset_datetime ::upload/offset-datetime))
+                                              (ordered-map/ordered-map :offset_datetime offset-dt-type))
                            :rows []})]
                   (let [csv-rows ["offset_datetime"
                                   "2020-02-02T02:02:02+02:00"]
@@ -1299,7 +1299,7 @@
                                    action
                                    ;; TODO
                                    []
-                                   [[(if (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
+                                   [[(if (driver/upload-type->database-type driver/*driver* offset-dt-type)
                                        "2020-02-02T00:02:02Z"
                                        "2020-02-02T02:02:02+02:00")]]))
                              (set (rows-for-table table)))))
