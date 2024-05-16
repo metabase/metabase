@@ -1,7 +1,7 @@
 ---
 title: Charts with multiple series
 redirect_from:
-- /docs/latest/users-guide/09-multi-series-charting
+  - /docs/latest/users-guide/09-multi-series-charting
 ---
 
 # Charts with multiple series
@@ -79,11 +79,15 @@ When displaying multiple series, it’s important to keep legibility in mind. Co
 
 Metabase allows you to add values to multi-series charts, but go easy on this feature, especially on charts with lots of data points. Adding values to multiple series, each with many data points, can make charts more difficult to read.
 
-From the **Visualization -> Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**.
-
-You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values.
+From the **Visualization > Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**.
 
 ![add values to multi-series chart](./images/add_values.png)
+
+You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series.
+
+- For a question with multiple dimensions, go to **Visualization > Data** tab, click on the three dots menu **...** to the right of a series, and toggle **Show values for this series** to show or hide its values.
+
+- For a dashboard card that combines multiple saved questions, go to the **Visualization > Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values.
 
 You can also toggle values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
 
