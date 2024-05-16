@@ -166,6 +166,18 @@ describe("scenarios > question > offset", () => {
     it.skip("does not allow drilling on a offsetted column", () => {
       // TODO
     });
+
+    it.skip("does not allow aggregating on a offsetted column", () => {
+      // TODO
+    });
+
+    it.skip("does not allow breaking out on a offsetted column", () => {
+      // TODO
+    });
+
+    it.skip("does not allow filtering on a offsetted column", () => {
+      // TODO
+    });
   });
 
   describe("filters", () => {
