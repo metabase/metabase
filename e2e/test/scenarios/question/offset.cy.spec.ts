@@ -123,6 +123,45 @@ describe("scenarios > question > offset", () => {
         ["3", "49.21", "117.03"],
       ]);
     });
+
+    it.skip("works with offsetted custom column based on another offsetted custom column (metabase#42764)", () => {
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "Total-1": [
+            "offset",
+            createOffsetOptions("Total-1"),
+            ORDERS_TOTAL_FIELD_REF,
+            -1,
+          ],
+        },
+        fields: [
+          ORDERS_ID_FIELD_REF,
+          ORDERS_TOTAL_FIELD_REF,
+          ["expression", "Total-1", { "base-type": "type/BigInteger" }],
+        ],
+        "order-by": [["asc", ORDERS_ID_FIELD_REF]],
+        limit: 5,
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+      openNotebook();
+
+      getNotebookStep("expression").icon("add").click();
+      enterCustomColumnDetails({
+        formula: "Offset([Total-1], -1)",
+        name: "Total-2",
+      });
+      popover().button("Done").click();
+
+      visualize();
+      verifyNoQuestionError();
+      verifyTableContent([
+        ["1", "39.72", "", ""],
+        ["2", "117.03", "39.72", ""],
+        ["3", "49.21", "117.03", "39.72"],
+      ]);
+    });
   });
 
   describe("filters", () => {
