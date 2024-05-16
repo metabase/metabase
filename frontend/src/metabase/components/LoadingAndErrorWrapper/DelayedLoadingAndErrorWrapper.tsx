@@ -1,3 +1,4 @@
+import type classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -10,6 +11,7 @@ import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 export type LoadingAndErrorWrapperProps = {
   className?: string;
   error: any;
+  errorClassNames: classNames.ArgumentArray;
   loading: any;
   noBackground?: boolean;
   noWrapper?: boolean;
