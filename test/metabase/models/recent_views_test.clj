@@ -97,14 +97,15 @@
 
 (deftest simple-get-list-table-test
   (mt/with-temp
-    [:model/Table {table-id :id} {:name "name"}]
+    [:model/Database {db-id :id} {:name "test-data"}
+     :model/Table {table-id :id} {:name "name" :db_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)
     (is (= [{:description nil,
              :can_write false,
              :name "name",
              :parent_collection {},
              :id table-id,
-             :database {:id 20, :name "test-data", :initial_sync_status "complete"},
+             :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
              :timestamp String,
              :display_name "Name",
              :model :table}]
