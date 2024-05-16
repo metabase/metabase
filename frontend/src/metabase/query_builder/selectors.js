@@ -551,9 +551,10 @@ const isZoomingRow = createSelector(
   index => index != null,
 );
 
-export const getMode = createSelector([getLastRunQuestion], question => {
-  return question && getQuestionMode(question);
-});
+export const getMode = createSelector(
+  [getLastRunQuestion],
+  question => question && getQuestionMode(question),
+);
 
 export const getIsObjectDetail = createSelector(
   [getMode, isZoomingRow],

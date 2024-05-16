@@ -671,12 +671,10 @@ class Question {
         originalQuestion &&
         originalQuestion._serializeForUrl({
           includeOriginalCardId: false,
-          includeCollectionId: false,
         });
 
       const currentCardSerialized = this._serializeForUrl({
         includeOriginalCardId: false,
-        includeCollectionId: false,
       });
 
       return currentCardSerialized !== origCardSerialized;
