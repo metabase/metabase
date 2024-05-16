@@ -26,12 +26,15 @@
   ([query]
    (mock-metric meta/metadata-provider query))
   ([metadata-provider query]
-   (let [metric {:lib/type :metadata/card
-                 :id (swap! counter inc)
-                 :database-id (meta/id)
-                 :name "Mock metric"
-                 :type :metric
-                 :dataset-query query}]
+   (mock-metric metadata-provider query nil))
+  ([metadata-provider query card-details]
+   (let [metric (merge {:lib/type :metadata/card
+                        :id (swap! counter inc)
+                        :database-id (meta/id)
+                        :name "Mock metric"
+                        :type :metric
+                        :dataset-query query}
+                       card-details)]
      [metric (lib/composed-metadata-provider
                metadata-provider
                (lib.tu/mock-metadata-provider
@@ -138,6 +141,30 @@
                     {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
                      :aggregation some?}]}
           (adjust query)))))
+
+(deftest ^:parallel question-based-on-metric-based-on-metric-based-on-metric-test
+  (let [[first-metric mp] (mock-metric)
+        [second-metric mp] (mock-metric mp (lib/query mp first-metric))
+        [third-metric mp] (mock-metric mp (lib/query mp second-metric))
+        query (lib/query mp third-metric)]
+    (is (=? {:stages [{:aggregation complement}
+                      {:aggregation complement}
+                      {:aggregation complement}
+                      {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+            (adjust query)))))
+
+(deftest ^:parallel joined-question-based-on-metric-based-on-metric-based-on-metric-test
+  (let [[first-metric mp] (mock-metric)
+        [second-metric mp] (mock-metric mp (lib/query mp first-metric))
+        [question mp] (mock-metric mp (lib/query mp second-metric) {:type :question})
+        query (-> (lib/query mp (meta/table-metadata :products))
+                  (lib/join (lib/join-clause question [(lib/= 1 1)])))]
+    (is (=? {:stages [{:joins [{:stages [{:aggregation complement}
+                                         {:aggregation complement}
+                                         {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
+                                         ;; Empty stage added by resolved-source-cards to nest join
+                                         #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
+            (adjust query)))))
 
 (deftest ^:parallel e2e-source-metric-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
