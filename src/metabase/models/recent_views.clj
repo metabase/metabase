@@ -367,7 +367,7 @@
                                  :order-by [[:rv.timestamp :desc]]}))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
-  (if (#{:question} model) :card model))
+  (if (= :question model) :card model))
 
 (defn- post-process [entity->id->data recent-view]
   (when recent-view
