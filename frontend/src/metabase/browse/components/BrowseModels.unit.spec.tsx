@@ -8,7 +8,6 @@ import { defaultRootCollection } from "metabase/admin/permissions/pages/Collecti
 import type { RecentItem, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockModelResult,
   createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
