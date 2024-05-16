@@ -530,9 +530,7 @@ function DashboardInner(props: DashboardProps) {
               canWrite={canWrite}
               canRestore={canRestore}
               onUnarchive={() => dispatch(setArchivedDashboard(false))}
-              onMove={newParentId =>
-                dispatch(moveDashboardToCollection({ id: newParentId }))
-              }
+              onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
               onDeletePermanently={() => {
                 const { id } = dashboard;
                 const deleteAction = Dashboards.actions.delete({ id });

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import { Box, Flex, FixedSizeIcon, Text } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
 
 import { BannerButton } from "./BannerButton";
 
@@ -14,7 +14,7 @@ type ArchivedEntityBannerProps = {
   canWrite: boolean;
   canRestore: boolean;
   onUnarchive: () => void;
-  onMove: (id: CollectionId) => void;
+  onMove: (collection: CollectionPickerValueItem) => void;
   onDeletePermanently: () => void;
 };
 
@@ -73,7 +73,7 @@ export const ArchivedEntityBanner = ({
         <CollectionPickerModal
           title={`Move ${name}`}
           value={{ id: "root", model: "collection" }}
-          onChange={({ id }) => onMove?.(id)}
+          onChange={collection => onMove?.(collection)}
           options={{
             showSearch: true,
             hasConfirmButtons: true,

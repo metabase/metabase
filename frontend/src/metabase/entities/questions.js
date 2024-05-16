@@ -80,6 +80,7 @@ const Questions = createEntity({
             undo(opts, getLabel(card), t`moved`),
           ),
         );
+
         dispatch(
           Collections.actions.fetchList(
             {
@@ -91,6 +92,7 @@ const Questions = createEntity({
         );
 
         const updatedCard = result?.payload?.question;
+
         if (updatedCard) {
           dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
         }
@@ -175,7 +177,7 @@ const Questions = createEntity({
   },
 });
 
-export function getLabel(card) {
+function getLabel(card) {
   if (card.type === "model" || card.model === "dataset") {
     return t`model`;
   }
