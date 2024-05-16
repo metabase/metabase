@@ -1327,3 +1327,71 @@
      ;; delete the job will also delete all of its triggers
      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
      (qs/shutdown scheduler))))
+
+;; when card display is area or bar,
+;; 1. set the display key to :stackable.stack_display value OR leave it the same
+;; 2. when series settings exist, remove the diplay key from each map in the series_settings list
+
+(defn- area-bar-stacked-viz-migration
+  [{display :display viz :visualization_settings :as card}]
+  (if (and (#{:area :bar "area" "bar"} display)
+             (:stackable.stack_type viz))
+    (let [actual-display (name (or (:stackable.stack_display viz) display))
+          new-viz        (m/update-existing viz :series_settings update-vals (fn [m] (dissoc m :display)))]
+      (assoc card
+             :display actual-display
+             :visualization_settings new-viz))
+    card))
+
+(defn- combo-stacked-viz-migration
+  [{display :display viz :visualization_settings :as card}]
+  (let [{stack-type      :stackable.stack_type
+         series-settings :series_settings} viz
+        series-displays                    (map :display series-settings)
+        new-display                        (if (and (every? some? series-displays)
+                                                    (= 1 (count (distinct series-displays)))
+                                                    (#{:area :bar "area" "bar"} (first (distinct series-displays))))
+                                             (first series-displays)
+                                             :combo)]
+    (if (and (#{:combo "combo"} display)
+               stack-type)
+      (if (not (#{:combo "combo"} new-display))
+        ;; we've effectively converted a :combo chart into :area or :bar since every series is shown the same way
+        (area-bar-stacked-viz-migration (assoc card :display new-display))
+        ;; Not all series are the same, so we keep it combo and remove the :stackable.stack_type
+        (let [new-viz (dissoc viz :stackable.stack_type)]
+          (assoc card :visualization_settings new-viz)))
+      card)))
+
+(defn- stack-display-cleanup-migration
+  [card]
+  (m/dissoc-in card [:visualization_settings :stackable.stack_display]))
+
+(defn- update-stacked-viz-cards
+  [partial-card]
+  (-> partial-card
+      area-bar-stacked-viz-migration
+      combo-stacked-viz-migration
+      stack-display-cleanup-migration))
+
+(define-migration MigrateStackedAreaBarComboDisplaySettings
+  (let [update! (fn [{:keys [id display visualization_settings] :as card}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings
+                                          :display                display}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id display visualization_settings]}]
+                                    (let [parsed-viz           (json/parse-string visualization_settings keyword)
+                                          partial-card         {:display display :visualization_settings parsed-viz}
+                                          updated-partial-card (update-stacked-viz-cards partial-card)]
+                                      (when (not= partial-card updated-partial-card)
+                                        (let [{updated-display :display
+                                               updated-viz     :visualization_settings} updated-partial-card]
+                                          {:id                     id
+                                           :display                (name updated-display)
+                                           :visualization_settings (json/generate-string updated-viz)})))))
+                            (t2/reducible-query {:select [:id :display :visualization_settings]
+                                                 :from   [:report_card]
+                                                 :where  [:or
+                                                          ;; these match legacy field refs in column_settings
+                                                          [:like :visualization_settings "%stackable%"]]})))))
