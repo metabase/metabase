@@ -6889,7 +6889,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-08T09:00:02
       author: qnkhuat
-      comment: Add "started" as default value for task_history.status
+      comment: Add "started" as default value for task_history.status, now that backfill is done.
       changes:
         - addDefaultValue:
             defaultValue: "started"
