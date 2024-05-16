@@ -109,10 +109,10 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = Lib.canPreview(step.query) && step.active && step.visible;
-  console.log("canPreview", canPreview);
+  const canPreview =
+    step.previewQuery != null && Lib.canPreview(step.previewQuery);
   const hasPreviewButton = !isPreviewOpen && canPreview;
-  const canRevert = typeof step.revert === "function" && !readOnly;
+  const canRevert = step.revert != null && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
