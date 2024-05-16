@@ -25,7 +25,7 @@ export const MigrationError = ({ migration }: MigrationErrorProps) => {
           <Text fw="bold">{t`Migration to cloud failed`}</Text>
           <Text mt="1rem">
             {c(
-              "{0} indicates an email address to which to requrest migration help",
+              "{0} is an email address",
             ).jt`Please try again later, and reach out to us at ${(
               <Link key="email" variant="brand" to="mailto:help@metabase.com">
                 help@metabase.com
