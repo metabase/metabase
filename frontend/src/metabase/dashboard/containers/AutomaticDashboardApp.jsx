@@ -28,7 +28,7 @@ import { Icon } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
-import { DashboardTabs } from "../components/DashboardTabs";
+import { SyncedDashboardTabs } from "../components/DashboardTabs";
 
 import {
   ItemContent,
@@ -154,7 +154,7 @@ class AutomaticDashboardAppInner extends Component {
                   </div>
                   {this.props.tabs.length > 1 && (
                     <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                      <DashboardTabs location={this.props.location} />
+                      <SyncedDashboardTabs location={this.props.location} />
                     </div>
                   )}
                 </FixedWidthContainer>

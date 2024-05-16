@@ -10,7 +10,7 @@ import { useSelector } from "metabase/lib/redux";
 import type { DashboardTab } from "metabase-types/api";
 import type { DashboardState, State } from "metabase-types/store";
 
-import { DashboardTabs } from "./DashboardTabs";
+import { SyncedDashboardTabs } from "./SyncedDashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 import { getSlug } from "./use-sync-url-slug";
@@ -35,11 +35,11 @@ function setup({
   };
 
   const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
+    const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
 
     return (
       <>
-        <DashboardTabs
+        <SyncedDashboardTabs
           dashboardId={1}
           location={location}
           isEditing={isEditing}

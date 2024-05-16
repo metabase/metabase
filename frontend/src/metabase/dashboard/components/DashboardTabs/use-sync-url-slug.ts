@@ -70,9 +70,9 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       return;
     }
 
-    const slugChanged = slug && slug !== prevSlug;
+    const slugChanged = slug && prevSlug && slug !== prevSlug;
 
-    if (slugChanged || !prevTabs?.length) {
+    if (slugChanged) {
       dispatch(initTabs({ slug }));
       const slugId = getIdFromSlug(slug);
       const hasTabs = tabs.length > 0;
@@ -86,8 +86,9 @@ export function useSyncURLSlug({ location }: { location: Location }) {
 
     const tabSelected = selectedTabId !== prevSelectedTabId;
     const tabRenamed =
+      prevTabs &&
       tabs.find(t => t.id === selectedTabId)?.name !==
-      prevTabs?.find(t => t.id === selectedTabId)?.name;
+        prevTabs.find(t => t.id === selectedTabId)?.name;
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
     if (tabSelected || tabRenamed || penultimateTabDeleted) {

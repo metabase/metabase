@@ -31,7 +31,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { SyncedDashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type {
   DashboardControlsPassedProps,
@@ -268,7 +268,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs
+            <SyncedDashboardTabs
               dashboardId={this.props.dashboardId}
               location={this.props.location}
             />
