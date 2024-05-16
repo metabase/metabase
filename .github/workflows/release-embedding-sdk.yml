@@ -117,7 +117,7 @@ jobs:
       - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
         with:
-          name: metabase-ee-${{ github.sha }}-uberjar
+          name: metabase-ee-uberjar
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
