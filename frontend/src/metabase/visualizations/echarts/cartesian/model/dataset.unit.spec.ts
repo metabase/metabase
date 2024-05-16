@@ -318,6 +318,7 @@ describe("dataset transform functions", () => {
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
+        [],
         xAxisModel,
         seriesModels,
         yAxisScaleTransforms,
@@ -349,6 +350,13 @@ describe("dataset transform functions", () => {
     it("should return an array of normalized datasets", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
+        [
+          {
+            seriesKeys: seriesModels.map(seriesModel => seriesModel.dataKey),
+            display: "bar",
+            axis: "left",
+          },
+        ],
         xAxisModel,
         seriesModels,
         yAxisScaleTransforms,
@@ -387,6 +395,7 @@ describe("dataset transform functions", () => {
 
       const result = applyVisualizationSettingsDataTransformations(
         dataset,
+        [],
         xAxisModel,
         seriesModels,
         yAxisScaleTransforms,
@@ -440,6 +449,7 @@ describe("dataset transform functions", () => {
       it("should replace missing values with zeros based on the x-axis interval", () => {
         const result = applyVisualizationSettingsDataTransformations(
           dataset,
+          [],
           xAxisModel,
           [createMockSeriesModel({ dataKey: "series1" })],
           yAxisScaleTransforms,
@@ -470,6 +480,7 @@ describe("dataset transform functions", () => {
       it("should not replace missing values with zeros when x-axis interval is too big", () => {
         const result = applyVisualizationSettingsDataTransformations(
           dataset,
+          [],
           { ...xAxisModel, intervalsCount: 10001 },
           [createMockSeriesModel({ dataKey: "series1" })],
           yAxisScaleTransforms,
@@ -486,6 +497,7 @@ describe("dataset transform functions", () => {
 
     it("should work on empty datasets", () => {
       const result = applyVisualizationSettingsDataTransformations(
+        [],
         [],
         xAxisModel,
         seriesModels,
@@ -538,11 +550,8 @@ describe("dataset transform functions", () => {
     });
   });
 
-  describe("getTransformedDataset", () => {
+  describe("sortDataset", () => {
     const seriesKey = "value";
-    const seriesModels = [
-      createMockSeriesModel({ dataKey: "value", columnIndex: 0 }),
-    ];
 
     it("should sort time-series datasets", () => {
       const dataset = [
@@ -570,18 +579,6 @@ describe("dataset transform functions", () => {
       expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
       expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
       expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
-    });
-
-    it("handles empty datasets without errors", () => {
-      expect(() =>
-        applyVisualizationSettingsDataTransformations(
-          [],
-          xAxisModel,
-          seriesModels,
-          yAxisScaleTransforms,
-          createMockComputedVisualizationSettings(),
-        ),
-      ).not.toThrow();
     });
   });
 });
