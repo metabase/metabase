@@ -188,54 +188,6 @@
                                        (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID"))))))))
         "After inserting 2 views of each model, we should have 2 views PER each model."))))
 
-(deftest update-users-recent-views!-bucket-filling-test
-  (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
-    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
-      (mt/with-temp
-        [:model/Card       {card-id         :id} {:type "question"}
-         :model/Card       {card-id-2       :id} {:type "question"}
-         :model/Card       {card-id-3       :id} {:type "question"}
-
-         :model/Card       {model-id        :id} {:type "model"}
-         :model/Card       {model-id-2      :id} {:type "model"}
-         :model/Card       {model-id-3      :id} {:type "model"}
-
-         :model/Dashboard  {dashboard-id    :id} {}
-         :model/Dashboard  {dashboard-id-2  :id} {}
-         :model/Dashboard  {dashboard-id-3  :id} {}
-
-         :model/Collection {collection-id   :id} {}
-         :model/Collection {collection-id-2 :id} {}
-         :model/Collection {collection-id-3 :id} {}
-
-         :model/Database   {db-id           :id} {} ;; just needed for these temp tables
-         :model/Table      {table-id        :id} {:db_id db-id, :is_upload true}
-         :model/Table      {table-id-2      :id} {:db_id db-id, :is_upload true}
-         :model/Table      {table-id-3      :id} {:db_id db-id, :is_upload true}]
-        (doseq [[model out-model model-ids] [[:model/Card :card [card-id card-id-2 card-id-3]]
-                                             [:model/Card :dataset [model-id model-id-2 model-id-3]]
-                                             [:model/Dashboard :dashboard [dashboard-id dashboard-id-2 dashboard-id-3]]
-                                             [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
-                                             [:model/Table :table [table-id table-id-2 table-id-3]]]]
-          (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
-          (testing (format "When user views %s %ss, the latest %s per model are kept. "
-                           (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
-            (is (= 2 (count (filter (comp #{out-model} :model)
-                                    (mt/with-test-user :rasta
-                                      (recent-views/get-list (mt/user->id :rasta)))))))))
-        (is
-         (= {:card recent-views/*recent-views-stored-per-user-per-model*,
-             :dataset recent-views/*recent-views-stored-per-user-per-model*,
-             :dashboard recent-views/*recent-views-stored-per-user-per-model*,
-             :collection recent-views/*recent-views-stored-per-user-per-model*,
-             :table recent-views/*recent-views-stored-per-user-per-model*}
-            (frequencies (map :model
-                              (mt/with-test-user :rasta
-                                (recent-views/get-list (mt/user->id :rasta))))))
-         "After inserting 3 views of each model, we should have 2 views PER each model.")))))
-
-#_
 (deftest most-recent-dashboard-view-test
   (testing "The most recent dashboard view is never pruned"
     (binding [recent-views/*recent-views-stored-per-user-per-model* 1]
@@ -264,54 +216,8 @@
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)
             (is (= [dashboard-id]
                    (keep #(when ((comp #{:dashboard} :model) %) (:id %))
-                         (recent-views/get-list (mt/user->id :rasta)))))))))))
-#_
-(deftest table-per-user-size-shrinks-or-grows-test
-  (binding [recent-views/*recent-views-stored-per-user-per-model* 30]
-    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
-      (mt/with-temp
-        [:model/Card       {card-id         :id} {:type "question"}
-         :model/Card       {card-id-2       :id} {:type "question"}
-         :model/Card       {card-id-3       :id} {:type "question"}
-         :model/Card       {card-id-4       :id} {:type "question"}
-
-         :model/Card       {model-id        :id} {:type "model"}
-         :model/Card       {model-id-2      :id} {:type "model"}
-         :model/Card       {model-id-3      :id} {:type "model"}
-
-         :model/Dashboard  {dashboard-id    :id} {}
-         :model/Dashboard  {dashboard-id-2  :id} {}
-         :model/Dashboard  {dashboard-id-3  :id} {}
-
-         :model/Collection {collection-id   :id} {}
-         :model/Collection {collection-id-2 :id} {}
-         :model/Collection {collection-id-3 :id} {}
-
-         :model/Database   {db-id           :id} {} ;; just needed for these temp tables
-         :model/Table      {table-id        :id} {:db_id db-id, :active true}
-         :model/Table      {table-id-2      :id} {:db_id db-id, :active true}
-         :model/Table      {table-id-3      :id} {:db_id db-id, :active false}]
-        (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
-                                   [:model/Card       [model-id model-id-2 model-id-3]]
-                                   [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
-                                   [:model/Collection [collection-id collection-id-2 collection-id-3]]
-                                   [:model/Table      [table-id table-id-2 table-id-3]]]]
-          (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
-        (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 2}
-               ;; There are 3 tables in recent_view, but 1 gets filtered out.
-               (frequencies (map :model (recent-views/get-list (mt/user->id :rasta))))))
-        (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
-          (is (= 5
-                 (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
-          (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
-                 ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
-                 (frequencies (map :model (recent-views/get-list (mt/user->id :rasta)))))))))))
-
-
-
-
+                         (mt/with-test-user :rasta
+                           (recent-views/get-list (mt/user->id :rasta))))))))))))
 
 (deftest user-recent-views-dedupe-test
   (testing "The `user-recent-views` table should dedupe views of the same model"
@@ -439,3 +345,97 @@
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table missing-table-id)
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")))))
+
+;; N+1 tests:
+
+#_(deftest update-users-recent-views!-bucket-filling-test
+  (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
+      (mt/with-temp
+        [:model/Card       {card-id         :id} {:type "question"}
+         :model/Card       {card-id-2       :id} {:type "question"}
+         :model/Card       {card-id-3       :id} {:type "question"}
+
+         :model/Card       {model-id        :id} {:type "model"}
+         :model/Card       {model-id-2      :id} {:type "model"}
+         :model/Card       {model-id-3      :id} {:type "model"}
+
+         :model/Dashboard  {dashboard-id    :id} {}
+         :model/Dashboard  {dashboard-id-2  :id} {}
+         :model/Dashboard  {dashboard-id-3  :id} {}
+
+         :model/Collection {collection-id   :id} {}
+         :model/Collection {collection-id-2 :id} {}
+         :model/Collection {collection-id-3 :id} {}
+
+         :model/Database   {db-id           :id} {} ;; just needed for these temp tables
+         :model/Table      {table-id        :id} {:db_id db-id, :is_upload true}
+         :model/Table      {table-id-2      :id} {:db_id db-id, :is_upload true}
+         :model/Table      {table-id-3      :id} {:db_id db-id, :is_upload true}]
+        (doseq [[model out-model model-ids] [[:model/Card :card [card-id card-id-2 card-id-3]]
+                                             [:model/Card :dataset [model-id model-id-2 model-id-3]]
+                                             [:model/Dashboard :dashboard [dashboard-id dashboard-id-2 dashboard-id-3]]
+                                             [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
+                                             [:model/Table :table [table-id table-id-2 table-id-3]]]]
+          (doseq [model-id model-ids]
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
+          (testing (format "When user views %s %ss, the latest %s per model are kept. "
+                           (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
+            (is (= 2 (count (filter (comp #{out-model} :model)
+                                    (mt/with-test-user :rasta
+                                      (recent-views/get-list (mt/user->id :rasta)))))))))
+        (is
+         (= {:card recent-views/*recent-views-stored-per-user-per-model*,
+             :dataset recent-views/*recent-views-stored-per-user-per-model*,
+             :dashboard recent-views/*recent-views-stored-per-user-per-model*,
+             :collection recent-views/*recent-views-stored-per-user-per-model*,
+             :table recent-views/*recent-views-stored-per-user-per-model*}
+            (frequencies (map :model
+                              (mt/with-test-user :rasta
+                                (recent-views/get-list (mt/user->id :rasta))))))
+         "After inserting 3 views of each model, we should have 2 views PER each model.")))))
+
+#_(deftest table-per-user-size-shrinks-or-grows-test
+  (binding [recent-views/*recent-views-stored-per-user-per-model* 30]
+    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
+      (mt/with-temp
+        [:model/Card       {card-id         :id} {:type "question"}
+         :model/Card       {card-id-2       :id} {:type "question"}
+         :model/Card       {card-id-3       :id} {:type "question"}
+         :model/Card       {card-id-4       :id} {:type "question"}
+
+         :model/Card       {model-id        :id} {:type "model"}
+         :model/Card       {model-id-2      :id} {:type "model"}
+         :model/Card       {model-id-3      :id} {:type "model"}
+
+         :model/Dashboard  {dashboard-id    :id} {}
+         :model/Dashboard  {dashboard-id-2  :id} {}
+         :model/Dashboard  {dashboard-id-3  :id} {}
+
+         :model/Collection {collection-id   :id} {}
+         :model/Collection {collection-id-2 :id} {}
+         :model/Collection {collection-id-3 :id} {}
+
+         :model/Database   {db-id           :id} {} ;; just needed for these temp tables
+         :model/Table      {table-id        :id} {:db_id db-id, :active true}
+         :model/Table      {table-id-2      :id} {:db_id db-id, :active true}
+         :model/Table      {table-id-3      :id} {:db_id db-id, :active false}]
+        (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
+                                   [:model/Card       [model-id model-id-2 model-id-3]]
+                                   [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
+                                   [:model/Collection [collection-id collection-id-2 collection-id-3]]
+                                   [:model/Table      [table-id table-id-2 table-id-3]]]]
+          (doseq [model-id model-ids]
+
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
+        (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 2}
+               ;; There are 3 tables in recent_view, but 1 gets filtered out.
+               (frequencies (map :model  (mt/with-test-user :rasta (recent-views/get-list (mt/user->id :rasta)))))))
+        (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+          (is (= 5
+                 (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
+          (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
+                 ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
+                 (frequencies (map :model (mt/with-test-user :rasta
+                                            (recent-views/get-list (mt/user->id :rasta))))))))))))
