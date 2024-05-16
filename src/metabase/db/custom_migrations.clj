@@ -1269,5 +1269,5 @@
     (qs/shutdown scheduler)))
 
 (define-reversible-migration MigrateMetricsToV2
-  (metrics-v2/migrate-up)
-  (metrics-v2/migrate-down))
+  (metrics-v2/migrate-up!)
+  (metrics-v2/migrate-down!))
