@@ -230,6 +230,37 @@ describeWithSnowplow("extract shortcut", () => {
       });
     });
   });
+
+  it("should disable the scroll behaviour after it has been rendered", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    extractColumnAndCheck({
+      column: "Email",
+      option: "Host",
+    });
+
+    cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
+
+    cy.findAllByRole("columnheader", { name: "ID" })
+      .should("be.visible")
+      .click();
+
+    // Change sort direction
+    popover().findAllByRole("button").first().click();
+
+    // ID should still be visible (ie. no scrolling to the end should have happened)
+    cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
+  });
 });
 
 function extractColumnAndCheck({
