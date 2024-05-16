@@ -9,7 +9,6 @@ type CommonProps = Pick<
   | "isEditing"
   | "color"
   | "hasArrowIcon"
-  | "hasDot"
   | "hasChevronDown"
 >;
 

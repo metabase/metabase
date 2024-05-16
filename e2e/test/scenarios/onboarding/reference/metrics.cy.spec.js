@@ -20,79 +20,74 @@ describe("scenarios > reference > metrics", () => {
       name: METRIC_NAME,
       description: METRIC_DESCRIPTION,
       table_id: ORDERS_ID,
+    }).then(({ body: { id } }) => {
+      cy.wrap(id).as("metricId");
     });
   });
 
-  it("should see the listing", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_DESCRIPTION);
-  });
-
-  it("should let the user navigate to details", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Why this metric is interesting");
-  });
-
   it("should let an admin edit details about the metric", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
+    cy.get("@metricId").then(id => {
+      cy.log("Should see the listing");
+      cy.visit("/reference/metrics");
+      cy.location("pathname").should("eq", "/reference/metrics");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Description")
-      .parent()
-      .parent()
-      .find("textarea")
-      .clear()
-      .type("Count of orders under $100");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+      cy.findByText(METRIC_DESCRIPTION);
 
-    modal().find("textarea").type("Renaming the description");
+      cy.log("Should let the user navigate to details");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").click();
+      cy.findByText(METRIC_NAME).click();
+      cy.location("pathname").should("eq", `/reference/metrics/${id}`);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of orders under $100");
+      cy.findByText("Edit").click();
+      cy.location("pathname").should("eq", `/reference/metrics/${id}/edit`);
+
+      cy.findByText("Description")
+        .parent()
+        .parent()
+        .find("textarea")
+        .clear()
+        .type("Count of orders under $100");
+
+      cy.findByText("Save").click();
+
+      modal().find("textarea").type("Renaming the description");
+
+      cy.findByText("Save changes").click();
+
+      cy.findByText("Count of orders under $100");
+
+      cy.log(
+        "Make sure this is reflected in the revision history (metabase#42633)",
+      );
+      cy.findAllByRole("listitem")
+        .filter(':contains("Revision history for orders < 100")')
+        .click();
+
+      cy.location("pathname").should(
+        "eq",
+        `/reference/metrics/${id}/revisions`,
+      );
+      cy.findAllByRole("listitem").should(
+        "contain",
+        "Renaming the description",
+      );
+    });
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
+    cy.get("@metricId").then(id => {
+      cy.visit(`/reference/metrics/${id}/edit`);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Why this metric is interesting")
-      .parent()
-      .parent()
-      .find("textarea")
-      .type("Because it's very nice");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Cancel").click();
+      cy.findByText("Why this metric is interesting")
+        .parent()
+        .parent()
+        .find("textarea")
+        .type("Because it's very nice");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Because it's very nice").should("have.length", 0);
-  });
+      cy.findByText("Cancel").click();
 
-  it("should have different URI while editing the metric", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-
-    cy.url().should("match", /\/reference\/metrics\/\d+$/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
-    cy.url().should("match", /\/reference\/metrics\/\d+\/edit$/);
+      cy.findByText("Because it's very nice").should("not.exist");
+      cy.location("pathname").should("eq", `/reference/metrics/${id}`);
+    });
   });
 });

@@ -24,6 +24,8 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -202,11 +204,12 @@ describe(
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders").should("not.exist");
 
-                cy.findByPlaceholderText("Search…").click();
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Recently viewed");
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Nothing here");
+                openCommandPalette();
+                commandPalette().within(() => {
+                  cy.findByRole("option", { name: /recent/i }).should(
+                    "not.exist",
+                  );
+                });
 
                 // Check page for archived questions
                 cy.visit("/question/" + ORDERS_QUESTION_ID);

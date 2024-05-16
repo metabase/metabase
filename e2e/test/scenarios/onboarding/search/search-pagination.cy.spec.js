@@ -1,7 +1,12 @@
 import _ from "underscore";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import {
+  commandPaletteSearch,
+  getSearchBar,
+  restore,
+  visitFullAppEmbeddingUrl,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -18,15 +23,15 @@ describe("scenarios > search", () => {
     cy.intercept("/api/search", req => {
       expect("Unexpected call to /api/search").to.be.false;
     });
-    cy.visit("/");
-    cy.findByPlaceholderText("Search…").type(" ");
+    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
+    getSearchBar().type(" ");
   });
 
   it("should allow users to paginate results", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
-    cy.findByPlaceholderText("Search…").type("generated_question{enter}");
+    commandPaletteSearch("generated_question");
     cy.findByLabelText("Previous page").should("be.disabled");
 
     // First page
