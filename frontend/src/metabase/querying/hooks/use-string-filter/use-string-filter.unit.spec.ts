@@ -105,6 +105,16 @@ describe("useStringFilter", () => {
       values: [],
       expectedDisplayName: "Category is not empty",
     },
+    {
+      operator: "is-null",
+      values: [],
+      expectedDisplayName: "Category is empty",
+    },
+    {
+      operator: "not-null",
+      values: [],
+      expectedDisplayName: "Category is not empty",
+    },
   ])(
     'should allow to create a filter for "$operator" operator',
     ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
