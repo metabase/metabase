@@ -38,12 +38,4 @@ export const OPERATOR_OPTIONS: Record<
     operator: "not-empty",
     type: "empty",
   },
-  "is-null": {
-    operator: "is-null",
-    type: "empty",
-  },
-  "not-null": {
-    operator: "not-null",
-    type: "empty",
-  },
 };
