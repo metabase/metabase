@@ -318,6 +318,7 @@
       (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
+
 (deftest ^:parallel after-select-driver-features-realize-db-row-test
   ;; This test is necessary because driver multimethods should be able to assume that the db argument is a Database
   ;; instance, not a transient row. Otherwise a call like `(mi/instance-of :model/Database db)` will return false
