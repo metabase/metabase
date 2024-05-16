@@ -1,7 +1,7 @@
 name: visualization_settings
 display_name: Visualization Settings
 description: null
-created_at: '2023-09-21T13:22:50.069446Z'
+created_at: '2023-11-10T21:38:06.987536Z'
 active: true
 visibility_type: normal
 table_id:
@@ -19,11 +19,11 @@ dimensions: []
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
-preview_display: false
+preview_display: true
 position: 9
 custom_position: 0
 database_position: 9
-has_field_values: null
+has_field_values: auto-list
 settings: null
 caveats: null
 points_of_interest: null

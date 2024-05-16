@@ -7,9 +7,10 @@ archived: false
 type: instance-analytics
 parent_id: null
 personal_owner_id: null
-namespace: analytics
+namespace: null
 authority_level: null
 serdes/meta:
 - id: vG58R8k-QddHWA7_47umn
   label: metabase_analytics
   model: Collection
+is_sample: false

@@ -472,4 +472,5 @@ dashcards:
     table.pivot_column: end_timestamp
 initially_published_at: null
 tabs: []
+view_count: 45
 width: full

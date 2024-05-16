@@ -1,7 +1,7 @@
 name: v_content
 display_name: V Content
 description: null
-created_at: '2023-06-08T14:05:39.120813Z'
+created_at: '2023-11-10T21:38:01.085719Z'
 db_id: Internal Metabase Database
 schema: public
 entity_type: entity/GenericTable
@@ -21,3 +21,5 @@ serdes/meta:
 - id: v_content
   model: Table
 database_require_filter: null
+estimated_row_count: null
+view_count: 0

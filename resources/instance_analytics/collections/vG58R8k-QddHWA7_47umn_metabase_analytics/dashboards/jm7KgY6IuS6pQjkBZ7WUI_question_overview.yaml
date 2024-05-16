@@ -603,4 +603,5 @@ dashcards:
     table.pivot_column: error
 initially_published_at: null
 tabs: []
+view_count: 30
 width: full

@@ -1,7 +1,7 @@
 name: card_id
 display_name: Card ID
 description: null
-created_at: '2023-11-01T02:10:34.168342Z'
+created_at: '2023-11-10T21:38:06.765191Z'
 active: true
 visibility_type: normal
 table_id:
@@ -23,7 +23,7 @@ preview_display: true
 position: 5
 custom_position: 0
 database_position: 5
-has_field_values: auto-list
+has_field_values: null
 settings: null
 caveats: null
 points_of_interest: null

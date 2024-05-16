@@ -1,7 +1,7 @@
 name: v_group_members
 display_name: V Group Members
 description: null
-created_at: '2023-06-08T14:05:38.973247Z'
+created_at: '2023-11-10T21:38:00.909496Z'
 db_id: Internal Metabase Database
 schema: public
 entity_type: entity/GenericTable
@@ -21,3 +21,5 @@ serdes/meta:
 - id: v_group_members
   model: Table
 database_require_filter: null
+estimated_row_count: null
+view_count: 0
