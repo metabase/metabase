@@ -6878,6 +6878,29 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-08T09:00:01
       author: qnkhuat
+      comment: Drop default value task_history.status
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:02
+      author: qnkhuat
+      comment: Add "started" as default value for task_history.status
+      changes:
+        - addDefaultValue:
+            defaultValue: "started"
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
       comment: Drop not null constraint for task_history.ended_at
       changes:
         - dropNotNullConstraint:
@@ -6886,7 +6909,7 @@ databaseChangeLog:
             columnName: ended_at
 
   - changeSet:
-      id: v50.2024-05-08T09:00:02
+      id: v50.2024-05-08T09:00:04
       author: qnkhuat
       comment: Drop not null constraint for task_history.duration
       changes:
@@ -6896,7 +6919,7 @@ databaseChangeLog:
             columnName: duration
 
   - changeSet:
-      id: v50.2024-05-08T09:00:03
+      id: v50.2024-05-08T09:00:05
       author: qnkhuat
       comment: Drop default value task_history.ended_at
       changes:
@@ -6910,7 +6933,7 @@ databaseChangeLog:
             defaultValueComputed: current_timestamp
 
   - changeSet:
-      id: v50.2024-05-08T09:00:04
+      id: v50.2024-05-08T09:00:06
       author: qnkhuat
       comment: Add null as default value for task_history.ended_at
       changes:
