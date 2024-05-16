@@ -41,7 +41,7 @@ export const MigrationInProgress = ({
     dispatch(
       addUndo({
         icon: "info_filled",
-        message: t`Migration to Metabase Cloud has been cancelled.`,
+        message: t`Migration to Metabase Cloud has been canceled.`,
         undo: false,
       }),
     );
