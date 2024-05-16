@@ -73,6 +73,18 @@
           the-string
           replacements))
 
+;; remove this once Macaw#32 is fixed
+(defn- clean-renames-macaw-issue-32
+  [{:keys [tables columns]}]
+  (let [clean-column (fn [c] (or (:column c) c))
+        clean-table  (fn [t] (or (:table t) t))]
+    {:columns (-> columns
+                  (update-keys clean-column)
+                  (update-vals clean-column))
+     :tables  (-> tables
+                  (update-keys clean-table)
+                  (update-vals clean-table))}))
+
 (defn replace-names
   "Given a dataset_query and a map of renames (with keys `:tables` and `:columns`, as in Macaw), return a new inner query
   with the appropriate replacements made."
@@ -81,5 +93,5 @@
         parsed-query (params.parse/parse raw-query)
         {clean-query :query
          tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query)
-        renamed-query (macaw/replace-names clean-query renames)]
+        renamed-query (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
     (replace-all renamed-query tt-subs)))

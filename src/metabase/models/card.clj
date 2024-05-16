@@ -876,39 +876,35 @@ saved later when it is ready."
 
 (defn- replaced-inner-query-for-native-card
   [query {:keys [fields tables] :as _replacement-ids}]
-  (let [id->field           (if (empty? fields)
+  (let [keyvals-set         #(set/union (into #{} (keys %))
+                                        (into #{} (vals %)))
+        id->field           (if (empty? fields)
                               {}
-                              (group-by :id
-                                        (t2/query {:select [[:f.id :id]
-                                                            [:f.name :column]
-                                                            [:t.name :table]
-                                                            [:t.schema :schema]]
-                                                   :from   [[:metabase_field :f]]
-                                                   :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                   :where  [:in :f.id (set/union (into #{} (keys fields))
-                                                                                 (into #{} (vals fields)))]})))
+                              (m/index-by :id
+                                          (t2/query {:select [[:f.id :id]
+                                                              [:f.name :column]
+                                                              [:t.name :table]
+                                                              [:t.schema :schema]]
+                                                     :from   [[:metabase_field :f]]
+                                                     :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                                     :where  [:in :f.id (keyvals-set fields)]})))
         id->table           (if (empty? tables)
                               {}
-                              (group-by :id
-                                        (t2/query {:select [[:t.id :id]
-                                                            [:t.name :table]
-                                                            [:t.schema :schema]]
-                                                   :from   [[:metabase_table :t]]
-                                                   :where  [:in :t.id (set/union (into #{} (keys tables))
-                                                                                 (into #{} (vals tables)))]})))
+                              (m/index-by :id
+                                          (t2/query {:select [[:t.id :id]
+                                                              [:t.name :table]
+                                                              [:t.schema :schema]]
+                                                     :from   [[:metabase_table :t]]
+                                                     :where  [:in :t.id (keyvals-set tables)]})))
         remove-id           #(select-keys % [:column :table :schema])
-        column-only         :column ; I know this looks weird, but we want all the :table and :schema nonsense once
-                                    ; https://github.com/metabase/macaw/issues/32 lands
-        table-only          :table
         get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
-                                              (get m k)
+                                              (remove-id (get m k))
                                               (throw (ex-info "ID not found" {:id k :available m})))))
-        column-replacements (-> fields
-                                (update-keys (comp column-only remove-id first (get-or-throw-from id->field)))
-                                (update-vals (comp column-only remove-id first (get-or-throw-from id->field))))
-        table-replacements  (-> tables
-                                (update-keys (comp table-only remove-id first (get-or-throw-from id->table)))
-                                (update-vals (comp table-only remove-id first (get-or-throw-from id->table))))]
+        update-keyvals      (fn [m f] (-> m
+                                          (update-keys f)
+                                          (update-vals f)))
+        column-replacements (update-keyvals fields (get-or-throw-from id->field))
+        table-replacements  (update-keyvals tables (get-or-throw-from id->table))]
     (query-analyzer/replace-names query {:columns column-replacements
                                          :tables  table-replacements})))
 
