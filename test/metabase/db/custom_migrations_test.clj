@@ -1761,36 +1761,67 @@
                        "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                      (scheduler-job-keys))))))))))
 
-(def ^:private area-bar-combo-cards
-  [{:name                   "stack-display-takes-priority"
-    :display                "area"
-    :visualization_settings (json/generate-string
-                             {:stackable.stack_type    "stacked"
-                              :stackable.stack_display "bar"})}
-   {:name                   "series-settings-have-no-display"
-    :display                "area"
-    :visualization_settings (json/generate-string
-                             {:stackable.stack_type "normalized"
-                              :series_settings      {:A {:display :bar}}})}
-   {:name                   "combo-display-has-no-stack-type"
-    :display                "combo"
-    :visualization_settings (json/generate-string
-                             {:stackable.stack_type "stacked"
-                              :series_settings      {:A {:display :bar}}})}
-   {:name                   "series-settings-display-can-override-combo-if-all-equal"
-    :display                "combo"
-    :visualization_settings (json/generate-string
-                             {:stackable.stack_type "stacked"
-                              :series_settings      {:A {:display :bar}
-                                                     :B {:display :bar}
-                                                     :C {:display :bar}}})}
-   {:name                   "series-settings-display-do-not-override-combo-if-not-equal"
-    :display                "combo"
-    :visualization_settings (json/generate-string
-                             {:stackable.stack_type "stacked"
-                              :series_settings      {:A {:display :bar}
-                                                     :B {:display :area}
-                                                     :C {:display :bar}}})}])
+(def ^:private area-bar-combo-cards-test-data
+  {"stack display takes priority"
+   {:card     {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type    "stacked"
+                                         :stackable.stack_display "bar"})}
+    :expected {:display                "bar"
+               :visualization_settings {:stackable.stack_type "stacked"}}}
+
+   "series settings have no display"
+   {:card     {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "normalized"
+                                         :series_settings      {:A {:display :bar}}})}
+    :expected {:display                "area"
+               :visualization_settings {:stackable.stack_type "normalized"
+                                        :series_settings      {:A {}}}}}
+
+   "combo display has no stack type"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"})}
+    :expected {:display                "combo"
+               :visualization_settings {}}}
+
+   "series settings display can override combo if all equal, and area or bar"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"
+                                         :series_settings      {:A {:display :bar}
+                                                                :B {:display :bar}
+                                                                :C {:display :bar}}})}
+    :expected {:display                "bar"
+               :visualization_settings {:stackable.stack_type "stacked"
+                                        :series_settings      {:A {}
+                                                               :B {}
+                                                               :C {}}}}}
+
+   "series settings display do not override combo if not equal"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"
+                                         :series_settings      {:A {:display :bar}
+                                                                :B {:display :area}
+                                                                :C {:display :bar}}})}
+    :expected {:display                "combo"
+               :visualization_settings {:series_settings {:A {:display "bar"}
+                                                          :B {:display "area"}
+                                                          :C {:display "bar"}}}}}
+
+   "series settings display do not override combo if all equal, but not area or bar"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "normalized"
+                                         :series_settings      {:A {:display :line}
+                                                                :B {:display :line}
+                                                                :C {:display :line}}})}
+    :expected {:display                "combo"
+               :visualization_settings {:series_settings {:A {:display "line"}
+                                                          :B {:display "line"}
+                                                          :C {:display "line"}}}}}})
 
 (deftest migrate-stacked-area-bar-combo-display-settings-test
   (testing "Migrations v50.2024-05-15T13:13:13: Fix visualization settings for stacked area/bar/combo displays"
@@ -1808,46 +1839,24 @@
                                                    :updated_at :%now
                                                    :details    "{}"})
             card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  (mapv #(merge % {:created_at    :%now
-                                                                   :updated_at    :%now
-                                                                   :creator_id    user-id
-                                                                   :dataset_query "{}"
-                                                                   :database_id   database-id
-                                                                   :collection_id nil})
-                                                        area-bar-combo-cards))]
+                                                  (mapv (fn [[name {:keys [card]}]]
+                                                          (merge card {:name name
+                                                                       :created_at    :%now
+                                                                       :updated_at    :%now
+                                                                       :creator_id    user-id
+                                                                       :dataset_query "{}"
+                                                                       :database_id   database-id
+                                                                       :collection_id nil}))
+                                                        area-bar-combo-cards-test-data))]
         (migrate!)
         (testing "Area Bar Combo Stacked Viz settings migration"
-          (is (= {"stack-display-takes-priority"
-                  {:display                "bar"
-                   :visualization_settings {:stackable.stack_type "stacked"}}
-
-                  "series-settings-have-no-display"
-                  {:display                "area"
-                   :visualization_settings {:stackable.stack_type "normalized"
-                                            :series_settings      {:A {}}}}
-
-                  "combo-display-has-no-stack-type"
-                  {:display                "combo"
-                   :visualization_settings {:series_settings {:A {}}}}
-
-                  "series-settings-display-can-override-combo-if-all-equal"
-                  {:display                "bar"
-                   :visualization_settings {:stackable.stack_type "stacked"
-                                            :series_settings      {:A {:display "bar"}
-                                                                   :B {:display "bar"}
-                                                                   :C {:display "bar"}}}}
-
-                  "series-settings-display-do-not-override-combo-if-not-equal"
-                  {:display                "combo"
-                   :visualization_settings {:series_settings {:A {:display "bar"}
-                                                              :B {:display "area"}
-                                                              :C {:display "bar"}}}}}
-
-                 (->> (t2/query {:select [:name :display :visualization_settings]
-                                 :from   [:report_card]
-                                 :where  [:in :id card-ids]})
-                      (map (fn [card]
-                             [(:name card) (-> card
-                                               (update :visualization_settings #(json/parse-string % keyword))
-                                               (dissoc :name))]))
-                      (into {})))))))))
+          (let [cards (->> (t2/query {:select [:name :display :visualization_settings]
+                                      :from   [:report_card]
+                                      :where  [:in :id card-ids]})
+                           (map (fn [card] (update card :visualization_settings #(json/parse-string % keyword)))))]
+            (doseq [{:keys [name] :as card} cards]
+              (testing (format "Migrating a card where: %s" name)
+                (is (= (-> (get-in area-bar-combo-cards-test-data [name :expected])
+                           (dissoc :name))
+                       (-> card
+                           (dissoc :name))))))))))))
