@@ -57,9 +57,9 @@ export const MigrationInProgress = ({
         </Flex>
         <List size="md" mt="md">
           {readOnly ? (
-            <List.Item>{t`This instance will be in ready-only mode when taking a snapshot. It should take about 5-30 minutes.`}</List.Item>
+            <List.Item>{t`This instance will be in read-only mode when taking a snapshot. It should take about 5-30 minutes.`}</List.Item>
           ) : (
-            <List.Item>{t`This instance is out of ready-only mode.`}</List.Item>
+            <List.Item>{t`This instance is out of read-only mode.`}</List.Item>
           )}
           <List.Item>{c(`{0} is a link titled "Metabase Store"`)
             .jt`In the meantime, you can go to the ${(
