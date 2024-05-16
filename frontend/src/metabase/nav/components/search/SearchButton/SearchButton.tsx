@@ -15,7 +15,7 @@ export const SearchButton = () => {
 
   return (
     <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
-      <Button leftIcon={<Icon name="search" />} onClick={handleClick}>
+      <Button h="36px" leftIcon={<Icon name="search" />} onClick={handleClick}>
         Search
       </Button>
     </Tooltip>

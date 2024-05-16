@@ -56,7 +56,9 @@ const PaletteContainer = () => {
           data-testid="command-palette"
         >
           <Box w="100%" p="1.5rem" pb="0">
-            <PaletteInput defaultPlaceholder="Jump to..." />
+            <PaletteInput
+              defaultPlaceholder={`Search for anything or jump somewhere…`}
+            />
           </Box>
           <PaletteResults />
           <PaletteFooter />
