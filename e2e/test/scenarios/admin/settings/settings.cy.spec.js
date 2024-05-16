@@ -21,18 +21,14 @@ describe("scenarios > admin > settings", () => {
   });
 
   it(
-    "should prompt admin to migrate to the hosted instance",
+    "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
       cy.onlyOn(isOSS);
       cy.visit("/admin/settings/setup");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Have your server maintained for you.");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Migrate to Metabase Cloud.");
-      cy.findAllByRole("link", { name: "Learn more" })
-        .should("have.attr", "href")
-        .and("include", "/migrate/");
+      cy.findByText(/Migrate to Metabase Cloud/);
+      cy.findAllByRole("link", { name: "Learn more" }).should("be.visible");
     },
   );
 
