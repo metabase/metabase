@@ -131,10 +131,10 @@ jobs:
         env:
           BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
           BUCKET_PATH: sdk/v${{ inputs.sdk_version }}/metabase.jar
-          OUTPUT_FILE: ./target/uberjar/metabase.jar
+          FILE: ./target/uberjar/metabase.jar
         shell: bash
         run: |
-          aws s3 cp ${OUTPUT_FILE} s3://$BUCKET/$BUCKET_PATH
+          aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
 
 
   publish-npm:
