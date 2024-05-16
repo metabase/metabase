@@ -6875,6 +6875,14 @@ databaseChangeLog:
             columnDataType: integer
       rollback: # we can't reliably add back the constraint while downgrading
 
+  - changeSet:
+      id: v50.2024-05-15T13:13:13
+      author: adam-james
+      comment: Fix visualization settings for stacked area/bar/combo displays
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
