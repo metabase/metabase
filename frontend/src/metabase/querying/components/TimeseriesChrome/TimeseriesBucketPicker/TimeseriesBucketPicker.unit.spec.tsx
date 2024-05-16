@@ -87,11 +87,23 @@ describe("TimeseriesBucketPicker", () => {
     expect(getNextBucketName()).toBe("Year");
   });
 
+  it("should allow to show more binning options", async () => {
+    const { query, column } = createQueryWithBreakout();
+    const { getNextBucketName } = setup({ query, column });
+
+    await userEvent.click(screen.getByText("Month"));
+    await userEvent.click(screen.getByText("More…"));
+    await userEvent.click(await screen.findByText("Quarter of year"));
+
+    expect(getNextBucketName()).toBe("Quarter of year");
+  });
+
   it("should allow to remove a temporal bucket", async () => {
     const { query, column } = createQueryWithBreakout();
     const { getNextBucketName } = setup({ query, column });
 
     await userEvent.click(screen.getByText("Month"));
+    await userEvent.click(screen.getByText("More…"));
     await userEvent.click(await screen.findByText("Don't bin"));
 
     expect(getNextBucketName()).toBeNull();
