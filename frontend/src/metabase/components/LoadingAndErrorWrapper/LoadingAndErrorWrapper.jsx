@@ -16,6 +16,7 @@ export default class LoadingAndErrorWrapper extends Component {
   static propTypes = {
     className: PropTypes.string,
     error: PropTypes.any,
+    errorClassNames: PropTypes.object,
     loading: PropTypes.any,
     noBackground: PropTypes.bool,
     noWrapper: PropTypes.bool,
@@ -33,6 +34,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
   static defaultProps = {
     error: false,
+    errorClassNames: [CS.py4],
     loading: false,
     noBackground: true,
     noWrapper: false,
@@ -43,9 +45,10 @@ export default class LoadingAndErrorWrapper extends Component {
   };
 
   renderError(contentClassName) {
-    if (this.props.renderError) {
+    const { renderError, errorClassNames } = this.props;
+    if (renderError) {
       return (
-        <div className={CS.py4}>
+        <div className={cx(errorClassNames)}>
           {this.props.renderError(this.getErrorMessage())}
         </div>
       );
