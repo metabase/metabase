@@ -333,9 +333,7 @@ describe("scenarios > models", () => {
       mockSessionProperty("enable-nested-queries", false);
       startNewQuestion();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should("not.exist");
-        entityPickerModalTab("Saved questions").should("not.exist");
-        entityPickerModalTab("Tables").should("not.exist");
+        cy.findAllByRole("tab").should("not.exist");
 
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
