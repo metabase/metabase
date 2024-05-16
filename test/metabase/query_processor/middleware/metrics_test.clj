@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is]]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -214,3 +215,23 @@
                                       (lib/limit 1))))
               (mt/rows
                 (qp/process-query query))))))))
+
+(deftest ^:parallel execute-multi-stage-metric
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        stage-one (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/breakout (lib/with-temporal-bucket
+                                      (lib.metadata/field mp (mt/id :orders :created_at))
+                                      :month))
+                      (lib/aggregate (lib/count))
+                      (lib/append-stage))
+        stage-one-cols (lib/visible-columns stage-one)
+        source-query (-> stage-one
+                         (lib/breakout (m/find-first (comp #{"Created At: Month"} :display-name) stage-one-cols))
+                         (lib/aggregate (lib/avg (m/find-first (comp #{"Count"} :display-name) stage-one-cols))))]
+    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
+                                              :database_id (mt/id)
+                                              :name "new_metric"
+                                              :type :metric}]
+      (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
+        (is (=? (mt/rows (qp/process-query source-query))
+                (mt/rows (qp/process-query query))))))))

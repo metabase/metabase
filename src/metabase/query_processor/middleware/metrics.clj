@@ -8,7 +8,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- replace-metric-aggregation-refs [x lookup]
   (lib.util.match/replace x
@@ -48,6 +49,12 @@
   [query [_ {:lib/keys [expression-name]} :as expression]]
   (lib/expression query 0 expression-name expression))
 
+(defn- temp-query-at-stage-path
+  [query stage-path]
+  (cond-> query
+    stage-path (lib.walk/query-for-stage-at-path stage-path)
+    stage-path :query))
+
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
@@ -63,8 +70,7 @@
                               (update-in $q [:stages 0 :aggregation] replace-metric-aggregation-refs lookup)))
                           (throw (ex-info "Incompatible metric" {:query query
                                                                  :metric metric-query}))))
-                      (cond-> query
-                        path (lib.walk/query-for-stage-at-path path))
+                      (temp-query-at-stage-path query path)
                       lookup)]
       (:stages new-query))
     expanded-stages))
@@ -89,32 +95,40 @@
 (defn- update-metric-transition-stages
   "Adjusts source-card metrics referencing themselves in the next stage.
 
-   The final stage of the metric is adjusted by:
+   The final stage of the metric is adjusted by removing:
    ```
-   :aggregation - always removed
-   :breakout    - removed if there are following-stages
-   :order-by    - removed if there are following-stages
-   :fields      - always removed
+     :aggregation
+     :breakout
+     :order-by
    ```
+
+   `:fields` are added explictly to pass previous-stage fields onto the following-stage
 
    The following stages will have `[:metric {} id]` clauses
    replaced with the actual aggregation of the metric."
-  [expanded-stages idx metric-metadata]
-  (let [[pre-transition-stages [last-metric-stage following-stage & following-stages]] (split-at idx expanded-stages)
-        metric-name (:name metric-metadata)
-        metric-aggregation (-> last-metric-stage :aggregation first)
-        new-metric-stage (cond-> last-metric-stage
-                           :always (dissoc :aggregation :fields :lib/stage-metadata)
-                           following-stage (dissoc :breakout :order-by))
-        lookup {(:id metric-metadata)
-                {:name metric-name :aggregation metric-aggregation}}
-        new-following-stage (replace-metric-aggregation-refs
-                              following-stage
-                              lookup)
-        combined-stages (vec (remove nil? (concat pre-transition-stages
-                                                  [new-metric-stage new-following-stage]
-                                                  following-stages)))]
-    combined-stages))
+  [query stage-path expanded-stages idx metric-metadata]
+  (mu/disable-enforcement
+    (let [[pre-transition-stages [last-metric-stage following-stage & following-stages]] (split-at idx expanded-stages)
+          metric-name (:name metric-metadata)
+          metric-aggregation (-> last-metric-stage :aggregation first)
+          stage-query (temp-query-at-stage-path query stage-path)
+          last-metric-stage-number idx
+          stage-query (update-in stage-query
+                                 [:stages idx]
+                                 (fn [stage]
+                                   (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
+          ;; Needed for field references to resolve further in the pipeline
+          stage-query (lib/with-fields stage-query idx (lib/fieldable-columns stage-query idx))
+          new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
+          lookup {(:id metric-metadata)
+                  {:name metric-name :aggregation metric-aggregation}}
+          new-following-stage (replace-metric-aggregation-refs
+                                following-stage
+                                lookup)
+          combined-stages (vec (remove nil? (concat pre-transition-stages
+                                                    [new-metric-stage new-following-stage]
+                                                    following-stages)))]
+      combined-stages)))
 
 (defn- adjust-metric-stages
   "`expanded-stages` are the result of :stages from fetch-source-query.
@@ -131,7 +145,7 @@
         [first-stage] expanded-stages]
     (cond
       idx
-      (recur query path (update-metric-transition-stages expanded-stages idx metric-metadata))
+      (recur query path (update-metric-transition-stages query path expanded-stages idx metric-metadata))
 
       (:source-table first-stage)
       (splice-compatible-metrics query path expanded-stages)
