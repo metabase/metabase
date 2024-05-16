@@ -33,7 +33,7 @@ export const MigrationSuccess = ({
             {t`The snapshot has been uploaded to the Cloud`}
           </Text>
           <Text my="sm" size="sm">
-            {t`Please complete the migration process on Metabase Store.`}
+            {t`Please complete the migration process on the Metabase Store.`}
             <List size="md">
               <List.Item>
                 <Text size="sm">{t`This instance is no longer in read-only mode.`}</Text>
