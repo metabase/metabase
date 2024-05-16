@@ -66,8 +66,13 @@ export function useSyncURLSlug({ location }: { location: Location }) {
   const { updateURLSlug } = useUpdateURLSlug({ location });
 
   useEffect(() => {
+    if (!tabs || tabs.length === 0) {
+      return;
+    }
+
     const slugChanged = slug && slug !== prevSlug;
-    if (slugChanged) {
+
+    if (slugChanged || !prevTabs?.length) {
       dispatch(initTabs({ slug }));
       const slugId = getIdFromSlug(slug);
       const hasTabs = tabs.length > 0;
