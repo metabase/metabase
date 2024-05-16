@@ -76,6 +76,7 @@ export const moveOpenedCollectionTo = newParent => {
   popover().within(() => cy.findByText("Move").click());
 
   entityPickerModal().within(() => {
+    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(newParent).click();
     cy.button("Move").click();
   });
@@ -83,7 +84,10 @@ export const moveOpenedCollectionTo = newParent => {
   entityPickerModal().should("not.exist");
 };
 
-export function pickEntity({ path, select }) {
+export function pickEntity({ path, select, tab }) {
+  if (tab) {
+    cy.findByRole("tab", { name: tab }).click();
+  }
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {

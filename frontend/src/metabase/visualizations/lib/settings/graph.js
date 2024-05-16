@@ -14,11 +14,7 @@ import {
 } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import {
-  columnsAreValid,
-  preserveExistingColumnsOrder,
-  MAX_SERIES,
-} from "metabase/visualizations/lib/utils";
+import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import {
   getDefaultIsHistogram,
   getDefaultStackingValue,
@@ -39,15 +35,14 @@ import {
   getDefaultDataLabelsFrequency,
   getDefaultIsAutoSplitEnabled,
   getDefaultColumns,
+  getDefaultDimensionFilter,
+  getDefaultMetricFilter,
+  getAreDimensionsAndMetricsValid,
+  getDefaultDimensions,
   STACKABLE_DISPLAY_TYPES,
+  getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
-import {
-  isDate,
-  isDimension,
-  isMetric,
-  isNumeric,
-  isAny,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
   return transformedSeries.map(single => settings.series(single).display);
@@ -67,13 +62,11 @@ export const GRAPH_DATA_SETTINGS = {
     hidden: true,
   }),
   "graph._dimension_filter": {
-    getDefault: ([{ card }]) =>
-      card.display === "scatter" ? isAny : isDimension,
+    getDefault: ([{ card }]) => getDefaultDimensionFilter(card.display),
     useRawSeries: true,
   },
   "graph._metric_filter": {
-    getDefault: ([{ card }]) =>
-      card.display === "scatter" ? isNumeric : isMetric,
+    getDefault: ([{ card }]) => getDefaultMetricFilter(card.display),
     useRawSeries: true,
   },
   "graph.dimensions": {
@@ -86,24 +79,9 @@ export const GRAPH_DATA_SETTINGS = {
         ? "0.5rem"
         : "1rem",
     isValid: (series, vizSettings) =>
-      series.some(
-        ({ card, data }) =>
-          columnsAreValid(
-            card.visualization_settings["graph.dimensions"],
-            data,
-            vizSettings["graph._dimension_filter"],
-          ) &&
-          columnsAreValid(
-            card.visualization_settings["graph.metrics"],
-            data,
-            vizSettings["graph._metric_filter"],
-          ),
-      ),
+      getAreDimensionsAndMetricsValid(series, vizSettings),
     getDefault: (series, vizSettings) =>
-      preserveExistingColumnsOrder(
-        vizSettings["graph.dimensions"] ?? [],
-        getDefaultColumns(series).dimensions,
-      ),
+      getDefaultDimensions(series, vizSettings),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
       const addedDimensions = vizSettings["graph.dimensions"];
@@ -163,20 +141,8 @@ export const GRAPH_DATA_SETTINGS = {
     title: t`Y-axis`,
     widget: "fields",
     isValid: (series, vizSettings) =>
-      series.some(
-        ({ card, data }) =>
-          columnsAreValid(
-            card.visualization_settings["graph.dimensions"],
-            data,
-            vizSettings["graph._dimension_filter"],
-          ) &&
-          columnsAreValid(
-            card.visualization_settings["graph.metrics"],
-            data,
-            vizSettings["graph._metric_filter"],
-          ),
-      ),
-    getDefault: series => getDefaultColumns(series).metrics,
+      getAreDimensionsAndMetricsValid(series, vizSettings),
+    getDefault: series => getDefaultMetrics(series),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols

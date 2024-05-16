@@ -41,6 +41,7 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
+  CacheableModel,
   Revision,
   SearchResult,
   User,
@@ -327,6 +328,7 @@ export const PLUGIN_MODERATION = {
 
 export type InvalidateNowButtonProps = {
   targetId: number;
+  targetModel: CacheableModel;
   targetName: string;
 };
 
@@ -340,6 +342,7 @@ export const PLUGIN_CACHING = {
   DatabaseCacheTimeField: PluginPlaceholder as any,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
+  DashboardStrategySidebar: PluginPlaceholder as any,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   isEnabled: () => false,

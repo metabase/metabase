@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  commandPalette,
+  commandPaletteSearch,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -66,11 +68,10 @@ describe("issue 16663", () => {
 
     cy.url().should("include", queryParam);
 
-    cy.findByPlaceholderText("Search…").type(dashboardToRedirect);
-
-    cy.findByTestId("search-results-floating-container")
-      .findByText(dashboardToRedirect)
-      .click();
+    commandPaletteSearch(dashboardToRedirect, false);
+    commandPalette().within(() => {
+      cy.findByRole("option", { name: dashboardToRedirect }).click();
+    });
 
     cy.url().should("include", "orders-in-a-dashboard");
     cy.url().should("not.include", queryParam);

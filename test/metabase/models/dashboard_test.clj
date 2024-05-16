@@ -10,6 +10,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
@@ -755,6 +756,24 @@
         (is (=? {:name "unnamed"
                  :slug "unnamed"}
                 (first (:parameters dashboard))))))))
+
+(deftest archive-dashboard-delete-pulse-test
+  (pulse-channel-test/with-send-pulse-setup!
+    (mt/with-temp [:model/Card          {card-id :id}     {}
+                   :model/Dashboard     {dash-id :id}     {}
+                   :model/DashboardCard {dc-id :id}       {:dashboard_id dash-id
+                                                           :card_id      card-id}
+                   :model/Pulse        {pulse-id :id}    {:dashboard_id dash-id}
+                   :model/PulseChannel _        {:pulse_id pulse-id}
+                   :model/PulseCard    _         {:pulse_id pulse-id
+                                                  :card_id  card-id
+                                                  :dashboard_card_id dc-id}]
+      (testing "sanity check that we have a trigger"
+        (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+      (t2/update! :model/Dashboard dash-id {:archived true})
+      (testing "archiving a Dashboard should delete its Pulse and SendPulse triggers"
+        (is (nil? (t2/select-one :model/Pulse pulse-id)))
+        (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
 (deftest post-update-test
   (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}

@@ -191,6 +191,14 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   );
                   cy.findByTestId("collection-picker-button").click();
                 });
+
+                if (user === "admin") {
+                  // admin has recents tab
+                  entityPickerModal()
+                    .findByRole("tab", { name: /Collections/ })
+                    .click();
+                }
+
                 entityPickerModal()
                   .findByText("Create a new collection")
                   .click();

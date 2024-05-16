@@ -20,7 +20,7 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -97,11 +97,13 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 (maybe-populate-initially-published-at dashboard)
-    (params/assert-valid-parameters dashboard)
-    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
-  (maybe-populate-initially-published-at dashboard))
+  (let [changes (t2/changes dashboard)]
+    (u/prog1 (maybe-populate-initially-published-at dashboard)
+     (params/assert-valid-parameters dashboard)
+     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
+     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+     (when (:archived changes)
+       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -140,7 +142,7 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! Pulse {:dashboard_id dashboard-id}
+            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
