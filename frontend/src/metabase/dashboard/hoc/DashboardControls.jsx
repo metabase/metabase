@@ -41,7 +41,7 @@ export const DashboardControls = ComposedComponent =>
       };
 
       UNSAFE_componentWillMount() {
-        if (screenfull.enabled) {
+        if (screenfull.isEnabled) {
           document.addEventListener(
             screenfull.raw.fullscreenchange,
             this._fullScreenChanged,
@@ -62,7 +62,7 @@ export const DashboardControls = ComposedComponent =>
       componentWillUnmount() {
         this._showNav(true);
         this._clearRefreshInterval();
-        if (screenfull.enabled) {
+        if (screenfull.isEnabled) {
           document.removeEventListener(
             screenfull.raw.fullscreenchange,
             this._fullScreenChanged,
@@ -158,7 +158,7 @@ export const DashboardControls = ComposedComponent =>
       setFullscreen = async (isFullscreen, browserFullscreen = true) => {
         isFullscreen = !!isFullscreen;
         if (isFullscreen !== this.state.isFullscreen) {
-          if (screenfull.enabled && browserFullscreen) {
+          if (screenfull.isEnabled && browserFullscreen) {
             if (isFullscreen) {
               try {
                 // Some browsers block this unless it was initiated by user
@@ -222,7 +222,7 @@ export const DashboardControls = ComposedComponent =>
       }
 
       _fullScreenChanged = () => {
-        this.setState({ isFullscreen: !!screenfull.isFullscreen });
+        this.setState({ isFullscreen: screenfull.isFullscreen });
       };
 
       setRefreshElapsedHook = hook => {
