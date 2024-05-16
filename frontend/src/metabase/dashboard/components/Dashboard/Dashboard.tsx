@@ -16,7 +16,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { getMainElement, isSmallScreen } from "metabase/lib/dom";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -26,23 +26,23 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
+  DashboardCard,
   DashboardId,
+  CardId,
+  DashboardTabId,
   DashCardDataMap,
   DashCardId,
   Database,
   DatabaseId,
   Parameter,
   ParameterId,
-  ParameterValueOrArray,
-  CardId,
-  DashboardTabId,
   ParameterMappingOptions,
+  ParameterValueOrArray,
   RowValue,
-  VisualizationSettings,
   ValuesQueryType,
-  ValuesSourceType,
   ValuesSourceConfig,
-  DashboardCard,
+  ValuesSourceType,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -57,21 +57,21 @@ import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
   CardsContainer,
-  DashboardStyled,
-  DashboardLoadingAndErrorWrapper,
   DashboardBody,
   DashboardHeaderContainer,
-  ParametersAndCardsContainer,
-  ParametersWidgetContainer,
+  DashboardLoadingAndErrorWrapper,
+  DashboardStyled,
   FixedWidthContainer,
+  ParametersAndCardsContainer,
   ParametersFixedWidthContainer,
+  ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
 
-type DashboardProps = {
+export type DashboardProps = {
   route: Route;
   params: { slug: string };
   children?: ReactNode;
@@ -83,7 +83,7 @@ type DashboardProps = {
   dashboardBeforeEditing: IDashboard | null;
   isEditingParameter: boolean;
   isDirty: boolean;
-  dashboard: IDashboard;
+  dashboard: IDashboard | null;
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, unknown>;
   databases: Record<DatabaseId, Database>;
@@ -174,6 +174,21 @@ type DashboardProps = {
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   hideAddParameterPopover: () => void;
+
+  fetchDashboard: (opts: {
+    dashId: DashboardId;
+    queryParams?: Record<string, unknown>;
+    options?: {
+      clearCache?: boolean;
+      preserveParameters?: boolean;
+    };
+  }) => Promise<FetchDashboardResult>;
+
+  fetchDashboardCardData: (opts?: {
+    isRefreshing?: boolean;
+    reload?: boolean;
+    clearCache?: boolean;
+  }) => void;
 } & DashboardControlsPassedProps;
 
 function DashboardInner(props: DashboardProps) {
@@ -225,7 +240,7 @@ function DashboardInner(props: DashboardProps) {
   const previousParameterValues = usePrevious(parameterValues);
 
   const currentTabDashcards = useMemo(() => {
-    if (!Array.isArray(dashboard?.dashcards)) {
+    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
       return [];
     }
     if (!selectedTabId) {
@@ -260,17 +275,19 @@ function DashboardInner(props: DashboardProps) {
 
   const canWrite = Boolean(dashboard?.can_write);
   const tabHasCards = currentTabDashcards.length > 0;
-  const dashboardHasCards = dashboard?.dashcards.length > 0;
+  const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
   const hasVisibleParameters = visibleParameters.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
   const handleSetDashboardAttribute = useCallback(
     <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
-      setDashboardAttributes({
-        id: dashboard.id,
-        attributes: { [attribute]: value },
-      });
+      if (dashboard) {
+        setDashboardAttributes({
+          id: dashboard.id,
+          attributes: { [attribute]: value },
+        });
+      }
     },
     [dashboard, setDashboardAttributes],
   );
@@ -405,6 +422,10 @@ function DashboardInner(props: DashboardProps) {
   });
 
   const renderContent = () => {
+    if (!dashboard) {
+      return null;
+    }
+
     if (!dashboardHasCards && !canWrite) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
@@ -513,51 +534,58 @@ function DashboardInner(props: DashboardProps) {
       loading={!dashboard}
       error={error}
     >
-      {() => (
-        <DashboardStyled>
-          <DashboardHeaderContainer
-            data-element-id="dashboard-header-container"
-            id="Dashboard-Header-Container"
-            isFullscreen={isFullscreen}
-            isNightMode={shouldRenderAsNightMode}
-          >
-            {/**
-             * Do not conditionally render `<DashboardHeader />` as it calls
-             * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-             * in Redux state which kicks off a fetch for the dashboard cards.
-             */}
-            <DashboardHeader
-              {...props}
-              onEditingChange={handleSetEditing}
-              setDashboardAttribute={handleSetDashboardAttribute}
-              addParameter={addParameter}
-              onSharingClick={handleToggleSharing}
-            />
-          </DashboardHeaderContainer>
+      {() => {
+        if (!dashboard) {
+          return null;
+        }
 
-          <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-            <ParametersAndCardsContainer
-              id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-              data-element-id="dashboard-parameters-and-cards"
-              data-testid="dashboard-parameters-and-cards"
-              shouldMakeDashboardHeaderStickyAfterScrolling={
-                !isFullscreen && (isEditing || isSharing)
-              }
+        return (
+          <DashboardStyled>
+            <DashboardHeaderContainer
+              data-element-id="dashboard-header-container"
+              id="Dashboard-Header-Container"
+              isFullscreen={isFullscreen}
+              isNightMode={shouldRenderAsNightMode}
             >
-              {renderParameterList()}
-              <CardsContainer data-element-id="dashboard-cards-container">
-                {renderContent()}
-              </CardsContainer>
-            </ParametersAndCardsContainer>
+              {/**
+               * Do not conditionally render `<DashboardHeader />` as it calls
+               * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
+               * in Redux state which kicks off a fetch for the dashboard cards.
+               */}
+              <DashboardHeader
+                {...props}
+                dashboard={dashboard}
+                onEditingChange={handleSetEditing}
+                setDashboardAttribute={handleSetDashboardAttribute}
+                addParameter={addParameter}
+                onSharingClick={handleToggleSharing}
+              />
+            </DashboardHeaderContainer>
 
-            <DashboardSidebars
-              {...props}
-              setDashboardAttribute={handleSetDashboardAttribute}
-              onCancel={() => setSharing(false)}
-            />
-          </DashboardBody>
-        </DashboardStyled>
-      )}
+            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+              <ParametersAndCardsContainer
+                id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+                data-element-id="dashboard-parameters-and-cards"
+                data-testid="dashboard-parameters-and-cards"
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
+              >
+                {renderParameterList()}
+                <CardsContainer data-element-id="dashboard-cards-container">
+                  {renderContent()}
+                </CardsContainer>
+              </ParametersAndCardsContainer>
+
+              <DashboardSidebars
+                {...props}
+                setDashboardAttribute={handleSetDashboardAttribute}
+                onCancel={() => setSharing(false)}
+              />
+            </DashboardBody>
+          </DashboardStyled>
+        );
+      }}
     </DashboardLoadingAndErrorWrapper>
   );
 }

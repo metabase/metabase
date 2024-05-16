@@ -2,13 +2,7 @@ import { useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import screenfull from "screenfull";
 
-export type DashboardFullscreenControls = {
-  isFullscreen: boolean;
-  onFullscreenChange: (
-    newIsFullscreen: boolean,
-    browserFullscreen?: boolean,
-  ) => Promise<void>;
-};
+import type { DashboardFullscreenControls } from "metabase/dashboard/hoc/controls/types";
 
 export const useDashboardFullscreen = (): DashboardFullscreenControls => {
   const [isFullscreen, setIsFullscreen] = useState(false);

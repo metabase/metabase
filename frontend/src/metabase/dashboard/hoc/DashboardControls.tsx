@@ -1,9 +1,3 @@
-/* This contains some state for dashboard controls on both private and embedded dashboards.
- * It should probably be in Redux?
- *
- * @deprecated HOCs are deprecated
- */
-import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
@@ -12,20 +6,24 @@ import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hoc/controls";
-import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
-import type { DashboardId } from "metabase-types/api";
+import type {
+  DashboardControlsPassedProps,
+  DashboardControlsProps,
+} from "metabase/dashboard/hoc/types";
 
-export const DashboardControls = (
-  ComposedComponent: ComponentType<DashboardControlsPassedProps>,
-) => {
+/* This contains some state for dashboard controls on both private and embedded dashboards.
+ * It should probably be in Redux?
+ *
+ * @deprecated HOCs are deprecated
+ */
+export const DashboardControls = <T extends DashboardControlsProps>(
+  ComposedComponent: ComponentType<T>,
+): ComponentType<T & DashboardControlsPassedProps> => {
   function DashboardControlsInner({
     dashboardId,
     location,
     ...props
-  }: {
-    dashboardId: DashboardId;
-    location: Location;
-  }) {
+  }: DashboardControlsProps) {
     const queryParams = location.query;
 
     const { refreshDashboard } = useRefreshDashboard({
@@ -61,7 +59,7 @@ export const DashboardControls = (
 
     return (
       <ComposedComponent
-        {...props}
+        {...(props as T)}
         dashboardId={dashboardId}
         location={location}
         isFullscreen={isFullscreen}

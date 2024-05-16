@@ -31,6 +31,11 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
 import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
 import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  DashboardThemeControls,
+} from "metabase/dashboard/hoc/controls";
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
@@ -76,23 +81,19 @@ import {
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
 
-interface DashboardHeaderProps {
+type DashboardHeaderProps = {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
   databases: Record<DatabaseId, Database>;
   sidebar: DashboardSidebarState;
   location: Location;
-  refreshPeriod: number | null;
   isAdmin: boolean;
   isDirty: boolean;
   isEditing: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
   isAdditionalInfoVisible: boolean;
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
-  hasNightModeToggle: boolean;
   parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
@@ -116,7 +117,6 @@ interface DashboardHeaderProps {
     key: Key,
     value: Dashboard[Key],
   ) => void;
-  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
   updateDashboardAndCards: () => void;
 
   addParameter: (option: ParameterMappingOptions) => void;
@@ -124,17 +124,16 @@ interface DashboardHeaderProps {
   hideAddParameterPopover: () => void;
 
   onEditingChange: (arg: Dashboard | null) => void;
-  onRefreshPeriodChange: (period: number | null) => void;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    browserFullscreen?: boolean,
-  ) => void;
   onSharingClick: () => void;
-  onNightModeChange: (isNightMode: boolean) => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   closeSidebar: () => void;
-}
+} & DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  Pick<
+    DashboardThemeControls,
+    "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
+  >;
 
 export const DashboardHeader = (props: DashboardHeaderProps) => {
   const {
@@ -149,7 +148,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     isEditing,
     location,
     dashboard,
-    parametersWidget,
     isFullscreen,
     onFullscreenChange,
     sidebar,
@@ -359,10 +357,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen && parametersWidget) {
-      buttons.push(parametersWidget);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;

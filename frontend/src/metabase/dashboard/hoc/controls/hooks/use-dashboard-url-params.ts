@@ -4,9 +4,9 @@ import { replace } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
-import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types";
-import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/use-dashboard-display-options";
-import { useDashboardDisplayOptions } from "metabase/dashboard/hoc/controls/use-dashboard-display-options";
+import { useDashboardDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-dashboard-display-options";
+import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
+import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types/hash-options";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotFalsy } from "metabase/lib/types";
@@ -17,15 +17,17 @@ const removeEmptyOptions = (obj: Record<string, unknown>) => {
   );
 };
 
+export type DashboardUrlParamsControls = DashboardDisplayOptionControls & {
+  loadDashboardParams: () => void;
+};
+
 export const useDashboardUrlParams = ({
   location,
   onRefresh,
 }: {
   location: Location;
   onRefresh: () => Promise<void>;
-}): DashboardDisplayOptionControls & {
-  loadDashboardParams: () => void;
-} => {
+}): DashboardUrlParamsControls => {
   const dispatch = useDispatch();
 
   const {

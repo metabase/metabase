@@ -2,17 +2,8 @@ import { useInterval } from "@mantine/hooks";
 import { useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
+import type { DashboardRefreshPeriodControls } from "metabase/dashboard/hoc/controls/types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-export type RefreshPeriod = number | null;
-
-export type DashboardRefreshPeriodControls = {
-  refreshPeriod: RefreshPeriod;
-  onRefreshPeriodChange: (newPeriod: RefreshPeriod) => void;
-  setRefreshElapsedHook: (
-    hook: DashboardRefreshPeriodControls["onRefreshPeriodChange"],
-  ) => void;
-};
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({
@@ -27,10 +18,6 @@ export const useDashboardRefreshPeriod = ({
   const setRefreshElapsedHook = (hook: (elapsed: number | null) => void) => {
     elapsedHook.current = hook;
   };
-
-  // const setPeriod = (newPeriod: number | null) => {
-  //   period.current = newPeriod;
-  // };
 
   const { start, stop } = useInterval(() => {
     elapsed.current = (elapsed.current || 0) + TICK_PERIOD;

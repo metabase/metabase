@@ -1,15 +1,8 @@
 import { setDisplayTheme } from "metabase/dashboard/actions";
+import type { DashboardThemeControls } from "metabase/dashboard/hoc/controls/types";
 import { getDisplayTheme } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
-
-export type DashboardThemeControls = {
-  theme: DisplayTheme | null;
-  setTheme: (theme: DisplayTheme | null) => void;
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
-};
 
 export const useDashboardTheme = (): DashboardThemeControls => {
   const dispatch = useDispatch();
