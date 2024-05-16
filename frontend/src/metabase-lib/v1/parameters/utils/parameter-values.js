@@ -37,8 +37,6 @@ export function getValuePopulatedParameters({
   values = {},
   defaultRequired = false,
   collectionPreview = false,
-  // should be a better name for it
-  localDashboardParameters = {},
 }) {
   // pinned native question can have default values on parameters, usually we
   // get them from URL, which is not the case for collection preview. to force
@@ -47,19 +45,14 @@ export function getValuePopulatedParameters({
     return [];
   }
 
-  return parameters.map(parameter => {
-    const lastUsedParameterValue = localDashboardParameters[parameter.id];
-
-    return {
-      ...parameter,
-      value: getParameterValue({
-        parameter,
-        values,
-        defaultRequired,
-        lastUsedParameterValue,
-      }),
-    };
-  });
+  return parameters.map(parameter => ({
+    ...parameter,
+    value: getParameterValue({
+      parameter,
+      values,
+      defaultRequired,
+    }),
+  }));
 }
 
 export function getDefaultValuePopulatedParameters(

@@ -22,7 +22,6 @@ import {
 import type {
   ActionDashboardCard,
   CardId,
-  DashboardId,
   DashCardId,
   Parameter,
   ParameterId,
@@ -55,11 +54,7 @@ import {
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
-import {
-  setDashboardAttributes,
-  setDashCardAttributes,
-  unsetLastUsedParamValues,
-} from "./core";
+import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -387,21 +382,16 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: any, dashboardId?: DashboardId) =>
-    (dispatch, getState) => {
-      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-      const isValueEmpty = isParameterValueEmpty(value);
+  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
+    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+    const isValueEmpty = isParameterValueEmpty(value);
 
-      if (isValueEmpty && dashboardId) {
-        dispatch(unsetLastUsedParamValues(dashboardId, parameterId));
-      }
-
-      return {
-        id: parameterId,
-        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-        isDraft: isSettingDraftParameterValues,
-      };
-    },
+    return {
+      id: parameterId,
+      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+      isDraft: isSettingDraftParameterValues,
+    };
+  },
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";

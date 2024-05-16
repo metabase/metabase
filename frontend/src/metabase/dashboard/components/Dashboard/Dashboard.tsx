@@ -447,9 +447,6 @@ function DashboardInner(props: DashboardProps) {
       parameters={getValuePopulatedParameters({
         parameters,
         values: isAutoApplyFilters ? parameterValues : draftParameterValues,
-        localDashboardParameters: isAutoApplyFilters
-          ? dashboard?.["last_used_param_values"]
-          : {},
       })}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
