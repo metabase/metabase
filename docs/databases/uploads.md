@@ -4,7 +4,7 @@ title: Uploading data
 
 # Uploading data
 
-Once you've [enabled uploads](#enabling-uploads), you can [upload files](../exploration-and-organization/uploads.md) in CSV format to a collection in Metabase.
+Once you've [enabled uploads](#setting-up-uploads), you can [upload files](../exploration-and-organization/uploads.md) in CSV format to a collection in Metabase.
 
 ![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
 
