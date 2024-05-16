@@ -93,11 +93,12 @@
    [:on-success-info {:optional true} [:maybe [:=> [:cat :any] :map]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
+(def ^:private ns->ms #(int (/ % 1e6)))
+
 (defn- update-task-history!
-  [th-id startime-ms info]
-  (let [end-time-ms  (System/currentTimeMillis)
-        updated-info (merge {:ended_at (t/instant end-time-ms)
-                             :duration (- end-time-ms startime-ms)}
+  [th-id startime-ns info]
+  (let [updated-info (merge {:ended_at (t/instant)
+                             :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
 
@@ -106,18 +107,18 @@
   [info :- TaskHistoryInfo f]
   (let [on-success-info (:on-success-info info)
         info            (dissoc info :on-success-info)
-        start-time-ms   (System/currentTimeMillis)
+        start-time-ns   (System/nanoTime)
         th-id           (t2/insert-returning-pk! :model/TaskHistory
                                                  (assoc info
                                                         :status     :started
-                                                        :started_at (t/instant start-time-ms)))]
+                                                        :started_at (t/instant)))]
     (try
       (u/prog1 (f)
-        (update-task-history! th-id start-time-ms (cond-> {:status :success}
+        (update-task-history! th-id start-time-ns (cond-> {:status :success}
                                                     (some? on-success-info)
                                                     (merge (on-success-info <>)))))
       (catch Throwable e
-        (update-task-history! th-id start-time-ms {:task_details {:status        :failed
+        (update-task-history! th-id start-time-ns {:task_details {:status        :failed
                                                                   :exception     (class e)
                                                                   :message       (.getMessage e)
                                                                   :stacktrace    (u/filtered-stacktrace e)

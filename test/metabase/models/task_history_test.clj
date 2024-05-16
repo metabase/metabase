@@ -87,7 +87,7 @@
           (is (=? {:status     :success
                    :started_at (mt/malli=? some?)
                    :ended_at   (mt/malli=? some?)
-                   :duration   (mt/malli=? int?)}
+                   :duration   (mt/malli=? nat-int?)}
                   (t2/select-one :model/TaskHistory :task task-name))))))
     (testing "failed path:"
       (let [task-name (mt/random-name)]
@@ -99,5 +99,5 @@
               (is (=? {:status     :failed
                        :started_at (mt/malli=? some?)
                        :ended_at   (mt/malli=? some?)
-                       :duration   (mt/malli=? int?)}
+                       :duration   (mt/malli=? nat-int?)}
                       (t2/select-one :model/TaskHistory :task task-name))))))))))
