@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePrevious, useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
-import CountdownIcon from "metabase/components/icons/CountdownIcon";
+import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { Tooltip, Popover, Icon, Box } from "metabase/ui";
 
