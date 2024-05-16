@@ -8,8 +8,10 @@ on:
         description: 'SDK version (e.g. 0.1.3)'
         type: string
         required: true
-      commit:
-        description: 'Optional full-length commit SHA-1 hash'
+      git_ref:
+        description: 'Valid git reference e.g. branches, tags, hashes'
+        type: string
+        required: true
 
 concurrency:
   # We want to ensure only one job is running at a time because
@@ -17,18 +19,17 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
-env:
-  tag: embedding-sdk-${{ inputs.sdk_version }}
-
 jobs:
   git-tag:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ inputs.sdk_version }}
     steps:
-      - name: Check out the code using the provided commit, or HEAD
+      - name: Check out the code using the provided ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ inputs.git_ref }}
 
       - name: Setup git user
         run: |
@@ -50,10 +51,10 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - name: Check out the code using the provided commit, or HEAD
+      - name: Check out the code using the provided ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.tag }}
+          ref: ${{ inputs.git_ref }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -71,10 +72,10 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - name: Check out the code using the provided commit, or HEAD
+      - name: Check out the code using the provided ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.tag }}
+          ref: ${{ inputs.git_ref }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -104,8 +105,7 @@ jobs:
     needs: test
     uses: ./.github/workflows/uberjar-sdk.yml
     with:
-      only_ee: true
-      # env context only exist within `steps`
+      git_ref: ${{ inputs.git_ref }}
       image_name: embedding-sdk-${{ inputs.sdk_version }}
     secrets: inherit
 
@@ -141,9 +141,10 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - name: Check out the code using the provided commit, or HEAD
+      - name: Check out master to prepare for a SDK version bump PR
         uses: actions/checkout@v4
         with:
+          # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: master
 
       - name: Setup git user

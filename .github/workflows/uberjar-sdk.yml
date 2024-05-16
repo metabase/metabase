@@ -4,7 +4,7 @@ on:
   # This workflow will be called from "release-embedding-sdk.yml"
   workflow_call:
     inputs:
-      commit:
+      git_ref:
         description: 'Valid git reference e.g. branches, tags, hashes'
         type: string
         required: true
@@ -28,7 +28,7 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.commit }}
+        ref: ${{ inputs.git_ref }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -92,7 +92,7 @@ jobs:
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ inputs.git_ref }}
       - name: Download uploaded artifacts to insert into container
         uses: actions/download-artifact@v4
         with:
