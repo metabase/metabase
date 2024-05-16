@@ -65,7 +65,7 @@ export interface MetabaseComponentTheme {
       /** Text color of cells, defaults to `text-dark`. */
       textColor?: string;
 
-      /** Default background color of cells, defaults to `white` */
+      /** Default background color of cells, defaults to `bg-white` */
       backgroundColor?: string;
     };
 

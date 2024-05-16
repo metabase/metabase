@@ -91,7 +91,7 @@ export function getThemedColorsPallete(
   });
 
   return {
-    ...mappedThemeColors,
     ...originalColors,
+    ...mappedThemeColors,
   };
 }
