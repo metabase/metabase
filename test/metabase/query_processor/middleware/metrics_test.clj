@@ -236,6 +236,23 @@
         (is (=? (mt/rows (qp/process-query source-query))
                 (mt/rows (qp/process-query query))))))))
 
+(deftest ^:parallel execute-single-stage-metric
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
+                                              :database_id (mt/id)
+                                              :name "new_metric"
+                                              :type :metric}
+                   :model/Card next-metric {:dataset_query (-> (lib/query mp (lib.metadata/card mp (:id source-metric)))
+                                                               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Gadget")))
+                                            :database_id (mt/id)
+                                            :name "new_metric"
+                                            :type :metric}]
+      (let [query (lib/query mp (lib.metadata/card mp (:id next-metric)))]
+        (is (=? [[53]]
+                (mt/rows (qp/process-query query))))))))
+
 (deftest ^:parallel available-metrics-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
