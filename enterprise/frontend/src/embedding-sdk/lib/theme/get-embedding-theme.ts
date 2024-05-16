@@ -1,3 +1,5 @@
+import { merge } from "icepick";
+
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
@@ -5,10 +7,12 @@ import type {
   MetabaseTheme,
   MetabaseColors,
   MetabaseColor,
+  MetabaseComponentTheme,
 } from "../../types/theme";
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
+import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -17,12 +21,17 @@ import { colorTuple } from "./color-tuple";
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
 ): EmbeddingThemeOverride {
+  const components: MetabaseComponentTheme = merge(
+    DEFAULT_EMBEDDED_COMPONENT_THEME,
+    theme.components,
+  );
+
   const override: EmbeddingThemeOverride = {
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
     ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
-      ...theme.components,
+      ...components,
       ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
   };
@@ -32,10 +41,12 @@ export function getEmbeddingThemeOverride(
 
     // Apply color palette overrides
     for (const name in theme.colors) {
-      const color = theme.colors[name as keyof MetabaseColors];
+      const color = theme.colors[name as MetabaseColor];
 
       if (color) {
-        override.colors[name] = colorTuple(color);
+        const themeColorName =
+          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MetabaseColor];
+        override.colors[themeColorName] = colorTuple(color);
       }
     }
   }

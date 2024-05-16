@@ -55,4 +55,23 @@ export type MetabaseColor = keyof MetabaseColors;
  * Theme options for customizing specific Metabase
  * components and visualizations.
  */
-export interface MetabaseComponentTheme {}
+export interface MetabaseComponentTheme {
+  /** Data tables **/
+  table?: {
+    cell?: {
+      /** Text color of cells, defaults to `text-dark`. */
+      textColor?: string;
+
+      /** Default background color of cells, defaults to `white` */
+      backgroundColor?: string;
+    };
+
+    idColumn?: {
+      /** Text color of ID column, defaults to `brand`. */
+      textColor?: string;
+
+      /** Background color of ID column, defaults to `lighten(brand)`  */
+      backgroundColor?: string;
+    };
+  };
+}

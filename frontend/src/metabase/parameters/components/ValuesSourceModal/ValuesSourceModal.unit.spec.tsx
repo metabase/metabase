@@ -12,6 +12,7 @@ import {
   setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
+  setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -434,6 +435,7 @@ const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });

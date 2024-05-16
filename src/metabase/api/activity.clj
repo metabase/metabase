@@ -13,6 +13,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -116,23 +117,10 @@
 (def ^:private card-runs-limit 8)
 
 (api/defendpoint GET "/recent_views"
-  "Get a list of 5 things the current user has been viewing most recently."
+  "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
+  recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  (let [views            (recent-views/user-recent-views api/*current-user-id* 10)
-        model->id->items (models-for-views views)]
-    (->> (for [{:keys [model model_id] :as view-log} views
-               :let
-               [model-object (-> (get-in model->id->items [model model_id])
-                                 (dissoc :dataset_query))]
-               :when
-               (and model-object
-                    (mi/can-read? model-object)
-                    ;; hidden tables, archived cards/dashboards
-                    (not (or (:archived model-object)
-                             (= (:visibility_type model-object) :hidden))))]
-           (cond-> (assoc view-log :model_object model-object)
-             (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
-         (take 5))))
+  {:recent_views (recent-views/get-list *current-user-id*)})
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
@@ -165,41 +153,42 @@
   (when (seq items)
     (let [n-items (count items)
           max-count (apply max (map :cnt items))]
-      (for [[recency-pos {:keys [cnt model_object] :as item}] (zipmap (range) items)]
-        (let [verified-wt 1
-              official-wt 1
-              recency-wt 2
-              views-wt 4
-              scores [;; cards and dashboards? can be 'verified' in enterprise
-                      (if (verified? model_object) verified-wt 0)
-                      ;; items may exist in an 'official' collection in enterprise
-                      (if (official? model_object) official-wt 0)
-                      ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
-                      (* (/ (- n-items recency-pos) n-items) recency-wt)
-                      ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
+      (map-indexed
+       (fn [recency-pos {:keys [cnt model_object] :as item}]
+         (let [verified-wt 1
+               official-wt 1
+               recency-wt 2
+               views-wt 4
+               scores [;; cards and dashboards? can be 'verified' in enterprise
+                       (if (verified? model_object) verified-wt 0)
+                       ;; items may exist in an 'official' collection in enterprise
+                       (if (official? model_object) official-wt 0)
+                       ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
+                       (* (/ (- n-items recency-pos) n-items) recency-wt)
+                       ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
 
-                      ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
-                      ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                      ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
-                      (* (/ cnt max-count) views-wt)]]
-          (assoc item :score (double (reduce + scores))))))))
+                       ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
+                       ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
+                       ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                       (* (/ cnt max-count) views-wt)]]
+           (assoc item :score (double (reduce + scores))))) items))))
 
-(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
+(def ^:private model->precedence
+  {"dashboard"  0
+   "card"       1
+   "dataset"    2
+   "table"      3
+   "collection" 4})
 
-(defn- order-items
-  [items]
-  (when (seq items)
-    (let [groups (group-by :model items)]
-      (mapcat #(get groups %) model-precedence))))
-
-(api/defendpoint GET "/popular_items"
-  "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
-  finds anything archived, deleted, etc it can usually still get 5."
-  []
-  ;; we can do a weighted score which incorporates:
-  ;; total count -> higher = higher score
-  ;; recently viewed -> more recent = higher score
-  ;; official/verified -> yes = higher score
+(mu/defn get-popular-items-model-and-id
+  "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
+   The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
+   whether the item is 'official' or 'verified', and more."
+  [] :- [:sequential recent-views/Item]
+  ;; we do a weighted score which incorporates:
+  ;; - total count -> higher = higher score
+  ;; - recently viewed -> more recent = higher score
+  ;; - official/verified -> yes = higher score
   (let [views (views-and-runs views-limit card-runs-limit true)
         model->id->items (models-for-views views)
         filtered-views (for [{:keys [model model_id] :as view-log} views
@@ -209,15 +198,28 @@
                                         (mi/can-read? model-object)
                                         ;; hidden tables, archived cards/dashboards
                                         (not (or (:archived model-object)
-                                                 (= (:visibility_type model-object) :hidden))))]
+                                                 (= (:visibility_type model-object) :hidden))))
+                             :let [is-dataset? (= (keyword (:type model-object)) :model)]]
                          (cond-> (assoc view-log :model_object model-object)
-                           (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
+                           is-dataset? (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
-         (sort-by :score)
-         reverse
-         order-items
+         (sort-by
+          ;; sort by model first, and then score when they are the same model
+          (juxt #(-> % :model model->precedence) #(- (% :score))))
          (take 5)
-         (map #(dissoc % :score)))))
+         (map #(-> %
+                   (assoc :timestamp (:max_ts % ""))
+                   recent-views/fill-recent-view-info)))))
+
+(api/defendpoint GET "/popular_items"
+  "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
+  finds anything archived, deleted, etc it can usually still get 5."
+  []
+  ;; we can do a weighted score which incorporates:
+  ;; total count -> higher = higher score
+  ;; recently viewed -> more recent = higher score
+  ;; official/verified -> yes = higher score
+  {:popular_items (get-popular-items-model-and-id)})
 
 (define-routes)

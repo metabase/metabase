@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
@@ -69,12 +68,6 @@ export const ExternalIcon = styled(Icon)`
 
 export const SuggestionTitle = styled.span`
   margin-right: 1.5em;
-`;
-
-export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
-  padding: 0;
-  margin-left: auto;
-  padding: 0.3125rem 0;
 `;
 
 export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`

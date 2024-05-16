@@ -23,42 +23,7 @@ export const ClickActionButtonTextIcon = styled.span`
 export const Subtitle = styled.div`
   color: ${({ theme }) => theme.fn.themeColor("text-light")};
   font-weight: normal;
-  text-align: start;
-  margin-top: ${rem(4)};
-`;
-
-export const HorizontalClickActionButton = styled(Button)`
-  display: flex;
-  flex: auto;
-  align-items: center;
-
-  border-radius: 8px;
-  border: none;
-  text-align: start;
-
-  padding: 0.5rem;
-  margin: 0 -0.5rem;
-  width: auto;
-  min-width: 148px;
-
-  line-height: 1rem;
-
-  &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
-    background-color: ${({ theme }) => theme.fn.themeColor("brand")};
-
-    ${ClickActionButtonIcon} {
-      color: ${({ theme }) => theme.fn.themeColor("white")};
-    }
-
-    ${ClickActionButtonTextIcon} {
-      color: ${({ theme }) => theme.fn.themeColor("white")};
-    }
-
-    ${Subtitle} {
-      color: ${({ theme }) => theme.fn.themeColor("white")};
-    }
-  }
+  margin-left: 1rem;
 `;
 
 export const TokenFilterActionButton = styled(Button)`

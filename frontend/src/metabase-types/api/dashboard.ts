@@ -63,6 +63,9 @@ export interface Dashboard {
   enable_embedding: boolean;
 }
 
+/** Dashboards with string ids, like x-rays, cannot have cache configurations */
+export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };
+
 export type DashCardId = number;
 
 export type DashboardCardLayoutAttrs = {
@@ -184,7 +187,7 @@ export type UnrestrictedLinkEntity = {
   model: SearchModel;
   name: string;
   display_name?: string;
-  description?: string;
+  description?: string | null;
   display?: CardDisplayType;
 };
 

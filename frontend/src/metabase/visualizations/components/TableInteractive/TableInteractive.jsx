@@ -16,6 +16,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -25,7 +26,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Button as UIButton, Icon, DelayGroup } from "metabase/ui";
+import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -44,10 +45,10 @@ import TableS from "./TableInteractive.module.css";
 import {
   TableDraggable,
   ExpandButton,
-  HeaderCell,
   ResizeHandle,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
+import { getCellDataTheme } from "./table-theme-utils";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -115,25 +116,35 @@ class TableInteractive extends Component {
   static defaultProps = {
     isPivoted: false,
     hasMetadataPopovers: true,
-    renderTableHeaderWrapper: children => (
-      <div className={TableS.cellData} data-testid="cell-data">
-        {children}
-      </div>
-    ),
-    renderTableCellWrapper: children => {
-      const hasChildren = children != null && children !== "";
+    renderTableHeaderWrapper: children => {
       return (
-        <div
-          className={cx({
-            [TableS.cellData]: hasChildren,
-          })}
-          data-testid={hasChildren ? "cell-data" : undefined}
-        >
+        <Box className={TableS.cellData} data-testid="cell-data" c="brand">
           {children}
-        </div>
+        </Box>
       );
     },
   };
+
+  renderTableCellWrapper(children, { isIDColumn } = {}) {
+    const { theme } = this.props;
+
+    const hasChildren = children != null && children !== "";
+    const cellTheme = getCellDataTheme({ theme, isIDColumn });
+
+    return (
+      <Box
+        className={cx({
+          [TableS.cellData]: hasChildren,
+        })}
+        data-testid={hasChildren ? "cell-data" : undefined}
+        c={cellTheme.color}
+        bg={cellTheme.background}
+        style={{ border: cellTheme.border }}
+      >
+        {children}
+      </Box>
+    );
+  }
 
   UNSAFE_componentWillMount() {
     // for measuring cells:
@@ -538,7 +549,7 @@ class TableInteractive extends Component {
   };
 
   cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
-    const { data, settings } = this.props;
+    const { data, settings, theme } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
 
@@ -563,12 +574,15 @@ class TableInteractive extends Component {
 
     const isLink = cellData && cellData.type === ExternalLink;
     const isClickable = !isLink && !isScrolling;
-    const backgroundColor = this.getCellBackgroundColor(
-      settings,
-      value,
-      rowIndex,
-      column.name,
-    );
+
+    const isIDColumn = value != null && isID(column);
+
+    // Theme options from embedding SDK.
+    const tableTheme = theme?.other?.table;
+
+    const backgroundColor =
+      this.getCellBackgroundColor(settings, value, rowIndex, column.name) ||
+      tableTheme?.cell?.backgroundColor;
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
@@ -589,7 +603,8 @@ class TableInteractive extends Component {
     };
 
     return (
-      <div
+      <Box
+        bg={backgroundColor}
         key={key}
         role="gridcell"
         style={{
@@ -598,7 +613,6 @@ class TableInteractive extends Component {
           left: this.getColumnLeft(style, columnIndex),
           // add a transition while dragging column
           transition: dragColIndex != null ? "left 200ms" : null,
-          backgroundColor,
         }}
         className={cx(
           TableS.TableInteractiveCellWrapper,
@@ -615,8 +629,8 @@ class TableInteractive extends Component {
             "test-TableInteractive-emptyCell": value == null,
             [CS.cursorPointer]: isClickable,
             [CS.justifyEnd]: isColumnRightAligned(column),
-            [TableS.TableID]: value != null && isID(column),
-            "test-Table-ID": value != null && isID(column),
+            [TableS.TableID]: isIDColumn,
+            "test-Table-ID": isIDColumn,
             "test-Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
           },
@@ -631,7 +645,8 @@ class TableInteractive extends Component {
         }
         tabIndex="0"
       >
-        {this.props.renderTableCellWrapper(cellData)}
+        {this.renderTableCellWrapper(cellData, { isIDColumn })}
+
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
@@ -644,7 +659,7 @@ class TableInteractive extends Component {
             onClick={e => this.handleExpandButtonClick(e, columnIndex)}
           />
         )}
-      </div>
+      </Box>
     );
   };
 
@@ -727,16 +742,26 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
+      question,
+      mode,
     } = this.props;
+
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
+
+    const query = question?.query();
+    const stageIndex = -1;
 
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
-    const isClickable = this.visualizationIsClickable(clicked);
+    const isClickable = Boolean(
+      mode?.hasDrills &&
+        query &&
+        Lib.queryDisplayInfo(query, stageIndex).isEditable,
+    );
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
@@ -745,9 +770,6 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const columnInfoPopoverTestId = "field-info-popover";
-    const question = this.props.question;
-    const query = question?.query();
-    const stageIndex = -1;
 
     return (
       <TableDraggable
@@ -798,7 +820,7 @@ class TableInteractive extends Component {
           });
         }}
       >
-        <HeaderCell
+        <Box
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -905,7 +927,7 @@ class TableInteractive extends Component {
               }}
             />
           </TableDraggable>
-        </HeaderCell>
+        </Box>
       </TableDraggable>
     );
   };
@@ -1017,6 +1039,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      theme,
       question,
     } = this.props;
 
@@ -1029,6 +1052,9 @@ class TableInteractive extends Component {
     const shortcutColumn = 1;
     const query = question?.query();
     const info = query && Lib.queryDisplayInfo(query);
+
+    const tableTheme = theme?.other?.table;
+    const backgroundColor = tableTheme?.cell?.backgroundColor;
 
     return (
       <DelayGroup>
@@ -1045,6 +1071,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
+                bg={backgroundColor}
                 className={cx(
                   className,
                   TableS.TableInteractive,
@@ -1077,9 +1104,9 @@ class TableInteractive extends Component {
                         zIndex: 4,
                       }}
                     />
-                    <div
+                    <Box
                       id="gutter-column"
-                      className={TableS.TableInteractiveGutter}
+                      bg={backgroundColor}
                       style={{
                         position: "absolute",
                         top: headerHeight,
@@ -1092,7 +1119,7 @@ class TableInteractive extends Component {
                       onMouseLeave={this.handleLeaveRow}
                     >
                       <DetailShortcut ref={this.detailShortcutRef} />
-                    </div>
+                    </Box>
                   </>
                 )}
                 {shortcutColumn && (
@@ -1228,6 +1255,7 @@ class TableInteractive extends Component {
 }
 
 export default _.compose(
+  withMantineTheme,
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),

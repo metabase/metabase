@@ -1,3 +1,5 @@
+import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "embedding-sdk/lib/theme/default-component-theme";
+
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
 describe("Transform Embedding Theme Override", () => {
@@ -8,8 +10,8 @@ describe("Transform Embedding Theme Override", () => {
       fontFamily: "Roboto",
       colors: {
         brand: "hotpink",
-        "text-dark": "yellow",
-        "text-light": "green",
+        "text-primary": "yellow",
+        "text-tertiary": "green",
       },
     });
 
@@ -23,6 +25,7 @@ describe("Transform Embedding Theme Override", () => {
       },
       other: {
         fontSize: "2rem",
+        ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
     });
   });
