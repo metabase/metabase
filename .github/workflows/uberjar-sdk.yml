@@ -85,26 +85,33 @@ jobs:
         shell: bash
         run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
         id: extract_branch
+
       - name: Set image name to env
         run: echo "image_name=${{ inputs.image_name || steps.extract_branch.outputs.branch }}" >> "$GITHUB_ENV"
+
       - name: Verify the intended tag of the container image
         run: echo "Container image will be tagged as ${{ env.image_name }}-${{ matrix.edition }}"
+
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+
       - name: Download uploaded artifacts to insert into container
         uses: actions/download-artifact@v4
         with:
           name: metabase-ee-uberjar
           path: bin/docker/
+
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
         run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2.5.0
         with:
           driver-opts: network=host
+
       - name: Build ${{ matrix.edition }} container
         uses: docker/build-push-action@v3
         with:
@@ -114,26 +121,28 @@ jobs:
           tags: localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
           no-cache: true
           push: true
+
       - name: Launch ${{ matrix.edition }} container
         run: docker run --rm -dp 3000:3000 localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
         timeout-minutes: 5
+
       - name: Is Docker running?
         run: docker ps
+
       - name: Wait for Metabase to start and reach 100% health
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
+
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Retag and push images if dev branch
-        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      - name: Retag and push images
         run: docker tag localhost:5000/metabase-dev:${{ env.image_name }}-ee ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }}
 
-      - name: Run Trivy vulnerability scanner if dev branch
-        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_OFFLINE_SCAN: true
@@ -142,8 +151,7 @@ jobs:
           format: sarif
           output: trivy-results.sarif
 
-      - name: Upload Trivy scan results to GitHub Security tab if dev branch
-        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
