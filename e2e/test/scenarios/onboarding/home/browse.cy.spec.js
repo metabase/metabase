@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -14,7 +15,7 @@ import {
   createQuestion,
 } from "e2e/support/helpers";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
@@ -90,14 +91,18 @@ describeWithSnowplow("scenarios > browse", () => {
   it("shows recently viewed models", () => {
     cy.log("Make several models, enough that recents are displayed");
     new Array(10).fill().forEach((_, i) => {
-      createQuestion({
-        name: `Model ${i}`,
-        query: {
-          "source-table": ORDERS_MODEL_ID,
-          limit: 10,
+      createQuestion(
+        {
+          name: `Model ${i}`,
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 10,
+          },
+          database: SAMPLE_DB_ID,
+          type: "model",
         },
-        type: "model",
-      });
+        {},
+      );
     });
 
     cy.visit("/browse/models");
@@ -106,19 +111,15 @@ describeWithSnowplow("scenarios > browse", () => {
     cy.findByRole("heading", { name: "Model 1" }).should("exist");
 
     cy.log("Model 1 is not in the Recents section");
-    cy.findByTestId("recent-models").within(() => {
-      cy.findByRole("heading", { name: "Model 1" }).should("not.exist");
-    });
+    cy.get("main").findByText("Recent models").should("not.exist");
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
-
-    cy.visit("/");
+    cy.findByTestId("qb-header").findByText("Model 1");
+    cy.findByTestId("sidebar-toggle").click();
     navigationSidebar().findByLabelText("Browse models").click();
 
-    cy.findByTestId("recent-models").within(() => {
-      cy.findByRole("heading", { name: "Model 1" }).should("exist");
-    });
+    cy.findByTestId("recent-models").findByText("Model 1").should("be.visible");
   });
 });
 

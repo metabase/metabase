@@ -93,7 +93,7 @@ export const BrowseModelsBody = ({
   }, [data, actualModelFilters]);
 
   const { data: recentItems, isLoading: isLoadingRecents } =
-    useListRecentItemsQuery();
+    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const filteredRecentItems = useMemo(() => {
     if (!recentItems) {
