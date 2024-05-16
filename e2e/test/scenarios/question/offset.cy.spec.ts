@@ -59,16 +59,15 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("filters", () => {
-    it("does not allow using offset() in filters", () => {
-      const expression = "offset([Total], -1) > 0";
+    it("does not suggest or allow using offset() in filters", () => {
+      const expression = "Offset([Total], -1) > 0";
       const prefixLength = 3;
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
       };
 
       createQuestion({ query }, { visitQuestion: true });
-      cy.icon("notebook").click();
-
+      openNotebook();
       cy.button("Filter").click();
       popover().within(() => {
         cy.findByText("Custom Expression").click();
@@ -83,15 +82,55 @@ describe("scenarios > question > offset", () => {
           .type(expression.substring(prefixLength))
           .blur();
 
+        cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
         );
-        cy.button("Done").should("be.disabled");
       });
     });
   });
 
   describe("aggregations", () => {
+    it("suggests and allows using offset() in aggregations", () => {
+      const expression = "Offset(Sum([Total]), -1)";
+      const prefixLength = 3;
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+      openNotebook();
+      cy.button("Summarize").click();
+      getNotebookStep("summarize")
+        .findByText("Pick the metric you want to see")
+        .click();
+      popover().within(() => {
+        cy.findByText("Custom Expression").click();
+        cy.get(".ace_text-input").type(expression.substring(0, prefixLength));
+      });
+
+      cy.log("suggests offset() in aggregation expressions");
+      cy.findByTestId("expression-suggestions-list-item")
+        .should("exist")
+        .and("have.text", "Offset");
+
+      popover()
+        .first()
+        .within(() => {
+          cy.get(".ace_text-input")
+            .type(expression.substring(prefixLength))
+            .blur();
+
+          cy.button("Done").should("be.disabled");
+
+          cy.findByPlaceholderText("Something nice and descriptive")
+            .type("name")
+            .blur();
+
+          cy.button("Done").should("be.enabled");
+        });
+    });
+
     it("does not work without a breakout", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
@@ -300,7 +339,7 @@ describe("scenarios > question > offset", () => {
 
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
-      cy.icon("sum").click();
+      cy.button("Summarize").click();
       addCustomAggregation({ formula, name, isFirst: true });
 
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
