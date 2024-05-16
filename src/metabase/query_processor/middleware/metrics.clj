@@ -11,18 +11,16 @@
    [metabase.util.log :as log]))
 
 (defn- replace-metric-aggregation-refs [x lookup]
-  (lib.util.match/replace
-   x
-    [:metric _ (metric-id :guard #(contains? lookup %))]
-    (let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
+  (lib.util.match/replace x
+    [:metric _ metric-id]
+    (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
       (update (lib.util/fresh-uuids replacement)
               1
               merge
               {:name metric-name}
-              (select-keys (get &match 1) [:lib/uuid :name])))
-    [:metric _ (metric-id :guard #(not (contains? lookup %)))]
-    (throw (ex-info "Incompatible metric" {:match &match
-                                           :lookup lookup}))))
+              (select-keys (get &match 1) [:lib/uuid :name]))
+      (throw (ex-info "Incompatible metric" {:match &match
+                                             :lookup lookup})))))
 
 (defn- find-metric-ids
   [x]
@@ -36,14 +34,14 @@
     (->> metric-ids
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
-               (map (juxt :id
-                          (fn [card-metadata]
-                            (let [metric-query (lib.convert/->pMBQL
-                                                 ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                                  (lib/query query (:dataset-query card-metadata))))]
-                              {:query metric-query
-                               :aggregation (first (lib/aggregations metric-query))
-                               :name (:name card-metadata)})))))
+               (map (fn [card-metadata]
+                      (let [metric-query (lib.convert/->pMBQL
+                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
+                                            (lib/query query (:dataset-query card-metadata))))]
+                        [(:id card-metadata)
+                         {:query metric-query
+                          :aggregation (first (lib/aggregations metric-query))
+                          :name (:name card-metadata)}]))))
          not-empty)))
 
 (defn- expression-with-name-from-source
@@ -159,10 +157,8 @@
   (let [query (lib.walk/walk
                 query
                 (fn [_query path-type path stage-or-join]
-                  (case path-type
-                    :lib.walk/join
-                    (update stage-or-join :stages #(adjust-metric-stages query path %))
-                    stage-or-join)))]
+                  (when (= path-type :lib.walk/join)
+                    (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
     (u/prog1
       (update query :stages #(adjust-metric-stages query nil %))
       (when-let [metric (lib.util.match/match-one <>
