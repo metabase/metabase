@@ -67,12 +67,11 @@ jobs:
 
       - name: Build steps in parallel
         run: |
-          parallel ::: "./bin/build.sh :steps [:version]" \
-                       "./bin/build.sh :steps [:translations]" \
-                       "./bin/build.sh :steps [:drivers]" \
-                       "./bin/build.sh :steps [:frontend]"
-      - name: Build uberjar
-        run: ./bin/build.sh :steps [:uberjar]
+          ./bin/build.sh :steps [:version] & \
+          ./bin/build.sh :steps [:translations] & \
+          ./bin/build.sh :steps [:drivers] & \
+          ./bin/build.sh :steps [:frontend] && \
+          ./bin/build.sh :steps [:uberjar]
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
