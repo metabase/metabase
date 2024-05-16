@@ -28,7 +28,7 @@ describe("issue 19341", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-spinner").should("not.exist");
       cy.findByText("Orders").should("exist");
-      entityPickerModalTab("Saved questions").should("not.exist");
+      cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search…").type("Ord");
@@ -49,9 +49,7 @@ describe("issue 19341", () => {
     });
 
     cy.icon("join_left_outer").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").should("not.exist");
-    });
+    entityPickerModal().findAllByRole("tab").should("not.exist");
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");
