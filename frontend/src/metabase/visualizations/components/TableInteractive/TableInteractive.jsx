@@ -18,7 +18,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
-import { zoomInRow } from "metabase/query_builder/actions";
+import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
@@ -267,6 +267,19 @@ class TableInteractive extends Component {
         this.props.onContentWidthChange(total, this.state.columnWidths);
         this._totalContentWidth = total;
       }
+    }
+
+    // Reset the scrollToLastColumn ui control for subsequent renders.
+    //
+    // We need to include width and height here to avoid unsetting the ui control
+    // before the component content has a chance to render (see the guard clause in
+    // the render method).
+    if (
+      this.props.scrollToLastColumn &&
+      this.props.width &&
+      this.props.height
+    ) {
+      this.props.dispatch(setUIControls({ scrollToLastColumn: false }));
     }
   }
 
