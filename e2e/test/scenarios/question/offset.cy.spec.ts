@@ -22,6 +22,12 @@ import type {
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
+const ORDERS_ID_FIELD_REF: FieldReference = [
+  "field",
+  ORDERS.ID,
+  { "base-type": "type/BigInteger" },
+];
+
 const ORDERS_TOTAL_FIELD_REF: FieldReference = [
   "field",
   ORDERS.TOTAL,
@@ -64,6 +70,7 @@ describe("scenarios > question > offset", () => {
       const prefixLength = 3;
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
+        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
       };
 
       createQuestion({ query }, { visitQuestion: true });
@@ -105,8 +112,15 @@ describe("scenarios > question > offset", () => {
           .type("My expression")
           .blur();
 
-        cy.button("Done").should("be.enabled");
+        cy.button("Done").should("be.enabled").click();
       });
+
+      visualize();
+      verifyTableContent([
+        ["1", "39.72", ""],
+        ["2", "117.03", "39.72"],
+        ["3", "49.21", "117.03"],
+      ]);
     });
   });
 
