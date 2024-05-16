@@ -2,11 +2,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
   createQuestion,
-  describeEE,
   navigationSidebar,
   popover,
   restore,
-  setTokenFeatures,
   visitMetric,
 } from "e2e/support/helpers";
 
@@ -87,30 +85,6 @@ describe("scenarios > metrics > search", () => {
     navigationSidebar().findByText("Home").click();
     cy.findByTestId("home-page").within(() => {
       cy.findByText("Pick up where you left off").should("be.visible");
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      cy.wait("@dataset");
-    });
-    cy.findByTestId("scalar-container").should("be.visible");
-  });
-});
-
-describeEE("scenarios > metrics > search", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    setTokenFeatures("all");
-  });
-
-  it.skip("should see metrics in popular items on the homepage (metabase#42607)", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
-      cy.wait("@dataset");
-    });
-    cy.signInAsNormalUser();
-    cy.visit("/");
-    cy.findByTestId("home-page").within(() => {
-      cy.findByText("Here are some popular metrics").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       cy.wait("@dataset");
     });
