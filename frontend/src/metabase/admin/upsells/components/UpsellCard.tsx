@@ -6,21 +6,21 @@ import { UpsellCTALink, UpsellCardComponent } from "./Upsells.styled";
 import { useUpsellLink } from "./use-upsell-link";
 
 type UpsellCardProps = {
-  children: React.ReactNode;
   title: string;
-  campaign: string;
-  source: string;
   buttonText: string;
   buttonLink: string;
+  campaign: string;
+  source: string;
   illustrationSrc?: string;
+  children: React.ReactNode;
 };
 
 export const _UpsellCard = ({
   title,
   buttonText,
+  buttonLink,
   campaign,
   source,
-  buttonLink,
   illustrationSrc,
   children,
 }: UpsellCardProps) => {
