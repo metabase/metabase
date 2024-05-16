@@ -41,9 +41,10 @@ jobs:
           git tag ${{ env.tag }}
 
       - name: Push the new tag
+        id : push-tag
         run: |
           git push origin ${{ env.tag }}
-      - if: failure()
+      - if: ${{ failure() && steps.push-tag.outcome == 'failure' }}
         run: echo "Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
 
   test:
