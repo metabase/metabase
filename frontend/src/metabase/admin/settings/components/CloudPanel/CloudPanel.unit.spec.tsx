@@ -228,7 +228,7 @@ const expectStartConfirmationModal = async () => {
 
 const expectProgressState = async () => {
   expect(
-    await screen.findByText("You have started migration to Metabase Cloud"),
+    await screen.findByText("You are now migrating to Metabase Cloud"),
   ).toBeInTheDocument();
 
   // expect to have correct store link for this exact migration
@@ -242,7 +242,7 @@ const expectSuccessState = async () => {
     await screen.findByText("The snapshot has been uploaded to the Cloud"),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("link", { name: /Go to Metabase store/ }),
+    screen.getByRole("link", { name: /Go to Metabase Store/ }),
   ).toHaveAttribute("href", STORE_LINK);
 };
 
@@ -252,7 +252,7 @@ const expectCancelConfirmationModal = async () => {
 
 const expectErrorState = async () => {
   expect(
-    await screen.findByText(`Migration to cloud failed`),
+    await screen.findByText(`Migration to Metabase Cloud failed`),
   ).toBeInTheDocument();
 };
 

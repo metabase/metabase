@@ -22,11 +22,10 @@ export const MigrationError = ({ migration }: MigrationErrorProps) => {
           <Icon size="1.5rem" name="warning" />
         </LargeIconContainer>
         <Box>
-          <Text fw="bold">{t`Migration to cloud failed`}</Text>
+          <Text fw="bold">{t`Migration to Metabase Cloud failed`}</Text>
           <Text mt="1rem">
-            {c(
-              "{0} is an email address",
-            ).jt`Please try again later, and reach out to us at ${(
+            {c("{0} is an email address")
+              .jt`Please try again later, and reach out to us at ${(
               <Link key="email" variant="brand" to="mailto:help@metabase.com">
                 help@metabase.com
               </Link>

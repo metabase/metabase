@@ -48,7 +48,7 @@ export const MigrationSuccess = ({
 
           <Box mt="1.5rem">
             <ExternalLink href={getCheckoutUrl(migration)}>
-              <Button variant="filled">{t`Go to Metabase store`}</Button>
+              <Button variant="filled">{t`Go to Metabase Store`}</Button>
             </ExternalLink>
           </Box>
 

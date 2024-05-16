@@ -34,16 +34,16 @@ export const MigrationStart = ({
             : ""}
         </Text>
 
-        <Text size="md">{t`You will get:`}</Text>
+        <Text size="md" mt="1rem">{t`You will get:`}</Text>
 
         <List size="md">
           <List.Item>{t`Automatic upgrades`}</List.Item>
           <List.Item>{t`Freedom from having to manage your own server`}</List.Item>
-          <List.Item>{t`Preconfigured SMTP Server`}</List.Item>
+          <List.Item>{t`A preconfigured SMTP server`}</List.Item>
         </List>
 
         <Button
-          mt="1rem"
+          mt="2rem"
           variant="filled"
           onClick={openModal}
         >{t`Get started`}</Button>
@@ -63,8 +63,8 @@ export const MigrationStart = ({
           </Modal.Header>
           <Modal.Body mt="md" p="0">
             <List spacing="md" mb="3.5rem" mx="1rem">
-              <List.Item>{t`Once you start this process, we’ll begin taking a snapshot of this instance, and then uploading it to a new Cloud instance.`}</List.Item>
-              <List.Item>{t`You will be directed to Metabase store to create an account and configure the instance details.`}</List.Item>
+              <List.Item>{t`Once you start this process, we’ll take a snapshot of this instance, then upload it to a new Cloud instance.`}</List.Item>
+              <List.Item>{t`You will be directed to Metabase Store to create an account and configure the instance details.`}</List.Item>
               <List.Item>{t`During the snapshot step, this instance will be in a read-only mode. This should take 5-30 minutes depending on your instance’s size.`}</List.Item>
             </List>
             <Flex justify="end">

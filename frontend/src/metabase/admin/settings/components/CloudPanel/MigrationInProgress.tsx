@@ -53,13 +53,13 @@ export const MigrationInProgress = ({
     <>
       <MigrationCard>
         <Flex gap="sm" align="center">
-          <Text fw="bold">{t`You have started migration to Metabase Cloud`}</Text>
+          <Text fw="bold">{t`You are now migrating to Metabase Cloud`}</Text>
         </Flex>
         <List size="md" mt="md">
           {readOnly ? (
-            <List.Item>{t`This instance will be in read-only mode when taking a snapshot. It should take about 5-30 minutes.`}</List.Item>
+            <List.Item>{t`This instance will be in read-only mode when taking a snapshot. It could take up to 30 minutes.`}</List.Item>
           ) : (
-            <List.Item>{t`This instance is out of read-only mode.`}</List.Item>
+            <List.Item>{t`This instance is no longer read-only.`}</List.Item>
           )}
           <List.Item>{c(`{0} is a link titled "Metabase Store"`)
             .jt`In the meantime, you can go to the ${(
@@ -97,7 +97,7 @@ export const MigrationInProgress = ({
             <Modal.CloseButton />
           </Modal.Header>
           <Modal.Body mt="md" px="1rem">
-            <Text>{t`We will stop the migration process. Once it’s canceled, this instance will get out of the read-only mode.`}</Text>
+            <Text>{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
             <Flex justify="end" mt="3.5rem">
               <Button
                 variant="filled"

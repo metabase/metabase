@@ -7,7 +7,6 @@ export const clouldMigrationApi = Api.injectEndpoints({
   endpoints: builder => ({
     getCloudMigration: builder.query<CloudMigration, void>({
       query: () => `/api/cloud-migration`,
-      // TODO: list tag is probs not what we want...
       providesTags: () => [listTag("cloud-migration")],
     }),
     createCloudMigration: builder.mutation<CloudMigration, void>({
