@@ -3,7 +3,7 @@ import { Icon } from "metabase/ui";
 
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
-interface Props {
+export interface LoadingSpinnerProps {
   className?: string;
   size?: number;
   borderWidth?: number;
@@ -15,7 +15,7 @@ const BaseLoadingSpinner = ({
   size = 32,
   borderWidth = 4,
   "data-testid": dataTestId,
-}: Props) => (
+}: LoadingSpinnerProps) => (
   <SpinnerRoot
     className={className}
     data-testid={dataTestId ?? "loading-spinner"}

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 import { Transition } from "metabase/ui";
 
+import type { LoadingSpinnerProps } from "../LoadingSpinner/LoadingSpinner";
+
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
 export type LoadingAndErrorWrapperProps = {
@@ -11,9 +13,11 @@ export type LoadingAndErrorWrapperProps = {
   loading: any;
   noBackground?: boolean;
   noWrapper?: boolean;
+  noPadding?: boolean;
   children?: ReactNode;
   style?: object;
   showSpinner?: boolean;
+  spinnerProps?: LoadingSpinnerProps;
   loadingMessages?: string[];
   messageInterval?: number;
   loadingScenes?: string[];
@@ -30,6 +34,7 @@ export const DelayedLoadingAndErrorWrapper = ({
   loading,
   delay = 300,
   blankComponent = null,
+  spinnerProps,
   children,
   ...props
 }: {
@@ -63,7 +68,12 @@ export const DelayedLoadingAndErrorWrapper = ({
     >
       {styles => (
         <div style={styles}>
-          <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
+          <LoadingAndErrorWrapper
+            error={error}
+            loading={loading}
+            spinnerProps={spinnerProps}
+            {...props}
+          >
             {children}
           </LoadingAndErrorWrapper>
         </div>

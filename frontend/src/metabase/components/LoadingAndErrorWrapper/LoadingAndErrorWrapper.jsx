@@ -19,6 +19,7 @@ export default class LoadingAndErrorWrapper extends Component {
     loading: PropTypes.any,
     noBackground: PropTypes.bool,
     noWrapper: PropTypes.bool,
+    noPadding: PropTypes.bool,
     children: PropTypes.any,
     style: PropTypes.object,
     showSpinner: PropTypes.bool,
@@ -27,6 +28,7 @@ export default class LoadingAndErrorWrapper extends Component {
     loadingScenes: PropTypes.array,
     renderError: PropTypes.func,
     "data-testid": PropTypes.string,
+    spinnerProps: PropTypes.object,
   };
 
   static defaultProps = {
@@ -37,6 +39,7 @@ export default class LoadingAndErrorWrapper extends Component {
     showSpinner: true,
     loadingMessages: [t`Loading...`],
     messageInterval: 6000,
+    noPadding: false,
   };
 
   renderError(contentClassName) {
@@ -114,6 +117,7 @@ export default class LoadingAndErrorWrapper extends Component {
       loading,
       error,
       noBackground,
+      noPadding,
       noWrapper,
       showSpinner,
       loadingMessages,
@@ -121,13 +125,13 @@ export default class LoadingAndErrorWrapper extends Component {
       style,
       className,
       "data-testid": testId,
+      spinnerProps,
     } = this.props;
 
     const { messageIndex, sceneIndex } = this.state;
 
     const contentClassName = cx(
       CS.wrapper,
-      CS.py4,
       CS.textBrand,
       CS.textCentered,
       CS.flexFull,
@@ -135,6 +139,7 @@ export default class LoadingAndErrorWrapper extends Component {
       CS.flexColumn,
       CS.layoutCentered,
       { [CS.bgWhite]: !noBackground },
+      { [CS.py4]: !noPadding },
     );
 
     if (noWrapper && !error && !loading) {
@@ -152,10 +157,14 @@ export default class LoadingAndErrorWrapper extends Component {
         ) : loading ? (
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
-            {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
-              {loadingMessages[messageIndex]}
-            </h2>
+            {!loadingScenes && showSpinner && (
+              <LoadingSpinner {...spinnerProps} />
+            )}
+            {loadingMessages.length > 0 && (
+              <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
+                {loadingMessages[messageIndex]}
+              </h2>
+            )}
           </div>
         ) : (
           this.getChildren()
