@@ -44,7 +44,7 @@ jobs:
         run: |
           git push origin ${{ env.tag }}
       - if: failure()
-        run: echo "Make sure the tag '${{ env.tag }}' doesn't exist."
+        run: echo "Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
 
   test:
     needs: git-tag
