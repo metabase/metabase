@@ -62,9 +62,17 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: e2e-tests
+      - name: Prepare (install) backend dependencies
+        run: clojure -A:drivers:build:build/all -P
 
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
+      - name: Build steps in parallel
+        run: |
+          parallel ::: "./bin/build.sh :steps [:version]" \
+                       "./bin/build.sh :steps [:translations]" \
+                       "./bin/build.sh :steps [:drivers]" \
+                       "./bin/build.sh :steps [:frontend]"
+      - name: Build uberjar
+        run: ./bin/build.sh :steps [:uberjar]
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
