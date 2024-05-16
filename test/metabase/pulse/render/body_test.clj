@@ -753,6 +753,38 @@
               (is (= 1 (count axis-label-element)))
               (is (< 200 axis-y-transform)))))))))
 
+(deftest multiseries-dashcard-render-test
+  (testing "Multi-series dashcards render with every series. (#42730)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :products)
+                :aggregation  [[:count]]
+                :breakout
+                [[:field (mt/id :products :category) {:base-type :type/Text}]]}}]
+        (mt/with-temp [:model/Card {card-a-id :id} {:display       :bar
+                                                    :dataset_query q}
+                       :model/Card {card-b-id :id} {:display       :bar
+                                                    :dataset_query q}
+                       :model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                               :card_id      card-a-id}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
+                                                     :card_id          card-b-id}]
+          (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
+                dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
+                card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
+                card-paths-count       (count card-path-elements)
+                dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
+                expected-dashcard-paths-count (+ 4 card-paths-count)]
+            ;; SVG Path elements are used to draw the bars in a bar graph.
+            ;; They are also used to create the axes lines, so we establish a count of a single card's path elements
+            ;; to compare against.
+            ;; Since we know that the Products sample data has 4 Product categories, we can reliably expect
+            ;; that Adding a series to the card that is identical to the first card will result in 4 more path elements.
+            (is (= expected-dashcard-paths-count (count dashcard-path-elements)))))))))
+
 (defn- render-card
   [render-type card data]
   (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
