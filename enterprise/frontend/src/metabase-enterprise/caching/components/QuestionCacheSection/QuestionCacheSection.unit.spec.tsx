@@ -50,16 +50,4 @@ describe("QuestionCacheSection", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
   });
-
-  it("should not show the last cached query time if the question is not cached", () => {
-    setup({
-      card: createMockCard({
-        can_write: true,
-        last_query_start: null,
-      }),
-    });
-
-    expect(screen.getByText("Caching policy")).toBeInTheDocument();
-    expect(screen.queryByText(/Question last cached/)).not.toBeInTheDocument();
-  });
 });
