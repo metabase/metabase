@@ -62,7 +62,7 @@ describe("Upsells > useUpsellLink", () => {
     const link = screen.getByText("Link");
     expect(link).toHaveAttribute(
       "href",
-      `${props.url}?source=product&medium=upsell&campaign=${props.campaign}&content=${props.source}&source_plan=oss`,
+      `${props.url}?utm_source=product&utm_medium=upsell&utm_campaign=${props.campaign}&utm_content=${props.source}&utm_source_plan=oss`,
     );
   });
 
@@ -78,7 +78,7 @@ describe("Upsells > useUpsellLink", () => {
     const link = screen.getByText("Link");
     expect(link).toHaveAttribute(
       "href",
-      expect.stringContaining("source_plan=oss"),
+      expect.stringContaining("utm_source_plan=oss"),
     );
   });
 
@@ -94,7 +94,7 @@ describe("Upsells > useUpsellLink", () => {
     const link = screen.getByText("Link");
     expect(link).toHaveAttribute(
       "href",
-      expect.stringContaining("source_plan=pro-cloud"),
+      expect.stringContaining("utm_source_plan=pro-cloud"),
     );
   });
 });
