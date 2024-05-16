@@ -46,6 +46,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -203,7 +204,7 @@
   driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
   [a-name :- FormattableName]
-  (ddl.i/format-name (tx/driver) (name a-name)))
+  (ddl.i/format-name (tx/driver) (u/->snake_case_en (name a-name))))
 
 (defn id
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic
