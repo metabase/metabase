@@ -8,10 +8,9 @@ import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
-import { getEngines, getIsCachingEnabled, getIsHosted } from "../../selectors";
+import { getEngines, getIsHosted } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -46,7 +45,6 @@ export const DatabaseForm = ({
 }: DatabaseFormProps): JSX.Element => {
   const engines = useSelector(getEngines);
   const isHosted = useSelector(getIsHosted);
-  const isCachingEnabled = useSelector(getIsCachingEnabled);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
@@ -91,7 +89,6 @@ export const DatabaseForm = ({
         autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
-        isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
@@ -107,7 +104,6 @@ interface DatabaseFormBodyProps {
   autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
-  isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
@@ -120,7 +116,6 @@ const DatabaseFormBody = ({
   autofocusFieldName,
   isHosted,
   isAdvanced,
-  isCachingEnabled,
   onEngineChange,
   onCancel,
   setIsDirty,
@@ -158,7 +153,6 @@ const DatabaseFormBody = ({
           data-kek={field.name}
         />
       ))}
-      {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter
         isDirty={dirty}
         isAdvanced={isAdvanced}
