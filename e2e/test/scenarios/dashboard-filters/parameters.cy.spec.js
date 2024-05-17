@@ -29,9 +29,17 @@ import {
   spyRequestFinished,
   entityPickerModal,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  ORDERS,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   const cards = [
@@ -1125,6 +1133,103 @@ describe("scenarios > dashboard > parameters", () => {
           getTableCell("Product ID", 0).should("contain", "1");
         });
       });
+    });
+  });
+
+  describe("preserve last used value", () => {
+    beforeEach(() => {
+      const textFilter = createMockParameter({
+        name: "Text",
+        slug: "string",
+        id: "5aefc726",
+        type: "string/=",
+        sectionId: "string",
+      });
+
+      const peopleQuestionDetails = {
+        query: { "source-table": PEOPLE_ID, limit: 5 },
+      };
+
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [peopleQuestionDetails],
+      }).then(({ dashboard, questions: cards }) => {
+        const [peopleCard] = cards;
+
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: peopleCard.id,
+              parameter_mappings: [
+                {
+                  parameter_id: textFilter.id,
+                  card_id: peopleCard.id,
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        visitDashboard(dashboard.id);
+
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+
+    it("should retain the last used value for a dashboard filter", () => {
+      cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+
+      filterWidget().click();
+
+      popover().within(() => {
+        cy.findByRole("textbox").type("Antwan Fisher");
+        cy.button("Add filter").click();
+      });
+
+      getDashboardCard().findByText("7750 Michalik Lane").should("be.visible");
+
+      cy.visit("/collection/root");
+      cy.wait("@getPinnedItems");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      filterWidget()
+        .findByRole("listitem")
+        .should("have.text", "Antwan Fisher");
+
+      cy.log("verify filter resetting works");
+
+      filterWidget().icon("close").click();
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
+    });
+
+    it("should allow resetting last used value", () => {
+      filterWidget().click();
+
+      popover().within(() => {
+        cy.findByRole("textbox").type("Antwan Fisher");
+        cy.button("Add filter").click();
+      });
+
+      getDashboardCard().findByText("7750 Michalik Lane").should("be.visible");
+
+      cy.log("reset filter values from url by visiting dashboard by id");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      filterWidget().icon("close").click();
+
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
+
+      cy.log("verify filter value is not specified after reload");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
     });
   });
 });
