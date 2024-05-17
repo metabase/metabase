@@ -247,6 +247,24 @@
                            :authority_level (:collection-authority-level dataset)}
                           (root-coll))}))
 
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (some-> metric :display name)
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (if (:collection-id metric)
+                          {:id (:collection-id metric)
+                           :name (:collection-name metric)
+                           :authority_level (:collection-authority-level metric)}
+                          (root-coll))}))
+
 ;; == Recent Dashboards ==
 
 (defn- dashboard-recents

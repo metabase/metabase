@@ -106,11 +106,6 @@
                                     :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
-                                    :visualization_settings {}}
-                 Card      metric  {:name                   "rand-name"
-                                    :type                   :metric
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
                                     :visualization_settings {}}]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
@@ -125,17 +120,17 @@
                                          {:topic :event/dashboard-read :event {:object dash}}
                                          {:topic :event/table-read :event {:object table1}}
                                          {:topic :event/card-query :event {:card-id (:id archived)}}
-                                         {:topic :event/table-read :event {:object hidden-table}}
-                                         {:topic :event/card-query :event {:card-id (:id metric)}}]]
+                                         {:topic :event/table-read :event {:object hidden-table}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
-              (is (partial= {(u/the-id metric)  "metric"
-                             (u/the-id table1)  "table"
-                             (u/the-id dash)    "dashboard"
-                             (u/the-id card1)   "card"
-                             (u/the-id dataset) "dataset"}
-                            (into {} (map (juxt :id :model)) recent-views))))))
+              (is (=?
+                   [{:model "metric" :id (u/the-id metric)}
+                    {:model "table" :id (u/the-id table1)}
+                    {:model "dashboard" :id (u/the-id dash)}
+                    {:model "card" :id (u/the-id card1)}
+                    {:model "dataset" :id (u/the-id dataset)}]
+                   recent-views)))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
