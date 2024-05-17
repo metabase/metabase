@@ -20,6 +20,7 @@ export const DEFAULT_QUERY = DEFAULT_QUESTION.query();
 export function createMockNotebookStep({
   id = "test-step",
   type = "data",
+  clauseType = "data",
   stageIndex = 0,
   itemIndex = 0,
   ...opts
@@ -27,6 +28,7 @@ export function createMockNotebookStep({
   return {
     id,
     type,
+    clauseType,
     stageIndex,
     itemIndex,
     testID: `step-${type}-${stageIndex}-${itemIndex}`,

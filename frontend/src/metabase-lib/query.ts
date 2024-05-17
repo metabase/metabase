@@ -9,10 +9,11 @@ import type {
 import type {
   CardMetadata,
   Clause,
+  ClauseType,
   ColumnMetadata,
   Join,
+  LegacyMetricMetadata,
   MetadataProvider,
-  MetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
@@ -28,7 +29,7 @@ export function fromLegacyQuery(
 
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
-   Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
+ Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
   metadataProvider: MetadataProvider,
@@ -103,10 +104,6 @@ export function canRun(query: Query, cardType: CardType): boolean {
   return ML.can_run(query, cardType);
 }
 
-export function canPreview(query: Query): boolean {
-  return ML.can_preview(query);
-}
-
 export function canSave(query: Query, cardType: CardType): boolean {
   return ML.can_save(query, cardType);
 }
@@ -117,15 +114,6 @@ export function asReturned(
 ): { query: Query; stageIndex: number } {
   return ML.as_returned(query, stageIndex);
 }
-
-type ClauseType =
-  | "data"
-  | "joins"
-  | "expressions"
-  | "filters"
-  | "aggregation"
-  | "breakout"
-  | "page";
 
 export function previewQuery(
   query: Query,
