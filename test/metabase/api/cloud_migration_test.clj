@@ -8,6 +8,10 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/discard-setting-changes [read-only-mode]
+                        (thunk))))
+
 (set! *warn-on-reflection* true)
 
 (deftest permissions-test
