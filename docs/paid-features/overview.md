@@ -80,7 +80,7 @@ Tools for keeping your Metabase organized, so people can find your most importan
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
 
 - [Caching questions](../configuring-metabase/caching.md#caching-per-question)
-- [Caching dashboards](../configuring-metabase/caching.md#caching-per-question)
+- [Caching dashboards](../configuring-metabase/caching.md#caching-per-dashboard)
 - [Caching databases](../configuring-metabase/caching.md#caching-per-database)
 
 ## Usage analytics
