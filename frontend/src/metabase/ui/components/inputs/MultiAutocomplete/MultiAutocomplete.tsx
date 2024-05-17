@@ -118,29 +118,31 @@ export function MultiAutocomplete({
 
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
-    return { value: item };
-  } else {
-    return item;
+    return { value: item, label: item };
   }
+
+  if (!item.label) {
+    return { value: item.value, label: item.value };
+  }
+
+  return item;
 }
 
 function getAvailableSelectItems(
   data: ReadonlyArray<string | SelectItem>,
   selectedValues: string[],
 ) {
-  const items = [
-    ...data.map(getSelectItem),
-    ...selectedValues.map(getSelectItem),
-  ];
+  const all = [...data, ...selectedValues].map(getSelectItem);
+  const seen = new Set();
 
-  const mapping = items.reduce((map: Map<string, string>, option) => {
-    if (!map.has(option.value)) {
-      map.set(option.value, option.label ?? option.value);
+  // Deduplicate items based on value
+  return all.filter(function (option) {
+    if (seen.has(option.value)) {
+      return false;
     }
-    return map;
-  }, new Map<string, string>());
-
-  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+    seen.add(option.value);
+    return true;
+  });
 }
 
 function defaultShouldCreate(query: string, selectedValues: string[]) {
