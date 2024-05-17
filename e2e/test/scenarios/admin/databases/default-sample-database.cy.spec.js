@@ -1,13 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  restore,
-  popover,
-  modal,
-  describeEE,
-  setTokenFeatures,
-} from "e2e/support/helpers";
+import { modal, popover, restore } from "e2e/support/helpers";
 import {
   createMetric,
   createSegment,
@@ -299,37 +293,6 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
-    });
-  });
-
-  describeEE("custom caching", () => {
-    it("should set custom cache ttl", () => {
-      setTokenFeatures("all");
-      cy.request("PUT", "api/setting/enable-query-caching", { value: true });
-
-      visitDatabase(SAMPLE_DB_ID).then(({ response: { body } }) => {
-        expect(body.cache_ttl).to.be.null;
-      });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show advanced options").click();
-
-      setCustomCacheTTLValue("48");
-
-      cy.button("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ request, response }) => {
-        expect(request.body.cache_ttl).to.equal(48);
-        expect(response.body.cache_ttl).to.equal(48);
-      });
-
-      function setCustomCacheTTLValue(value) {
-        cy.findAllByTestId("select-button")
-          .contains("Use instance default (TTL)")
-          .click();
-
-        popover().findByText("Custom").click();
-        cy.findByDisplayValue("24").clear().type(value).blur();
-      }
     });
   });
 });

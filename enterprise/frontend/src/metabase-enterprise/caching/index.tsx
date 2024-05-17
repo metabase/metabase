@@ -3,8 +3,6 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import CacheTTLField from "./components/CacheTTLField";
 import { DashboardStrategySidebar } from "./components/DashboardStrategySidebar";
-import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
-import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
@@ -26,11 +24,9 @@ if (hasPremiumFeature("cache_granular_controls")) {
   };
 
   PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;
-  PLUGIN_FORM_WIDGETS.databaseCacheTTL = DatabaseCacheTTLField;
   PLUGIN_FORM_WIDGETS.questionCacheTTL = QuestionCacheTTLField;
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
-  PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
   PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
