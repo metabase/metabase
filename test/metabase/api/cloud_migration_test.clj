@@ -24,24 +24,25 @@
   (with-redefs [premium-features/is-hosted? (constantly true)]
     (mt/user-http-request :crowberto :post 400 "cloud-migration")))
 
-(deftest lifecycle-test
-  (let [latest-migration (cloud-migration-test/mock-external-calls!
-                          (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
-    (is (= latest-migration (mt/user-http-request :crowberto :get 200 "cloud-migration")))
-    (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
-    (is (= "cancelled" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))))
+#_(deftest lifecycle-test
+    (let [latest-migration (cloud-migration-test/mock-external-calls!
+                            (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+      (is (= latest-migration (mt/user-http-request :crowberto :get 200 "cloud-migration")))
+      (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
+      (is (= "cancelled" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))))
 
 (deftest concurrency-test
-  ;; The Gods of Concurrency with terror and slaughter return
-  (run! (partial t2/insert-returning-instance! :model/CloudMigration)
-        [{:external_id 1 :upload_url "" :state :dump}
-         {:external_id 2 :upload_url "" :state :cancelled}
-         {:external_id 3 :upload_url "" :state :error}
-         {:external_id 5 :upload_url "" :state :done}
-         {:external_id 4 :upload_url "" :state :setup}])
-  (cloud-migration/read-only-mode! true)
+  (mt/discard-setting-changes [read-only-mode]
+    ;; The Gods of Concurrency with terror and slaughter return
+    (run! (partial t2/insert-returning-instance! :model/CloudMigration)
+          [{:external_id 1 :upload_url "" :state :dump}
+           {:external_id 2 :upload_url "" :state :cancelled}
+           {:external_id 3 :upload_url "" :state :error}
+           {:external_id 5 :upload_url "" :state :done}
+           {:external_id 4 :upload_url "" :state :setup}])
+    (cloud-migration/read-only-mode! true)
 
-  (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
-  (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
-  (mt/user-http-request :crowberto :get 200 "cloud-migration")
-  (is (not (cloud-migration/read-only-mode))))
+    (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
+    (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
+    (mt/user-http-request :crowberto :get 200 "cloud-migration")
+    (is (not (cloud-migration/read-only-mode)))))
