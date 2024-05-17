@@ -13,6 +13,7 @@
       :drill-thru/zoom
       (fn [test-case {:keys [value]} {:keys [click column-type]}]
         (and (= click :cell)
+             (not (:native? test-case))
              ;; With an FK column and a non-NULL value, this will be an fk-filter drill instead.
              ;; So we don't expect a zoom drill in that case.
              (not (and (= column-type :fk)

@@ -24,7 +24,7 @@ If you have a different data access issue, see [related problems](#do-you-have-a
 This is expected behavior: using a user attribute to filter rows for a sandboxed table is how sandboxing works. But if you _don't_ want Metabase to filter those rows, you'll need to either:
 
 - Remove the sandbox (which would grant full access to all rows to everyone with access to that table). Go to **Admin** > **Permissions**, and change the access level for the table.
-- Add the person to a group (or create a group) with unrestricted access to the table. Check out [Guide to data permissions][data-permissions].
+- Add the person to a group (or create a group) with different permissions to the table. Check out [Guide to data permissions][data-permissions].
 
 ## People can see **rows** they're _not_ supposed to see
 
@@ -96,13 +96,13 @@ Make sure that you're using a SQL question to create the sandbox, and that you'r
 
 If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the question in the Notebook Editor and clicking on the **View the SQL** button. But again: if you use SQL questions to sandbox the data, this problem goes away.
 
-## Is the person in a group with unrestricted access to view the table?
+## Is the person in _another_ group with a different permission level for the table?
 
-**Root cause:** You've sandboxed the table with the question, but the person is also in an group with unrestricted access to the table. If a person is in multiple groups, they'll get the most permissive access to a data source across all of their groups.
+**Root cause:** You've sandboxed the table with the question, but the person is also in an group with a higher level of access to the table. If a person is in multiple groups, they'll get the most permissive access to a data source across all of their groups.
 
 **Steps to take**:
 
-Remove the person from all groups with unrestricted access to the sandboxed table. If they need some permissions from those other groups, you'll need to create a new group with a new set of permissions that only has sandboxed access to the table in question.
+Remove the person from all groups with higher level access to the sandboxed table. If they need some permissions from those other groups, you'll need to create a new group with a new set of permissions that only has sandboxed access to the table in question.
 
 ## People can't see **columns** they _should_ be able to see
 

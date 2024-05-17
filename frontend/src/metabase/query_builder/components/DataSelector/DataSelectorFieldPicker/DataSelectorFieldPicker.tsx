@@ -72,9 +72,11 @@ const DataSelectorFieldPicker = ({
 
   const renderItemIcon = (item: FieldWithName) =>
     item.field && (
-      <Icon
-        name={item.field.dimension().icon() as unknown as IconName}
+      <TableColumnInfoIcon
+        field={item.field}
+        position="top-end"
         size={18}
+        icon={item.field.dimension().icon() as unknown as IconName}
       />
     );
 
@@ -95,7 +97,6 @@ const DataSelectorFieldPicker = ({
           itemIsClickable={(item: FieldWithName) => item.field}
           renderItemWrapper={renderItemWrapper}
           renderItemIcon={renderItemIcon}
-          renderItemExtra={renderItemExtra}
         />
       </DelayGroup>
     </Container>
@@ -104,10 +105,6 @@ const DataSelectorFieldPicker = ({
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemExtra(item: FieldWithName) {
-  return <TableColumnInfoIcon field={item.field} position="top-end" />;
 }
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (

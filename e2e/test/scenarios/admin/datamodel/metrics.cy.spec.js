@@ -205,64 +205,75 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("Preview");
     });
 
-    it("should update that metric", () => {
-      cy.visit("/admin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Table Metadata").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Metrics").click();
+    it("should update that metric (metabase#42633)", () => {
+      cy.visit("/admin/datamodel/metrics");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("orders < 100")
-        .parent()
-        .parent()
-        .parent()
-        .find(".Icon-ellipsis")
+      cy.get("td").filter(":contains(orders < 100)").should("be.visible");
+      cy.get("tbody tr").icon("ellipsis").click();
+
+      popover().contains("Edit Metric").click();
+
+      cy.log('Update the filter from "< 100" to "> 10"');
+      cy.location("pathname").should("eq", "/admin/datamodel/metric/1");
+      cy.get("label").contains("Edit Your Metric");
+      cy.findByTestId("gui-builder")
+        .findByText("Total is less than 100")
         .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Edit Metric").click();
 
-      // update the filter from "< 100" to "> 10"
-      cy.url().should("match", /metric\/1$/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Edit Your Metric");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/Total\s+is less than/).click();
-      popover().contains("Less than").click();
-      popover().contains("Greater than").click();
-      popover().find("input").type("{SelectAll}10");
-      popover().contains("Update filter").click();
+      cy.findByTestId("select-button").contains("Less than").click();
+      popover().last().findByText("Greater than").click();
+      popover().within(() => {
+        cy.findByDisplayValue("100").type("{backspace}");
+        cy.findByDisplayValue("10");
+        cy.button("Update filter").click();
+      });
 
-      // confirm that the preview updated
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Result: 18758");
+      cy.log("Confirm that the preview updated");
+      cy.findByTestId("gui-builder").should("contain", "Result: 18758");
 
-      // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]').type("{selectall}orders > 10");
-      cy.get('[name="description"]').type(
-        "{selectall}Count of orders with a total over $10.",
+      cy.log(
+        "Update name and description, set a revision note, and save the update",
       );
+      cy.findByDisplayValue("orders < 100").clear().type("orders > 10");
+      cy.findByDisplayValue("Count of orders with a total under $100.")
+        .clear()
+        .type("Count of orders with a total over $10.");
+
       cy.get('[name="revision_message"]').type("time for a change");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Save changes").click();
+      cy.button("Save changes").click();
 
       // get redirected to previous page and see the new metric name
-      cy.url().should("match", /datamodel\/metrics$/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("orders > 10");
+      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
+      cy.get("td").filter(":contains(orders > 10)").should("be.visible");
 
-      // clean up
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("orders > 10")
-        .parent()
-        .parent()
-        .parent()
-        .find(".Icon-ellipsis")
-        .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Retire Metric").click();
-      modal().find("textarea").type("delete it");
-      modal().contains("button", "Retire").click();
+      cy.log("Make sure the revision history works (metabase#42633");
+      cy.get("tbody tr").icon("ellipsis").click();
+      popover().findByTextEnsureVisible("Revision History").click();
+      cy.location("pathname").should(
+        "eq",
+        "/admin/datamodel/metric/1/revisions",
+      );
+      cy.findByRole("heading").should(
+        "have.text",
+        'Revision History for "ORDERS"',
+      );
+      cy.findAllByRole("listitem").should("contain", "time for a change");
+      cy.go("back");
+      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
+
+      cy.log("Clean up");
+      cy.get("tbody tr").icon("ellipsis").click();
+      popover().findByTextEnsureVisible("Retire Metric").click();
+      modal().within(() => {
+        cy.findByRole("heading").should("have.text", "Retire this metric?");
+        cy.get("textarea").type("delete it");
+        cy.button("Retire").click();
+      });
+
+      cy.get("main").should(
+        "contain",
+        "Create metrics to add them to the Summarize dropdown in the query builder",
+      );
     });
   });
 

@@ -40,7 +40,7 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
 Table.defaultProps = { className: AdminS.ContentTable };
 
-const hideResponsively = ({
+export const hideResponsively = ({
   hideAtContainerBreakpoint,
   containerName,
 }: ResponsiveProps) =>
@@ -52,7 +52,9 @@ const hideResponsively = ({
   `;
 
 export const ColumnHeader = styled.th<ResponsiveProps>`
-  padding: 0.75em 1em 0.75em !important;
+  th& {
+    padding: 0.75em 1em 0.75em;
+  }
   font-weight: bold;
   color: ${color("text-medium")};
   ${hideResponsively}

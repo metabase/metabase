@@ -37,6 +37,7 @@ export type SortableColumnHeaderProps = {
   name?: string;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
 export const SortableColumnHeader = ({
@@ -46,6 +47,7 @@ export const SortableColumnHeader = ({
   children,
   hideAtContainerBreakpoint,
   containerName,
+  columnHeaderProps,
   ...props
 }: SortableColumnHeaderProps & ResponsiveProps) => {
   const isSortable = !!onSortingOptionsChange && !!name;
@@ -76,6 +78,7 @@ export const SortableColumnHeader = ({
     <ColumnHeader
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
       containerName={containerName}
+      {...columnHeaderProps}
     >
       <SortingControlContainer
         {...props}
