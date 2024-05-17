@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { useKBar } from "kbar";
 import { useEffect } from "react";
 import { Route, withRouter, type WithRouterProps } from "react-router";
@@ -17,6 +18,7 @@ import {
   mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
+import type { Settings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -26,6 +28,7 @@ import {
 import {
   createMockAdminAppState,
   createMockAdminState,
+  createMockSettingsState,
 } from "metabase-types/store/mocks";
 
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -98,7 +101,10 @@ const recents_2 = createMockRecentCollectionItem({
 mockScrollTo();
 mockScrollIntoView();
 
-const setup = ({ query }: { query?: string } = {}) => {
+const setup = ({
+  query,
+  settings = {},
+}: { query?: string; settings?: Partial<Settings> } = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints([recents_1, recents_2]);
@@ -114,16 +120,13 @@ const setup = ({ query }: { query?: string } = {}) => {
             paths: getAdminPaths(),
           }),
         }),
+        settings: createMockSettingsState(settings),
       },
     },
   );
 };
 
 describe("PaletteResults", () => {
-  afterAll(() => {
-    jest.resetAllMocks();
-  });
-
   it("should show default actions", async () => {
     setup();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
@@ -205,6 +208,9 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Question" }),
     ).toHaveTextContent("lame collection");
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(2);
   });
 
   it("should provide links to settings pages", async () => {
@@ -217,5 +223,15 @@ describe("PaletteResults", () => {
     setup({ query: "permi" });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
+  });
+
+  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+    setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
+    expect(
+      await screen.findByRole("option", { name: /View search results/ }),
+    ).toBeInTheDocument();
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(1);
   });
 });

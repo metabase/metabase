@@ -44,6 +44,8 @@ import {
   entityPickerModal,
   collectionOnTheGoModal,
   setFilter,
+  commandPaletteButton,
+  commandPalette,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -235,12 +237,12 @@ describe("scenarios > dashboard", () => {
       cy.log(
         "Find the originally visited (unrelated) dashboard in search and go to it",
       );
-      appBar()
-        .findByPlaceholderText(/^Search/)
-        .click();
-      cy.findAllByTestId("recently-viewed-item-title")
-        .contains("Orders in a dashboard")
-        .click();
+
+      commandPaletteButton().click();
+      commandPalette().within(() => {
+        cy.findByText("Recent items").should("exist");
+        cy.findByRole("option", { name: "Orders in a dashboard" }).click();
+      });
 
       cy.log("It should not contain an alien card from the other dashboard");
       getDashboardCards().should("have.length", 1).and("contain", "37.65");
