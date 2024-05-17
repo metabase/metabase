@@ -374,7 +374,12 @@
                        [:db.name :database-name]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
-              :where (if (seq table-ids) [:in :t.id table-ids] [])
+              :where (let [base-condition [:or
+                                           [:= :visibility_type nil]
+                                           [:!= :visibility_type "hidden"]]]
+                       (if (seq table-ids)
+                         [:and base-condition [:in :t.id table-ids]]
+                         base-condition))
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
@@ -435,7 +440,5 @@
   [user-id]
   (if-let [views (not-empty (do-query user-id))]
     (let [entity->id->data (get-entity->id->data views)]
-      (->> views
-           (map (partial post-process entity->id->data))
-           (remove nil?)))
+      (keep (partial post-process entity->id->data) views))
     []))
