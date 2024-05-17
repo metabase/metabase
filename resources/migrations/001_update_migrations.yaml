@@ -6876,7 +6876,6 @@ databaseChangeLog:
       rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
-<<<<<<< HEAD
       id: v50.2024-05-08T09:00:00
       author: qnkhuat
       comment: Add task_history.status
