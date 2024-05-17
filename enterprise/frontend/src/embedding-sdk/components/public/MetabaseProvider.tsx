@@ -6,7 +6,7 @@ import { AppInitializeController } from "embedding-sdk/components/private/AppIni
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import {
   getEmbeddingThemeOverride,
-  getThemedColorsPallete,
+  getThemedColorsPalette,
 } from "embedding-sdk/lib/theme/get-embedding-theme";
 import { store } from "embedding-sdk/store";
 import {
@@ -38,7 +38,7 @@ const MetabaseProviderInternal = ({
   theme,
 }: MetabaseProviderProps): JSX.Element => {
   const themeOverride = useMemo(() => {
-    const combinedThemeColors = getThemedColorsPallete(theme?.colors);
+    const combinedThemeColors = getThemedColorsPalette(theme?.colors);
 
     Object.entries(combinedThemeColors).forEach(([key, value]) => {
       colors[key as ColorName] = value;

@@ -76,7 +76,7 @@ const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
 
 const originalColors = { ...colors };
 
-export function getThemedColorsPallete(
+export function getThemedColorsPalette(
   themeColors?: MetabaseColors,
 ): ColorPalette {
   if (!themeColors) {
