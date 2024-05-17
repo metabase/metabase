@@ -268,10 +268,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs
-              dashboardId={this.props.dashboardId}
-              location={this.props.location}
-            />
+            <DashboardTabs dashboardId={this.props.dashboardId} />
           )
         }
       >

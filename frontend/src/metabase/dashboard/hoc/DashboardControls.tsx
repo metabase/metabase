@@ -51,6 +51,8 @@ export const DashboardControls = <T extends DashboardControlsProps>(
       setTitled,
       theme,
       titled,
+      font,
+      setFont,
     } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
     useDashboardNav({ isFullscreen });
@@ -81,6 +83,8 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         setTitled={setTitled}
         theme={theme}
         titled={titled}
+        font={font}
+        setFont={setFont}
         queryParams={queryParams}
       />
     );

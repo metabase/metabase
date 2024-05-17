@@ -14,8 +14,9 @@ export function useDashboardDisplayOptions({
   onRefresh,
 }: UseDashboardDisplayOptionsProps): DashboardDisplayOptionControls {
   const [bordered, setBordered] = useState<boolean>(isWithinIframe());
-  const [titled, setTitled] = useState(true);
-  const [hideDownloadButton, setHideDownloadButton] = useState(false);
+  const [titled, setTitled] = useState<boolean>(true);
+  const [hideDownloadButton, setHideDownloadButton] = useState<boolean>(false);
+  const [font, setFont] = useState<string | null>("Lato");
 
   const [hideParameters, setHideParameters] = useState<string | null>(null);
 
@@ -31,5 +32,7 @@ export function useDashboardDisplayOptions({
     setHideDownloadButton,
     hideParameters,
     setHideParameters,
+    font,
+    setFont,
   };
 }

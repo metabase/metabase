@@ -50,6 +50,8 @@ export const useDashboardUrlParams = ({
     setTitled,
     theme,
     titled,
+    font,
+    setFont,
   } = useDashboardDisplayOptions({ onRefresh });
 
   const hashOptions: DashboardUrlHashOptions = useMemo(() => {
@@ -67,9 +69,11 @@ export const useDashboardUrlParams = ({
       titled,
       bordered,
       hide_download_button: hideDownloadButton,
+      font,
     }) as DashboardUrlHashOptions;
   }, [
     bordered,
+    font,
     hideDownloadButton,
     hideParameters,
     isFullscreen,
@@ -89,6 +93,7 @@ export const useDashboardUrlParams = ({
     setTitled(hashOptions.titled ?? true);
     setBordered(hashOptions.bordered ?? isWithinIframe());
     setHideDownloadButton(hashOptions.hide_download_button ?? false);
+    setFont(hashOptions.font ?? "Lato");
   }, [
     onFullscreenChange,
     hashOptions.fullscreen,
@@ -98,12 +103,14 @@ export const useDashboardUrlParams = ({
     hashOptions.titled,
     hashOptions.bordered,
     hashOptions.hide_download_button,
+    hashOptions.font,
     setTheme,
     setHideParameters,
     onRefreshPeriodChange,
     setTitled,
     setBordered,
     setHideDownloadButton,
+    setFont,
   ]);
 
   useMount(() => {
@@ -141,5 +148,7 @@ export const useDashboardUrlParams = ({
     setTitled,
     hideDownloadButton,
     setHideDownloadButton,
+    font,
+    setFont,
   };
 };

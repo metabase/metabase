@@ -46,10 +46,16 @@ export type DashboardThemeControls = {
   isNightMode: boolean;
 };
 
+export type DashboardFontControls = {
+  font: string | null;
+  setFont: (font: string | null) => void;
+};
+
 export type DashboardDisplayOptionControls = DashboardFullscreenControls &
   DashboardThemeControls &
   DashboardRefreshPeriodControls &
   DashboardBorderControls &
   DashboardTitledControls &
   DashboardHideDownloadButtonControls &
-  DashboardHideParametersControls;
+  DashboardHideParametersControls &
+  DashboardFontControls;

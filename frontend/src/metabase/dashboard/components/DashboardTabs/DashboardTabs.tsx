@@ -10,11 +10,11 @@ import type { SelectedTabId } from "metabase-types/store";
 import { Container, CreateTabButton } from "./DashboardTabs.styled";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-interface DashboardTabsProps {
+export type DashboardTabsProps = {
   dashboardId: DashboardId;
   isEditing?: boolean;
   className?: string;
-}
+};
 
 export function DashboardTabs({
   dashboardId,
