@@ -54,15 +54,17 @@ Always re-run the query to refresh results.
 
 ## Set caching policies at different levels
 
+{% include plans-blockquote.html feature="Advanced caching controls" %}
+
 You can set up caching at different levels, from largest to smallest scope:
 
 - [Setting a default caching policy](#setting-a-default-caching-policy)
-- [Database policy (specific to each connected database)](#database-caching-policy)
-- [Model caching](../data-modeling/models.md#model-caching)
-- [Dashboard](#Dashboard-caching)
-- [Question](#question-caching)
+- [Database policy (specific to each connected database)](#database-caching-policy)*
+- [Model caching](../data-modeling/models.md#model-caching)*
+- [Dashboard](#Dashboard-caching)*
+- [Question](#question-caching)*
 
-Caching settings at smaller scopes override caching settings at larger scopes. So, for example, caching settings for a question will override the database caching settings.
+* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features
 
 ### Default caching policy
 
@@ -75,9 +77,13 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 ## Database caching policy
 
+{% include plans-blockquote.html feature="Database caching controls" %}
+
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
 ### Caching per dashboard
+
+{% include plans-blockquote.html feature="Dashboard caching controls" %}
 
 You can tell Metabase how long to keep the cached results for each of the questions on a dashboard.
 
@@ -88,6 +94,8 @@ You can tell Metabase how long to keep the cached results for each of the questi
 5. Save your changes.
 
 ### Caching per question
+
+{% include plans-blockquote.html feature="Question caching controls" %}
 
 1. Go to your question.
 2. Click on the **info** icon.
@@ -108,4 +116,3 @@ If you're using Metabase Cloud, cached question results will be saved to Metabas
 ## Last updated at
 
 Questions that use the cache will display a "last cached at" timestamp in the question's **info** panel.
-
