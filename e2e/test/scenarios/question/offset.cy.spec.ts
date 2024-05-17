@@ -122,7 +122,7 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it("does not allow to use offset-based column in any custom expression (metabase#42764)", () => {
+    it("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
       const offsettedColumnName = "xyz";
       const expression = `Offset([${offsettedColumnName}], -1)`;
       const prefixLength = "Offset([x".length;
@@ -173,6 +173,7 @@ describe("scenarios > question > offset", () => {
       popover().button("Cancel").click();
       cy.realPress("Escape");
 
+      cy.log("sort clause");
       getNotebookStep("sort").icon("add").click();
       popover().should("not.contain", offsettedColumnName);
     });
