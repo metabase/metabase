@@ -10,11 +10,13 @@ import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
+import { DashboardLighthouseAISidebar } from "./DashboardLighthouseAISidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar/AddCardSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
   parameters: PropTypes.array,
+  parameterValues: PropTypes.object,
   showAddParameterPopover: PropTypes.func.isRequired,
   removeParameter: PropTypes.func.isRequired,
   addCardToDashboard: PropTypes.func.isRequired,
@@ -50,6 +52,7 @@ DashboardSidebars.propTypes = {
 export function DashboardSidebars({
   dashboard,
   parameters,
+  parameterValues,
   showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
@@ -162,6 +165,15 @@ export function DashboardSidebars({
         <DashboardInfoSidebar
           dashboard={dashboard}
           setDashboardAttribute={setDashboardAttribute}
+        />
+      );
+    case SIDEBAR_NAME.lighthouseAI:
+      return (
+        <DashboardLighthouseAISidebar
+          dashboard={dashboard}
+          dashcardData={dashcardData}
+          selectedTabId={selectedTabId}
+          parameterValues={parameterValues}
         />
       );
     default:

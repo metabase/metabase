@@ -45,6 +45,7 @@ import {
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
+  SET_DASHBOARD_SUMMARY,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
@@ -99,6 +100,18 @@ function newDashboard(before, after, isDirty) {
     isDirty: isDirty ?? true,
   };
 }
+
+const dashboardSummaries = handleActions(
+  {
+    [INITIALIZE]: { next: state => {} },
+    [CLEAR_CARD_DATA]: { next: state => {} },
+    [SET_DASHBOARD_SUMMARY]: (state, { payload }) => ({
+      ...state,
+      [payload.tabId]: payload.summary,
+    }),
+  },
+  INITIAL_DASHBOARD_STATE.dashboardSummaries,
+);
 
 const dashboards = handleActions(
   {
@@ -497,6 +510,7 @@ export const dashboardReducers = reduceReducers(
     dashboardId,
     isEditing,
     loadingControls,
+    dashboardSummaries,
     dashboards,
     dashcards,
     dashcardData,

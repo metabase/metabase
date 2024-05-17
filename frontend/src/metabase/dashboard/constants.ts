@@ -11,6 +11,7 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     editParameter: "editParameter",
     sharing: "sharing",
     info: "info",
+    lighthouseAI: "lighthouseAI",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
@@ -18,6 +19,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   selectedTabId: null,
   isEditing: null,
   dashboards: {},
+  dashboardSummaries: {},
   dashcards: {},
   dashcardData: {},
   parameterValues: {},

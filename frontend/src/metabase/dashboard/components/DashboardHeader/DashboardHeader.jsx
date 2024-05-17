@@ -27,6 +27,7 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
+  getIsShowDashboardLighthouseAISidebar,
 } from "metabase/dashboard/selectors";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
@@ -52,10 +53,13 @@ const mapStateToProps = (state, props) => {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
+    isShowingDashboardLighthouseAISidebar:
+      getIsShowDashboardLighthouseAISidebar(state),
     selectedTabId: state.dashboard.selectedTabId,
     isHomepageDashboard:
       getSetting(state, "custom-homepage") &&
       getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
+    enableDashboardSummarizer: state.embed.options.enable_dashboard_summarizer,
   };
 };
 
@@ -144,11 +148,13 @@ class DashboardHeaderContainer extends Component {
     dashboardBeforeEditing: PropTypes.object,
     parametersWidget: PropTypes.node,
     isShowingDashboardInfoSidebar: PropTypes.bool,
+    isShowingDashboardLighthouseAISidebar: PropTypes.bool,
     isAddParameterPopoverOpen: PropTypes.bool,
     showAddParameterPopover: PropTypes.func,
     hideAddParameterPopover: PropTypes.func,
     addParameter: PropTypes.func,
     isHomepageDashboard: PropTypes.bool,
+    enableDashboardSummarizer: PropTypes.bool,
   };
 
   handleEdit(dashboard) {
@@ -286,9 +292,11 @@ class DashboardHeaderContainer extends Component {
       setSidebar,
       toggleSidebar,
       isShowingDashboardInfoSidebar,
+      isShowingDashboardLighthouseAISidebar,
       closeSidebar,
       databases,
       collection,
+      enableDashboardSummarizer,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -481,6 +489,22 @@ class DashboardHeaderContainer extends Component {
     buttons.push(...getDashboardActions(this, this.props));
 
     if (!isEditing) {
+      const lighthouseAITooltip = (
+        <Tooltip
+          key="dashboard-lighthouseAI-button"
+          tooltip={t`LighthouseAI\n(experimental)`}
+        >
+          <DashboardHeaderButton
+            icon="faros"
+            isActive={isShowingDashboardLighthouseAISidebar}
+            onClick={() =>
+              isShowingDashboardLighthouseAISidebar
+                ? closeSidebar()
+                : setSidebar({ name: SIDEBAR_NAME.lighthouseAI })
+            }
+          />
+        </Tooltip>
+      );
       buttons.push(
         ...[
           <DashboardHeaderActionDivider key="dashboard-button-divider" />,
@@ -491,6 +515,7 @@ class DashboardHeaderContainer extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
+          enableDashboardSummarizer ? lighthouseAITooltip : null,
           <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
             <DashboardHeaderButton
               icon="info"

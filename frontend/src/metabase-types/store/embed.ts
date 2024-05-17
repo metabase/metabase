@@ -10,6 +10,7 @@ export interface EmbedOptions {
   additional_info?: boolean;
   action_buttons?: boolean;
   enable_chart_explainer?: boolean;
+  enable_dashboard_summarizer?: boolean;
 }
 
 export interface EmbedState {

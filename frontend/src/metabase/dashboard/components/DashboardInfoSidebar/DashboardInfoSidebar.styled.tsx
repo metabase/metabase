@@ -56,5 +56,6 @@ export const ContentSection = styled.div`
 `;
 
 export const DescriptionHeader = styled.h3`
-  margin-bottom: 0.5rem;
+  font-size: larger;
+  margin-bottom: 0.9rem;
 `;

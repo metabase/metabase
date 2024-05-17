@@ -16,7 +16,8 @@ export type DashboardSidebarName =
   | "clickBehavior"
   | "editParameter"
   | "sharing"
-  | "info";
+  | "info"
+  | "lighthouseAI";
 
 export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
@@ -42,10 +43,23 @@ export type TabDeletion = {
   removedDashCardIds: DashCardId[];
 };
 
+export type Insight = {
+  title?: string;
+  description: string;
+  sourceCharts?: string[];
+};
+
+export type DashboardSummary = {
+  insights?: Insight[];
+  text?: string;
+};
+
 export interface DashboardState {
   dashboardId: DashboardId | null;
   selectedTabId: SelectedTabId;
   dashboards: Record<DashboardId, StoreDashboard>;
+
+  dashboardSummaries: Record<number, DashboardSummary>;
 
   dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;

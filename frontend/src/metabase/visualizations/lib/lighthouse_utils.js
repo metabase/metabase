@@ -6,6 +6,7 @@ function getVisualizationSettings(settings) {
 
   if (settings["graph.show_goal"]) {
     viz["graph.goal_value"] = settings["graph.goal_value"];
+    viz["graph.goal_label"] = settings["graph.goal_label"];
   }
 
   if (
@@ -29,6 +30,21 @@ function getVisualizationSettings(settings) {
 
   if (settings["scatter.bubble"]) {
     viz["scatter.bubble.size"] = settings["scatter.bubble"];
+  }
+
+  if (settings["gauge.range"]) {
+    viz["gauge.range"] = settings["gauge.range"];
+  }
+
+  if (settings["gauge.segments"]) {
+    viz["gauge.segments"] = settings["gauge.segments"];
+  }
+
+  if (
+    settings["column_settings"] &&
+    Object.keys(settings["column_settings"]).length > 0
+  ) {
+    viz["column_settings"] = settings["column_settings"];
   }
 
   return viz;
@@ -57,5 +73,7 @@ export function getChartExtras(dashcard, rawSeries, settings) {
     title,
     sql_queries,
     visualization_settings,
+    dashcard,
+    rawSeries,
   };
 }

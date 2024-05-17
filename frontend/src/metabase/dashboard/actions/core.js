@@ -50,3 +50,7 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   (id, settings) => ({ id, settings }),
 );
+
+export const SET_DASHBOARD_SUMMARY =
+  "metabase/dasdhboard/SET_DASHBOARD_SUMMARY";
+export const setDashboardSummary = createAction(SET_DASHBOARD_SUMMARY);

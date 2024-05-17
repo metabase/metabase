@@ -5,6 +5,7 @@ export const createMockDashboardState = (
 ): DashboardState => ({
   dashboardId: null,
   dashboards: {},
+  dashboardSummaries: {},
   dashcards: {},
   dashcardData: {},
   parameterValues: {},

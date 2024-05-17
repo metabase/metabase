@@ -23,6 +23,12 @@ export const setOptions = createAction(SET_OPTIONS);
 export const TOGGLE_CHART_EXPLAINER = "metabase/embed/TOGGLE_CHART_EXPLAINER";
 export const toggleChartExplainer = createAction(TOGGLE_CHART_EXPLAINER);
 
+export const TOGGLE_DASHBOARD_SUMMARIZER =
+  "metabase/embed/TOGGLE_DASHBOARD_SUMMARIZER";
+export const toggleDashboardSummarizer = createAction(
+  TOGGLE_DASHBOARD_SUMMARIZER,
+);
+
 const options = handleActions(
   {
     [SET_OPTIONS]: (state, { payload }) => ({
@@ -30,6 +36,10 @@ const options = handleActions(
       ...payload,
     }),
     [TOGGLE_CHART_EXPLAINER]: (state, { payload }) => ({
+      ...state,
+      ...payload,
+    }),
+    [TOGGLE_DASHBOARD_SUMMARIZER]: (state, { payload }) => ({
       ...state,
       ...payload,
     }),
