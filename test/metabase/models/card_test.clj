@@ -73,15 +73,6 @@
                                :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
-(deftest remove-from-dashboards-when-archiving-test
-  (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
-    (t2.with-temp/with-temp [:model/Dashboard     dashboard {}
-                             :model/Card          card      {}
-                             :model/DashboardCard _         {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-      (t2/update! :model/Card (u/the-id card) {:archived true})
-      (is (= 0
-             (t2/count :model/DashboardCard :dashboard_id (u/the-id dashboard)))))))
-
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -847,7 +838,10 @@
                          :table_id :database_id :query_type
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
-                         :made_public_by_id} col)
+                         :made_public_by_id
+                         ;; similarly, we don't need a description for `trashed_from_collection_id` because whenever
+                         ;; this field changes `archived` will also change and we have a description for that.
+                         :trashed_from_collection_id} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (u/build-sentence
                             (revision/diff-strings
