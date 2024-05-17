@@ -27,6 +27,7 @@ import {
   visitEmbeddedPage,
   visitIframe,
   entityPickerModal,
+  filterWidget,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -963,6 +964,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+
+      cy.log("reset filter state");
+
+      filterWidget().icon("close").click();
 
       testChangingBackToDefaultBehavior();
     });

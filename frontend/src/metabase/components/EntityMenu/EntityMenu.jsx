@@ -106,6 +106,9 @@ class EntityMenu extends Component {
                           )
                         }
                         tooltip={item.tooltip}
+                        color={item.color}
+                        hoverColor={item.hoverColor}
+                        hoverBgColor={item.hoverBgColor}
                       />
                     </li>
                   );
@@ -137,6 +140,9 @@ class EntityMenu extends Component {
                           this.toggleMenu();
                           item?.onClose?.();
                         }}
+                        color={item.color}
+                        hoverColor={item.hoverColor}
+                        hoverBgColor={item.hoverBgColor}
                       />
                     </li>
                   );

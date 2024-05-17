@@ -194,7 +194,6 @@
       "viz-settings": {
         "graph.show_trendline": true,
         "metabase.shared.models.visualization-settings/column-settings": {},
-        "stackable.stack_display": "area",
         "graph.y_axis.scale": "linear",
         "graph.metrics": ["sum", "sum_2"],
         "metabase.shared.models.visualization-settings/global-column-settings": {},

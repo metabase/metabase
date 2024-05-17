@@ -109,22 +109,38 @@
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
-  so we can return its `:name`."
+  so we can return its `:name`.
+
+  A brief note here on `collection-join-id` and `collection-permission-id`. What the heck do these represent?
+
+  Permissions on Trashed items work differently than normal permissions. If something is in the trash, you can only
+  see it if you have the relevant permissions on the *original* collection the item was trashed from. This is set as
+  `trashed_from_collection_id`.
+
+  However, the item is actually *in* the Trash, and we want to show that to the frontend. Therefore, we need two
+  different collection IDs. One, the ID we should be checking permissions on, and two, the ID we should be joining to
+  Collections on."
   [honeysql-query                                :- ms/Map
-   collection-id-column                          :- keyword?
+   model                                         :- :string
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
+        collection-join-id       (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-permission-id (if (= model "collection")
+                                   :collection.id
+                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-column
+                                  collection-permission-id
                                   visible-collections)]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
       ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= collection-id-column :collection.id)
+      (not= model "collection")
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-column :collection.id])
+                             [:= collection-join-id :collection.id])
 
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
@@ -145,7 +161,7 @@
                 [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-column nil]))))))
+               [:= collection-join-id nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -226,7 +242,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info model)
       (with-moderated-status model)))
@@ -238,7 +254,8 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses model
+                                             search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -251,13 +268,13 @@
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
-  [_model search-ctx]
+  [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :collection.id search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -270,7 +287,7 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info model)))
 
 (defmethod search-query-for-model "metric"
@@ -291,14 +308,16 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
+            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
+
             collection-perm-clause
             [:or
-             (when has-root-access? [:= :model.collection_id nil])
+             (when has-root-access? [:= collection-id nil])
              [:and
-              [:not= :model.collection_id nil]
+              [:not= collection-id nil]
               [:or
-               (has-perm-clause "/collection/" :model.collection_id "/")
-               (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
+               (has-perm-clause "/collection/" collection-id "/")
+               (has-perm-clause "/collection/" collection-id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))
@@ -461,7 +480,11 @@
                                (for [item search-results
                                      :when (= (:model item) "dataset")]
                                  [(:collection_id item)
-                                  {:name (:collection_name item)
+                                  {:name (-> {:name (:collection_name item)
+                                              :id (:collection_id item)
+                                              :type (:collection_type item)}
+                                             collection/maybe-localize-trash-name
+                                             :name)
                                    :effective_location (result->loc item)}]))
         ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
@@ -510,14 +533,18 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
+                            (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
+
                             (map #(update % :archived api/bit->boolean))
+
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
