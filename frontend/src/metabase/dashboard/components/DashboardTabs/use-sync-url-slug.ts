@@ -1,10 +1,11 @@
+import * as console from "console";
 import type { Location } from "history";
 import { useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { getIdFromSlug, initTabs } from "metabase/dashboard/actions";
+import { getIdFromSlug, initTabs, selectTab } from "metabase/dashboard/actions";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
@@ -66,6 +67,35 @@ export function useSyncURLSlug({ location }: { location: Location }) {
   const { updateURLSlug } = useUpdateURLSlug({ location });
 
   useEffect(() => {
+    console.log({
+      slug,
+      tabs,
+      selectedTabId,
+      prevSlug,
+      prevTabs,
+      prevSelectedTabId,
+    });
+
+    if (!tabs || tabs.length === 0) {
+      return;
+    }
+
+    const maybeSelectedTab = tabs.find(t => t.id === getIdFromSlug(slug));
+    if (
+      !prevTabs?.length &&
+      maybeSelectedTab &&
+      selectedTabId !== maybeSelectedTab.id
+    ) {
+      dispatch(selectTab({ tabId: maybeSelectedTab.id }));
+      updateURLSlug({
+        slug: getSlug({
+          tabId: maybeSelectedTab.id,
+          name: maybeSelectedTab.name,
+        }),
+      });
+      return;
+    }
+
     const slugChanged = slug && slug !== prevSlug;
     if (slugChanged) {
       dispatch(initTabs({ slug }));
@@ -84,6 +114,8 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       tabs.find(t => t.id === selectedTabId)?.name !==
       prevTabs?.find(t => t.id === selectedTabId)?.name;
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
+
+    console.log(tabSelected, tabRenamed, penultimateTabDeleted);
 
     if (tabSelected || tabRenamed || penultimateTabDeleted) {
       const newSlug =

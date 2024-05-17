@@ -1,13 +1,14 @@
 import type { Location } from "history";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { replace } from "react-router-redux";
-import { useMount, usePrevious, useUpdateEffect } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
 import { useDashboardDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-dashboard-display-options";
 import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types/hash-options";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
@@ -49,7 +50,7 @@ export const useDashboardUrlParams = ({
     setTitled,
     theme,
     titled,
-  } = useDashboardDisplayOptions({ onRefresh: onRefresh });
+  } = useDashboardDisplayOptions({ onRefresh });
 
   const hashOptions: DashboardUrlHashOptions = useMemo(() => {
     return removeEmptyOptions(
@@ -84,8 +85,9 @@ export const useDashboardUrlParams = ({
     setTheme(hashOptions.theme || null);
     setHideParameters(hashOptions.hide_parameters || null);
     onRefreshPeriodChange(hashOptions.refresh || null);
-    setTitled(hashOptions.titled ?? false);
-    setBordered(hashOptions.bordered ?? false);
+    // the default value for titled = true
+    setTitled(hashOptions.titled ?? true);
+    setBordered(hashOptions.bordered ?? isWithinIframe());
     setHideDownloadButton(hashOptions.hide_download_button ?? false);
   }, [
     onFullscreenChange,
@@ -108,7 +110,7 @@ export const useDashboardUrlParams = ({
     loadDashboardParams();
   });
 
-  useUpdateEffect(() => {
+  useEffect(() => {
     if (!isEqual(stateOptions, prevStateOptions)) {
       dispatch(
         replace({
@@ -117,7 +119,7 @@ export const useDashboardUrlParams = ({
         }),
       );
     }
-  }, [dispatch, prevStateOptions, stateOptions]);
+  }, [dispatch, location, prevStateOptions, stateOptions]);
 
   return {
     isFullscreen,
