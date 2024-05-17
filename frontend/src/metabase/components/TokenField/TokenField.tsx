@@ -502,7 +502,9 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     // Autofocusing like that would make the page jump in scroll position.
     // One example: parameter filters in dashboard pages.
     if (this.state.isFocused) {
-      input?.focus({ preventScroll: true });
+      requestAnimationFrame(() => {
+        input?.focus({ preventScroll: true });
+      });
     }
   }
 

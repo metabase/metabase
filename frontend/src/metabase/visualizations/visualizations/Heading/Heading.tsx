@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -37,6 +37,7 @@ export function Heading({
   parameterValues,
 }: HeadingProps) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
@@ -50,6 +51,14 @@ export function Heading({
   useEffect(() => {
     setTextValue(settings.text);
   }, [settings.text]);
+
+  useEffect(() => {
+    if (justAdded || isFocused) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [isFocused, justAdded]);
 
   const content = useMemo(
     () =>
@@ -83,11 +92,11 @@ export function Heading({
           </HeadingContent>
         ) : (
           <TextInput
+            ref={inputRef}
             name="heading"
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
             value={textValue}
-            autoFocus={justAdded || isFocused}
             onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={() => {

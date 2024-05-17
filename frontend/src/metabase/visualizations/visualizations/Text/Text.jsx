@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
@@ -41,6 +41,7 @@ export function Text({
   parameterValues,
   isMobile,
 }) {
+  const inputRef = useRef(null);
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
   const [textValue, setTextValue] = useState(settings.text);
 
@@ -56,6 +57,14 @@ export function Text({
   useEffect(() => {
     setTextValue(settings.text);
   }, [settings.text]);
+
+  useEffect(() => {
+    if (justAdded || isFocused) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [inputRef, isFocused, justAdded]);
 
   const content = useMemo(
     () =>
@@ -107,11 +116,11 @@ export function Text({
           </ReactMarkdownStyleWrapper>
         ) : (
           <TextInput
+            ref={inputRef}
             data-testid="editing-dashboard-text-input"
             name="text"
             placeholder={placeholder}
             value={textValue}
-            autoFocus={justAdded || isFocused}
             onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={() => {
