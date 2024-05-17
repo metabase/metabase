@@ -24,17 +24,32 @@ export interface MetabaseTheme {
 }
 
 export interface MetabaseColors {
-  /** Primary brand color */
+  /** Primary brand color used for buttons and links */
   brand?: string;
 
   /** Text color on dark elements. Should be a lighter color for readability. */
-  "text-dark"?: string;
-
-  /** Text color on light elements. Should be a darker color for readability. */
-  "text-light"?: string;
+  "text-primary"?: string;
 
   /** Lighter variation of dark text on light elements. */
-  "text-medium"?: string;
+  "text-secondary"?: string;
+
+  /** Text color on light elements. Should be a darker color for readability. */
+  "text-tertiary"?: string;
+
+  /** Default background color. */
+  background?: string;
+
+  /** Slightly darker background color used for hover and accented elements. */
+  "background-hover"?: string;
+
+  /** Color used for borders */
+  border?: string;
+
+  /** Color used for filters context */
+  filter?: string;
+
+  /** Color used for aggregations and breakouts context */
+  summarize?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;
@@ -50,7 +65,7 @@ export interface MetabaseComponentTheme {
       /** Text color of cells, defaults to `text-dark`. */
       textColor?: string;
 
-      /** Default background color of cells, defaults to `white` */
+      /** Default background color of cells, defaults to `bg-white` */
       backgroundColor?: string;
     };
 
