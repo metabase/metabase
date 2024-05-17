@@ -17,9 +17,9 @@ For example, if your data only updates once a day, there's no point in querying 
 
 These policies determines how long cached results will be stored.
 
-- [Duration](#duration)
-- [Schedule](#schedule)
-- [Adaptive](#adaptive)
+- [Duration](#duration-caching-policy)
+- [Schedule](#schedule-caching-policy)
+- [Adaptive](#adaptive-caching-policy)
 - [Don't cache results](#dont-cache-results)
 
 ### Duration caching policy
