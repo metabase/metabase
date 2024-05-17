@@ -112,6 +112,8 @@ export const Strategies: Record<StrategyType, StrategyData> = {
       switch (model) {
         case "dashboard":
           return t`Use default: each question will use its own policy or the database policy`;
+        case "question":
+          return t`Use default: use the database or dashboard policy`;
         default:
           return t`Use default`;
       }

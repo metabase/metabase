@@ -5,6 +5,7 @@ import type { SearchModel, RecentItem } from "metabase-types/api";
 import { CollectionIcon } from "./CollectionIcon";
 import { DefaultIcon } from "./DefaultIcon";
 import { IconWrapper } from "./ItemIcon.styled";
+import { isWrappedResult } from "./utils";
 
 export interface IconComponentProps {
   item: WrappedResult | RecentItem;
@@ -36,8 +37,15 @@ export const ItemIcon = ({
   type,
   "data-testid": dataTestId,
 }: ItemIconProps) => {
+  const archived = Boolean(isWrappedResult(item) && item.archived);
+
   return (
-    <IconWrapper type={type} active={active} data-testid={dataTestId}>
+    <IconWrapper
+      type={type}
+      active={active}
+      archived={archived}
+      data-testid={dataTestId}
+    >
       <IconComponent item={item} type={type} />
     </IconWrapper>
   );

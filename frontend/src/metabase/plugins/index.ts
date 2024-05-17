@@ -12,11 +12,11 @@ import type { AnySchema } from "yup";
 import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
-  type DataPermission,
-  type DatabaseEntityId,
-  type PermissionSubject,
   DataPermissionValue,
+  type DatabaseEntityId,
+  type DataPermission,
   type EntityId,
+  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
@@ -27,11 +27,13 @@ import type {
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { IconName, IconProps } from "metabase/ui";
+import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
+  CacheableDashboard,
+  CacheableModel,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -41,7 +43,6 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
-  CacheableModel,
   Revision,
   SearchResult,
   User,
@@ -273,6 +274,7 @@ export type CollectionAuthorityLevelIcon = ComponentType<
   Omit<IconProps, "name" | "tooltip"> & {
     collection: Pick<Collection, "authority_level">;
     tooltip?: "default" | "belonging";
+    archived?: boolean;
   }
 >;
 
@@ -332,17 +334,29 @@ export type InvalidateNowButtonProps = {
   targetName: string;
 };
 
+export type SidebarCacheSectionProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  setPage: Dispatch<SetStateAction<"default" | "caching">>;
+};
+
+export type SidebarCacheFormProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  setPage: (page: "default" | "caching") => void;
+} & GroupProps;
+
 export const PLUGIN_CACHING = {
   cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
-  QuestionCacheSection: PluginPlaceholder as any,
-  DashboardCacheSection: PluginPlaceholder as any,
-  DatabaseCacheTimeField: PluginPlaceholder as any,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
   DashboardStrategySidebar: PluginPlaceholder as any,
+  SidebarCacheSection:
+    PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   isEnabled: () => false,

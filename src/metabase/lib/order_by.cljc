@@ -103,7 +103,7 @@
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :order-by))))
 
-(defn- orderable-column? [{:keys [base-type], :as _column-metadata}]
+(defn- orderable-column? [{:keys [base-type]}]
   (some (fn [orderable-base-type]
           (isa? base-type orderable-base-type))
         lib.schema.expression/orderable-types))

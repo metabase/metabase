@@ -81,6 +81,7 @@
    :type                   mi/transform-keyword})
 
 (doto :model/Card
+  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)
@@ -455,7 +456,7 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
-(defn- pre-update [{archived? :archived, id :id, :as changes}]
+(defn- pre-update [{id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 changes
@@ -464,9 +465,6 @@
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
-      ;; if the Card is archived, then remove it from any Dashboards
-      (when archived?
-        (t2/delete! :model/DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -853,7 +851,7 @@ saved later when it is ready."
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :trashed_from_collection_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
@@ -972,7 +970,7 @@ saved later when it is ready."
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at))
+        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 
@@ -993,7 +991,7 @@ saved later when it is ready."
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
+           result_metadata table_id visualization_settings trashed_from_collection_id]}]
   (->> (map serdes/mbql-deps parameter_mappings)
        (reduce set/union #{})
        (set/union (serdes/parameters-deps parameters))
@@ -1001,6 +999,7 @@ saved later when it is ready."
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (result-metadata-deps result_metadata))
        (set/union (serdes/mbql-deps dataset_query))
        (set/union (serdes/visualization-settings-deps visualization_settings))

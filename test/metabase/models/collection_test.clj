@@ -95,19 +95,27 @@
                              Collection c2 {:name "my_favorite Cards"}]
       (is (not= (:entity_id c1) (:entity_id c2))))))
 
+(defn- archive-collection! [col]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (collection/archive-or-unarchive-collection! col {:archived true})))
+
+(defn- unarchive-collection! [col]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (collection/archive-or-unarchive-collection! col {:archived false})))
+
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
     (t2.with-temp/with-temp [Collection collection {}
                              Card       card       {:collection_id (u/the-id collection)}]
-      (t2/update! Collection (u/the-id collection)
-                  {:archived true})
+      (archive-collection! collection)
       (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
-    (t2.with-temp/with-temp [Collection collection {:archived true}
-                             Card       card       {:collection_id (u/the-id collection), :archived true}]
-      (t2/update! Collection (u/the-id collection)
-                  {:archived false})
+    (t2.with-temp/with-temp [Collection collection {}
+                             Card       card       {:collection_id (u/the-id collection)}]
+      (archive-collection! collection)
+      (is (t2/select-one-fn :archived Card :id (u/the-id card)))
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
@@ -993,7 +1001,7 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [c], :as collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
+      (archive-collection! c)
       (is (= {"A" {"B" {}}}
              (collection-locations (vals collections) :archived false))))))
 
@@ -1005,8 +1013,8 @@
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy [{:keys [e], :as collections}]
-      (t2/update! Collection (u/the-id e) {:archived true})
-      (t2/update! Collection (u/the-id e) {:archived false})
+      (archive-collection! e)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1019,8 +1027,8 @@
     ;;                                        |
     ;;                                        +-> F -> G
     (with-collection-hierarchy [{:keys [c], :as collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
-      (t2/update! Collection (u/the-id c) {:archived false})
+      (archive-collection! c)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1033,7 +1041,7 @@
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
-          (t2/update! Collection (u/the-id e) {:archived true})
+          (archive-collection! e)
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
@@ -1042,7 +1050,7 @@
       (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
-          (t2/update! Collection (u/the-id c) {:archived true})
+          (archive-collection! c)
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
@@ -1052,9 +1060,9 @@
       ;; object is in E; unarchiving E should cause object to be unarchived
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
-        (t2/update! Collection (u/the-id e) {:archived true})
+        (archive-collection! e)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (t2/update! Collection (u/the-id e) {:archived false})
+          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
@@ -1062,42 +1070,11 @@
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
       (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
-        (t2/update! Collection (u/the-id c) {:archived true})
+        (archive-collection! c)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (t2/update! Collection (u/the-id c) {:archived false})
+          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
-
-(deftest archive-while-moving-test
-  (testing "Test that we cannot archive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived true, :location "/"})))))
-
-  (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived false, :location "/"})))))
-
-  (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived false, :location "/"})
-      (is (= "/"
-             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
-
-(deftest archive-noop-shouldnt-affect-descendants-test
-  (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
-    (with-collection-hierarchy [{:keys [c e], :as _collections}]
-      (t2/update! Collection (u/the-id e) {:archived true})
-      (t2/update! Collection (u/the-id c) {:archived false})
-      (is (= true
-             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
-
-;; TODO - can you unarchive a Card that is inside an archived Collection??
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Permissions Inheritance Upon Creation!                                     |
@@ -1505,23 +1482,20 @@
            #"Collection does not exist"
            (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
 
-(deftest delete-collection-set-children-collection-id-to-null-test
-  (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
+(deftest delete-collection-cascades
+  (testing "When deleting a Collection, should delete things that used to be in that collection"
     (t2.with-temp/with-temp [Collection {coll-id :id}      {}
                              Card       {card-id :id}      {:collection_id coll-id}
                              Dashboard  {dashboard-id :id} {:collection_id coll-id}
                              Pulse      {pulse-id :id}     {:collection_id coll-id}]
       (t2/delete! Collection :id coll-id)
-      (is (t2/exists? Card :id card-id)
-          "Card")
-      (is (t2/exists? Dashboard :id dashboard-id)
-          "Dashboard")
-      (is (t2/exists? Pulse :id pulse-id)
-          "Pulse"))
+      (is (not (t2/exists? Card :id card-id)))
+      (is (not (t2/exists? Dashboard :id dashboard-id)))
+      (is (not (t2/exists? Pulse :id pulse-id))))
     (t2.with-temp/with-temp [Collection         {coll-id :id}    {:namespace "snippets"}
                              NativeQuerySnippet {snippet-id :id} {:collection_id coll-id}]
       (t2/delete! Collection :id coll-id)
-      (is (t2/exists? NativeQuerySnippet :id snippet-id)
+      (is (not (t2/exists? NativeQuerySnippet :id snippet-id))
           "Snippet"))))
 
 (deftest collections->tree-test
