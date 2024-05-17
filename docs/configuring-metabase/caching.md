@@ -28,7 +28,7 @@ Keep the cache for a number of hours. When someone runs a query, Metabase will f
 
 ### Schedule caching policy
 
-Pick when to regularly invalidate the cache. Metabase will periodically run the query according to the schedule you set and store the results. Other people running queries have no effect on when the results are refreshed; they'll always get the cached results unless they explicitly [clear the cache](#clear-cache).
+Pick when to regularly invalidate the cache. Metabase will periodically run the query according to the schedule you set and store the results. Other people running queries have no effect on when the results are refreshed; they'll always get the cached results unless they explicitly [clear the cache](#clearing-the-cache).
 
 You can schedule caching to invalidate:
 
@@ -58,11 +58,11 @@ Always re-run the query to refresh results.
 
 You can set up caching at different levels, from largest to smallest scope:
 
-- [Setting a default caching policy](#setting-a-default-caching-policy)
-- [Database policy (specific to each connected database)](#database-caching-policy)*
+- [Setting a default caching policy](#default-caching-policy)
+- [Database caching policy (specific to each connected database)](#database-caching-policy)*
 - [Model caching](../data-modeling/models.md#model-caching)*
-- [Dashboard](#Dashboard-caching)*
-- [Question](#question-caching)*
+- [Dashboard caching](#dashboard-caching)*
+- [Question caching](#question-caching)*
 
 _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
 
@@ -70,8 +70,7 @@ _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://
 
 ![Data caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
 
-To set up a default caching policy for your database: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings**
-- **Performance** > **Data caching settings**.
+To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Data caching settings**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
@@ -81,7 +80,7 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
-### Caching per dashboard
+### Dashboard caching
 
 {% include plans-blockquote.html feature="Dashboard caching controls" %}
 
@@ -93,7 +92,7 @@ You can tell Metabase how long to keep the cached results for each of the questi
 4. Select the [caching invalidation policy](#cache-invalidation-policies).
 5. Save your changes.
 
-### Caching per question
+### Question caching
 
 {% include plans-blockquote.html feature="Question caching controls" %}
 
@@ -103,7 +102,7 @@ You can tell Metabase how long to keep the cached results for each of the questi
 4. Select the [caching invalidation policy](#cache-invalidation-policies).
 5. Save your changes.
 
-## Clearing cache
+## Clearing the cache
 
 To clear the cache for a question or dashboard and refresh the results: Click through the **Info > Caching policy > Clear cache** (the Clear cache button is at the bottom of the sidebar).
 
