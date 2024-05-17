@@ -106,6 +106,11 @@
                                     :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
+                                    :visualization_settings {}}
+                 Card      metric  {:name                   "rand-name"
+                                    :type                   :metric
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
                                     :visualization_settings {}}]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
@@ -120,7 +125,8 @@
                                          {:topic :event/dashboard-read :event {:object dash}}
                                          {:topic :event/table-read :event {:object table1}}
                                          {:topic :event/card-query :event {:card-id (:id archived)}}
-                                         {:topic :event/table-read :event {:object hidden-table}}]]
+                                         {:topic :event/table-read :event {:object hidden-table}}
+                                         {:topic :event/card-query :event {:card-id (:id metric)}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
