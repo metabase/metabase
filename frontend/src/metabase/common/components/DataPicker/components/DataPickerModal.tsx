@@ -37,6 +37,7 @@ interface Props {
   databaseId?: DatabaseId;
   title: string;
   value: DataPickerValue | undefined;
+  models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
@@ -59,11 +60,12 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
+  models = ["table", "card", "dataset"],
   onChange,
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
+  const { availableModels } = useAvailableData({
     databaseId,
   });
 
@@ -102,10 +104,10 @@ export const DataPickerModal = ({
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    hasModels && hasNestedQueriesEnabled
+    hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
-          model: "dataset",
+          model: "dataset" as const,
           icon: "model",
           element: (
             <QuestionPicker
@@ -118,10 +120,10 @@ export const DataPickerModal = ({
           ),
         }
       : undefined,
-    hasMetrics && hasNestedQueriesEnabled
+    hasNestedQueriesEnabled
       ? {
           displayName: t`Metrics`,
-          model: "metric",
+          model: "metric" as const,
           icon: "metric",
           element: (
             <QuestionPicker
@@ -136,7 +138,7 @@ export const DataPickerModal = ({
       : undefined,
     {
       displayName: t`Tables`,
-      model: "table",
+      model: "table" as const,
       icon: "table",
       element: (
         <TablePicker
@@ -146,10 +148,10 @@ export const DataPickerModal = ({
         />
       ),
     },
-    hasQuestions && hasNestedQueriesEnabled
+    hasNestedQueriesEnabled
       ? {
           displayName: t`Saved questions`,
-          model: "card",
+          model: "card" as const,
           icon: "folder",
           element: (
             <QuestionPicker
@@ -164,7 +166,9 @@ export const DataPickerModal = ({
       : undefined,
   ].filter(
     (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null,
+      tab != null &&
+      models.includes(tab.model) &&
+      (availableModels.length === 0 || availableModels.includes(tab.model)),
   );
 
   return (
