@@ -188,6 +188,14 @@
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
+(deftest replace-fields-and-tables!-test
+  (testing "fields and tables in a native card can be replaced"
+    (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+      (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
+                                             :tables {(mt/id :orders) (mt/id :people)}})
+      (is (= "SELECT NAME FROM PEOPLE"
+             (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
 (defn- card-with-source-table

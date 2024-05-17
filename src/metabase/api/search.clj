@@ -650,7 +650,7 @@
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf SearchableModel)]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
-   context                             [:maybe [:enum "search-bar" "search-app"]]
+   context                             [:maybe [:enum "search-bar" "search-app" "command-palette"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -682,7 +682,7 @@
         has-advanced-filters (some some?
                                    [models created_by created_at last_edited_by
                                     last_edited_at search_native_query verified])]
-    (when (contains? #{"search-app" "search-bar"} context)
+    (when (contains? #{"search-app" "search-bar" "command-palette"} context)
       (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
                              {:runtime-milliseconds duration
                               :context              context})

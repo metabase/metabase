@@ -64,6 +64,10 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
+  /**defaultToRecentTab: If set to true, will initially show the recent tab when the modal appears. If set to false, it will show the tab
+   * with the same model as the initialValue. Defaults to true.
+   */
+  defaultToRecentTab?: boolean;
 }
 
 export function EntityPickerModal<
@@ -85,6 +89,7 @@ export function EntityPickerModal<
   recentFilter,
   trapFocus = true,
   searchParams,
+  defaultToRecentTab = true,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -200,6 +205,7 @@ export function EntityPickerModal<
                 searchResults={searchResults}
                 selectedItem={selectedItem}
                 initialValue={initialValue}
+                defaultToRecentTab={defaultToRecentTab}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
