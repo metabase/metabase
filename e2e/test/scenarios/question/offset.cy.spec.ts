@@ -307,7 +307,7 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it.skip("works with a single breakout and sorting by aggregation (metabase#42554)", () => {
+    it("works with a single breakout and sorting by aggregation (metabase#42554)", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
