@@ -169,9 +169,15 @@ export const fetchDashboard = createAsyncThunk(
         questions,
       );
 
+      const lastUsedParametersValues = result["last_used_param_values"] ?? {};
+
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(parameters, queryParams);
+        : getParameterValuesByIdFromQueryParams(
+            parameters,
+            queryParams,
+            lastUsedParametersValues,
+          );
 
       entities = entities ?? normalize(result, dashboard).entities;
 

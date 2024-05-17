@@ -39,9 +39,11 @@
          {:external_id 3 :upload_url "" :state :error}
          {:external_id 5 :upload_url "" :state :done}
          {:external_id 4 :upload_url "" :state :setup}])
-  (cloud-migration/read-only-mode! true)
+  (try
+    (cloud-migration/read-only-mode! true)
 
-  (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
-  (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
-  (mt/user-http-request :crowberto :get 200 "cloud-migration")
-  (is (not (cloud-migration/read-only-mode))))
+    (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
+    (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
+    (mt/user-http-request :crowberto :get 200 "cloud-migration")
+    (finally
+     (is (not (cloud-migration/read-only-mode))))))

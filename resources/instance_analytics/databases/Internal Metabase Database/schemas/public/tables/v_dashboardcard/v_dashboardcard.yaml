@@ -21,3 +21,4 @@ serdes/meta:
 - id: v_dashboardcard
   model: Table
 database_require_filter: null
+estimated_row_count: null
