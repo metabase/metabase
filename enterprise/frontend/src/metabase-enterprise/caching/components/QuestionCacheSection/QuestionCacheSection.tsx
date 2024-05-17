@@ -1,19 +1,20 @@
+import type { Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 
 import { getRelativeTime } from "metabase/lib/time";
 import { Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import CacheSection from "../CacheSection";
+import { SidebarCacheSection } from "../SidebarCacheSection";
 
 export interface QuestionCacheSectionProps {
   question: Question;
-  onSave: (cache_ttl: number | null) => Promise<Question>;
+  setPage: Dispatch<SetStateAction<"default" | "caching">>;
 }
 
 const QuestionCacheSection = ({
   question,
-  onSave,
+  setPage,
 }: QuestionCacheSectionProps) => {
   const canWrite = question.canWrite();
   const cacheTimestamp = question.lastQueryStart();
@@ -27,7 +28,11 @@ const QuestionCacheSection = ({
         </Text>
       )}
       {canWrite && (
-        <CacheSection initialCacheTTL={question.cacheTTL()} onSave={onSave} />
+        <SidebarCacheSection
+          model="question"
+          item={question}
+          setPage={setPage}
+        />
       )}
     </Stack>
   );

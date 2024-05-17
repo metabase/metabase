@@ -1,3 +1,4 @@
+/** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
 
 export type StrategyType =

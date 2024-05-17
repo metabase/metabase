@@ -9,6 +9,8 @@ import { GranularControlsExplanation } from "./components/GranularControlsExplan
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
 import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
+import { SidebarCacheForm } from "./components/SidebarCacheForm";
+import { SidebarCacheSection } from "./components/SidebarCacheSection";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
 import {
   getQuestionsImplicitCacheTTL,
@@ -38,4 +40,6 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.GranularControlsExplanation = GranularControlsExplanation;
   PLUGIN_CACHING.InvalidateNowButton = InvalidateNowButton;
   PLUGIN_CACHING.DashboardStrategySidebar = DashboardStrategySidebar;
+  PLUGIN_CACHING.SidebarCacheSection = SidebarCacheSection;
+  PLUGIN_CACHING.SidebarCacheForm = SidebarCacheForm;
 }

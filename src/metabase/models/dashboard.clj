@@ -621,7 +621,8 @@
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
-        (update :made_public_by_id serdes/*export-user*))))
+        (update :made_public_by_id serdes/*export-user*)
+        (dissoc :view_count))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
