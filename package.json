@@ -105,7 +105,7 @@
     "rehype-external-links": "^2.0.1",
     "remark-gfm": "1.0.0",
     "reselect": "^5.1.0",
-    "screenfull": "^4.2.1",
+    "screenfull": "^6.0.2",
     "scroll-into-view-if-needed": "^3.1.0",
     "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
