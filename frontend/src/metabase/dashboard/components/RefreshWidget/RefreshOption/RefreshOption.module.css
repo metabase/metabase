@@ -1,17 +1,3 @@
-.RefreshWidgetPopover {
-  padding: 1rem;
-  min-width: 12.5rem;
-}
-
-.RefreshWidgetTitle {
-  color: var(--color-text-medium);
-  font-weight: bold;
-  font-size: 0.75em;
-  text-transform: uppercase;
-  margin-bottom: 1em;
-  margin-left: 0.5em;
-}
-
 .RefreshOptionIcon {
   margin-right: 0.5em;
 }

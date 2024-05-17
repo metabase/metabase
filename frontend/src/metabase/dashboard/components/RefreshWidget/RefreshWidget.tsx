@@ -1,11 +1,9 @@
-import { useState } from "react";
-import { usePrevious, useUpdateEffect } from "react-use";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
-import RefreshWidgetS from "./RefreshWidget.module.css";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
 
 const toSeconds = (minutes: number) => minutes * 60;
@@ -29,22 +27,17 @@ export const RefreshWidget = ({
   period: number | null;
   onChangePeriod: (period: number | null) => void;
 }) => {
-  const prevProps = usePrevious({ setRefreshElapsedHook });
-
   const [elapsed, setElapsed] = useState<number | null>(null);
 
   const [isOpen, setIsOpen] = useState(false);
 
-  useUpdateEffect(() => {
-    if (
-      setRefreshElapsedHook &&
-      prevProps?.setRefreshElapsedHook !== setRefreshElapsedHook
-    ) {
+  useEffect(() => {
+    if (setRefreshElapsedHook) {
       setRefreshElapsedHook((elapsed: number | null) => {
         setElapsed(elapsed);
       });
     }
-  });
+  }, [setRefreshElapsedHook]);
 
   return (
     <Popover position="bottom-end" opened={isOpen} onChange={setIsOpen}>
@@ -54,9 +47,14 @@ export const RefreshWidget = ({
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box className={RefreshWidgetS.RefreshWidgetPopover}>
+        <Box p="md" miw="12.5rem">
           <Box
-            className={RefreshWidgetS.RefreshWidgetTitle}
+            fw="bold"
+            fz="sm"
+            tt="uppercase"
+            mb="md"
+            ml="sm"
+            c="text-medium"
           >{t`Auto Refresh`}</Box>
           <ul>
             {OPTIONS.map(option => (
