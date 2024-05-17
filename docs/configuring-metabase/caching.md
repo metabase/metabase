@@ -75,7 +75,7 @@ To set up a default caching policy for your database: Hit Cmd/Ctrl + k to bring 
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
-## Database caching policy
+### Database caching policy
 
 {% include plans-blockquote.html feature="Database caching controls" %}
 
@@ -112,7 +112,3 @@ To clear the cache for a question or dashboard and refresh the results: Click th
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
 If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States.
-
-## Last updated at
-
-Questions that use the cache will display a "last cached at" timestamp in the question's **info** panel.
