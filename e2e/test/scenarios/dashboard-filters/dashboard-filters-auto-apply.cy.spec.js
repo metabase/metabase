@@ -168,7 +168,7 @@ describe(
 
       cy.log("verify filter value is not saved");
 
-      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+      visitDashboard("@dashboardId");
       filterWidget().should("not.contain", "Gadget");
     });
 
