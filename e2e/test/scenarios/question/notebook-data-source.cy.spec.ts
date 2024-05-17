@@ -145,16 +145,11 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").and(
+        entityPickerModalTab("Tables").and(
           "have.attr",
           "aria-selected",
           "true",
         );
-        cy.findByTestId("result-item")
-          .should("contain.text", "Reviews")
-          .and("have.attr", "data-model-type", "table");
-
-        entityPickerModalTab("Tables").click();
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
