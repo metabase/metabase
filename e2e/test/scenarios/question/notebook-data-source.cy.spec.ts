@@ -55,16 +55,20 @@ describe("scenarios > notebook > data source", () => {
           "Pick your starting data",
         );
 
-        popover().within(() => {
-          cy.findByTestId("source-database").should(
-            "have.text",
-            "Sample Database",
-          );
-          cy.findAllByRole("option")
-            .should("have.length", 8)
-            .each(table => {
-              cy.wrap(table).should("have.attr", "aria-selected", "false");
-            });
+        entityPickerModal().within(() => {
+          entityPickerModalLevel(0).should("not.exist");
+          entityPickerModalLevel(1).should("not.exist");
+          entityPickerModalLevel(2)
+            .get("[data-index]")
+            .should("have.length", 8);
+          assertDataPickerEntityNotSelected(2, "Accounts");
+          assertDataPickerEntityNotSelected(2, "Analytic Events");
+          assertDataPickerEntityNotSelected(2, "Feedback");
+          assertDataPickerEntityNotSelected(2, "Invoices");
+          assertDataPickerEntityNotSelected(2, "Orders");
+          assertDataPickerEntityNotSelected(2, "People");
+          assertDataPickerEntityNotSelected(2, "Products");
+          assertDataPickerEntityNotSelected(2, "Reviews");
         });
       },
     );
@@ -79,16 +83,18 @@ describe("scenarios > notebook > data source", () => {
         "Pick your starting data",
       );
 
-      popover().within(() => {
-        cy.findByTestId("source-database").should(
-          "have.text",
-          "Sample Database",
-        );
-        cy.findAllByRole("option")
-          .should("have.length", 8)
-          .each(table => {
-            cy.wrap(table).should("have.attr", "aria-selected", "false");
-          });
+      entityPickerModal().within(() => {
+        entityPickerModalLevel(0).should("not.exist");
+        entityPickerModalLevel(1).should("not.exist");
+        entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
+        assertDataPickerEntityNotSelected(2, "Accounts");
+        assertDataPickerEntityNotSelected(2, "Analytic Events");
+        assertDataPickerEntityNotSelected(2, "Feedback");
+        assertDataPickerEntityNotSelected(2, "Invoices");
+        assertDataPickerEntityNotSelected(2, "Orders");
+        assertDataPickerEntityNotSelected(2, "People");
+        assertDataPickerEntityNotSelected(2, "Products");
+        assertDataPickerEntityNotSelected(2, "Reviews");
       });
     });
 
@@ -376,4 +382,8 @@ function openDataSelector() {
 
 function assertDataPickerEntitySelected(level: number, name: string) {
   entityPickerModalItem(level, name).should("have.attr", "data-active", "true");
+}
+
+function assertDataPickerEntityNotSelected(level: number, name: string) {
+  entityPickerModalItem(level, name).should("not.have.attr", "data-active");
 }
