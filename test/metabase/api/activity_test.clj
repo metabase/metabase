@@ -87,7 +87,7 @@
 (deftest recent-views-test
   (clear-recent-views-for-user :crowberto)
   (clear-recent-views-for-user :rasta)
-  (mt/with-temp [Card      card1     {:name                   "rand-name"
+  (mt/with-temp [Card      card1     {:name                   "rand-card"
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}
@@ -96,18 +96,18 @@
                                       :display                "table"
                                       :archived               true
                                       :visualization_settings {}}
-                 Dashboard dash {:name        "rand-name2"
-                                 :description "rand-name2"
+                 Dashboard dash {:name        "rand-dashboard"
+                                 :description "rand-dashboard"
                                  :creator_id  (mt/user->id :crowberto)}
                  Table     table1 {:name "rand-name"}
                  Table     hidden-table {:name            "hidden table"
                                          :visibility_type "hidden"}
-                 Card      dataset {:name                   "rand-name"
+                 Card      dataset {:name                   "rand-card"
                                     :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}
-                 Card      metric  {:name                   "rand-name"
+                 Card      metric  {:name                   "rand-metric"
                                     :type                   :metric
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
