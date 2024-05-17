@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo } from "react";
 import { replace } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
-import { isEqual } from "underscore";
+import { isEqual, pick } from "underscore";
 
 import { useDashboardDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-dashboard-display-options";
 import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
@@ -10,11 +10,11 @@ import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/ty
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import { isNullOrUndefined } from "metabase/lib/types";
+import { isNotFalsy } from "metabase/lib/types";
 
 const removeEmptyOptions = (obj: Record<string, unknown>) => {
   return Object.fromEntries(
-    Object.entries(obj).filter(([_, v]) => !isNullOrUndefined(v)),
+    Object.entries(obj).filter(([_, v]) => isNotFalsy(v)),
   );
 };
 
@@ -54,9 +54,16 @@ export const useDashboardUrlParams = ({
     setFont,
   } = useDashboardDisplayOptions({ onRefresh });
 
+  // These hash options are writable - we can control them through the UI,
+  // so we need to keep them in sync with the URL hash
   const hashOptions: DashboardUrlHashOptions = useMemo(() => {
     return removeEmptyOptions(
-      parseHashOptions(location.hash),
+      pick(parseHashOptions(location.hash), [
+        "fullscreen",
+        "theme",
+        "hide_parameters",
+        "refresh",
+      ]),
     ) as DashboardUrlHashOptions;
   }, [location.hash]);
 
@@ -66,34 +73,23 @@ export const useDashboardUrlParams = ({
       theme,
       hide_parameters: hideParameters,
       refresh: refreshPeriod,
-      titled,
-      bordered,
-      hide_download_button: hideDownloadButton,
-      font,
     }) as DashboardUrlHashOptions;
-  }, [
-    bordered,
-    font,
-    hideDownloadButton,
-    hideParameters,
-    isFullscreen,
-    refreshPeriod,
-    theme,
-    titled,
-  ]);
+  }, [hideParameters, isFullscreen, refreshPeriod, theme]);
 
   const prevStateOptions = usePrevious(stateOptions);
 
   const loadDashboardParams = useCallback(() => {
+    // writeable hash options
     onFullscreenChange(hashOptions.fullscreen || false);
     setTheme(hashOptions.theme || null);
     setHideParameters(hashOptions.hide_parameters || null);
     onRefreshPeriodChange(hashOptions.refresh || null);
-    // the default value for titled = true
-    setTitled(hashOptions.titled ?? true);
+
+    // Read-only hash options with defaults
     setBordered(hashOptions.bordered ?? isWithinIframe());
-    setHideDownloadButton(hashOptions.hide_download_button ?? false);
-    setFont(hashOptions.font ?? "Lato");
+    setFont(hashOptions.font ?? null);
+    setTitled(hashOptions.titled ?? true);
+    setHideDownloadButton(hashOptions.hide_download_button ?? true);
   }, [
     onFullscreenChange,
     hashOptions.fullscreen,
@@ -119,14 +115,15 @@ export const useDashboardUrlParams = ({
 
   useEffect(() => {
     if (!isEqual(stateOptions, prevStateOptions)) {
+      const hash = stringifyHashOptions({ ...hashOptions, ...stateOptions });
       dispatch(
         replace({
           ...location,
-          hash: stringifyHashOptions(stateOptions),
+          hash: hash ? `#${hash}` : "",
         }),
       );
     }
-  }, [dispatch, location, prevStateOptions, stateOptions]);
+  }, [dispatch, hashOptions, location, prevStateOptions, stateOptions]);
 
   return {
     isFullscreen,

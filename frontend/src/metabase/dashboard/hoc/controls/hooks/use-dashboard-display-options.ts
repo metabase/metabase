@@ -15,8 +15,8 @@ export function useDashboardDisplayOptions({
 }: UseDashboardDisplayOptionsProps): DashboardDisplayOptionControls {
   const [bordered, setBordered] = useState<boolean>(isWithinIframe());
   const [titled, setTitled] = useState<boolean>(true);
-  const [hideDownloadButton, setHideDownloadButton] = useState<boolean>(false);
-  const [font, setFont] = useState<string | null>("Lato");
+  const [hideDownloadButton, setHideDownloadButton] = useState<boolean>(true);
+  const [font, setFont] = useState<string | null>(null);
 
   const [hideParameters, setHideParameters] = useState<string | null>(null);
 

@@ -251,9 +251,9 @@ function DashboardInner(props: DashboardProps) {
       return [];
     }
     if (!selectedTabId) {
-      return dashboard.dashcards;
+      return dashboard?.dashcards;
     }
-    return dashboard.dashcards.filter(
+    return dashboard?.dashcards.filter(
       (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     );
   }, [dashboard, selectedTabId]);
@@ -571,11 +571,6 @@ function DashboardInner(props: DashboardProps) {
               isFullscreen={isFullscreen}
               isNightMode={shouldRenderAsNightMode}
             >
-              {/**
-               * Do not conditionally render `<DashboardHeader />` as it calls
-               * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-               * in Redux state which kicks off a fetch for the dashboard cards.
-               */}
               <DashboardHeader
                 {...props}
                 dashboard={dashboard}

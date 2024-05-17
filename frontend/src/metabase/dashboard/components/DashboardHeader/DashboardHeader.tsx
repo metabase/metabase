@@ -636,7 +636,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     <>
       <DashboardHeaderComponent
         headerClassName={CS.wrapper}
-        location={location}
         dashboard={dashboard}
         collection={collection}
         isEditing={isEditing}
