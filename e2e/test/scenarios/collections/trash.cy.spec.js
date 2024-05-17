@@ -14,6 +14,7 @@ import {
   modal,
   navigationSidebar,
   restore,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
@@ -83,11 +84,13 @@ describe("scenarios > collections > trash", () => {
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
     });
+
     popover().findByText("Question").click();
-    popover().findByText("Models").click();
-    popover().within(() => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
       cy.findByText("Our analytics").should("exist");
       cy.findByText("Trash").should("not.exist");
+      cy.button("Close").click();
     });
 
     cy.log("trash should not appear in collection picker");
