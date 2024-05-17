@@ -172,9 +172,9 @@ const theme = {
   // Optional: Match your application's color scheme
   colors: {
     brand: "#9B5966",
-    "text-dark": "#4C5773",
-    "text-medium": "#696E7B",
-    "text-light": "#949AAB",
+    "text-primary": "#4C5773",
+    "text-secondary": "#696E7B",
+    "text-tertiary": "#949AAB",
   }
 }
 
@@ -258,13 +258,28 @@ const theme = {
     brand: "#9B5966",
 
     // The color of text that is most prominent
-    "text-dark": "#4C5773",
+    "text-primary": "#4C5773",
 
     // The color of text that is less prominent
-    "text-medium": "#696E7B",
+    "text-secondary": "#696E7B",
 
     // The color of text that is least prominent
-    "text-light": "#949AAB",
+    "text-tertiary": "#949AAB",
+
+    /** Default background color. */
+    background: "#FFFFFF",
+
+    /** Slightly darker background color used for hover and accented elements. */
+    "background-hover": "#F9FBFC",
+
+    /** Color used for borders */
+    border: "#EEECEC",
+
+    /** Color used for filters context */
+    filter: "#7172AD",
+
+    /** Color used for aggregations and breakouts context */
+    summarize: "#88BF4D",
   },
 
   table: {
@@ -272,8 +287,8 @@ const theme = {
       // Text color of cells, defaults to `text-dark`
       textColor: "#4C5773",
 
-      // Default background color of cells, defaults to `white`
-      backgroundColor: "white",
+      // Default background color of cells, defaults to `bg-white`
+      backgroundColor: "#FFFFFF",
     },
 
     idColumn: {
