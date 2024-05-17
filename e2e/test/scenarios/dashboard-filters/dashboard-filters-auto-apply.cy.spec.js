@@ -155,6 +155,23 @@ describe(
       });
     });
 
+    it("should not save filter state for dashboard parameter w/o auto-apply enabled", () => {
+      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
+      openDashboard();
+
+      filterWidget().findByText(FILTER.name).click();
+      popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      dashboardParametersContainer().button("Apply").should("be.visible");
+
+      cy.log("verify filter value is not saved");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+      filterWidget().should("not.contain", "Gadget");
+    });
+
     describe("modifying dashboard and dashboard cards", () => {
       it("should not preserve draft parameter values when editing the dashboard", () => {
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
