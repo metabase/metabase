@@ -46,13 +46,19 @@ describe("issue 26091", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").should(
+      entityPickerModalTab("Recents").should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      cy.findByText("Old model").should("be.visible");
       cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("not.exist");
+      cy.findByText("Orders Model").should("not.exist");
+
+      entityPickerModalTab("Models").click();
+      cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
     });
   });
 });

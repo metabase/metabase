@@ -49,7 +49,7 @@ const options: DataPickerModalOptions = {
   hasConfirmButtons: false,
   showPersonalCollections: true,
   showRootCollection: true,
-  hasRecents: false, // TODO: https://github.com/metabase/metabase/issues/42675
+  hasRecents: true,
 };
 
 export const DataPickerModal = ({
@@ -149,6 +149,7 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
+      defaultToRecentTab={false}
       initialValue={value}
       options={options}
       searchParams={searchParams}

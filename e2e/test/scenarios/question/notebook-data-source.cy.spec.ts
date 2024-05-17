@@ -56,6 +56,9 @@ describe("scenarios > notebook > data source", () => {
         );
 
         entityPickerModal().within(() => {
+          cy.log("Should not have Recents tab");
+          cy.findAllByRole("tab").should("have.length", 0);
+
           entityPickerModalLevel(0).should("not.exist");
           entityPickerModalLevel(1).should("not.exist");
           entityPickerModalLevel(2)
@@ -84,6 +87,9 @@ describe("scenarios > notebook > data source", () => {
       );
 
       entityPickerModal().within(() => {
+        cy.log("Should not have Recents tab");
+        cy.findAllByRole("tab").should("have.length", 0);
+
         entityPickerModalLevel(0).should("not.exist");
         entityPickerModalLevel(1).should("not.exist");
         entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
@@ -109,6 +115,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
+        entityPickerModalTab("Recents").should("not.exist");
         entityPickerModalTab("Models").and(
           "have.attr",
           "aria-selected",
@@ -129,6 +136,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
+        entityPickerModalTab("Recents").should("not.exist");
         entityPickerModalTab("Models").should("not.exist");
         entityPickerModalTab("Tables").and(
           "have.attr",
@@ -151,6 +159,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").should("exist");
         entityPickerModalTab("Tables").and(
           "have.attr",
           "aria-selected",
@@ -169,6 +178,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
+        entityPickerModalTab("Recents").should("exist");
         entityPickerModalTab("Tables").and(
           "have.attr",
           "aria-selected",
@@ -204,6 +214,7 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
+          entityPickerModalTab("Recents").should("not.exist");
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
@@ -218,6 +229,12 @@ describe("scenarios > notebook > data source", () => {
           assertDataPickerEntitySelected(0, dbName);
           assertDataPickerEntitySelected(1, schemaName);
           assertDataPickerEntitySelected(2, tableName);
+
+          entityPickerModalTab("Recents").click();
+          cy.findByTestId("result-item")
+            .should("exist")
+            .and("contain.text", tableName)
+            .and("have.css", "background-color", "rgb(80, 158, 227)");
         });
       },
     );
@@ -272,6 +289,12 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Second collection");
         assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
+
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item")
+          .should("exist")
+          .and("contain.text", checkNotNull(modelDetails.name))
+          .and("have.css", "background-color", "rgb(80, 158, 227)");
       });
     });
 
@@ -288,6 +311,13 @@ describe("scenarios > notebook > data source", () => {
         );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
+
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item")
+          .should("exist")
+          .and("contain.text", "Orders Model")
+          .and("have.css", "background-color", "rgb(80, 158, 227)");
+
         cy.button("Close").click();
       });
 
@@ -303,6 +333,12 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
+
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item")
+          .should("exist")
+          .and("contain.text", "Orders Model")
+          .and("have.css", "background-color", "rgb(80, 158, 227)");
       });
     });
 
@@ -336,6 +372,14 @@ describe("scenarios > notebook > data source", () => {
         );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, sourceQuestionName);
+
+        entityPickerModalTab("Recents").click();
+        cy.findAllByTestId("result-item").should("have.length", 1);
+        cy.findByTestId("result-item")
+          .should("exist")
+          .and("contain.text", "Nested Question")
+          .and("not.have.css", "background-color", "rgb(80, 158, 227)");
+
         cy.button("Close").click();
       });
 
@@ -358,6 +402,16 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
+
+        entityPickerModalTab("Recents").click();
+        cy.findAllByTestId("result-item")
+          .contains(nestedQuestionDetails.name)
+          .parents("button")
+          .and("not.have.css", "background-color", "rgb(80, 158, 227)");
+        cy.findAllByTestId("result-item")
+          .contains(sourceQuestionName)
+          .parents("button")
+          .and("have.css", "background-color", "rgb(80, 158, 227)");
       });
     });
   });
