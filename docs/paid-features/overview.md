@@ -93,6 +93,7 @@ See how people are using your Metabase.
 See which queries are failing to help keep your Metabase tidy.
 
 - [Tracking query errors](../usage-and-performance-tools/tools.md)
+- [Deleting uploaded tables](../databases/uploads.md#deleting-tables-created-by-uploads)
 
 ## Serialization
 

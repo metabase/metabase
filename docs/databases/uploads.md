@@ -19,6 +19,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
 - [Redshift](../databases/connections/redshift.md)
+- [Clickhouse](../developers-guide/partner-and-community-drivers.md#partner-drivers)
 
 ## Setting up uploads
 
@@ -133,11 +134,15 @@ Offsets:
 
 ### Deleting models created by uploads
 
+{% include plans-blockquote.html feature="Deleting uploaded tables" %}
+
 You can archive a model by clicking on the three dots in the upper right and selecting **Archive**.
 
 For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history.md#deleting-items-permanently).
 
 ### Deleting tables created by uploads
+
+{% include plans-blockquote.html feature="Deleting uploaded tables" %}
 
 To delete tables created by uploads, go to **Admin settings** > **Settings** > **Uploads**.
 
