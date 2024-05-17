@@ -136,6 +136,21 @@
                      :operators [{:name "="}
                                  {:name "≠"}]}})))
 
+(deftest ^:parallel returns-quick-filter-test-10
+  (testing "quick-filter should use is-empty and not-empty operators for string columns (#41783)"
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type  :drill-thru/quick-filter
+       :click-type  :cell
+       :query-type  :unaggregated
+       :query-table "PRODUCTS"
+       :column-name "TITLE"
+       :custom-row  (assoc (get-in lib.drill-thru.tu/test-queries ["PRODUCTS" :unaggregated :row])
+                      "TITLE" nil)
+       :expected    {:type      :drill-thru/quick-filter
+                     :value     :null
+                     :operators [{:name "=", :filter [:is-empty {} [:field {} (meta/id :products :title)]]}
+                                 {:name "≠", :filter [:not-empty {} [:field {} (meta/id :products :title)]]}]}})))
+
 (deftest ^:parallel apply-quick-filter-on-correct-level-test
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
     (lib.drill-thru.tu/test-drill-application
