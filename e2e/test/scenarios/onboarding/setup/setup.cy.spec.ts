@@ -230,6 +230,8 @@ describe("scenarios > setup", () => {
 
     selectPreferredLanguageAndContinue();
 
+    cy.findByLabelText(/What should we call you/);
+
     cy.findByTestId("setup-forms").within(() => {
       const strongPassword = "QJbHYJN3tPW[";
       cy.findByLabelText(/^Create a password/)
@@ -239,11 +241,20 @@ describe("scenarios > setup", () => {
         .clear()
         .type(strongPassword, { delay: 0 })
         .blur();
-
-      cy.findByText("Next").click();
     });
 
-    cy.button("Next").click();
+    cy.findByLabelText(/What should we call you/)
+      .button("Next")
+      .click();
+
+    // make sure this bit of the form loads before clicking next
+    cy.findByLabelText(/What will you use Metabase for/).findByText(
+      /Let us know your plans/,
+    );
+
+    cy.findByLabelText(/What will you use Metabase for/)
+      .button("Next")
+      .click();
 
     cy.findByTestId("database-form").within(() => {
       cy.findByPlaceholderText("Search for a database…").type("lite").blur();
