@@ -2267,7 +2267,8 @@
   - `:filters`
   - `:aggregation`
   - `:breakout`
-  - `:page`
+  - `:order-by`
+  - `:limit`
 
   If the resulting query fails [[can-preview]], returns nil.
 

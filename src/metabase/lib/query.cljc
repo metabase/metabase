@@ -329,10 +329,11 @@
   - `:filters`
   - `:aggregation`
   - `:breakout`
-  - `:page`"
+  - `:order-by`
+  - `:limit`"
   [a-query      :- ::lib.schema/query
    stage-number :- :int
-   clause-type  :- [:enum :data :joins :expressions :filters :aggregation :breakout :page]
+   clause-type  :- [:enum :data :joins :expressions :filters :aggregation :breakout :order-by :limit]
    clause-index :- [:maybe :int]]
   (when (native? a-query)
     (throw (ex-info "preview-query cannot be called on native queries" {:query a-query})))
