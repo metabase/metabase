@@ -129,7 +129,10 @@ export const fetchRevisions = createThunkAction(
         return {
           type,
           id,
-          revisions: await RevisionsApi.get({ id, entity: type }),
+          revisions: await RevisionsApi.get({
+            id,
+            entity: type === "metric" ? "legacy-metric" : type,
+          }),
         };
       };
 

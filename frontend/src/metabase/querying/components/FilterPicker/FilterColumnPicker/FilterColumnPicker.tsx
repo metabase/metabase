@@ -5,7 +5,6 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   QueryColumnInfoIcon,
   HoverParent,
@@ -119,7 +118,6 @@ export function FilterColumnPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
@@ -148,26 +146,19 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   }
 
   if (item.column) {
-    return <Icon name={getColumnIcon(item.column)} size={18} />;
+    const { query, stageIndex, column } = item;
+    return (
+      <QueryColumnInfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        position="top-start"
+        size={18}
+      />
+    );
   }
 }
 
 function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemExtra(item: ColumnListItem | SegmentListItem) {
-  if (isSegmentListItem(item)) {
-    return null;
-  }
-
-  const { query, stageIndex, column } = item;
-  return (
-    <QueryColumnInfoIcon
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      position="right"
-    />
-  );
 }

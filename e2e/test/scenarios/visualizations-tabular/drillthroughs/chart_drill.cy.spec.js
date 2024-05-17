@@ -17,6 +17,8 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   cartesianChartCircleWithColor,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -255,10 +257,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // Build a new question off that grouping by City
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("CA People").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.contains("CA People").click();
+    });
 
     addSummaryField({ metric: "Count of rows" });
 

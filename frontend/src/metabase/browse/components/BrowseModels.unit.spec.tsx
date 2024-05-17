@@ -5,15 +5,14 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockModelResult,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
+
+import { createMockModelResult } from "../test-utils";
 
 import { BrowseModels } from "./BrowseModels";
 
-const renderBrowseModels = (modelCount: number) => {
+const setup = (modelCount: number) => {
   const models = mockModels.slice(0, modelCount);
   setupSearchEndpoints(models);
   setupSettingsEndpoints([]);
@@ -264,20 +263,23 @@ const mockModels: SearchResult[] = [
 
 describe("BrowseModels", () => {
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    renderBrowseModels(0);
+    setup(0);
     expect(await screen.findByText("No models here yet")).toBeInTheDocument();
   });
 
   it("displays the Our Analytics collection if it has a model", async () => {
-    renderBrowseModels(25);
-    await screen.findAllByText("Our analytics");
+    setup(25);
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      await screen.findAllByTestId("path-for-collection: Our analytics"),
+    ).toHaveLength(2);
     expect(await screen.findByText("Model 20")).toBeInTheDocument();
     expect(await screen.findByText("Model 21")).toBeInTheDocument();
     expect(await screen.findByText("Model 22")).toBeInTheDocument();
   });
 
   it("displays collection breadcrumbs", async () => {
-    renderBrowseModels(25);
+    setup(25);
     expect(await screen.findByText("Model 1")).toBeInTheDocument();
     expect(
       await screen.findAllByTestId("breadcrumbs-for-collection: Alpha"),

@@ -1,8 +1,10 @@
 import {
-  popover,
+  entityPickerModal,
+  entityPickerModalTab,
+  interceptIfNotPreviouslyDefined,
   modal,
   openQuestionActions,
-  interceptIfNotPreviouslyDefined,
+  popover,
 } from "e2e/support/helpers";
 
 export function assertQuestionIsBasedOnModel({
@@ -105,9 +107,9 @@ export function selectFromDropdown(option, clickOpts) {
 
 export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
-  popover().within(() => {
-    cy.findByText("Question").should("be.visible").click();
-    cy.findByRole("menuitem", { name: /Models/ }).click();
-    cy.findByRole("menuitem", { name: modelName }).click();
+  popover().findByText("Question").should("be.visible").click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Models").click();
+    cy.findByText(modelName).click();
   });
 }

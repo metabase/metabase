@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import {
   setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -163,6 +164,7 @@ interface SetupOpts {
 const commonSetup = () => {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,

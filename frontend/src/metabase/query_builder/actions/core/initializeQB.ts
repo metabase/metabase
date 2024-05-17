@@ -256,6 +256,7 @@ async function handleQBInit(
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
+  const currentUser = getUser(getState());
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
@@ -269,7 +270,7 @@ async function handleQBInit(
     getState,
   });
 
-  if (isSavedCard(card) && card.archived) {
+  if (isSavedCard(card) && card.archived && !currentUser) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
     return;
   }
@@ -325,7 +326,6 @@ async function handleQBInit(
       question = question.lockDisplay();
     }
 
-    const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");

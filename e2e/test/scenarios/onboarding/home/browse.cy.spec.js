@@ -9,7 +9,7 @@ import {
   resetSnowplow,
   expectNoBadSnowplowEvents,
   enableTracking,
-  browseData,
+  browseDatabases,
   navigationSidebar,
 } from "e2e/support/helpers";
 
@@ -38,7 +38,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("can browse to a table in a database", () => {
     cy.visit("/");
-    browseData().click();
+    browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("button", { name: "Summarize" });
@@ -60,7 +60,7 @@ describeWithSnowplow("scenarios > browse", () => {
       cy.spy().as("schemasForOtherDatabases"),
     );
     cy.visit("/");
-    browseData().click();
+    browseDatabases().click();
     cy.findByRole("link", { name: /Sample Database/ }).click();
     cy.wait("@schemasForSampleDatabase");
     cy.get("@schemasForOtherDatabases").should("not.have.been.called");
@@ -68,7 +68,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
@@ -87,7 +87,7 @@ describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-describeWithSnowplowEE("scenarios > browse data (EE)", () => {
+describeWithSnowplowEE("scenarios > browse (EE)", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -108,7 +108,7 @@ describeWithSnowplowEE("scenarios > browse data (EE)", () => {
     openFilterPopover();
     toggle().next("label").click();
     cy.findByRole("heading", { name: "Orders Model" }).click();
-    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByLabelText("Move, trash, and more...").click();
     cy.findByRole("dialog", {
       name: /ellipsis icon/i,
     })

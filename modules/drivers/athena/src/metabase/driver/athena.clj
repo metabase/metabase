@@ -32,10 +32,12 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:datetime-diff             true
-                              :foreign-keys              true
-                              :nested-fields             false
-                              :test/jvm-timezone-setting false}]
+(doseq [[feature supported?] {:datetime-diff                 true
+                              :foreign-keys                  true
+                              :nested-fields                 false
+                              :connection/multiple-databases true
+                              :metadata/key-constraints      false
+                              :test/jvm-timezone-setting     false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

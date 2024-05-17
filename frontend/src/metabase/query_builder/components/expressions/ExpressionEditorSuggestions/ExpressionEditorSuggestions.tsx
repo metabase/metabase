@@ -9,6 +9,7 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
@@ -42,7 +43,6 @@ import {
   SuggestionMatch,
   SuggestionTitle,
   GroupTitle,
-  QueryColumnInfoIcon,
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
@@ -100,6 +100,11 @@ export function ExpressionEditorSuggestions({
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}
+      middlewares={{
+        flip: false,
+        shift: false,
+        inline: false,
+      }}
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
@@ -242,10 +247,19 @@ function ExpressionEditorSuggestionsListItem({
         className={cx(CS.hoverParent, CS.hoverInherit)}
         data-testid="expression-suggestions-list-item"
       >
-        {icon && (
+        {icon && (helpText || !suggestion.column) && (
           <Icon
             name={icon as IconName}
             color={isHighlighted ? highlighted : normal}
+            className={CS.mr1}
+          />
+        )}
+        {!helpText && suggestion.column && (
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={stageIndex}
+            column={suggestion.column}
+            position="top-start"
             className={CS.mr1}
           />
         )}
@@ -266,14 +280,6 @@ function ExpressionEditorSuggestionsListItem({
               aria-label={t`More info`}
             />
           </InfoPopover>
-        )}
-        {!helpText && suggestion.column && (
-          <QueryColumnInfoIcon
-            query={query}
-            stageIndex={stageIndex}
-            column={suggestion.column}
-            position="right"
-          />
         )}
       </ExpressionListItem>
     </HoverParent>

@@ -1,5 +1,5 @@
 import d3 from "d3";
-import type { RegisteredSeriesOption } from "echarts";
+import type { ScatterSeriesOption } from "echarts/charts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -51,7 +51,7 @@ export function buildEChartsScatterSeries(
   bubbleSizeDomain: Extent | null,
   yAxisIndex: number,
   renderingContext: RenderingContext,
-): RegisteredSeriesOption["scatter"] {
+): ScatterSeriesOption {
   const bubbleSizeDataKey =
     "bubbleSizeDataKey" in seriesModel
       ? seriesModel.bubbleSizeDataKey

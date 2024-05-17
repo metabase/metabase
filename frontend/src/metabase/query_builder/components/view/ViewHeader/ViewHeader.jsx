@@ -441,7 +441,8 @@ function ViewTitleHeaderRightSide(props) {
   // Models and metrics can't be saved. But changing anything about the model/metric will prompt the user
   // to save it as a new question (based on that model/metric). In other words, at this point
   // the `type` field is set to "question".
-  const hasSaveButton = !isModelOrMetric && !!isDirty && isActionListVisible;
+  const hasSaveButton =
+    !isModelOrMetric && !!isDirty && !question.isArchived() && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =

@@ -7,19 +7,20 @@ import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
 import resizeObserver from "metabase/lib/resize-observer";
 import * as Urls from "metabase/lib/urls";
 import type { FlexProps } from "metabase/ui";
-import { FixedSizeIcon, Flex, Group, Text, Tooltip } from "metabase/ui";
+import { Flex, Text, Tooltip } from "metabase/ui";
 import type { CollectionEssentials } from "metabase-types/api";
 
 import { getCollectionName } from "../utils";
 
 import {
   Breadcrumb,
+  BreadcrumbGroup,
   CollectionBreadcrumbsWrapper,
+  CollectionsIcon,
 } from "./CollectionBreadcrumbsWithTooltip.styled";
+import { pathSeparatorChar } from "./constants";
 import type { RefProp } from "./types";
-import { getBreadcrumbMaxWidths } from "./utils";
-
-const separatorCharacter = "/";
+import { getBreadcrumbMaxWidths, getCollectionPathString } from "./utils";
 
 export const CollectionBreadcrumbsWithTooltip = ({
   collection,
@@ -31,9 +32,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
   const collections = (
     (collection.effective_ancestors as CollectionEssentials[]) || []
   ).concat(collection);
-  const pathString = collections
-    .map(coll => getCollectionName(coll))
-    .join(` ${separatorCharacter} `);
+  const pathString = getCollectionPathString(collection);
   const ellipsifyPath = collections.length > 2;
   const shownCollections = ellipsifyPath
     ? [collections[0], collections[collections.length - 1]]
@@ -86,11 +85,20 @@ export const CollectionBreadcrumbsWithTooltip = ({
         w="auto"
       >
         <Flex align="center" w="100%" lh="1" style={{ flexFlow: "row nowrap" }}>
-          <FixedSizeIcon name="folder" style={{ marginInlineEnd: ".5rem" }} />
+          <CollectionsIcon
+            name="folder"
+            // Stopping propagation so that the parent <tr>'s onclick won't fire
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          />
           {shownCollections.map((collection, index) => {
             const key = `collection${collection.id}`;
             return (
-              <Group spacing={0} style={{ flexFlow: "row nowrap" }} key={key}>
+              <BreadcrumbGroup
+                spacing={0}
+                key={key}
+                // Stopping propagation so that the parent <tr>'s onclick won't fire
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              >
                 {index > 0 && <PathSeparator />}
                 <CollectionBreadcrumbsWrapper
                   containerName={containerName}
@@ -118,7 +126,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
                     {getCollectionName(collection)}
                   </Breadcrumb>
                 </CollectionBreadcrumbsWrapper>
-              </Group>
+              </BreadcrumbGroup>
             );
           })}
         </Flex>
@@ -149,6 +157,6 @@ Ellipsis.displayName = "Ellipsis";
 
 const PathSeparator = () => (
   <Text color="text-light" mx="xs" py={1}>
-    {separatorCharacter}
+    {pathSeparatorChar}
   </Text>
 );

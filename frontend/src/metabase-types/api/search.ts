@@ -123,7 +123,7 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: "search-bar" | "search-app";
+  context?: "search-bar" | "search-app" | "command-palette";
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;
@@ -136,3 +136,6 @@ export type SearchRequest = {
   collection?: CollectionId;
   namespace?: "snippets";
 } & PaginationRequest;
+
+/** Model retrieved through the search endpoint */
+export type ModelResult = SearchResult<number, "dataset">;

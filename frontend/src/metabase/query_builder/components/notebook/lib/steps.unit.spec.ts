@@ -93,9 +93,9 @@ describe("filtered and summarized query", () => {
     });
   });
 
-  describe("getPreviewQuery", () => {
+  describe("previewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
-      const previewQuery = checkNotNull(dataStep.getPreviewQuery)();
+      const previewQuery = checkNotNull(dataStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -103,7 +103,7 @@ describe("filtered and summarized query", () => {
     });
 
     it("shouldn't include summarize for filter step", () => {
-      const previewQuery = checkNotNull(filterStep.getPreviewQuery)();
+      const previewQuery = checkNotNull(filterStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -159,9 +159,9 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
   });
 
-  describe("getPreviewQuery", () => {
+  describe("previewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
-      const previewQuery = checkNotNull(dataStep.getPreviewQuery)();
+      const previewQuery = checkNotNull(dataStep.previewQuery);
 
       expect(Lib.stageCount(previewQuery)).toBe(1);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
@@ -170,7 +170,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("shouldn't include summarize or post-aggregation filter for filter step", () => {
-      const previewQuery = checkNotNull(filterStep.getPreviewQuery)();
+      const previewQuery = checkNotNull(filterStep.previewQuery);
 
       expect(Lib.stageCount(previewQuery)).toBe(1);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
@@ -179,7 +179,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("shouldn't include filters from the next stages for summarizeStep", () => {
-      const previewQuery = checkNotNull(summarizeStep.getPreviewQuery)();
+      const previewQuery = checkNotNull(summarizeStep.previewQuery);
 
       expect(Lib.stageCount(previewQuery)).toBe(1);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
@@ -188,9 +188,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("shouldn't include aggregations for post-aggregation filter step", () => {
-      const previewQuery = checkNotNull(
-        postAggregationFilterStep.getPreviewQuery,
-      )();
+      const previewQuery = checkNotNull(postAggregationFilterStep.previewQuery);
 
       expect(Lib.stageCount(previewQuery)).toBe(2);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);

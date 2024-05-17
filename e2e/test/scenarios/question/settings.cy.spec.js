@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  browseData,
+  browseDatabases,
   restore,
   openOrdersTable,
   openNavigationSidebar,
@@ -138,8 +138,21 @@ describe("scenarios > question > settings", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    {
+                      "base-type": "type/Integer",
+                    },
+                  ],
+                  [
+                    "field",
+                    PRODUCTS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "Products",
+                    },
+                  ],
                 ],
                 alias: "Products",
               },
@@ -453,7 +466,7 @@ describe("scenarios > question > settings", () => {
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
-      browseData().click();
+      browseDatabases().click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();

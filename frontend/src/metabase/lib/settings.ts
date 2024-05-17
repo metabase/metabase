@@ -221,13 +221,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "ga-enabled")
-   */
-  googleAnalyticsEnabled() {
-    return this.get("ga-enabled") || false;
-  }
-
-  /**
    * @deprecated use getSetting(state, "snowplow-enabled")
    */
   snowplowEnabled() {

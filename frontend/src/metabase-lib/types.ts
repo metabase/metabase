@@ -6,6 +6,7 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
 } from "metabase-types/api";
 
 import type {
@@ -132,6 +133,8 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isModel?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -573,6 +576,7 @@ export interface ClickObject {
   seriesIndex?: number;
   cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

@@ -1,10 +1,8 @@
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import type { SearchResult } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockModelResult,
-} from "metabase-types/api/mocks";
+import type { SearchResult, ModelResult } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 
+import { createMockModelResult } from "./test-utils";
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
 import { filterModels } from "./utils";
 
@@ -16,7 +14,7 @@ const collectionZulu = createMockCollection({ id: 4, name: "Zulu" });
 const collectionAngstrom = createMockCollection({ id: 5, name: "Ångström" });
 const collectionOzgur = createMockCollection({ id: 6, name: "Özgür" });
 
-const mockModels: SearchResult[] = [
+const mockModels: ModelResult[] = [
   {
     id: 0,
     name: "Model 0",

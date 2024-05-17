@@ -1,12 +1,21 @@
 import { USERS } from "e2e/support/cypress_data";
-import { restore } from "e2e/support/helpers";
+import {
+  commandPalette,
+  commandPaletteButton,
+  commandPaletteInput,
+  restore,
+  visitFullAppEmbeddingUrl,
+} from "e2e/support/helpers";
 
 ["admin", "normal"].forEach(user => {
   describe(`search > ${user} user`, () => {
     beforeEach(() => {
       restore();
       cy.signIn(user);
-      cy.visit("/");
+      visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { top_nav: true, search: true },
+      });
     });
 
     // There was no issue for this, but it was implemented in pull request #15614
@@ -23,5 +32,24 @@ import { restore } from "e2e/support/helpers";
         );
       });
     });
+  });
+});
+
+describe("command palette", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/search-typeahead-enabled", {
+      value: false,
+    });
+    cy.visit("/");
+  });
+
+  it("should not display search results in the palette when search-typeahead-enabled is false", () => {
+    commandPaletteButton().click();
+    commandPaletteInput().type("ord");
+    commandPalette()
+      .findByRole("option", { name: /View search results/ })
+      .should("exist");
   });
 });

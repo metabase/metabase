@@ -164,10 +164,18 @@ const config = {
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
 }
 
-// Theme Options
+// See the "Customizing appearance" section for more information
 const theme = {
-  fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
-  colors: { brand: "#9b59b6" }
+  // Optional: Specify a font to use from the set of fonts supported by Metabase
+  fontFamily: "Lato",
+
+  // Optional: Match your application's color scheme
+  colors: {
+    brand: "#9B5966",
+    "text-dark": "#4C5773",
+    "text-medium": "#696E7B",
+    "text-light": "#949AAB",
+  }
 }
 
 export default function App() {
@@ -183,6 +191,8 @@ export default function App() {
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
+You can optionally pass in `height` to change the height of the component.
+
 ```jsx
 import React from "react";
 import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
@@ -194,11 +204,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      {/** You need to set the parent container to have some width and height, and display as flex,
-           because the Metabase visualizations have flex-grow: 1 and will take up all available space. */}
-      <div style={{ width: 800, height: 600, display: "flex" }}>
         <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
-      </div>
     </MetabaseProvider>
   );
 }
@@ -217,14 +223,68 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <div style={{ width: 800, height: 600, display: "flex" }}>
-        <InteractiveQuestion questionId={questionId}  />
-      </div>
+      <InteractiveQuestion questionId={questionId}  />
     </MetabaseProvider>
   );
 }
 const questionId = 1; // This is the question ID you want to embed
 
+```
+
+### Customizing appearance
+
+You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
+
+Here are the full list of the theme properties you can customize. Every property is optional.
+
+```ts
+const theme = {
+  // Specify a font to use from the set of fonts supported by Metabase.
+  // You can set the font to "Custom" to use the custom font
+  // configured in your Metabase instance.
+  fontFamily: "Lato",
+
+  // Override the base font size for every component.
+  // This does not usually need to be set, as the components
+  // inherit the font size from the parent container, such as the body.
+  fontSize: "16px",
+
+  // Override the base line height for every component.
+  lineHeight: 1.5,
+
+  // Match your application's color scheme
+  colors: {
+    // The primary color of your application
+    brand: "#9B5966",
+
+    // The color of text that is most prominent
+    "text-dark": "#4C5773",
+
+    // The color of text that is less prominent
+    "text-medium": "#696E7B",
+
+    // The color of text that is least prominent
+    "text-light": "#949AAB",
+  },
+
+  table: {
+    cell: {
+      // Text color of cells, defaults to `text-dark`
+      textColor: "#4C5773",
+
+      // Default background color of cells, defaults to `white`
+      backgroundColor: "white",
+    },
+
+    idColumn: {
+      // Text color of ID column, defaults to `brand`
+      textColor: "#9B5966",
+
+      // Background color of ID column, defaults to a lighter shade of `brand`
+      backgroundColor: "#F5E9EB",
+    },
+  },
+}
 ```
 
 ### Implementing custom actions
@@ -284,9 +344,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <div style={{ width: 800, height: 600, display: "flex" }}>
-      <InteractiveQuestion questionId={questionId}  />
-    </div>
+    <InteractiveQuestion questionId={questionId}  />
   </MetabaseProvider>
 );
 ```

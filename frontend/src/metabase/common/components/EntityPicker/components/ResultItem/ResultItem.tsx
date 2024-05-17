@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
+import { getName } from "metabase/lib/name";
 import { Icon, Flex, Tooltip } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
@@ -10,16 +11,17 @@ import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
 
 import { ChunkyListItem } from "./ResultItem.styled";
 
-export type ResultItemType = Pick<
-  SearchResult,
-  | "model"
-  | "collection"
-  | "name"
-  | "description"
-  | "collection_authority_level"
-  | "moderated_status"
-  | "display"
->;
+export type ResultItemType = Pick<SearchResult, "model" | "name"> &
+  Partial<
+    Pick<
+      SearchResult,
+      | "collection"
+      | "description"
+      | "collection_authority_level"
+      | "moderated_status"
+      | "display"
+    >
+  >;
 
 export const ResultItem = ({
   item,
@@ -36,9 +38,11 @@ export const ResultItem = ({
 
   return (
     <ChunkyListItem
+      aria-selected={isSelected}
       onClick={onClick}
       isSelected={isSelected}
       isLast={isLast}
+      data-model-type={item.model}
       data-testid="result-item"
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
@@ -49,7 +53,9 @@ export const ResultItem = ({
             flexShrink: 0,
           }}
         />
-        <Ellipsified style={{ fontWeight: "bold" }}>{item.name}</Ellipsified>
+        <Ellipsified style={{ fontWeight: "bold" }}>
+          {getName(item)}
+        </Ellipsified>
         {item.description && (
           <Tooltip
             maw="20rem"

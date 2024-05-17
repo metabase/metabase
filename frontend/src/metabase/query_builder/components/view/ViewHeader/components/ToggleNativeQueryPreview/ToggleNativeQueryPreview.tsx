@@ -83,6 +83,7 @@ ToggleNativeQueryPreview.shouldRender = ({
     !isNative &&
     !isMetric &&
     question.database()?.native_permissions === "write" &&
-    queryBuilderMode === "notebook"
+    queryBuilderMode === "notebook" &&
+    !question.isArchived()
   );
 };

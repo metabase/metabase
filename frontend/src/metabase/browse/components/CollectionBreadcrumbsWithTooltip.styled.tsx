@@ -4,7 +4,7 @@ import type { AnchorHTMLAttributes } from "react";
 import { ResponsiveChild } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { color } from "metabase/lib/colors";
 import type { AnchorProps } from "metabase/ui";
-import { Anchor } from "metabase/ui";
+import { Anchor, FixedSizeIcon, Group } from "metabase/ui";
 
 import type { RefProp } from "./types";
 
@@ -53,4 +53,12 @@ export const CollectionBreadcrumbsWrapper = styled(ResponsiveChild)`
     }
     `;
   }}
+`;
+
+export const BreadcrumbGroup = styled(Group)`
+  flex-flow: row nowrap;
+`;
+
+export const CollectionsIcon = styled(FixedSizeIcon)`
+  margin-inline-end: 0.5rem;
 `;

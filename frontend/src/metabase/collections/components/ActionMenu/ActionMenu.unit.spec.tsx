@@ -141,7 +141,7 @@ describe("ActionMenu", () => {
       expect(onMove).toHaveBeenCalledWith([item]);
 
       await userEvent.click(getIcon("ellipsis"));
-      await userEvent.click(await screen.findByText("Archive"));
+      await userEvent.click(await screen.findByText("Move to trash"));
       expect(item.setArchived).toHaveBeenCalledWith(true);
     });
 
@@ -160,7 +160,7 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
 
     it("should not allow to move and archive read only collections", async () => {
@@ -177,7 +177,7 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
   });
 

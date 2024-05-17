@@ -22,7 +22,7 @@
   (testing "underlying-records is available for non-header clicks with at least one breakout"
     (canned/canned-test
       :drill-thru/underlying-records
-      (fn [_test-case context {:keys [click column-kind]}]
+      (fn [test-case context {:keys [click column-kind]}]
         ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
         ;; never occurs in actual pivot tables!
         ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
@@ -33,6 +33,7 @@
         ;; code that should be setting the aggregation :value for cell clicks?
         ;; Tech debt issue: #39380
         (and (#{:cell #_:pivot :legend} click)
+             (not (:native? test-case))
              (or (seq (:dimensions context))
                  (= column-kind :aggregation)))))))
 

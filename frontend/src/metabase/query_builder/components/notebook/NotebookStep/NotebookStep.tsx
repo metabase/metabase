@@ -10,7 +10,6 @@ import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 
 import NotebookStepPreview from "../NotebookStepPreview";
 import type {
@@ -20,13 +19,13 @@ import type {
 
 import ActionButton from "./ActionButton";
 import {
+  PreviewButton,
   StepActionsContainer,
   StepBody,
+  StepButtonContainer,
   StepContent,
   StepHeader,
-  StepButtonContainer,
   StepRoot,
-  PreviewButton,
 } from "./NotebookStep.styled";
 import { STEP_UI } from "./steps";
 
@@ -36,7 +35,6 @@ function hasLargeButton(action: NotebookStepAction) {
 
 interface NotebookStepProps {
   step: INotebookStep;
-  sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
   reportTimezone: string;
@@ -47,7 +45,6 @@ interface NotebookStepProps {
 
 function NotebookStep({
   step,
-  sourceQuestion,
   isLastStep,
   isLastOpened,
   reportTimezone,
@@ -109,10 +106,11 @@ function NotebookStep({
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
+  const color = getColor();
   const canPreview =
-    Lib.canRun(step.query, step.question.type()) && step.active && step.visible;
+    step.previewQuery != null && Lib.canPreview(step.previewQuery);
   const hasPreviewButton = !isPreviewOpen && canPreview;
-  const canRevert = typeof step.revert === "function" && !readOnly;
+  const canRevert = step.revert != null && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -149,7 +147,6 @@ function NotebookStep({
                 step={step}
                 query={step.query}
                 stageIndex={step.stageIndex}
-                sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
                 reportTimezone={reportTimezone}
