@@ -11,6 +11,7 @@ import autoYSplit from "./auto-y-split.json";
 import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
+import barFormattingFull from "./bar-formatting-full.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import barHistogramMultiSeriesBinned from "./bar-histogram-multi-series-binned.json";
 import barHistogramMultiSeries from "./bar-histogram-multi-series.json";
@@ -89,6 +90,7 @@ import trendSingleSeriesArea from "./trend-single-series-area.json";
 import trendSingleSeriesBar from "./trend-single-series-bar.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
 import wrongYAxisRange37306 from "./wrong-y-axis-range-37306.json";
+import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.json";
 
 export const data = {
   lineLinearXScale,
@@ -182,4 +184,6 @@ export const data = {
   twoBarsTwoAreasOneLineLinear,
   twoBarsTwoAreasOneLinePower,
   twoBarsTwoAreasOneLineLog,
+  barFormattingFull,
+  yAxisCompactWithoutDataLabels,
 };
