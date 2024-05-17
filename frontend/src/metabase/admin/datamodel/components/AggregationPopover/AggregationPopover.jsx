@@ -288,13 +288,9 @@ export class AggregationPopover extends Component {
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
-
     const filter = metric =>
-      maybeOverriddenShowMetrics
-        ? !metric.archived ||
-          (selectedAggregation && selectedAggregation.id === metric.id)
-        : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
-          metric.googleAnalyics;
+      maybeOverriddenShowMetrics &&
+      (!metric.archived || selectedAggregation?.id === metric.id);
 
     if (table.metrics) {
       return table.metrics.filter(filter);
