@@ -1,11 +1,7 @@
 import { merge } from "icepick";
 
-import { colors } from "metabase/lib/colors";
-import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
-
 import type {
   MetabaseTheme,
-  MetabaseColors,
   MetabaseColor,
   MetabaseComponentTheme,
 } from "../../types/theme";
@@ -13,6 +9,7 @@ import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
 import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -52,46 +49,4 @@ export function getEmbeddingThemeOverride(
   }
 
   return override;
-}
-
-const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
-  brand: "brand",
-  border: "border",
-  filter: "filter",
-  summarize: "summarize",
-  "text-primary": "text-dark",
-  "text-secondary": "text-medium",
-  "text-tertiary": "text-light",
-  background: "bg-white",
-  "background-hover": "bg-light",
-
-  // shadow: "shadow",
-  // positive: "success",
-  // negative: "danger",
-  // warning: "warning",
-
-  // white
-  // black
-};
-
-const originalColors = { ...colors };
-
-export function getThemedColorsPalette(
-  themeColors?: MetabaseColors,
-): ColorPalette {
-  if (!themeColors) {
-    return originalColors;
-  }
-
-  const mappedThemeColors: ColorPalette = {};
-
-  Object.entries(themeColors).forEach(([key, value]) => {
-    const mappedKey = SDK_TO_MAIN_APP_COLORS_MAPPING[key as MetabaseColor];
-    mappedThemeColors[mappedKey] = value;
-  });
-
-  return {
-    ...originalColors,
-    ...mappedThemeColors,
-  };
 }

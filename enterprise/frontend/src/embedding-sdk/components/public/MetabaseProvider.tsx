@@ -1,13 +1,10 @@
-import { type ReactNode, type JSX, useEffect, useMemo } from "react";
+import { type ReactNode, type JSX, useEffect } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import {
-  getEmbeddingThemeOverride,
-  getThemedColorsPalette,
-} from "embedding-sdk/lib/theme/get-embedding-theme";
 import { store } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -16,10 +13,7 @@ import {
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
-import { colors } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
@@ -37,16 +31,6 @@ const MetabaseProviderInternal = ({
   pluginsConfig,
   theme,
 }: MetabaseProviderProps): JSX.Element => {
-  const themeOverride = useMemo(() => {
-    const combinedThemeColors = getThemedColorsPalette(theme?.colors);
-
-    Object.entries(combinedThemeColors).forEach(([key, value]) => {
-      colors[key as ColorName] = value;
-    });
-
-    return theme && getEmbeddingThemeOverride(theme);
-  }, [theme]);
-
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
@@ -62,11 +46,11 @@ const MetabaseProviderInternal = ({
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider theme={themeOverride}>
+        <SdkThemeProvider theme={theme}>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
-        </ThemeProvider>
+        </SdkThemeProvider>
       </EmotionCacheProvider>
     </Provider>
   );
