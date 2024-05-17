@@ -51,6 +51,11 @@ import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
 import { LoaderInButton } from "./StrategyForm.styled";
 
+interface ButtonLabels {
+  save: string;
+  discard: string;
+}
+
 export const StrategyForm = ({
   targetId,
   targetModel,
@@ -62,6 +67,10 @@ export const StrategyForm = ({
   shouldShowName = true,
   formStyle = {},
   onReset,
+  buttonLabels = {
+    save: t`Save changes`,
+    discard: t`Discard changes`,
+  },
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -73,6 +82,7 @@ export const StrategyForm = ({
   shouldShowName?: boolean;
   formStyle?: React.CSSProperties;
   onReset?: () => void;
+  buttonLabels?: ButtonLabels;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
@@ -95,6 +105,7 @@ export const StrategyForm = ({
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
         formStyle={formStyle}
+        buttonLabels={buttonLabels}
       />
     </FormProvider>
   );
@@ -108,6 +119,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation,
   shouldShowName = true,
   formStyle = {},
+  buttonLabels,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -116,6 +128,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   formStyle?: React.CSSProperties;
+  buttonLabels: ButtonLabels;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -224,6 +237,7 @@ const StrategyFormBody = ({
           targetModel={targetModel}
           targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
+          buttonLabels={buttonLabels}
         />
       </Form>
     </div>
@@ -249,6 +263,7 @@ type FormButtonsProps = {
   targetModel: CacheableModel;
   shouldAllowInvalidation: boolean;
   targetName?: string;
+  buttonLabels: ButtonLabels;
 };
 
 const FormButtons = ({
@@ -256,6 +271,7 @@ const FormButtons = ({
   targetModel,
   shouldAllowInvalidation,
   targetName,
+  buttonLabels,
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
 
@@ -270,7 +286,11 @@ const FormButtons = ({
   if (isSavingPossible) {
     return (
       <FormButtonsGroup>
-        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
+        <SaveAndDiscardButtons
+          dirty={dirty}
+          isFormPending={isFormPending}
+          buttonLabels={buttonLabels}
+        />
       </FormButtonsGroup>
     );
   }
@@ -329,20 +349,21 @@ const ScheduleStrategyFormFields = () => {
 const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
+  buttonLabels,
 }: {
   dirty: boolean;
   isFormPending: boolean;
+  buttonLabels: ButtonLabels;
 }) => {
   return (
     <>
-      <Button
-        disabled={!dirty || isFormPending}
-        type="reset"
-      >{t`Discard changes`}</Button>
+      <Button disabled={!dirty || isFormPending} type="reset">
+        {buttonLabels.discard}
+      </Button>
       <FormSubmitButton
         miw="10rem"
         h="40px"
-        label={t`Save changes`}
+        label={buttonLabels.save}
         successLabel={
           <Group spacing="xs">
             <Icon name="check" /> {t`Saved`}
@@ -351,6 +372,7 @@ const SaveAndDiscardButtons = ({
         activeLabel={<LoaderInButton size="1rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
+        className="strategy-form-submit-button"
       />
     </>
   );
