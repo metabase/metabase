@@ -26,21 +26,19 @@ import type {
 const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
 
 const getValuesToMeasure = (min: number, max: number): number[] => {
-  const valuesToMeasure = [min, max];
+  if (min === max) {
+    return [min, max];
+  }
 
-  const numCandidatesToAdd = 4;
-  const range = max - min;
-  Array.from({ length: numCandidatesToAdd }).forEach((_, i) => {
-    // i = 0, 1, 2, ..., numCandidatesToAdd - 1
-    // value = min + range * (i + 1) / (numCandidatesToAdd + 1)
-    // => (numCandidatesToAdd + 1) > (i + 1) > 0
-    // => 1 > (i + 1) / (numCandidatesToAdd + 1) > 0
-    // => min < value < max
-    const value = min + (range * (i + 1)) / (numCandidatesToAdd + 1);
-    valuesToMeasure.push(value);
-  });
+  const stepsCount = 4;
+  const step = (max - min) / (stepsCount + 1);
+  const middleValues = [];
 
-  return valuesToMeasure;
+  for (let i = 1; i <= stepsCount; i++) {
+    middleValues.push(min + step * i);
+  }
+
+  return [...middleValues, min, max];
 };
 
 const getYAxisTicksWidth = (
