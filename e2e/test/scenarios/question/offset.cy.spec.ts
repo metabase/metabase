@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  POPOVER_ELEMENT,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -147,6 +148,15 @@ describe("scenarios > question > offset", () => {
       };
 
       createQuestion({ query }, { visitQuestion: true });
+
+      cy.log("custom column drills");
+      const rowIndex = 1;
+      const columnIndex = 9;
+      const columnsCount = 10;
+      const cellIndex = rowIndex * columnsCount + columnIndex;
+      cy.findAllByRole("gridcell").eq(cellIndex).click();
+      cy.get(POPOVER_ELEMENT).should("not.exist");
+
       openNotebook();
 
       cy.log("custom column expressions");
@@ -170,10 +180,6 @@ describe("scenarios > question > offset", () => {
 
       getNotebookStep("sort").icon("add").click();
       popover().should("not.contain", offsettedColumnName);
-    });
-
-    it.skip("does not allow drilling on a offsetted column", () => {
-      // TODO
     });
   });
 
