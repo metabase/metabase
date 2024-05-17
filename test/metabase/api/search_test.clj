@@ -749,8 +749,8 @@
 (defn- archived-with-trashed-from-id [m]
   (assoc m
          :archived true
-         :trashed_from_collection_id (:collection_id m)
-         :collection_id (collection/trash-collection-id)))
+         :trashed_directly true
+         :collection_id (:collection_id m)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"

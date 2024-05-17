@@ -147,7 +147,7 @@
    :collection_type     :text
    :collection_location :text
    :collection_authority_level :text
-   :trashed_from_collection_id :integer
+   :trashed_directly    :boolean
    ;; returned for Card and Dashboard
    :collection_position :integer
    :creator_id          :integer
@@ -281,7 +281,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :trashed_from_collection_id :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :trashed_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -302,7 +302,7 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :trashed_from_collection_id :collection_id :collection_position :creator_id bookmark-col
+  (conj default-columns :trashed_directly :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))

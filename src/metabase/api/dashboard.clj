@@ -704,7 +704,7 @@
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
-          dash-updates                       (api/move-on-archive-or-unarchive current-dash dash-updates (collection/trash-collection-id))]
+          dash-updates                       (api/move-on-archive-or-unarchive current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
       (api/check-500
@@ -716,7 +716,7 @@
             (when-let [updates (not-empty
                                 (u/select-keys-when
                                     dash-updates
-                                  :present #{:description :position :width :collection_id :collection_position :cache_ttl :trashed_from_collection_id}
+                                  :present #{:description :position :width :collection_id :collection_position :cache_ttl :trashed_directly}
                                   :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                              :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates)

@@ -873,6 +873,8 @@
                  "sub-A"
                  "sub-C"
                  "sub-B"
+                 ;; can see the dashboard in Collection B, because it's readable (but maybe we should change this)
+                 "dashboard-B"
                  ;; can see the dashboard in Collection C, because Rasta has read/write permissions on Collection C
                  "dashboard-C"} (set-of-item-names (collection/trash-collection-id)))))
       (testing "if the collections themselves are trashed, subcollection checks still work the same way"
@@ -882,9 +884,10 @@
                  "sub-B"
                  "sub-C"
                  "C"
+                 "dashboard-B"
                  "dashboard-C"}
                (set-of-item-names (collection/trash-collection-id)))))
-      (testing "after hard deletion of a collection, only admins can see things trashed from them"
+      (testing "after hard deletion of a collection, everything that was in them is also deleted."
         (doseq [coll [collection-a collection-b collection-c]]
           (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id coll))))
         ;; Rasta can no longer see:
@@ -893,7 +896,7 @@
         (is (= #{"sub-A" "sub-B" "sub-C"}
                (set-of-item-names (collection/trash-collection-id))))
         ;; Crowberto can see all of the still-existent things.
-        (is (= #{"sub-A" "sub-B" "sub-C" "dashboard-A" "dashboard-B" "dashboard-C"}
+        (is (= #{"sub-A" "sub-B" "sub-C"}
                (->> (get-items :crowberto (collection/trash-collection-id))
                     (map :name)
                     set)))))))

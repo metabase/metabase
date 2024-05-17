@@ -329,6 +329,7 @@
                          :p.name
                          :p.entity_id
                          :p.collection_position
+                         :p.collection_id
                          [(h2x/literal "pulse") :model]]
        :from            [[:pulse :p]]
        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
@@ -363,7 +364,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+  {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -388,7 +389,8 @@
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :c.trashed_from_collection_id
+                     :c.collection_id
+                     :c.trashed_directly
                      :c.archived
                      :c.dataset_query
                      [(h2x/literal (case card-type
@@ -421,7 +423,12 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :collection_id (:id collection)]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    :collection_id
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+                   (if (collection/is-trash? collection)
+                     [:= :c.trashed_directly true]
+                     [:= :collection_id (:id collection)])
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model
@@ -505,6 +512,7 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
+      (update :trashed_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
@@ -519,7 +527,8 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   :d.trashed_from_collection_id
+                   :d.collection_id
+                   :d.trashed_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    :archived
@@ -534,7 +543,12 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :collection_id (:id collection)]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    :collection_id
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+                   (if (collection/is-trash? collection)
+                     [:= :d.trashed_directly true]
+                     [:= :collection_id (:id collection)])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
@@ -545,6 +559,7 @@
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
       (update :archived api/bit->boolean)
+      (update :trashed_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
@@ -574,6 +589,7 @@
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
+                      [:id :collection_id]
                       :archived
                       :name
                       :description
@@ -682,7 +698,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :trashed_from_collection_id))
+  (dissoc row :collection_type :model_ranking :trashed_directly))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -699,8 +715,7 @@
   (mi/can-write?
    (t2/instance
     (model-name->toucan-model (:model row))
-    (assoc (select-keys row [:id :trashed_from_collection_id :archived])
-           :collection_id (:id collection)))))
+    (assoc (select-keys row [:id :archived]) :collection_id (:id collection)))))
 
 (defn- maybe-check-permissions
   "Generally, if you have permission to read a collection, you have permission to read everything in it.
@@ -719,7 +734,6 @@
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
-       (map #(assoc % :collection_id (:id collection)))
        (maybe-check-permissions collection)
        (group-by :model)
        (into []
@@ -747,11 +761,12 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+   :collection_id
+   [:trashed_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type [:archived :boolean]
-   [:trashed_from_collection_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 

@@ -8033,6 +8033,36 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
+      id: v50.2024-05-17T15:51:00
+      author: johnswanson
+      comment: Add `report_dashboard.trashed_directly`
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: trashed_directly
+                  type: ${boolean.type}
+                  remarks: "Was this thing trashed directly"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-17T15:51:44
+      author: johnswanson
+      comment: Add `report_card.trashed_directly`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: trashed_directly
+                  type: ${boolean.type}
+                  remarks: "Was this thing trashed directly"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration

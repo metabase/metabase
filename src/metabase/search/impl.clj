@@ -107,30 +107,17 @@
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
-  so we can return its `:name`.
-
-  A brief note here on `collection-join-id` and `collection-permission-id`. What the heck do these represent?
-
-  Permissions on Trashed items work differently than normal permissions. If something is in the trash, you can only
-  see it if you have the relevant permissions on the *original* collection the item was trashed from. This is set as
-  `trashed_from_collection_id`.
-
-  However, the item is actually *in* the Trash, and we want to show that to the frontend. Therefore, we need two
-  different collection IDs. One, the ID we should be checking permissions on, and two, the ID we should be joining to
-  Collections on."
+  so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
-        collection-join-id       (if (= model "collection")
+        collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
-        collection-permission-id (if (= model "collection")
-                                   :collection.id
-                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-permission-id
+                                  collection-id-col
                                   visible-collections)]
     (cond-> honeysql-query
       true
@@ -138,7 +125,7 @@
       ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= model "collection")
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-join-id :collection.id])
+                             [:= collection-id-col :collection.id])
 
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
@@ -302,16 +289,14 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
-            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
-
             collection-perm-clause
             [:or
-             (when has-root-access? [:= collection-id nil])
+             (when has-root-access? [:= :collection_id nil])
              [:and
-              [:not= collection-id nil]
+              [:not= :collection_id nil]
               [:or
-               (has-perm-clause "/collection/" collection-id "/")
-               (has-perm-clause "/collection/" collection-id "/read/")]]]]
+               (has-perm-clause "/collection/" :collection_id "/")
+               (has-perm-clause "/collection/" :collection_id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))
