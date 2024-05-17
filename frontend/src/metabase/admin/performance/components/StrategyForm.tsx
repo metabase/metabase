@@ -8,14 +8,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
-  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -49,7 +47,12 @@ import {
 } from "../strategies";
 import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
-import { LoaderInButton } from "./StrategyForm.styled";
+import {
+  FormBox,
+  FormWrapper,
+  LoaderInButton,
+  StyledForm,
+} from "./StrategyForm.styled";
 
 interface ButtonLabels {
   save: string;
@@ -155,32 +158,12 @@ const StrategyFormBody = ({
   }, [selectedStrategyType, values, setFieldValue]);
 
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Form
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
-          ...formStyle,
-        }}
-      >
-        <Box
-          className="strategy-form-box"
-          style={{
-            borderBottom: `1px solid ${color("border")}`,
-            overflow: "auto",
-            flexGrow: 1,
-          }}
-        >
+    <FormWrapper>
+      <StyledForm style={{ ...formStyle }}>
+        <FormBox className="strategy-form-box">
           {shouldShowName && (
-            <Box lh="1rem" px="lg" py="xs" color="text-medium">
-              <Group spacing="sm">
+            <Box lh="1rem" px="lg" py="md" color="text-medium">
+              <Group spacing="lg">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -231,7 +214,7 @@ const StrategyFormBody = ({
               <ScheduleStrategyFormFields />
             )}
           </Stack>
-        </Box>
+        </FormBox>
         <FormButtons
           targetId={targetId}
           targetModel={targetModel}
@@ -239,8 +222,8 @@ const StrategyFormBody = ({
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
         />
-      </Form>
-    </div>
+      </StyledForm>
+    </FormWrapper>
   );
 };
 
@@ -395,10 +378,14 @@ const StrategySelector = ({
     <section>
       <FormRadioGroup
         label={
-          <Text
-            lh="1rem"
-            color="text-medium"
-          >{t`When should cached query results be invalidated?`}</Text>
+          <Stack spacing="xs">
+            <Text lh="1rem" color="text-medium">
+              {t`Select the cache invalidation policy`}
+            </Text>
+            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+              {t`This determines how long cached results will be stored.`}
+            </Text>
+          </Stack>
         }
         name="type"
       >
