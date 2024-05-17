@@ -149,6 +149,7 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
+      defaultToRecentTab={false}
       initialValue={value}
       options={options}
       searchParams={searchParams}
