@@ -244,7 +244,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses model search-ctx)
+      (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
       (with-moderated-status "card")))
