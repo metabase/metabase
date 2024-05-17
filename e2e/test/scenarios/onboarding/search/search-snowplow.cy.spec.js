@@ -20,6 +20,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     resetSnowplow();
     cy.signInAsAdmin();
     enableTracking();
+    cy.intercept("GET", "/api/search**").as("search");
   });
 
   afterEach(() => {
@@ -36,6 +37,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("no filters", () => {
       it("should send a new_search_query snowplow event, but not search_results_filtered when a search with no filters is accessed from the URL", () => {
         cy.visit("/search?q=orders");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
       });
@@ -44,6 +46,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("type filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&type=card");
+        cy.wait("@search");
 
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
@@ -51,7 +54,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -69,7 +72,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&type=card");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -85,13 +88,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("created_by filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_by=1");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -107,7 +111,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_by=1");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -123,14 +127,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("last_edited_by filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -146,7 +150,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -162,13 +166,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("created_at filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_at=thisday");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -183,7 +188,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_at=thisday");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -199,13 +204,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("last_edited_at filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -220,7 +226,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -240,13 +246,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&verified=true");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -260,7 +267,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&verified=true");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
@@ -276,13 +283,14 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     describe("search_native_query filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&search_native_query=true");
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
 
@@ -296,7 +304,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&search_native_query=true");
-
+        cy.wait("@search");
         expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
         expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
 
