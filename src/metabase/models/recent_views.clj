@@ -59,8 +59,8 @@
 
 (def models-of-interest
   "These are models for which we will retrieve recency."
-  [:card :model :metric ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
-                        ;;       distinguish between them.
+  [:card :model ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
+                ;;       distinguish between them.
    :dashboard :table :collection])
 
 (defn- ids-to-prune-for-user+model [user-id model]
@@ -138,7 +138,7 @@
     [:id [:int {:min 1}]]
     [:name :string]
     [:description [:maybe :string]]
-    [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+    [:model [:enum :dataset :card :dashboard :collection :table]]
     [:can_write :boolean]
     [:timestamp :string]]
    [:multi {:dispatch :model}
@@ -149,10 +149,6 @@
     [:dataset [:map
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
-    [:metric [:map
-              [:parent_collection ::pc]
-              [:display :string]
-              [:moderated_status [:enum "verified" nil]]]]
     [:dashboard [:map [:parent_collection ::pc]]]
     [:table [:map
              [:display_name :string]
@@ -169,7 +165,7 @@
   For most items, we gather information from the db in a single query, but certain things are more prudent to check with
   code (e.g. a collection's parent collection.)"
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
-    (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
+    (or (get {"model" :dataset "question" :card} card_type)
         (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
