@@ -972,7 +972,7 @@ saved later when it is ready."
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at))
+        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

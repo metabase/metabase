@@ -16,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -682,8 +683,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod escape-alias ::driver
-  [_driver alias-name]
+(mu/defmethod escape-alias ::driver :- :string
+  [_driver alias-name :- :string]
   (driver.impl/truncate-alias alias-name))
 
 (defmulti humanize-connection-error-message
