@@ -74,7 +74,7 @@ Metabase uses a group-based permission model: people belong to groups, and admin
 
 **Explanation**
 
-If an Admin sets the table visibility to **Hidden**, you will be able to use SQL to query the table but will not be able to see it in **Browse data** or as a data source in the Query Builder.
+If an Admin sets the table visibility to **Hidden**, you will be able to use SQL to query the table but will not be able to see it in **Browse** > **Databases** or as a data source in the Query Builder.
 
 ## MongoDB
 

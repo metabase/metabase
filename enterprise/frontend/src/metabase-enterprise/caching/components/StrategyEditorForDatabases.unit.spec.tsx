@@ -5,13 +5,15 @@ import type { SetupOpts } from "metabase/admin/performance/components/test-utils
 import {
   changeInput,
   getSaveButton,
-  setup as baseSetup,
+  setupStrategyEditorForDatabases as baseSetup,
 } from "metabase/admin/performance/components/test-utils";
+import { PLUGIN_CACHING } from "metabase/plugins";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({
     hasEnterprisePlugins: true,
-    tokenFeatures: { cache_granular_controls: true },
+    tokenFeatures: createMockTokenFeatures({ cache_granular_controls: true }),
     ...opts,
   });
 }
@@ -23,18 +25,21 @@ describe("StrategyEditorForDatabases", () => {
   afterEach(() => {
     fetchMock.restore();
   });
+  it("lets user override root strategy on enterprise instance", async () => {
+    expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
+  });
   it("should show strategy form launchers", async () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();
     expect(
-      await screen.findByLabelText("Edit default policy (currently: Hours)"),
+      await screen.findByLabelText("Edit default policy (currently: Duration)"),
     ).toBeInTheDocument();
     expect(
       await screen.findAllByLabelText(/Edit policy for database/),
     ).toHaveLength(4);
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 1' (currently: Query duration multiplier)",
+        "Edit policy for database 'Database 1' (currently: Adaptive)",
       ),
     ).toBeInTheDocument();
     expect(
@@ -44,19 +49,19 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 3' (currently: Hours)",
+        "Edit policy for database 'Database 3' (currently: Duration)",
       ),
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 4' (currently inheriting the default policy, Hours)",
+        "Edit policy for database 'Database 4' (currently inheriting the default policy, Duration)",
       ),
     ).toBeInTheDocument();
   });
 
-  it("lets user change the default policy from 'Hours' to Query duration multiplier to No caching", async () => {
+  it("lets user change the default policy from 'Duration' to 'Adaptive' to 'Don't cache results'", async () => {
     const editButton = await screen.findByLabelText(
-      `Edit default policy (currently: Hours)`,
+      `Edit default policy (currently: Duration)`,
     );
     editButton.click();
     expect(
@@ -65,9 +70,8 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /after a specific number of hours/i,
+        name: /keep the cache for a number of hours/i,
       });
-      // 'Hours' is the default
       expect(durationStrategyRadioButton).toBeChecked();
 
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
@@ -78,7 +82,7 @@ describe("StrategyEditorForDatabases", () => {
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
-      await screen.findByLabelText(`Edit default policy (currently: Hours)`),
+      await screen.findByLabelText(`Edit default policy (currently: Duration)`),
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -102,10 +106,10 @@ describe("StrategyEditorForDatabases", () => {
     );
 
     await act(async () => {
-      const multiplierStrategyRadioButton = await screen.findByRole("radio", {
-        name: /Query duration multiplier/i,
+      const adaptiveStrategyRadioButton = await screen.findByRole("radio", {
+        name: /Adaptive/i,
       });
-      multiplierStrategyRadioButton.click();
+      adaptiveStrategyRadioButton.click();
     });
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
@@ -120,15 +124,13 @@ describe("StrategyEditorForDatabases", () => {
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
-      await screen.findByLabelText(
-        `Edit default policy (currently: Query duration multiplier)`,
-      ),
+      await screen.findByLabelText(`Edit default policy (currently: Adaptive)`),
     ).toBeInTheDocument();
   });
 
-  it("lets user change policy for Database 1 from 'Query duration multiplier' to 'Hours' to 'Don't cache to 'Use default'", async () => {
+  it("lets user change policy for Database 1 from 'Adaptive' to 'Duration' to 'Don't cache to 'Use default'", async () => {
     const editButton = await screen.findByLabelText(
-      `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
+      `Edit policy for database 'Database 1' (currently: Adaptive)`,
     );
     editButton.click();
 
@@ -155,7 +157,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /specific number of hours/i,
+        name: /keep the cache for a number of hours/i,
       });
       durationStrategyRadioButton.click();
 
@@ -172,12 +174,12 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     ).toHaveAttribute(
       "aria-label",
-      "Edit policy for database 'Database 1' (currently: Hours)",
+      "Edit policy for database 'Database 1' (currently: Duration)",
     );
 
-    // Switch to Query duration multiplier strategy
+    // Switch to Adaptive strategy
     const multiplierStrategyRadioButton = await screen.findByRole("radio", {
-      name: /Query duration multiplier/i,
+      name: /Adaptive/i,
     });
     multiplierStrategyRadioButton.click();
 
@@ -192,7 +194,7 @@ describe("StrategyEditorForDatabases", () => {
 
     expect(
       await screen.findByLabelText(
-        `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
+        `Edit policy for database 'Database 1' (currently: Adaptive)`,
       ),
     ).toBeInTheDocument();
   });

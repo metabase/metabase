@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -196,6 +197,36 @@
       false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
       true (lib/native-query meta/metadata-provider "SELECT")
       false (lib/native-query meta/metadata-provider ""))))
+
+(deftest ^:parallel can-preview-test
+  (mu/disable-enforcement
+    (testing "can-preview"
+      (is (= true (lib/can-preview lib.tu/venues-query)))
+      (testing "with an offset expression"
+        (let [offset-query (lib/expression lib.tu/venues-query "prev_price"
+                                           (lib/offset (meta/field-metadata :venues :price) -1))]
+          (testing "without order-by = false"
+            (is (= false (lib/can-preview offset-query))))
+          (testing "with order-by = true"
+            (is (= true  (-> offset-query
+                             (lib/order-by (meta/field-metadata :venues :latitude))
+                             lib/can-preview))))))
+      (testing "with an offset expression in an earlier stage"
+        (let [offset-query (-> lib.tu/venues-query
+                               (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
+                               (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
+                               (lib/aggregate (lib/count))
+                               lib/append-stage)]
+          (testing "without order-by in that stage = false"
+            (is (= false (lib/can-preview offset-query)))
+            ;; order by in the other stage doesn't help
+            (is (= false (-> offset-query
+                             (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
+                             lib/can-preview))))
+          (testing "with order-by in that stage = true"
+            (is (= true  (-> offset-query
+                             (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
+                             lib/can-preview)))))))))
 
 (deftest ^:parallel normalize-test
   (testing "Normalize (including adding :lib/uuids) when creating a new query"

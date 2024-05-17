@@ -39,6 +39,7 @@ import {
   COLLECTION_ITEM_MODELS,
   SEARCH_MODELS,
 } from "metabase-types/api";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -131,6 +132,12 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
     idTag("card", card.id),
     ...(card.collection ? provideCollectionTags(card.collection) : []),
   ];
+}
+
+export function provideCloudMigrationTags(
+  migration: CloudMigration,
+): TagDescription<TagType>[] {
+  return [idTag("cloud-migration", migration.id)];
 }
 
 export function provideCollectionItemListTags(

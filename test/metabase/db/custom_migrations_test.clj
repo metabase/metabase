@@ -14,14 +14,17 @@
    [medley.core :as m]
    [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
    [metabase.task :as task]
+   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -39,25 +42,34 @@
 (jobs/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]
-  (case table
-    :core_user         {:first_name  (mt/random-name)
-                        :last_name   (mt/random-name)
-                        :email       (mt/random-email)
-                        :password    "superstrong"
-                        :date_joined :%now}
-    :metabase_database {:name       (mt/random-name)
-                        :engine     "h2"
-                        :details    "{}"
-                        :created_at :%now
-                        :updated_at :%now}
-    :report_card       {:name                   (mt/random-name)
-                        :dataset_query          "{}"
-                        :display                "table"
-                        :visualization_settings "{}"
-                        :created_at             :%now
-                        :updated_at             :%now}
-    :revision          {:timestamp :%now}
-    {}))
+  (letfn [(with-timestamped [props]
+            (merge props {:created_at :%now :updated_at :%now}))]
+   (case table
+     :core_user         {:first_name  (mt/random-name)
+                         :last_name   (mt/random-name)
+                         :email       (mt/random-email)
+                         :password    "superstrong"
+                         :date_joined :%now}
+     :metabase_database (with-timestamped
+                          {:name       (mt/random-name)
+                           :engine     "h2"
+                           :details    "{}"})
+
+     :report_card       (with-timestamped
+                         {:name                   (mt/random-name)
+                          :dataset_query          "{}"
+                          :display                "table"
+                          :visualization_settings "{}"})
+     :revision          {:timestamp :%now}
+     :pulse             (with-timestamped
+                         {:name       (mt/random-name)
+                          :parameters "{}"})
+     :pulse_channel     (with-timestamped
+                          {:channel_type  "slack"
+                           :details       (json/generate-string {:channel "general"})
+                           :schedule_type "daily"
+                           :schedule_hour 15})
+     {})))
 
 (defn- new-instance-with-default
   ([table]
@@ -1704,7 +1716,154 @@
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
+       (migrate! :down 48)
+       (testing "after migrate down, db details should still be encrypted"
+         (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
 
-        (migrate! :down 48)
-        (testing "after migrate down, db details should still be encrypted"
-          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
+(defn scheduler-job-keys
+  []
+  (->> (task/scheduler-info)
+       :jobs
+       (map :key)
+       set))
+
+(deftest delete-send-pulse-job-on-migrate-down-test
+  (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
+    (migrate!)
+    (pulse-channel-test/with-send-pulse-setup!
+      (let [user-id  (:id (new-instance-with-default :core_user))
+            pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
+            pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+        ;; trigger this so we schedule a trigger for send-pulse
+        (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+        (testing "sanity check that we have a send pulse trigger and 2 jobs"
+          (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
+          (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                   "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                 (scheduler-job-keys))))
+        (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
+          (migrate! :down 49)
+          (is (= #{} (scheduler-job-keys)))
+          (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+        (testing "the init-send-pulse-triggers job should be re-run after migrate up"
+          (migrate!)
+          ;; we need to redef this so quarzt trigger that run on a different thread use the same db connection as this test
+          (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+            ;; simulate starting MB after migrate up, which will trigger this function
+            (task/init! ::task.send-pulses/SendPulses)
+            ;; wait a bit for the InitSendPulseTriggers to run
+            (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                     :done? #(= 1 %)})
+            (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
+              (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                     (pulse-channel-test/send-pulse-triggers pulse-id)))
+              (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                       "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                     (scheduler-job-keys))))))))))
+
+(def ^:private area-bar-combo-cards-test-data
+  {"stack display takes priority"
+   {:card     {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type    "stacked"
+                                         :stackable.stack_display "bar"})}
+    :expected {:display                "bar"
+               :visualization_settings {:stackable.stack_type "stacked"}}}
+
+   "series settings have no display"
+   {:card     {:display                "area"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "normalized"
+                                         :series_settings      {:A {:display :bar}}})}
+    :expected {:display                "area"
+               :visualization_settings {:stackable.stack_type "normalized"
+                                        :series_settings      {:A {}}}}}
+
+   "combo display has no stack type"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"})}
+    :expected {:display                "combo"
+               :visualization_settings {}}}
+
+   "series settings display can override combo if all equal, and area or bar"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"
+                                         :series_settings      {:A {:display :bar}
+                                                                :B {:display :bar}
+                                                                :C {:display :bar}}})}
+    :expected {:display                "bar"
+               :visualization_settings {:stackable.stack_type "stacked"
+                                        :series_settings      {:A {}
+                                                               :B {}
+                                                               :C {}}}}}
+
+   "series settings display do not override combo if not equal"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "stacked"
+                                         :series_settings      {:A {:display :bar}
+                                                                :B {:display :area}
+                                                                :C {:display :bar}}})}
+    :expected {:display                "combo"
+               :visualization_settings {:series_settings {:A {:display "bar"}
+                                                          :B {:display "area"}
+                                                          :C {:display "bar"}}}}}
+
+   "series settings display do not override combo if all equal, but not area or bar"
+   {:card     {:display                "combo"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_type "normalized"
+                                         :series_settings      {:A {:display :line}
+                                                                :B {:display :line}
+                                                                :C {:display :line}}})}
+    :expected {:display                "combo"
+               :visualization_settings {:series_settings {:A {:display "line"}
+                                                          :B {:display "line"}
+                                                          :C {:display "line"}}}}}
+
+   "any card with stackable.stack_display should have that key removed"
+   {:card     {:display                "table"
+               :visualization_settings (json/generate-string
+                                        {:stackable.stack_display :line})}
+    :expected {:display                "table"
+               :visualization_settings {}}}})
+
+(deftest migrate-stacked-area-bar-combo-display-settings-test
+  (testing "Migrations v50.2024-05-15T13:13:13: Fix visualization settings for stacked area/bar/combo displays"
+    (impl/test-migrations ["v50.2024-05-15T13:13:13"] [migrate!]
+      (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  (mapv (fn [[name {:keys [card]}]]
+                                                          (merge card {:name name
+                                                                       :created_at    :%now
+                                                                       :updated_at    :%now
+                                                                       :creator_id    user-id
+                                                                       :dataset_query "{}"
+                                                                       :database_id   database-id
+                                                                       :collection_id nil}))
+                                                        area-bar-combo-cards-test-data))]
+        (migrate!)
+        (testing "Area Bar Combo Stacked Viz settings migration"
+          (let [cards (->> (t2/query {:select [:name :display :visualization_settings]
+                                      :from   [:report_card]
+                                      :where  [:in :id card-ids]})
+                           (map (fn [card] (update card :visualization_settings #(json/parse-string % keyword)))))]
+            (doseq [{:keys [name] :as card} cards]
+              (testing (format "Migrating a card where: %s" name)
+                (is (= (-> (get-in area-bar-combo-cards-test-data [name :expected])
+                           (dissoc :name))
+                       (-> card
+                           (dissoc :name))))))))))))
