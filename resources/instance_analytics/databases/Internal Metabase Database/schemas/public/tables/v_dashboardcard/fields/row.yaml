@@ -1,0 +1,41 @@
+name: row
+display_name: Row
+description: null
+created_at: '2023-09-21T13:22:50.069446Z'
+active: false
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_dashboardcard
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+semantic_type: null
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 8
+custom_position: 0
+database_position: 8
+has_field_values: auto-list
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_dashboardcard
+  model: Table
+- id: row
+  model: Field
+database_indexed: null
+database_partitioned: null

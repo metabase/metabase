@@ -1,7 +1,7 @@
 name: group_name
 display_name: Group Name
 description: null
-created_at: '2023-11-10T21:38:07.179931Z'
+created_at: '2023-06-08T14:05:41.30338Z'
 active: true
 visibility_type: normal
 table_id:
@@ -11,7 +11,7 @@ table_id:
 database_type: varchar
 base_type: type/Text
 effective_type: type/Text
-semantic_type: type/Category
+semantic_type: type/Name
 database_is_auto_increment: false
 database_required: false
 fk_target_field_id: null
@@ -23,7 +23,7 @@ preview_display: true
 position: 2
 custom_position: 0
 database_position: 2
-has_field_values: auto-list
+has_field_values: list
 settings: null
 caveats: null
 points_of_interest: null

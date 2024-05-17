@@ -350,7 +350,6 @@ serdes/meta:
   label: people
   model: Card
 initially_published_at: null
-last_used_at: '2024-05-15T20:34:52.807163Z'
+last_used_at: '2024-05-16T21:01:38.038034Z'
 metabase_version: null
 type: model
-view_count: 3

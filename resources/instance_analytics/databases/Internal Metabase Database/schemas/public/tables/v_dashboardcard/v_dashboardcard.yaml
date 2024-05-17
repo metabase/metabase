@@ -1,7 +1,7 @@
 name: v_dashboardcard
 display_name: V Dashboardcard
 description: null
-created_at: '2023-11-10T21:38:01.63152Z'
+created_at: '2023-09-21T13:22:49.746681Z'
 db_id: Internal Metabase Database
 schema: public
 entity_type: entity/GenericTable
@@ -22,4 +22,3 @@ serdes/meta:
   model: Table
 database_require_filter: null
 estimated_row_count: null
-view_count: 0
