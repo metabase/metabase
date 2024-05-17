@@ -15,7 +15,7 @@ import type { State } from "metabase-types/store";
 
 import { NotebookSteps } from "./NotebookSteps";
 
-interface NotebookOwnProps {
+interface NotebookProps {
   className?: string;
   question: Question;
   isDirty: boolean;
@@ -28,12 +28,6 @@ interface NotebookOwnProps {
   setQueryBuilderMode: (mode: string) => void;
   readOnly?: boolean;
 }
-
-interface EntityLoaderProps {
-  sourceQuestion?: Question;
-}
-
-type NotebookProps = NotebookOwnProps & EntityLoaderProps;
 
 const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   const {
@@ -110,7 +104,7 @@ function getSourceQuestionId(question: Question) {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
-    id: (state: State, { question }: NotebookOwnProps) =>
+    id: (state: State, { question }: NotebookProps) =>
       getSourceQuestionId(question),
     entityAlias: "sourceQuestion",
     loadingAndErrorWrapper: false,

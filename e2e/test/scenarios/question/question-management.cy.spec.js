@@ -24,6 +24,8 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -193,25 +195,27 @@ describe(
                 cy.findByText(
                   "It will also be removed from the filter that uses it to populate values.",
                 ).should("not.exist");
-                clickButton("Archive");
+                clickButton("Move to trash");
                 assertRequestNot403("updateQuestion");
                 assertNoPermissionsError();
+
+                cy.visit("/collection/root");
                 cy.wait("@getItems"); // pinned items
                 cy.wait("@getItems"); // unpinned items
-                cy.location("pathname").should("eq", "/collection/root");
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders").should("not.exist");
 
-                cy.findByPlaceholderText("Search…").click();
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Recently viewed");
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Nothing here");
+                openCommandPalette();
+                commandPalette().within(() => {
+                  cy.findByRole("option", { name: /recent/i }).should(
+                    "not.exist",
+                  );
+                });
 
                 // Check page for archived questions
                 cy.visit("/question/" + ORDERS_QUESTION_ID);
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("This question has been archived");
+                cy.findByText("This question is in the trash.");
               });
 
               describe("Add to Dashboard", () => {

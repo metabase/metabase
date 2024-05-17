@@ -1,6 +1,9 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  closeCommandPalette,
+  commandPalette,
+  commandPaletteSearch,
   createAction,
   restore,
   setActionsEnabledForDB,
@@ -46,9 +49,11 @@ describe("issue 29378", () => {
     );
 
     cy.findByRole("tab", { name: "Used by" }).click();
-    cy.findByPlaceholderText("Search…").type(ACTION_DETAILS.name);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(ACTION_DETAILS.name).should("be.visible");
+    commandPaletteSearch(ACTION_DETAILS.name, false);
+    commandPalette()
+      .findByRole("option", { name: ACTION_DETAILS.name })
+      .should("exist");
+    closeCommandPalette();
 
     cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

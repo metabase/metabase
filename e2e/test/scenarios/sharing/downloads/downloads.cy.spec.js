@@ -25,6 +25,8 @@ import {
   queryBuilderMain,
   editDashboard,
   setFilter,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -63,10 +65,10 @@ describe("scenarios > question > download", () => {
   testCases.forEach(fileType => {
     it(`downloads ${fileType} file`, () => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders, Count").click();
+      });
 
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

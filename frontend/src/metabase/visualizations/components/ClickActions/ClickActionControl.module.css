@@ -1,0 +1,33 @@
+button.horizontalButton {
+  display: flex;
+  flex: auto;
+  align-items: center;
+  border-radius: 8px;
+  border: none;
+  text-align: start;
+  padding: 0.5rem;
+  margin: 0 -0.5rem;
+  width: auto;
+  min-width: 148px;
+  line-height: 1rem;
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: var(--color-white);
+    background-color: var(--mb-color-brand);
+
+    .nested {
+      color: var(--color-white);
+    }
+  }
+
+  .inner {
+    width: 100%;
+  }
+
+  .label {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

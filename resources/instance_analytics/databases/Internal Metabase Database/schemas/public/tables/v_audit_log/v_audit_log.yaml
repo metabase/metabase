@@ -21,3 +21,4 @@ serdes/meta:
 - id: v_audit_log
   model: Table
 database_require_filter: null
+estimated_row_count: null

@@ -44,6 +44,7 @@ export interface Dashboard {
   point_of_interest?: string | null;
   collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
+  can_restore: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -52,6 +53,10 @@ export interface Dashboard {
     last_name: string;
     timestamp: string;
   };
+  last_used_param_values: Record<
+    ParameterId,
+    string | number | boolean | null | string[] | number[]
+  >;
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
@@ -62,6 +67,9 @@ export interface Dashboard {
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
 }
+
+/** Dashboards with string ids, like x-rays, cannot have cache configurations */
+export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };
 
 export type DashCardId = number;
 

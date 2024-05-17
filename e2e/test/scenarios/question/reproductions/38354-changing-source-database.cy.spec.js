@@ -1,8 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
   getNotebookStep,
   openNotebook,
-  popover,
   restore,
   visualize,
 } from "e2e/support/helpers";
@@ -27,8 +27,7 @@ describe("issue 38354", { tags: "@external" }, () => {
   it("should be possible to change source database (metabase#38354)", () => {
     openNotebook();
     getNotebookStep("data").findByTestId("data-step-cell").click();
-    popover().within(() => {
-      cy.icon("chevronleft").click();
+    entityPickerModal().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });

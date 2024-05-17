@@ -11,6 +11,9 @@ import {
   setTokenFeatures,
   popover,
   entityPickerModal,
+  visitFullAppEmbeddingUrl,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 describe("search > recently viewed", () => {
@@ -32,7 +35,8 @@ describe("search > recently viewed", () => {
     // which elicits a ViewLog entry
 
     cy.intercept("/api/activity/recent_views").as("recent");
-    cy.visit("/");
+    //Because this is testing keyboard navigation, these tests can run in embedded mode
+    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.wait("@recent");
 
     cy.findByPlaceholderText("Search…").click();
@@ -68,7 +72,11 @@ describe("search > recently viewed", () => {
     const recentlyViewedItems = cy.findAllByTestId(
       "recently-viewed-item-title",
     );
+
+    cy.intercept("/api/dataset").as("dataset");
+
     recentlyViewedItems.eq(2).click();
+    cy.wait("@dataset");
 
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
@@ -145,9 +153,9 @@ describeEE("search > recently viewed > enterprise features", () => {
   });
 
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
-    cy.findByPlaceholderText("Search…").click();
+    openCommandPalette();
 
-    cy.findByTestId("recently-viewed-item").within(() => {
+    commandPalette().within(() => {
       cy.icon("verified_filled").should("be.visible");
     });
   });

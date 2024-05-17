@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
+  entityPickerModal,
   restore,
   popover,
   summarize,
@@ -15,6 +16,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
   cartesianChartCircle,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -247,8 +249,11 @@ describe("scenarios > question > custom column", () => {
     // join with Products
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products").click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
 
     // add custom column
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

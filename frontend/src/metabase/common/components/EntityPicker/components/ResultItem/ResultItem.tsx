@@ -38,9 +38,11 @@ export const ResultItem = ({
 
   return (
     <ChunkyListItem
+      aria-selected={isSelected}
       onClick={onClick}
       isSelected={isSelected}
       isLast={isLast}
+      data-model-type={item.model}
       data-testid="result-item"
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>

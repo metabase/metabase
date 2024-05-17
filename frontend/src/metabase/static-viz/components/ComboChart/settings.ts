@@ -20,7 +20,6 @@ import {
   getDefaultMetricFilter,
   getDefaultMetrics,
   getDefaultShowDataLabels,
-  getDefaultStackDisplayValue,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
@@ -192,12 +191,6 @@ export const computeStaticComboChartSettings = (
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
     isStackingValueValid(mainCard.display, settings, seriesDisplays),
-  );
-
-  fillWithDefaultValue(
-    settings,
-    "stackable.stack_display",
-    getDefaultStackDisplayValue(mainCard.display, seriesDisplays),
   );
 
   fillWithDefaultValue(
