@@ -384,6 +384,11 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Move to trash").click();
       });
 
+      // wait for dashboard update to complete
+      cy.findByTestId("fixed-width-dashboard-header", () => {
+        cy.findByText("Orders in a dashboard");
+      });
+
       // Navigate to home
       openNavigationSidebar();
       navigationSidebar().within(() => {

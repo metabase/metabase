@@ -38,7 +38,7 @@ export const setArchivedDashboard = createThunkAction(
         throw new Error("Could not archive current dashboard as there is none");
       }
 
-      dispatch(
+      await dispatch(
         fetchDashboard({
           dashId: String(dashboardId),
           queryParams: {},
