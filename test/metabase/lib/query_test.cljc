@@ -255,6 +255,12 @@
                              (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
                              lib/can-preview)))))))))
 
+#_(deftest ^:parallel preview-query-test
+  (testing "preview-query"
+    (testing "drops later stages"
+      (is (=? ()))))
+  )
+
 (deftest ^:parallel normalize-test
   (testing "Normalize (including adding :lib/uuids) when creating a new query"
     (are [x] (=? {:lib/type :mbql/query

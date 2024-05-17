@@ -2249,6 +2249,34 @@
     (fn [_]
       (lib.core/can-preview a-query))))
 
+(defn ^:export preview-query
+  "*Truncates* a query for use in the Notebook editor's \"preview\" system.
+
+  Takes `a-query` and `stage-index` as usual.
+
+  - Stages later than `stage-index` are dropped.
+  - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
+  - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
+    `[0, clause-index]` are kept. (To keep 0, specify the earlier `clause-type`.)
+
+  The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
+
+  - `:data` - just the source data for the stage
+  - `:joins`
+  - `:expressions`
+  - `:filters`
+  - `:aggregation`
+  - `:breakout`
+  - `:page`
+
+  If the resulting query fails [[can-preview]], returns nil.
+
+  > **Code health:** Healthy, Single use."
+  [a-query stage-number clause-type clause-index]
+  (let [truncated-query (lib.core/preview-query a-query stage-number (keyword clause-type) clause-index)]
+    (when (can-preview truncated-query)
+      truncated-query)))
+
 (defn ^:export can-save
   "Returns true if the query can be saved.
   `card-type` is optional and defaults to \"question\".

@@ -117,3 +117,21 @@ export function asReturned(
 ): { query: Query; stageIndex: number } {
   return ML.as_returned(query, stageIndex);
 }
+
+type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "page";
+
+export function previewQuery(
+  query: Query,
+  stageIndex: number,
+  clauseType: ClauseType,
+  clauseIndex: number | null,
+): Query | null {
+  return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
+}
