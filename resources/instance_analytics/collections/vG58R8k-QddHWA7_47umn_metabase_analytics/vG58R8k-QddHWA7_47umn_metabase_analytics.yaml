@@ -7,7 +7,7 @@ archived: false
 type: instance-analytics
 parent_id: null
 personal_owner_id: null
-namespace: null
+namespace: analytics
 authority_level: null
 serdes/meta:
 - id: vG58R8k-QddHWA7_47umn
