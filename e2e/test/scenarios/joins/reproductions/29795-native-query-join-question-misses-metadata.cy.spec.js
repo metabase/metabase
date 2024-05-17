@@ -1,8 +1,10 @@
 import {
+  entityPickerModal,
+  entityPickerModalTab,
+  openOrdersTable,
+  popover,
   restore,
   visualize,
-  popover,
-  openOrdersTable,
 } from "e2e/support/helpers";
 
 describe("issue 29795", () => {
@@ -26,11 +28,9 @@ describe("issue 29795", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover().within(() => {
-      cy.icon("chevronleft").click();
-      cy.findByText("Raw Data").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByRole("menuitem", { name: NATIVE_QUESTION }).click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(NATIVE_QUESTION).click();
     });
 
     popover().within(() => {

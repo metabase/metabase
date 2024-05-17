@@ -41,7 +41,6 @@ export interface NotebookStepUiComponentProps {
   step: NotebookStep;
   query: Query;
   stageIndex: number;
-  sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;
   reportTimezone: string;

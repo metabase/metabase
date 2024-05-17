@@ -35,7 +35,6 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
 
 export function NotebookSteps({
   question,
-  sourceQuestion,
   reportTimezone,
   updateQuestion,
   readOnly = false,
@@ -101,7 +100,6 @@ export function NotebookSteps({
           <NotebookStep
             key={step.id}
             step={step}
-            sourceQuestion={sourceQuestion}
             isLastStep={isLast}
             isLastOpened={isLastOpened}
             reportTimezone={reportTimezone}
