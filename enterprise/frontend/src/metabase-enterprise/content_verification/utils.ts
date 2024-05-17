@@ -48,8 +48,13 @@ export const useModelFilterSettings = (): [
 ] => {
   const [initialVerifiedFilterStatus] = useUserSetting(
     "browse-filter-only-verified-models",
-    { shouldRefresh: false },
+    {
+      shouldRefresh: false,
+      // Memoizing prevents race conditions
+      shouldMemoize: true,
+    },
   );
+
   const initialModelFilters = useMemo(
     () => ({
       onlyShowVerifiedModels: initialVerifiedFilterStatus ?? false,
