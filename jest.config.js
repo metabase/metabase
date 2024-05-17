@@ -5,8 +5,6 @@ const config = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^promise-loader\\?global\\!metabase-lib\\/v1\\/metadata\\/utils\\/ga-metadata$":
-      "<rootDir>/frontend/src/metabase-lib/v1/metadata/utils/ga-metadata.js",
     "ace/ext-searchbox":
       "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
