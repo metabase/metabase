@@ -14,6 +14,7 @@ import { DatabaseSyncModal } from "metabase/databases/components/DatabaseSyncMod
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Button, Flex, Modal as NewModal, Text } from "metabase/ui";
 
 import {
   TableCellContent,
@@ -55,6 +56,7 @@ export default class DatabaseList extends Component {
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
     created: PropTypes.string,
+    createdDbId: PropTypes.string,
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
     isAdmin: PropTypes.bool,
@@ -69,6 +71,8 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
       isAdmin,
+      created,
+      createdDbId,
     } = this.props;
     const { isSyncingModalOpened } = this.state;
 
@@ -174,6 +178,32 @@ export default class DatabaseList extends Component {
         >
           <DatabaseSyncModal onClose={this.onSyncingModalClose} />
         </Modal>
+        <NewModal.Root
+          opened={created && createdDbId}
+          size={620}
+          withCloseButton={false}
+        >
+          <NewModal.Overlay />
+          <NewModal.Content p="16px">
+            <NewModal.Header>
+              <NewModal.Title fz="20px">{t`Your database was added! Want to configure permissions?`}</NewModal.Title>
+            </NewModal.Header>
+            <NewModal.Body>
+              <Text
+                mb="1.5rem"
+                mt="1rem"
+              >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
+              <Flex justify="end">
+                <Button mr="0.5rem">{t`Maybe later`}</Button>
+                <Button
+                  component={Link}
+                  variant="filled"
+                  to={`/admin/permissions/data/database/${createdDbId}`}
+                >{t`Configure permissions`}</Button>
+              </Flex>
+            </NewModal.Body>
+          </NewModal.Content>
+        </NewModal.Root>
       </div>
     );
   }
