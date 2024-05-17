@@ -26,6 +26,7 @@ import {
   selectFilterOperator,
   entityPickerModal,
   chartPathWithFillColor,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const {
@@ -826,10 +827,10 @@ describeEE("formatting > sandboxes", () => {
       createJoinedQuestion("14766_joined");
 
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("14766_joined").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("14766_joined").click();
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

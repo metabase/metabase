@@ -294,6 +294,7 @@ describe("EntityPickerModal", () => {
         recentItems,
         defaultToRecentTab: false,
         initialValue: { model: "card" },
+        onConfirm: jest.fn(),
       });
 
       expect(

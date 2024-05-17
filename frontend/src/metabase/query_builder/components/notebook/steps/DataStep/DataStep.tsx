@@ -9,6 +9,7 @@ import {
   dataPickerValueFromTable,
 } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
+import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -64,6 +65,14 @@ export const DataStep = ({
   const handleTableChange = async (tableId: TableId) => {
     // we need to populate question metadata with selected table
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+
+    if (typeof tableId === "string") {
+      await dispatch(
+        Questions.actions.fetch({
+          id: getQuestionIdFromVirtualTableId(tableId),
+        }),
+      );
+    }
 
     // using questionRef because question is most likely stale by now
     const metadata = questionRef.current.metadata();

@@ -1,5 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
+  entityPickerModalTab,
   restore,
   openTable,
   popover,
@@ -41,8 +43,8 @@ describe("scenarios > question > custom column > data type", () => {
 
   it("should understand date functions", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });

@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   CollectionItemModel,
@@ -19,7 +20,7 @@ import type {
   NotebookDataPickerValueItem,
 } from "../types";
 import {
-  createDatabaseIdItemFilter,
+  createShouldShowItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
@@ -58,10 +59,11 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
   const shouldShowItem = useMemo(() => {
-    return createDatabaseIdItemFilter(databaseId);
+    return createShouldShowItem(databaseId);
   }, [databaseId]);
 
   const searchParams = useMemo(() => {
@@ -95,7 +97,7 @@ export const DataPickerModal = ({
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    hasModels
+    hasModels && hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
           model: "dataset",
@@ -123,7 +125,7 @@ export const DataPickerModal = ({
         />
       ),
     },
-    hasQuestions
+    hasQuestions && hasNestedQueriesEnabled
       ? {
           displayName: t`Saved questions`,
           model: "card",

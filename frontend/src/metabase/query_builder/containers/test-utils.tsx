@@ -17,6 +17,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
+  setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -241,6 +242,7 @@ export const setup = async ({
   setupFieldValuesEndpoints(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
+  setupRecentViewsEndpoints([]);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
@@ -319,11 +321,9 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  await userEvent.click(screen.getByText("Pick your starting data"));
-  const popover = screen.getByTestId("popover");
-  await userEvent.click(within(popover).getByText("Sample Database"));
+  const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  await userEvent.click(within(popover).getByText("Orders"));
+  await userEvent.click(within(modal).getByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };

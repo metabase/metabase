@@ -176,8 +176,20 @@ export const isValidValueItem = (model: SearchModel): boolean => {
   return ["dataset", "card", "table"].includes(model);
 };
 
-export const createDatabaseIdItemFilter = (databaseId?: DatabaseId) => {
+export const createShouldShowItem = (databaseId?: DatabaseId) => {
   return (item: QuestionPickerItem) => {
+    if (item.model === "collection") {
+      const below = item.below ?? [];
+      const here = item.here ?? [];
+      const contents = [...below, ...here];
+      const hasQuestionsOrModels =
+        contents.includes("card") || contents.includes("dataset");
+
+      if (item.id !== "root" && !item.is_personal && !hasQuestionsOrModels) {
+        return false;
+      }
+    }
+
     if (
       isNullOrUndefined(databaseId) ||
       !hasDatabaseId(item) ||
