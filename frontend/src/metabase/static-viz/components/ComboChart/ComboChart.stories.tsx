@@ -204,6 +204,20 @@ BarStackedPowYAxisNegatives.args = {
   renderingContext,
 };
 
+export const YAxisCompactWithoutDataLabels = Template.bind({});
+YAxisCompactWithoutDataLabels.args = {
+  rawSeries: data.yAxisCompactWithoutDataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarFormattingFull = Template.bind({});
+BarFormattingFull.args = {
+  rawSeries: data.barFormattingFull as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarAutoFormattingCompact = Template.bind({});
 BarAutoFormattingCompact.args = {
   rawSeries: data.barAutoFormattingCompact as any,

@@ -333,15 +333,19 @@ export const getStackedLabelsFormatters = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): StackedSeriesFormatters => {
+): {
+  formatters: StackedSeriesFormatters;
+  compactStackedSeriesDataKeys: DataKey[];
+} => {
   const formatters: StackedSeriesFormatters = {};
+  const compactStackedSeriesDataKeys: DataKey[] = [];
 
   const hasDataLabels =
     settings["graph.show_values"] &&
     settings["stackable.stack_type"] === "stacked";
 
   if (!hasDataLabels) {
-    return formatters;
+    return { formatters, compactStackedSeriesDataKeys };
   }
 
   stackModels.forEach(({ display: stackName, seriesKeys }) => {
@@ -369,6 +373,10 @@ export const getStackedLabelsFormatters = (
       })
       .some(isCompact => isCompact);
 
+    if (isCompact) {
+      compactStackedSeriesDataKeys.push(seriesKeys[0]);
+    }
+
     const stackedFormatter = cachedFormatter((value: RowValue) => {
       if (typeof value !== "number") {
         return " ";
@@ -384,7 +392,7 @@ export const getStackedLabelsFormatters = (
     formatters[stackName] = stackedFormatter;
   });
 
-  return formatters;
+  return { formatters, compactStackedSeriesDataKeys };
 };
 
 export const getSeriesLabelsFormatters = (
@@ -392,19 +400,14 @@ export const getSeriesLabelsFormatters = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): SeriesFormatters => {
+): {
+  formatters: SeriesFormatters;
+  compactSeriesDataKeys: DataKey[];
+} => {
   const formatters: SeriesFormatters = {};
+  const compactSeriesDataKeys: DataKey[] = [];
 
   seriesModels.forEach(seriesModel => {
-    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
-    const isCompact = shouldRenderCompact(
-      dataset,
-      getValue,
-      seriesModel,
-      settings,
-      renderingContext,
-    );
-
     const seriesSettings =
       settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
@@ -418,6 +421,19 @@ export const getSeriesLabelsFormatters = (
       return;
     }
 
+    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
+    const isCompact = shouldRenderCompact(
+      dataset,
+      getValue,
+      seriesModel,
+      settings,
+      renderingContext,
+    );
+
+    if (isCompact) {
+      compactSeriesDataKeys.push(seriesModel.dataKey);
+    }
+
     const seriesFormatter = cachedFormatter((value: RowValue) => {
       return renderingContext.formatValue(value, {
         ...(settings.column?.(seriesModel.column) ?? {}),
@@ -429,7 +445,7 @@ export const getSeriesLabelsFormatters = (
     formatters[seriesModel.dataKey] = seriesFormatter;
   });
 
-  return formatters;
+  return { formatters, compactSeriesDataKeys };
 };
 
 export const getWaterfallLabelFormatter = (
@@ -437,7 +453,13 @@ export const getWaterfallLabelFormatter = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): LabelFormatter | undefined => {
+): { formatter?: LabelFormatter; isCompact?: boolean } => {
+  const hasDataLabels = settings["graph.show_values"];
+
+  if (!hasDataLabels) {
+    return {};
+  }
+
   const getValue = (datum: Datum) => datum[WATERFALL_VALUE_KEY];
   const isCompact = shouldRenderCompact(
     dataset,
@@ -447,13 +469,7 @@ export const getWaterfallLabelFormatter = (
     renderingContext,
   );
 
-  const hasDataLabels = settings["graph.show_values"];
-
-  if (!hasDataLabels) {
-    return;
-  }
-
-  return cachedFormatter((value: RowValue) => {
+  const formatter = cachedFormatter((value: RowValue) => {
     return renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
@@ -461,4 +477,6 @@ export const getWaterfallLabelFormatter = (
       negativeInParentheses: true,
     });
   });
+
+  return { formatter, isCompact };
 };

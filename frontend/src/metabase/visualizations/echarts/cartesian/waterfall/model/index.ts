@@ -83,6 +83,14 @@ export const getWaterfallChartModel = (
     xAxisModel,
   );
 
+  const { formatter: waterfallLabelFormatter, isCompact } =
+    getWaterfallLabelFormatter(
+      seriesModel,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
+
   // Pass waterfall dataset and keys for correct extent computation
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
@@ -93,6 +101,10 @@ export const getWaterfallChartModel = (
     { [WATERFALL_END_KEY]: seriesModel.column },
     null,
     renderingContext,
+    {
+      compact:
+        settings["graph.label_value_formatting"] === "compact" || isCompact,
+    },
   );
 
   // Extending the original dataset with total datum for tooltips
@@ -101,13 +113,6 @@ export const getWaterfallChartModel = (
     transformedDataset[transformedDataset.length - 1],
     seriesModel.dataKey,
     settings,
-  );
-
-  const waterfallLabelFormatter = getWaterfallLabelFormatter(
-    seriesModel,
-    transformedDataset,
-    settings,
-    renderingContext,
   );
 
   return {
