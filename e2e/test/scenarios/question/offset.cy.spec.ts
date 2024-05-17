@@ -3,6 +3,8 @@ import {
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   modal,
   openNotebook,
@@ -370,8 +372,8 @@ describe("scenarios > question > offset", () => {
       const breakoutName = "Created At";
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -414,8 +416,8 @@ describe("scenarios > question > offset", () => {
       ];
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
