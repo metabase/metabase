@@ -85,7 +85,10 @@ function combineColumns({
 
   cy.wait(`@${requestAlias}`);
 
-  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  cy.findAllByRole("columnheader")
+    .last()
+    .should("have.text", newColumn)
+    .should("be.visible");
 
   if (newValue) {
     cy.findByRole("gridcell", { name: newValue }).should("be.visible");
