@@ -4,7 +4,7 @@ import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 
-type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
+export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
 };
 
