@@ -8,6 +8,7 @@ import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFil
 import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
 import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
 import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
+import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { SearchFilterKeys } from "metabase/search/constants";
 import type {
@@ -32,6 +33,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
+    [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
@@ -89,6 +91,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
+      {getFilter(SearchFilterKeys.SearchTrashedItems)}
     </Stack>
   );
 };

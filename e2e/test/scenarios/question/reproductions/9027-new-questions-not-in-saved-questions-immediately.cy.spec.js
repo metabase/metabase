@@ -67,19 +67,15 @@ function saveQuestion(name) {
 function archiveQuestion(questionName) {
   navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
-  popover().findByText("Archive").click();
+  popover().findByText("Move to trash").click();
 }
 
 function unarchiveQuestion(questionName) {
   navigationSidebar().within(() => {
-    cy.icon("ellipsis").click();
+    cy.findByText("Trash").click();
   });
-  popover().findByText("View archive").click();
-  cy.findByText(questionName)
-    .parent()
-    .within(() => {
-      cy.icon("unarchive").click({ force: true });
-    });
+  openEllipsisMenuFor(questionName);
+  popover().findByText("Restore").click();
 }
 
 function openEllipsisMenuFor(item) {
