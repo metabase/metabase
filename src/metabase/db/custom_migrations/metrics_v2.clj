@@ -57,14 +57,14 @@
 
 (defn- create-metric-v2!
   "Create and persist a metric v2 question from `metric-v1` in
-  the collection with ID `metric-v2-coll-id`."
+  the collection with ID `metric-v2-coll-id`.
+  Returns the ID of the created card."
   [metric-v1 metric-v2-coll-id]
-  (let [db-id (t2/select-one-fn :db-id :metabase_table (:table_id metric-v1))
-        card (-> metric-v1
-                 (convert-metric-v2 db-id)
+  (let [card (-> metric-v1
+                 (convert-metric-v2 (:database_id metric-v1))
                  (assoc :collection_id metric-v2-coll-id
                         :updated_at (Instant/now)))]
-    (t2/insert-returning-instance! :report_card card)))
+    (t2/insert-returning-pk! :report_card card)))
 
 (defn- metric-ref->id
   "If `expr` is a metric reference expression, return the ID of the referenced metric.
@@ -78,39 +78,37 @@
         id))))
 
 (defn- replace-metric-refs
-  "Replaces the IDs in metric references contained in `expr` with the :id properties
-  of the corresponding entities in `id->entity`.
+  "Replaces the IDs in metric references contained in `expr` with the IDs specified
+  by `id-mapping`.
   `expr` is an MBQL aggregation expression or a part of it.
   The mapping is from metric IDs to v2 metric cards."
-  [expr id->entity]
+  [expr id-mapping]
   (if-not (vector? expr)
     expr
     (if-let [id (metric-ref->id expr)]
-      (assoc expr 1 (-> id id->entity :id))
-      (mapv #(replace-metric-refs % id->entity) expr))))
+      (assoc expr 1 (id-mapping id))
+      (mapv #(replace-metric-refs % id-mapping) expr))))
 
 (defn- rewrite-metric-consuming-query
-  [query metric-id->metric-card]
+  [query metric-id->metric-card-id]
   (if (contains? query :source-query)
-    (update query :source-query rewrite-metric-consuming-query metric-id->metric-card)
+    (update query :source-query rewrite-metric-consuming-query metric-id->metric-card-id)
     (let [aggregation (:aggregation query)
-          rewritten (replace-metric-refs aggregation metric-id->metric-card)]
+          rewritten (replace-metric-refs aggregation metric-id->metric-card-id)]
       (cond-> query
         (not= rewritten aggregation) (assoc :aggregation rewritten)))))
 
 (defn- rewrite-metric-consuming-card
-  "Rewrite the question `card` replacing references to v1 metrics with references
-  to the corresponding v2 metric question as specified by the mapping `metric-id->metric-card`."
-  [card metric-id->metric-card]
-  (let [dataset-query (json/parse-string (:dataset_query card) true)
+  "Rewrite `outer-query` replacing references to v1 metrics with references
+  to the corresponding v2 metric question as specified by the mapping `metric-id->metric-card-id`."
+  [outer-query metric-id->metric-card-id]
+  (let [dataset-query (json/parse-string outer-query true)
         inner-query (:query dataset-query)
-        rewritten (rewrite-metric-consuming-query inner-query metric-id->metric-card)]
+        rewritten (rewrite-metric-consuming-query inner-query metric-id->metric-card-id)]
     (when (not= rewritten inner-query)
-      (-> card
-          (assoc :dataset_query (-> dataset-query
-                                    (assoc :query rewritten)
-                                    json/generate-string))
-          (dissoc :updated_at)))))
+      (-> dataset-query
+          (assoc :query rewritten)
+          json/generate-string))))
 
 (defn migrate-up!
   "Migrate metrics and the cards consuming them to metrics v2. This involves
@@ -121,20 +119,20 @@
   []
   (when (t2/exists? :metric)
     (let [metric-v2-coll-id (get-or-create-metric-migration-collection-id! {:create? true})
-          metric-id->metric-card (into {}
-                                       (map (juxt :id #(create-metric-v2! % metric-v2-coll-id)))
-                                       (t2/query {:select [:m.* [:t.db_id :database_id]]
-                                                  :from [[:metric :m]]
-                                                  :left-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))
-          metric-consuming-cards (t2/select :report_card {:where [:like [:lower :dataset_query] "%[\"metric\",%"]})]
-      (doseq [card metric-consuming-cards
-              :let [rewritten (rewrite-metric-consuming-card card metric-id->metric-card)]
-              :when (and rewritten (not= card rewritten))]
-        (t2/update! :report_card
-                    (:id card)
-                    (-> rewritten
-                        (assoc :dataset_query_metrics_v2_migration_backup (:dataset_query card)
-                               :updated_at (Instant/now))))))))
+          metric-id->metric-card-id (into {}
+                                          (map (juxt :id #(create-metric-v2! % metric-v2-coll-id)))
+                                          (t2/reducible-query
+                                           {:select [:m.* [:t.db_id :database_id]]
+                                            :from [[:metric :m]]
+                                            :inner-join [[:metabase_table :t] [:= :t.id :m.table_id]]}))]
+      (run! (fn [card]
+              (let [dataset-query (:dataset_query card)]
+                (when-let [rewritten (rewrite-metric-consuming-card dataset-query metric-id->metric-card-id)]
+                  (t2/update! :report_card (:id card) {:dataset_query rewritten
+                                                       :dataset_query_metrics_v2_migration_backup dataset-query}))))
+            (t2/reducible-query {:select [:id :dataset_query]
+                                 :from [:report_card]
+                                 :where [:like [:lower :dataset_query] "%[\"metric\",%"]})))))
 
 (defn migrate-down!
   "Revert the migration to v2 metrics. This involves
@@ -143,8 +141,8 @@
   3. deleting the metric migration collection."
   []
   (when-let [metric-v2-coll-id (get-or-create-metric-migration-collection-id!)]
-    (doseq [{:keys [id dataset_query_metrics_v2_migration_backup]}
-            (t2/select :report_card {:where [:!= :dataset_query_metrics_v2_migration_backup nil]})]
-      (t2/update! :report_card id {:dataset_query dataset_query_metrics_v2_migration_backup}))
+    (t2/query [(str "UPDATE report_card"
+                    "   SET dataset_query = dataset_query_metrics_v2_migration_backup"
+                    " WHERE dataset_query_metrics_v2_migration_backup IS NOT NULL")])
     (t2/delete! :report_card :collection_id metric-v2-coll-id)
     (t2/delete! :collection metric-v2-coll-id)))

@@ -86,38 +86,11 @@
                            :query {:source-table 5
                                    :aggregation [["count"] [metric-tag 1]]
                                    :filter ["<" ["field" 33 nil] 100]}}
-            card {:description "query description"
-                  :archived true
-                  :table_id 5
-                  :enable_embedding true
-                  :query_type "query"
-                  :name "v1 metric consuming query"
-                  :type "question"
-                  :creator_id 2
-                  :dataset_query (json/generate-string dataset-query)
-                  :parameter_mappings "[{}]"
-                  :display "table"
-                  :visualization_settings "{}"
-                  :parameters "[3]"
-                  :created_at #t "2024-05-02T19:26:15Z"}
-            rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)
-            rewritten-card {:description "query description"
-                            :archived true
-                            :table_id 5
-                            :enable_embedding true
-                            :query_type "query"
-                            :name "v1 metric consuming query"
-                            :type "question"
-                            :creator_id 2
-                            :dataset_query rewritten-dataset-query
-                            :parameter_mappings "[{}]"
-                            :display "table"
-                            :visualization_settings "{}"
-                            :parameters "[3]"
-                            :created_at #t "2024-05-02T19:26:15Z"}]
-        (is (= rewritten-card
-               (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric-card})
-                   (update :dataset_query json/parse-string true))))))))
+            rewritten-dataset-query (assoc-in dataset-query [:query :aggregation 1 1] 11)]
+        (is (= rewritten-dataset-query
+               (-> (#'metrics-v2/rewrite-metric-consuming-card (json/generate-string dataset-query)
+                                                               {1 (:id metric-card)})
+                   (json/parse-string true))))))))
 
 (deftest ^:mb/once ignore-ga-metric-consuming-card-test
   (testing "GA metrics references are ignored"
@@ -125,24 +98,11 @@
                          :database 1
                          :query {:source-table 5
                                  :aggregation [["count"] ["metric" "ga:pageviews"]]
-                                 :filter ["<" ["field" 33 nil] 100]}}
-          card {:description "query description"
-                :archived true
-                :table_id 5
-                :enable_embedding true
-                :query_type "query"
-                :name "v1 metric consuming query"
-                :type "question"
-                :creator_id 2
-                :dataset_query (json/generate-string dataset-query)
-                :parameter_mappings "[{}]"
-                :display "table"
-                :visualization_settings "{}"
-                :parameters "[3]"
-                :created_at #t "2024-05-02T19:26:15Z"}]
+                                 :filter ["<" ["field" 33 nil] 100]}}]
       (is (nil?
            (#'metrics-v2/rewrite-metric-consuming-card
-            card {1 :not-a-card-but-it-does-not-matter}))))))
+            (json/generate-string dataset-query)
+            {1 :not-a-card-but-it-does-not-matter}))))))
 
 (deftest ^:mb/once rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
@@ -189,41 +149,14 @@
                        :query {:source-table 5
                                :aggregation [["/" ["metric" 2] ["metric" 1]] ["count"]]
                                :filter ["<" ["field" 33 nil] 100]}}
-        card {:description "query description"
-              :archived true
-              :table_id 5
-              :enable_embedding true
-              :query_type "query"
-              :name "v1 metric consuming query"
-              :type "question"
-              :creator_id 2
-              :dataset_query (json/generate-string dataset-query)
-              :parameter_mappings "[{}]"
-              :display "table"
-              :visualization_settings "{}"
-              :parameters "[3]"
-              :created_at #t "2024-05-02T19:26:15Z"}
         rewritten-dataset-query (-> dataset-query
                                     (assoc-in [:query :aggregation 0 1 1] 22)
-                                    (assoc-in [:query :aggregation 0 2 1] 11))
-        rewritten-card {:description "query description"
-                        :archived true
-                        :table_id 5
-                        :enable_embedding true
-                        :query_type "query"
-                        :name "v1 metric consuming query"
-                        :type "question"
-                        :creator_id 2
-                        :dataset_query rewritten-dataset-query
-                        :parameter_mappings "[{}]"
-                        :display "table"
-                        :visualization_settings "{}"
-                        :parameters "[3]"
-                        :created_at #t "2024-05-02T19:26:15Z"}]
-    (is (= rewritten-card
-           (-> (#'metrics-v2/rewrite-metric-consuming-card card {1 metric1-card
-                                                                 2 metric2-card})
-               (update :dataset_query json/parse-string true))))))
+                                    (assoc-in [:query :aggregation 0 2 1] 11))]
+    (is (= rewritten-dataset-query
+           (-> (#'metrics-v2/rewrite-metric-consuming-card (json/generate-string dataset-query)
+                                                           {1 (:id metric1-card)
+                                                            2 (:id metric2-card)})
+               (json/parse-string true))))))
 
 (def query-validator
   (mr/validator mbql.s/MBQLQuery))
