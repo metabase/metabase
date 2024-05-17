@@ -21,6 +21,7 @@ import type {
 } from "../types";
 import {
   createShouldShowItem,
+  isMetricItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
@@ -40,9 +41,11 @@ interface Props {
   onClose: () => void;
 }
 
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -60,7 +63,9 @@ export const DataPickerModal = ({
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasModels, hasQuestions } = useAvailableData({ databaseId });
+  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
+    databaseId,
+  });
 
   const shouldShowItem = useMemo(() => {
     return createShouldShowItem(databaseId);
@@ -106,6 +111,22 @@ export const DataPickerModal = ({
             <QuestionPicker
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
+              options={options}
+              shouldShowItem={shouldShowItem}
+              onItemSelect={handleCardChange}
+            />
+          ),
+        }
+      : undefined,
+    hasMetrics && hasNestedQueriesEnabled
+      ? {
+          displayName: t`Metrics`,
+          model: "metric",
+          icon: "metric",
+          element: (
+            <QuestionPicker
+              initialValue={isMetricItem(value) ? value : undefined}
+              models={METRIC_PICKER_MODELS}
               options={options}
               shouldShowItem={shouldShowItem}
               onItemSelect={handleCardChange}
