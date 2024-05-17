@@ -72,7 +72,11 @@ describe("search > recently viewed", () => {
     const recentlyViewedItems = cy.findAllByTestId(
       "recently-viewed-item-title",
     );
+
+    cy.intercept("/api/dataset").as("dataset");
+
     recentlyViewedItems.eq(2).click();
+    cy.wait("@dataset");
 
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
