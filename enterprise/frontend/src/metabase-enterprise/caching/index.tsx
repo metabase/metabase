@@ -7,7 +7,6 @@ import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
-import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
@@ -32,7 +31,6 @@ if (hasPremiumFeature("cache_granular_controls")) {
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
   PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
-  PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
