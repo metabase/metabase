@@ -126,10 +126,12 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it("does not allow to use offset-based column in a custom expression (metabase#42764)", () => {
+    it("does not allow to use offset-based column in any custom expression (metabase#42764)", () => {
       const offsettedColumnName = "xyz";
       const expression = `Offset([${offsettedColumnName}], -1)`;
       const prefixLength = "Offset([x".length;
+      const prefix = expression.substring(0, prefixLength);
+      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         expressions: {
@@ -140,15 +142,6 @@ describe("scenarios > question > offset", () => {
             -1,
           ],
         },
-        fields: [
-          ORDERS_ID_FIELD_REF,
-          ORDERS_TOTAL_FIELD_REF,
-          [
-            "expression",
-            offsettedColumnName,
-            { "base-type": "type/BigInteger" },
-          ],
-        ],
         "order-by": [["asc", ORDERS_ID_FIELD_REF]],
         limit: 5,
       };
@@ -156,45 +149,30 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
 
+      cy.log("custom column expressions");
       getNotebookStep("expression").icon("add").click();
+      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      popover().button("Cancel").click();
 
-      enterCustomColumnDetails({
-        formula: expression.substring(0, prefixLength),
-      });
+      cy.log("custom filter expressions");
+      cy.icon("filter").click();
+      popover().findByText("Custom Expression").click();
+      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      popover().button("Cancel").click();
+      cy.realPress("Escape");
 
-      cy.log("does not suggest offset-based column in custom expressions");
-      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+      cy.log("custom aggregation expressions");
+      cy.icon("sum").click();
+      popover().findByText("Custom Expression").click();
+      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      popover().button("Cancel").click();
+      cy.realPress("Escape");
 
-      enterCustomColumnDetails({
-        formula: expression.substring(prefixLength),
-      });
-      cy.realPress("Tab");
-
-      popover().within(() => {
-        cy.findByText(`Unknown Field: ${offsettedColumnName}`).should(
-          "be.visible",
-        );
-        cy.button("Done").should("be.disabled");
-      });
+      getNotebookStep("sort").icon("add").click();
+      popover().should("not.contain", offsettedColumnName);
     });
 
     it.skip("does not allow drilling on a offsetted column", () => {
-      // TODO
-    });
-
-    it.skip("does not allow aggregating on a offsetted column", () => {
-      // TODO
-    });
-
-    it.skip("does not allow breaking out on a offsetted column", () => {
-      // TODO
-    });
-
-    it.skip("does not allow filtering on a offsetted column", () => {
-      // TODO
-    });
-
-    it.skip("does not allow sorting on a offsetted column", () => {
       // TODO
     });
   });
@@ -584,6 +562,21 @@ function verifyNoQuestionError() {
   cy.findByTestId("query-builder-main").within(() => {
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.findByText("Show error details").should("not.exist");
+  });
+}
+
+function verifyInvalidColumnName(
+  columnName: string,
+  prefix: string,
+  suffix: string,
+) {
+  enterCustomColumnDetails({ formula: prefix });
+  cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+  enterCustomColumnDetails({ formula: suffix });
+  cy.realPress("Tab");
+  popover().within(() => {
+    cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
+    cy.button("Done").should("be.disabled");
   });
 }
 
