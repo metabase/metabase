@@ -5,7 +5,9 @@ import TableS from "metabase/visualizations/components/TableInteractive/TableInt
 
 export const TableRoot = styled.div`
   .${TableS.TableID} .${TableS.cellData} {
-    border: 1px solid ${alpha("brand", 0.14)};
-    background-color: ${alpha("brand", 0.08)};
+    border: 1px solid
+      ${({ theme }) => alpha(theme.fn.themeColor("brand"), 0.14)};
+    background-color: ${({ theme }) =>
+      alpha(theme.fn.themeColor("brand"), 0.08)};
   }
 `;

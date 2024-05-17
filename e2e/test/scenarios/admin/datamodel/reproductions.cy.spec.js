@@ -5,6 +5,8 @@ import {
   openReviewsTable,
   popover,
   summarize,
+  commandPaletteButton,
+  commandPalette,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -98,11 +100,9 @@ describe("issue 21984", () => {
       cy.findByText("Pick up where you left off").should("not.exist");
     });
 
-    cy.findByTestId("app-bar").findByPlaceholderText("Search…").click();
-
-    cy.findByTestId("search-results-floating-container").within(() => {
-      cy.findByText("Recently viewed");
-      cy.findByText("Nothing here");
+    commandPaletteButton().click();
+    commandPalette().within(() => {
+      cy.findByText("Recent items").should("not.exist");
     });
   });
 });

@@ -26,7 +26,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-export const setup = ({
+export const setupStrategyEditorForDatabases = ({
   hasEnterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {

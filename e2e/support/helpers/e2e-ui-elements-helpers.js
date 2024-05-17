@@ -78,8 +78,8 @@ export function closeNavigationSidebar() {
   navigationSidebar().should("not.be.visible");
 }
 
-export function browseData() {
-  return navigationSidebar().findByLabelText("Browse data");
+export function browseDatabases() {
+  return navigationSidebar().findByLabelText("Browse databases");
 }
 
 /**

@@ -169,7 +169,9 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { side_nav: false, logo: false },
       });
       cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
+      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
+        "not.exist",
+      );
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });
