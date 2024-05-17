@@ -304,7 +304,8 @@
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))
 
 (def ^:private clause-types-order
-  [:limit :order-by :aggregation :breakout :filters :expressions :joins :data])
+  ;; Note that :breakout is never actually sent, but when we get :aggregation we want to drop :breakout too.
+  [:limit :order-by :breakout :aggregation :filters :expressions :joins :data])
 
 (defn- preview-stage [stage clause-type clause-index]
   (let [to-drop (take-while #(not= % clause-type) clause-types-order)]
@@ -327,8 +328,8 @@
   - `:joins`
   - `:expressions`
   - `:filters`
-  - `:aggregation`
   - `:breakout`
+  - `:aggregation`
   - `:order-by`
   - `:limit`"
   [a-query      :- ::lib.schema/query
