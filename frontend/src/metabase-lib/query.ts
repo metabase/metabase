@@ -103,7 +103,7 @@ export function canRun(query: Query, cardType: CardType): boolean {
   return ML.can_run(query, cardType);
 }
 
-export function canPreview(query: Query): boolean {
+export function canPreview(query: Query, cardType: CardType): boolean {
   return ML.can_preview(query);
 }
 

@@ -2243,11 +2243,11 @@
   sort order (so the QP can return a good error message), but [[can-preview]] can be stricter.
 
   > **Code health:** Healthy, Single use."
-  [a-query]
+  [a-query card-type]
   (lib.cache/side-channel-cache
-    :can-preview a-query
+    (keyword "can-run" card-type) a-query
     (fn [_]
-      (lib.core/can-preview a-query))))
+      (lib.core/can-preview a-query card-type))))
 
 (defn ^:export can-save
   "Returns true if the query can be saved.

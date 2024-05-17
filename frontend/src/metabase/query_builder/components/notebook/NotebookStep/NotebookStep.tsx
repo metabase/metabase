@@ -106,9 +106,9 @@ function NotebookStep({
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
-  const color = getColor();
   const canPreview =
-    step.previewQuery != null && Lib.canPreview(step.previewQuery);
+    step.previewQuery != null &&
+    Lib.canPreview(step.previewQuery, step.question.type());
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 

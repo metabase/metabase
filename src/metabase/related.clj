@@ -39,7 +39,7 @@
   {:arglists '([instance])}
   mi/model)
 
-(defmethod definition LegacyMetric
+(defmethod definition :model/LegacyMetric
   [metric]
   (-> metric :definition ((juxt :aggregation :filter))))
 
@@ -100,7 +100,7 @@
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (t2/select Card
+  (filter-visible (t2/select :model/Card
                     :table_id (:id table)
                     :type :metric
                     :archived false)))
