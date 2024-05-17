@@ -161,7 +161,7 @@ type StdDevAgg = ["stddev", ConcreteFieldReference];
 type SumAgg = ["sum", ConcreteFieldReference];
 type MinAgg = ["min", ConcreteFieldReference];
 type MaxAgg = ["max", ConcreteFieldReference];
-type OffsetAgg = ["offset", OffsetOptions, Aggregation, number];
+type OffsetAgg = ["offset", OffsetOptions, Aggregation, NumericLiteral];
 
 type CommonAggregation =
   | CountAgg
