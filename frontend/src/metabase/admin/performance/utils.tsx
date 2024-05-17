@@ -159,7 +159,9 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
 const delay = (milliseconds: number) =>
   new Promise(resolve => setTimeout(resolve, milliseconds));
 
-/** To prevent UI jumpiness, ensure a minimum delay before continuing. An example of jumpiness: clicking a save button results in displaying a loading spinner for 10 ms and then a success message */
+/** To prevent UI jumpiness, ensure a minimum delay before continuing.
+ * An example of jumpiness: clicking a save button results in
+ * displaying a loading spinner for 10 ms and then a success message */
 export const resolveSmoothly = async (
   promise: Promise<any>,
   timeout: number = 300,

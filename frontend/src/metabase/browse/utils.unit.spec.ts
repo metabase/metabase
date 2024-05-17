@@ -1,10 +1,8 @@
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult, ModelResult } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockModelResult,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 
+import { createMockModelResult } from "./test-utils";
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
 import { filterModels } from "./utils";
 
