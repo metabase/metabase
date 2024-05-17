@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: false
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -78,5 +77,6 @@ serdes/meta:
   label: question_views_per_month
   model: Card
 initially_published_at: null
+last_used_at: null
 metabase_version: null
 type: question
