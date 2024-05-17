@@ -65,7 +65,7 @@ export const DataPickerModal = ({
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { availableModels } = useAvailableData({
+  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
   });
 
@@ -104,7 +104,7 @@ export const DataPickerModal = ({
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    hasNestedQueriesEnabled
+    hasModels && hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
           model: "dataset" as const,
@@ -120,7 +120,7 @@ export const DataPickerModal = ({
           ),
         }
       : undefined,
-    hasNestedQueriesEnabled
+    hasMetrics && hasNestedQueriesEnabled
       ? {
           displayName: t`Metrics`,
           model: "metric" as const,
@@ -148,7 +148,7 @@ export const DataPickerModal = ({
         />
       ),
     },
-    hasNestedQueriesEnabled
+    hasQuestions && hasNestedQueriesEnabled
       ? {
           displayName: t`Saved questions`,
           model: "card" as const,
@@ -166,9 +166,7 @@ export const DataPickerModal = ({
       : undefined,
   ].filter(
     (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null &&
-      models.includes(tab.model) &&
-      (availableModels.length === 0 || availableModels.includes(tab.model)),
+      tab != null && models.includes(tab.model),
   );
 
   return (
