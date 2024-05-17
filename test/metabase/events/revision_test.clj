@@ -73,7 +73,7 @@
   (testing :event/card-update
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
-      (is (=? {:model "Card"
+      (is (=? {:model        "Card"
                :model_id     card-id
                :user_id      (mt/user->id :crowberto)
                :object       (card->revision-object card)
