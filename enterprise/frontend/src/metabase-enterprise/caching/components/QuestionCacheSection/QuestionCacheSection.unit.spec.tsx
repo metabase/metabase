@@ -22,7 +22,7 @@ const setup = ({ card = createMockCard() }: SetupOpts) => {
   const question = checkNotNull(metadata.question(card.id));
 
   renderWithProviders(
-    <QuestionCacheSection question={question} onSave={jest.fn()} />,
+    <QuestionCacheSection question={question} setPage={jest.fn()} />,
     { storeInitialState: state },
   );
 };
@@ -49,17 +49,5 @@ describe("QuestionCacheSection", () => {
       screen.getByText("Question last cached 5 days ago"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
-  });
-
-  it("should not show the last cached query time if the question is not cached", () => {
-    setup({
-      card: createMockCard({
-        can_write: true,
-        last_query_start: null,
-      }),
-    });
-
-    expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
-    expect(screen.queryByText(/Question last cached/)).not.toBeInTheDocument();
   });
 });

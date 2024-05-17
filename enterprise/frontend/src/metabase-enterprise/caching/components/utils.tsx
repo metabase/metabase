@@ -1,9 +1,20 @@
-import type { Dashboard } from "metabase-types/api";
+import { t } from "ttag";
 
-export const getDashboardId = (dashboard: Dashboard): number => {
-  if (typeof dashboard.id === "string") {
-    throw new Error("This dashboard has an invalid id");
-  }
-  const dashboardId: number = dashboard.id;
-  return dashboardId;
-};
+import type Question from "metabase-lib/v1/Question";
+import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
+
+export const getItemId = (
+  model: CacheableModel,
+  item: CacheableDashboard | Question,
+) =>
+  model === "dashboard"
+    ? (item as CacheableDashboard).id
+    : (item as Question).id();
+
+export const getItemName = (
+  model: CacheableModel,
+  item: CacheableDashboard | Question,
+) =>
+  model === "dashboard"
+    ? (item as CacheableDashboard).name
+    : (item as Question).displayName() ?? t`Untitled question`;
