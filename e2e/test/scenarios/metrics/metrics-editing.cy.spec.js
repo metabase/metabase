@@ -346,7 +346,7 @@ describe("scenarios > metrics > editing", () => {
   });
 
   describe("custom columns", () => {
-    it.skip("should be able to use custom columns in metric queries (metabase#42360)", () => {
+    it("should be able to use custom columns in metric queries (metabase#42360)", () => {
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
