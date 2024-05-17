@@ -1,9 +1,10 @@
 import {
-  restore,
-  popover,
+  entityPickerModal,
+  entityPickerModalLevel,
   navigationSidebar,
   openNavigationSidebar,
-  entityPickerModal,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
@@ -28,9 +29,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Your personal collection").click();
+    entityPickerModal().within(() => {
+      cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
   });
@@ -52,8 +52,7 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
-    popover().within(() => {
-      cy.findByText("Models").click();
+    entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -75,10 +74,10 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("First collection").click();
-      cy.findByText("Nothing here");
+    entityPickerModal().within(() => {
+      cy.findByText("First collection").should("not.exist");
+      entityPickerModalLevel(1).should("not.exist");
+      entityPickerModalLevel(2).should("not.exist");
     });
   });
 });

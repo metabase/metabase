@@ -72,7 +72,7 @@ describe("scenarios > collection defaults", () => {
       pickEntity({
         path: ["Our analytics", `Collection ${COLLECTIONS_COUNT}`],
         select: true,
-        tab: /Collections/,
+        tab: "Collections",
       });
 
       cy.findByTestId("new-collection-modal").button("Create").click();
@@ -531,7 +531,10 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("toast-card").parent().button("Archive").click();
+          cy.findByTestId("toast-card")
+            .parent()
+            .button("Move to trash")
+            .click();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");

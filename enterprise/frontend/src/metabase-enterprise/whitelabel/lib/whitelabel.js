@@ -2,7 +2,7 @@ import { colors } from "metabase/lib/colors/palette";
 import MetabaseSettings from "metabase/lib/settings";
 
 export function updateColors() {
-  const scheme = MetabaseSettings.get("application-colors");
+  const scheme = MetabaseSettings.get("application-colors") || {};
   for (const [colorName, themeColor] of Object.entries(scheme)) {
     colors[colorName] = themeColor;
   }

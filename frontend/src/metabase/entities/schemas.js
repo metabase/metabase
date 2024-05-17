@@ -81,6 +81,10 @@ export default createEntity({
     getObject: (state, { entityId }) => getMetadata(state).schema(entityId),
   },
 
+  objectSelectors: {
+    getIcon: () => ({ name: "folder" }),
+  },
+
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.CREATE && !error) {
       const { question, status, data } = payload;

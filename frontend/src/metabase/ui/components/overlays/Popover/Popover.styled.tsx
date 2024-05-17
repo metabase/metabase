@@ -12,10 +12,11 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
       middlewares: { shift: true, flip: true, size: true },
       transitionProps: { duration: 0 },
     },
-    styles: () => ({
+    styles: theme => ({
       dropdown: {
         padding: 0,
         overflow: "auto",
+        background: theme.fn.themeColor("bg-white"),
       },
     }),
   },

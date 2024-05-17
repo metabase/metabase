@@ -30,6 +30,7 @@ const CUSTOM_COLORS = [
   "text-dark",
   "focus",
   "border",
+  "bg-white",
   "bg-light",
   "bg-medium",
   "bg-dark",

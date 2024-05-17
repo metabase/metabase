@@ -18,7 +18,6 @@ import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import {
   getDefaultIsHistogram,
   getDefaultStackingValue,
-  getDefaultStackDisplayValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
@@ -50,6 +49,14 @@ export const getSeriesDisplays = (transformedSeries, settings) => {
 
 export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
+}
+
+function canHaveDataLabels(series, vizSettings) {
+  const hasLineSeries = getSeriesDisplays(series, vizSettings).some(
+    display => display === "line",
+  );
+
+  return hasLineSeries || vizSettings["stackable.stack_type"] !== "normalized";
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -257,43 +264,23 @@ export const STACKABLE_SETTINGS = {
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
-  "stackable.stack_display": {
-    section: t`Display`,
-    title: t`Stacked chart type`,
-    widget: "segmentedControl",
-    props: {
-      options: [
-        { icon: "area", value: "area" },
-        { icon: "bar", value: "bar" },
-      ],
-    },
-    getDefault: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      return getDefaultStackDisplayValue(series[0].card.display, displays);
-    },
-    getHidden: (series, settings) => settings["stackable.stack_type"] == null,
-    readDependencies: ["stackable.stack_type", "series"],
-  },
 };
 
 export const LEGEND_SETTINGS = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
-    readDependencies: ["stackable.stack_display"],
   },
 };
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: (_series, settings) => {
+    getDefault: (series, settings) => {
       const shouldShowComparisonTooltip =
-        settings["stackable.stack_display"] != null &&
         settings["stackable.stack_type"] != null;
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
-    readDependencies: ["stackable.stack_display"],
   },
 };
 
@@ -318,8 +305,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     section: t`Display`,
     title: t`Show values on data points`,
     widget: "toggle",
-    getHidden: (series, vizSettings) =>
-      vizSettings["stackable.stack_type"] === "normalized",
+    getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
     marginBottom: "1rem",
@@ -328,9 +314,13 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     section: t`Display`,
     title: t`Values to show`,
     widget: "segmentedControl",
-    getHidden: (series, vizSettings) =>
-      vizSettings["graph.show_values"] !== true ||
-      vizSettings["stackable.stack_type"] === "normalized",
+    getHidden: (series, vizSettings) => {
+      if (!vizSettings["graph.show_values"]) {
+        return true;
+      }
+
+      return !canHaveDataLabels(series, vizSettings);
+    },
     props: {
       options: [
         { name: t`Some`, value: "fit" },
@@ -345,7 +335,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Auto formatting`,
     widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
-      vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
@@ -355,7 +344,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: "auto",
-    readDependencies: ["graph.show_values"],
   },
 };
 

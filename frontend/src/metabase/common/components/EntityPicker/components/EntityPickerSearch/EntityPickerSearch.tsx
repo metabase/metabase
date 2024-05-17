@@ -16,7 +16,7 @@ import type {
 
 import type { TypeWithModel } from "../../types";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
-import { ResultItem, ChunkyList } from "../ResultItem";
+import { ChunkyList, ResultItem } from "../ResultItem";
 
 import { getSearchTabText } from "./utils";
 

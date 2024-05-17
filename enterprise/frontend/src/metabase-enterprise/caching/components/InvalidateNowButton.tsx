@@ -87,14 +87,14 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           label={
             <Group spacing="sm">
               <Icon color={color("danger")} name="trash" />
-              <Text>{t`Invalidate cache now`}</Text>
+              <Text>{t`Clear cache`}</Text>
             </Group>
           }
           activeLabel={
             <Group spacing="sm">
               <Loader size="1rem" />
-              <Text>{c("Shown when a cache is being invalidated")
-                .t`Invalidating… `}</Text>
+              <Text>{c("Shown when a cache is being cleared")
+                .t`Clearing cache… `}</Text>
             </Group>
           }
           successLabel={

@@ -3,8 +3,8 @@ import _ from "underscore";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  ListCollectionItemsRequest,
   CollectionItemModel,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";

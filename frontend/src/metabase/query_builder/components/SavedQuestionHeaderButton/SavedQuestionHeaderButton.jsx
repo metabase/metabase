@@ -14,7 +14,7 @@ function SavedQuestionHeaderButton({ question, onSave }) {
   return (
     <HeaderRoot>
       <HeaderTitle
-        isDisabled={!question.canWrite()}
+        isDisabled={!question.canWrite() || question.isArchived()}
         initialValue={question.displayName()}
         placeholder={t`Add title`}
         onChange={onSave}

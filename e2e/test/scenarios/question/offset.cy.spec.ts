@@ -3,6 +3,8 @@ import {
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   modal,
   openNotebook,
@@ -106,7 +108,7 @@ describe("scenarios > question > offset", () => {
     ]);
   });
 
-  it.skip("works with a single breakout and sorting by aggregation (metabase#42554)", () => {
+  it("works with a single breakout and sorting by aggregation (metabase#42554)", () => {
     const query: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
@@ -185,8 +187,8 @@ describe("scenarios > question > offset", () => {
     const breakoutName = "Created At";
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     addCustomAggregation({
@@ -229,8 +231,8 @@ describe("scenarios > question > offset", () => {
     ];
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     addCustomAggregation({
