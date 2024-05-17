@@ -116,15 +116,18 @@ describe("deprecated metadata actions", () => {
       loadMetadataForDependentItems(dependentItems)(dispatch);
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 1 },
-        undefined,
+        { reload: false, noEvent: true },
       );
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith(
         { id: 2 },
-        undefined,
+        { reload: false, noEvent: true },
       );
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledTimes(2);
 
-      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 }, undefined);
+      expect(Fields.actions.fetch).toHaveBeenCalledWith(
+        { id: 3 },
+        { reload: false, noEvent: true },
+      );
     });
   });
 });

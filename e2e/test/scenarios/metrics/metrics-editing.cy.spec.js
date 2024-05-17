@@ -17,9 +17,9 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const ORDERS_COUNT_METRIC = {
+const ORDERS_SCALAR_METRIC = {
   name: "Orders metric",
   type: "metric",
   query: {
@@ -29,8 +29,8 @@ const ORDERS_COUNT_METRIC = {
   display: "scalar",
 };
 
-const ORDERS_COUNT_MODEL_METRIC = {
-  name: "Orders metric",
+const ORDERS_SCALAR_MODEL_METRIC = {
+  name: "Orders model metric",
   type: "metric",
   query: {
     "source-table": `card__${ORDERS_MODEL_ID}`,
@@ -39,8 +39,8 @@ const ORDERS_COUNT_MODEL_METRIC = {
   display: "scalar",
 };
 
-const ORDERS_COUNT_FILTER_METRIC = {
-  name: "Orders metric",
+const ORDERS_SCALAR_FILTER_METRIC = {
+  name: "Orders metric with filter",
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
@@ -50,8 +50,18 @@ const ORDERS_COUNT_FILTER_METRIC = {
   display: "scalar",
 };
 
-const MULTI_STAGE_METRIC = {
-  name: "Orders metric",
+const PRODUCTS_SCALAR_METRIC = {
+  name: "Products metric",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const ORDERS_MULTI_STAGE_METRIC = {
+  name: "Orders metric mutli-stage",
   type: "metric",
   query: {
     "source-query": {
@@ -71,8 +81,8 @@ const MULTI_STAGE_METRIC = {
   display: "scalar",
 };
 
-const MULTI_STAGE_QUESTION = {
-  name: "Multi-stage orders",
+const ORDERS_MULTI_STAGE_QUESTION = {
+  name: "Orders question multi-stage",
   type: "question",
   query: {
     "source-query": {
@@ -112,7 +122,7 @@ describe("scenarios > metrics > editing", () => {
 
     it("should be able to rename a metric", () => {
       const newTitle = "New metric name";
-      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
         visitMetric(card.id);
         renameMetric(newTitle);
         visitMetric(card.id);
@@ -121,7 +131,7 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should be able to change the query definition of a metric", () => {
-      createQuestion(ORDERS_COUNT_METRIC).then(({ body: card }) =>
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
         visitMetric(card.id),
       );
       openQuestionActions();
@@ -132,7 +142,7 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should be able to change the query definition of a metric based on a model", () => {
-      createQuestion(ORDERS_COUNT_MODEL_METRIC).then(({ body: card }) =>
+      createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) =>
         visitMetric(card.id),
       );
       openQuestionActions();
@@ -194,10 +204,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric based on a multi-stage saved question", () => {
-      createQuestion(MULTI_STAGE_QUESTION);
+      createQuestion(ORDERS_MULTI_STAGE_QUESTION);
       startNewMetric();
       popover().findByText("Saved Questions").click();
-      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      popover().findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       addNumberBetweenFilter({
         columnName: "Count",
         minValue: 5,
@@ -225,10 +235,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric based on a multi-stage model", () => {
-      createQuestion({ ...MULTI_STAGE_QUESTION, type: "model" });
+      createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
       startNewMetric();
       popover().findByText("Models").click();
-      popover().findByText(MULTI_STAGE_QUESTION.name).click();
+      popover().findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       addNumberBetweenFilter({
         columnName: "Count",
         minValue: 5,
@@ -241,10 +251,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric based on a single-stage metric", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -256,10 +266,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric based on a multi-stage metric", () => {
-      createQuestion(MULTI_STAGE_METRIC);
+      createQuestion(ORDERS_MULTI_STAGE_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(MULTI_STAGE_METRIC.name).click();
+      popover().findByText(ORDERS_MULTI_STAGE_METRIC.name).click();
       addDateBetweenFilter({
         columnName: "Created At: Month",
         minValue: "May 7, 2020",
@@ -292,7 +302,7 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should not be possible to join a metric", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
@@ -308,10 +318,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should not be possible to join data on the first stage of a metric-based query", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
         getActionButton("Join data").should("not.exist");
@@ -319,10 +329,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should join on the second stage of a metric query", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
       addBreakout({ columnName: "Product ID" });
       startNewJoin({ isPostAggregation: true });
       popover().findByText("Products").click();
@@ -369,10 +379,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should be able to use a custom column in a metric-based query", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
       startNewCustomColumn();
       enterCustomColumnDetails({
         formula: "[Total] / 2",
@@ -390,10 +400,10 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
       startNewAggregation();
       cy.findByTestId("expression-editor").should("be.visible");
     });
@@ -401,10 +411,10 @@ describe("scenarios > metrics > editing", () => {
 
   describe("filters", () => {
     it("should add a filter to a metric based on a metric with a filter", () => {
-      createQuestion(ORDERS_COUNT_FILTER_METRIC);
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_FILTER_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_FILTER_METRIC.name).click();
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -475,13 +485,15 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
       popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
-      getNotebookStep("summarize").findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      getNotebookStep("summarize")
+        .findByText(ORDERS_SCALAR_METRIC.name)
+        .click();
       enterCustomColumnDetails({
-        formula: `[${ORDERS_COUNT_METRIC.name}] / 2`,
+        formula: `[${ORDERS_SCALAR_METRIC.name}] / 2`,
         name: "",
       });
       popover().button("Update").click();
@@ -521,28 +533,26 @@ describe("scenarios > metrics > editing", () => {
       runQuery();
       verifyScalarValue("29,554.86");
     });
+  });
 
+  describe("compatible metrics", () => {
     it.skip("should allow adding an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
+      createQuestion(ORDERS_SCALAR_METRIC);
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      createQuestion(PRODUCTS_SCALAR_METRIC);
       startNewQuestion();
       popover().findByText("Raw Data").click();
       popover().findByText("Orders").click();
       startNewAggregation();
-      popover().findByText(ORDERS_COUNT_METRIC.name).click();
+      popover().within(() => {
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+        cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       visualize();
       verifyScalarValue("18,760");
-    });
-
-    it("should not allow adding an aggregation based on a compatible metric for the same table in metrics (metabase#42470)", () => {
-      createQuestion(ORDERS_COUNT_METRIC);
-      startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
-      startNewAggregation();
-      popover().within(() => {
-        cy.findByText("Count of rows").should("be.visible");
-        cy.findByText(ORDERS_COUNT_METRIC.name).should("not.exist");
-      });
     });
   });
 });

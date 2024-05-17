@@ -1,14 +1,24 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  FIRST_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  assertQueryBuilderRowCount,
+  cartesianChartCircle,
   createQuestion,
   echartsContainer,
+  editDashboard,
   filterWidget,
   getDashboardCard,
   modal,
   popover,
   restore,
   saveDashboard,
+  sidebar,
+  undoToastList,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -19,6 +29,16 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const ORDERS_SCALAR_MODEL_METRIC = {
+  name: "Orders model metric",
+  type: "metric",
+  query: {
+    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -72,6 +92,7 @@ describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be possible to add metrics to a dashboard", () => {
@@ -130,6 +151,45 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 
+  it("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard().within(() => {
+      cartesianChartCircle()
+        .eq(23) // random dot
+        .click({ force: true });
+    });
+    popover().findByText("See these Orders").click();
+    assertQueryBuilderRowCount(445);
+  });
+
+  it("should be able to replace a card with a metric", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    getDashboardCard().realHover().findByLabelText("Replace").click();
+    modal().within(() => {
+      cy.findByText("Metrics").click();
+      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+    });
+    undoToastList().last().findByText("Question replaced").should("be.visible");
+    getDashboardCard().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByText("18,760").should("be.visible");
+    });
+    getDashboardCard().realHover().findByLabelText("Replace").click();
+    modal().within(() => {
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      cy.findByText("Questions").click();
+      cy.findByText("Orders").click();
+    });
+    undoToastList().last().findByText("Metric replaced").should("be.visible");
+    getDashboardCard().findByText("Orders").should("be.visible");
+  });
+
   it("should be able to combine scalar metrics on a dashcard", () => {
     combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
   });
@@ -139,6 +199,75 @@ describe("scenarios > metrics > dashboard", () => {
       ORDERS_TIMESERIES_METRIC,
       PRODUCTS_TIMESERIES_METRIC,
     );
+  });
+
+  it("should be able to use click behaviors with metrics on a dashboard", () => {
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+    editDashboard();
+    getDashboardCard().realHover().findByLabelText("Click behavior").click();
+    sidebar().within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+    modal().findByText("Orders").click();
+    sidebar().findByText("User ID").click();
+    popover().findByText("Count").click();
+    sidebar().button("Done").click();
+    saveDashboard();
+    getDashboardCard().within(() => {
+      cartesianChartCircle()
+        .eq(5) // random dot
+        .click({ force: true });
+    });
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("User ID is 92")
+      .should("be.visible");
+    assertQueryBuilderRowCount(8);
+  });
+
+  it("should be able to view a model-based metric without data access", () => {
+    cy.signInAsAdmin();
+    cy.createDashboardWithQuestions({
+      questions: [ORDERS_SCALAR_METRIC],
+    }).then(({ dashboard }) => {
+      cy.signIn("nodata");
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard()
+      .findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
+  });
+
+  it("should be able to view a model-based metric without collection access to the source model", () => {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        root: "none",
+        [FIRST_COLLECTION_ID]: "read",
+      },
+    });
+    cy.createDashboardWithQuestions({
+      dashboardDetails: { collection_id: FIRST_COLLECTION_ID },
+      questions: [
+        {
+          ...ORDERS_SCALAR_MODEL_METRIC,
+          collection_id: FIRST_COLLECTION_ID,
+        },
+      ],
+    }).then(({ dashboard }) => {
+      cy.signIn("nocollection");
+      visitDashboard(dashboard.id);
+    });
+    getDashboardCard()
+      .findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
   });
 });
 
