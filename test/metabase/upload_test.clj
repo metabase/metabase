@@ -1297,9 +1297,8 @@
                     (testing "Check the data was uploaded into the table correctly"
                       (is (= (set (updated-contents
                                    action
-                                   ;; TODO
                                    []
-                                   [[(if (driver/upload-type->database-type driver/*driver* offset-dt-type)
+                                   [[(if (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
                                        "2020-02-02T00:02:02Z"
                                        "2020-02-02T02:02:02+02:00")]]))
                              (set (rows-for-table table)))))
