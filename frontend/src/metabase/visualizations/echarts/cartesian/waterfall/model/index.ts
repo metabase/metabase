@@ -86,9 +86,11 @@ export const getWaterfallChartModel = (
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
     [],
+    [],
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
+    null,
     renderingContext,
   );
 
@@ -101,6 +103,7 @@ export const getWaterfallChartModel = (
   );
 
   return {
+    stackModels: [],
     dataset: originalDatasetWithTotal,
     transformedDataset,
     seriesModels: [seriesModel],

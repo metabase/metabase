@@ -2,20 +2,12 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
-import Text from "metabase/components/type/Text";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
 
 import {
-  HostingCTAContent,
-  HostingCTAIconContainer,
-  HostingCTARoot,
   NewVersionContainer,
   OnLatestVersionMessage,
 } from "./VersionUpdateNotice.styled";
@@ -51,14 +43,11 @@ CloudCustomers.propTypes = {
 };
 
 function OnLatestVersion({ currentVersion }) {
-  const isPaidPlan = useSelector(getIsPaidPlan);
-
   return (
     <div>
       <OnLatestVersionMessage>
         {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
       </OnLatestVersionMessage>
-      {!isPaidPlan && <HostingCTA />}
     </div>
   );
 }
@@ -70,7 +59,6 @@ OnLatestVersion.propTypes = {
 function NewVersionAvailable({ currentVersion }) {
   const latestVersion = MetabaseSettings.latestVersion();
   const versionInfo = MetabaseSettings.versionInfo();
-  const isPaidPlan = useSelector(getIsPaidPlan);
 
   return (
     <div>
@@ -127,8 +115,6 @@ function NewVersionAvailable({ currentVersion }) {
             <Version key={index} version={version} />
           ))}
       </div>
-
-      {!isPaidPlan && <HostingCTA />}
     </div>
   );
 }
@@ -136,47 +122,6 @@ function NewVersionAvailable({ currentVersion }) {
 NewVersionAvailable.propTypes = {
   currentVersion: PropTypes.string.isRequired,
 };
-
-function HostingCTA() {
-  return (
-    <HostingCTARoot
-      className={cx(
-        CS.rounded,
-        CS.bgLight,
-        CS.mt4,
-        CS.textBrand,
-        CS.py2,
-        CS.px1,
-      )}
-    >
-      <HostingCTAContent>
-        <HostingCTAIconContainer
-          className={cx(
-            CS.circular,
-            CS.bgMedium,
-            CS.alignCenter,
-            CS.justifyCenter,
-            CS.ml1,
-            CS.mr2,
-          )}
-        >
-          <Icon name="cloud" size={24} />
-        </HostingCTAIconContainer>
-        <div>
-          <Text
-            className={cx(CS.textBrand, CS.mb0)}
-          >{t`Want to have upgrades taken care of for you?`}</Text>
-          <Text
-            className={cx(CS.textBrand, CS.textBold)}
-          >{t`Migrate to Metabase Cloud.`}</Text>
-        </div>
-      </HostingCTAContent>
-      <div className={CS.pr1}>
-        <HostingInfoLink text={t`Learn more`} />
-      </div>
-    </HostingCTARoot>
-  );
-}
 
 function Version({ version }) {
   if (!version) {

@@ -22,6 +22,7 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   entityPickerModal,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const {
@@ -1096,8 +1097,4 @@ function setParamValue(paramName, text) {
 function drillThroughCardTitle(title) {
   cy.findByTestId("legend-caption").contains(title).click();
   cy.contains(`Started from ${title}`);
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

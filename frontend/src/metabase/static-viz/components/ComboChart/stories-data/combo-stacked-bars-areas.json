@@ -1,0 +1,489 @@
+[
+  {
+    "card": {
+      "displayIsLocked": true,
+      "cache_invalidated_at": null,
+      "archived": false,
+      "view_count": 0,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The total billed amount.",
+          "semantic_type": "type/Currency",
+          "coercion_strategy": null,
+          "name": "TOTAL",
+          "settings": {
+            "currency": "BTC"
+          },
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            42,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 10,
+                "min-value": 0,
+                "max-value": 160,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "id": 42,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 35,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 127.5,
+                "q3": 977.5,
+                "max": 1495,
+                "sd": 451.9696435936364,
+                "avg": 521.1111111111111
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-05-02T23:55:29.854334Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            [
+              "field",
+              42,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 10
+                }
+              }
+            ]
+          ]
+        }
+      },
+      "parameter_mappings": [],
+      "display": "combo",
+      "entity_id": "JA1FIbEF0yH66hFg3sZA_",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT", "TOTAL"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "series_settings": {
+          "0  –  20": {
+            "display": "line"
+          },
+          "20  –  40": {
+            "display": "line"
+          },
+          "40  –  60": {
+            "display": "line"
+          },
+          "140  –  160": {
+            "display": "area"
+          },
+          "120  –  140": {
+            "display": "area"
+          }
+        },
+        "stackable.stack_type": "stacked",
+        "graph.metrics": ["count"],
+        "graph.y_axis.auto_range": true
+      },
+      "collection": null,
+      "metabase_version": "v0.48.1-SNAPSHOT (8053de5)",
+      "parameters": [],
+      "created_at": "2024-05-02T23:55:29.854334Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        ["2022-01-01T00:00:00-03:00", 0, 6],
+        ["2022-01-01T00:00:00-03:00", 20, 212],
+        ["2022-01-01T00:00:00-03:00", 40, 242],
+        ["2022-01-01T00:00:00-03:00", 60, 95],
+        ["2022-01-01T00:00:00-03:00", 80, 184],
+        ["2022-01-01T00:00:00-03:00", 100, 5],
+        ["2023-01-01T00:00:00-03:00", -60, 1],
+        ["2023-01-01T00:00:00-03:00", 0, 37],
+        ["2023-01-01T00:00:00-03:00", 20, 1014],
+        ["2023-01-01T00:00:00-03:00", 40, 1104],
+        ["2023-01-01T00:00:00-03:00", 60, 649],
+        ["2023-01-01T00:00:00-03:00", 80, 751],
+        ["2023-01-01T00:00:00-03:00", 100, 54],
+        ["2024-01-01T00:00:00-03:00", 0, 5],
+        ["2024-01-01T00:00:00-03:00", 20, 377],
+        ["2024-01-01T00:00:00-03:00", 40, 1155],
+        ["2024-01-01T00:00:00-03:00", 60, 1331],
+        ["2024-01-01T00:00:00-03:00", 80, 662],
+        ["2024-01-01T00:00:00-03:00", 100, 963],
+        ["2024-01-01T00:00:00-03:00", 120, 992],
+        ["2024-01-01T00:00:00-03:00", 140, 349],
+        ["2025-01-01T00:00:00-03:00", 0, 3],
+        ["2025-01-01T00:00:00-03:00", 20, 449],
+        ["2025-01-01T00:00:00-03:00", 40, 1239],
+        ["2025-01-01T00:00:00-03:00", 60, 1495],
+        ["2025-01-01T00:00:00-03:00", 80, 805],
+        ["2025-01-01T00:00:00-03:00", 100, 1062],
+        ["2025-01-01T00:00:00-03:00", 120, 1121],
+        ["2025-01-01T00:00:00-03:00", 140, 404],
+        ["2026-01-01T00:00:00-03:00", 20, 138],
+        ["2026-01-01T00:00:00-03:00", 40, 367],
+        ["2026-01-01T00:00:00-03:00", 60, 437],
+        ["2026-01-01T00:00:00-03:00", 80, 247],
+        ["2026-01-01T00:00:00-03:00", 100, 345],
+        ["2026-01-01T00:00:00-03:00", 120, 343],
+        ["2026-01-01T00:00:00-03:00", 140, 117]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The total billed amount.",
+          "semantic_type": "type/Currency",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "binning_info": {
+            "num_bins": 10,
+            "min_value": 0,
+            "max_value": 160,
+            "bin_width": 20,
+            "binning_strategy": "num-bins"
+          },
+          "name": "TOTAL",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            42,
+            {
+              "base-type": "type/Float",
+              "binning": {
+                "strategy": "num-bins",
+                "num-bins": 10,
+                "min-value": 0,
+                "max-value": 160,
+                "bin-width": 20
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 42,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 AS \"TOTAL\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\"), FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 ORDER BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC, FLOOR((\"PUBLIC\".\"ORDERS\".\"TOTAL\" / 20.0)) * 20.0 ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Canada/Eastern",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The total billed amount.",
+            "semantic_type": "type/Currency",
+            "coercion_strategy": null,
+            "name": "TOTAL",
+            "settings": {
+              "currency": "BTC"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              42,
+              {
+                "base-type": "type/Float",
+                "binning": {
+                  "strategy": "num-bins",
+                  "num-bins": 10,
+                  "min-value": 0,
+                  "max-value": 160,
+                  "bin-width": 20
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 42,
+            "visibility_type": "normal",
+            "display_name": "Total",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4426,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8.93914247937167,
+                  "q1": 51.34535490743823,
+                  "q3": 110.29428389265787,
+                  "max": 159.34900526552292,
+                  "sd": 34.26469575709948,
+                  "avg": 80.35871658771228
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 35,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 127.5,
+                  "q3": 977.5,
+                  "max": 1495,
+                  "sd": 451.9696435936364,
+                  "avg": 521.1111111111111
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": null,
+          "unit": "year",
+          "offset": -468.931605143734,
+          "last-change": null,
+          "col": "TOTAL",
+          "slope": 0.026860351877681935,
+          "last-value": 140,
+          "best-fit": [
+            "+",
+            -5172.324199511664,
+            ["*", 529.1781626661328, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": null,
+          "unit": "year",
+          "offset": -2641.0538247621535,
+          "last-change": null,
+          "col": "count",
+          "slope": 0.16007753395618673,
+          "last-value": 117,
+          "best-fit": [
+            "*",
+            6.279474014643268e-94,
+            ["pow", "x", 22.24161605539767]
+          ]
+        }
+      ]
+    }
+  }
+]

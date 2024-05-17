@@ -4,15 +4,14 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
+import { UpsellHosting } from "metabase/admin/upsells";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
-import MetabaseSettings from "metabase/lib/settings";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 
 import {
   SetupListRoot,
@@ -113,8 +112,6 @@ class SetupCheckList extends Component {
   }
 
   render() {
-    const { isPaidPlan } = this.props;
-
     let tasks, nextTask;
     if (this.state.tasks) {
       tasks = this.state.tasks.map(section => ({
@@ -129,36 +126,37 @@ class SetupCheckList extends Component {
     }
 
     return (
-      <SetupListRoot>
-        <div className={CS.px2}>
-          <h2>{t`Getting set up`}</h2>
-          <p
-            className={CS.mt1}
-          >{t`A few things you can do to get the most out of Metabase.`}</p>
-          <LoadingAndErrorWrapper
-            loading={!this.state.tasks}
-            error={this.state.error}
-          >
-            {() => (
-              <div style={{ maxWidth: 468 }}>
-                {nextTask && (
-                  <TaskSection
-                    name={t`Recommended next step`}
-                    tasks={[nextTask]}
-                  />
-                )}
-                {tasks.map((section, index) => (
-                  <TaskSection {...section} key={index} />
-                ))}
-              </div>
-            )}
-          </LoadingAndErrorWrapper>
-        </div>
-
-        {!MetabaseSettings.isHosted() && !isPaidPlan && (
-          <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
-        )}
-      </SetupListRoot>
+      <Flex justify="space-between">
+        <SetupListRoot>
+          <div className={CS.px2}>
+            <h2>{t`Getting set up`}</h2>
+            <p
+              className={CS.mt1}
+            >{t`A few things you can do to get the most out of Metabase.`}</p>
+            <LoadingAndErrorWrapper
+              loading={!this.state.tasks}
+              error={this.state.error}
+            >
+              {() => (
+                <div style={{ maxWidth: 468 }}>
+                  {nextTask && (
+                    <TaskSection
+                      name={t`Recommended next step`}
+                      tasks={[nextTask]}
+                    />
+                  )}
+                  {tasks.map((section, index) => (
+                    <TaskSection {...section} key={index} />
+                  ))}
+                </div>
+              )}
+            </LoadingAndErrorWrapper>
+          </div>
+        </SetupListRoot>
+        <Box>
+          <UpsellHosting source="settings-setup-migrate_to_cloud" />
+        </Box>
+      </Flex>
     );
   }
 }
