@@ -39,23 +39,23 @@
    :query_type                 :query
    :table_id                   (mt/id :categories)
    :visualization_settings     {}
-   :trashed_from_collection_id (:trashed_from_collection_id card)})
+   :trashed_directly           (:trashed_directly card)})
 
 (defn- dashboard->revision-object [dashboard]
-  {:collection_id              (:collection_id dashboard)
-   :description                nil
-   :cache_ttl                  nil
-   :auto_apply_filters         true
-   :name                       (:name dashboard)
-   :width                      (:width dashboard)
-   :tabs                       []
-   :cards                      []
-   :archived                   false
-   :collection_position        nil
-   :enable_embedding           false
-   :embedding_params           nil
-   :parameters                 []
-   :trashed_from_collection_id (:trashed_from_collection_id dashboard)})
+  {:collection_id       (:collection_id dashboard)
+   :description         nil
+   :cache_ttl           nil
+   :auto_apply_filters  true
+   :name                (:name dashboard)
+   :width               (:width dashboard)
+   :tabs                []
+   :cards               []
+   :archived            false
+   :collection_position nil
+   :enable_embedding    false
+   :embedding_params    nil
+   :parameters          []
+   :trashed_directly    (:trashed_directly dashboard)})
 
 (deftest card-create-test
   (testing :event/card-create

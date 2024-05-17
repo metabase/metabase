@@ -661,9 +661,8 @@
 ;;; ---------------------------------------- MOVING TO TRASH ON ARCHIVE --------------------------------
 
 (defn move-on-archive-or-unarchive
-  "Given a current instance with a `collection_id` and `trashed_from_collection_id` and a set of updates to that
-  instance, return a possibly modified version of the updates reflecting the fact that archiving or unarchiving also
-  moves the instance to/from the Trash."
+  "Given a current instance and a set of updates to that instance, return a possibly modified version of the updates
+  with `trashed_directly` set appropriately."
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)

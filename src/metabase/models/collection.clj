@@ -1174,13 +1174,9 @@
                                                                                         [:like :location (str location id "/%")]
                                                                                         [:like :trashed_from_location (str location id "/%")]]})]
                              ["Collection" child-id]))
-          dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:or
-                                                                                      [:= :collection_id id]
-                                                                                      [:= :trashed_from_collection_id id]]})]
+          dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
                              ["Dashboard" dash-id]))
-          cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:or
-                                                                                 [:= :collection_id id]
-                                                                                 [:= :trashed_from_collection_id id]]})]
+          cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
                              ["Card" card-id]))]
       (set/union child-colls dashboards cards))))
 
@@ -1493,7 +1489,7 @@
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
-  "Efficiently hydrate the `:can_restore` of a sequence of items with a `trashed_from_collection_id`."
+  "Efficiently hydrate the `:can_restore` of a sequence of items with a `trashed_directly` field."
   [items]
   (for [{collection :collection
          :as item*} (t2/hydrate items :collection)
@@ -1520,8 +1516,8 @@
 
 (mi/define-batched-hydration-method collection-can-restore
   :collection/can_restore
-  "Collections have a `trashed_from_location` rather than a `trashed_from_collection_id`. Efficiently hydrate the
-  `:can_restore` property of a sequence of Collections."
+  "Collections have a `trashed_from_location`. Efficiently hydrate the `:can_restore` property of a sequence of
+  Collections."
   [colls]
   (when (seq colls)
     (let [;; skip any collections that aren't archived, or are the root collection

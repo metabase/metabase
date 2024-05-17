@@ -308,10 +308,7 @@
 (mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
-  Collection if `collection_id` is `nil`.
-
-  If the model contains an `archived` key and a `trashed_from_collection_id` key, we will check permissions of that
-  collection instead."
+  Collection if `collection_id` is `nil`."
   ([this read-or-write]
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
