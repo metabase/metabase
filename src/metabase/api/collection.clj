@@ -729,6 +729,9 @@
     (collection/is-trash? collection)
     (filter #(can-read-in-trash? collection %))))
 
+(defn- fix-collection-id [item]
+  (cond-> item (:trashed_directly item) (assoc :collection_id (collection/trash-collection-id))))
+
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
@@ -741,6 +744,7 @@
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
+       (map fix-collection-id)
        (map remove-unwanted-keys)
        (sort-by (comp ::index meta))))
 

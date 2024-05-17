@@ -741,7 +741,7 @@
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
   (let [namespaced?   (some? (:namespace collection))
-        archived? (:archived updates)
+        archived?     (:archived updates)
         new-parent-id (cond
                         ;; don't move namespaced collections.
                         namespaced? (location-path->parent-id
@@ -788,12 +788,12 @@
                  :trashed_from_location nil
                  :archived              archived?}
         :where  [:like :location (str orig-children-location "%")]})
-      (doseq [model [:model/Card
-                     :model/Dashboard
-                     :model/NativeQuerySnippet
-                     :model/Pulse
-                     :model/Timeline]]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
+      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived archived?}))
+      (doseq [model [:model/Card :model/Dashboard]]
+        (t2/update! model {:collection_id    [:in affected-collection-ids]
+                           :trashed_directly false}
                     {:archived archived?})))))
 
 (mu/defn move-collection!

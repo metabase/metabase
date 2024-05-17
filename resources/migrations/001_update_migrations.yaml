@@ -8043,12 +8043,49 @@ databaseChangeLog:
               - column:
                   name: trashed_directly
                   type: ${boolean.type}
+                  defaultValueBoolean: false
                   remarks: "Was this thing trashed directly"
                   constraints:
-                    nullable: true
+                    nullable: false
 
   - changeSet:
-      id: v50.2024-05-17T15:51:44
+      id: v50.2024-05-17T20:43:50
+      author: johnswanson
+      comment: Set `report_dashboard.trashed_directly`
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM report_dashboard
+              WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM collection WHERE type = 'trash'
+              );
+              UPDATE report_dashboard
+              SET trashed_directly = (
+                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              ),
+              collection_id = trashed_from_collection_id
+              WHERE archived = true;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET
+                trashed_from_collection_id = collection_id,
+                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE trashed_directly;
+
+  - changeSet:
+      id: v50.2024-05-17T20:43:55
+      author: johnswanson
+      comment: remove `report_dashboard.trashed_from_collection_id`
+      changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: trashed_from_collection_id
+      rollback: #
+
+  - changeSet:
+      id: v50.2024-05-17T20:44:00
       author: johnswanson
       comment: Add `report_card.trashed_directly`
       changes:
@@ -8059,6 +8096,51 @@ databaseChangeLog:
                   name: trashed_directly
                   type: ${boolean.type}
                   remarks: "Was this thing trashed directly"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-17T20:44:06
+      author: johnswanson
+      comment: Set `report_card.trashed_directly`
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM report_card
+              WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM collection WHERE type = 'trash'
+              );
+              UPDATE report_card
+              SET trashed_directly = (
+                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              ),
+              collection_id = trashed_from_collection_id
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET
+                trashed_from_collection_id = collection_id,
+                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE trashed_directly;
+
+  - changeSet:
+      id: v50.2024-05-17T20:44:12
+      author: johnswanson
+      comment: remove `report_card.trashed_from_collection_id`
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: trashed_from_collection_id
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this dashboard was trashed *from*"
                   constraints:
                     nullable: true
 
