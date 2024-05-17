@@ -67,6 +67,7 @@ export const useDashboardUrlParams = ({
     ) as DashboardUrlHashOptions;
   }, [location.hash]);
 
+  // TODO: use useEffect to simplify state management
   const stateOptions = useMemo(() => {
     return removeEmptyOptions({
       fullscreen: isFullscreen,
