@@ -6876,6 +6876,91 @@ databaseChangeLog:
       rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
+      id: v50.2024-05-08T09:00:00
+      author: qnkhuat
+      comment: Add task_history.status
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "the status of task history, could be started, failed, success, unknown"
+                  constraints:
+                    nullable: false
+                  defaultValue: "unknown"
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:01
+      author: qnkhuat
+      comment: Drop default value task_history.status
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:02
+      author: qnkhuat
+      comment: Add "started" as default value for task_history.status, now that backfill is done.
+      changes:
+        - addDefaultValue:
+            defaultValue: "started"
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.ended_at
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:04
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.duration
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: int
+            columnName: duration
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:05
+      author: qnkhuat
+      comment: Drop default value task_history.ended_at
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+      rollback:
+        - addDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:06
+      author: qnkhuat
+      comment: Add null as default value for task_history.ended_at
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: task_history
+            columnName: ended_at
+      # the migration above will add one
+      rollback:
+
+  - changeSet:
       id: v50.2024-05-13T16:00:00
       author: filipesilva
       comment: Create cloud migration
