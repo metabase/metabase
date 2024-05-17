@@ -234,7 +234,7 @@ describe("scenarios > notebook > data source", () => {
           cy.findByTestId("result-item")
             .should("exist")
             .and("contain.text", tableName)
-            .and("have.css", "background-color", "rgb(80, 158, 227)");
+            .and("have.attr", "aria-selected", "true");
         });
       },
     );
@@ -294,7 +294,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByTestId("result-item")
           .should("exist")
           .and("contain.text", checkNotNull(modelDetails.name))
-          .and("have.css", "background-color", "rgb(80, 158, 227)");
+          .and("have.attr", "aria-selected", "true");
       });
     });
 
@@ -316,7 +316,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByTestId("result-item")
           .should("exist")
           .and("contain.text", "Orders Model")
-          .and("have.css", "background-color", "rgb(80, 158, 227)");
+          .and("have.attr", "aria-selected", "true");
 
         cy.button("Close").click();
       });
@@ -338,7 +338,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByTestId("result-item")
           .should("exist")
           .and("contain.text", "Orders Model")
-          .and("have.css", "background-color", "rgb(80, 158, 227)");
+          .and("have.attr", "aria-selected", "true");
       });
     });
 
@@ -378,7 +378,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByTestId("result-item")
           .should("exist")
           .and("contain.text", "Nested Question")
-          .and("not.have.css", "background-color", "rgb(80, 158, 227)");
+          .and("not.have.attr", "aria-selected", "true");
 
         cy.button("Close").click();
       });
@@ -407,11 +407,11 @@ describe("scenarios > notebook > data source", () => {
         cy.findAllByTestId("result-item")
           .contains(nestedQuestionDetails.name)
           .parents("button")
-          .and("not.have.css", "background-color", "rgb(80, 158, 227)");
+          .and("not.have.attr", "aria-selected", "true");
         cy.findAllByTestId("result-item")
           .contains(sourceQuestionName)
           .parents("button")
-          .and("have.css", "background-color", "rgb(80, 158, 227)");
+          .and("have.attr", "aria-selected", "true");
       });
     });
   });
