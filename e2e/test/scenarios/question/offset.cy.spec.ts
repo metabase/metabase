@@ -114,6 +114,12 @@ describe("scenarios > question > offset", () => {
         cy.button("Done").should("be.enabled").click();
       });
 
+      cy.log("preview availability");
+      getNotebookStep("data").icon("play").should("be.visible");
+      getNotebookStep("expression").icon("play").should("not.be.visible");
+      getNotebookStep("sort").icon("play").should("be.visible");
+      getNotebookStep("limit").icon("play").should("be.visible");
+
       visualize();
       verifyTableContent([
         ["1", "39.72", ""],
