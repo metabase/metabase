@@ -56,6 +56,7 @@ describe("scenarios > notebook > data source", () => {
         );
 
         entityPickerModal().within(() => {
+          cy.findAllByRole("tab").should("have.length", 0);
           entityPickerModalLevel(0).should("not.exist");
           entityPickerModalLevel(1).should("not.exist");
           entityPickerModalLevel(2)
@@ -84,6 +85,7 @@ describe("scenarios > notebook > data source", () => {
       );
 
       entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("have.length", 0);
         entityPickerModalLevel(0).should("not.exist");
         entityPickerModalLevel(1).should("not.exist");
         entityPickerModalLevel(2).get("[data-index]").should("have.length", 8);
@@ -109,6 +111,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
+        entityPickerModalTab("Recents").should("not.exist");
         entityPickerModalTab("Models").and(
           "have.attr",
           "aria-selected",
@@ -129,6 +132,7 @@ describe("scenarios > notebook > data source", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("have.length", 2);
+        entityPickerModalTab("Recents").should("not.exist");
         entityPickerModalTab("Models").should("not.exist");
         entityPickerModalTab("Tables").and(
           "have.attr",
