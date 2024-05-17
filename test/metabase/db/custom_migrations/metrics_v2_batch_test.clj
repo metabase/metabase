@@ -123,7 +123,7 @@
    (for [[_ dataset-query :as input] cards]
      {:input input
       :query (#'metrics-v2/rewrite-metric-consuming-query (:query dataset-query)
-                                                          (fn [id] {:id (+ id card-id-offset)}))})})
+                                                          (fn [id] (+ id card-id-offset)))})})
 
 (defn- validate-query
   [query context]
