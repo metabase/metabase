@@ -375,7 +375,7 @@
   (some->> refresh-job-key
            task/job-info
            :triggers
-           (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
+           (m/index-by (comp #(get % "db-id") :data))))
 
 (defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not

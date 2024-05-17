@@ -51,6 +51,14 @@ export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
 }
 
+function canHaveDataLabels(series, vizSettings) {
+  const hasLineSeries = getSeriesDisplays(series, vizSettings).some(
+    display => display === "line",
+  );
+
+  return hasLineSeries || vizSettings["stackable.stack_type"] !== "normalized";
+}
+
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
     getColumns: ([
@@ -297,8 +305,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     section: t`Display`,
     title: t`Show values on data points`,
     widget: "toggle",
-    getHidden: (series, vizSettings) =>
-      vizSettings["stackable.stack_type"] === "normalized",
+    getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
     marginBottom: "1rem",
@@ -307,9 +314,13 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     section: t`Display`,
     title: t`Values to show`,
     widget: "segmentedControl",
-    getHidden: (series, vizSettings) =>
-      vizSettings["graph.show_values"] !== true ||
-      vizSettings["stackable.stack_type"] === "normalized",
+    getHidden: (series, vizSettings) => {
+      if (!vizSettings["graph.show_values"]) {
+        return true;
+      }
+
+      return !canHaveDataLabels(series, vizSettings);
+    },
     props: {
       options: [
         { name: t`Some`, value: "fit" },

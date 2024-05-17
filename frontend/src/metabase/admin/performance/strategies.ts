@@ -3,7 +3,12 @@ import type { AnySchema } from "yup";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import type { Config, Strategy, StrategyType } from "metabase-types/api";
+import type {
+  Config,
+  CacheableModel,
+  Strategy,
+  StrategyType,
+} from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
 import { defaultCron, getFrequencyFromCron } from "./utils";
@@ -13,9 +18,13 @@ export type UpdateTargetId = (
   isFormDirty: boolean,
 ) => void;
 
+type StrategyLabel = string | ((model?: CacheableModel) => string);
+
 type StrategyData = {
-  label: string;
-  shortLabel?: string;
+  /**
+   * The human-readable label for the strategy, which can be a string or a function that takes a model and returns a string */
+  label: StrategyLabel;
+  shortLabel?: StrategyLabel;
   validateWith: AnySchema;
 };
 
@@ -36,7 +45,7 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 });
 
 export const defaultMinDurationMs = 1000;
-export const multiplierStrategyValidationSchema = Yup.object({
+export const adaptiveStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
   min_duration_ms: positiveInteger.default(defaultMinDurationMs),
   min_duration_seconds: positiveInteger.default(
@@ -98,29 +107,38 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
+  inherit: {
+    label: (model?: CacheableModel) => {
+      switch (model) {
+        case "dashboard":
+          return t`Use default: each question will use its own policy or the database policy`;
+        default:
+          return t`Use default`;
+      }
+    },
+    shortLabel: t`Use default`,
+    validateWith: inheritStrategyValidationSchema,
+  },
   duration: {
-    label: t`Hours: after a specific number of hours`,
+    label: t`Duration: keep the cache for a number of hours`,
     validateWith: durationStrategyValidationSchema,
-    shortLabel: t`Hours`,
+    shortLabel: t`Duration`,
   },
   schedule: {
-    label: t`Schedule: at regular intervals`,
+    label: t`Schedule: pick when to regularly invalidate the cache`,
     shortLabel: t`Scheduled`,
     validateWith: scheduleStrategyValidationSchema,
   },
+  // NOTE: The strategy is called 'ttl' in the BE, but we've renamed it to 'Adaptive' in the FE
   ttl: {
-    label: t`Query duration multiplier: the longer the query takes the longer its cached results persist`,
-    shortLabel: t`Query duration multiplier`,
-    validateWith: multiplierStrategyValidationSchema,
+    label: t`Adaptive: use a query’s average execution time to determine how long to cache its results`,
+    shortLabel: t`Adaptive`,
+    validateWith: adaptiveStrategyValidationSchema,
   },
   nocache: {
     label: t`Don’t cache results`,
     validateWith: doNotCacheStrategyValidationSchema,
     shortLabel: t`No caching`,
-  },
-  inherit: {
-    label: t`Use default`,
-    validateWith: inheritStrategyValidationSchema,
   },
 };
 
@@ -128,12 +146,18 @@ const validStrategyNames = new Set(Object.keys(Strategies));
 const isValidStrategyName = (strategy: string): strategy is StrategyType =>
   validStrategyNames.has(strategy);
 
-export const getShortStrategyLabel = (strategy?: Strategy) => {
+export const getLabelString = (label: StrategyLabel, model?: CacheableModel) =>
+  typeof label === "string" ? label : label(model);
+
+export const getShortStrategyLabel = (
+  strategy?: Strategy,
+  model?: CacheableModel,
+) => {
   if (!strategy) {
     return null;
   }
   const type = Strategies[strategy.type];
-  const mainLabel = type.shortLabel ?? type.label;
+  const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
   if (strategy.type === "schedule") {
     const frequency = getFrequencyFromCron(strategy.schedule);
     return `${mainLabel}: ${frequency}`;
