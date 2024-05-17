@@ -33,6 +33,7 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -873,6 +874,58 @@ saved later when it is ready."
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
     (next-method card json-generator)))
 
+(defn- replaced-inner-query-for-native-card
+  [query {:keys [fields tables] :as _replacement-ids}]
+  (let [keyvals-set         #(set/union (into #{} (keys %))
+                                        (into #{} (vals %)))
+        id->field           (if (empty? fields)
+                              {}
+                              (m/index-by :id
+                                          (t2/query {:select [[:f.id :id]
+                                                              [:f.name :column]
+                                                              [:t.name :table]
+                                                              [:t.schema :schema]]
+                                                     :from   [[:metabase_field :f]]
+                                                     :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                                     :where  [:in :f.id (keyvals-set fields)]})))
+        id->table           (if (empty? tables)
+                              {}
+                              (m/index-by :id
+                                          (t2/query {:select [[:t.id :id]
+                                                              [:t.name :table]
+                                                              [:t.schema :schema]]
+                                                     :from   [[:metabase_table :t]]
+                                                     :where  [:in :t.id (keyvals-set tables)]})))
+        remove-id           #(select-keys % [:column :table :schema])
+        get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
+                                              (remove-id (get m k))
+                                              (throw (ex-info "ID not found" {:id k :available m})))))
+        update-keyvals      (fn [m f] (-> m
+                                          (update-keys f)
+                                          (update-vals f)))
+        column-replacements (update-keyvals fields (get-or-throw-from id->field))
+        table-replacements  (update-keyvals tables (get-or-throw-from id->table))]
+    (query-analyzer/replace-names query {:columns column-replacements
+                                         :tables  table-replacements})))
+
+
+(defn replace-fields-and-tables!
+  "Given a card and a map of the form
+
+  {:fields {1 2, 3 4}
+   :tables {100 101}}
+
+  Update the card so that its references to the Field with ID 1 is replaced by Field 2, etc."
+  [{q :dataset_query :as card} replacements]
+  (if (= :native (:type q))
+    (let [new-query (assoc-in q [:native :query]
+                              (replaced-inner-query-for-native-card q replacements))]
+      (update-card! {:card-before-update card
+                     :card-updates       {:dataset_query new-query}
+                     :actor              api/*current-user*}))
+    (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
+                    {:card card :replacements replacements}))))
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
@@ -919,7 +972,7 @@ saved later when it is ready."
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at))
+        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

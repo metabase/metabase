@@ -20,6 +20,7 @@ import {
   trackCustomHomepageDashboardEnabled,
   trackTrackingPermissionChanged,
 } from "./analytics";
+import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SettingsLicense from "./components/SettingsLicense";
@@ -658,6 +659,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "string",
       },
     ],
+  },
+  cloud: {
+    name: t`Cloud`,
+    getHidden: settings => settings["token-features"]?.hosting === true,
+    order: 132,
+    component: CloudPanel,
+    settings: [],
   },
 };
 

@@ -25,6 +25,22 @@ import type {
 
 const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
 
+const getValuesToMeasure = (min: number, max: number): number[] => {
+  if (min === max) {
+    return [min, max];
+  }
+
+  const stepsCount = 4;
+  const step = (max - min) / (stepsCount + 1);
+  const middleValues = [];
+
+  for (let i = 1; i <= stepsCount; i++) {
+    middleValues.push(min + step * i);
+  }
+
+  return [...middleValues, min, max];
+};
+
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -40,9 +56,15 @@ const getYAxisTicksWidth = (
     family: fontFamily,
   };
   // extents need to be untransformed to get the value of the tick label
-  const valuesToMeasure = axisModel.extent.map(extent =>
+  const [min, max] = axisModel.extent.map(extent =>
     yAxisScaleTransforms.fromEChartsAxisValue(extent),
   );
+
+  const isFormattingAutoOrCompact =
+    settings["graph.label_value_formatting"] !== "full";
+  const valuesToMeasure = isFormattingAutoOrCompact
+    ? getValuesToMeasure(min, max)
+    : [min, max];
 
   if (!settings["graph.y_axis.auto_range"]) {
     const customRangeValues = [

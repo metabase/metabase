@@ -15,6 +15,7 @@ import type {
 
 type ErrorWithMessage = {
   message: string;
+  friendly?: boolean;
 };
 
 export function expression(
