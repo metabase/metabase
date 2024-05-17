@@ -278,6 +278,9 @@ describe("scenarios > question > offset", () => {
         ["April 2022", ""],
         ["May 2022", "52.76"],
       ]);
+
+      openNotebook();
+      getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
     it("works with a single breakout and sorting by breakout", () => {
