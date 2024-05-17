@@ -163,8 +163,7 @@ export const safeJsonParse = (value: string | null | undefined) => {
   try {
     return JSON.parse(value);
   } catch (e) {
-    // TODO bring this back when PR is ready to be pushed
-    // console.error("Unable to parse JSON: ", value, e);
+    console.error("Unable to parse JSON: ", value, e);
     return null;
   }
 };

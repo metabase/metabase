@@ -1,4 +1,3 @@
-import * as console from "console";
 import type { Location } from "history";
 import { useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
@@ -67,15 +66,6 @@ export function useSyncURLSlug({ location }: { location: Location }) {
   const { updateURLSlug } = useUpdateURLSlug({ location });
 
   useEffect(() => {
-    console.log({
-      slug,
-      tabs,
-      selectedTabId,
-      prevSlug,
-      prevTabs,
-      prevSelectedTabId,
-    });
-
     if (!tabs || tabs.length === 0) {
       return;
     }
@@ -114,8 +104,6 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       tabs.find(t => t.id === selectedTabId)?.name !==
       prevTabs?.find(t => t.id === selectedTabId)?.name;
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
-
-    console.log(tabSelected, tabRenamed, penultimateTabDeleted);
 
     if (tabSelected || tabRenamed || penultimateTabDeleted) {
       const newSlug =
