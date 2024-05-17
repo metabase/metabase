@@ -408,13 +408,6 @@ ComboHistogram.args = {
   renderingContext,
 };
 
-export const ComboBarsBecomeStackedInStaticViz38827 = Template.bind({});
-ComboBarsBecomeStackedInStaticViz38827.args = {
-  rawSeries: data.comboBarsBecomeStackedInStaticViz38827 as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
 export const CombinedBarTimeSeriesDifferentGranularityWithBreakout =
   Template.bind({});
 CombinedBarTimeSeriesDifferentGranularityWithBreakout.args = {
@@ -496,13 +489,6 @@ NumberOfInsightsError39608.args = {
 export const AreaStackInterpolateMissingValues = Template.bind({});
 AreaStackInterpolateMissingValues.args = {
   rawSeries: data.areaStackInterpolateMissingValues as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
-export const BarStackDisplayOverridesSeriesDisplays = Template.bind({});
-BarStackDisplayOverridesSeriesDisplays.args = {
-  rawSeries: data.barStackDisplayOverridesSeriesDisplays as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -636,6 +622,41 @@ LineReplaceMissingValuesZero.args = {
 export const LineChartBrokenDimensionsMetricsSettings = Template.bind({});
 LineChartBrokenDimensionsMetricsSettings.args = {
   rawSeries: data.lineChartBrokenDimensionsMetricsSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboStackedBarsAreasNormalized = Template.bind({});
+ComboStackedBarsAreasNormalized.args = {
+  rawSeries: data.comboStackedBarsAreasNormalized as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboStackedBarsAreas = Template.bind({});
+ComboStackedBarsAreas.args = {
+  rawSeries: data.comboStackedBarsAreas as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLineLinear = Template.bind({});
+TwoBarsTwoAreasOneLineLinear.args = {
+  rawSeries: data.twoBarsTwoAreasOneLineLinear as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLinePower = Template.bind({});
+TwoBarsTwoAreasOneLinePower.args = {
+  rawSeries: data.twoBarsTwoAreasOneLinePower as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsTwoAreasOneLineLog = Template.bind({});
+TwoBarsTwoAreasOneLineLog.args = {
+  rawSeries: data.twoBarsTwoAreasOneLineLog as any,
   dashcardSettings: {},
   renderingContext,
 };

@@ -203,6 +203,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;

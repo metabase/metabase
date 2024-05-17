@@ -173,11 +173,18 @@ export type YAxisModel = {
   column: DatasetColumn;
   label?: string;
   formatter: AxisFormatter;
+  isNormalized?: boolean;
 };
 
 export type TrendLinesModel = {
   dataset: ChartDataset;
   seriesModels: TrendLineSeriesModel[];
+};
+
+export type StackModel = {
+  axis: "left" | "right";
+  display: "bar" | "area";
+  seriesKeys: DataKey[];
 };
 
 export type BaseCartesianChartModel = {
@@ -186,6 +193,7 @@ export type BaseCartesianChartModel = {
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
   yAxisScaleTransforms: NumericAxisScaleTransforms;
+  stackModels: StackModel[];
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;

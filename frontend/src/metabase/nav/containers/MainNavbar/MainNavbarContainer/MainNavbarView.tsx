@@ -134,9 +134,9 @@ function MainNavbarView({
                 url={BROWSE_DATA_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
                 onClick={onItemSelect}
-                aria-label={t`Browse data`}
+                aria-label={t`Browse databases`}
               >
-                {t`Data`}
+                {t`Databases`}
               </PaddedSidebarLink>
             )}
           </CollapseSection>

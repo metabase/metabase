@@ -155,6 +155,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gem_component from "./gem.svg?component";
+import gem_source from "./gem.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -684,6 +686,10 @@ export const Icons = {
   gear: {
     component: gear_component,
     source: gear_source,
+  },
+  gem: {
+    component: gem_component,
+    source: gem_source,
   },
   grabber: {
     component: grabber_component,

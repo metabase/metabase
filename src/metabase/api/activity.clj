@@ -31,9 +31,9 @@
                   :collection.authority_level [:collection.name :collection_name]
                   :trashed_from_collection_id]
      "table"     [Table
-                  :id :name :db_id
-                  :display_name :initial_sync_status
-                  :visibility_type [:metabase_database.name :database_name]])
+                  :id :name :db_id :active
+                  :display_name [:metabase_database.initial_sync_status :initial-sync-status]
+                  :visibility_type [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      (cond-> {:where [:in (self-qualify :id) ids]}

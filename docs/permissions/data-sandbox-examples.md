@@ -54,7 +54,7 @@ For the `People` table, we'll filter by the `ID` column, which we'll set equal t
 To test out Mr. Beer's sandbox, we’ll open up a new incognito/private browser window and log in using Mr. Beer's account.
 
 1. Log in as Cloyd Beer.
-2. Click **Browse data**.
+2. Click **Browse** > **Databases**.
 3. Click on the **Orders** table.
 4. Confirm that Metabase displays only the orders that Mr. Beer placed, that is, orders associated with the User ID of `2499`.
 
