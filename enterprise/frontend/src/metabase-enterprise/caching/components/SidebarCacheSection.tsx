@@ -38,7 +38,7 @@ export const SidebarCacheSection = ({
     <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
       <Flex align="center" justify="space-between">
         {t`Caching policy`}
-        <FormLauncher onClick={() => setPage("caching")}>
+        <FormLauncher role="button" onClick={() => setPage("caching")}>
           {shortStrategyLabel}
         </FormLauncher>
       </Flex>

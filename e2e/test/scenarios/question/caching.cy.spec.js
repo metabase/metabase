@@ -33,7 +33,7 @@ describeEE("scenarios > question > caching", () => {
       cy.findByRole("heading", { name: /Caching settings/ }).click();
       cy.findByRole("radio", { name: /Duration/ }).click();
       cy.findByLabelText("Cache results for this many hours").type("48");
-      cy.findByRole("button", { name: /Save changes/ }).click();
+      cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
       cy.findByText(/Caching policy/).within(() => {
         cy.log(
@@ -46,7 +46,7 @@ describeEE("scenarios > question > caching", () => {
       });
       cy.findByRole("radio", { name: /Adaptive/ }).click();
       cy.findByLabelText(/Minimum query duration/).type("999");
-      cy.findByRole("button", { name: /Save changes/ }).click();
+      cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
       cy.findByText(/Caching policy/).within(() => {
         cy.log(
