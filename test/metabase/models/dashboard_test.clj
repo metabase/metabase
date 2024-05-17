@@ -38,7 +38,7 @@
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
       (is (= {:name                "Test Dashboard"
-              :trashed_directly    nil
+              :trashed_directly    false
               :auto_apply_filters  true
               :collection_id       nil
               :description         nil
@@ -356,7 +356,7 @@
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
           empty-dashboard      {:name                "Revert Test"
-                                :trashed_directly    nil
+                                :trashed_directly    false
                                 :description         "something"
                                 :auto_apply_filters  true
                                 :collection_id       nil
@@ -372,7 +372,7 @@
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
-                :trashed_directly    nil
+                :trashed_directly    false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true
@@ -410,7 +410,7 @@
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name                "Test Dashboard"
-                :trashed_directly    nil
+                :trashed_directly    false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true

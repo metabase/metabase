@@ -2063,7 +2063,7 @@
         (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
 
 (deftest trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-14T12:42:52"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-17T20:44:12"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name "Silly Collection"

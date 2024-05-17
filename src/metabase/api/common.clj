@@ -666,5 +666,4 @@
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
-    (assoc :trashed_directly (when (:archived obj-updates)
-                               true))))
+    (assoc :trashed_directly (boolean (:archived obj-updates)))))

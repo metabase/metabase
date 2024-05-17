@@ -8060,8 +8060,9 @@ databaseChangeLog:
                 SELECT 1 FROM collection WHERE type = 'trash'
               );
               UPDATE report_dashboard
-              SET trashed_directly = (
-                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              SET trashed_directly = coalesce(
+                collection_id = (SELECT id FROM collection WHERE type = 'trash'),
+                false
               ),
               collection_id = trashed_from_collection_id
               WHERE archived = true;
@@ -8082,7 +8083,16 @@ databaseChangeLog:
         - dropColumn:
             tableName: report_dashboard
             columnName: trashed_from_collection_id
-      rollback: #
+      rollback:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this dashboard was trashed *from*"
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v50.2024-05-17T20:44:00
@@ -8112,8 +8122,9 @@ databaseChangeLog:
                 SELECT 1 FROM collection WHERE type = 'trash'
               );
               UPDATE report_card
-              SET trashed_directly = (
-                collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              SET trashed_directly = coalesce(
+                collection_id = (SELECT id FROM collection WHERE type = 'trash'),
+                false
               ),
               collection_id = trashed_from_collection_id
       rollback:
@@ -8140,7 +8151,7 @@ databaseChangeLog:
               - column:
                   name: trashed_from_collection_id
                   type: int
-                  remarks: "The previous parent collection this dashboard was trashed *from*"
+                  remarks: "The previous parent collection this card was trashed *from*"
                   constraints:
                     nullable: true
 

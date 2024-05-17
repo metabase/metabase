@@ -789,8 +789,8 @@
                  :archived              archived?}
         :where  [:like :location (str orig-children-location "%")]})
       (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
-        (t2/update! model {:collection_id [:in affected-collection-ids]
-                           :archived archived?}))
+        (t2/update! model {:collection_id [:in affected-collection-ids]}
+                    {:archived archived?}))
       (doseq [model [:model/Card :model/Dashboard]]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :trashed_directly false}

@@ -86,7 +86,7 @@
    :result_metadata        nil
    :cache_invalidated_at   nil
    :view_count             0
-   :trashed_directly       nil})
+   :trashed_directly       false})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate

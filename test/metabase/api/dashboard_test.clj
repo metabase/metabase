@@ -222,7 +222,7 @@
    :show_in_getting_started false
    :updated_at              true
    :view_count              0
-   :trashed_directly        nil})
+   :trashed_directly        false})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
