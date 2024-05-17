@@ -64,7 +64,7 @@ You can set up caching at different levels, from largest to smallest scope:
 - [Dashboard](#Dashboard-caching)*
 - [Question](#question-caching)*
 
-* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features
+_* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
 
 ### Default caching policy
 
