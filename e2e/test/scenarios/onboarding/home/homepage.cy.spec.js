@@ -372,6 +372,8 @@ describe("scenarios > home > custom homepage", () => {
     });
 
     it("should show the default homepage if the dashboard was archived (#31599)", () => {
+      cy.intercept("GET", "/api/collection/1").as("getCollection");
+
       // Archive dashboard
       visitDashboard(ORDERS_DASHBOARD_ID);
       dashboardHeader().within(() => {
@@ -384,10 +386,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Move to trash").click();
       });
 
-      // wait for dashboard update to complete
-      cy.findByTestId("fixed-width-dashboard-header", () => {
-        cy.findByText("Orders in a dashboard");
-      });
+      cy.wait(["@getCollection"]);
 
       // Navigate to home
       openNavigationSidebar();
