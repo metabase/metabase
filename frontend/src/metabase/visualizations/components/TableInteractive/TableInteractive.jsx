@@ -19,10 +19,11 @@ import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
-import { zoomInRow } from "metabase/query_builder/actions";
+import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
+  getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -84,6 +85,7 @@ const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
   rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
+  scrollToLastColumn: getUiControls(state).scrollToLastColumn,
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -276,6 +278,19 @@ class TableInteractive extends Component {
         this.props.onContentWidthChange(total, this.state.columnWidths);
         this._totalContentWidth = total;
       }
+    }
+
+    // Reset the scrollToLastColumn ui control for subsequent renders.
+    //
+    // We need to include width and height here to avoid unsetting the ui control
+    // before the component content has a chance to render (see the guard clause in
+    // the render method).
+    if (
+      this.props.scrollToLastColumn &&
+      this.props.width &&
+      this.props.height
+    ) {
+      this.props.dispatch(setUIControls({ scrollToLastColumn: false }));
     }
   }
 
@@ -1041,6 +1056,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      scrollToLastColumn,
       theme,
       question,
     } = this.props;
@@ -1066,7 +1082,10 @@ class TableInteractive extends Component {
             // (https://github.com/bvaughn/react-virtualized/blob/master/docs/Grid.md#prop-types)
             // For some reason, for TableInteractive's main grid scrollLeft appears to be more prior
             const mainGridProps = {};
-            if (scrollToColumn >= 0) {
+
+            if (scrollToLastColumn) {
+              mainGridProps.scrollToColumn = cols.length + 2;
+            } else if (scrollToColumn >= 0) {
               mainGridProps.scrollToColumn = scrollToColumn;
             } else {
               mainGridProps.scrollLeft = scrollLeft;
