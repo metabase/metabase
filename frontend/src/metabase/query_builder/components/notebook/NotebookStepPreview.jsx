@@ -22,13 +22,12 @@ import {
 const PREVIEW_ROWS_LIMIT = 10;
 
 const getPreviewQuestion = step => {
-  const { getPreviewQuery, stageIndex } = step;
-  const query = getPreviewQuery();
-  const limit = Lib.currentLimit(query, stageIndex);
+  const { previewQuery, stageIndex } = step;
+  const limit = Lib.currentLimit(previewQuery, stageIndex);
   const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
   const queryWithLimit = hasSuitableLimit
-    ? query
-    : Lib.limit(query, stageIndex, PREVIEW_ROWS_LIMIT);
+    ? previewQuery
+    : Lib.limit(previewQuery, stageIndex, PREVIEW_ROWS_LIMIT);
 
   return Question.create()
     .setQuery(queryWithLimit)

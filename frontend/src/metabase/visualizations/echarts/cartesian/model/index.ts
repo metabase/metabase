@@ -13,6 +13,8 @@ import {
 import {
   getCardsSeriesModels,
   getDimensionModel,
+  getSeriesLabelsFormatters,
+  getStackedLabelsFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
@@ -27,6 +29,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
+import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
 
@@ -120,11 +123,13 @@ export const getCartesianChartModel = (
   );
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
-    settings["stackable.stack_type"],
   );
+
+  const stackModels = getStackModels(seriesModels, settings);
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
+    stackModels,
     xAxisModel,
     seriesModels,
     yAxisScaleTransforms,
@@ -136,12 +141,31 @@ export const getCartesianChartModel = (
     rawSeries[0].card.display,
   );
 
+  const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
+    getSeriesLabelsFormatters(
+      seriesModels,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
+
+  const { formatters: stackedLabelsFormatters, compactStackedSeriesDataKeys } =
+    getStackedLabelsFormatters(
+      seriesModels,
+      stackModels,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
+
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
     transformedDataset,
     settings,
     columnByDataKey,
     isAutoSplitSupported,
+    stackModels,
+    [...compactSeriesDataKeys, ...compactStackedSeriesDataKeys],
     renderingContext,
   );
 
@@ -152,10 +176,12 @@ export const getCartesianChartModel = (
     seriesModels,
     transformedDataset,
     settings,
+    stackModels,
     renderingContext,
   );
 
   return {
+    stackModels,
     dataset,
     transformedDataset,
     seriesModels,
@@ -167,5 +193,7 @@ export const getCartesianChartModel = (
     rightAxisModel,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
+    seriesLabelsFormatters,
+    stackedLabelsFormatters,
   };
 };

@@ -3,6 +3,7 @@ import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Parameter,
+  ParameterId,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -10,8 +11,10 @@ import type {
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
   queryParams: Record<string, string | string[] | null | undefined>,
+  lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   queryParams = queryParams || {};
+  lastUsedParametersValues = lastUsedParametersValues || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
@@ -19,9 +22,11 @@ export function getParameterValueFromQueryParams(
   if (maybeParameterValue === "") {
     return null;
   } else if (maybeParameterValue == null) {
-    // try to use the default if the parameter is not present in the query params
-    return parameter.default ?? null;
+    // first try to use last used parameter value then try to use the default if
+    // the parameter is not present in the query params
+    return lastUsedParametersValues[parameter.id] ?? parameter.default ?? null;
   }
+
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
@@ -100,11 +105,16 @@ function normalizeParameterValueForWidget(
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
   queryParams: Record<string, string | string[] | null | undefined>,
+  lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.id,
-      getParameterValueFromQueryParams(parameter, queryParams),
+      getParameterValueFromQueryParams(
+        parameter,
+        queryParams,
+        lastUsedParametersValues,
+      ),
     ]),
   );
 }

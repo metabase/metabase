@@ -357,9 +357,11 @@
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
         (is (= (-> (qp.pivot/run-pivot-query query)
+                   (dissoc :running_time :started_at :json_query)
                    (m/dissoc-in [:data :results_metadata :checksum])
                    (m/dissoc-in [:data :native_form]))
                (-> (qp.pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
+                   (dissoc :running_time :started_at :json_query)
                    (m/dissoc-in [:data :results_metadata :checksum])
                    (m/dissoc-in [:data :native_form]))))))))
 

@@ -14,6 +14,7 @@ import {
   cartesianChartCircleWithColor,
   cartesianChartCircle,
   trendLine,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -713,10 +714,6 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
 
 function showTooltipForFirstCircleInSeries(seriesColor) {
   cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");

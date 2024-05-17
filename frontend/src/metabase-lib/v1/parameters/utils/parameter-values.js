@@ -18,10 +18,14 @@ export function getParameterValue({
   parameter,
   values = {},
   defaultRequired = false,
+  lastUsedParameterValue = null,
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
-  return value ?? (useDefault ? parameter.default : null);
+
+  return (
+    lastUsedParameterValue ?? value ?? (useDefault ? parameter.default : null)
+  );
 }
 
 /**
@@ -133,6 +137,7 @@ export function normalizeParameterValue(type, value) {
 export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
+
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,

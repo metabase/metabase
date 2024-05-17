@@ -155,6 +155,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gem_component from "./gem.svg?component";
+import gem_source from "./gem.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -349,6 +351,8 @@ import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
+import trash_filled_component from "./trash_filled.svg?component";
+import trash_filled_source from "./trash_filled.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -682,6 +686,10 @@ export const Icons = {
   gear: {
     component: gear_component,
     source: gear_source,
+  },
+  gem: {
+    component: gem_component,
+    source: gem_source,
   },
   grabber: {
     component: grabber_component,
@@ -1070,6 +1078,10 @@ export const Icons = {
   trash: {
     component: trash_component,
     source: trash_source,
+  },
+  trash_filled: {
+    component: trash_filled_component,
+    source: trash_filled_source,
   },
   triangle_left: {
     component: triangle_left_component,
