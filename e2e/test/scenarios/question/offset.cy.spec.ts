@@ -126,13 +126,16 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it.skip("works with offsetted custom column based on another offsetted custom column (metabase#42764)", () => {
+    it("does not allow to use offset-based column in a custom expression (metabase#42764)", () => {
+      const offsettedColumnName = "xyz";
+      const expression = `Offset([${offsettedColumnName}], -1)`;
+      const prefixLength = "Offset([x".length;
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         expressions: {
-          "Total-1": [
+          [offsettedColumnName]: [
             "offset",
-            createOffsetOptions("Total-1"),
+            createOffsetOptions(offsettedColumnName),
             ORDERS_TOTAL_FIELD_REF,
             -1,
           ],
@@ -140,7 +143,11 @@ describe("scenarios > question > offset", () => {
         fields: [
           ORDERS_ID_FIELD_REF,
           ORDERS_TOTAL_FIELD_REF,
-          ["expression", "Total-1", { "base-type": "type/BigInteger" }],
+          [
+            "expression",
+            offsettedColumnName,
+            { "base-type": "type/BigInteger" },
+          ],
         ],
         "order-by": [["asc", ORDERS_ID_FIELD_REF]],
         limit: 5,
@@ -150,19 +157,25 @@ describe("scenarios > question > offset", () => {
       openNotebook();
 
       getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({
-        formula: "Offset([Total-1], -1)",
-        name: "Total-2",
-      });
-      popover().button("Done").click();
 
-      visualize();
-      verifyNoQuestionError();
-      verifyTableContent([
-        ["1", "39.72", "", ""],
-        ["2", "117.03", "39.72", ""],
-        ["3", "49.21", "117.03", "39.72"],
-      ]);
+      enterCustomColumnDetails({
+        formula: expression.substring(0, prefixLength),
+      });
+
+      cy.log("does not suggest offset-based column in custom expressions");
+      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+
+      enterCustomColumnDetails({
+        formula: expression.substring(prefixLength),
+      });
+      cy.realPress("Tab");
+
+      popover().within(() => {
+        cy.findByText(`Unknown Field: ${offsettedColumnName}`).should(
+          "be.visible",
+        );
+        cy.button("Done").should("be.disabled");
+      });
     });
 
     it.skip("does not allow drilling on a offsetted column", () => {
