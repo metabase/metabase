@@ -97,9 +97,8 @@
   "Returns whether the query can be previewed.
 
   See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
-  [query :- ::lib.schema/query
-   card-type :- ::lib.schema.metadata/card.type]
-  (and (can-run query card-type)
+  [query :- ::lib.schema/query]
+  (and (can-run query "question")
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
        (every? (fn [stage]
                  (boolean
