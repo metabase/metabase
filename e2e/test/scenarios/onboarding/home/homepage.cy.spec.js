@@ -378,10 +378,10 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByLabelText("dashboard-menu-button").click();
       });
       popover().within(() => {
-        cy.findByText("Archive").click();
+        cy.findByText("Move to trash").click();
       });
       modal().within(() => {
-        cy.findByText("Archive").click();
+        cy.findByText("Move to trash").click();
       });
 
       // Navigate to home
