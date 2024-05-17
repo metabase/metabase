@@ -8,6 +8,10 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/discard-setting-changes [read-only-mode]
+                        (thunk))))
+
 (set! *warn-on-reflection* true)
 
 (deftest permissions-test
@@ -46,4 +50,4 @@
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
     (mt/user-http-request :crowberto :get 200 "cloud-migration")
     (finally
-     (is (not (cloud-migration/read-only-mode))))))
+      (is (not (cloud-migration/read-only-mode))))))
