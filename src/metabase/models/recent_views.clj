@@ -329,6 +329,7 @@
   [table-ids]
   (t2/select :model/Table
              {:select [:t.id :t.name :t.description :t.display_name :t.active :t.db_id
+                       :t.visibility_type
                        [:db.name :database-name]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
@@ -338,7 +339,9 @@
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
-    (when (and (mi/can-read? table) (true? (:active table)))
+    (when (and (mi/can-read? table)
+               ((complement #{:hidden "hidden"}) (:visibility_type table))
+               (:active table))
       {:id model_id
        :name (:name table)
        :description (:description table)
