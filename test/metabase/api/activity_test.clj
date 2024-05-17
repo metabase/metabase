@@ -132,7 +132,6 @@
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
               (is (=?
                    [{:model "metric" :id (u/the-id metric)}
-                    {:model "table" :id (u/the-id hidden-table)}
                     {:model "table" :id (u/the-id table1)}
                     {:model "dashboard" :id (u/the-id dash)}
                     {:model "card" :id (u/the-id card1)}
