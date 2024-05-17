@@ -476,7 +476,7 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
-      (not (driver/database-supports? driver :uploads nil))
+      (not (driver/database-supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
 
