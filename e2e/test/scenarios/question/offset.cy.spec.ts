@@ -71,6 +71,8 @@ describe("scenarios > question > offset", () => {
     it("suggests and allows using offset()", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
+      const prefix = expression.substring(0, prefixLength);
+      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
@@ -80,19 +82,14 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
       cy.button("Custom column").click();
-
-      enterCustomColumnDetails({
-        formula: expression.substring(0, prefixLength),
-      });
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({
-        formula: expression.substring(prefixLength),
-      });
+      enterCustomColumnDetails({ formula: suffix });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -104,9 +101,7 @@ describe("scenarios > question > offset", () => {
       cy.button("Sort").click();
       popover().findByText("ID").click();
       getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({
-        formula: expression,
-      });
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -187,6 +182,8 @@ describe("scenarios > question > offset", () => {
     it("does not suggest or allow using offset()", () => {
       const expression = "Offset([Total], -1) > 0";
       const prefixLength = 3;
+      const prefix = expression.substring(0, prefixLength);
+      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -196,17 +193,12 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Filter").click();
       popover().findByText("Custom Expression").click();
-
-      enterCustomColumnDetails({
-        formula: expression.substring(0, prefixLength),
-      });
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({
-        formula: expression.substring(prefixLength),
-      });
+      enterCustomColumnDetails({ formula: suffix });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -222,6 +214,8 @@ describe("scenarios > question > offset", () => {
     it("suggests and allows using offset()", () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
+      const prefix = expression.substring(0, prefixLength);
+      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -234,19 +228,14 @@ describe("scenarios > question > offset", () => {
         .findByText("Pick the metric you want to see")
         .click();
       popover().findByText("Custom Expression").click();
-
-      enterCustomColumnDetails({
-        formula: expression.substring(0, prefixLength),
-      });
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({
-        formula: expression.substring(prefixLength),
-      });
+      enterCustomColumnDetails({ formula: suffix });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -578,6 +567,7 @@ function verifyInvalidColumnName(
 ) {
   enterCustomColumnDetails({ formula: prefix });
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+
   enterCustomColumnDetails({ formula: suffix });
   cy.realPress("Tab");
   popover().within(() => {
