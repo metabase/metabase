@@ -689,6 +689,7 @@
     :collection :model/Collection
     :card       :model/Card
     :dataset    :model/Card
+    :metric     :model/Card
     :dashboard  :model/Dashboard
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
