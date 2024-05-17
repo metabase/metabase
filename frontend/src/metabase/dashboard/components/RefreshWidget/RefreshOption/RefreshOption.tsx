@@ -1,7 +1,8 @@
 import cx from "classnames";
 
-import RefreshOptionS from "metabase/dashboard/components/RefreshWidget/RefreshOption/RefreshOption.module.css";
 import { Icon } from "metabase/ui";
+
+import RefreshOptionS from "./RefreshOption.module.css";
 
 export const RefreshOption = ({
   name,
