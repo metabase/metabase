@@ -351,7 +351,6 @@ export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
-  DatabaseCacheTimeField: PluginPlaceholder as any,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
   DashboardStrategySidebar: PluginPlaceholder as any,

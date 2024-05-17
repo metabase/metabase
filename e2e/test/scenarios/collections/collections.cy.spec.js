@@ -72,7 +72,7 @@ describe("scenarios > collection defaults", () => {
       pickEntity({
         path: ["Our analytics", `Collection ${COLLECTIONS_COUNT}`],
         select: true,
-        tab: /Collections/,
+        tab: "Collections",
       });
 
       cy.findByTestId("new-collection-modal").button("Create").click();
