@@ -36,6 +36,8 @@ interface SetupOpts {
   actionButtons?: JSX.Element[];
   recentFilter?: (item: RecentItem[]) => RecentItem[];
   recentItems?: RecentItem[];
+  defaultToRecentTab?: boolean;
+  initialValue?: { model: SampleModelType };
 }
 
 const TestPicker = ({ name }: { name: string }) => (
@@ -285,6 +287,19 @@ describe("EntityPickerModal", () => {
         await screen.findByRole("tab", { name: /Recents/ }),
       ).toBeInTheDocument();
       expect(await screen.findByText("Recent Question")).toBeInTheDocument();
+    });
+
+    it("should not default to the recent tab if defaultToRecents is false", async () => {
+      setup({
+        recentItems,
+        defaultToRecentTab: false,
+        initialValue: { model: "card" },
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
     });
 
     it("should group recents by time", async () => {

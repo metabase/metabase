@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
@@ -42,8 +42,7 @@ export const BrowseModels = () => {
             <Title order={1} color="text-dark">
               <Group spacing="sm">
                 <Icon size={24} color={color("brand")} name="model" />
-                {c("The title of a page where you can view all the models")
-                  .t`Browsing models`}
+                {t`Models`}
               </Group>
             </Title>
             <ModelFilterControls

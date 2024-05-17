@@ -19,7 +19,7 @@ The code featured in this guide can be found in our [sample repo](https://github
 
 ### Create a dashboard in Metabase
 
-You'll first need to create something to embed. In the left nav, go to **Browse data** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
+You'll first need to create something to embed. In the left nav, go to **Browse** > **Databases** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
 
 Visit that dashboard in the "Automatically generated dashboards" collection and make a note of its URL. If that dashboard is the first dashboard you created, it's probably `/dashboard/1` followed by a description, e.g. `/dashboard/1-a-look-at-your-invoices-table`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
 

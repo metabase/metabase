@@ -238,7 +238,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
   });
 
-  it("updates databases list in Database Browser after bringing sample database back", () => {
+  it("updates databases list in Browse databases after bringing sample database back", () => {
     cy.intercept("GET", "/api/database").as("loadDatabases");
     cy.intercept("POST", "/api/database/sample_database").as(
       "restoreSampleDatabase",
@@ -276,7 +276,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByLabelText("Browse data").should("not.exist");
+      cy.findByLabelText("Browse databases").should("not.exist");
     });
 
     cy.visit("/admin/databases");
@@ -293,8 +293,8 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByLabelText("Browse data").should("exist");
-      cy.findByLabelText("Browse data").click();
+      cy.findByLabelText("Browse databases").should("exist");
+      cy.findByLabelText("Browse databases").click();
     });
 
     cy.findByTestId("database-browser").within(() => {

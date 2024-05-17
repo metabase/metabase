@@ -1,5 +1,5 @@
+import { createMockModelResult } from "metabase/browse/test-utils";
 import type { CollectionEssentials } from "metabase-types/api";
-import { createMockModelResult } from "metabase-types/api/mocks";
 
 import { availableModelFilters, sortCollectionsByVerification } from "./utils";
 

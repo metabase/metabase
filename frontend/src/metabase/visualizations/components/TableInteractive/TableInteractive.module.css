@@ -10,7 +10,6 @@
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellData .cellData:hover {
@@ -80,16 +79,10 @@
 
 .TableID .cellData {
   border: 1px solid transparent;
-  background-color: transparent;
   padding: 0.25em 0.65em;
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--mb-color-brand);
-}
-
-.TableInteractiveHeaderCellDataSorted {
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellDataSorted :global(.Icon-chevrondown),
@@ -100,10 +93,6 @@
 
 .TableInteractiveCellWrapperFirstColumn.padLeft {
   padding-left: 1.5em;
-}
-
-.TableInteractiveGutter {
-  background-color: var(--color-bg-white);
 }
 
 .shortcutsWrapper {

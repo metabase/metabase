@@ -29,7 +29,7 @@ export interface NotebookStep {
   actions: NotebookStepAction[];
   next: NotebookStep | null;
   previous: NotebookStep | null;
-  getPreviewQuery?: (() => Query) | undefined;
+  previewQuery?: Query;
 }
 
 export interface NotebookStepAction {

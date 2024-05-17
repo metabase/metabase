@@ -200,6 +200,7 @@ export const createMockSettings = (
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "premium-embedding-token": null,
+  "read-only-mode": false,
   "report-timezone-short": "UTC",
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
