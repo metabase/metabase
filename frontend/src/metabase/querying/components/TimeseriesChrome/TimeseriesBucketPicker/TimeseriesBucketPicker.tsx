@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { t } from "ttag";
 
-import { Button, Menu, Icon } from "metabase/ui";
+import { Button, Menu, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { BucketItem } from "./types";
@@ -87,7 +87,9 @@ export function TimeseriesBucketPicker({
         ))}
 
         {hasMoreButton && (
-          <Menu.Item onClick={handleExpand}>{t`More…`}</Menu.Item>
+          <Menu.Item onClick={handleExpand}>
+            <Text color="brand">{t`More…`}</Text>
+          </Menu.Item>
         )}
       </Menu.Dropdown>
     </Menu>
