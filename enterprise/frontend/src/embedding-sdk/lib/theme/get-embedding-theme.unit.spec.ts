@@ -10,8 +10,8 @@ describe("Transform Embedding Theme Override", () => {
       fontFamily: "Roboto",
       colors: {
         brand: "hotpink",
-        "text-dark": "yellow",
-        "text-light": "green",
+        "text-primary": "yellow",
+        "text-tertiary": "green",
       },
     });
 

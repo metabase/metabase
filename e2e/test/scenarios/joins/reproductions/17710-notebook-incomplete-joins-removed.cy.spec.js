@@ -1,7 +1,9 @@
 import {
-  restore,
-  popover,
+  entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
   openOrdersTable,
+  restore,
   visualize,
 } from "e2e/support/helpers";
 
@@ -15,14 +17,16 @@ describe("issue 17710", () => {
   it("should remove only invalid join clauses (metabase#17710)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").click();
-    popover().findByText("Products").click();
+    cy.button("Join data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
 
-    cy.findByTestId("step-join-0-0").icon("add").click();
+    getNotebookStep("join").icon("add").click();
 
     // Close the LHS column popover that opens automatically
-    cy.findByTestId("step-join-0-0").parent().click();
+    getNotebookStep("join").parent().click();
 
     visualize();
 

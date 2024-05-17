@@ -1,12 +1,18 @@
-/* eslint-disable react/prop-types */
 import { IconRoot } from "./CountdownIcon.styled";
 
-const CountdownIcon = ({
+type CountdownIconProps = {
+  percent?: number;
+  width?: number;
+  height?: number;
+  className?: string;
+};
+
+export const CountdownIcon = ({
   percent = 0.75,
   width = 20,
   height = 20,
   className,
-}) => (
+}: CountdownIconProps) => (
   <IconRoot
     width={width}
     height={height}
@@ -29,5 +35,3 @@ const CountdownIcon = ({
     />
   </IconRoot>
 );
-
-export default CountdownIcon;

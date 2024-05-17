@@ -1,5 +1,5 @@
 :root {
-  --title-color: var(--color-text-dark);
+  --title-color: var(--mb-color-text-dark);
   --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
 }
