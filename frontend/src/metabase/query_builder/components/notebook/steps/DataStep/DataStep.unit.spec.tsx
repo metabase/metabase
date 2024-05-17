@@ -97,6 +97,9 @@ const setupEmptyQuery = () => {
 };
 
 describe("DataStep", () => {
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
     // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
@@ -106,6 +109,9 @@ describe("DataStep", () => {
   });
 
   afterAll(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
     jest.resetAllMocks();
   });
 
