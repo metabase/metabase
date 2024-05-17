@@ -38,6 +38,7 @@ export const ResultItem = ({
 
   return (
     <ChunkyListItem
+      aria-selected={isSelected}
       onClick={onClick}
       isSelected={isSelected}
       isLast={isLast}
