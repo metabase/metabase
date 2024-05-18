@@ -21,6 +21,8 @@ import {
   queryBuilderMain,
   chartPathWithFillColor,
   echartsContainer,
+  entityPickerModal,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const {
@@ -243,8 +245,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .parent()
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    modal().within(() => cy.findByText("end dash").click());
+    entityPickerModal().within(() => {
+      cy.findByRole("tab", { name: /Dashboards/ }).click();
+      cy.findByText("end dash").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Available filters")
       .parent()
@@ -1093,8 +1097,4 @@ function setParamValue(paramName, text) {
 function drillThroughCardTitle(title) {
   cy.findByTestId("legend-caption").contains(title).click();
   cy.contains(`Started from ${title}`);
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

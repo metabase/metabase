@@ -11,8 +11,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
-  ListCollectionItemsRequest,
   CollectionItemModel,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -22,7 +22,7 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
+import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
 import {
   getCollectionIdPath,
   getQuestionPickerValueModel,
@@ -33,14 +33,15 @@ import {
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
-  allowCreateNew: false,
   hasConfirmButtons: false,
 };
+
 interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
   models?: CollectionItemModel[];
+  shouldShowItem?: (item: QuestionPickerItem) => boolean;
 }
 
 const useGetInitialCollection = (
@@ -80,6 +81,7 @@ export const QuestionPicker = ({
   initialValue,
   options,
   models = ["dataset", "card"],
+  shouldShowItem,
 }: QuestionPickerProps) => {
   const [path, setPath] = useState<
     PickerState<QuestionPickerItem, ListCollectionItemsRequest>
@@ -174,6 +176,7 @@ export const QuestionPicker = ({
       onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

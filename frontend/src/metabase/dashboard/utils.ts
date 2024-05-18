@@ -3,7 +3,8 @@ import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
@@ -14,22 +15,23 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ActionDashboardCard,
+  BaseDashboardCard,
+  CacheableDashboard,
   Card,
   CardId,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  QuestionDashboardCard,
+  DashCardDataMap,
   Database,
   Dataset,
-  Parameter,
-  ActionDashboardCard,
   EmbedDataset,
-  BaseDashboardCard,
-  DashCardDataMap,
+  Parameter,
+  QuestionDashboardCard,
   VirtualCard,
-  VirtualDashboardCard,
   VirtualCardDisplay,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -182,7 +184,7 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (isUUID(id)) {
+  } else if (isUuid(id)) {
     return "public";
   } else if (isJWT(id)) {
     return "embed";
@@ -362,3 +364,7 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
     archived: false,
   };
 }
+
+export const isDashboardCacheable = (
+  dashboard: Dashboard,
+): dashboard is CacheableDashboard => typeof dashboard.id !== "string";

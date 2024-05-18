@@ -1,3 +1,4 @@
+import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
   Dashboard,
   DashboardId,
@@ -101,7 +102,7 @@ export interface DashboardState {
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
 
   sidebar: DashboardSidebarState;
 
@@ -112,4 +113,6 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
+
+  theme: DisplayTheme | null;
 }

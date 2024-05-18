@@ -27,11 +27,8 @@
                      :ee "ee"
                      :oss "oss")]
     (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
-      (u/step "Run 'yarn' to download javascript dependencies"
-        (if (env/env :ci)
-          (do
-            (u/announce "CI run: enforce the lockfile")
-            (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
+      (when-not (env/env :ci)
+        (u/step "Run 'yarn' to download JavaScript dependencies"
           (u/sh {:dir u/project-root-directory} "yarn")))
       (u/step "Build frontend"
         (u/sh {:dir u/project-root-directory

@@ -195,6 +195,12 @@ export function suggest({
         .filter(
           clause => clause && database?.hasFeature(clause.requiresFeature),
         )
+        .filter(function disableOffsetInFilterExpressions(clause) {
+          const isOffset = clause.name === "offset";
+          const isFilterExpression = startRule === "boolean";
+          const isOffsetInFilterExpression = isOffset && isFilterExpression;
+          return !isOffsetInFilterExpression;
+        })
         .map(func => ({
           type: "functions",
           name: func.displayName,

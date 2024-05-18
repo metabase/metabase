@@ -63,13 +63,8 @@
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
 
-   Returns a map with two keys:
-     - `:extant-columns`: an ordered map of columns found in the CSV file, excluding columns that have the same normalized name as the generated columns.
-     - `:generated-columns`: an ordered map of columns we are generating ourselves. Currently, this is just the auto-incrementing PK.
-
-   The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
-   given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
-   be of type `::text`."
+   Returns an ordered map of normalized-column-name -> type for the given CSV file. Supported types include `::int`,
+   `::datetime`, etc. A column that is completely blank is assumed to be of type `::text`."
   [settings header rows]
   (let [normalized-header   (map normalize-column-name header)
         unique-header       (map keyword (mbql.u/uniquify-names normalized-header))
@@ -77,8 +72,7 @@
         initial-types       (repeat column-count nil)
         col-name+type-pairs (->> (upload-types/column-types-from-rows settings initial-types rows)
                                  (map vector unique-header))]
-    {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
-     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk)}))
+    (ordered-map/ordered-map col-name+type-pairs)))
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
@@ -226,33 +220,47 @@
     (fn [stream]
       (csv/read-csv stream :separator s))))
 
+(defn- columns-with-auto-pk [columns]
+  (merge (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk) columns))
+
+(defn- auto-pk-column?
+  "Returns true if there should be an auto-incrementing primary key column in any table created or updated from an
+   upload."
+  [driver db]
+  (driver/database-supports? driver :upload-with-auto-pk db))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
-  [driver db-id table-name ^File csv-file]
+  [driver db table-name ^File csv-file]
   (let [parse (infer-parser csv-file)]
     (with-open [reader (bom/bom-reader csv-file)]
-      (let [[header & rows] (without-auto-pk-columns (parse reader))
+      (let [auto-pk?          (auto-pk-column? driver db)
+            [header & rows]   (cond-> (parse reader)
+                                auto-pk?
+                                without-auto-pk-columns)
             settings          (upload-parsing/get-settings)
-            {:keys [extant-columns generated-columns]} (detect-schema settings header rows)
-            cols->upload-type (merge generated-columns extant-columns)
-            col-definitions   (column-definitions driver cols->upload-type)
-            csv-col-names     (keys extant-columns)
-            col-upload-types  (vals extant-columns)
+            cols->upload-type (detect-schema settings header rows)
+            col-definitions   (column-definitions driver (cond-> cols->upload-type
+                                                           auto-pk?
+                                                           columns-with-auto-pk))
+            csv-col-names     (keys cols->upload-type)
+            col-upload-types  (vals cols->upload-type)
             parsed-rows       (vec (parse-rows settings col-upload-types rows))]
         (driver/create-table! driver
-                              db-id
+                              (:id db)
                               table-name
                               col-definitions
-                              :primary-key [auto-pk-column-keyword])
+                              (when auto-pk?
+                                {:primary-key [auto-pk-column-keyword]}))
         (try
-          (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
+          (driver/insert-into! driver (:id db) table-name csv-col-names parsed-rows)
           {:num-rows          (count rows)
-           :num-columns       (count extant-columns)
-           :generated-columns (count generated-columns)
+           :num-columns       (count cols->upload-type)
+           :generated-columns (if auto-pk? 1 0)
            :size-mb           (file-size-mb csv-file)}
           (catch Throwable e
-            (driver/drop-table! driver db-id table-name)
+            (driver/drop-table! driver (:id db) table-name)
             (throw (ex-info (ex-message e) {:status-code 400}))))))))
 
 ;;;; +------------------+
@@ -286,7 +294,7 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
-      (not (driver/database-supports? driver :uploads nil))
+      (not (driver/database-supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
 
@@ -356,15 +364,16 @@
         schema            (some->> schema (ddl.i/format-name driver))
         table-name        (some->> table-name (ddl.i/format-name driver))
         schema+table-name (table-identifier {:schema schema :name table-name})
-        stats             (create-from-csv! driver (:id db) schema+table-name file)
+        stats             (create-from-csv! driver db schema+table-name file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
         table             (sync-tables/create-or-reactivate-table! db {:name table-name :schema (not-empty schema)})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
         ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-        auto-pk-field     (table-id->auto-pk-column (:id table))
-        _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})]
+        _ (when (auto-pk-column? driver db)
+            (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+              (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
     {:table table
      :stats stats}))
 
@@ -553,15 +562,20 @@
     (let [parse (infer-parser file)]
       (with-open [reader (bom/bom-reader file)]
         (let [timer              (start-timer)
-              [header & rows] (without-auto-pk-columns (parse reader))
               driver             (driver.u/database->driver database)
+              auto-pk?           (auto-pk-column? driver database)
+              [header & rows]    (cond-> (parse reader)
+                                   auto-pk?
+                                   without-auto-pk-columns)
               normed-name->field (m/index-by (comp normalize-column-name :name)
                                              (t2/select :model/Field :table_id (:id table) :active true))
               normed-header      (map normalize-column-name header)
               create-auto-pk?    (and
+                                  auto-pk?
                                   (driver/create-auto-pk-with-append-csv? driver)
                                   (not (contains? normed-name->field auto-pk-column-name)))
-              _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
+              normed-name->field (cond-> normed-name->field auto-pk? (dissoc auto-pk-column-name))
+              _                  (check-schema normed-name->field header)
               settings           (upload-parsing/get-settings)
               old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) normed-header)
               ;; in the happy, and most common, case all the values will match the existing types
@@ -585,7 +599,6 @@
                                   :generated-columns (if create-auto-pk? 1 0)
                                   :size-mb           (file-size-mb file)
                                   :upload-seconds    (since-ms timer)}]
-
           (try
             (when replace-rows?
               (driver/truncate! driver (:id database) (table-identifier table)))

@@ -1,4 +1,10 @@
-import type { ElementEvent } from "echarts";
+import type {
+  CustomSeriesOption,
+  ScatterSeriesOption,
+  BarSeriesOption,
+  LineSeriesOption,
+} from "echarts/charts";
+import type { ElementEvent } from "echarts/core";
 import type { BrushAreaParam } from "echarts/types/src/component/brush/BrushModel";
 import type { ZRRawMouseEvent } from "zrender/lib/core/types";
 
@@ -23,3 +29,9 @@ export type EChartsCartesianCoordinateSystem = {
   width: number;
   height: number;
 };
+
+export type WaterfallSeriesOption =
+  | CustomSeriesOption
+  | ScatterSeriesOption
+  | BarSeriesOption
+  | LineSeriesOption;

@@ -5,6 +5,8 @@ import {
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   modal,
   openQuestionActions,
@@ -112,8 +114,10 @@ describe("scenarios > metrics > editing", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Metric").click();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       runQuery();
@@ -156,8 +160,10 @@ describe("scenarios > metrics > editing", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Metric").click();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric({ name: "New metric" });
 
@@ -175,8 +181,10 @@ describe("scenarios > metrics > editing", () => {
   describe("data source", () => {
     it("should create a metric based on a table", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -190,8 +198,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should create a metric based on a saved question", () => {
       startNewMetric();
-      popover().findByText("Saved Questions").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders").click();
+      });
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -206,8 +216,10 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a multi-stage saved question", () => {
       createQuestion(ORDERS_MULTI_STAGE_QUESTION);
       startNewMetric();
-      popover().findByText("Saved Questions").click();
-      popover().findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+      });
       addNumberBetweenFilter({
         columnName: "Count",
         minValue: 5,
@@ -221,8 +233,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should create a metric based on a model", () => {
       startNewMetric();
-      popover().findByText("Models").click();
-      popover().findByText("Orders Model").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Models").click();
+        cy.findByText("Orders Model").click();
+      });
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -237,8 +251,10 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a multi-stage model", () => {
       createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
       startNewMetric();
-      popover().findByText("Models").click();
-      popover().findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Models").click();
+        cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+      });
       addNumberBetweenFilter({
         columnName: "Count",
         minValue: 5,
@@ -253,8 +269,10 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a single-stage metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -268,8 +286,10 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a multi-stage metric", () => {
       createQuestion(ORDERS_MULTI_STAGE_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_MULTI_STAGE_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_MULTI_STAGE_METRIC.name).click();
+      });
       addDateBetweenFilter({
         columnName: "Created At: Month",
         minValue: "May 7, 2020",
@@ -284,10 +304,15 @@ describe("scenarios > metrics > editing", () => {
   describe("joins", () => {
     it("should join a table", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Products").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Products").click();
+      });
       startNewJoin();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       startNewFilter();
       popover().within(() => {
         cy.findByText("User").click();
@@ -304,24 +329,24 @@ describe("scenarios > metrics > editing", () => {
     it("should not be possible to join a metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       startNewJoin();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Raw Data").click();
-        cy.findByText("Raw Data").should("be.visible");
-        cy.findByText("Saved Questions").should("be.visible");
-        cy.findByText("Models").should("be.visible");
-        cy.findByText("Metrics").should("not.exist");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").should("be.visible");
+        entityPickerModalTab("Metrics").should("not.exist");
       });
     });
 
     it("should not be possible to join data on the first stage of a metric-based query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
         getActionButton("Join data").should("not.exist");
@@ -331,11 +356,16 @@ describe("scenarios > metrics > editing", () => {
     it("should join on the second stage of a metric query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       addBreakout({ columnName: "Product ID" });
       startNewJoin({ isPostAggregation: true });
-      popover().findByText("Products").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Products").click();
+      });
       getNotebookStep("join", { stage: 1 }).within(() => {
         cy.findByText("ID").should("be.visible");
         cy.findByText("Product ID").should("be.visible");
@@ -348,8 +378,10 @@ describe("scenarios > metrics > editing", () => {
   describe("custom columns", () => {
     it.skip("should be able to use custom columns in metric queries (metabase#42360)", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       startNewCustomColumn();
       enterCustomColumnDetails({
         formula: "[Total] / 2",
@@ -364,8 +396,10 @@ describe("scenarios > metrics > editing", () => {
 
     it.skip("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       startNewCustomColumn();
       enterCustomColumnDetails({
         formula: "[Product → Price] * 2",
@@ -381,8 +415,10 @@ describe("scenarios > metrics > editing", () => {
     it("should be able to use a custom column in a metric-based query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       startNewCustomColumn();
       enterCustomColumnDetails({
         formula: "[Total] / 2",
@@ -402,8 +438,10 @@ describe("scenarios > metrics > editing", () => {
     it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       startNewAggregation();
       cy.findByTestId("expression-editor").should("be.visible");
     });
@@ -413,8 +451,10 @@ describe("scenarios > metrics > editing", () => {
     it("should add a filter to a metric based on a metric with a filter", () => {
       createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_FILTER_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).click();
+      });
       addStringCategoryFilter({
         tableName: "Product",
         columnName: "Category",
@@ -429,8 +469,10 @@ describe("scenarios > metrics > editing", () => {
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
       addBreakout({ columnName: "Created At" });
       saveMetric();
@@ -440,8 +482,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should create a geo metric with multiple breakouts", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("People").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("People").click();
+      });
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Latitude" });
       addBreakout({ columnName: "Longitude" });
@@ -452,8 +496,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should add a breakout clause in a metric query with 2 stages", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Created At" });
       addAggregation({
@@ -478,8 +524,10 @@ describe("scenarios > metrics > editing", () => {
   describe("aggregations", () => {
     it("should not be possible to save a metric without an aggregation clause", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       cy.button("Save").should("be.disabled");
       cy.findByTestId("run-button").should("not.be.visible");
     });
@@ -487,8 +535,10 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
-      popover().findByText("Metrics").click();
-      popover().findByText(ORDERS_SCALAR_METRIC.name).click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Metrics").click();
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+      });
       getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -504,8 +554,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should add an aggregation clause in a metric query with 2 stages", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Count of rows" });
       addBreakout({ columnName: "Created At", bucketName: "Year" });
       addAggregation({
@@ -519,8 +571,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should add multiple aggregation columns in the first stage of a metric query", () => {
       startNewMetric();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
       addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
       addBreakout({ columnName: "Created At" });
@@ -541,8 +595,10 @@ describe("scenarios > metrics > editing", () => {
       createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       createQuestion(PRODUCTS_SCALAR_METRIC);
       startNewQuestion();
-      popover().findByText("Raw Data").click();
-      popover().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
       startNewAggregation();
       popover().within(() => {
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");

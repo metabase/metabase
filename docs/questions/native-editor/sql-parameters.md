@@ -14,7 +14,7 @@ You can create SQL templates by adding variables to your SQL queries in the [Nat
 
 Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`.
 
-Field Filter, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
+Field Filters, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
 
 This example defines a **Text** variable called `category`:
 
@@ -282,7 +282,7 @@ In the **Variable** settings sidebar, you can toggle the **Always require a valu
 
 You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
 
-To make a clause optional in your native query, type `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If you input a value in the filter widget for the `variable`, then the entire clause is placed into the template; otherwise Metabase will ignore the clause.
+To make a variable optional in your native query, put `[[ .. ]]` brackets around the entire clause containing the `{% raw %}{{variable}}{% endraw %}`. If someone inputs a value in the filter widget for the `variable`, Metabase will place the clause in the template; otherwise Metabase will ignore the clause and run the query as though the clause didn't exist.
 
 In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
@@ -291,9 +291,68 @@ In this example, if no value is given to `cat`, then the query will just select 
 SELECT
   count(*)
 FROM
-  products [[WHERE category = {{category}}]]
+  products
+[[WHERE category = {{cat}}]]
 {% endraw %}
 ```
+
+### Your SQL must also be able to run without the optional clause in `[[ ]]`
+
+You need to make sure that your SQL is still valid when no value is passed to the variable in the bracketed clause.
+
+For example, excluding the `WHERE` keyword from the bracketed clause will cause an error if there's no value given for `cat`:
+
+```
+-- this will cause an error:
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  [[category = {{cat}}]]
+{% endraw %}
+```
+
+That's because when no value is given for `cat`, Metabase will try to execute SQL as if the clause in `[[ ]]` didn't exist:
+
+```
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+```
+
+which is not a valid SQL query.
+
+Instead, put the entire `WHERE` clause in `[[ ]]`:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+[[WHERE
+  category = {{cat}}]]
+{% endraw %}
+```
+
+When there's no value given for `cat`, Metabase will just execute:
+
+```
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+{% endraw %}
+```
+
+which is still a valid query.
+
+### You need at least one `WHERE` when using multiple optional clauses
 
 To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
 
@@ -311,6 +370,8 @@ WHERE
 ```
 
 That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
+
+### Optional variables in MongoDB
 
 If you're using MongoDB, you can make an clause optional like so:
 

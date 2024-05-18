@@ -65,9 +65,9 @@ export const _InteractiveQuestion = ({
   const hasQuestionChanges =
     card && (!card.id || card.id !== card.original_card_id);
 
-  const [loading, setLoading] = useState(true);
+  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
 
-  const { isRunning } = uiControls;
+  const { isRunning: isQueryRunning } = uiControls;
 
   if (question) {
     // FIXME: remove "You can also get an alert when there are some results." feature for question
@@ -78,14 +78,14 @@ export const _InteractiveQuestion = ({
     dispatch: ReturnType<typeof useDispatch>,
     questionId: CardId,
   ) => {
-    setLoading(true);
+    setIsQuestionLoading(true);
 
     const { location, params } = getQuestionParameters(questionId);
     try {
       await dispatch(initializeQBRaw(location, params));
     } catch (e) {
       console.error(`Failed to get question`, e);
-      setLoading(false);
+      setIsQuestionLoading(false);
     }
   };
 
@@ -99,11 +99,11 @@ export const _InteractiveQuestion = ({
 
   useEffect(() => {
     if (queryResults) {
-      setLoading(false);
+      setIsQuestionLoading(false);
     }
   }, [queryResults]);
 
-  if (loading) {
+  if (isQuestionLoading || isQueryRunning) {
     return <Loader data-testid="loading-spinner" />;
   }
 
@@ -143,7 +143,7 @@ export const _InteractiveQuestion = ({
             className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
             question={question}
             rawSeries={[{ card, data: result && result.data }]}
-            isRunning={isRunning}
+            isRunning={isQueryRunning}
             isObjectDetail={false}
             isResultDirty={false}
             isNativeEditorOpen={false}

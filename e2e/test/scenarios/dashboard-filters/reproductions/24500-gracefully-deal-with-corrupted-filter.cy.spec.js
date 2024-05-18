@@ -119,11 +119,16 @@ describe("issues 15279 and 24500", () => {
     saveDashboard();
 
     // Check the list filter again
-    filterWidget().contains("List").click();
+    filterWidget().contains("List").parent().click();
     cy.wait("@values");
 
-    // Check that the search filter works
+    cy.log("Check that the search filter works");
+
+    // reset filter value
+    filterWidget().contains("Search").parent().icon("close").click();
+
     filterWidget().contains("Search").click();
+
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 

@@ -32,7 +32,9 @@ const canSelectItem = (
 };
 
 const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
-  return searchResults.filter(result => result.can_write);
+  return searchResults.filter(
+    result => result.can_write && result.collection.type !== "trash",
+  );
 };
 
 export const CollectionPickerModal = ({
@@ -74,17 +76,19 @@ export const CollectionPickerModal = ({
     }
   };
 
-  const modalActions = [
-    <Button
-      key="collection-on-the-go"
-      miw="21rem"
-      onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
-    >
-      {t`Create a new collection`}
-    </Button>,
-  ];
+  const modalActions = options.allowCreateNew
+    ? [
+        <Button
+          key="collection-on-the-go"
+          miw="21rem"
+          onClick={openCreateDialog}
+          leftIcon={<Icon name="add" />}
+          disabled={selectedItem?.can_write === false}
+        >
+          {t`Create a new collection`}
+        </Button>,
+      ]
+    : [];
 
   const tabs: [EntityTab<SearchModel>] = [
     {

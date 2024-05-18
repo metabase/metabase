@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 import type { ContentDirectionType } from "./utils";
 
 export const Section = styled.div<{
@@ -49,5 +47,5 @@ export const SectionTitle = styled.p`
   margin: 0;
 
   font-size: 0.875em;
-  color: ${color("text-medium")};
+  color: ${({ theme }) => theme.fn.themeColor("text-medium")};
 `;

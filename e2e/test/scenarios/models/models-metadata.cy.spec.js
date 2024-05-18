@@ -334,7 +334,6 @@ describe("scenarios > models metadata", () => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
           cy.icon("close").click();
-          cy.wait("@dataset");
         });
 
         cy.go("back"); // navigate away from drilled table

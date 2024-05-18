@@ -6,15 +6,17 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  moveDnDKitElement,
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openTable,
   popover,
   restore,
-  startNewQuestion,
   setTokenFeatures,
-  openTable,
-  moveDnDKitElement,
+  startNewQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
@@ -54,8 +56,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Table display_name").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -101,8 +103,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -115,8 +117,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("4 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -227,7 +229,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -409,7 +412,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -438,8 +442,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -507,7 +511,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

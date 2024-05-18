@@ -2232,6 +2232,23 @@
     (fn [_]
       (lib.core/can-run a-query (keyword card-type))))))
 
+(defn ^:export can-preview
+  "Returns true if the query is previewable.
+
+  This is a stronger condition than [[can-run]] - there are some cases where we want to be stricter about previews than
+  about regular save and run. For example, an `:offset` expression requires a sort order but sorting comes later in the
+  query builder than the expression. So the partial query we would preview at the expression step is invalid and it
+  fails `can-preview`. However, we don't currently have a good path for surfacing *reasons* a query can't be saved,
+  previewed or run. So we want [[can-save]] and [[can-run]] to be true for a query with an `:offset` expression and no
+  sort order (so the QP can return a good error message), but [[can-preview]] can be stricter.
+
+  > **Code health:** Healthy, Single use."
+  [a-query]
+  (lib.cache/side-channel-cache
+    :can-preview a-query
+    (fn [_]
+      (lib.core/can-preview a-query))))
+
 (defn ^:export can-save
   "Returns true if the query can be saved.
   `card-type` is optional and defaults to \"question\".

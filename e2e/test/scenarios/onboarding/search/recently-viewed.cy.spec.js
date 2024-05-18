@@ -9,6 +9,11 @@ import {
   openPeopleTable,
   describeEE,
   setTokenFeatures,
+  popover,
+  entityPickerModal,
+  visitFullAppEmbeddingUrl,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 describe("search > recently viewed", () => {
@@ -30,7 +35,8 @@ describe("search > recently viewed", () => {
     // which elicits a ViewLog entry
 
     cy.intercept("/api/activity/recent_views").as("recent");
-    cy.visit("/");
+    //Because this is testing keyboard navigation, these tests can run in embedded mode
+    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.wait("@recent");
 
     cy.findByPlaceholderText("Search…").click();
@@ -66,12 +72,66 @@ describe("search > recently viewed", () => {
     const recentlyViewedItems = cy.findAllByTestId(
       "recently-viewed-item-title",
     );
+
+    cy.intercept("/api/dataset").as("dataset");
+
     recentlyViewedItems.eq(2).click();
+    cy.wait("@dataset");
 
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
 
     assertRecentlyViewedItem(0, "People", "Table");
+  });
+});
+
+describe("Recently Viewed > Entity Picker", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.visit("/");
+  });
+
+  it("shows recently created collection in entity picker", () => {
+    cy.createCollection({
+      name: "My Fresh Collection",
+    });
+
+    cy.findByTestId("app-bar").button(/New/).click();
+    popover().findByText("Dashboard").click();
+    cy.findByTestId("collection-picker-button").click();
+
+    entityPickerModal().within(() => {
+      cy.findByText("Select a collection").click();
+      cy.findByRole("tab", { name: /Recents/ });
+      cy.findByRole("tab", { name: /Collections/ });
+
+      cy.findByText("Today");
+      cy.findByText("My Fresh Collection");
+    });
+  });
+
+  it("shows recently visited dashboard in entity picker", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    cy.findByTestId("qb-header").icon("ellipsis").click();
+    popover().findByText("Add to dashboard").click();
+
+    entityPickerModal().within(() => {
+      cy.findByText("Add this question to a dashboard").click();
+      cy.findByRole("tab", { name: /Recents/ });
+      cy.findByRole("tab", { name: /Dashboards/ });
+
+      cy.findByText("Today");
+      cy.findByText("Orders in a dashboard").click();
+      cy.button("Select").click();
+    });
+
+    cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}-`);
+    cy.get("#Dashboard-Header-Container").findByText(
+      /You're editing this dashboard/,
+    );
   });
 });
 
@@ -93,9 +153,9 @@ describeEE("search > recently viewed > enterprise features", () => {
   });
 
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
-    cy.findByPlaceholderText("Search…").click();
+    openCommandPalette();
 
-    cy.findByTestId("recently-viewed-item").within(() => {
+    commandPalette().within(() => {
       cy.icon("verified_filled").should("be.visible");
     });
   });

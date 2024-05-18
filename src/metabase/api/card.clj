@@ -187,6 +187,7 @@
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
+                    :can_restore
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
@@ -512,8 +513,7 @@
   (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (cond-> card-updates
-                                 (:type card-updates) (update :type keyword))
+        card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates (collection/trash-collection-id))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -628,7 +628,9 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil}))))))
+                      {:collection_id new-collection-id-or-nil})))))
+  (when new-collection-id-or-nil
+    (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with

@@ -17,8 +17,8 @@ describe("getLegendItems", () => {
       createMockSeriesModel({ name: "Series 2", color: "blue" }),
     ]);
     expect(legendItems).toStrictEqual([
-      { name: "Series 1", color: "red" },
-      { name: "Series 2", color: "blue" },
+      { name: "Series 1", color: "red", key: "dataKey" },
+      { name: "Series 2", color: "blue", key: "dataKey" },
     ]);
   });
 
@@ -26,6 +26,8 @@ describe("getLegendItems", () => {
     const legendItems = getLegendItems([
       createMockBreakoutSeriesModel({ name: "breakout series" }),
     ]);
-    expect(legendItems).toEqual([{ name: "breakout series", color: "red" }]);
+    expect(legendItems).toEqual([
+      { name: "breakout series", color: "red", key: "dataKey" },
+    ]);
   });
 });

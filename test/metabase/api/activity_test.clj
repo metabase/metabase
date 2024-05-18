@@ -129,21 +129,21 @@
                                          {:topic :event/card-query :event {:card-id (:id metric)}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
-            (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+            (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
               (is (=?
-                   [{:model "metric" :model_id (u/the-id metric)}
-                    {:model "table" :model_id (u/the-id table1)}
-                    {:model "dashboard" :model_id (u/the-id dash)}
-                    {:model "card" :model_id (u/the-id card1)}
-                    {:model "dataset" :model_id (u/the-id dataset)}]
+                   [{:model "metric" :id (u/the-id metric)}
+                    {:model "table" :id (u/the-id table1)}
+                    {:model "dashboard" :id (u/the-id dash)}
+                    {:model "card" :id (u/the-id card1)}
+                    {:model "dataset" :id (u/the-id dataset)}]
                    recent-views)))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
           (testing "Only the user's own views are returned."
-            (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
+            (let [recent-views (:recent_views (mt/user-http-request :rasta :get 200 "activity/recent_views"))]
               (is (partial=
-                   [{:model "dataset" :model_id (u/the-id dataset)}]
+                   [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
 
 (defn- create-views!
@@ -200,18 +200,19 @@
                                     :display                "table"
                                     :visualization_settings {}}]
     (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric]))]
-      (testing "Items viewed by multiple users are not duplicated in the popular items list."
+      (testing "Items viewed by multiple users are never duplicated in the popular items list."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
                           [(mt/user->id :crowberto) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta)     "card"      (:id card1)]
                           [(mt/user->id :crowberto) "card"      (:id card1)]])
-          (is (= [["dashboard" (:id dash1)]
-                  ["card" (:id card1)]]
+          (is (= [["dashboard" (u/the-id dash1)]
+                  ["card" (u/the-id card1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id)))))))
+                      :popular_items
+                      (filter (comp test-ids u/the-id))
+                      (map (juxt :model :id)))))))
       (testing "Items viewed by other users can still show up in popular items."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
@@ -224,8 +225,9 @@
                   ["table" (:id table1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id)))))))
+                      :popular_items
+                      (filter #(test-ids (:id %)))
+                      (map (juxt :model :id)))))))
       (testing "Items with more views show up sooner in popular items."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! (concat
@@ -242,5 +244,6 @@
                   ["table"     (:id table1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")
-                      (filter #(test-ids (:model_id %)))
-                      (map (juxt :model :model_id))))))))))
+                      :popular_items
+                      (filter #(test-ids (:id %)))
+                      (map (juxt :model :id))))))))))

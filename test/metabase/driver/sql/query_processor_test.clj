@@ -274,6 +274,7 @@
       :type     :query
       :query    (merge
                  {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                  :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
                   :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
                  query)})))
 
@@ -287,7 +288,9 @@
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:contains [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:!= [:field "A" {:base-type :type/Text}] "foo"]}))))
+           (query-on-dataset-with-nils {:filter [:!= [:field "A" {:base-type :type/Text}] "foo"]})))
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:!= [:expression "initial" {:base-type :type/Text}] "f"]}))))
   (testing "Null behaviour correction fix should work with joined fields (#13534)"
     (is (= [[1000]]
            (mt/rows

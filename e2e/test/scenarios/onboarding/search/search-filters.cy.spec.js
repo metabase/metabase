@@ -4,17 +4,18 @@ import {
   ADMIN_USER_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
+  FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createAction,
   describeEE,
   expectSearchResultContent,
-  getSearchBar,
   popover,
   restore,
   setActionsEnabledForDB,
   setTokenFeatures,
   summarize,
+  commandPaletteSearch,
 } from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
@@ -98,8 +99,6 @@ describe("scenarios > search", () => {
       it("hydrating search from URL", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-
-        getSearchBar().should("have.value", "orders");
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
         });
@@ -158,8 +157,6 @@ describe("scenarios > search", () => {
           cy.visit(`/search?q=e&type=${type}`);
           cy.wait("@search");
 
-          getSearchBar().should("have.value", "e");
-
           cy.findByTestId("search-app").within(() => {
             cy.findByText('Results for "e"').should("exist");
           });
@@ -180,7 +177,7 @@ describe("scenarios > search", () => {
         it(`should filter results by ${label}`, () => {
           cy.visit("/");
 
-          getSearchBar().clear().type("e{enter}");
+          commandPaletteSearch("e");
           cy.wait("@search");
 
           cy.findByTestId("type-search-filter").click();
@@ -268,8 +265,7 @@ describe("scenarios > search", () => {
       it("should filter results by one user", () => {
         cy.visit("/");
 
-        getSearchBar().clear();
-        getSearchBar().type("reviews{enter}");
+        commandPaletteSearch("reviews");
         cy.wait("@search");
 
         expectSearchResultItemNameContent({
@@ -302,7 +298,7 @@ describe("scenarios > search", () => {
       it("should filter results by more than one user", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("reviews{enter}");
+        commandPaletteSearch("reviews");
         cy.wait("@search");
 
         expectSearchResultItemNameContent({
@@ -406,8 +402,7 @@ describe("scenarios > search", () => {
           cy.signIn(userType);
           cy.visit("/");
 
-          getSearchBar().clear();
-          getSearchBar().type("reviews{enter}");
+          commandPaletteSearch("reviews");
           cy.wait("@search");
 
           expectSearchResultItemNameContent(
@@ -504,7 +499,7 @@ describe("scenarios > search", () => {
       it("should filter last_edited results by one user", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("reviews{enter}");
+        commandPaletteSearch("reviews");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
@@ -537,7 +532,7 @@ describe("scenarios > search", () => {
       it("should filter last_edited results by more than user", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("reviews{enter}");
+        commandPaletteSearch("reviews");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
@@ -654,8 +649,7 @@ describe("scenarios > search", () => {
           cy.signIn(userType);
           cy.visit("/");
 
-          getSearchBar().clear();
-          getSearchBar().type("reviews{enter}");
+          commandPaletteSearch("reviews");
           cy.wait("@search");
 
           expectSearchResultItemNameContent(
@@ -888,8 +882,6 @@ describe("scenarios > search", () => {
         cy.visit("/search?q=orders&verified=true");
         cy.wait("@search");
 
-        getSearchBar().should("have.value", "orders");
-
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
         });
@@ -904,7 +896,7 @@ describe("scenarios > search", () => {
       it("should filter results by verified items", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("e{enter}");
+        commandPaletteSearch("e");
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
@@ -971,8 +963,6 @@ describe("scenarios > search", () => {
         );
         cy.wait("@search");
 
-        getSearchBar().should("have.value", TEST_NATIVE_QUESTION_NAME);
-
         cy.findByTestId("search-app").within(() => {
           cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
             "exist",
@@ -1023,6 +1013,29 @@ describe("scenarios > search", () => {
       });
     });
 
+    describe("trashed items filter", () => {
+      it("should only show items in the trash", () => {
+        cy.visit("/search?q=First");
+        cy.findAllByTestId("search-result-item").should("have.length", 1);
+        cy.findByTestId("search-result-item")
+          .findByText("Collection")
+          .should("exist");
+
+        cy.findByTestId("archived-search-filter")
+          .findByText("Search items in trash")
+          .click();
+        cy.findAllByTestId("search-result-item").should("have.length", 0);
+
+        cy.archiveCollection(FIRST_COLLECTION_ID);
+        cy.reload();
+        cy.findAllByTestId("search-result-item").should("have.length", 1);
+        // TODO: eventually re-enable when FE can properly identify the parent collection
+        // cy.findByTestId("search-result-item")
+        //   .findByText("Trash")
+        //   .should("exist");
+      });
+    });
+
     it("should persist filters when the user changes the text query", () => {
       cy.visit("/search?q=orders");
 
@@ -1055,7 +1068,8 @@ describe("scenarios > search", () => {
         ],
       });
 
-      getSearchBar().clear().type("count{enter}");
+      //getSearchBar().clear().type("count{enter}");
+      commandPaletteSearch("count");
 
       expectSearchResultItemNameContent({
         itemNames: [

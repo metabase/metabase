@@ -119,6 +119,14 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     expect(type("COALESCE([Place], [Location])")).toEqual("type/Coordinate");
   });
 
+  it("should infer the result of OFFSET", () => {
+    expect(type("Offset([Price], -1)")).toEqual("number");
+    expect(type("Offset([FirstName], -1)")).toEqual("string");
+    expect(type("Offset([BirthDate], -1)")).toEqual("type/Temporal");
+    expect(type("Offset([Place], -1)")).toEqual("type/Coordinate");
+    expect(type("Offset(Sum([Price]), -1)")).toEqual("number");
+  });
+
   it("should infer the result of datetimeAdd, datetimeSubtract", () => {
     expect(type('datetimeAdd([CreatedAt], 2, "month")')).toEqual("datetime");
     expect(type('datetimeAdd("2022-01-01", 2, "month")')).toEqual("datetime");

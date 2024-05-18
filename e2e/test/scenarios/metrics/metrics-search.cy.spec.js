@@ -1,12 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  appBar,
+  commandPalette,
+  commandPaletteSearch,
   createQuestion,
-  describeEE,
   navigationSidebar,
   popover,
   restore,
-  setTokenFeatures,
   visitMetric,
 } from "e2e/support/helpers";
 
@@ -33,10 +32,9 @@ describe("scenarios > metrics > search", () => {
   it("should be able to search for metrics in global search", () => {
     createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/");
-    appBar().findByPlaceholderText("Search…").type(ORDERS_SCALAR_METRIC.name);
-    cy.wait("@search");
-    cy.findByTestId("search-results-floating-container")
-      .findByText(ORDERS_SCALAR_METRIC.name)
+    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
+    commandPalette()
+      .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     cy.wait("@dataset");
     cy.findByTestId("scalar-container").should("be.visible");
@@ -45,7 +43,7 @@ describe("scenarios > metrics > search", () => {
   it("should be able to search for metrics on the search page", () => {
     createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/");
-    appBar().findByPlaceholderText("Search…").type("orders{enter}");
+    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
     cy.wait("@search");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
@@ -71,9 +69,9 @@ describe("scenarios > metrics > search", () => {
       cy.wait("@dataset");
     });
     navigationSidebar().findByText("Home").click();
-    appBar().findByPlaceholderText("Search…").click();
-    cy.findByTestId("search-results-floating-container")
-      .findByText(ORDERS_SCALAR_METRIC.name)
+    commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
+    commandPalette()
+      .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     cy.wait("@dataset");
     cy.findByTestId("scalar-container").should("be.visible");
@@ -87,30 +85,6 @@ describe("scenarios > metrics > search", () => {
     navigationSidebar().findByText("Home").click();
     cy.findByTestId("home-page").within(() => {
       cy.findByText("Pick up where you left off").should("be.visible");
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      cy.wait("@dataset");
-    });
-    cy.findByTestId("scalar-container").should("be.visible");
-  });
-});
-
-describeEE("scenarios > metrics > search", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    setTokenFeatures("all");
-  });
-
-  it.skip("should see metrics in popular items on the homepage (metabase#42607)", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
-      cy.wait("@dataset");
-    });
-    cy.signInAsNormalUser();
-    cy.visit("/");
-    cy.findByTestId("home-page").within(() => {
-      cy.findByText("Here are some popular metrics").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       cy.wait("@dataset");
     });
