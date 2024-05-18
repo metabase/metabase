@@ -1010,7 +1010,7 @@ export const canUploadToQuestion = question => state => {
   if (!uploadsEnabled) {
     return false;
   }
-  const uploadsDbId = getSetting(state, "uploads-database-id");
+  const uploadsDbId = getSetting(state, "uploads-database").id;
   const canUploadToDb =
     uploadsDbId === question.databaseId() &&
     Databases.selectors

@@ -190,6 +190,12 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
+export interface UploadsDatabaseSettings {
+  id: number | null;
+  uploads_schema_name: string | null;
+  uploads_table_prefix: string | null;
+}
+
 interface InstanceSettings {
   "admin-email": string;
   "email-smtp-host": string | null;
@@ -211,9 +217,7 @@ interface InstanceSettings {
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
   "uploads-enabled": boolean;
-  "uploads-database-id": number | null;
-  "uploads-schema-name": string | null;
-  "uploads-table-prefix": string | null;
+  "uploads-database": UploadsDatabaseSettings;
   "user-visibility": string | null;
 }
 

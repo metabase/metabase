@@ -505,9 +505,11 @@ function headlessUpload(file) {
 function enableUploads(dialect) {
   const settings = {
     "uploads-enabled": true,
-    "uploads-database-id": WRITABLE_DB_ID,
-    "uploads-schema-name": dialect === "postgres" ? "public" : null,
-    "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
+    "uploads-database": {
+      id: WRITABLE_DB_ID,
+      uploads_schema_name: dialect === "postgres" ? "public" : null,
+      uploads_table_prefix: dialect === "mysql" ? "upload_" : null,
+    },
   };
 
   cy.request("PUT", "/api/setting", settings);

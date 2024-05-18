@@ -59,9 +59,11 @@ function setup({
   databases = TEST_DATABASES,
   settings = {
     uploads_enabled: false,
-    uploads_database_id: null,
-    uploads_schema_name: null,
-    uploads_table_prefix: null,
+    uploads_database: {
+      id: null,
+      uploads_schema_name: null,
+      uploads_table_prefix: null,
+    },
   },
 }: SetupOpts = {}) {
   const state = createMockState({
@@ -158,9 +160,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": true,
-      "uploads-database-id": 1,
-      "uploads-schema-name": "uploads",
-      "uploads-table-prefix": null,
+      "uploads-database": {
+        id: 1,
+        uploads_schema_name: "uploads",
+        uploads_table_prefix: null,
+      },
     });
   });
 
@@ -182,9 +186,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": true,
-      "uploads-database-id": 2,
-      "uploads-schema-name": null,
-      "uploads-table-prefix": "my_prefix_",
+      "uploads-database": {
+        id: 2,
+        uploads_schema_name: null,
+        uploads_table_prefix: "my_prefix_",
+      },
     });
   });
 
@@ -211,9 +217,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": true,
-      "uploads-database-id": 1,
-      "uploads-schema-name": "uploads",
-      "uploads-table-prefix": "my_prefix_",
+      "uploads-database": {
+        id: 1,
+        uploads_schema_name: "uploads",
+        uploads_table_prefix: "my_prefix_",
+      },
     });
   });
 
@@ -251,9 +259,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": true,
-      "uploads-database-id": 2,
-      "uploads-schema-name": null,
-      "uploads-table-prefix": "upload_",
+      "uploads-database": {
+        id: 2,
+        uploads_schema_name: null,
+        uploads_table_prefix: "upload_",
+      },
     });
 
     expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
@@ -263,9 +273,11 @@ describe("Admin > Settings > UploadSetting", () => {
     const { updateSpy } = setup({
       settings: {
         uploads_enabled: true,
-        uploads_database_id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+        uploads_database: {
+          id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: null,
+        },
       },
     });
     await userEvent.click(
@@ -274,9 +286,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": false,
-      "uploads-database-id": null,
-      "uploads-schema-name": null,
-      "uploads-table-prefix": null,
+      "uploads-database": {
+        id: null,
+        uploads_schema_name: null,
+        uploads_table_prefix: null,
+      },
     });
   });
 
@@ -284,9 +298,11 @@ describe("Admin > Settings > UploadSetting", () => {
     const { updateSpy, savingSpy, clearSpy, savedSpy } = setup({
       settings: {
         uploads_enabled: true,
-        uploads_database_id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+        uploads_database: {
+          id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: null,
+        },
       },
     });
     updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
@@ -296,9 +312,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": false,
-      "uploads-database-id": null,
-      "uploads-schema-name": null,
-      "uploads-table-prefix": null,
+      "uploads-database": {
+        id: null,
+        uploads_schema_name: null,
+        uploads_table_prefix: null,
+      },
     });
 
     expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
@@ -311,9 +329,11 @@ describe("Admin > Settings > UploadSetting", () => {
     setup({
       settings: {
         uploads_enabled: true,
-        uploads_database_id: 1,
-        uploads_schema_name: "top_secret",
-        uploads_table_prefix: null,
+        uploads_database: {
+          id: 1,
+          uploads_schema_name: "top_secret",
+          uploads_table_prefix: null,
+        },
       },
     });
 
@@ -388,9 +408,11 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(updateSpy).toHaveBeenCalledWith({
       "uploads-enabled": true,
-      "uploads-database-id": 1,
-      "uploads-schema-name": "uploads",
-      "uploads-table-prefix": null,
+      "uploads-database": {
+        id: 1,
+        uploads_schema_name: "uploads",
+        uploads_table_prefix: null,
+      },
     });
   });
 

@@ -20,6 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Stack, Group, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
+import type { UploadsDatabaseSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 
 import SettingHeader from "../SettingHeader";
@@ -33,16 +34,14 @@ const disableErrorMessage = t`There was a problem disabling uploads. Please try 
 
 export interface UploadSettings {
   uploads_enabled: boolean;
-  uploads_database_id: number | null;
-  uploads_schema_name: string | null;
-  uploads_table_prefix: string | null;
+  uploads_database: UploadsDatabaseSettings;
 }
 
 interface UploadSettingProps {
   databases: Database[];
   settings: UploadSettings;
   updateSettings: (
-    settings: Record<string, string | number | boolean | null>,
+    settings: Record<string, string | number | boolean | null | any>,
   ) => Promise<void>;
   saveStatusRef: React.RefObject<{
     setSaving: () => void;
@@ -55,9 +54,7 @@ interface UploadSettingProps {
 const mapStateToProps = (state: State) => ({
   settings: {
     uploads_enabled: getSetting(state, "uploads-enabled"),
-    uploads_database_id: getSetting(state, "uploads-database-id"),
-    uploads_schema_name: getSetting(state, "uploads-schema-name"),
-    uploads_table_prefix: getSetting(state, "uploads-table-prefix"),
+    uploads_database: getSetting(state, "uploads-database"),
   },
 });
 
@@ -88,13 +85,13 @@ export function UploadSettingsFormView({
   saveStatusRef,
 }: UploadSettingProps) {
   const [dbId, setDbId] = useState<number | null>(
-    settings.uploads_database_id ?? null,
+    settings.uploads_database.id ?? null,
   );
   const [schemaName, setSchemaName] = useState<string | null>(
-    settings.uploads_schema_name ?? null,
+    settings.uploads_database.uploads_schema_name ?? null,
   );
   const [tablePrefix, setTablePrefix] = useState<string | null>(
-    settings.uploads_table_prefix ?? null,
+    settings.uploads_database.uploads_table_prefix ?? null,
   );
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
   const dispatch = useDispatch();
@@ -126,9 +123,11 @@ export function UploadSettingsFormView({
     showSaving();
     return updateSettings({
       "uploads-enabled": true,
-      "uploads-database-id": dbId,
-      "uploads-schema-name": schemaName,
-      "uploads-table-prefix": tablePrefix,
+      "uploads-database": {
+        id: dbId,
+        uploads_schema_name: schemaName,
+        uploads_table_prefix: tablePrefix,
+      },
     })
       .then(() => {
         setSchemaName(schemaName);
@@ -143,9 +142,11 @@ export function UploadSettingsFormView({
     showSaving();
     return updateSettings({
       "uploads-enabled": false,
-      "uploads-database-id": null,
-      "uploads-schema-name": null,
-      "uploads-table-prefix": null,
+      "uploads-database": {
+        id: null,
+        uploads_schema_name: null,
+        uploads_table_prefix: null,
+      },
     })
       .then(() => {
         setDbId(null);
@@ -159,9 +160,9 @@ export function UploadSettingsFormView({
   const showPrefix = !!dbId;
   const hasValidSettings = Boolean(dbId && (!showSchema || schemaName));
   const settingsChanged =
-    dbId !== settings.uploads_database_id ||
-    schemaName !== settings.uploads_schema_name ||
-    tablePrefix !== settings.uploads_table_prefix;
+    dbId !== settings.uploads_database.id ||
+    schemaName !== settings.uploads_database.uploads_schema_name ||
+    tablePrefix !== settings.uploads_database.uploads_table_prefix;
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
