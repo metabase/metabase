@@ -9,6 +9,7 @@ import {
   echartsContainer,
   getPinnedSection,
   getUnpinnedSection,
+  modal,
   navigationSidebar,
   openPinnedItemMenu,
   openUnpinnedItemMenu,
@@ -165,36 +166,44 @@ describe("scenarios > metrics > collection", () => {
     cy.visit("/collection/root");
 
     openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    popover().findByText("Archive").click();
+    popover().findByText("Move to trash").click();
     getPinnedSection().should("not.exist");
-    undoToast().findByText("Archived metric").should("be.visible");
+    undoToast().findByText("Trashed metric").should("be.visible");
     undo();
     getPinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
 
     openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    popover().findByText("Archive").click();
+    popover().findByText("Move to trash").click();
     getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    undoToastList().last().findByText("Archived metric").should("be.visible");
+    undoToastList().last().findByText("Trashed metric").should("be.visible");
 
     openArchive();
-    unarchiveArchivedItem(ORDERS_TIMESERIES_METRIC.name);
-    getArchivedList()
+    openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    popover().findByText("Restore").click();
+    getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    undoToastList().last().findByText("Unarchived metric").should("be.visible");
+    undoToastList()
+      .last()
+      .findByText(`${ORDERS_TIMESERIES_METRIC.name} has been restored.`)
+      .should("be.visible");
 
     navigationSidebar().findByText("Our analytics").click();
     openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    popover().findByText("Archive").click();
+    popover().findByText("Move to trash").click();
     openArchive();
-    deleteArchivedItem(ORDERS_TIMESERIES_METRIC.name);
-    getArchivedList()
-      .findByText(ORDERS_TIMESERIES_METRIC.name)
-      .should("not.exist");
+    openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    popover().findByText("Delete permanently").click();
+    modal().button("Delete permanently").click();
+    getUnpinnedSection().should("not.exist");
+    undoToastList()
+      .last()
+      .findByText("This item has been permanently deleted.")
+      .should("be.visible");
   });
 
   it("should be able to view a model-based metric without collection access to the source model", () => {
@@ -220,26 +229,5 @@ describe("scenarios > metrics > collection", () => {
 });
 
 function openArchive() {
-  navigationSidebar().icon("ellipsis").click();
-  popover().findByText("View archive").click();
-}
-
-function getArchivedList() {
-  return cy.findByTestId("archived-list");
-}
-
-function unarchiveArchivedItem(name) {
-  getArchivedList()
-    .findByTestId(`archive-item-${name}`)
-    .realHover()
-    .icon("unarchive")
-    .click();
-}
-
-function deleteArchivedItem(name) {
-  getArchivedList()
-    .findByTestId(`archive-item-${name}`)
-    .realHover()
-    .icon("trash")
-    .click();
+  navigationSidebar().findByText("Trash").click();
 }

@@ -114,7 +114,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard,
-  { shouldUpdateUrl = true, prevQueryResults, settingsSyncOptions } = {},
+  { shouldUpdateUrl = true, prevQueryResults } = {},
 ) => {
   return async (dispatch, getState) => {
     // clone
@@ -135,7 +135,6 @@ export const setCardAndRun = (
       runQuestionQuery({
         shouldUpdateUrl,
         prevQueryResults,
-        settingsSyncOptions,
       }),
     );
 
@@ -157,16 +156,17 @@ export const setCardAndRun = (
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId, settingsSyncOptions }) => {
+  ({ nextCard, previousCard, objectId }) => {
     return async (dispatch, getState) => {
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
-          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState }), {
-            settingsSyncOptions,
-          }),
+          setCardAndRun(
+            await loadCard(nextCard.id, { dispatch, getState }),
+            {},
+          ),
         );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
@@ -183,10 +183,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
           dispatch(
-            setCardAndRun(
-              { ...card, type: "question" },
-              { prevQueryResults, settingsSyncOptions },
-            ),
+            setCardAndRun({ ...card, type: "question" }, { prevQueryResults }),
           );
         }
         if (objectId !== undefined) {

@@ -24,7 +24,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [_query _stage-number _likely-the-same-query]
+  [_query _stage-number _x]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
@@ -92,6 +92,19 @@
   (and (lib.metadata/editable? query)
        (can-run query card-type)
        (boolean (can-save-method query card-type))))
+
+(mu/defn can-preview :- :boolean
+  "Returns whether the query can be previewed.
+
+  See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
+  [query :- ::lib.schema/query]
+  (and (can-run query "question")
+       ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
+       (every? (fn [stage]
+                 (boolean
+                   (or (seq (:order-by stage))
+                       (not (lib.util.match/match-one (:expressions stage) :offset)))))
+               (:stages query))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."

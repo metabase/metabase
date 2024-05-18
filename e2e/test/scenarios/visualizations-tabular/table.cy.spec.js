@@ -20,6 +20,8 @@ import {
   moveDnDKitElement,
   selectFilterOperator,
   expressionEditorWidget,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -31,7 +33,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
-    popover().findByText(table).click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText(table).click();
+    });
   }
 
   function selectFromDropdown(option, clickOpts) {

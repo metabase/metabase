@@ -7,8 +7,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import type { ModelResult, SearchRequest } from "metabase-types/api";
 
-import { filterModels, type ActualModelFilters } from "../utils";
+import type { ActualModelFilters } from "../utils";
+import { filterModels } from "../utils";
 
 import {
   BrowseContainer,
@@ -20,7 +22,7 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 
-const { availableModelFilters, useModelFilterSettings } =
+const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
@@ -43,7 +45,7 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
-            <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
+            <ModelFilterControls
               actualModelFilters={actualModelFilters}
               setActualModelFilters={setActualModelFilters}
             />
@@ -62,18 +64,21 @@ export const BrowseModels = () => {
 export const BrowseModelsBody = ({
   actualModelFilters,
 }: {
+  /** Mapping of filter names to true if the filter is active
+   * or false if it is inactive */
   actualModelFilters: ActualModelFilters;
 }) => {
-  const { data, error, isLoading } = useSearchQuery({
-    models: ["dataset"],
-    filter_items_in_personal_collection: "exclude",
+  const query: SearchRequest = {
+    models: ["dataset"], // 'model' in the sense of 'type of thing'
     model_ancestors: true,
-  });
+    filter_items_in_personal_collection: "exclude",
+  };
+  const { data, error, isLoading } = useSearchQuery(query);
 
-  const models = useMemo(() => {
-    const unfilteredModels = data?.data ?? [];
+  const filteredModels = useMemo(() => {
+    const unfilteredModels = (data?.data as ModelResult[]) ?? [];
     const filteredModels = filterModels(
-      unfilteredModels || [],
+      unfilteredModels,
       actualModelFilters,
       availableModelFilters,
     );
@@ -85,16 +90,16 @@ export const BrowseModelsBody = ({
       <LoadingAndErrorWrapper
         error={error}
         loading={isLoading}
-        style={{ display: "flex", flex: 1 }}
+        style={{ flex: 1 }}
       />
     );
   }
 
-  if (models.length) {
+  if (filteredModels.length) {
     return (
-      <Stack spacing="md" mb="lg">
+      <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <ModelsTable items={models} />
+        <ModelsTable models={filteredModels} />
       </Stack>
     );
   }

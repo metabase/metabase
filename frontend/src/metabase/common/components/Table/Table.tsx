@@ -20,10 +20,10 @@ export type TableProps<Row extends BaseRow> = {
 /**
  * A basic reusable table component that supports client-side sorting by a column
  *
- * @param columns - an array of objects with a name and key properties
- * @param rows - an array of objects with keys that match the column keys
+ * @param columns     - an array of objects with name and key properties
+ * @param rows        - an array of objects with keys that match the column keys
  * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps - additional props to pass to the <table> element
+ * @param tableProps  - additional props to pass to the <table> element
  */
 export function Table<Row extends BaseRow>({
   columns,

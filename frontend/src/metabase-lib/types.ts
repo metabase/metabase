@@ -6,6 +6,7 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
 } from "metabase-types/api";
 
 import type {
@@ -128,10 +129,12 @@ export type BucketDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
-  isMetric?: boolean;
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -573,6 +576,7 @@ export interface ClickObject {
   seriesIndex?: number;
   cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

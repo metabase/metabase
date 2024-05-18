@@ -21,7 +21,7 @@
 }
 
 .Value {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   font-size: 22px;
   font-weight: bolder;
 }

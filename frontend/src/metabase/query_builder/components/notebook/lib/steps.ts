@@ -285,8 +285,12 @@ function getStageSteps(
     if (step.visible) {
       // only include previewQuery if the section would be visible (i.e. excluding "openSteps")
       if (step.active) {
-        step.getPreviewQuery = () =>
-          getPreviewQuery(query, stageIndex, originalSteps, i);
+        step.previewQuery = getPreviewQuery(
+          query,
+          stageIndex,
+          originalSteps,
+          i,
+        );
       }
 
       // add any accumulated actions and reset

@@ -155,7 +155,7 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate_data",
-        name: t`Browse data`,
+        name: t`Browse databases`,
         section: "basic",
         icon: "database",
         perform: () => {

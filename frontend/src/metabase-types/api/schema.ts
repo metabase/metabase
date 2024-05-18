@@ -7,7 +7,14 @@ import type { Database, DatabaseId } from "./database";
 import type { Field, FieldDimension, FieldId } from "./field";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
-import type { ForeignKey, Schema, SchemaId, Table, TableId } from "./table";
+import type {
+  ForeignKey,
+  Schema,
+  SchemaId,
+  SchemaName,
+  Table,
+  TableId,
+} from "./table";
 import type { Timeline, TimelineEventId } from "./timeline";
 import type { User } from "./user";
 
@@ -40,7 +47,7 @@ export interface NormalizedTable
   segments?: SegmentId[];
   metrics?: CardId[];
   schema?: SchemaId;
-  schema_name?: string;
+  schema_name?: SchemaName;
 }
 
 export interface NormalizedForeignKey

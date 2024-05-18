@@ -5,6 +5,7 @@ import {
   popover,
   openSeriesSettings,
   cartesianChartCircle,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -51,7 +52,3 @@ describe("issue 21452", () => {
     cy.get("@dataset.all").should("have.length", 1);
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}

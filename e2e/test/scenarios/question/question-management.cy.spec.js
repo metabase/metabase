@@ -24,6 +24,8 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -92,7 +94,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, user === "admin");
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -122,6 +124,9 @@ describe(
                   openQuestionActions();
                   cy.findByTestId("move-button").click();
                   entityPickerModal().within(() => {
+                    if (user === "admin") {
+                      cy.findByRole("tab", { name: /Collections/ }).click();
+                    }
                     cy.findByText(/Personal Collection/).click();
                     cy.findByText("Create a new collection").click();
                   });
@@ -155,7 +160,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, user === "admin");
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -190,25 +195,27 @@ describe(
                 cy.findByText(
                   "It will also be removed from the filter that uses it to populate values.",
                 ).should("not.exist");
-                clickButton("Archive");
+                clickButton("Move to trash");
                 assertRequestNot403("updateQuestion");
                 assertNoPermissionsError();
+
+                cy.visit("/collection/root");
                 cy.wait("@getItems"); // pinned items
                 cy.wait("@getItems"); // unpinned items
-                cy.location("pathname").should("eq", "/collection/root");
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders").should("not.exist");
 
-                cy.findByPlaceholderText("Search…").click();
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Recently viewed");
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Nothing here");
+                openCommandPalette();
+                commandPalette().within(() => {
+                  cy.findByRole("option", { name: /recent/i }).should(
+                    "not.exist",
+                  );
+                });
 
                 // Check page for archived questions
                 cy.visit("/question/" + ORDERS_QUESTION_ID);
                 // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("This question has been archived");
+                cy.findByText("This question is in the trash.");
               });
 
               describe("Add to Dashboard", () => {
@@ -248,7 +255,7 @@ describe(
 
                   cy.log("Move the question to a personal collection");
 
-                  moveQuestionTo(/Personal Collection/);
+                  moveQuestionTo(/Personal Collection/, true);
 
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
@@ -265,7 +272,7 @@ describe(
                   });
 
                   cy.log("Move the question to the root collection");
-                  moveQuestionTo("Our analytics");
+                  moveQuestionTo("Our analytics", true);
 
                   cy.log("assert all collections are visible");
                   openQuestionActions();
@@ -274,6 +281,7 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
+
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -295,6 +303,10 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
+
                     findActivePickerItem("Orders in a dashboard");
                   });
 
@@ -308,7 +320,6 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-
                     findInactivePickerItem("Orders in a dashboard");
 
                     // before visiting the dashboard, we don't have any history
@@ -319,6 +330,9 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
+                    entityPickerModal()
+                      .findByRole("tab", { name: /Dashboards/ })
+                      .click();
 
                     findActivePickerItem("Orders in a dashboard");
 
@@ -326,22 +340,23 @@ describe(
 
                     cy.signInAsAdmin();
 
-                    // Let's revoke access to "Our analytics"
+                    // Let's revoke write access to "Our analytics"
                     cy.updateCollectionGraph({
-                      [USER_GROUPS.COLLECTION_GROUP]: { root: "none" },
+                      [USER_GROUPS.COLLECTION_GROUP]: { root: "read" },
                     });
                     cy.signOut();
+                    cy.reload();
                     cy.signIn(user);
+                    visitQuestion(ORDERS_QUESTION_ID);
 
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    // no access - no dashboard
                     entityPickerModal()
-                      .findByText("Orders in a dashboard")
-                      .should("not.exist");
+                      .button(/Orders in a dashboard/)
+                      .should("be.disabled");
                   });
                 });
               });
@@ -494,10 +509,11 @@ function findInactivePickerItem(name) {
   });
 }
 
-function moveQuestionTo(newCollectionName) {
+function moveQuestionTo(newCollectionName, clickTab = false) {
   openQuestionActions();
   cy.findByTestId("move-button").click();
   entityPickerModal().within(() => {
+    clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });

@@ -129,7 +129,7 @@ export function ColumnPicker({
             {text}
           </Button>
         </Popover.Target>
-        <Popover.Dropdown setupSequencedCloseHandler onBlur={handleBlur}>
+        <Popover.Dropdown setupSequencedCloseHandler={open} onBlur={handleBlur}>
           {dropdown}
         </Popover.Dropdown>
       </Popover>

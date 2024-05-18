@@ -1,5 +1,9 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { isScrollableHorizontally, restore } from "e2e/support/helpers";
+import {
+  isScrollableHorizontally,
+  restore,
+  visitFullAppEmbeddingUrl,
+} from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
@@ -30,7 +34,7 @@ describe("issue 28788", () => {
       });
     });
 
-    cy.visit("/");
+    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.findByPlaceholderText("Search…").type(questionDetails.name);
     cy.wait("@search");
     cy.icon("hourglass").should("not.exist");

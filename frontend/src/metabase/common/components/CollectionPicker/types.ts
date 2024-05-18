@@ -47,6 +47,7 @@ export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
 };
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";
