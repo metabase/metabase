@@ -821,34 +821,37 @@ See [fonts](../configuring-metabase/fonts.md).")
   []
   (nil? @api/*current-user*))
 
-(defn set-uploads-database-id!
-  "Sets the :uploads-database-id setting, with an appropriate permission check."
-  [new-id]
-  (if (or (not-handling-api-request?)
-          (mi/can-write? :model/Database new-id))
-    (setting/set-value-of-type! :integer :uploads-database-id new-id)
-    (api/throw-403)))
-
-(defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
+(defsetting uploads-database
+  (deferred-tru "Database for uploads")
   :visibility :authenticated
   :export?    true
-  :type       :integer
-  :audit      :getter
-  :setter     set-uploads-database-id!)
-
-(defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
-  :visibility :authenticated
-  :export?    true
-  :type       :string
-  :audit      :getter)
-
-(defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
-  :visibility :authenticated
-  :type       :string
-  :audit      :getter)
+  :type       :json
+  :audit      :getter ;; TODO: what does this do
+  :default    {:id                   nil
+               :uploads_schema_name  nil
+               :uploads_table_prefix nil}
+  :getter     (fn []
+                (let [db (t2/select-one [:model/Database] :uploads_enabled true)]
+                  {:id                   db
+                   :uploads_schema_name  (:uploads_schema_name db)
+                   :uploads_table_prefix (:uploads_table_prefix db)}))
+  :setter     (fn [{:keys [id uploads_schema_name uploads_table_prefix]}]
+                (cond
+                  (nil? id)
+                  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
+                                                                     :uploads_schema_name  nil
+                                                                     :uploads_table_prefix nil})
+                  (or (not-handling-api-request?)
+                      (mi/can-write? :model/Database id))
+                  (t2/with-transaction [_conn]
+                    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
+                                                                       :uploads_schema_name  nil
+                                                                       :uploads_table_prefix nil})
+                    (t2/update! :model/Database id {:uploads_enabled      true
+                                                    :uploads_schema_name  uploads_schema_name
+                                                    :uploads_table_prefix uploads_table_prefix}))
+                  :else
+                  (api/throw-403))))
 
 (defsetting attachment-table-row-limit
   (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
