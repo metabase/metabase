@@ -7361,20 +7361,19 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-05-17T19:54:25
+      id: v50.2024-05-17T19:54:26
       author: calherries
       comment: Update metabase_database.uploads_enabled value
       changes:
         - sql:
             sql: >-
-              # TODO: mysql might need to use d.uploads_enabled
               UPDATE metabase_database d
               SET uploads_enabled = true
               WHERE EXISTS (SELECT * FROM setting s WHERE s.key = 'uploads-database-id' AND cast(s.value AS INT) = d.id);
       rollback: # nothing to do, since uploads_enabled didn't exist in v49
 
   - changeSet:
-      id: v50.2024-05-17T19:54:26
+      id: v50.2024-05-17T19:54:27
       author: calherries
       comment: Update metabase_database.uploads_table_prefix value
       changes:
@@ -7386,7 +7385,7 @@ databaseChangeLog:
       rollback: # nothing to do, since uploads_table_prefix didn't exist in v49
 
   - changeSet:
-      id: v50.2024-05-17T19:54:27
+      id: v50.2024-05-17T19:54:28
       author: calherries
       comment: Update metabase_database.uploads_table_prefix value
       changes:
@@ -7396,6 +7395,8 @@ databaseChangeLog:
               SET uploads_schema_name = (SELECT s.value FROM setting s WHERE s.key = 'uploads-schema-name')
               WHERE uploads_enabled;
       rollback: # nothing to do, since uploads_schema_name didn't exist in v49
+
+   # TODO: remove old settings
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
