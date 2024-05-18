@@ -305,7 +305,7 @@
 
 (def ^:private clause-types-order
   ;; Note that :breakout is never actually sent, but when we get :aggregation we want to drop :breakout too.
-  [:limit :order-by :breakout :aggregation :filters :expressions :joins :data])
+  [:limit :order-by :aggregation :breakout :filters :expressions :joins :data])
 
 (defn- preview-stage [stage clause-type clause-index]
   (let [to-drop (take-while #(not= % clause-type) clause-types-order)]
