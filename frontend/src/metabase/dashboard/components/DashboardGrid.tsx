@@ -50,7 +50,6 @@ import type {
   ParameterValueOrArray,
   DashboardCard,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -103,7 +102,7 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapDispatchToProps = (_dispatch: Dispatch, ownProps: OwnProps) => ({
+const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
   showClickBehaviorSidebar,
@@ -112,13 +111,12 @@ const mapDispatchToProps = (_dispatch: Dispatch, ownProps: OwnProps) => ({
   setDashCardAttributes,
   undoRemoveCardFromDashboard,
   replaceCard,
-  navigateToNewCardFromDashboard:
-    ownProps.navigateToNewCardFromDashboard ?? navigateToNewCardFromDashboard,
+  navigateToNewCardFromDashboard,
   onChangeLocation: push,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
-});
+};
 const connector = connect(null, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
