@@ -184,7 +184,7 @@
    (into {} (root/root-collection-with-ui-details {}))
    [:id :name :authority_level]))
 
-;; == Recent Cards ==
+;; ================== Recent Cards ==================
 
 (defn card-recents
   "Query to select card data"
@@ -197,6 +197,7 @@
                          :report_card.archived
                          :report_card.id
                          :report_card.display
+                         [:report_card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
                          [:c.id :collection_id]
                          [:c.name :collection_name]
@@ -224,8 +225,8 @@
 
   Careful: the root collection will have a nil `colelction_id` and a nil `collection_name`. We return false when the
   collection has a `collection_id`, and a nil `collection_name`."
-  [{:keys [collection_id collection_name]}]
-  (not (and collection_id (nil? collection_name))))
+  [{:keys [collection_id entity-coll-id]}]
+  (not (and entity-coll-id (nil? collection_id))))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
@@ -259,7 +260,7 @@
      :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
 
-;; == Recent Dashboards ==
+;; ================== Recent Dashboards ==================
 
 (defn- dashboard-recents
   "Query to select recent dashboard data"
@@ -272,6 +273,7 @@
                          :dash.description
                          :dash.archived
                          :dash.trashed_from_collection_id
+                         [:dash.collection_id :entity-coll-id]
                          [:c.id :collection_id]
                          [:c.name :collection_name]
                          [:c.authority_level :collection_authority_level]]
@@ -294,7 +296,7 @@
      :timestamp (str timestamp)
      :parent_collection (fill-parent-coll dashboard)}))
 
-;; == Recent Collections ==
+;; ================== Recent Collections ==================
 
 (defn- collection-recents
   "Query to select recent collection data"
@@ -332,7 +334,7 @@
      :authority_level (some-> (:authority_level collection) name)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
-;; == Recent Tables ==
+;; ================== Recent Tables ==================
 
 (defn- table-recents
   "Query to select recent table data"
