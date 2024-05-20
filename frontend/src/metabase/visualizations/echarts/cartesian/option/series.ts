@@ -251,6 +251,17 @@ const buildEChartsBarSeries = (
       ),
       type: "bar", // ensure type is bar for typescript
     };
+    if (option?.label != null) {
+      option.label.formatter = getDataLabelFormatter(
+        seriesModel,
+        dataset,
+        yAxisScaleTransforms,
+        settings,
+        seriesModel.dataKey,
+        renderingContext,
+      );
+    }
+
     if (option?.blur?.label != null) {
       option.blur.label.show = false;
     }
