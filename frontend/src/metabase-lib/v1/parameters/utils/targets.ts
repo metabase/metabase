@@ -1,6 +1,7 @@
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
@@ -45,7 +46,6 @@ export function getParameterTargetField(
   }
 
   const fieldRef = target[1];
-  const query = question.query();
   const metadata = question.metadata();
 
   // native queries
@@ -60,7 +60,7 @@ export function getParameterTargetField(
 
   if (isConcreteFieldReference(fieldRef)) {
     const fieldId = fieldRef[1];
-    const tableId = Lib.sourceTableOrCardId(query);
+    const tableId = getQuestionVirtualTableId(question.id());
     return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
   }
 
