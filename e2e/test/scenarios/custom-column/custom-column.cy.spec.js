@@ -74,10 +74,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should not show default period in date column name (metabase#36631)", () => {
     const name = "Base question";
-    createQuestion(
-      { name, query: { "source-table": ORDERS_ID } },
-      { wrapId: true },
-    );
+    createQuestion({ name, query: { "source-table": ORDERS_ID } });
 
     startNewQuestion();
     entityPickerModal().within(() => {
