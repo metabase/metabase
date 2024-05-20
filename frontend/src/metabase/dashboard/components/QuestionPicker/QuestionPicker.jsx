@@ -33,7 +33,7 @@ QuestionPickerInner.propTypes = {
 
 function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
   const dashboard = useSelector(getDashboard);
-  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
   const [currentCollectionId, setCurrentCollectionId] = useState(
     dashboardCollection.id,
   );

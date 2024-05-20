@@ -2,6 +2,7 @@ import type {
   Card,
   CardId,
   CreateCardRequest,
+  Dataset,
   GetCardRequest,
   ListCardsRequest,
   UpdateCardRequest,
@@ -87,6 +88,12 @@ export const cardApi = Api.injectEndpoints({
           listTag("persisted-info"),
         ]),
     }),
+    cardQuery: builder.query<Dataset, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/query`,
+      }),
+    }),
   }),
 });
 
@@ -98,4 +105,5 @@ export const {
   useDeleteCardMutation,
   useCopyCardMutation,
   useRefreshModelCacheMutation,
+  useCardQueryQuery,
 } = cardApi;
