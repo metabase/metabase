@@ -3,7 +3,9 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
@@ -458,25 +460,33 @@
   (testing "replacing with metric should work"
     (let [metadata-provider (lib.tu/mock-metadata-provider
                              meta/metadata-provider
-                             {:metrics  [{:id          100
-                                          :name        "Sum of Cans"
-                                          :table-id    (meta/id :venues)
-                                          :definition  {:source-table (meta/id :venues)
-                                                        :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-                                                        :filter       [:= [:field (meta/id :venues :price) nil] 4]}
-                                          :description "Number of toucans plus number of pelicans"}]})
-          query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                             {:cards [{:id          100
+                                       :name        "Sum of Cans"
+                                       :database-id (meta/id)
+                                       :dataset-query
+                                       (-> lib.tu/venues-query
+                                           (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                                           lib.convert/->legacy-MBQL)
+                                       :description "Number of toucans plus number of pelicans"
+                                       :type :metric}]})
+          query (-> (lib/query metadata-provider (lib.metadata/card metadata-provider 100))
                     (lib/aggregate (lib/count)))]
-      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]]}]}
+      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
+                                       [:count {:lib/uuid string?}]]}]}
+              query))
+      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
+                                       [:metric {:lib/uuid string?} 100]]}]}
               (lib/replace-clause
                query
-               (first (lib/aggregations query))
-               (first (lib/available-legacy-metrics query)))))
-      (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]]}]}
+               (second (lib/aggregations query))
+               (first (lib/available-metrics query)))))
+      (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
+                                       [:metric {:lib/uuid string?} 100]]}]}
               (-> query
                   (lib/replace-clause
-                   (first (lib/aggregations query))
-                   (first (lib/available-legacy-metrics query)))
+                   (second (lib/aggregations query))
+                   (first (lib/available-metrics query)))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test

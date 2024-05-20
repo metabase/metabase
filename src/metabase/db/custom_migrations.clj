@@ -22,6 +22,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -1391,3 +1392,7 @@
                             (t2/reducible-query {:select [:id :display :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:like :visualization_settings "%stackable%"]})))))
+
+(define-reversible-migration MigrateMetricsToV2
+  (metrics-v2/migrate-up!)
+  (metrics-v2/migrate-down!))

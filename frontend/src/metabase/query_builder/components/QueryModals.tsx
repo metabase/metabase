@@ -130,7 +130,7 @@ class QueryModals extends Component<QueryModalsProps> {
             onCreate={async question => {
               await this.props.onCreate(question);
               const type = question.type();
-              if (type === "model") {
+              if (type === "model" || type === "metric") {
                 onCloseModal();
                 setQueryBuilderMode("view");
               } else {

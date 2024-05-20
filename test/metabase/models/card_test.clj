@@ -841,7 +841,10 @@
                          :made_public_by_id
                          ;; similarly, we don't need a description for `trashed_from_collection_id` because whenever
                          ;; this field changes `archived` will also change and we have a description for that.
-                         :trashed_from_collection_id} col)
+                         :trashed_from_collection_id
+                         ;; we don't expect a description for this column because it should never change
+                         ;; once created by the migration
+                         :dataset_query_metrics_v2_migration_backup} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (u/build-sentence
                             (revision/diff-strings

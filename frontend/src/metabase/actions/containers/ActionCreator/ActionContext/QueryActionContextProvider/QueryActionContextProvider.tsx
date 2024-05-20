@@ -64,7 +64,6 @@ function convertActionToQuestionCard(
     display: "action",
     visualization_settings:
       action.visualization_settings as VisualizationSettings,
-
     type: "question",
     can_write: true,
     can_restore: false,
