@@ -189,14 +189,41 @@
            (lib.query/query meta/metadata-provider
              {:database 74001, :type :query, :query {:source-table 74040}})))))
 
+(deftest ^:parallel can-run-test
+  (mu/disable-enforcement
+    (are [can-run? card-type query]
+         (= can-run? (lib.query/can-run query card-type))
+      true  :question lib.tu/venues-query
+      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib/native-query meta/metadata-provider "SELECT")
+      false :question (lib/native-query meta/metadata-provider "")
+      false :metric   lib.tu/venues-query
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count)))
+      false :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
-    (are [can-save? query]
-      (= can-save?  (lib.query/can-save query))
-      true lib.tu/venues-query
-      false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
-      true (lib/native-query meta/metadata-provider "SELECT")
-      false (lib/native-query meta/metadata-provider ""))))
+    (are [can-save? card-type query]
+         (= can-save? (lib.query/can-save query card-type))
+      true  :question lib.tu/venues-query
+      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib/native-query meta/metadata-provider "SELECT")
+      false :question (lib/native-query meta/metadata-provider "")
+      false :metric   lib.tu/venues-query
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count)))
+      false :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
 
 (deftest ^:parallel can-preview-test
   (mu/disable-enforcement

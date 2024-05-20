@@ -78,7 +78,7 @@
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
-   (ensure-pmbql #'metrics/expand)
+   (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
    (ensure-legacy #'parameters/substitute-parameters)

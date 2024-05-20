@@ -4,7 +4,6 @@ import type { ComponentType } from "react";
 import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -17,15 +16,6 @@ import {
   setParameterValue,
   cancelFetchDashboardCardData,
   fetchDashboardCardMetadata,
-  replaceCard,
-  fetchCardData,
-  markNewCardSeen,
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
-  undoRemoveCardFromDashboard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  showClickBehaviorSidebar,
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
@@ -93,16 +83,6 @@ const mapDispatchToProps = {
   setParameterValueToDefault,
   setParameterValue,
   setErrorPage,
-  onChangeLocation: push,
-  fetchCardData,
-  replaceCard,
-  markNewCardSeen,
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
-  undoRemoveCardFromDashboard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  showClickBehaviorSidebar,
 
   // these two must also go here, so it's passed to DashboardControls in the _.compose at the bottom
   fetchDashboard,
@@ -304,24 +284,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   isNightMode={isNightMode}
                   clickBehaviorSidebarDashcard={null}
                   width={0}
-                  fetchCardData={this.props.fetchCardData}
-                  replaceCard={this.props.replaceCard}
-                  markNewCardSeen={this.props.markNewCardSeen}
-                  setDashCardAttributes={this.props.setDashCardAttributes}
-                  setMultipleDashCardAttributes={
-                    this.props.setMultipleDashCardAttributes
-                  }
-                  undoRemoveCardFromDashboard={
-                    this.props.undoRemoveCardFromDashboard
-                  }
-                  onReplaceAllDashCardVisualizationSettings={
-                    this.props.onReplaceAllDashCardVisualizationSettings
-                  }
-                  onUpdateDashCardVisualizationSettings={
-                    this.props.onUpdateDashCardVisualizationSettings
-                  }
-                  onChangeLocation={this.props.onChangeLocation}
-                  showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
                 />
               </DashboardContainer>
             ) : null

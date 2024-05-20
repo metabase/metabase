@@ -18,6 +18,10 @@ const getTitle = ({ type }: Card) => {
     return t`Add this model to a dashboard`;
   }
 
+  if (type === "metric") {
+    return t`Add this metric to a dashboard`;
+  }
+
   if (type === "question") {
     return t`Add this question to a dashboard`;
   }

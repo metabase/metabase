@@ -179,8 +179,9 @@
   {"dashboard"  0
    "card"       1
    "dataset"    2
-   "table"      3
-   "collection" 4})
+   "metric"     3
+   "table"      4
+   "collection" 5})
 
 (mu/defn get-popular-items-model-and-id
   "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
@@ -201,9 +202,11 @@
                                         ;; hidden tables, archived cards/dashboards
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))
-                             :let [is-dataset? (= (keyword (:type model-object)) :model)]]
+                             :let [is-dataset? (= (keyword (:type model-object)) :model)
+                                   is-metric? (= (keyword (:type model-object)) :metric)]]
                          (cond-> (assoc view-log :model_object model-object)
-                           is-dataset? (assoc :model "dataset")))
+                           is-dataset? (assoc :model "dataset")
+                           is-metric? (assoc :model "metric")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by

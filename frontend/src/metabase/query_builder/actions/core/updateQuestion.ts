@@ -130,7 +130,7 @@ export const updateQuestion = (
 
       // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.type() === "model") {
+      if (newQuestion.type() === "model" || newQuestion.type() === "metric") {
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
@@ -219,9 +219,17 @@ export const updateQuestion = (
     }
 
     const currentDependencies = currentQuestion
-      ? Lib.dependentMetadata(currentQuestion.query())
+      ? Lib.dependentMetadata(
+          currentQuestion.query(),
+          currentQuestion.id(),
+          currentQuestion.type(),
+        )
       : [];
-    const nextDependencies = Lib.dependentMetadata(newQuestion.query());
+    const nextDependencies = Lib.dependentMetadata(
+      newQuestion.query(),
+      newQuestion.id(),
+      newQuestion.type(),
+    );
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));

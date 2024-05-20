@@ -30,7 +30,6 @@ const mapDispatchToProps = {
 
 const TAB = {
   SEGMENTS: "segments",
-  METRICS: "metrics",
   DATABASE: "database",
 };
 
@@ -49,20 +48,12 @@ function DataModelApp({
     if (/\/segments?/.test(pathname)) {
       return TAB.SEGMENTS;
     }
-    if (/\/metrics?/.test(pathname)) {
-      return TAB.METRICS;
-    }
     return TAB.DATABASE;
   }, [pathname]);
 
   const options = [
     { name: t`Data`, value: TAB.DATABASE },
-    ...(isAdmin
-      ? [
-          { name: t`Segments`, value: TAB.SEGMENTS },
-          { name: t`Metrics`, value: TAB.METRICS },
-        ]
-      : []),
+    ...(isAdmin ? [{ name: t`Segments`, value: TAB.SEGMENTS }] : []),
   ];
 
   return (
