@@ -309,11 +309,11 @@ class Visualization extends PureComponent {
   };
 
   getHref = () => {
-    const nextCard = this.state.series[0].card;
-
     if (!this.props.getHref) {
       return undefined;
     }
+
+    const nextCard = this.state.series[0].card;
 
     return this.props.getHref({
       nextCard,
@@ -499,7 +499,6 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
-                /** TODO handle in this component */
                 href={href}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
