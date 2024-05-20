@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import {
   DataPickerModal,
-  dataPickerValueFromJoinable,
+  getDataPickerValue,
 } from "metabase/common/components/DataPicker";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
@@ -72,7 +72,7 @@ export function JoinTablePicker({
       return undefined;
     }
 
-    return dataPickerValueFromJoinable(query, stageIndex, joinable);
+    return getDataPickerValue(query, stageIndex, joinable);
   }, [query, stageIndex, joinable]);
 
   return (

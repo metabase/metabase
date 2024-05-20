@@ -2,11 +2,9 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
-  dataPickerValueFromCard,
-  dataPickerValueFromTable,
+  getDataPickerValue,
 } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import Questions from "metabase/entities/questions";
@@ -34,23 +32,12 @@ export const DataStep = ({
   const { stageIndex } = step;
   const question = step.question;
   const questionRef = useLatest(question);
-  const metadata = question.metadata();
-
   const tableId = Lib.sourceTableOrCardId(query);
-  const table = metadata.table(tableId);
-  const tableMetadata = tableId
-    ? Lib.tableOrCardMetadata(query, tableId)
-    : null;
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!table);
 
-  const sourceCardId = getQuestionIdFromVirtualTableId(tableId);
-  const { data: sourceCard } = useGetCardQuery(
-    sourceCardId ? { id: sourceCardId } : skipToken,
-  );
-
-  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!tableMetadata);
-
-  const pickerLabel = tableMetadata
-    ? Lib.displayInfo(query, stageIndex, tableMetadata).displayName
+  const pickerLabel = table
+    ? Lib.displayInfo(query, stageIndex, table).displayName
     : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
@@ -60,7 +47,7 @@ export const DataStep = ({
     );
   }, [query, stageIndex]);
 
-  const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
+  const canSelectTableColumns = table && isRaw && !readOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     // we need to populate question metadata with selected table
@@ -83,18 +70,14 @@ export const DataStep = ({
   };
 
   const value = useMemo(() => {
-    if (sourceCardId && sourceCard) {
-      return dataPickerValueFromCard(sourceCard);
-    }
-
-    return dataPickerValueFromTable(table);
-  }, [sourceCard, sourceCardId, table]);
+    return table ? getDataPickerValue(query, stageIndex, table) : undefined;
+  }, [query, stageIndex, table]);
 
   return (
     <NotebookCell color={color}>
       <NotebookCellItem
         color={color}
-        inactive={!tableMetadata}
+        inactive={!table}
         right={
           canSelectTableColumns && (
             <DataFieldPopover
