@@ -86,8 +86,10 @@ export interface MetabaseComponentTheme {
 
   /** Numerical value displays */
   scalar?: {
+    /** The primary numerical value */
     value?: {
       fontSize?: string;
+      lineHeight?: string;
     };
   };
 }

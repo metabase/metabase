@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import { Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
 const TITLE_LINE_HEIGHT_REM = 1.4;
 
@@ -18,17 +18,11 @@ export const ScalarRoot = styled.div`
   height: 100%;
 `;
 
-interface ScalarValueWrapperProps {
-  fontSize: string;
-}
-
-export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
-  display: inline;
-  font-size: ${props => props.fontSize};
+export const ScalarValueWrapper = styled(Text)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${({ theme }) => theme.fn?.themeColor("brand")};
   }
 `;
 

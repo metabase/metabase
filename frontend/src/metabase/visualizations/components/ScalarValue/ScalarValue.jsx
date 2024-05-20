@@ -67,8 +67,11 @@ const ScalarValue = ({
 
   return (
     <ScalarValueWrapper
+      component="h1"
+      display="inline"
       className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
+      fz={fontSize}
+      lh={scalarTheme?.value?.lineHeight}
       data-testid="scalar-value"
     >
       {value ?? t`null`}
