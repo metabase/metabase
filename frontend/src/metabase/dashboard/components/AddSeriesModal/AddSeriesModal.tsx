@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import type { fetchCardData } from "metabase/dashboard/actions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -27,15 +28,7 @@ const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 export interface Props {
   dashcard: QuestionDashboardCard;
   dashcardData: DashCardDataMap;
-  fetchCardData: (
-    card: Card,
-    dashcard: QuestionDashboardCard,
-    options: {
-      clearCache?: boolean;
-      ignoreCache?: boolean;
-      reload?: boolean;
-    },
-  ) => Promise<unknown>;
+  fetchCardData: typeof fetchCardData;
   setDashCardAttributes: (options: {
     id: DashCardId;
     attributes: Partial<QuestionDashboardCard>;
