@@ -304,24 +304,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   isNightMode={isNightMode}
                   clickBehaviorSidebarDashcard={null}
                   width={0}
-                  fetchCardData={this.props.fetchCardData}
-                  replaceCard={this.props.replaceCard}
-                  markNewCardSeen={this.props.markNewCardSeen}
-                  setDashCardAttributes={this.props.setDashCardAttributes}
-                  setMultipleDashCardAttributes={
-                    this.props.setMultipleDashCardAttributes
-                  }
-                  undoRemoveCardFromDashboard={
-                    this.props.undoRemoveCardFromDashboard
-                  }
-                  onReplaceAllDashCardVisualizationSettings={
-                    this.props.onReplaceAllDashCardVisualizationSettings
-                  }
-                  onUpdateDashCardVisualizationSettings={
-                    this.props.onUpdateDashCardVisualizationSettings
-                  }
-                  onChangeLocation={this.props.onChangeLocation}
-                  showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
                 />
               </DashboardContainer>
             ) : null
