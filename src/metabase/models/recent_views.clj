@@ -133,7 +133,7 @@
   [:and {:registry {::pc [:map
                           [:id [:or [:int {:min 1}] [:= "root"]]]
                           [:name :string]
-                          [:authority_level [:enum :official "official" nil]]]}}
+                          [:authority_level [:enum "official" nil]]]}}
    [:map
     [:id [:int {:min 1}]]
     [:name :string]
@@ -157,7 +157,7 @@
                          [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
-                  [:authority_level [:enum :official "official" nil]]]]]])
+                  [:authority_level [:enum "official" nil]]]]]])
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object.
@@ -192,8 +192,6 @@
                {:select [:report_card.name
                          :report_card.description
                          :report_card.archived
-                         :report_card.collection_id
-                         :report_card.trashed_from_collection_id
                          :report_card.id
                          :report_card.display
                          [:mr.status :moderated-status]
@@ -211,9 +209,18 @@
                              [:= :c.id :report_card.collection_id]
                              [:= :c.archived false]]]})))
 
+(defn- fill-parent-coll [report-card]
+  (if (:collection-id report-card)
+    {:id (:collection-id report-card)
+     :name (:collection-name report-card)
+     :authority_level (:collection-authority-level report-card)}
+    (root-coll)))
+
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
                    (mi/can-read? model_object)
+                   ;; The parent collection exists:
+                   (:collection-name model_object)
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
@@ -223,15 +230,13 @@
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status card)
-     :parent_collection (if (:collection-id card)
-                          {:id (:collection-id card)
-                           :name (:collection-name card)
-                           :authority_level (:collection-authority-level card)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll card)}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
   (when-let [dataset (and
                       (mi/can-read? model_object)
+                      ;; If the parent collection no longer exists, there won't be a name.
+                      (:collection-name model_object)
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
@@ -241,11 +246,7 @@
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (:moderated-status dataset)
-     :parent_collection (if (:collection-id dataset)
-                          {:id (:collection-id dataset)
-                           :name (:collection-name dataset)
-                           :authority_level (:collection-authority-level dataset)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll dataset)}))
 
 ;; == Recent Dashboards ==
 
@@ -259,7 +260,6 @@
                          :dash.name
                          :dash.description
                          :dash.archived
-                         :dash.collection_id
                          :dash.trashed_from_collection_id
                          [:c.id :collection-id]
                          [:c.name :collection-name]
@@ -273,6 +273,7 @@
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
+                            (:collection-name model_object)
                             (ellide-archived model_object))]
     {:id model_id
      :name (:name dashboard)
@@ -280,11 +281,7 @@
      :model :dashboard
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
-     :parent_collection (if (:collection_id dashboard)
-                          {:id (:collection_id dashboard)
-                           :name (:collection-name dashboard)
-                           :authority_level (:collection-authority-level dashboard)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll dashboard)}))
 
 ;; == Recent Collections ==
 
@@ -330,9 +327,10 @@
   "Query to select recent table data"
   [table-ids]
   (t2/select :model/Table
-             {:select [:t.id :t.name :t.description :t.display_name :t.active :t.db_id
-                       :t.visibility_type
+             {:select [:t.id :t.name :t.description
+                       :t.display_name :t.active :t.visibility_type
                        [:db.name :database-name]
+                       [:db.id :database-id]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
               :where (if (seq table-ids) [:in :t.id table-ids] [])
@@ -343,6 +341,7 @@
   (let [table model_object]
     (when (and (mi/can-read? table)
                ((complement #{:hidden "hidden"}) (:visibility_type table))
+               (:database-name table)
                (:active table))
       {:id model_id
        :name (:name table)
@@ -351,19 +350,20 @@
        :display_name (:display_name table)
        :can_write (mi/can-write? table)
        :timestamp (str timestamp)
-       :database {:id (:db_id table)
+       :database {:id (:database-id table)
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 
-(defn ^:private do-query [user-id]  (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
-                                                                   :from [[:recent_views :rv]]
-                                                                   :where [:and [:= :rv.user_id user-id]]
-                                                                   :left-join [[:report_card :rc]
-                                                                               [:and
-                                                                                ;; only want to join on card_type if it's a card
-                                                                                [:= :rv.model "card"]
-                                                                                [:= :rc.id :rv.model_id]]]
-                                                                   :order-by [[:rv.timestamp :desc]]}))
+(defn ^:private do-query [user-id]
+  (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
+                                 :from [[:recent_views :rv]]
+                                 :where [:and [:= :rv.user_id user-id]]
+                                 :left-join [[:report_card :rc]
+                                             [:and
+                                              ;; only want to join on card_type if it's a card
+                                              [:= :rv.model "card"]
+                                              [:= :rc.id :rv.model_id]]]
+                                 :order-by [[:rv.timestamp :desc]]}))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (= :question model) :card model))
