@@ -124,7 +124,7 @@ type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboard: Dashboard;
   dashcardData: DashCardDataMap;
-  selectedTabId: DashboardTabId;
+  selectedTabId: DashboardTabId | null;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
@@ -135,11 +135,13 @@ type OwnProps = {
   isNightMode: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   mode?: Mode;
-  // TODO: only passed down
+  // TODO: only passed down, remove it
   metadata: Metadata;
-
+  // public dashboard passes it explicitly
   width?: number;
+  // public dashboard passes it as noop
   navigateToNewCardFromDashboard?: () => void;
+  onEditingChange?: (dashboard: Dashboard | null) => void;
 };
 
 type DashboardGridProps = OwnProps &

@@ -413,11 +413,6 @@ function DashboardInner(props: DashboardProps) {
   });
 
   const renderContent = () => {
-    if (!selectedTabId) {
-      // TODO: it can be null, but how to handle it properly?
-      return null;
-    }
-
     if (!dashboardHasCards && !canWrite) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
@@ -455,6 +450,7 @@ function DashboardInner(props: DashboardProps) {
         dashboard={props.dashboard}
         slowCards={props.slowCards}
         selectedTabId={selectedTabId}
+        onEditingChange={handleSetEditing}
       />
     );
   };
