@@ -87,14 +87,10 @@ export const getCartesianChartOption = (
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
+    POSITIVE_STACK_TOTAL_DATA_KEY,
+    NEGATIVE_STACK_TOTAL_DATA_KEY,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
   ];
-
-  if (settings["stackable.stack_type"] != null) {
-    dimensions.push(
-      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
-    );
-  }
 
   const echartsDataset = [
     {

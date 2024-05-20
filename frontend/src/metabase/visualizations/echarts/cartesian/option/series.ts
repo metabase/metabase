@@ -184,8 +184,10 @@ const buildEChartsBarSeries = (
   hasMultipleSeries: boolean,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
-): BarSeriesOption => {
-  return {
+): BarSeriesOption | BarSeriesOption[] => {
+  const stack = stackName ?? `bar_${seriesModel.dataKey}`;
+
+  const seriesOption: BarSeriesOption = {
     id: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
@@ -203,12 +205,12 @@ const buildEChartsBarSeries = (
     z: CHART_STYLE.series.zIndex,
     yAxisIndex,
     barGap: 0,
-    stack: stackName,
+    stack,
     barWidth: computeBarWidth(
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
-      !!stackName,
+      settings["stackable.stack_type"] != null,
     ),
     encode: {
       y: seriesModel.dataKey,
@@ -225,6 +227,40 @@ const buildEChartsBarSeries = (
       color: seriesModel.color,
     },
   };
+
+  if (settings["stackable.stack_type"] != null) {
+    return seriesOption;
+  }
+
+  const labelOptions = [
+    POSITIVE_STACK_TOTAL_DATA_KEY,
+    NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ].map(signKey => {
+    const option: BarSeriesOption = {
+      ...generateStackOption(
+        yAxisScaleTransforms,
+        settings,
+        signKey,
+        [seriesModel.dataKey],
+        seriesOption,
+        labelFormatter,
+      ),
+      type: "bar", // ensure type is bar for typescript
+    };
+    if (option?.blur?.label != null) {
+      option.blur.label.show = false;
+    }
+    return option;
+  });
+
+  if (seriesOption?.label != null) {
+    seriesOption.label.show = false;
+  }
+  if (seriesOption?.emphasis?.label != null) {
+    seriesOption.emphasis.label = { show: true };
+  }
+
+  return [seriesOption, ...labelOptions];
 };
 
 function getShowAutoSymbols(

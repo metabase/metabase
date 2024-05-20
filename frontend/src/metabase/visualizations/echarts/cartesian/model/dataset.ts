@@ -409,26 +409,20 @@ function getStackedValueTransfom(
   }));
 }
 
-function getStackedDataLabelTransform(
-  settings: ComputedVisualizationSettings,
-  seriesDataKeys: DataKey[],
-): ConditionalTransform {
-  return {
-    condition: settings["stackable.stack_type"] === "stacked",
-    fn: (datum: Datum) => {
-      const transformedDatum = { ...datum };
+function getStackedDataLabelTransform(seriesDataKeys: DataKey[]): TransformFn {
+  return (datum: Datum) => {
+    const transformedDatum = { ...datum };
 
-      seriesDataKeys.forEach(seriesDataKey => {
-        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
-          transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
-        }
-        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
-          transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
-        }
-      });
+    seriesDataKeys.forEach(seriesDataKey => {
+      if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+        transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
+      }
+      if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+        transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
+      }
+    });
 
-      return transformedDatum;
-    },
+    return transformedDatum;
   };
 }
 
@@ -669,7 +663,7 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    getStackedDataLabelTransform(settings, seriesDataKeys),
+    getStackedDataLabelTransform(seriesDataKeys),
     {
       condition:
         settings["stackable.stack_type"] != null &&
