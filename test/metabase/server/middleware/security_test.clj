@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.server.middleware.security :as mw.security]
+   [metabase.server.middleware.security :as mw.security :refer [approved-origin?]]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [stencil.core :as stencil]))
@@ -91,3 +91,36 @@
            (is (str/includes? style-src (str "nonce-" nonce))))
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
+
+(deftest test-approved-origin?
+  (testing "Should return false if parameters are nil"
+    (is (false? (approved-origin? nil "example.com")))
+    (is (false? (approved-origin? "example.com" nil))))
+  (testing "Approved origins with exact protocol and port match"
+    (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
+      (is (true? (approved-origin? "http://example1.com" approved)))
+      (is (true? (approved-origin? "http://example2.com:3000" approved)))
+      (is (true? (approved-origin? "https://example3.com" approved)))))
+
+  (testing "Different protocol should fail"
+    (is (false? (approved-origin? "https://example1.com" "http://example1.com"))))
+
+  (testing "Origins without protocol should accept both http and https"
+    (let [approved "example.com"]
+      (is (true? (approved-origin? "http://example.com" approved)))
+      (is (true? (approved-origin? "https://example.com" approved)))))
+
+  (testing "Different ports should fail"
+    (is (false? (approved-origin? "http://example.com:3000" "http://example.com:3003"))))
+
+  (testing "Should allow anything with *"
+    (is (true? (approved-origin? "http://example.com" "*")))
+    (is (true? (approved-origin? "http://example.com" "http://somethingelse.com *"))))
+
+  (testing "Should allow subdomains when *.example.com"
+    (is (true? (approved-origin? "http://subdomain.example.com" "*.example.com")))
+    (is (false? (approved-origin? "http://subdomain.example.com" "*.somethingelse.com"))))
+
+  (testing "Should allow any port with example.com:*"
+    (is (true? (approved-origin? "http://example.com" "example.com:*")))
+    (is (true? (approved-origin? "http://example.com:8080" "example.com:*")))))
