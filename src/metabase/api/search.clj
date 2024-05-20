@@ -536,12 +536,12 @@
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
-                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
 
                             (map #(update % :archived api/bit->boolean))
+                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)

@@ -472,16 +472,16 @@
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-collection-read-permissions! group (u/the-id collection))
               (is (=? (->> (default-results-with-collection)
-                          (map #(cond-> %
-                                  (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
-                                  (assoc :can_write false)))
-                          (concat (map #(merge default-search-row % (table-search-results))
-                                       [{:name "segment test2 segment", :description "Lookin' for a blueberry",
-                                         :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
-                          ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
-                          reverse
-                          sorted-results)
-                     (search-request-data :rasta :q "test")))))))))
+                           (map #(cond-> %
+                                   (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
+                                   (assoc :can_write false)))
+                           (concat (map #(merge default-search-row % (table-search-results))
+                                        [{:name "segment test2 segment", :description "Lookin' for a blueberry",
+                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
+                           ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                           reverse
+                           sorted-results)
+                      (search-request-data :rasta :q "test")))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
                 "collections they have access to")
