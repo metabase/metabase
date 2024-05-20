@@ -18,8 +18,9 @@ export const loadMetadataForCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
+      const metadata = getMetadata(getState());
       return cards
-        .map(card => new Question(card, getMetadata(getState())))
+        .map(card => new Question(card, metadata))
         .flatMap(question =>
           Lib.dependentMetadata(
             question.query(),
