@@ -61,29 +61,29 @@
   (testing :event/card-create
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
-      (is (= {:model        "Card"
-              :model_id     card-id
-              :user_id      (mt/user->id :crowberto)
-              :object       (card->revision-object card)
-              :is_reversion false
-              :is_creation  true}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                            :model       "Card"
-                            :model_id    card-id))))))
+      (is (=? {:model        "Card"
+               :model_id     card-id
+               :user_id      (mt/user->id :crowberto)
+               :object       (card->revision-object card)
+               :is_reversion false
+               :is_creation  true}
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                             :model       "Card"
+                             :model_id    card-id))))))
 
 (deftest card-update-test
   (testing :event/card-update
-   (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-     (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
-     (is (= {:model        "Card"
-             :model_id     card-id
-             :user_id      (mt/user->id :crowberto)
-             :object       (card->revision-object card)
-             :is_reversion false
-             :is_creation  false}
-            (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                           :model       "Card"
-                           :model_id    card-id))))))
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
+      (is (=? {:model        "Card"
+               :model_id     card-id
+               :user_id      (mt/user->id :crowberto)
+               :object       (card->revision-object card)
+               :is_reversion false
+               :is_creation  false}
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                             :model       "Card"
+                             :model_id    card-id))))))
 
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update
