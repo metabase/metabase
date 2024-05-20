@@ -3,15 +3,15 @@ import _ from "underscore";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
-import { CHART_STYLE } from "../constants/style";
-import type { BaseCartesianChartModel } from "../model/types";
+import { Z_INDEXES } from "../constants/style";
+import type { CartesianChartModel } from "../model/types";
 
 import { getSeriesYAxisIndex } from "./utils";
 
 export const TREND_LINE_DASH = [5, 5];
 
 export function getTrendLinesOption(
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
 ): LineSeriesOption[] {
   return (
     chartModel.trendLinesModel?.seriesModels.map(trendSeries => ({
@@ -30,7 +30,7 @@ export function getTrendLinesOption(
         type: TREND_LINE_DASH,
         width: 2,
       },
-      z: CHART_STYLE.trendLine.zIndex,
+      z: Z_INDEXES.trendLine,
     })) ?? []
   );
 }
