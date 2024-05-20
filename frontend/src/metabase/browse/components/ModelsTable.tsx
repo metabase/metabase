@@ -141,7 +141,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
           <SortableColumnHeader
             name="name"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={setSortingOptions}
+            onSortingOptionsChange={updateSortingOptions}
             style={{ paddingInlineStart: ".625rem" }}
             columnHeaderProps={{
               style: { paddingInlineEnd: ".5rem" },
