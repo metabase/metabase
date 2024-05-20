@@ -15,6 +15,9 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
+const browseModels = () =>
+  navigationSidebar().findByRole("listitem", { name: "Browse models" }).click();
+
 describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
     resetSnowplow();
@@ -25,7 +28,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("can browse to a model", () => {
     cy.visit("/");
-    navigationSidebar().findByLabelText("Browse models").click();
+    browseModels().click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
@@ -79,11 +82,41 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse models" }).click();
+    browseModels().click();
     cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
     cy.findByRole("switch", { name: /Only show verified models/ }).should(
       "not.exist",
     );
+  });
+
+  it("can change sorting options in the 'Browse models' table", () => {
+    cy.intercept("PUT", "/api/setting/browse-models-sort-column").as(
+      "persistSortColumn",
+    );
+    cy.intercept("PUT", "/api/setting/browse-models-sort-direction").as(
+      "persistSortDirection",
+    );
+    cy.visit("/");
+    browseModels().click();
+    cy.findByRole("table").within(() => {
+      cy.log("A model exists on the page");
+      cy.findByRole("heading", { name: "Orders Model" });
+      cy.findByRole("button", { name: "Sort by collection" })
+        .realHover()
+        .within(() => {
+          cy.log(
+            "Table is sorted by collection, ascending, by default, so the chevron up icon is shown",
+          );
+          cy.findByLabelText(/chevronup icon/).click();
+          cy.wait("@persistSortDirection");
+        });
+      cy.findByRole("button", { name: "Sort by name" })
+        .realHover()
+        .within(() => {
+          cy.findByLabelText(/chevrondown icon/).click();
+          cy.wait("@persistSortColumn");
+        });
+    });
   });
 });
 

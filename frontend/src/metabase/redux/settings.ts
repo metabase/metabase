@@ -19,9 +19,10 @@ export const refreshSiteSettings = createAsyncThunk(
   },
 );
 
-interface UpdateUserSettingProps<K extends keyof UserSettings> {
+export interface UpdateUserSettingProps<K extends keyof UserSettings> {
   key: K;
   value: UserSettings[K];
+  /** Should all settings be retrieved again from the API? */
   shouldRefresh?: boolean;
 }
 

@@ -324,6 +324,8 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "browse-models-sort-column"?: string;
+  "browse-models-sort-direction"?: string;
 };
 
 export type Settings = InstanceSettings &

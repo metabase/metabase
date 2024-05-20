@@ -518,6 +518,22 @@
   :type       :boolean
   :default    true)
 
+(defsetting browse-models-sort-column
+  (deferred-tru "User preference for the sort column for the 'Browse models' table")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :string
+  :default    "collection")
+
+(defsetting browse-models-sort-direction
+  (deferred-tru "User preference for the sort direction for the 'Browse models' table")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :string
+  :default    "asc")
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User

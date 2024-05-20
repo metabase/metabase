@@ -87,6 +87,7 @@ export const SortableColumnHeader = ({
         onClick={onSortingControlClick}
         role="button"
         isSortable={isSortable}
+        aria-label={isSortable ? `Sort by ${name}` : undefined}
       >
         {children}
         {isSortable && (
