@@ -446,7 +446,7 @@
                                              :id id)
                                            first :status)
         db (t2/select-one Database :id database_id)
-        ;; a native model can have columns with keys as semantic types on if a user specified it
+        ;; a native model can have columns with keys as semantic types only if a user configured them
         trust-semantic-keys? (and (= (:type card) :model)
                                      (= (-> card :dataset_query :type) :native))]
     (-> (assoc card :moderated_status moderated-status)
