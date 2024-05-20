@@ -18,6 +18,8 @@ export const loadMetadataForCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
+      // it's important to create it once here for performance reasons
+      // MBQL lib attaches parsed metadata to the object
       const metadata = getMetadata(getState());
       return cards
         .map(card => new Question(card, metadata))
