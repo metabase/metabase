@@ -1,5 +1,7 @@
 import { merge } from "icepick";
 
+import { DEFAULT_FONT } from "embedding-sdk/config";
+
 import type {
   MetabaseTheme,
   MetabaseColor,
@@ -10,6 +12,9 @@ import type { EmbeddingThemeOverride } from "../../types/theme/private";
 import { colorTuple } from "./color-tuple";
 import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
+
+const getFontFamily = (theme: MetabaseTheme) =>
+  theme.fontFamily ?? DEFAULT_FONT;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -24,8 +29,9 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: EmbeddingThemeOverride = {
+    fontFamily: getFontFamily(theme),
+
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
-    ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
       ...components,

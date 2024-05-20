@@ -4,6 +4,7 @@ import {
   createAction,
   handleActions,
 } from "metabase/lib/redux";
+import type { EmbedOptions } from "metabase-types/store";
 
 export const DEFAULT_EMBED_OPTIONS = {
   top_nav: true,
@@ -17,10 +18,9 @@ export const DEFAULT_EMBED_OPTIONS = {
   action_buttons: true,
 } as const;
 
-export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
-// FIXME: "setOptions" overrides all other options that haven't been passed. We should add another action to set only one key from options object.
-export const setOptions = createAction(
-  SET_OPTIONS,
+export const SET_INITIAL_URL_OPTIONS = "metabase/embed/SET_INITIAL_URL_OPTIONS";
+export const setInitialUrlOptions = createAction(
+  SET_INITIAL_URL_OPTIONS,
   ({ search, hash }: { search: string; hash: string }) => {
     return {
       ...parseSearchOptions(search),
@@ -29,10 +29,21 @@ export const setOptions = createAction(
   },
 );
 
+export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
+export const setOptions = createAction(
+  SET_OPTIONS,
+  (options: Partial<EmbedOptions>) => options,
+);
+
 const options = handleActions(
   {
-    [SET_OPTIONS]: (state, { payload }) => ({
+    [SET_INITIAL_URL_OPTIONS]: (state, { payload }) => ({
       ...DEFAULT_EMBED_OPTIONS,
+      ...payload,
+    }),
+
+    [SET_OPTIONS]: (state, { payload }) => ({
+      ...state,
       ...payload,
     }),
   },

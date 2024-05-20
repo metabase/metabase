@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import * as React from "react";
 import * as ReactIs from "react-is";
 
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
@@ -59,6 +60,12 @@ function getTargetProps(
   }
 }
 
+function appendTo() {
+  return (
+    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+  );
+}
+
 /**
  * @deprecated: use Tooltip from "metabase/ui"
  */
@@ -106,7 +113,7 @@ function Tooltip({
       <TippyComponent
         theme={theme}
         className="popover"
-        appendTo={() => document.body}
+        appendTo={appendTo}
         content={tooltip}
         visible={visible}
         disabled={disabled}

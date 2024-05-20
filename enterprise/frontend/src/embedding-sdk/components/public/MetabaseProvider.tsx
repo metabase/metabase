@@ -13,6 +13,7 @@ import {
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
 import "metabase/css/vendor.css";
@@ -31,6 +32,16 @@ const MetabaseProviderInternal = ({
   pluginsConfig,
   theme,
 }: MetabaseProviderProps): JSX.Element => {
+  useEffect(() => {
+    if (theme?.fontFamily) {
+      store.dispatch(
+        setOptions({
+          font: theme.fontFamily,
+        }),
+      );
+    }
+  }, [theme?.fontFamily]);
+
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [pluginsConfig]);
