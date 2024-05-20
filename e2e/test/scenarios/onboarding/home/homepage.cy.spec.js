@@ -372,27 +372,36 @@ describe("scenarios > home > custom homepage", () => {
     });
 
     it("should show the default homepage if the dashboard was archived (#31599)", () => {
-      // Archive dashboard
-      visitDashboard(ORDERS_DASHBOARD_ID);
-      dashboardHeader().within(() => {
-        cy.findByLabelText("dashboard-menu-button").click();
-      });
-      popover().within(() => {
-        cy.findByText("Move to trash").click();
-      });
-      modal().within(() => {
-        cy.findByText("Move to trash").click();
-      });
+      cy.request("GET", "/api/collection/trash").then(
+        ({ body: trashCollection }) => {
+          cy.intercept("GET", `/api/collection/${trashCollection.id}`).as(
+            "getCollection",
+          );
+          // Archive dashboard
+          visitDashboard(ORDERS_DASHBOARD_ID);
+          dashboardHeader().within(() => {
+            cy.findByLabelText("dashboard-menu-button").click();
+          });
+          popover().within(() => {
+            cy.findByText("Move to trash").click();
+          });
+          modal().within(() => {
+            cy.findByText("Move to trash").click();
+          });
 
-      // Navigate to home
-      openNavigationSidebar();
-      navigationSidebar().within(() => {
-        cy.findByText("Home").click();
-      });
-      main().within(() => {
-        cy.findByText("We're a little lost...").should("not.exist");
-        cy.findByText("Customize").should("be.visible");
-      });
+          cy.wait(["@getCollection"]);
+
+          // Navigate to home
+          openNavigationSidebar();
+          navigationSidebar().within(() => {
+            cy.findByText("Home").click();
+          });
+          main().within(() => {
+            cy.findByText("We're a little lost...").should("not.exist");
+            cy.findByText("Customize").should("be.visible");
+          });
+        },
+      );
     });
   });
 });
