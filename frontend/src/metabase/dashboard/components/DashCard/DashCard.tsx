@@ -78,7 +78,7 @@ export interface DashCardProps {
   markNewCardSeen: (dashcardId: DashCardId) => void;
   getNewCardUrl: (
     opts: NavigateToNewCardFromDashboardOpts,
-  ) => string | undefined | null;
+  ) => string | undefined;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;

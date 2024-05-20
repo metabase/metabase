@@ -15,4 +15,4 @@ export type DashCardOnChangeCardAndRunHandler = (
 
 export type DashCardGetNewCardUrlHandler = (
   opts: Omit<NavigateToNewCardFromDashboardOpts, "dashcard">,
-) => string;
+) => string | undefined;

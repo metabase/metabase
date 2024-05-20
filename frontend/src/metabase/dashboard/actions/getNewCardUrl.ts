@@ -32,11 +32,11 @@ export const getNewCardUrl = (
     dashcard: QuestionDashboardCard;
     objectId?: number | string;
   },
-): string | null => {
+): string | undefined => {
   const { dashboardId, dashboards, parameterValues } = dashboardState;
 
   if (dashboardId === null) {
-    return null;
+    return undefined;
   }
 
   const dashboard = dashboards[dashboardId];

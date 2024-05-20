@@ -83,6 +83,7 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
+      getNewCardUrl={jest.fn()}
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       onRemove={jest.fn()}
