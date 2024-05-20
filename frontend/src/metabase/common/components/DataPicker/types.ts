@@ -45,6 +45,12 @@ export type ModelItem = {
   model: "dataset";
 };
 
+export type MetricItem = {
+  id: CardId;
+  name: string;
+  model: "metric";
+};
+
 export type TablePickerValue = {
   id: TableId;
   name: string;
@@ -53,14 +59,22 @@ export type TablePickerValue = {
   schema: SchemaName;
 };
 
-export type DataPickerValue = TablePickerValue | QuestionItem | ModelItem;
+export type DataPickerValue =
+  | TablePickerValue
+  | QuestionItem
+  | ModelItem
+  | MetricItem;
 
 export type NotebookDataPickerFolderItem =
   | CollectionItem
   | DatabaseItem
   | SchemaItem;
 
-export type NotebookDataPickerValueItem = TableItem | QuestionItem | ModelItem;
+export type NotebookDataPickerValueItem =
+  | TableItem
+  | QuestionItem
+  | ModelItem
+  | MetricItem;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;

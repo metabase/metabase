@@ -63,19 +63,20 @@ function NotebookStep({
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
+        const title = stepUi.title;
         return {
           priority: stepUi.priority,
           button: (
             <ActionButton
-              key={`actionButton_${stepUi.title}`}
+              key={`actionButton_${title}`}
               className={cx({
                 [cx(CS.mr2, CS.mt2)]: isLastStep,
                 [CS.mr1]: !isLastStep,
               })}
-              color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
-              aria-label={stepUi.title}
+              title={title}
+              aria-label={title}
               onClick={() => action.action({ openStep })}
             />
           ),
@@ -101,11 +102,10 @@ function NotebookStep({
 
   const {
     title,
-    getColor,
+    color,
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
-  const color = getColor();
   const canPreview =
     step.previewQuery != null && Lib.canPreview(step.previewQuery);
   const hasPreviewButton = !isPreviewOpen && canPreview;

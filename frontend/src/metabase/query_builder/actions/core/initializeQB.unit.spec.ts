@@ -23,11 +23,7 @@ import type {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import {
-  createMockMetric,
-  createMockSegment,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -58,8 +54,6 @@ type BaseSetupOpts = {
 
 const SEGMENT = createMockSegment();
 
-const METRIC = createMockMetric();
-
 async function baseSetup({
   user,
   location,
@@ -73,7 +67,6 @@ async function baseSetup({
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
-      metrics: [METRIC],
       segments: [SEGMENT],
     }),
     currentUser: user === undefined ? createMockUser() : user,
@@ -672,21 +665,13 @@ describe("QB Actions > initializeQB", () => {
       db?: DatabaseId;
       table?: TableId;
       segment?: number;
-      metric?: number;
     };
 
-    function setupBlank({
-      db,
-      table,
-      segment,
-      metric,
-      ...opts
-    }: BlankSetupOpts = {}) {
+    function setupBlank({ db, table, segment, ...opts }: BlankSetupOpts = {}) {
       const hashParams = [
         db ? `db=${db}` : "",
         table ? `table=${table}` : "",
         segment ? `segment=${segment}` : "",
-        metric ? `metric=${metric}` : "",
       ].filter(Boolean);
 
       let hash = hashParams.join("&");
@@ -703,7 +688,6 @@ describe("QB Actions > initializeQB", () => {
         db: db ? String(db) : undefined,
         table: table ? String(table) : undefined,
         segment: segment ? String(segment) : undefined,
-        metric: metric ? String(metric) : undefined,
       };
 
       return baseSetup({ location, params, ...opts });
@@ -759,34 +743,6 @@ describe("QB Actions > initializeQB", () => {
       const [filter] = query.filters();
 
       expect(filter.raw()).toEqual(["segment", SEGMENT.id]);
-    });
-
-    it("applies 'metric' param correctly", async () => {
-      const { query } = await setupOrdersTable({
-        metric: Number(METRIC.id),
-      });
-      const [aggregation] = query.aggregations();
-
-      expect(aggregation.raw()).toEqual(["metric", METRIC.id]);
-    });
-
-    it("opens summarization sidebar if metric is applied", async () => {
-      const { result } = await setupOrdersTable({
-        metric: Number(METRIC.id),
-      });
-      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
-    });
-
-    it("applies both 'metric' and 'segment' params", async () => {
-      const { query } = await setupOrdersTable({
-        segment: SEGMENT.id,
-        metric: Number(METRIC.id),
-      });
-      const [filter] = query.filters();
-      const [aggregation] = query.aggregations();
-
-      expect(filter.raw()).toEqual(["segment", SEGMENT.id]);
-      expect(aggregation.raw()).toEqual(["metric", METRIC.id]);
     });
 
     it("fetches question metadata", async () => {

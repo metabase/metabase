@@ -19,7 +19,6 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  Metric,
   NativeQuerySnippet,
   ModelCacheRefreshStatus,
   PopularItem,
@@ -279,19 +278,6 @@ export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
-export function provideMetricListTags(
-  metrics: Metric[],
-): TagDescription<TagType>[] {
-  return [listTag("metric"), ...metrics.flatMap(provideMetricTags)];
-}
-
-export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
-  return [
-    idTag("metric", metric.id),
-    ...(metric.table ? provideTableTags(metric.table) : []),
-  ];
-}
-
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
@@ -420,7 +406,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
-    ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
 }
 
