@@ -6,7 +6,7 @@ import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHe
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  DashboardThemeControls,
+  EmbedThemeControls,
 } from "metabase/dashboard/hoc/controls";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
@@ -28,7 +28,7 @@ type GetDashboardActionsProps = {
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   Pick<
-    DashboardThemeControls,
+    EmbedThemeControls,
     "isNightMode" | "hasNightModeToggle" | "onNightModeChange"
   >;
 

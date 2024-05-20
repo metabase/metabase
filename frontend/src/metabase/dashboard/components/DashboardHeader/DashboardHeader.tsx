@@ -34,7 +34,7 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  DashboardThemeControls,
+  EmbedThemeControls,
 } from "metabase/dashboard/hoc/controls";
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
@@ -131,7 +131,7 @@ type DashboardHeaderProps = {
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   Pick<
-    DashboardThemeControls,
+    EmbedThemeControls,
     "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
   >;
 

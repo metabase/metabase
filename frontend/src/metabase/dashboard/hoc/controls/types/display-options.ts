@@ -1,24 +1,7 @@
-import type { DisplayTheme } from "metabase/public/lib/types";
-
-export type DashboardBorderControls = {
-  bordered: boolean;
-  setBordered: (bordered: boolean) => void;
-};
-
-export type DashboardTitledControls = {
-  titled: boolean;
-  setTitled: (titled: boolean) => void;
-};
-
-export type DashboardHideDownloadButtonControls = {
-  hideDownloadButton: boolean;
-  setHideDownloadButton: (hideDownloadButton: boolean) => void;
-};
-
-export type DashboardHideParametersControls = {
-  hideParameters: string | null;
-  setHideParameters: (hideParameters: string | null) => void;
-};
+import type {
+  EmbedDisplayControls,
+  EmbedThemeControls,
+} from "metabase/dashboard/hoc/controls/types/embed-display-options";
 
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;
@@ -38,24 +21,7 @@ export type DashboardRefreshPeriodControls = {
   ) => void;
 };
 
-export type DashboardThemeControls = {
-  theme: DisplayTheme | null;
-  setTheme: (theme: DisplayTheme | null) => void;
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
-};
-
-export type DashboardFontControls = {
-  font: string | null;
-  setFont: (font: string | null) => void;
-};
-
-export type DashboardDisplayOptionControls = DashboardFullscreenControls &
-  DashboardThemeControls &
-  DashboardRefreshPeriodControls &
-  DashboardBorderControls &
-  DashboardTitledControls &
-  DashboardHideDownloadButtonControls &
-  DashboardHideParametersControls &
-  DashboardFontControls;
+export type DashboardDisplayOptionControls = EmbedDisplayControls &
+  DashboardFullscreenControls &
+  EmbedThemeControls &
+  DashboardRefreshPeriodControls;

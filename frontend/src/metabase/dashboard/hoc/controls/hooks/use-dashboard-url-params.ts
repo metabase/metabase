@@ -4,7 +4,11 @@ import { replace } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
 import { isEqual, pick } from "underscore";
 
-import { useDashboardDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-dashboard-display-options";
+import {
+  useDashboardFullscreen,
+  useDashboardRefreshPeriod,
+} from "metabase/dashboard/hoc/controls";
+import { useEmbedDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-embed-display-options";
 import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types/hash-options";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
@@ -29,26 +33,25 @@ export const useDashboardUrlParams = ({
 
   const {
     bordered,
+    font,
     hasNightModeToggle,
     hideDownloadButton,
     hideParameters,
-    isFullscreen,
     isNightMode,
-    refreshPeriod,
+    onNightModeChange,
     setBordered,
+    setFont,
     setHideDownloadButton,
     setHideParameters,
-    onFullscreenChange,
-    onNightModeChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
     setTheme,
     setTitled,
     theme,
     titled,
-    font,
-    setFont,
-  } = useDashboardDisplayOptions({ onRefresh });
+  } = useEmbedDisplayOptions();
+
+  const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
+  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
+    useDashboardRefreshPeriod({ onRefresh });
 
   // these hash options are read-only - we can't control them through the UI.
   // They're provided through embedding options via the URL hash.

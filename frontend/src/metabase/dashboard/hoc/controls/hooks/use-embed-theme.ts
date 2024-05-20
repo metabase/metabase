@@ -1,10 +1,10 @@
 import { setDisplayTheme } from "metabase/dashboard/actions";
-import type { DashboardThemeControls } from "metabase/dashboard/hoc/controls/types";
+import type { EmbedThemeControls } from "metabase/dashboard/hoc/controls/types";
 import { getDisplayTheme } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
-export const useDashboardTheme = (): DashboardThemeControls => {
+export const useEmbedTheme = (): EmbedThemeControls => {
   const dispatch = useDispatch();
 
   const theme = useSelector(getDisplayTheme);
