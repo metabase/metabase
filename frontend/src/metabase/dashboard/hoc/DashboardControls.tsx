@@ -50,7 +50,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
       hideParameters,
       isFullscreen,
       isNightMode,
-      loadDashboardParams,
       onNightModeChange,
       refreshPeriod,
       setBordered,
@@ -82,7 +81,6 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         isNightMode={isNightMode}
         hasNightModeToggle={hasNightModeToggle}
         setRefreshElapsedHook={setRefreshElapsedHook}
-        loadDashboardParams={loadDashboardParams}
         onNightModeChange={onNightModeChange}
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}

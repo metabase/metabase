@@ -11,6 +11,5 @@ export type DashboardControlsProps = {
 
 export type DashboardControlsPassedProps = DashboardDisplayOptionControls &
   DashboardControlsProps & {
-    loadDashboardParams: () => void;
     queryParams: Record<string, string | string[] | null | undefined>;
   };

@@ -13,14 +13,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { isNotFalsy } from "metabase/lib/types";
 
 const removeEmptyOptions = (obj: Record<string, unknown>) => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, v]) => isNotFalsy(v)),
-  );
+  return pick(obj, isNotFalsy);
 };
 
-export type DashboardUrlParamsControls = DashboardDisplayOptionControls & {
-  loadDashboardParams: () => void;
-};
+export type DashboardUrlParamsControls = DashboardDisplayOptionControls;
 
 export const useDashboardUrlParams = ({
   location,
@@ -79,14 +75,15 @@ export const useDashboardUrlParams = ({
   }, [location.hash]);
 
   // TODO: use useEffect to simplify state management
-  const stateOptions = useMemo(() => {
-    return {
+  const stateOptions = useMemo(
+    () => ({
       fullscreen: isFullscreen,
       theme,
       hide_parameters: hideParameters,
       refresh: refreshPeriod,
-    } as DashboardUrlHashOptions;
-  }, [hideParameters, isFullscreen, refreshPeriod, theme]);
+    }),
+    [hideParameters, isFullscreen, refreshPeriod, theme],
+  );
 
   const prevStateOptions = usePrevious(stateOptions);
 
@@ -160,7 +157,6 @@ export const useDashboardUrlParams = ({
     refreshPeriod,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
-    loadDashboardParams,
     bordered,
     setBordered,
     titled,

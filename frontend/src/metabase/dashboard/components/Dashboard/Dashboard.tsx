@@ -218,8 +218,6 @@ function DashboardInner(props: DashboardProps) {
     isNavigatingBackToDashboard,
     isNightMode,
     isSharing,
-    loadDashboardParams,
-    location,
     onRefreshPeriodChange,
     parameterValues,
     parameters,
@@ -233,6 +231,7 @@ function DashboardInner(props: DashboardProps) {
     setParameterValueToDefault,
     setSharing,
     toggleSidebar,
+    queryParams,
   } = props;
 
   const dispatch = useDispatch();
@@ -321,11 +320,9 @@ function DashboardInner(props: DashboardProps) {
     async (dashboardId: DashboardId) => {
       initialize({ clearCache: !isNavigatingBackToDashboard });
 
-      loadDashboardParams();
-
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams: location.query,
+        queryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -366,8 +363,7 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      loadDashboardParams,
-      location.query,
+      queryParams,
       setErrorPage,
     ],
   );
