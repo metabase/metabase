@@ -89,6 +89,8 @@ export const QuestionActions = ({
 
   const isQuestion = question.type() === "question";
   const isModel = question.type() === "model";
+  const isMetric = question.type() === "metric";
+  const isModelOrMetric = isModel || isMetric;
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
@@ -144,14 +146,17 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isModel) {
-    extraButtons.push(
-      {
-        title: t`Edit query definition`,
+  if (canWrite) {
+    if (isModelOrMetric) {
+      extraButtons.push({
+        title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
         action: handleEditQuery,
-      },
-      {
+      });
+    }
+
+    if (isModel) {
+      extraButtons.push({
         title: (
           <div>
             {t`Edit metadata`} <StrengthIndicator dataset={question} />
@@ -159,8 +164,8 @@ export const QuestionActions = ({
         ),
         icon: "label",
         action: handleEditMetadata,
-      },
-    );
+      });
+    }
   }
 
   if (canPersistDataset) {

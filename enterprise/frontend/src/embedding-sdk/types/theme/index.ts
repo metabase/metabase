@@ -8,7 +8,7 @@ export interface MetabaseTheme {
   fontSize?: string;
 
   /**
-   * Base font family supported by Metabase.
+   * Base font family supported by Metabase, defaults to `Lato`.
    * Custom fonts are not yet supported in this version.
    **/
   fontFamily?: MetabaseFontFamily;

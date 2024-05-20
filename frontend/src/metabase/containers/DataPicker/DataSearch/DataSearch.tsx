@@ -27,12 +27,13 @@ type TableSearchResult = {
   collection: Collection | null;
 };
 
-type SearchModel = "card" | "dataset" | "table";
+type SearchModel = "card" | "dataset" | "table" | "metric";
 
 const DATA_TYPE_SEARCH_MODEL_MAP: Record<DataPickerDataType, SearchModel> = {
   "raw-data": "table",
   models: "dataset",
   questions: "card",
+  metrics: "metric",
 };
 
 function getDataTypeForSearchResult(

@@ -281,7 +281,7 @@ export type CollectionAuthorityLevelIcon = ComponentType<
 type CollectionInstanceAnalyticsIcon = React.ComponentType<
   Omit<IconProps, "name"> & {
     collection: Collection;
-    entity: "collection" | "question" | "model" | "dashboard";
+    entity: "collection" | "question" | "model" | "dashboard" | "metric";
   }
 >;
 

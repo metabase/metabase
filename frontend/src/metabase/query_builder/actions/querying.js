@@ -110,11 +110,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      const isAdHocModel =
-        question.type() === "model" &&
+      const isAdHocModelOrMetric =
+        (question.type() === "model" || question.type() === "metric") &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+      dispatch(
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+      );
     }
 
     const startTime = new Date();

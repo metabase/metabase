@@ -102,6 +102,7 @@ export function JoinTablePicker({
           databaseId={databaseId ?? undefined}
           title={t`Pick data to join`}
           value={value}
+          models={["table", "card", "dataset"]}
           onChange={handleTableChange}
           onClose={() => setIsDataPickerOpen(false)}
         />

@@ -8,7 +8,7 @@ import { getCollectionType } from "../utils";
 
 interface Props extends Omit<IconProps, "name" | "tooltip"> {
   collection: Collection;
-  entity: "collection" | "question" | "model" | "dashboard";
+  entity: "collection" | "question" | "model" | "dashboard" | "metric";
 }
 
 const collectionIconTooltipNameMap = {
@@ -16,6 +16,7 @@ const collectionIconTooltipNameMap = {
   question: t`question`,
   model: t`model`,
   dashboard: t`dashboard`,
+  metric: t`metric`,
 };
 
 export function CollectionInstanceAnalyticsIcon({

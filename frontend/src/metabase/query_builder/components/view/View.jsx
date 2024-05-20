@@ -382,9 +382,10 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-    const isModel = question.type() === "model";
+    const isModelOrMetric =
+      question.type() === "model" || question.type() === "metric";
 
-    if (isModel && queryBuilderMode === "dataset") {
+    if (isModelOrMetric && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />

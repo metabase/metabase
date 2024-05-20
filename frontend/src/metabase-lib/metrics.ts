@@ -1,18 +1,14 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { MetricId } from "metabase-types/api";
 
-import type { LegacyMetricMetadata, Query } from "./types";
+import type { MetricMetadata, Query } from "./types";
 
-export function availableLegacyMetrics(
+export function availableMetrics(
   query: Query,
   stageIndex: number,
-): LegacyMetricMetadata[] {
-  return ML.available_legacy_metrics(query, stageIndex);
+): MetricMetadata[] {
+  return ML.available_metrics(query, stageIndex);
 }
 
-export function legacyMetricMetadata(
-  query: Query,
-  metricId: MetricId,
-): LegacyMetricMetadata | null {
-  return ML.legacy_metric_metadata(query, metricId);
+export function isMetricBased(query: Query, stageIndex: number): boolean {
+  return ML.metric_based_QMARK_(query, stageIndex);
 }
