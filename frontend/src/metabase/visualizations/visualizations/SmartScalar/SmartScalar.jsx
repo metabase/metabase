@@ -130,18 +130,16 @@ export function SmartScalar({
         </span>
       </ScalarContainer>
       {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
-      <Box my="xs">
-        {comparisons.map((comparison, index) => (
-          <Box maw="100%" key={index} data-testid="scalar-previous-value">
-            <PreviousValueComparison
-              comparison={comparison}
-              fontFamily={fontFamily}
-              formatOptions={formatOptions}
-              width={width}
-            />
-          </Box>
-        ))}
-      </Box>
+      {comparisons.map((comparison, index) => (
+        <Box maw="100%" key={index} data-testid="scalar-previous-value">
+          <PreviousValueComparison
+            comparison={comparison}
+            fontFamily={fontFamily}
+            formatOptions={formatOptions}
+            width={width}
+          />
+        </Box>
+      ))}
     </ScalarWrapper>
   );
 }
