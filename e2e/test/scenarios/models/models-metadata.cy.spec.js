@@ -384,7 +384,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it.skip("should allow drills on FK columns from dashboards (metabase#42130)", () => {
+    it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
