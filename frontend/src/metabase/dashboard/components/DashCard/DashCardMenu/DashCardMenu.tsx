@@ -23,7 +23,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { CardMenuRoot } from "./DashCardMenu.styled";
+import { CardEntityMenu } from "./DashCardMenu.styled";
 
 interface OwnProps {
   question: Question;
@@ -118,7 +118,7 @@ const DashCardMenu = ({
   }, [question, result, loading, isOpened, handleMenuContent, onEditQuestion]);
 
   return (
-    <CardMenuRoot
+    <CardEntityMenu
       className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       onChange={setIsOpened}

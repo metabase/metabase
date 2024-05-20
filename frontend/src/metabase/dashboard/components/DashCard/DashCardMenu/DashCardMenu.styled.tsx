@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import EntityMenu from "metabase/components/EntityMenu";
 import { color, lighten } from "metabase/lib/colors";
 
-export const CardMenuRoot = styled(EntityMenu)`
+export const CardEntityMenu = styled(EntityMenu)`
   display: flex;
   align-items: center;
   margin: 0 0 0 0.5rem;
