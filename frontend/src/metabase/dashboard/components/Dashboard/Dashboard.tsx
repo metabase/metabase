@@ -439,13 +439,154 @@ function DashboardInner(props: DashboardProps) {
     }
     return (
       // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
-      // TODO: Check if onEditingChange is being used.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
+      // TODO: Check if onEditingChange is being used. - yes, it's used in the header
       <DashboardGridConnected
-        {...props}
+        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+        metadata={props.metadata}
+        onReplaceAllDashCardVisualizationSettings={
+          props.onReplaceAllDashCardVisualizationSettings
+        }
+        onUpdateDashCardVisualizationSettings={
+          props.onUpdateDashCardVisualizationSettings
+        }
         isNightMode={shouldRenderAsNightMode}
-        onEditingChange={handleSetEditing}
+        isFullscreen={props.isFullscreen}
+        isEditingParameter={props.isEditingParameter}
+        isEditing={props.isEditing}
+        parameterValues={props.parameterValues}
+        dashcardData={props.dashcardData}
+        dashboard={props.dashboard}
+        onChangeLocation={props.onChangeLocation}
+        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
+        width={props.width}
+        slowCards={props.slowCards}
+        selectedTabId={props.selectedTabId}
+        replaceCard={props.replaceCard}
+        undoRemoveCardFromDashboard={props.undoRemoveCardFromDashboard}
+        setDashCardAttributes={props.setDashCardAttributes}
+        setMultipleDashCardAttributes={props.setMultipleDashCardAttributes}
+        markNewCardSeen={props.markNewCardSeen}
+        showClickBehaviorSidebar={props.showClickBehaviorSidebar}
+
+        // dashboardId={props.dashboardId}
+        // editingOnLoad={props.editingOnLoad}
+        // addCardOnLoad={props.addCardOnLoad}
+        // location={props.location}
+        // params={props.params}
+        // canManageSubscriptions={props.canManageSubscriptions}
+        // isAdmin={props.isAdmin}
+        // isNavbarOpen={props.isNavbarOpen}
+        // isSharing={props.isSharing}
+        // dashboardBeforeEditing={props.dashboardBeforeEditing}
+        // isDirty={props.isDirty}
+        // databases={props.databases}
+        // editingParameter={props.editingParameter}
+        // parameters={props.parameters}
+        // draftParameterValues={props.draftParameterValues}
+        // isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
+        // sidebar={props.sidebar}
+        // pageFavicon={props.pageFavicon}
+        // documentTitle={props.documentTitle}
+        // isRunning={props.isRunning}
+        // isLoadingComplete={props.isLoadingComplete}
+        // isHeaderVisible={props.isHeaderVisible}
+        // isAdditionalInfoVisible={props.isAdditionalInfoVisible}
+        // isAutoApplyFilters={props.isAutoApplyFilters}
+        // isNavigatingBackToDashboard={props.isNavigatingBackToDashboard}
+        // getEmbeddedParameterVisibility={props.getEmbeddedParameterVisibility}
+        // addActionToDashboard={props.addActionToDashboard}
+        // addCardToDashboard={props.addCardToDashboard}
+        // addDashCardToDashboard={props.addDashCardToDashboard}
+        // addHeadingDashCardToDashboard={props.addHeadingDashCardToDashboard}
+        // addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
+        // addMarkdownDashCardToDashboard={props.addMarkdownDashCardToDashboard}
+        // addParameter={props.addParameter}
+        // addSectionToDashboard={props.addSectionToDashboard}
+        // applyDraftParameterValues={props.applyDraftParameterValues}
+        // cancelEditingDashboard={props.cancelEditingDashboard}
+        // cancelFetchCardData={props.cancelFetchCardData}
+        // cancelFetchDashboardCardData={props.cancelFetchDashboardCardData}
+        // clearCardData={props.clearCardData}
+        // closeAutoApplyFiltersToast={props.closeAutoApplyFiltersToast}
+        // closeDashboard={props.closeDashboard}
+        // closeSidebar={props.closeSidebar}
+        // createNewTab={props.createNewTab}
+        // createPublicLink={props.createPublicLink}
+        // deletePublicLink={props.deletePublicLink}
+        // deleteTab={props.deleteTab}
+        // duplicateTab={props.duplicateTab}
+        // editQuestion={props.editQuestion}
+        // executeRowAction={props.executeRowAction}
+        // fetchCardData={props.fetchCardData}
+        // fetchDashboard={props.fetchDashboard}
+        // fetchDashboardCardData={props.fetchDashboardCardData}
+        // fetchDashboardCardMetadata={props.fetchDashboardCardMetadata}
+        // getDefaultTab={props.getDefaultTab}
+        // getIdFromSlug={props.getIdFromSlug}
+        // getPrevDashAndTabs={props.getPrevDashAndTabs}
+        // hideAddParameterPopover={props.hideAddParameterPopover}
+        // initTabs={props.initTabs}
+        // initialize={props.initialize}
+        // markCardAsSlow={props.markCardAsSlow}
+        // moveDashCardToTab={props.moveDashCardToTab}
+        // moveDashboardToCollection={props.moveDashboardToCollection}
+        // moveTab={props.moveTab}
+        // onUpdateDashCardColumnSettings={props.onUpdateDashCardColumnSettings}
+        // openAddQuestionSidebar={props.openAddQuestionSidebar}
+        // reloadDashboardCards={props.reloadDashboardCards}
+        // removeParameter={props.removeParameter}
+        // renameTab={props.renameTab}
+        // reset={props.reset}
+        // resetParameterMapping={props.resetParameterMapping}
+        // resetTempTabId={props.resetTempTabId}
+        // revertToRevision={props.revertToRevision}
+        // selectTab={props.selectTab}
+        // setActionForDashcard={props.setActionForDashcard}
+        // setArchivedDashboard={props.setArchivedDashboard}
+        // setDashboardAttributes={props.setDashboardAttributes}
+        // setDisplayTheme={props.setDisplayTheme}
+        // setEditingDashboard={props.setEditingDashboard}
+        // setEditingDashcardId={props.setEditingDashcardId}
+        // setEditingParameter={props.setEditingParameter}
+        // setOrUnsetParameterValues={props.setOrUnsetParameterValues}
+        // setParameterDefaultValue={props.setParameterDefaultValue}
+        // setParameterFilteringParameters={props.setParameterFilteringParameters}
+        // setParameterIndex={props.setParameterIndex}
+        // setParameterIsMultiSelect={props.setParameterIsMultiSelect}
+        // setParameterMapping={props.setParameterMapping}
+        // setParameterName={props.setParameterName}
+        // setParameterQueryType={props.setParameterQueryType}
+        // setParameterRequired={props.setParameterRequired}
+        // setParameterSourceConfig={props.setParameterSourceConfig}
+        // setParameterSourceType={props.setParameterSourceType}
+        // setParameterType={props.setParameterType}
+        // setParameterValue={props.setParameterValue}
+        // setParameterValueToDefault={props.setParameterValueToDefault}
+        // setParameterValues={props.setParameterValues}
+        // setParameterValuesFromQueryParams={props.setParameterValuesFromQueryParams}
+        // setSharing={props.setSharing}
+        // setShowLoadingCompleteFavicon={props.setShowLoadingCompleteFavicon}
+        // setSidebar={props.setSidebar}
+        // showAddParameterPopover={props.showAddParameterPopover}
+        // showAutoApplyFiltersToast={props.showAutoApplyFiltersToast}
+        // tabsReducer={props.tabsReducer}
+        // toggleAutoApplyFilters={props.toggleAutoApplyFilters}
+        // toggleSidebar={props.toggleSidebar}
+        // undoDeleteTab={props.undoDeleteTab}
+        // undoMoveDashCardToTab={props.undoMoveDashCardToTab}
+        // updateButtonActionMapping={props.updateButtonActionMapping}
+        // updateDashboard={props.updateDashboard}
+        // updateDashboardAndCards={props.updateDashboardAndCards}
+        // updateEmbeddingParams={props.updateEmbeddingParams}
+        // updateEnableEmbedding={props.updateEnableEmbedding}
+        // closeNavbar={props.closeNavbar}
+        // setErrorPage={props.setErrorPage}
+        // theme={props.theme}
+        // replace={props.replace}
+        // refreshPeriod={props.refreshPeriod}
+        // hideParameters={props.hideParameters}
+        // height={props.height}
+        // onEditingChange={handleSetEditing}
       />
     );
   };
