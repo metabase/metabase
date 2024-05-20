@@ -98,17 +98,6 @@ export function AggregationPicker({
     const canUseExpressions = database?.hasFeature("expression-aggregations");
     const isMetricBased = Lib.isMetricBased(query, stageIndex);
 
-    if (metrics.length > 0) {
-      sections.push({
-        key: "metrics",
-        name: t`Metrics`,
-        items: metrics.map(metric =>
-          getMetricListItem(query, stageIndex, metric, clauseIndex),
-        ),
-        icon: "metric",
-      });
-    }
-
     if (operators.length > 0 && !isMetricBased) {
       sections.push({
         key: "operators",
@@ -117,6 +106,17 @@ export function AggregationPicker({
           getOperatorListItem(query, stageIndex, operator),
         ),
         icon: "table2",
+      });
+    }
+
+    if (metrics.length > 0) {
+      sections.push({
+        key: "metrics",
+        name: isMetricBased ? t`Metrics` : t`Common Metrics`,
+        items: metrics.map(metric =>
+          getMetricListItem(query, stageIndex, metric, clauseIndex),
+        ),
+        icon: "metric",
       });
     }
 
