@@ -30,7 +30,7 @@ export const getNewCardUrl = (
     nextCard: Card;
     previousCard: Card;
     dashcard: QuestionDashboardCard;
-    objectId: number | string;
+    objectId?: number | string;
   },
 ): string | null => {
   const { dashboardId, dashboards, parameterValues } = dashboardState;

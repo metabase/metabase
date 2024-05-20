@@ -39,6 +39,7 @@ import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
+  DashCardGetNewCardUrlHandler,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
 import { shouldShowParameterMapper } from "./utils";
@@ -51,6 +52,7 @@ interface DashCardVisualizationProps {
   parameterValuesBySlug: Record<string, ParameterValueOrArray>;
   metadata: Metadata;
   mode?: Mode;
+  getHref: DashCardGetNewCardUrlHandler | null;
 
   gridSize: {
     width: number;
@@ -102,6 +104,7 @@ export function DashCardVisualization({
   parameterValues,
   parameterValuesBySlug,
   mode,
+  getHref,
   metadata,
   gridSize,
   gridItemWidth,
@@ -245,6 +248,7 @@ export function DashCardVisualization({
       parameterValuesBySlug={parameterValuesBySlug}
       metadata={metadata}
       mode={mode}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}

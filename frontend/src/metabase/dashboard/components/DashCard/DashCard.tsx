@@ -42,6 +42,7 @@ import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  DashCardGetNewCardUrlHandler,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -75,6 +76,9 @@ export interface DashCardProps {
   onReplaceCard: () => void;
   onRemove: () => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
+  getNewCardUrl: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => string | undefined | null;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -106,6 +110,7 @@ function DashCardInner({
   onAddSeries,
   onReplaceCard,
   onRemove,
+  getNewCardUrl,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -236,26 +241,36 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
+  const changeCardAndRunHandler =
+    useMemo<DashCardOnChangeCardAndRunHandler | null>(() => {
+      if (!navigateToNewCardFromDashboard) {
+        return null;
+      }
+
+      return ({ nextCard, previousCard, objectId }) => {
+        navigateToNewCardFromDashboard({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      };
+    }, [dashcard, navigateToNewCardFromDashboard]);
+
+  const getHref = useMemo<DashCardGetNewCardUrlHandler | null>(() => {
+    if (!getNewCardUrl) {
       return null;
     }
 
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
+    return ({ nextCard, previousCard, objectId }) => {
+      return getNewCardUrl({
         nextCard,
         previousCard,
         dashcard,
         objectId,
       });
     };
-
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
+  }, [dashcard, getNewCardUrl]);
 
   return (
     <ErrorBoundary>
@@ -312,6 +327,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          getHref={getHref}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}

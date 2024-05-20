@@ -17,6 +17,8 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
+  isActionDashCard,
+  isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
@@ -53,9 +55,11 @@ import type {
   VisualizationSettings,
   DashboardCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import { removeCardFromDashboard } from "../actions";
+import { getNewCardUrl } from "../actions/getNewCardUrl";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
@@ -90,8 +94,11 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
+const mapStateToProps = (state: State) => ({
+  dashboardState: state.dashboard,
+});
 const mapDispatchToProps = { addUndo, removeCardFromDashboard };
-const connector = connect(null, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
@@ -508,6 +515,31 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     }
   };
 
+  getNewCardUrl = ({
+    nextCard,
+    previousCard,
+    dashcard,
+    objectId,
+  }: {
+    nextCard: Card;
+    previousCard: Card;
+    dashcard: DashboardCard;
+    objectId?: number | string;
+  }) => {
+    if (isActionDashCard(dashcard) || isVirtualDashCard(dashcard)) {
+      return undefined;
+    }
+
+    const { metadata, dashboardState } = this.props;
+
+    return getNewCardUrl(metadata, dashboardState, {
+      dashcard,
+      nextCard,
+      previousCard,
+      objectId,
+    });
+  };
+
   renderDashCard(
     dc: DashboardCard,
     {
@@ -547,6 +579,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
         }
         mode={this.props.mode}
+        getNewCardUrl={this.getNewCardUrl}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
