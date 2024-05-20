@@ -366,20 +366,20 @@
             (mt/mbql-query checkins
                            {:aggregation [[:distinct [:+ $id $venue_price]]]})))))))
 
-(deftest metrics-inside-aggregation-clauses-test
+(deftest legacy-metrics-inside-aggregation-clauses-test
   (tqpt/test-timeseries-drivers
-    (testing "check that we can handle METRICS inside expression aggregation clauses"
-      (t2.with-temp/with-temp [:model/Metric metric {:definition (mt/$ids checkins
-                                                                          {:aggregation [:sum $venue_price]
-                                                                           :filter      [:> $venue_price 1]})
-                                                     :table_id (mt/id :checkins)}]
-        (is (= [[2 1231]
-                [3  346]
-                [4 197]]
-               (-> (mt/run-mbql-query checkins
-                                      {:aggregation [:+ [:metric (u/the-id metric)] 1]
-                                       :breakout    [$venue_price]})
-                   mt/rows)))))))
+   (testing "check that we can handle LEGACY METRICS inside expression aggregation clauses"
+     (t2.with-temp/with-temp [:model/LegacyMetric metric {:definition (mt/$ids checkins
+                                                                               {:aggregation [:sum $venue_price]
+                                                                                :filter      [:> $venue_price 1]})
+                                                          :table_id (mt/id :checkins)}]
+       (is (= [[2 1231]
+               [3  346]
+               [4 197]]
+              (-> (mt/run-mbql-query checkins
+                                     {:aggregation [:+ [:metric (u/the-id metric)] 1]
+                                      :breakout    [$venue_price]})
+                  mt/rows)))))))
 
 (deftest order-by-aggregation-test
   (tqpt/test-timeseries-drivers
