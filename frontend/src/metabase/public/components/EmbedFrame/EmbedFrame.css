@@ -14,7 +14,7 @@ body {
 
 .Theme--night.EmbedFrame {
   background-color: var(--color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+  border-color: var(--color-bg-dark);
 }
 
 .Theme--night .EmbedFrame-header,
