@@ -269,10 +269,19 @@ describe("scenarios > setup", () => {
     skipLicenseStepOnEE();
 
     // usage data
+    cy.get("section")
+      .last()
+      .findByText(/certain data about product usage/);
     cy.get("section").last().button("Finish").click();
 
     // done
-    cy.get("section").last().findByText("Take me to Metabase").click();
+    cy.get("section")
+      .last()
+      .findByText(/You're all set up/);
+    cy.get("section")
+      .last()
+      .findByRole("link", { name: "Take me to Metabase" })
+      .click();
 
     // in app
     cy.location("pathname").should("eq", "/");
@@ -323,11 +332,18 @@ describe("scenarios > setup", () => {
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
-      cy.button("Finish").click();
+
+      cy.get("section")
+        .last()
+        .findByText(/certain data about product usage/);
+      cy.get("section").last().button("Finish").click();
 
       // Finish & Subscribe
       cy.intercept("GET", "/api/session/properties").as("properties");
-      cy.findByText("Take me to Metabase").click();
+      cy.get("section")
+        .last()
+        .findByRole("link", { name: "Take me to Metabase" })
+        .click();
     });
 
     cy.log(
