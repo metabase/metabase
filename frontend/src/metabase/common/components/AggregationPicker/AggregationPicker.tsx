@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
@@ -346,7 +347,7 @@ function renderItemIcon(item: ListItem, hasOperators: boolean) {
 
   return (
     <Box component="span" ml={hasOperators ? "sm" : undefined}>
-      <Icon name={item.icon} />
+      <Icon name={item.icon} style={{ color: color("summarize") }} />
     </Box>
   );
 }
