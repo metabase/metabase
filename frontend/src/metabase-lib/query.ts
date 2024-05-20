@@ -23,7 +23,6 @@ export function fromLegacyQuery(
   metadataProvider: MetadataProvider,
   datasetQuery: DatasetQuery,
 ): Query {
-  console.log("fromLegacyQuery");
   return ML.query(databaseId, metadataProvider, datasetQuery);
 }
 
