@@ -26,7 +26,7 @@ export const loadMetadataForCard =
 export const loadMetadataForTable =
   (tableId: TableId, options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const dependencies = [{ type: "table", id: tableId }];
+    const dependencies: Lib.DependentItem[] = [{ type: "table", id: tableId }];
     await dispatch(loadMetadataForDependentItems(dependencies));
     const metadata = getMetadata(getState());
     const table = metadata.table(tableId);
@@ -41,7 +41,7 @@ export const loadMetadataForTable =
       );
       return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
     };
-    await dispatch(loadMetadata(getDependencies, [], options));
+    await dispatch(loadMetadata(getDependencies, dependencies, options));
   };
 
 const loadMetadata =
