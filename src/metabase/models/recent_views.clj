@@ -160,10 +160,13 @@
                   [:authority_level [:enum "official" nil]]]]]])
 
 (defmulti fill-recent-view-info
-  "Fills in additional information for a recent view, such as the display name of the object.
+  "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
 
-  For most items, we gather information from the db in a single query, but certain things are more prudent to check with
-  code (e.g. a collection's parent collection.)"
+  For most items, we gather information from the db in a single query, but certain things are more prudent to check
+  with code (e.g. a collection's parent collection.)
+
+  Sometimes we get an invalid or inconsistent recent view record. (E.g. the parent collection for an item no longer
+  exists). In these cases we simply do not include the value in the recent views response."
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
     (or (get {"model" :dataset "question" :card} card_type)
         (keyword model))))
