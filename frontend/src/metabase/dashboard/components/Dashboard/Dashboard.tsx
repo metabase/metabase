@@ -10,6 +10,7 @@ import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntity
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
+  type navigateToNewCardFromDashboard,
   setArchivedDashboard,
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
@@ -139,6 +140,7 @@ type DashboardProps = {
   addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
+  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
@@ -449,6 +451,7 @@ function DashboardInner(props: DashboardProps) {
         dashcardData={props.dashcardData}
         dashboard={props.dashboard}
         slowCards={props.slowCards}
+        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
       />
