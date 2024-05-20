@@ -125,7 +125,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Orders");
     });
 
-    // TODO: popular items endpoint is currently broken in OSS. Renable test once endpoint has been fixed.
+    // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
     describeEE("EE", () => {
       it("should display popular items for a new user", () => {
         cy.signInAsAdmin();
