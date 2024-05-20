@@ -1,7 +1,11 @@
 import { merge } from "icepick";
 
+import { colors } from "metabase/lib/colors";
+import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
+
 import type {
   MetabaseTheme,
+  MetabaseColors,
   MetabaseColor,
   MetabaseComponentTheme,
 } from "../../types/theme";
@@ -40,10 +44,54 @@ export function getEmbeddingThemeOverride(
       const color = theme.colors[name as MetabaseColor];
 
       if (color) {
-        override.colors[name] = colorTuple(color);
+        const themeColorName =
+          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MetabaseColor];
+        override.colors[themeColorName] = colorTuple(color);
       }
     }
   }
 
   return override;
+}
+
+const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
+  brand: "brand",
+  border: "border",
+  filter: "filter",
+  summarize: "summarize",
+  "text-primary": "text-dark",
+  "text-secondary": "text-medium",
+  "text-tertiary": "text-light",
+  background: "bg-white",
+  "background-hover": "bg-light",
+
+  // shadow: "shadow",
+  // positive: "success",
+  // negative: "danger",
+  // warning: "warning",
+
+  // white
+  // black
+};
+
+const originalColors = { ...colors };
+
+export function getThemedColorsPalette(
+  themeColors?: MetabaseColors,
+): ColorPalette {
+  if (!themeColors) {
+    return originalColors;
+  }
+
+  const mappedThemeColors: ColorPalette = {};
+
+  Object.entries(themeColors).forEach(([key, value]) => {
+    const mappedKey = SDK_TO_MAIN_APP_COLORS_MAPPING[key as MetabaseColor];
+    mappedThemeColors[mappedKey] = value;
+  });
+
+  return {
+    ...originalColors,
+    ...mappedThemeColors,
+  };
 }

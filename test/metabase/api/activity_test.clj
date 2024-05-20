@@ -128,7 +128,7 @@
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                       {:model "card" :id (u/the-id card1) :name "rand-name"}
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                   (map #(select-keys % [:model :id :name]) recent-views))))))
+                     (map #(select-keys % [:model :id :name]) recent-views))))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})

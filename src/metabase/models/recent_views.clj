@@ -133,7 +133,7 @@
   [:and {:registry {::pc [:map
                           [:id [:or [:int {:min 1}] [:= "root"]]]
                           [:name :string]
-                          [:authority_level [:enum :official nil]]]}}
+                          [:authority_level [:enum :official "official" nil]]]}}
    [:map
     [:id [:int {:min 1}]]
     [:name :string]
@@ -157,7 +157,7 @@
                          [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
-                  [:authority_level [:enum :official nil]]]]]])
+                  [:authority_level [:enum :official "official" nil]]]]]])
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object.
@@ -193,6 +193,7 @@
                          :report_card.description
                          :report_card.archived
                          :report_card.collection_id
+                         :report_card.trashed_from_collection_id
                          :report_card.id
                          :report_card.display
                          [:mr.status :moderated-status]
@@ -259,6 +260,7 @@
                          :dash.description
                          :dash.archived
                          :dash.collection_id
+                         :dash.trashed_from_collection_id
                          [:c.id :collection-id]
                          [:c.name :collection-name]
                          [:c.authority_level :collection-authority-level]]
@@ -354,14 +356,14 @@
                   :initial_sync_status (:initial-sync-status table)}})))
 
 (defn ^:private do-query [user-id]  (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
-                                 :from [[:recent_views :rv]]
-                                 :where [:and [:= :rv.user_id user-id]]
-                                 :left-join [[:report_card :rc]
-                                             [:and
-                                              ;; only want to join on card_type if it's a card
-                                              [:= :rv.model "card"]
-                                              [:= :rc.id :rv.model_id]]]
-                                 :order-by [[:rv.timestamp :desc]]}))
+                                                                   :from [[:recent_views :rv]]
+                                                                   :where [:and [:= :rv.user_id user-id]]
+                                                                   :left-join [[:report_card :rc]
+                                                                               [:and
+                                                                                ;; only want to join on card_type if it's a card
+                                                                                [:= :rv.model "card"]
+                                                                                [:= :rc.id :rv.model_id]]]
+                                                                   :order-by [[:rv.timestamp :desc]]}))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (= :question model) :card model))

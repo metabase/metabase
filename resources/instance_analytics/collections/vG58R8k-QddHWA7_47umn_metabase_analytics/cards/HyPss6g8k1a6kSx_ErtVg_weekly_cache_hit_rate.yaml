@@ -1,0 +1,117 @@
+name: Weekly cache hit rate
+description: '% of queries hitting the cache'
+entity_id: HyPss6g8k1a6kSx_ErtVg
+created_at: '2024-05-15T20:23:07.445663Z'
+creator_id: internal@metabase.com
+display: bar
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - cache_hit
+      - base-type: type/Boolean
+    - - field
+      - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    filter:
+    - and
+    - - not-null
+      - - field
+        - cache_hit
+        - base-type: type/Boolean
+    - - time-interval
+      - - field
+        - started_at
+        - base-type: type/DateTimeWithLocalTZ
+      - -52
+      - week
+    source-table: QOtZaiTLf2FDD4AT6Oinb
+  type: query
+result_metadata:
+- base_type: type/Boolean
+  display_name: Cache Hit
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - cache_hit
+  - base-type: type/Boolean
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - cache_hit
+  name: cache_hit
+  semantic_type: type/Category
+  visibility_type: normal
+- base_type: type/DateTime
+  display_name: Started At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - started_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: week
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - started_at
+  name: started_at
+  semantic_type: type/CreationTimestamp
+  unit: week
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - started_at
+  - cache_hit
+  graph.metrics:
+  - count
+  graph.x_axis.labels_enabled: false
+  graph.y_axis.labels_enabled: true
+  graph.y_axis.title_text: Cache hit rate
+  series_settings:
+    'false':
+      title: Not cached
+    'true':
+      title: Cached
+  stackable.stack_type: normalized
+  table.cell_column: running_time_seconds
+  table.pivot_column: error
+serdes/meta:
+- id: HyPss6g8k1a6kSx_ErtVg
+  label: weekly_cache_hit_rate
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-16T14:47:57.483977Z'
+metabase_version: vUNKNOWN (9aa572c)
+type: question

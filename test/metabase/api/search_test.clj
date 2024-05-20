@@ -106,6 +106,7 @@
                                             :effective_location "/"
                                             :location "/"
                                             :updated_at false
+                                            :type nil
                                             :can_write true))
 
 (def ^:private action-model-params {:name "ActionModel", :type :model})
@@ -131,7 +132,10 @@
 (defn- default-archived-results []
   (for [result (default-search-results)
         :when (false? (:archived result))]
-    (assoc result :archived true)))
+    (cond-> result
+      true (assoc :archived true)
+      (= (:model result) "collection") (assoc :location (collection/trash-path)
+                                              :effective_location (collection/trash-path)))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -404,6 +408,39 @@
                 :model            "card"
                 :moderated_status "verified"}]
               (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
+
+(deftest archived-permissions-test
+  (testing "Users without perms for a collection can't see search results that were trashed from that collection"
+    (let [search-name (random-uuid)
+          named       #(str search-name "-" %)]
+      (mt/with-temp [:model/Collection {parent-id :id} {}
+                     :model/Dashboard {dash :id} {:collection_id parent-id :name (named "dashboard")}
+                     :model/Card {card :id} {:collection_id parent-id :name (named "card")}
+                     :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
+        (mt/with-full-data-perms-for-all-users!
+          (perms/revoke-collection-permissions! (perms-group/all-users) parent-id)
+          (testing "sanity check: before archiving, we can't see these items"
+            (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                   :archived true :q search-name)))))
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dash)) {:archived true})
+          (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+          (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id model)) {:archived true})
+          (testing "after archiving, we still can't see these items"
+            (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                   :archived true :q search-name)))))
+          (testing "an admin can see the items"
+            (is (= #{dash card model}
+                   (set (map :id (:data (mt/user-http-request :crowberto :get 200 "/search"
+                                                              :archived true :q search-name)))))))
+          (testing "the collection ID is correct - the Trash ID"
+            (is (= #{(collection/trash-collection-id)}
+                   (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
+                                                                                 :archived true :q search-name)))))))
+          (testing "if we are granted permissions on the original collection, we can see the trashed items"
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-id)
+            (is (= #{dash card model}
+                   (set (map :id (:data (mt/user-http-request :rasta :get 200 "/search"
+                                                              :archived true :q search-name))))))))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
@@ -711,6 +748,18 @@
               (is (= #{}
                      (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
+(defn- archived-collection [m]
+  (assoc m
+         :archived true
+         :trashed_from_location "/"
+         :location (collection/trash-path)))
+
+(defn- archived-with-trashed-from-id [m]
+  (assoc m
+         :archived true
+         :trashed_from_collection_id (:collection_id m)
+         :collection_id (collection/trash-collection-id)))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
@@ -722,7 +771,7 @@
                      Card        _ (archived {:name "card test card 2"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
-                     Collection  _ (archived {:name "collection test collection 2"})
+                     Collection  _ (archived-collection {:name "collection test collection 2"})
                      LegacyMetric      _ (archived {:name     "metric test metric 2"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
@@ -743,7 +792,7 @@
                      Card        _ (archived {:name "card that will not appear in results"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
-                     Collection  _ (archived {:name "collection test collection"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
@@ -760,7 +809,7 @@
                      Card        _ (archived {:name "card test card"})
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
-                     Collection  _ (archived {:name "collection test collection"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
                                                     :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
@@ -1657,19 +1706,23 @@
 
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. #33602"
-    (mt/with-temp [Collection  {collection-id :id} (archived {:name "collection test collection"})
-                   Card        _ (archived {:name "card test card is returned"})
-                   Card        _ (archived {:name "card test card"
-                                            :collection_id collection-id})
-                   Card        _ (archived {:name "dataset test dataset" :type :model
-                                            :collection_id collection-id})
-                   Dashboard   _ (archived {:name          "dashboard test dashboard"
+    ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
+    (mt/with-temp [Collection  {collection-id :id} {:name "collection test collection"}
+                   Card        _ (archived-with-trashed-from-id {:name "card test card is returned"})
+                   Card        _ (archived-with-trashed-from-id {:name "card test card"
+                                                                 :collection_id collection-id})
+                   Card        _ (archived-with-trashed-from-id {:name "dataset test dataset" :type :model
+                                                                 :collection_id collection-id})
+                   Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
                                             :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (mt/with-current-user (mt/user->id :crowberto)
+        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
+                                                     {:archived true}))
       (is (= ["card test card is returned"]
-             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test")
+             (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data
                   (map :name)))))))
 
@@ -1679,7 +1732,7 @@
                    Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
                    Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}
                    Card {top-card-id :id} {:type :model :collection_id top-col-id :name "top model"}]
-      (is (= #{[leaf-card-id [{:name "top level col" :id top-col-id}]]
+      (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
                [top-card-id []]}
              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
                   :data
@@ -1712,3 +1765,45 @@
              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors false :q "model" :models ["dataset"])
                   :data
                   (map #(get-in % [:collection :effective_ancestors]))))))))
+
+(deftest collection-type-is-returned
+  (testing "Users without perms for a collection can't see search results that were trashed from that collection"
+    (let [search-name (random-uuid)
+          named       #(str search-name "-" %)]
+      (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
+                     :model/Collection _ {:location (collection/children-location parent)
+                                                   :name (named "collection")
+                                                   :type "meow mix"}
+                     :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}
+                     :model/Card _ {:collection_id parent-id :name (named "card")}
+                     :model/Card _ {:collection_id parent-id :type :model :name (named "model")}]
+        (testing "the collection data includes the type under `item.type` for collections"
+          (is (every? #(contains? % :type)
+                      (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                              :data
+                              (filter #(= (:model %) "collection")))))
+          (is (not-any? #(contains? % :type)
+                        (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                              :data
+                              (remove #(= (:model %) "collection"))))))
+        (testing "`item.type` is correct for collections"
+          (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                                 :data
+                                 (keep :type)
+                                 set)))))
+      (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
+          (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/" :type "foo"}
+                         Collection {mid-col-id :id} {:name "middle level col" :type "bar" :location (str "/" top-col-id "/")}
+                         Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}]
+            (let [leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                                          :data
+                                          (filter #(= (:id %) leaf-card-id))
+                                          first)]
+              (is (= {:id mid-col-id
+                      :name "middle level col"
+                      :type "bar"
+                      :authority_level nil
+                      :effective_ancestors [{:id top-col-id
+                                             :name "top level col"
+                                             :type "foo"}]}
+                     (:collection leaf-card-response)))))))))

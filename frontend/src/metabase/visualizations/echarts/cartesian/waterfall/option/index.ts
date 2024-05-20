@@ -6,7 +6,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import type {
   BaseCartesianChartModel,
   ChartDataset,
-  DataKey,
+  LabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   buildEChartsLabelOptions,
@@ -96,6 +96,7 @@ export const buildEChartsWaterfallSeries = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ) => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
@@ -105,26 +106,21 @@ export const buildEChartsWaterfallSeries = (
     chartMeasurements.boundaryWidth,
   );
 
-  const buildLabelOption = (key: DataKey) => ({
+  const buildLabelOption = () => ({
     ...buildEChartsLabelOptions(
       seriesModel,
-      dataset,
       chartModel.yAxisScaleTransforms,
-      settings,
       renderingContext,
-      settings["graph.show_values"],
+      labelFormatter,
     ),
-    formatter: getDataLabelFormatter(
-      seriesModel,
-      dataset,
-      chartModel.yAxisScaleTransforms,
-      settings,
-      key,
-      renderingContext,
-      {
-        negativeInParentheses: true,
-      },
-    ),
+    formatter:
+      labelFormatter &&
+      getDataLabelFormatter(
+        seriesModel,
+        chartModel.yAxisScaleTransforms,
+        labelFormatter,
+        WATERFALL_VALUE_KEY,
+      ),
   });
 
   const series: WaterfallSeriesOption[] = [
@@ -179,7 +175,7 @@ export const buildEChartsWaterfallSeries = (
         y: WATERFALL_END_KEY,
         x: X_AXIS_DATA_KEY,
       },
-      label: buildLabelOption(WATERFALL_VALUE_KEY),
+      label: buildLabelOption(),
       animationDuration: 0,
     },
   ];
@@ -228,6 +224,7 @@ export const getWaterfallChartOption = (
     chartModel,
     settings,
     chartMeasurements,
+    chartModel?.waterfallLabelFormatter,
     renderingContext,
   );
 

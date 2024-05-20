@@ -10,7 +10,7 @@ button.horizontalButton {
   width: auto;
   min-width: 148px;
   line-height: 1rem;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: var(--color-white);

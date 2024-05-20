@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnCombineViaPlusModal } from "metabase/query_builder/analytics";
 import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns";
 import type { LegacyDrill } from "metabase/visualizations/types";
@@ -25,6 +27,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
   }: ClickActionPopoverProps) => {
     const query = question.query();
     const stageIndex = -1;
+    const dispatch = useDispatch();
 
     function handleSubmit(name: string, clause: Lib.ExpressionClause) {
       const newQuery = Lib.expression(query, stageIndex, name, clause);
@@ -33,6 +36,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
 
       trackColumnCombineViaPlusModal(newQuery, nextQuestion);
 
+      dispatch(setUIControls({ scrollToLastColumn: true }));
       onChangeCardAndRun({ nextCard });
       onClose();
     }

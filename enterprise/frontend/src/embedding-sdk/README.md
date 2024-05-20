@@ -31,11 +31,11 @@ You have the following options:
 ### 1. Running on Docker
 Start the Metabase container:
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.0
+docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.4
 ```
 
 ### 2. Running the Jar file
-1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.0/metabase.jar
+1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.4/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 ```bash
@@ -164,10 +164,18 @@ const config = {
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
 }
 
-// Theme Options
+// See the "Customizing appearance" section for more information
 const theme = {
-  fontFamily: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
-  colors: { brand: "#9b59b6" }
+  // Optional: Specify a font to use from the set of fonts supported by Metabase
+  fontFamily: "Lato",
+
+  // Optional: Match your application's color scheme
+  colors: {
+    brand: "#9B5966",
+    "text-primary": "#4C5773",
+    "text-secondary": "#696E7B",
+    "text-tertiary": "#949AAB",
+  }
 }
 
 export default function App() {
@@ -221,6 +229,77 @@ export default function App() {
 }
 const questionId = 1; // This is the question ID you want to embed
 
+```
+
+### Customizing appearance
+
+You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
+
+Here are the full list of the theme properties you can customize. Every property is optional.
+
+```ts
+const theme = {
+  // Specify a font to use from the set of fonts supported by Metabase.
+  // You can set the font to "Custom" to use the custom font
+  // configured in your Metabase instance.
+  fontFamily: "Lato",
+
+  // Override the base font size for every component.
+  // This does not usually need to be set, as the components
+  // inherit the font size from the parent container, such as the body.
+  fontSize: "16px",
+
+  // Override the base line height for every component.
+  lineHeight: 1.5,
+
+  // Match your application's color scheme
+  colors: {
+    // The primary color of your application
+    brand: "#9B5966",
+
+    // The color of text that is most prominent
+    "text-primary": "#4C5773",
+
+    // The color of text that is less prominent
+    "text-secondary": "#696E7B",
+
+    // The color of text that is least prominent
+    "text-tertiary": "#949AAB",
+
+    /** Default background color. */
+    background: "#FFFFFF",
+
+    /** Slightly darker background color used for hover and accented elements. */
+    "background-hover": "#F9FBFC",
+
+    /** Color used for borders */
+    border: "#EEECEC",
+
+    /** Color used for filters context */
+    filter: "#7172AD",
+
+    /** Color used for aggregations and breakouts context */
+    summarize: "#88BF4D",
+  },
+
+  table: {
+    cell: {
+      // Text color of cells, defaults to `text-dark`
+      textColor: "#4C5773",
+
+      // Default background color of cells, defaults to `bg-white`
+      backgroundColor: "#FFFFFF",
+    },
+
+    idColumn: {
+      // Text color of ID column, defaults to `brand`
+      textColor: "#9B5966",
+
+      // Background color of ID column, defaults to a lighter shade of `brand`
+      backgroundColor: "#F5E9EB",
+    },
+  },
+}
 ```
 
 ### Implementing custom actions

@@ -45,6 +45,7 @@ QuestionSummarizeWidget.shouldRender = ({
     !isNative &&
     isEditable &&
     !isObjectDetail &&
-    isActionListVisible
+    isActionListVisible &&
+    !question.isArchived()
   );
 };

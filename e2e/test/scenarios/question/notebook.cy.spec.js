@@ -23,6 +23,8 @@ import {
   visitQuestionAdhoc,
   visualize,
   createQuestion,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -520,7 +522,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     openNotebook();
 
     join();
-    popover().findByText("Products model").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
+      cy.findByText("Products model").click();
+    });
 
     visualize();
   });
@@ -576,19 +581,21 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
 
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders, Count").click();
+      });
+
       visualize();
     },
   );
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.contains("Raw Data").click();
-      cy.contains("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
     });
 
     getNotebookStep("summarize")
@@ -691,10 +698,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.icon("play").should("not.be.visible");
       });
 
-    popover().findByTextEnsureVisible("Raw Data").click();
-    cy.get("@dataStep").icon("play").should("not.be.visible");
-    popover().findByTextEnsureVisible("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
 
+    cy.get("@dataStep").icon("play").should("be.visible");
     getNotebookStep("filter").icon("play").should("not.be.visible");
     getNotebookStep("summarize").icon("play").should("not.be.visible");
 
