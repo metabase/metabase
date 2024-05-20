@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
    [metabase.util.log :as log]
@@ -99,19 +100,21 @@
   (mt/with-temp
     [:model/Database {db-id :id} {:name "test-data"}
      :model/Table {table-id :id} {:name "name" :db_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)
-    (is (= [{:description nil,
-             :can_write false,
-             :name "name",
-             :parent_collection {},
-             :id table-id,
-             :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
-             :timestamp String,
-             :display_name "Name",
-             :model :table}]
-           (mt/with-test-user :rasta
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)'
+    (is true)
+    (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+      (is (= [{:description nil,
+               :can_write true,
+               :name "name",
+               :parent_collection {},
+               :id table-id,
+               :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
+               :timestamp String,
+               :display_name "Name",
+               :model :table}]
              (mapv fixup
-                   (recent-views/get-list (mt/user->id :rasta))))))))
+                   (mt/with-test-user :rasta
+                     (recent-views/get-list (mt/user->id :rasta)))))))))
 
 
 (deftest update-users-recent-views!-duplicates-test
@@ -149,7 +152,7 @@
                  :description nil,
                  :model :table,
                  :display_name "I am the table",
-                 :can_write false,
+                 :can_write true,
                  :database {:id "ID", :name "My DB", :initial_sync_status "incomplete"}}
                 {:id "ID",
                  :name "my collection",
@@ -180,13 +183,14 @@
                  :display "table",
                  :model :card}]
                (mt/with-test-user :rasta
-                 (->> (recent-views/get-list (mt/user->id :rasta))
-                      (mapv (fn [rv] (cond-> rv
-                                       true                                       (assoc :id "ID")
-                                       true                                       (dissoc :timestamp)
-                                       (-> rv :database :id)                      (assoc-in [:database :id] "ID")
-                                       (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
-                                       (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID"))))))))
+                 (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                   (->> (recent-views/get-list (mt/user->id :rasta))
+                        (mapv (fn [rv] (cond-> rv
+                                         true                                       (assoc :id "ID")
+                                         true                                       (dissoc :timestamp)
+                                         (-> rv :database :id)                      (assoc-in [:database :id] "ID")
+                                         (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
+                                         (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))))
         "After inserting 2 views of each model, we should have 2 views PER each model."))))
 
 (deftest most-recent-dashboard-view-test
@@ -382,7 +386,8 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (recent-views/get-list (mt/user->id :rasta)))))))))
+                                      (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (recent-views/get-list (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
              :dataset recent-views/*recent-views-stored-per-user-per-model*,
@@ -391,7 +396,8 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (recent-views/get-list (mt/user->id :rasta))))))
+                                (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                  (recent-views/get-list (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
 (deftest table-per-user-size-shrinks-or-grows-test
@@ -429,12 +435,16 @@
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
         (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 2}
                ;; There are 3 tables in recent_view, but 1 gets filtered out.
-               (frequencies (map :model  (mt/with-test-user :rasta (recent-views/get-list (mt/user->id :rasta)))))))
+               (frequencies (map :model
+                                 (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                   (mt/with-test-user :rasta (recent-views/get-list (mt/user->id :rasta))))))))
         (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
           (is (= 5
                  (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
           (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
                  ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
-                 (frequencies (map :model (mt/with-test-user :rasta
-                                            (recent-views/get-list (mt/user->id :rasta))))))))))))
+                 (frequencies (map :model
+                                   (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                     (mt/with-test-user :rasta
+                                       (recent-views/get-list (mt/user->id :rasta)))))))))))))

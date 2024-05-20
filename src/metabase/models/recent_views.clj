@@ -380,10 +380,10 @@
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
-    (when (and (mi/can-read? table)
-               ((complement #{:hidden "hidden"}) (:visibility_type table))
+    (when (and (not= "hidden" (:visibility_type table))
                (:database-name table)
-               (:active table))
+               (:active table)
+               (mi/can-read? table))
       {:id model_id
        :name (:name table)
        :description (:description table)
