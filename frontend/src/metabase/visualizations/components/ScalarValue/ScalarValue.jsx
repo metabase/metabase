@@ -11,6 +11,7 @@ import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useEmbeddingThemeOptions } from "metabase/hooks/use-embedding-theme-options";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
@@ -36,21 +37,33 @@ const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
 }) => {
-  const fontSize = useMemo(
-    () =>
-      findSize({
-        text: value,
-        targetHeight: height,
-        targetWidth: width,
-        fontFamily: fontFamily ?? "Lato",
-        fontWeight: 700,
-        unit: "rem",
-        step: 0.2,
-        min: 1,
-        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
-      }),
-    [fontFamily, gridSize, height, totalNumGridCols, value, width],
-  );
+  const { scalar: scalarTheme } = useEmbeddingThemeOptions();
+
+  const fontSize = useMemo(() => {
+    if (scalarTheme?.value?.fontSize) {
+      return scalarTheme.value?.fontSize;
+    }
+
+    return findSize({
+      text: value,
+      targetHeight: height,
+      targetWidth: width,
+      fontFamily: fontFamily ?? "Lato",
+      fontWeight: 700,
+      unit: "rem",
+      step: 0.2,
+      min: 1,
+      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+    });
+  }, [
+    fontFamily,
+    gridSize,
+    height,
+    totalNumGridCols,
+    value,
+    width,
+    scalarTheme?.value?.fontSize,
+  ]);
 
   return (
     <ScalarValueWrapper

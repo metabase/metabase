@@ -83,4 +83,11 @@ export interface MetabaseComponentTheme {
       backgroundColor?: string;
     };
   };
+
+  /** Numerical value displays */
+  scalar?: {
+    value?: {
+      fontSize?: string;
+    };
+  };
 }
