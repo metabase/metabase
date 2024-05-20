@@ -360,7 +360,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
   };
 
   onInputBlur = () => {
-    if (this.props.parseFreeformValue) {
+    if (this.props.updateOnInputBlur && this.props.parseFreeformValue) {
       const input = this.inputRef.current;
       const value = this.props.parseFreeformValue(input?.value);
       if (
