@@ -1391,6 +1391,25 @@
                        (set (rows-for-table table)))))
               (io/delete-file file))))))))
 
+(deftest append-duplicates-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should add new rows even if it is the same as the original upload."
+      (let [csv-rows    ["id,name" "10,Luke Skywalker" "20,Darth Vader"]
+            parsed-rows [[10 "Luke Skywalker"]
+                         [20 "Darth Vader"]]]
+        (with-upload-table!
+          [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
+                                                           (ordered-map/ordered-map
+                                                            :id int-type
+                                                            :name vchar-type))
+                                        :rows             parsed-rows})]
+          (let [file (csv-file-with csv-rows)]
+            (is (some? (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= (rows-with-auto-pk (concat parsed-rows parsed-rows))
+                     (rows-for-table table))))
+            (io/delete-file file)))))))
+
 (deftest ^:mb/once update-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
