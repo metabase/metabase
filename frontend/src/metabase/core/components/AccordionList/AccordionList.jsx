@@ -45,6 +45,8 @@ export default class AccordionList extends Component {
       fixedWidth: true,
       minHeight: 10,
     });
+
+    this.itemIcons = new WeakMap();
   }
 
   static propTypes = {
@@ -246,6 +248,19 @@ export default class AccordionList extends Component {
     }
     return selectedSection === sectionIndex;
   }
+
+  renderItemIcon = item => {
+    const { itemIcons } = this;
+    const cachedIcon = itemIcons.get(item);
+    if (cachedIcon) {
+      return cachedIcon;
+    }
+
+    const { renderItemIcon } = this.props;
+    const newIcon = renderItemIcon(item);
+    itemIcons.set(item, newIcon);
+    return newIcon;
+  };
 
   handleChange = item => {
     if (this.props.onChange) {
@@ -644,6 +659,7 @@ export default class AccordionList extends Component {
               {...this.props}
               row={row}
               sections={sections}
+              renderItemIcon={this.renderItemIcon}
               onChange={this.handleChange}
               searchText={this.state.searchText}
               onChangeSearchText={this.handleChangeSearchText}
@@ -721,6 +737,7 @@ export default class AccordionList extends Component {
                   style={style}
                   row={rows[index]}
                   sections={sections}
+                  renderItemIcon={this.renderItemIcon}
                   onChange={this.handleChange}
                   searchText={this.state.searchText}
                   onChangeSearchText={this.handleChangeSearchText}

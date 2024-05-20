@@ -242,6 +242,7 @@ export const AccordionListCell = ({
     const description = renderItemDescription(item);
     const extra = renderItemExtra(item, isSelected);
     const label = renderItemLabel ? renderItemLabel(item) : name;
+    const mixedIcons = icon != null && !section.items.every(renderItemIcon);
 
     content = (
       <ListCellItem
@@ -277,6 +278,7 @@ export const AccordionListCell = ({
                 CS.textDefault,
                 CS.flex,
                 CS.alignCenter,
+                { [CS.ml1]: mixedIcons },
               )}
             >
               {icon}
