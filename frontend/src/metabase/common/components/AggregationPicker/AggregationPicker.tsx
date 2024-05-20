@@ -346,8 +346,11 @@ function renderItemIcon(item: ListItem, hasOperators: boolean) {
   }
 
   return (
-    <Box component="span" ml={hasOperators ? "sm" : undefined}>
-      <Icon name={item.icon} style={{ color: color("summarize") }} />
+    <Box ml={hasOperators ? "sm" : undefined}>
+      <Icon
+        name={item.icon}
+        style={{ display: "block", color: color("summarize") }}
+      />
     </Box>
   );
 }
