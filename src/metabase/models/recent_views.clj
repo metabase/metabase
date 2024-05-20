@@ -195,9 +195,9 @@
                          :report_card.id
                          :report_card.display
                          [:mr.status :moderated-status]
-                         [:c.id :collection-id]
-                         [:c.name :collection-name]
-                         [:c.authority_level :collection-authority-level]]
+                         [:c.id :collection_id]
+                         [:c.name :collection_name]
+                         [:c.authority_level :collection_authority_level]]
                 :where [:in :report_card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
@@ -209,18 +209,18 @@
                              [:= :c.id :report_card.collection_id]
                              [:= :c.archived false]]]})))
 
-(defn- fill-parent-coll [report-card]
-  (if (:collection-id report-card)
-    {:id (:collection-id report-card)
-     :name (:collection-name report-card)
-     :authority_level (:collection-authority-level report-card)}
+(defn- fill-parent-coll [model-object]
+  (if (:collection_id model-object)
+    {:id (:collection_id model-object)
+     :name (:collection_name model-object)
+     :authority_level (:collection_authority_level model-object)}
     (root-coll)))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
                    (mi/can-read? model_object)
                    ;; The parent collection exists:
-                   (:collection-name model_object)
+                   (:collection_name model_object)
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
@@ -236,7 +236,7 @@
   (when-let [dataset (and
                       (mi/can-read? model_object)
                       ;; If the parent collection no longer exists, there won't be a name.
-                      (:collection-name model_object)
+                      (:collection_name model_object)
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
@@ -261,9 +261,9 @@
                          :dash.description
                          :dash.archived
                          :dash.trashed_from_collection_id
-                         [:c.id :collection-id]
-                         [:c.name :collection-name]
-                         [:c.authority_level :collection-authority-level]]
+                         [:c.id :collection_id]
+                         [:c.name :collection_name]
+                         [:c.authority_level :collection_authority_level]]
                 :from [[:report_dashboard :dash]]
                 :where [:in :dash.id dashboard-ids]
                 :left-join [[:collection :c]
@@ -273,7 +273,7 @@
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
-                            (:collection-name model_object)
+                            (:collection_name model_object)
                             (ellide-archived model_object))]
     {:id model_id
      :name (:name dashboard)
@@ -318,7 +318,7 @@
      :model :collection
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
-     :authority_level (:authority_level collection)
+     :authority_level (some-> (:authority_level collection) name)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
 ;; == Recent Tables ==
