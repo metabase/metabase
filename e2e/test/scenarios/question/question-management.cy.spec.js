@@ -207,9 +207,7 @@ describe(
 
                 openCommandPalette();
                 commandPalette().within(() => {
-                  cy.findByRole("option", { name: /recent/i }).should(
-                    "not.exist",
-                  );
+                  cy.findByText("Our analytics").should("not.exist");
                 });
 
                 // Check page for archived questions
