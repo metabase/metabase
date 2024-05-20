@@ -63,6 +63,7 @@ const ALL_MODELS = [
   "dashboard",
   "dataset",
   "card",
+  "metric",
   "snippet",
   "pulse",
   "collection",

@@ -1,6 +1,6 @@
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
-import { model } from "./models";
+import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 
 type UrlableModel = {
@@ -21,6 +21,8 @@ export function modelToUrl(item: UrlableModel) {
       });
     case "dataset":
       return model(item);
+    case "metric":
+      return metric(item);
     case "dashboard":
       return dashboard(item);
     case "table":

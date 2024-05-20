@@ -12,6 +12,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
+  describeOSS,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
@@ -413,6 +414,38 @@ describe("scenarios > notebook > data source", () => {
           .parents("button")
           .and("have.attr", "aria-selected", "true");
       });
+    });
+  });
+});
+
+describeOSS("scenarios > notebook > data source", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("should not show saved questions if only models exist (metabase#25142)", () => {
+    createQuestion({
+      name: "GUI Model",
+      query: { "source-table": REVIEWS_ID, limit: 1 },
+      display: "table",
+      type: "model",
+    });
+
+    startNewQuestion();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search for some data…");
+      cy.findAllByTestId("data-bucket-list-item")
+        .as("sources")
+        .should("have.length", 2);
+      cy.get("@sources")
+        .first()
+        .should("contain", "Models")
+        .and("have.attr", "aria-selected", "false");
+      cy.get("@sources")
+        .last()
+        .should("contain", "Raw Data")
+        .and("have.attr", "aria-selected", "false");
     });
   });
 });

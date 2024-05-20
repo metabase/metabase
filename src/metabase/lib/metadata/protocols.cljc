@@ -49,8 +49,8 @@
   internals can be tucked away here in MLv2.")
 
   (metadatas-for-table [metadata-provider metadata-type table-id]
-    "Return active (non-archived) metadatas associated with a particular Table, either Fields, LegacyMetrics, or
-  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/legacy-metric`, or
+    "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
+  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, ':metadata/legacy-metric',
   `:metadata/segment`.")
 
   (setting [metadata-provider setting-key]
