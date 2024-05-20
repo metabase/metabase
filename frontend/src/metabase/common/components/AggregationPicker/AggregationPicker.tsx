@@ -98,7 +98,7 @@ export function AggregationPicker({
     [query, stageIndex, operator],
   );
 
-  const sections = useMemo(() => {
+  const { items, hasOperators } = useMemo(() => {
     const items: ListItem[] = [];
     const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
@@ -131,7 +131,7 @@ export function AggregationPicker({
       });
     }
 
-    return [{ key: "items", items }];
+    return { items, hasOperators };
   }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
@@ -242,9 +242,10 @@ export function AggregationPicker({
   return (
     <Box className={className} c="summarize" py={"sm"}>
       <AccordionList
-        sections={sections}
+        sections={[{ items }]}
         onChange={handleChange}
         itemIsSelected={checkIsItemSelected}
+        renderItemIcon={(item: ListItem) => renderItemIcon(item, hasOperators)}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
@@ -336,4 +337,16 @@ function getMetricListItem(
 
 function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
   return !!columnInfo.selected;
+}
+
+function renderItemIcon(item: ListItem, hasOperators: boolean) {
+  if (!item.icon) {
+    return undefined;
+  }
+
+  return (
+    <Box component="span" ml={hasOperators ? "sm" : undefined}>
+      <Icon name={item.icon} />
+    </Box>
+  );
 }
