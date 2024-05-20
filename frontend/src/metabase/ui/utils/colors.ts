@@ -40,6 +40,7 @@ const CUSTOM_COLORS = [
   "white",
   "summarize",
   "accent5",
+  "shadow",
 ];
 
 function getColorShades(color: string): ColorShades {
