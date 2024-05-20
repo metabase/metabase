@@ -37,7 +37,12 @@ export const dataPickerValueFromCard = (card: Card): DataPickerValue => {
   return {
     id: card.id,
     name: card.name,
-    model: card.type === "model" ? "dataset" : "card",
+    model:
+      card.type === "model"
+        ? "dataset"
+        : card.type === "metric"
+        ? "metric"
+        : "card",
   };
 };
 
@@ -78,7 +83,11 @@ export const dataPickerValueFromJoinable = (
     return {
       id: pickerInfo.cardId,
       name: displayInfo.displayName,
-      model: displayInfo.isModel ? "dataset" : "card",
+      model: displayInfo.isModel
+        ? "dataset"
+        : displayInfo.isMetric
+        ? "metric"
+        : "card",
     };
   }
 
@@ -154,16 +163,22 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   return titleize(humanize(schemaName));
 };
 
+export const isQuestionItem = (
+  value: DataPickerValue | undefined,
+): value is QuestionItem => {
+  return value?.model === "card";
+};
+
 export const isModelItem = (
   value: DataPickerValue | undefined,
 ): value is ModelItem => {
   return value?.model === "dataset";
 };
 
-export const isQuestionItem = (
+export const isMetricItem = (
   value: DataPickerValue | undefined,
-): value is QuestionItem => {
-  return value?.model === "card";
+): value is ModelItem => {
+  return value?.model === "metric";
 };
 
 export const isTableItem = (
@@ -173,7 +188,7 @@ export const isTableItem = (
 };
 
 export const isValidValueItem = (model: SearchModel): boolean => {
-  return ["dataset", "card", "table"].includes(model);
+  return ["table", "card", "dataset", "metric"].includes(model);
 };
 
 export const createShouldShowItem = (databaseId?: DatabaseId) => {
@@ -182,10 +197,12 @@ export const createShouldShowItem = (databaseId?: DatabaseId) => {
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasQuestionsOrModels =
-        contents.includes("card") || contents.includes("dataset");
+      const hasCards =
+        contents.includes("card") ||
+        contents.includes("dataset") ||
+        contents.includes("metric");
 
-      if (item.id !== "root" && !item.is_personal && !hasQuestionsOrModels) {
+      if (item.id !== "root" && !item.is_personal && !hasCards) {
         return false;
       }
     }

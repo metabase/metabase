@@ -10,6 +10,7 @@ import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntity
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
+  type navigateToNewCardFromDashboard,
   setArchivedDashboard,
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
@@ -91,7 +92,7 @@ type DashboardProps = {
   isDirty: boolean;
   dashboard: IDashboard;
   dashcardData: DashCardDataMap;
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
   databases: Record<DatabaseId, Database>;
   editingParameter?: Parameter | null;
   parameters: UiParameter[];
@@ -139,6 +140,7 @@ type DashboardProps = {
   addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
+  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
@@ -438,13 +440,19 @@ function DashboardInner(props: DashboardProps) {
       );
     }
     return (
-      // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
-      // TODO: Check if onEditingChange is being used.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       <DashboardGridConnected
-        {...props}
+        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
+        isFullscreen={props.isFullscreen}
+        isEditingParameter={props.isEditingParameter}
+        isEditing={props.isEditing}
+        parameterValues={props.parameterValues}
+        dashcardData={props.dashcardData}
+        dashboard={props.dashboard}
+        slowCards={props.slowCards}
+        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
+        selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
       />
     );

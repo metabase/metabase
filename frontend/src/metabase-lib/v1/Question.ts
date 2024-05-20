@@ -357,7 +357,9 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
+    return isNative
+      ? this.legacyQuery().canRun()
+      : Lib.canRun(this.query(), this.type());
   }
 
   canWrite(): boolean {

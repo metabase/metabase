@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
+   [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
@@ -590,8 +591,8 @@
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (mbql.normalize/normalize original-query)
-               (mbql.normalize/normalize query))
+       (and (= (compatibility/normalize-dataset-query original-query)
+               (compatibility/normalize-dataset-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
@@ -970,7 +971,8 @@ saved later when it is ready."
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
         (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at))
+        (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at
+                :dataset_query_metrics_v2_migration_backup))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

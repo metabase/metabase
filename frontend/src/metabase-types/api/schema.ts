@@ -1,11 +1,10 @@
 import type { WritebackAction } from "./actions";
 import type { Alert } from "./alert";
-import type { Card } from "./card";
+import type { Card, CardId } from "./card";
 import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Field, FieldDimension, FieldId } from "./field";
-import type { Metric, MetricId } from "./metric";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type {
@@ -46,7 +45,7 @@ export interface NormalizedTable
   fields?: FieldId[];
   fks?: NormalizedForeignKey[];
   segments?: SegmentId[];
-  metrics?: MetricId[];
+  metrics?: CardId[];
   schema?: SchemaId;
   schema_name?: SchemaName;
 }
@@ -72,10 +71,6 @@ export interface NormalizedField
 }
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {
-  table?: TableId;
-}
-
-export interface NormalizedMetric extends Omit<Metric, "table"> {
   table?: TableId;
 }
 

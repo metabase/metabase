@@ -138,7 +138,7 @@
     [:id [:int {:min 1}]]
     [:name :string]
     [:description [:maybe :string]]
-    [:model [:enum :dataset :card :dashboard :collection :table]]
+    [:model [:enum :dataset :card :metric :dashboard :collection :table]]
     [:can_write :boolean]
     [:timestamp :string]]
    [:multi {:dispatch :model}
@@ -149,6 +149,10 @@
     [:dataset [:map
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
+    [:metric [:map
+              [:parent_collection ::pc]
+              [:display :string]
+              [:moderated_status [:enum "verified" nil]]]]
     [:dashboard [:map [:parent_collection ::pc]]]
     [:table [:map
              [:display_name :string]
@@ -168,7 +172,7 @@
   Sometimes we get an invalid or inconsistent recent view record. (E.g. the parent collection for an item no longer
   exists). In these cases we simply do not include the value in the recent views response."
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
-    (or (get {"model" :dataset "question" :card} card_type)
+    (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
         (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
@@ -217,7 +221,7 @@
   (if (:collection_id model-object)
     {:id (:collection_id model-object)
      :name (:collection_name model-object)
-     :authority_level (:collection_authority_level model-object)}
+     :authority_level (some-> (:collection_authority_level model-object) name)}
     (root-coll)))
 
 (defn- parent-collection-valid?
@@ -259,6 +263,25 @@
      ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
+
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (parent-collection-valid? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (some-> metric :display name)
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (if (:collection-id metric)
+                          {:id (:collection-id metric)
+                           :name (:collection-name metric)
+                           :authority_level (:collection-authority-level metric)}
+                          (root-coll))}))
 
 ;; ================== Recent Dashboards ==================
 
@@ -346,7 +369,12 @@
                        [:db.id :database-id]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
-              :where (if (seq table-ids) [:in :t.id table-ids] [])
+              :where (let [base-condition [:or
+                                           [:= :visibility_type nil]
+                                           [:!= :visibility_type "hidden"]]]
+                       (if (seq table-ids)
+                         [:and base-condition [:in :t.id table-ids]]
+                         base-condition))
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
@@ -411,7 +439,5 @@
   [user-id]
   (if-let [views (not-empty (do-query user-id))]
     (let [entity->id->data (get-entity->id->data views)]
-      (->> views
-           (map (partial post-process entity->id->data))
-           (remove nil?)))
+      (keep (partial post-process entity->id->data) views))
     []))

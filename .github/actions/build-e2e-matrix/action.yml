@@ -37,6 +37,7 @@ runs:
             ["embedding", {} ],
             ["filters", {} ],
             ["joins", {} ],
+            ["metrics", {} ],
             ["models", {} ],
             ["native", {} ],
             ["native-filters", {} ],

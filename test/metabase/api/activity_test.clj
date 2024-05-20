@@ -106,6 +106,11 @@
                                     :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
+                                    :visualization_settings {}}
+                 Card      metric  {:name                   "rand-metric-name"
+                                    :type                   :metric
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
                                     :visualization_settings {}}]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
@@ -120,11 +125,13 @@
                                          {:topic :event/dashboard-read :event {:object dash}}
                                          {:topic :event/table-read :event {:object table1}}
                                          {:topic :event/card-query :event {:card-id (:id archived)}}
-                                         {:topic :event/table-read :event {:object hidden-table}}]]
+                                         {:topic :event/table-read :event {:object hidden-table}}
+                                         {:topic :event/card-query :event {:card-id (:id metric)}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
-              (is (= [{:model "table" :id (u/the-id table1) :name "rand-name"}
+              (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+                      {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                       {:model "card" :id (u/the-id card1) :name "rand-name"}
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
@@ -185,8 +192,13 @@
                                     :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
+                                    :visualization_settings {}}
+                 Card      metric  {:name                   "rand-name"
+                                    :type                   :metric
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
                                     :visualization_settings {}}]
-    (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset]))]
+    (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric]))]
       (testing "Items viewed by multiple users are never duplicated in the popular items list."
         (mt/with-model-cleanup [ViewLog QueryExecution]
           (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
@@ -205,10 +217,10 @@
           (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta) "card"      (:id card1)]
                           [(mt/user->id :rasta) "table"     (:id table1)]
-                          [(mt/user->id :rasta) "card"      (:id dataset)]])
+                          [(mt/user->id :rasta) "card"      (:id metric)]])
           (is (= [["dashboard" (:id dash1)]
                   ["card" (:id card1)]
-                  ["dataset" (:id dataset)]
+                  ["metric" (:id metric)]
                   ["table" (:id table1)]]
                  ;; all views are from :rasta, but :crowberto can still see popular items
                  (->> (mt/user-http-request :crowberto :get 200 "activity/popular_items")

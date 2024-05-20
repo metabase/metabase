@@ -5,6 +5,7 @@ export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
+  "metric",
   "dashboard",
   "collection",
 ] as const;
@@ -29,7 +30,7 @@ export interface RecentTableItem extends BaseRecentItem {
 }
 
 export interface RecentCollectionItem extends BaseRecentItem {
-  model: "collection" | "dashboard" | "dataset" | "card";
+  model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
   parent_collection: {
     id: number | null;

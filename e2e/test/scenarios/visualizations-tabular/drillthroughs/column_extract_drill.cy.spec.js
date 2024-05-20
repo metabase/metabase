@@ -236,7 +236,7 @@ describeWithSnowplow("extract action", () => {
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({ formula: "+ 2" });
+      enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
       popover().button("Update").click();
       visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");

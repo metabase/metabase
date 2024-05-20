@@ -21,6 +21,7 @@ import type {
 } from "../types";
 import {
   createShouldShowItem,
+  isMetricItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
@@ -36,13 +37,16 @@ interface Props {
   databaseId?: DatabaseId;
   title: string;
   value: DataPickerValue | undefined;
+  models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
 
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -56,11 +60,14 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
+  models = ["table", "card", "dataset"],
   onChange,
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasModels, hasQuestions } = useAvailableData({ databaseId });
+  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
+    databaseId,
+  });
 
   const shouldShowItem = useMemo(() => {
     return createShouldShowItem(databaseId);
@@ -100,7 +107,7 @@ export const DataPickerModal = ({
     hasModels && hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
-          model: "dataset",
+          model: "dataset" as const,
           icon: "model",
           element: (
             <QuestionPicker
@@ -113,9 +120,25 @@ export const DataPickerModal = ({
           ),
         }
       : undefined,
+    hasMetrics && hasNestedQueriesEnabled
+      ? {
+          displayName: t`Metrics`,
+          model: "metric" as const,
+          icon: "metric",
+          element: (
+            <QuestionPicker
+              initialValue={isMetricItem(value) ? value : undefined}
+              models={METRIC_PICKER_MODELS}
+              options={options}
+              shouldShowItem={shouldShowItem}
+              onItemSelect={handleCardChange}
+            />
+          ),
+        }
+      : undefined,
     {
       displayName: t`Tables`,
-      model: "table",
+      model: "table" as const,
       icon: "table",
       element: (
         <TablePicker
@@ -128,7 +151,7 @@ export const DataPickerModal = ({
     hasQuestions && hasNestedQueriesEnabled
       ? {
           displayName: t`Saved questions`,
-          model: "card",
+          model: "card" as const,
           icon: "folder",
           element: (
             <QuestionPicker
@@ -143,7 +166,7 @@ export const DataPickerModal = ({
       : undefined,
   ].filter(
     (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null,
+      tab != null && models.includes(tab.model),
   );
 
   return (
