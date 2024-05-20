@@ -50,6 +50,12 @@ export interface MetabaseColors {
 
   /** Color used for aggregations and breakouts context */
   summarize?: string;
+
+  /** Color used to indicate successful actions and positive values/trends */
+  positive?: string;
+
+  /** Color used to indicate dangerous actions and negative values/trends */
+  negative?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

@@ -69,10 +69,10 @@ const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
   "text-tertiary": "text-light",
   background: "bg-white",
   "background-hover": "bg-light",
+  positive: "success",
+  negative: "danger",
 
   // shadow: "shadow",
-  // positive: "success",
-  // negative: "danger",
   // warning: "warning",
 
   // white
