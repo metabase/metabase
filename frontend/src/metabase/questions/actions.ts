@@ -26,7 +26,8 @@ export const loadMetadataForCard =
 export const loadMetadataForTable =
   (tableId: TableId, options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+    const dependencies = [{ type: "table", id: tableId }];
+    await dispatch(loadMetadataForDependentItems(dependencies));
     const metadata = getMetadata(getState());
     const table = metadata.table(tableId);
     if (!table?.db_id) {
