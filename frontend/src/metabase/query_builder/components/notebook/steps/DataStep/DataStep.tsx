@@ -7,13 +7,11 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { loadMetadataForTable } from "metabase/questions/actions";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -50,18 +48,8 @@ export const DataStep = ({
   const canSelectTableColumns = table && isRaw && !readOnly;
 
   const handleTableChange = async (tableId: TableId) => {
-    // we need to populate question metadata with selected table
-    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-
-    if (typeof tableId === "string") {
-      await dispatch(
-        Questions.actions.fetch({
-          id: getQuestionIdFromVirtualTableId(tableId),
-        }),
-      );
-    }
-
-    // using questionRef because question is most likely stale by now
+    await dispatch(loadMetadataForTable(tableId));
+    // using questionRef to access up-to-date metadata
     const metadata = questionRef.current.metadata();
     const table = checkNotNull(metadata.table(tableId));
     const metadataProvider = Lib.metadataProvider(table.db_id, metadata);

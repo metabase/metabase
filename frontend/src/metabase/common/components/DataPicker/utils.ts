@@ -43,7 +43,7 @@ export const getDataPickerValue = (
     return undefined;
   }
 
-  if (typeof pickerInfo.cardId === "number") {
+  if (pickerInfo.cardId != null) {
     return {
       id: pickerInfo.cardId,
       name: displayInfo.displayName,
