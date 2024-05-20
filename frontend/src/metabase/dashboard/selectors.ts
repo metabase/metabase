@@ -17,18 +17,16 @@ import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
-  DashboardId,
-  DashCardId,
   DashboardCard,
+  DashboardId,
   DashboardParameterMapping,
+  DashCardId,
   ParameterId,
-  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
-  StoreDashboard,
 } from "metabase-types/store";
 
 import { isQuestionCard, isQuestionDashCard } from "./utils";
@@ -425,16 +423,12 @@ export const getSelectedTabId = createSelector(
   [getDashboard, state => state.dashboard.selectedTabId],
   (dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard);
+      return dashboard.tabs?.[0]?.id || null;
     }
 
     return selectedTabId;
   },
 );
-
-export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
-  return dashboard.tabs?.[0]?.id || null;
-}
 
 export const getParameterMappingsBeforeEditing = createSelector(
   [getDashboardBeforeEditing],
