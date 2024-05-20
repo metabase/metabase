@@ -17,20 +17,22 @@ export const useRefreshDashboard = ({
   const dispatch = useDispatch();
 
   const refreshDashboard = async () => {
-    await dispatch(
-      fetchDashboard({
-        dashId: dashboardId,
-        queryParams: queryParams,
-        options: { preserveParameters: true },
-      }),
-    );
-    dispatch(
-      fetchDashboardCardData({
-        isRefreshing: true,
-        reload: true,
-        clearCache: false,
-      }),
-    );
+    if (dashboardId) {
+      await dispatch(
+        fetchDashboard({
+          dashId: dashboardId,
+          queryParams: queryParams,
+          options: { preserveParameters: true },
+        }),
+      );
+      dispatch(
+        fetchDashboardCardData({
+          isRefreshing: true,
+          reload: true,
+          clearCache: false,
+        }),
+      );
+    }
   };
 
   return { refreshDashboard };

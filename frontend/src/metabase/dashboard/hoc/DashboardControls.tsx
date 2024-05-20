@@ -1,4 +1,6 @@
 import type { ComponentType } from "react";
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
@@ -10,6 +12,7 @@ import type {
   DashboardControlsPassedProps,
   DashboardControlsProps,
 } from "metabase/dashboard/hoc/types";
+import { useDispatch } from "metabase/lib/redux";
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
@@ -24,12 +27,21 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     location,
     ...props
   }: DashboardControlsProps) {
+    const dispatch = useDispatch();
+
     const queryParams = location.query;
 
     const { refreshDashboard } = useRefreshDashboard({
       dashboardId,
       queryParams,
     });
+
+    // remove all params if the dashboardId changes
+    useEffect(() => {
+      if (dashboardId) {
+        dispatch(replace(location.pathname));
+      }
+    }, [dashboardId, dispatch, location.pathname]);
 
     const {
       bordered,

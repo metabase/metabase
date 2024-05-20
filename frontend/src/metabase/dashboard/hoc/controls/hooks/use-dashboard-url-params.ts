@@ -54,6 +54,17 @@ export const useDashboardUrlParams = ({
     setFont,
   } = useDashboardDisplayOptions({ onRefresh });
 
+  // these hash options are read-only - we can't control them through the UI.
+  // They're provided through embedding options via the URL hash.
+  const readOnlyHashOptions: DashboardUrlHashOptions = useMemo(() => {
+    return pick(parseHashOptions(location.hash), [
+      "bordered",
+      "font",
+      "titled",
+      "hide_download_button",
+    ]) as DashboardUrlHashOptions;
+  }, [location.hash]);
+
   // These hash options are writable - we can control them through the UI,
   // so we need to keep them in sync with the URL hash
   const hashOptions: DashboardUrlHashOptions = useMemo(() => {
@@ -69,12 +80,12 @@ export const useDashboardUrlParams = ({
 
   // TODO: use useEffect to simplify state management
   const stateOptions = useMemo(() => {
-    return removeEmptyOptions({
+    return {
       fullscreen: isFullscreen,
       theme,
       hide_parameters: hideParameters,
       refresh: refreshPeriod,
-    }) as DashboardUrlHashOptions;
+    } as DashboardUrlHashOptions;
   }, [hideParameters, isFullscreen, refreshPeriod, theme]);
 
   const prevStateOptions = usePrevious(stateOptions);
@@ -116,7 +127,10 @@ export const useDashboardUrlParams = ({
 
   useEffect(() => {
     if (!isEqual(stateOptions, prevStateOptions)) {
-      const hash = stringifyHashOptions({ ...hashOptions, ...stateOptions });
+      const hash = stringifyHashOptions({
+        ...readOnlyHashOptions,
+        ...removeEmptyOptions({ ...hashOptions, ...stateOptions }),
+      });
       dispatch(
         replace({
           ...location,
@@ -124,7 +138,14 @@ export const useDashboardUrlParams = ({
         }),
       );
     }
-  }, [dispatch, hashOptions, location, prevStateOptions, stateOptions]);
+  }, [
+    dispatch,
+    hashOptions,
+    location,
+    prevStateOptions,
+    readOnlyHashOptions,
+    stateOptions,
+  ]);
 
   return {
     isFullscreen,
