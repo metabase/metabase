@@ -9,7 +9,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   UiParameter,
   FieldFilterUiParameter,
-  ParameterWithTarget,
 } from "metabase-lib/v1/parameters/types";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
@@ -208,28 +207,6 @@ function buildFieldFilterUiParameter(
     fields: _.uniq(fields, field => field.id),
     hasVariableTemplateTagTarget,
   };
-}
-
-export function getParametersMappedToDashcard(
-  dashboard: Dashboard,
-  dashcard: QuestionDashboardCard,
-): ParameterWithTarget[] {
-  const { parameters } = dashboard;
-  const { parameter_mappings } = dashcard;
-  return (parameters || [])
-    .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings || [], {
-        parameter_id: parameter.id,
-      });
-
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
 }
 
 export function hasMatchingParameters({
