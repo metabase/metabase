@@ -9,16 +9,24 @@ export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) =>
+export const loadMetadataForCard = (
+  card: Card,
+  options?: LoadMetadataOptions,
+) => loadMetadataForCards([card], options);
+
+export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
-      const question = new Question(card, getMetadata(getState()));
-      return Lib.dependentMetadata(
-        question.query(),
-        question.id(),
-        question.type(),
-      );
+      return cards
+        .map(card => new Question(card, getMetadata(getState())))
+        .flatMap(question =>
+          Lib.dependentMetadata(
+            question.query(),
+            question.id(),
+            question.type(),
+          ),
+        );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
   };
