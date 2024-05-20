@@ -1,6 +1,9 @@
+import { useMount } from "react-use";
+
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { UpsellPillComponent } from "./Upsells.styled";
+import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
 export function _UpsellPill({
@@ -20,8 +23,12 @@ export function _UpsellPill({
     source,
   });
 
+  useMount(() => {
+    trackUpsellViewed({ source, campaign });
+  });
+
   return (
-    <UpsellPillComponent href={url}>
+    <UpsellPillComponent href={url} onClickCapture={() => trackUpsellClicked({ source, campaign })} data-testid="upsell-pill">
       <UpsellGem />
       {children}
     </UpsellPillComponent>
