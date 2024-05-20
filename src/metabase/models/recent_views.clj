@@ -219,11 +219,19 @@
      :authority_level (:collection_authority_level model-object)}
     (root-coll)))
 
+(defn- parent-collection-valid?
+  "Returns true when a parent collection actually exists for this item.
+
+  Careful: the root collection will have a nil `colelction_id` and a nil `collection_name`. We return false when the
+  collection has a `collection_id`, and a nil `collection_name`."
+  [{:keys [collection_id collection_name]}]
+  (not (and collection_id (nil? collection_name))))
+
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
                    (mi/can-read? model_object)
                    ;; The parent collection exists:
-                   (:collection_name model_object)
+                   (parent-collection-valid? model_object)
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
@@ -239,7 +247,7 @@
   (when-let [dataset (and
                       (mi/can-read? model_object)
                       ;; If the parent collection no longer exists, there won't be a name.
-                      (:collection_name model_object)
+                      (parent-collection-valid? model_object)
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
@@ -276,7 +284,7 @@
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
-                            (:collection_name model_object)
+                            (parent-collection-valid? model_object)
                             (ellide-archived model_object))]
     {:id model_id
      :name (:name dashboard)
