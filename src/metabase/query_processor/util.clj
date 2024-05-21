@@ -30,7 +30,7 @@
    can access the default value."
   [{{:keys [executed-by query-hash], :as _info} :info, query-type :type}]
   (str "Metabase" (when executed-by
-                    (assert (instance? (Class/forName "[B") query-hash))
+                    (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
                     (format ":: userID: %s queryType: %s queryHash: %s"
                             executed-by
                             (case (keyword query-type)
