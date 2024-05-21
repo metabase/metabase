@@ -95,6 +95,15 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
+  it("should accept values with spaces in them", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    await userEvent.type(input, "foo bar,", {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenCalledWith(["foo bar"]);
+    expect(input).toHaveValue("");
+  });
+
   it("should not accept values when entering a comma if they are not accepted by shouldCreate", async () => {
     const { input, onChange } = setup({
       data: EXAMPLE_DATA,

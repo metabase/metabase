@@ -63,9 +63,9 @@ export function MultiAutocomplete({
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
     const text = event.clipboardData.getData("text");
     const values = parseValues(text);
-    const validValues = values.filter(value =>
-      shouldCreate?.(value, selectedValues),
-    );
+    const validValues = values
+      .map(value => value.trim())
+      .filter(value => shouldCreate?.(value, selectedValues));
 
     if (validValues.length > 0) {
       event.preventDefault();
@@ -77,9 +77,9 @@ export function MultiAutocomplete({
 
   const handleSearchChange = (newSearchValue: string) => {
     const values = parseValues(newSearchValue);
-    const validValues = values.filter(value =>
-      shouldCreate?.(value, lastSelectedValues),
-    );
+    const validValues = values
+      .map(value => value.trim())
+      .filter(value => shouldCreate?.(value, lastSelectedValues));
 
     const last = values.at(-1);
 
@@ -152,5 +152,5 @@ function defaultShouldCreate(query: string, selectedValues: string[]) {
 }
 
 function parseValues(text: string): string[] {
-  return Array.from(new Set(text.split(/[\n,]/g).map(value => value.trim())));
+  return Array.from(new Set(text.split(/[\n,]/g)));
 }
