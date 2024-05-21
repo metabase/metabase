@@ -17,15 +17,15 @@
   []
   (format "'%s'" (gensym "metabase_sentinel_")))
 
-(defn- sentinel-variable
+(defn- gen-variable-sentinel
   [raw-query]
   (first-unique raw-query gensymed-string))
 
-(defn- sentinel-field-filter
+(defn- gen-field-filter-sentinel
   [raw-query]
   (first-unique raw-query #(apply format "(%s = %s)" (repeat 2 (gensymed-string)))))
 
-(defn- sentinel-table
+(defn- gen-table-sentinel
   [raw-query]
   (first-unique raw-query #(str (gensym "metabase_sentinel_table_"))))
 
@@ -38,7 +38,7 @@
   (assoc all-subs new-sub (braceify (:k token))))
 
 (defn- parse-tree->clean-query
-  [raw-query tokens params->values]
+  [raw-query tokens param->value]
   (loop
       [[token & rest] tokens
        query-so-far   ""
@@ -52,11 +52,11 @@
       (recur rest (str query-so-far token) substitutions)
 
       :else
-      (let [v         (params->values (:k token))
+      (let [v         (param->value (:k token))
             card-ref? (params/ReferencedCardQuery? v)]
         (cond
           card-ref?
-          (let [sub (sentinel-table raw-query)]
+          (let [sub (gen-table-sentinel raw-query)]
             (recur rest
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
@@ -64,13 +64,13 @@
           ;; Plain variable
           (and (params/Param? token)
                (not card-ref?))
-          (let [sub (sentinel-variable raw-query)]
+          (let [sub (gen-variable-sentinel raw-query)]
             (recur rest
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
 
           (params/FieldFilter? token)
-          (let [sub (sentinel-field-filter raw-query)]
+          (let [sub (gen-field-filter-sentinel raw-query)]
             (recur rest
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
@@ -117,8 +117,8 @@
   [query renames]
   (let [raw-query                    (get-in query [:native :query])
         parsed-query                 (params.parse/parse raw-query)
-        params->values               (param-values query)
+        param->value                 (param-values query)
         {clean-query :query
-         tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query params->values)
+         tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
         renamed-query                (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
     (replace-all renamed-query tt-subs)))

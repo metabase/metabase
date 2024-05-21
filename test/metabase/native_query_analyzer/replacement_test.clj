@@ -64,4 +64,4 @@
       (is (= (format "SELECT SUBTOTAL FROM {{#%s}} LIMIT 3" card-id)
              (replace-names (q (format "SELECT TOTAL FROM {{#%s}} LIMIT 3" card-id))
                             {:columns {"TOTAL" "SUBTOTAL"}
-                             :TABLES  {"ORDERS" "PURCHASES"}}))))))
+                             :tables  {"ORDERS" "PURCHASES"}}))))))
