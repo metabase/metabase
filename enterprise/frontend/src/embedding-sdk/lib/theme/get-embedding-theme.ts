@@ -10,7 +10,10 @@ import type {
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
-import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
+import {
+  DEFAULT_EMBEDDED_COMPONENT_THEME,
+  EMBEDDING_SDK_COMPONENTS_OVERRIDES,
+} from "./default-component-theme";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
 const getFontFamily = (theme: MetabaseTheme) =>
@@ -37,6 +40,8 @@ export function getEmbeddingThemeOverride(
       ...components,
       ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
+
+    components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
   };
 
   if (theme.colors) {

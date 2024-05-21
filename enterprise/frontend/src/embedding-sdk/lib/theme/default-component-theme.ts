@@ -1,6 +1,8 @@
+import type { MantineThemeOverride } from "@mantine/core";
 import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 
 /**
  * Default theme options for Metabase components.
@@ -32,3 +34,15 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     },
   },
 );
+
+export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
+  {
+    HoverCard: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+        },
+      },
+    },
+  };
