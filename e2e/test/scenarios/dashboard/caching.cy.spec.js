@@ -16,6 +16,10 @@ describeEE("scenarios > dashboard > caching", () => {
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
+  /**
+   * @note There is a similar test for the cache config form that appears in the question sidebar.
+   * It's in the Cypress describe block labeled "scenarios > question > caching"
+   */
   it("can configure cache for a dashboard, on an enterprise instance", () => {
     cy.intercept("PUT", "/api/cache").as("putCacheConfig");
     visitDashboard(ORDERS_DASHBOARD_ID);
@@ -24,12 +28,12 @@ describeEE("scenarios > dashboard > caching", () => {
 
     rightSidebar().within(() => {
       cy.findByText(/Caching policy/).within(() => {
-        cy.findByRole("button", { name: /Use default/ }).click();
+        cy.findByText(/Use default/).click();
       });
       cy.findByRole("heading", { name: /Caching settings/ }).click();
       cy.findByRole("radio", { name: /Duration/ }).click();
       cy.findByLabelText("Cache results for this many hours").type("48");
-      cy.findByRole("button", { name: /Save changes/ }).click();
+      cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
       cy.findByText(/Caching policy/).within(() => {
         cy.log(
@@ -42,7 +46,7 @@ describeEE("scenarios > dashboard > caching", () => {
       });
       cy.findByRole("radio", { name: /Adaptive/ }).click();
       cy.findByLabelText(/Minimum query duration/).type("999");
-      cy.findByRole("button", { name: /Save changes/ }).click();
+      cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
       cy.findByText(/Caching policy/).within(() => {
         cy.log(

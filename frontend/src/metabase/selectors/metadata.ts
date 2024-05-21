@@ -5,7 +5,6 @@ import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
@@ -19,7 +18,6 @@ import type {
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
-  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
@@ -85,14 +83,12 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedMetrics = (state: State) => state.entities.metrics;
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
-export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 export const getMetadata: (
@@ -105,20 +101,10 @@ export const getMetadata: (
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
-    getNormalizedMetrics,
     getNormalizedQuestions,
     getSettings,
   ],
-  (
-    databases,
-    schemas,
-    tables,
-    fields,
-    segments,
-    metrics,
-    questions,
-    settings,
-  ) => {
+  (databases, schemas, tables, fields, segments, questions, settings) => {
     const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
@@ -137,9 +123,6 @@ export const getMetadata: (
     );
     metadata.segments = Object.fromEntries(
       Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
-    );
-    metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map(m => [m.id, createMetric(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map(c => [c.id, createQuestion(c, metadata)]),
@@ -167,9 +150,6 @@ export const getMetadata: (
     });
     Object.values(metadata.segments).forEach(segment => {
       segment.table = hydrateSegmentTable(segment, metadata);
-    });
-    Object.values(metadata.metrics).forEach(metric => {
-      metric.table = hydrateMetricTable(metric, metadata);
     });
     Object.values(metadata.fields).forEach(field => {
       field.table = hydrateFieldTable(field, metadata);
@@ -240,12 +220,6 @@ function createForeignKey(
   metadata: Metadata,
 ): ForeignKey {
   const instance = new ForeignKey(foreignKey);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
-  const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }
@@ -353,9 +327,9 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
 }
 
-function hydrateTableMetrics(table: Table, metadata: Metadata): Metric[] {
+function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
   const metricIds = table.getPlainObject().metrics ?? [];
-  return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
+  return metricIds.map(id => metadata.question(id)).filter(isNotNull);
 }
 
 function hydrateFieldTable(
@@ -386,11 +360,4 @@ function hydrateSegmentTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(segment.table_id) ?? undefined;
-}
-
-function hydrateMetricTable(
-  metric: Metric,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(metric.table_id) ?? undefined;
 }

@@ -131,10 +131,8 @@ const StrategyEditorForDatabases_Base = ({
     <TabWrapper role="region" aria-label={t`Data caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>
-          <Stack spacing="xl">
-            {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.`}
-            <PLUGIN_CACHING.GranularControlsExplanation />
-          </Stack>
+          {t`Speed up queries by caching their results.`}
+          <PLUGIN_CACHING.GranularControlsExplanation />
         </aside>
       </Stack>
       {confirmationModal}

@@ -8,7 +8,8 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
 
 export const useConfirmIfFormIsDirty = (
-  router: InjectedRouter,
+  /** If not specified, no confirmation will occur on route leave */
+  router?: InjectedRouter,
   route?: Route,
 ) => {
   const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);

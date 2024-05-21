@@ -8,11 +8,11 @@ import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type {
+  RecentItem,
   SearchModel,
-  SearchResultId,
   SearchRequest,
   SearchResult,
-  RecentItem,
+  SearchResultId,
 } from "metabase-types/api";
 
 import type {
@@ -35,7 +35,6 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  allowCreateNew?: boolean;
   confirmButtonText?: string;
   cancelButtonText?: string;
   hasRecents?: boolean;
@@ -44,7 +43,6 @@ export type EntityPickerModalOptions = {
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
-  allowCreateNew: true,
   hasRecents: true,
 };
 
@@ -55,7 +53,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
@@ -66,6 +64,10 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   searchParams?: Partial<SearchRequest>;
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
+  /**defaultToRecentTab: If set to true, will initially show the recent tab when the modal appears. If set to false, it will show the tab
+   * with the same model as the initialValue. Defaults to true.
+   */
+  defaultToRecentTab?: boolean;
 }
 
 export function EntityPickerModal<
@@ -87,6 +89,7 @@ export function EntityPickerModal<
   recentFilter,
   trapFocus = true,
   searchParams,
+  defaultToRecentTab = true,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -96,12 +99,11 @@ export function EntityPickerModal<
   );
 
   const hydratedOptions = useMemo(
-    () => ({
-      ...defaultOptions,
-      ...options,
-    }),
+    () => ({ ...defaultOptions, ...options }),
     [options],
   );
+
+  assertValidProps(hydratedOptions, onConfirm);
 
   const { open } = useModalOpen();
 
@@ -203,11 +205,12 @@ export function EntityPickerModal<
                 searchResults={searchResults}
                 selectedItem={selectedItem}
                 initialValue={initialValue}
+                defaultToRecentTab={defaultToRecentTab}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
             )}
-            {!!hydratedOptions.hasConfirmButtons && (
+            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar
                 onConfirm={onConfirm}
                 onCancel={onClose}
@@ -223,3 +226,14 @@ export function EntityPickerModal<
     </Modal.Root>
   );
 }
+
+const assertValidProps = (
+  options: EntityPickerModalOptions,
+  onConfirm: (() => void) | undefined,
+) => {
+  if (options.hasConfirmButtons && !onConfirm) {
+    throw new Error(
+      "onConfirm prop is required when hasConfirmButtons is true",
+    );
+  }
+};

@@ -28,6 +28,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
+  can_restore: false,
   cache_ttl: null,
   collection: null,
   collection_id: null,

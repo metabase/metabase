@@ -27,7 +27,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
   {
     table: {
       cell: {
-        backgroundColor: "white",
+        backgroundColor: "bg-white",
       },
     },
   },

@@ -113,8 +113,8 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     saveDashboard();
 
-    // The URL query params should include the parameter with an empty value
-    cy.location("search").should("eq", "?text=");
+    // The URL query params should include the last used parameter value
+    cy.location("search").should("eq", "?text=Bar");
   });
 });
 

@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, testPairedTooltipValues } from "e2e/support/helpers";
 
 const questionDetails = {
   native: {
@@ -45,8 +45,4 @@ function assertion() {
     testPairedTooltipValues("Y", "-20");
     testPairedTooltipValues("SIZE", "70");
   });
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

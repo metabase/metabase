@@ -149,7 +149,10 @@ describeWithSnowplow("extract shortcut", () => {
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({ name: "custom formula", formula: "+ 2" });
+      enterCustomColumnDetails({
+        name: "custom formula",
+        formula: "year([Created At]) + 2",
+      });
       popover().button("Update").click();
       visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
@@ -169,7 +172,6 @@ describeWithSnowplow("extract shortcut", () => {
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
-              fields: [["field", PEOPLE.EMAIL, null]],
             },
           },
           {
@@ -210,7 +212,6 @@ describeWithSnowplow("extract shortcut", () => {
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
-              fields: [["field", PEOPLE.EMAIL, { "base-type": "type/String" }]],
             },
           },
           {
@@ -231,6 +232,37 @@ describeWithSnowplow("extract shortcut", () => {
         });
       });
     });
+  });
+
+  it("should disable the scroll behaviour after it has been rendered", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    extractColumnAndCheck({
+      column: "Email",
+      option: "Host",
+    });
+
+    cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
+
+    cy.findAllByRole("columnheader", { name: "ID" })
+      .should("be.visible")
+      .click();
+
+    // Change sort direction
+    popover().findAllByRole("button").first().click();
+
+    // ID should still be visible (ie. no scrolling to the end should have happened)
+    cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
   });
 });
 
@@ -262,7 +294,12 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  cy.findAllByRole("columnheader")
+    .last()
+    .should("have.text", newColumn)
+    .should("be.visible");
+
+  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
