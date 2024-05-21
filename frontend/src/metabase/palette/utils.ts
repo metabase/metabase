@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { RecentItem } from "metabase-types/api";
+
 import type { PaletteActionImpl } from "./types";
 
 export const processResults = (
@@ -50,3 +52,6 @@ export const findClosestActionIndex = (
 
   return index + diff;
 };
+
+export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = items =>
+  items.filter(item => item.model !== "collection").slice(0, 5);

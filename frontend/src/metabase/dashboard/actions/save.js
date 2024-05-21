@@ -1,6 +1,10 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
+import {
+  fetchDashboard,
+  fetchDashboardCardData,
+} from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
@@ -10,7 +14,6 @@ import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { setEditingDashboard } from "./core";
-import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =

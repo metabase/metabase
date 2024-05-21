@@ -5,6 +5,7 @@ import {
   popover,
   echartsContainer,
   chartPathWithFillColor,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -90,8 +91,4 @@ function compareValuesInOrder(selector, values) {
   selector.each(($item, index) => {
     cy.wrap($item).invoke("text").should("eq", values[index]);
   });
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

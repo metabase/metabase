@@ -5,6 +5,8 @@ import {
   popover,
   enterCustomColumnDetails,
   visualize,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -26,8 +28,11 @@ describe("issue 20627", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(newTableName).click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText(newTableName).click();
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();

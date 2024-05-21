@@ -2,11 +2,18 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
@@ -24,11 +31,18 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockSearchResult,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import type { StoreDashboard } from "metabase-types/store";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { LinkedEntityPicker } from "./LinkedEntityPicker";
+
+const CURRENT_USER = createMockUser({
+  id: getNextId(),
+  personal_collection_id: getNextId(),
+  is_superuser: true,
+});
 
 const ROOT_COLLECTION = createMockCollection({
   ...ROOT,
@@ -43,8 +57,15 @@ const PUBLIC_COLLECTION = createMockCollection({
   location: "/",
 });
 
+const collectionInRootCollectionItem = createMockCollectionItem({
+  id: PUBLIC_COLLECTION.id as number,
+  name: PUBLIC_COLLECTION.name,
+  model: "collection",
+  collection_id: PUBLIC_COLLECTION.id as number,
+});
+
 const PERSONAL_COLLECTION = createMockCollection({
-  id: getNextId(),
+  id: CURRENT_USER.personal_collection_id,
   name: "Personal collection",
   can_write: true,
   is_personal: true,
@@ -66,12 +87,27 @@ function setup({
   searchResults = [],
   collectionItems = [],
 }: SetupOpts) {
+  mockScrollBy();
+  mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
-  setupSearchEndpoints(searchResults);
+
+  setupCollectionByIdEndpoint({ collections: COLLECTIONS }),
+    setupSearchEndpoints(searchResults);
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems,
   });
+  setupCollectionItemsEndpoint({
+    collection: PERSONAL_COLLECTION,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: PUBLIC_COLLECTION,
+    collectionItems: [],
+  });
+  setupRecentViewsEndpoints([]);
+
+  fetchMock.get("path:/api/user/recipients", { data: [] });
 
   renderWithProviders(
     <LinkedEntityPicker
@@ -81,6 +117,7 @@ function setup({
     />,
     {
       storeInitialState: {
+        currentUser: CURRENT_USER,
         dashboard: createMockDashboardState({
           dashboardId: dashboard.id,
           dashboards: {
@@ -122,17 +159,20 @@ describe("LinkedEntityPicker", () => {
         setup({
           clickBehavior,
           dashboard: dashboardInPublicCollection,
-          collectionItems: [dashboardCollectionItem],
+          collectionItems: [
+            collectionInRootCollectionItem,
+            dashboardCollectionItem,
+          ],
         });
 
         expect(
-          screen.getByText("Pick a dashboard to link to"),
+          await screen.findByText("Pick a dashboard to link to"),
         ).toBeInTheDocument();
         expect(
           await screen.findByText(PUBLIC_COLLECTION.name),
         ).toBeInTheDocument();
         expect(
-          screen.queryByText(PERSONAL_COLLECTION.name),
+          screen.queryByText(/personal collection/i),
         ).not.toBeInTheDocument();
         expect(
           await screen.findByText(dashboardCollectionItem.name),
@@ -146,11 +186,11 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPublicCollection,
             searchResults: [dashboardSearchResult],
           });
-          await userEvent.click(screen.getByRole("button", { name: "Search" }));
+          expect(screen.getByText(/Pick a dashboard/i)).toBeInTheDocument();
           const typedText = "dashboard";
           await userEvent.type(
-            screen.getByPlaceholderText("Search"),
-            `${typedText}{enter}`,
+            await screen.findByPlaceholderText(/search/i),
+            typedText,
           );
 
           expect(
@@ -179,11 +219,14 @@ describe("LinkedEntityPicker", () => {
         setup({
           clickBehavior,
           dashboard: dashboardInPersonalCollection,
-          collectionItems: [dashboardCollectionItem],
+          collectionItems: [
+            collectionInRootCollectionItem,
+            dashboardCollectionItem,
+          ],
         });
 
         expect(
-          screen.getByText("Pick a dashboard to link to"),
+          await screen.findByText(/Pick a dashboard to link/),
         ).toBeInTheDocument();
         expect(
           await screen.findByText(PUBLIC_COLLECTION.name),
@@ -195,17 +238,19 @@ describe("LinkedEntityPicker", () => {
       });
 
       describe("search dashboards", () => {
-        it("should search dashboards only in public collections", async () => {
+        it("should search all dashboards", async () => {
           setup({
             clickBehavior,
             dashboard: dashboardInPersonalCollection,
             searchResults: [dashboardSearchResult],
           });
-          await userEvent.click(screen.getByRole("button", { name: "Search" }));
+          expect(
+            await screen.findByText(/Pick a dashboard/),
+          ).toBeInTheDocument();
           const typedText = "dashboard";
           await userEvent.type(
-            screen.getByPlaceholderText("Search"),
-            `${typedText}{enter}`,
+            await screen.findByPlaceholderText(/search/i),
+            typedText,
           );
 
           expect(
@@ -248,11 +293,14 @@ describe("LinkedEntityPicker", () => {
         setup({
           clickBehavior,
           dashboard: dashboardInPublicCollection,
-          collectionItems: [questionCollectionItem],
+          collectionItems: [
+            collectionInRootCollectionItem,
+            questionCollectionItem,
+          ],
         });
 
         expect(
-          screen.getByText("Pick a question to link to"),
+          await screen.findByText("Pick a question to link to"),
         ).toBeInTheDocument();
         expect(
           await screen.findByText(PUBLIC_COLLECTION.name),
@@ -266,17 +314,19 @@ describe("LinkedEntityPicker", () => {
       });
 
       describe("questions", () => {
-        it("should search questions in all collections", async () => {
+        it("should search questions only in public collections", async () => {
           setup({
             clickBehavior,
             dashboard: dashboardInPublicCollection,
             searchResults: [questionSearchResult],
           });
-          await userEvent.click(screen.getByRole("button", { name: "Search" }));
+          expect(
+            await screen.findByText(/Pick a question/),
+          ).toBeInTheDocument();
           const typedText = "question";
           await userEvent.type(
-            screen.getByPlaceholderText("Search"),
-            `${typedText}{enter}`,
+            await screen.findByPlaceholderText(/search/i),
+            typedText,
           );
 
           expect(
@@ -310,11 +360,14 @@ describe("LinkedEntityPicker", () => {
         setup({
           clickBehavior,
           dashboard: dashboardInPersonalCollection,
-          collectionItems: [questionCollectionItem],
+          collectionItems: [
+            collectionInRootCollectionItem,
+            questionCollectionItem,
+          ],
         });
 
         expect(
-          screen.getByText("Pick a question to link to"),
+          await screen.findByText("Pick a question to link to"),
         ).toBeInTheDocument();
         expect(
           await screen.findByText(PUBLIC_COLLECTION.name),
@@ -332,11 +385,10 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPersonalCollection,
             searchResults: [questionSearchResult],
           });
-          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "question";
           await userEvent.type(
-            screen.getByPlaceholderText("Search"),
-            `${typedText}{enter}`,
+            await screen.findByPlaceholderText(/search/i),
+            typedText,
           );
 
           expect(

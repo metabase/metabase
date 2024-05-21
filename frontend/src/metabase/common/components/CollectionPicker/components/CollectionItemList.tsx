@@ -10,13 +10,16 @@ export const CollectionItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const {
     data: collectionItems,
     error,
     isLoading,
   } = useListCollectionItemsQuery<{
-    data: { data: CollectionPickerItem[] };
+    data: {
+      data: CollectionPickerItem[];
+    };
     error: any;
     isLoading: boolean;
   }>(query ? query : skipToken);
@@ -31,6 +34,7 @@ export const CollectionItemList = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

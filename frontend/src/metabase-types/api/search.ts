@@ -12,18 +12,15 @@ const ENABLED_SEARCH_MODELS = [
   "collection",
   "dashboard",
   "card",
+  "dataset",
+  "metric",
   "database",
   "table",
-  "dataset",
   "action",
   "indexed-entity",
 ] as const;
 
-export const SEARCH_MODELS = [
-  ...ENABLED_SEARCH_MODELS,
-  "segment",
-  "metric",
-] as const;
+export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
 export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
 
@@ -71,7 +68,8 @@ export type SearchResponse<
 export type CollectionEssentials = Pick<
   Collection,
   "id" | "name" | "authority_level" | "type"
->;
+> &
+  Partial<Pick<Collection, "effective_ancestors">>;
 
 export type SearchResultId =
   | CollectionId
@@ -125,15 +123,19 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: "search-bar" | "search-app";
+  context?: "search-bar" | "search-app" | "command-palette";
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
   verified?: boolean | null;
+  model_ancestors?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
 } & PaginationRequest;
+
+/** Model retrieved through the search endpoint */
+export type ModelResult = SearchResult<number, "dataset">;

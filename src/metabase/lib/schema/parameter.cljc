@@ -25,6 +25,15 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
+(defn- variadic-opts-first
+  "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
+  variadic form."
+  [[tag & args :as clause] options]
+  (if (<= (count args) 2)
+    (cond-> clause
+      options (conj options))
+    (into [tag (or options {})] args)))
+
 (def types
   "Map of parameter-type -> info. Info is a map with the following keys:
 
@@ -49,7 +58,12 @@
   with a widget type `:date`. Why? It's a potential security risk if someone creates a Card with an \"exact-match\"
   Field filter like `:date` or `:text` and you pass in a parameter like `string/!=` `NOTHING_WILL_MATCH_THIS`.
   Non-exact-match parameters can be abused to enumerate *all* the rows in a table when the parameter was supposed to
-  lock the results down to a single row or set of rows."
+  lock the results down to a single row or set of rows.
+
+  ### `:options-fn`
+
+  Optional, specifies a function `(f clause-without-options options-map-or-nil) => clause-with-options` to be used for
+  attaching the options. The default is to `conj` non-nil options on the end."
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
@@ -120,10 +134,10 @@
    :string/=                {:type :string, :operator :variadic, :allowed-for #{:string/= :text :id :category
                                                                                 :location/city :location/state
                                                                                 :location/zip_code :location/country}}
-   :string/contains         {:type :string, :operator :unary, :allowed-for #{:string/contains}}
-   :string/does-not-contain {:type :string, :operator :unary, :allowed-for #{:string/does-not-contain}}
-   :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
-   :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
+   :string/contains         {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/contains}}
+   :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
+   :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
+   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}})
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"

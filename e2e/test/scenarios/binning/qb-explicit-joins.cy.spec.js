@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
   restore,
   visualize,
   changeBinningForDimension,
@@ -8,6 +9,7 @@ import {
   echartsContainer,
   cartesianChartCircle,
   chartPathWithFillColor,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -65,10 +67,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via simple mode", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
 
       visualize();
       summarize();
@@ -130,10 +133,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via notebook mode", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
@@ -202,10 +206,12 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via column popover", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
+
       visualize();
     });
 

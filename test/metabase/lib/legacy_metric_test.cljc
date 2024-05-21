@@ -1,20 +1,23 @@
 (ns metabase.lib.legacy-metric-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.legacy-metric :as lib.legacy-metric]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private metric-id 100)
 
 (def ^:private metric-definition
-  {:source-table (meta/id :venues)
-   :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-   :filter       [:= [:field (meta/id :venues :price) nil] 4]})
+  (-> lib.tu/venues-query
+      (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))))
 
 (def ^:private metrics-db
   {:metrics [{:id          metric-id
@@ -40,13 +43,17 @@
   (lib.metadata/legacy-metric query-with-metric metric-id))
 
 (deftest ^:parallel uses-legacy-metric?-test
-  (is (lib/uses-legacy-metric? query-with-metric metric-id))
-  (is (not (lib/uses-legacy-metric? lib.tu/venues-query metric-id))))
+  (is (lib/uses-metric? query-with-metric metric-id))
+  (is (not (lib/uses-metric? lib.tu/venues-query metric-id))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Sum of Cans"
          (lib/suggested-name query-with-metric))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel display-name-test
   (doseq [metric [metric-clause
                   metric-metadata]
@@ -71,6 +78,8 @@
                  (lib/display-name query-with-metric -1 metric style)
                  (lib/display-name query-with-metric metric))))))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel display-info-test
   (are [metric] (=? {:name              "sum_of_cans"
                      :display-name      "Sum of Cans"
@@ -93,6 +102,8 @@
            :long-display-name "[Unknown Metric]"}
           (lib/display-info query-with-metric [:metric {} 1]))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel type-of-test
   (are [metric] (= :type/Integer
                    (lib/type-of query-with-metric metric))
@@ -112,9 +123,9 @@
                                   :description "Number of toucans plus number of pelicans"}]
     (testing "Should return Metrics with the same Table ID as query's `:source-table`"
       (is (=? [expected-metric-metadata]
-              (lib/available-legacy-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+              (lib.legacy-metric/available-legacy-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
     (testing "Should return the position in the list of aggregations"
-      (let [metrics (lib/available-legacy-metrics query-with-metric)]
+      (let [metrics (lib.legacy-metric/available-legacy-metrics query-with-metric)]
         (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
                 metrics))
         (testing "Display info should contains aggregation-position"
@@ -127,28 +138,28 @@
                   (map #(lib/display-info query-with-metric %)
                        metrics)))))))
   (testing "query with different Table -- don't return Metrics"
-    (is (nil? (lib/available-legacy-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
+    (is (nil? (lib.legacy-metric/available-legacy-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
   (testing "for subsequent stages -- don't return Metrics (#37173)"
     (let [query (lib/append-stage (lib/query metadata-provider (meta/table-metadata :venues)))]
-      (is (nil? (lib/available-legacy-metrics query)))
-      (are [stage-number] (nil? (lib/available-legacy-metrics query stage-number))
+      (is (nil? (lib.legacy-metric/available-legacy-metrics query)))
+      (are [stage-number] (nil? (lib.legacy-metric/available-legacy-metrics query stage-number))
         1 -1)))
   (testing "query with different source table joining the metrics table -- don't return Metrics"
     (let [query (-> (lib/query metadata-provider (meta/table-metadata :categories))
                     (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
                                                    [(lib/= (meta/field-metadata :venues :price) 4)])
                                   (lib/with-join-fields :all))))]
-      (is (nil? (lib/available-legacy-metrics query)))))
+      (is (nil? (lib.legacy-metric/available-legacy-metrics query)))))
   (testing "query based on a card -- don't return Metrics"
     (doseq [card-key [:venues :venues/native]]
       (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
-        (is (not (lib/uses-legacy-metric? query metric-id)))
-        (is (nil? (lib/available-legacy-metrics (lib/append-stage query))))))))
+        (is (not (lib/uses-metric? query metric-id)))
+        (is (nil? (lib.legacy-metric/available-legacy-metrics (lib/append-stage query))))))))
 
-(deftest ^:parallel aggregate-with-metric-test
+#_(deftest ^:parallel aggregate-with-metric-test
   (testing "Should be able to pass a Metric metadata to `aggregate`"
     (let [query   (lib/query metadata-provider (meta/table-metadata :venues))
-          metrics (lib/available-legacy-metrics query)]
+          metrics (lib.legacy-metric/available-legacy-metrics query)]
       (is (= 1
              (count metrics)))
       ;; test with both `:metadata/legacy-metric` and with a `:metric` ref clause
@@ -156,7 +167,7 @@
                       [:metric {:lib/uuid (str (random-uuid))} 100]]]
         (testing (pr-str (list 'lib/aggregate 'query metric))
           (let [query' (lib/aggregate query metric)]
-            (is (lib/uses-legacy-metric? query' metric-id))
+            (is (lib/uses-metric? query' metric-id))
             (is (=? {:lib/type :mbql/query
                      :stages   [{:lib/type     :mbql.stage/mbql
                                  :source-table (meta/id :venues)
@@ -172,10 +183,12 @@
                     (map (partial lib/display-info query')
                          (lib/aggregations query'))))))))))
 
+;; Replaced by metrics v2
+#_
 (deftest ^:parallel metric-type-of-test
   (let [query    (-> (lib/query metadata-provider (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
-    (is (lib/uses-legacy-metric? query metric-id))
+    (is (lib/uses-metric? query metric-id))
     (is (= :type/Integer
            (lib/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
 
@@ -184,7 +197,7 @@
     (let [metric-name "ga:totalEvents"
           query (-> lib.tu/venues-query
                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} metric-name]))]
-      (is (lib/uses-legacy-metric? query metric-name))
+      (is (lib/uses-metric? query metric-name))
       (is (=? [{:base-type                :type/*
                 :display-name             "[Unknown Metric]"
                 :effective-type           :type/*
@@ -194,3 +207,32 @@
                 :lib/source-column-alias  "metric"
                 :lib/type                 :metadata/column}]
               (lib/returned-columns query -1 query))))))
+
+(deftest ^:parallel metric-visible-columns-test
+  (let [metric-card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/filter (lib/< (meta/field-metadata :orders :tax) 4))
+                              (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                              (lib/aggregate (lib/avg (meta/field-metadata :orders :total))))
+        meta-provider (lib.tu/mock-metadata-provider
+                       meta/metadata-provider
+                       {:cards [{:id 1
+                                 :name "metric"
+                                 :database-id (meta/id)
+                                 :dataset-query (lib.convert/->legacy-MBQL metric-card-query)
+                                 :type :metric}]})
+        metric-based-query (lib/query meta-provider (lib.metadata/card meta-provider 1))]
+    (testing "Metric aggregation added and breakouts copied on query creation"
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages
+               [{:lib/type :mbql.stage/mbql
+                 :source-card 1
+                 :breakout
+                 [[:field
+                   {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
+                   (meta/id :orders :created-at)]]
+                 :aggregation [[:metric {} 1]]}]}
+              metric-based-query)))
+    (testing "The columns of the query underlying the metric are visible in the metric-based query"
+      (is (= (lib/visible-columns metric-card-query 0 (lib.util/query-stage metric-card-query 0))
+             (lib/visible-columns metric-based-query 0 (lib.util/query-stage metric-based-query 0)))))))

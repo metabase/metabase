@@ -49,7 +49,7 @@ You can search by:
 
 ## Browse your data
 
-![Browse data](./images/browse-data.png)
+![Browse databases](./images/browse-data.png)
 
 To explore databases and models, click on either the **Models** or **Databases** browsers in the left sidebar.
 

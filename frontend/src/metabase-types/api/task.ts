@@ -9,6 +9,8 @@ export interface Task {
   ended_at: string;
   task: string;
   task_details: Record<string, unknown> | null;
+  // "unknown" status is only expected for historical tasks before `status` is introduced
+  status: "success" | "started" | "failed" | "unknown";
 }
 export type ListTasksRequest = PaginationRequest;
 

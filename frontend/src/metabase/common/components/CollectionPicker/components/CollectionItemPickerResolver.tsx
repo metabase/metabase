@@ -14,6 +14,7 @@ export const CollectionItemPickerResolver = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -24,6 +25,7 @@ export const CollectionItemPickerResolver = ({
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
         shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
       />
     );
   }
@@ -36,6 +38,7 @@ export const CollectionItemPickerResolver = ({
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
         shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
         options={options}
       />
     );
@@ -49,6 +52,7 @@ export const CollectionItemPickerResolver = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
       options={options}
     />
   );

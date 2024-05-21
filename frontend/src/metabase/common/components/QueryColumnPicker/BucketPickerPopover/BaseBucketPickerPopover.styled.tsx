@@ -20,7 +20,7 @@ export const ChevronDown = styled(Icon)`
   opacity: 0.75;
 `;
 
-export const TriggerButton = styled.button<{ hasDot?: boolean }>`
+export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
   min-width: 0;
@@ -29,8 +29,8 @@ export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   font-weight: 700;
   border-left: 2px solid transparent;
   padding: 0.5rem;
-  border-left: 2px solid
-    ${props => (props.hasDot ? "transparent" : alpha(color("border"), 0.1))};
+  border-left: 2px solid ${alpha(color("border"), 0.1)};
+  margin-left: auto;
 
   cursor: pointer;
 

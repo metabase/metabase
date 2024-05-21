@@ -5,11 +5,24 @@
    [cheshire.core :as json]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Table]]
    [metabase.util.log :as log]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(comment metabot-feedback/keep-me
+         metabot-util/keep-me)
+
+(p/import-vars
+ [metabot-feedback
+  submit-feedback]
+ [metabot-util
+  denormalize-database
+  denormalize-model
+  supported?])
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."

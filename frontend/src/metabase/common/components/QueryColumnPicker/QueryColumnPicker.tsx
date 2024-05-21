@@ -5,16 +5,17 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import {
+  QueryColumnInfoIcon,
+  HoverParent,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Box, DelayGroup, Icon } from "metabase/ui";
+import { Box, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import {
-  ColumnInfoIcon,
   ColumnNameContainer,
   StyledAccordionList,
 } from "./QueryColumnPicker.styled";
@@ -154,7 +155,6 @@ export function QueryColumnPicker({
             isEditing={checkIsColumnSelected(item)}
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
-            hasDot={withInfoIcons}
             hasChevronDown={withInfoIcons}
             color={color}
             onSelect={handleSelect}
@@ -174,13 +174,13 @@ export function QueryColumnPicker({
     ],
   );
 
-  const renderItemExtra = useCallback(
+  const renderItemIcon = useCallback(
     (item: ColumnListItem) => (
-      <ColumnInfoIcon
+      <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
         column={item.column}
-        position="right"
+        position="top-start"
       />
     ),
     [query, stageIndex],
@@ -198,7 +198,6 @@ export function QueryColumnPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
         renderItemLabel={renderItemLabel}
         color={color}
         maxHeight={Infinity}
@@ -227,8 +226,4 @@ function renderItemWrapper(content: ReactNode) {
 
 function omitItemDescription() {
   return null;
-}
-
-function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }

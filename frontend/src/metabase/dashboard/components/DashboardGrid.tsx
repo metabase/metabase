@@ -1,13 +1,17 @@
 import cx from "classnames";
-import type { LocationDescriptor } from "history";
+import type { ComponentType } from "react";
 import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -41,23 +45,31 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
-  CardId,
   DashCardDataMap,
   DashCardId,
   Dashboard,
-  QuestionDashboardCard,
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
-  VisualizationSettings,
   DashboardCard,
 } from "metabase-types/api";
 
-import { removeCardFromDashboard } from "../actions";
+import type { SetDashCardAttributesOpts } from "../actions";
+import {
+  removeCardFromDashboard,
+  showClickBehaviorSidebar,
+  markNewCardSeen,
+  setMultipleDashCardAttributes,
+  setDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  replaceCard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  fetchCardData,
+} from "../actions";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
-import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import {
   DashboardCardContainer,
   DashboardGridContainer,
@@ -78,69 +90,8 @@ type LayoutItem = {
   dashcard: BaseDashboardCard;
 };
 
-type DashboardChangeItem = {
-  id: DashCardId;
-  attributes: Partial<BaseDashboardCard>;
-};
-
-type DashboardGridProps = ConnectedProps<typeof connector> & {
-  dashboard: Dashboard;
-  dashcardData: DashCardDataMap;
-  selectedTabId: DashboardTabId;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  slowCards: Record<CardId, boolean>;
-  isEditing: boolean;
-  isEditingParameter: boolean;
-  isPublic: boolean;
-  isXray: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
+type ExplicitSizeProps = {
   width: number;
-  mode: Mode;
-  metadata: Metadata;
-
-  fetchCardData: (
-    card: Card,
-    dashcard: QuestionDashboardCard,
-    options: {
-      clearCache?: boolean;
-      ignoreCache?: boolean;
-      reload?: boolean;
-    },
-  ) => Promise<unknown>;
-  replaceCard: (options: {
-    dashcardId: DashCardId;
-    nextCardId: CardId;
-  }) => void;
-  markNewCardSeen: (dashcardId: DashCardId) => void;
-
-  setDashCardAttributes: (options: DashboardChangeItem) => void;
-  setMultipleDashCardAttributes: (changes: {
-    dashcards: Array<DashboardChangeItem>;
-  }) => void;
-
-  undoRemoveCardFromDashboard: (options: { dashcardId: DashCardId }) => void;
-
-  onReplaceAllDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: Partial<VisualizationSettings>,
-  ) => void;
-  onUpdateDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: Partial<VisualizationSettings>,
-  ) => void;
-
-  onChangeLocation: (location: LocationDescriptor) => void;
-  navigateToNewCardFromDashboard: DashCardOnChangeCardAndRunHandler;
-
-  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
-
-  addUndo: (options: {
-    message: string;
-    undo: boolean;
-    action: () => void;
-  }) => void;
 };
 
 interface DashboardGridState {
@@ -153,7 +104,50 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapDispatchToProps = { addUndo, removeCardFromDashboard };
+const mapDispatchToProps = {
+  addUndo,
+  removeCardFromDashboard,
+  showClickBehaviorSidebar,
+  markNewCardSeen,
+  setMultipleDashCardAttributes,
+  setDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  replaceCard,
+  onChangeLocation: push,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  fetchCardData,
+};
+const connector = connect(null, mapDispatchToProps);
+
+type DashboardGridReduxProps = ConnectedProps<typeof connector>;
+
+type OwnProps = {
+  dashboard: Dashboard;
+  dashcardData: DashCardDataMap;
+  selectedTabId: DashboardTabId | null;
+  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  slowCards: Record<DashCardId, boolean>;
+  isEditing: boolean;
+  isEditingParameter: boolean;
+  isPublic?: boolean;
+  isXray?: boolean;
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
+  mode?: Mode;
+  // TODO: only passed down, remove it
+  metadata: Metadata;
+  // public dashboard passes it explicitly
+  width?: number;
+  // public dashboard passes it as noop
+  navigateToNewCardFromDashboard?: () => void;
+  onEditingChange?: (dashboard: Dashboard | null) => void;
+};
+
+type DashboardGridProps = OwnProps &
+  DashboardGridReduxProps &
+  ExplicitSizeProps;
 
 class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   static contextType = ContentViewportContext;
@@ -258,7 +252,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       return;
     }
 
-    const changes: DashboardChangeItem[] = [];
+    const changes: SetDashCardAttributesOpts[] = [];
 
     layout.forEach(layoutItem => {
       const dashboardCard = this.getVisibleCards().find(
@@ -434,18 +428,14 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     return (
       <QuestionPickerModal
-        onChange={handleSelect}
+        title={t`Pick what you want to replace this with`}
         value={
           replaceCardModalDashCard.card.id
-            ? {
-                id: replaceCardModalDashCard.card.id,
-                model:
-                  replaceCardModalDashCard.card.type === "model"
-                    ? "dataset"
-                    : "card",
-              }
+            ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
+        models={["card", "dataset", "metric"]}
+        onChange={handleSelect}
         onClose={handleClose}
       />
     );
@@ -539,22 +529,21 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublic={this.props.isPublic}
         isXray={this.props.isXray}
-        onRemove={this.onDashCardRemove.bind(this, dc)}
-        onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+        onRemove={() => this.onDashCardRemove(dc)}
+        onAddSeries={() => this.onDashCardAddSeries(dc)}
         onReplaceCard={() => this.onReplaceCard(dc)}
-        onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
-        onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
+        onUpdateVisualizationSettings={settings =>
+          this.props.onUpdateDashCardVisualizationSettings(dc.id, settings)
+        }
+        onReplaceAllVisualizationSettings={settings =>
+          this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
+        }
         mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
         onChangeLocation={this.props.onChangeLocation}
+        // TODO: get metadata in dashcard
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
@@ -666,6 +655,10 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
     return t`Model replaced`;
   }
 
+  if (type === "metric") {
+    return t`Metric replaced`;
+  }
+
   if (type === "question") {
     return t`Question replaced`;
   }
@@ -673,9 +666,7 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
   throw new Error(`Unknown card.type: ${type}`);
 };
 
-const connector = connect(null, mapDispatchToProps);
-
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,
-)(DashboardGrid);
+)(DashboardGrid) as ComponentType<OwnProps>;

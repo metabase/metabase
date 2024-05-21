@@ -1,7 +1,20 @@
-import type { MetabaseTheme, MetabaseColor } from "../../types/theme";
+import { merge } from "icepick";
+
+import { DEFAULT_FONT } from "embedding-sdk/config";
+
+import type {
+  MetabaseTheme,
+  MetabaseColor,
+  MetabaseComponentTheme,
+} from "../../types/theme";
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
+import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
+
+const getFontFamily = (theme: MetabaseTheme) =>
+  theme.fontFamily ?? DEFAULT_FONT;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -10,12 +23,18 @@ import { colorTuple } from "./color-tuple";
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
 ): EmbeddingThemeOverride {
+  const components: MetabaseComponentTheme = merge(
+    DEFAULT_EMBEDDED_COMPONENT_THEME,
+    theme.components,
+  );
+
   const override: EmbeddingThemeOverride = {
+    fontFamily: getFontFamily(theme),
+
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
-    ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
-      ...theme.components,
+      ...components,
       ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
   };
@@ -28,7 +47,9 @@ export function getEmbeddingThemeOverride(
       const color = theme.colors[name as MetabaseColor];
 
       if (color) {
-        override.colors[name] = colorTuple(color);
+        const themeColorName =
+          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MetabaseColor];
+        override.colors[themeColorName] = colorTuple(color);
       }
     }
   }

@@ -1,16 +1,22 @@
 import { act, screen } from "__support__/ui";
 
-import { changeInput, getSaveButton, setup } from "./test-utils";
+import {
+  changeInput,
+  getSaveButton,
+  setupStrategyEditorForDatabases as setup,
+} from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy from 'Hours' to 'Query duration multiplier' to 'No caching'", async () => {
+  beforeEach(() => {
     setup();
+  });
+  it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
     const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /Query duration multiplier/i,
+      name: /Adaptive/i,
     });
     ttlStrategyRadioButton.click();
 
@@ -30,7 +36,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /after a specific number of hours/i,
+        name: /keep the cache for a number of hours/i,
       });
       durationStrategyRadioButton.click();
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);

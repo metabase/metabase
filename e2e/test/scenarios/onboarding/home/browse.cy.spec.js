@@ -9,11 +9,13 @@ import {
   resetSnowplow,
   expectNoBadSnowplowEvents,
   enableTracking,
+  browseDatabases,
+  navigationSidebar,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplow("scenarios > browse data", () => {
+describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -23,9 +25,8 @@ describeWithSnowplow("scenarios > browse data", () => {
 
   it("can browse to a model", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    navigationSidebar().findByLabelText("Browse models").click();
     cy.location("pathname").should("eq", "/browse/models");
-    cy.findByTestId("browse-app").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
     expectNoBadSnowplowEvents();
@@ -34,10 +35,10 @@ describeWithSnowplow("scenarios > browse data", () => {
       model_id: ORDERS_MODEL_ID,
     });
   });
-  it("can browse to a table", () => {
+
+  it("can browse to a table in a database", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.findByRole("tab", { name: "Databases" }).click();
+    browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("button", { name: "Summarize" });
@@ -48,48 +49,45 @@ describeWithSnowplow("scenarios > browse data", () => {
       table_id: PRODUCTS_ID,
     });
   });
+
+  it("browsing to a database only triggers a request for schemas for that specific database", () => {
+    cy.intercept("GET", "/api/database/1/schemas").as(
+      "schemasForSampleDatabase",
+    );
+    cy.intercept(
+      "GET",
+      /\/api\/database\/(?!1\b)\d+\/schemas/,
+      cy.spy().as("schemasForOtherDatabases"),
+    );
+    cy.visit("/");
+    browseDatabases().click();
+    cy.findByRole("link", { name: /Sample Database/ }).click();
+    cy.wait("@schemasForSampleDatabase");
+    cy.get("@schemasForOtherDatabases").should("not.have.been.called");
+  });
+
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.findByRole("tab", { name: "Databases" }).click();
+    browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
-    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("gridcell", { name: "Rustic Paper Wallet" });
   });
-  it("the Browse data page shows the last-used tab by default", () => {
+
+  it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.log(
-      "/browse/ defaults to /browse/models/ because no tabs have been visited yet and there are some models to show",
-    );
-    cy.location("pathname").should("eq", "/browse/models");
-    cy.findByRole("tab", { name: "Databases" }).click();
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.log(
-      "/browse/ now defaults to /browse/databases/ because it was the last tab visited",
-    );
-    cy.location("pathname").should("eq", "/browse/databases");
-    cy.findByRole("tab", { name: "Models" }).click();
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.log(
-      "/browse/ now defaults to /browse/models/ because it was the last tab visited",
-    );
-    cy.location("pathname").should("eq", "/browse/models");
-  });
-  it("/browse/models has no switch for controlling the 'only show verified models' filter, on an open-source instance", () => {
-    cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("listitem", { name: "Browse models" }).click();
+    cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
     cy.findByRole("switch", { name: /Only show verified models/ }).should(
       "not.exist",
     );
   });
 });
 
-describeWithSnowplowEE("scenarios > browse data (EE)", () => {
+describeWithSnowplowEE("scenarios > browse (EE)", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -98,25 +96,27 @@ describeWithSnowplowEE("scenarios > browse data (EE)", () => {
   });
 
   it("/browse/models allows models to be filtered, on an enterprise instance", () => {
+    const openFilterPopover = () =>
+      cy.findByRole("button", { name: /filter icon/i }).click();
     const toggle = () =>
       cy.findByRole("switch", { name: /Only show verified models/ });
     setTokenFeatures("all");
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("listitem", { name: "Browse models" }).click();
     cy.findByRole("heading", { name: "Our analytics" }).should("not.exist");
     cy.findByRole("heading", { name: "Orders Model" }).should("not.exist");
+    openFilterPopover();
     toggle().next("label").click();
-    toggle().should("have.attr", "aria-checked", "false");
     cy.findByRole("heading", { name: "Orders Model" }).click();
-    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByLabelText("Move, trash, and more...").click();
     cy.findByRole("dialog", {
       name: /ellipsis icon/i,
     })
       .findByText(/Verify this model/)
       .click();
     cy.visit("/browse");
+    openFilterPopover();
     toggle().next("label").click();
     cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
-    toggle().should("have.attr", "aria-checked", "true");
   });
 });

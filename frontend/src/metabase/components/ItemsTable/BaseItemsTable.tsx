@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
@@ -12,6 +13,7 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
+import { isTrashedCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -24,55 +26,60 @@ import {
   Table,
   TBody,
 } from "./BaseItemsTable.styled";
-import { Columns } from "./Columns";
+import { Columns, SortDirection } from "./Columns";
 import type { ResponsiveProps } from "./utils";
 
 export type SortingOptions = {
   sort_column: string;
-  sort_direction: "asc" | "desc";
+  sort_direction: SortDirection;
 };
 
 export type SortableColumnHeaderProps = {
   name?: string;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
-export enum Sort {
-  Asc = "asc",
-  Desc = "desc",
-}
-
 export const SortableColumnHeader = ({
-  name = "",
-  sortingOptions = {
-    sort_column: "",
-    sort_direction: Sort.Asc,
-  },
+  name,
+  sortingOptions,
   onSortingOptionsChange,
   children,
   hideAtContainerBreakpoint,
   containerName,
+  columnHeaderProps,
   ...props
 }: SortableColumnHeaderProps & ResponsiveProps) => {
-  const isSortable = !!onSortingOptionsChange;
-  const isSortingThisColumn = sortingOptions.sort_column === name;
+  const isSortable = !!onSortingOptionsChange && !!name;
+  const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
-    ? sortingOptions.sort_direction
-    : Sort.Desc;
+    ? sortingOptions?.sort_direction
+    : SortDirection.Desc;
 
-  const onSortingControlClick = () => {
-    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
-    onSortingOptionsChange?.({
-      sort_column: name,
-      sort_direction: nextDirection,
-    });
-  };
+  const onSortingControlClick = useMemo(() => {
+    if (!isSortable) {
+      return undefined;
+    }
+    const handler = () => {
+      const nextDirection =
+        direction === SortDirection.Asc
+          ? SortDirection.Desc
+          : SortDirection.Asc;
+      const newSortingOptions = {
+        sort_column: name,
+        sort_direction: nextDirection,
+      };
+      onSortingOptionsChange?.(newSortingOptions);
+    };
+    return handler;
+  }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
     <ColumnHeader
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
       containerName={containerName}
+      {...columnHeaderProps}
     >
       <SortingControlContainer
         {...props}
@@ -84,7 +91,7 @@ export const SortableColumnHeader = ({
         {children}
         {isSortable && (
           <SortingIcon
-            name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
+            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
           />
         )}
       </SortingControlContainer>
@@ -144,6 +151,8 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
+  const isTrashed = !!collection && isTrashedCollection(collection);
+
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
@@ -183,10 +192,12 @@ export const BaseItemsTable = ({
             <Columns.LastEditedBy.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.LastEditedAt.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.ActionMenu.Header />
             <Columns.RightEdge.Header />
@@ -262,7 +273,7 @@ const DefaultItemRenderer = ({
     collection?.can_write && typeof onToggleSelected === "function";
 
   const icon = item.getIcon();
-  if (item.model === "card") {
+  if (item.model === "card" || item.archived) {
     icon.color = color("text-light");
   }
 

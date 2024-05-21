@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
@@ -79,7 +79,7 @@ export const getHoveredSeriesDataKey = (
 
 export const getHoveredEChartsSeriesIndex = (
   seriesModels: SeriesModel[],
-  option: EChartsOption,
+  option: EChartsCoreOption,
   hovered: HoveredObject | undefined,
 ): number | null => {
   const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);

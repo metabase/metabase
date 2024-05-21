@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
@@ -12,7 +12,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import type { CollectionItem } from "metabase-types/api";
+import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
@@ -40,7 +40,7 @@ export const Columns = {
       onSelectAll,
       onSelectNone,
     }: {
-      selectedItems?: CollectionItem[];
+      selectedItems?: (CollectionItem | SearchResult)[];
       hasUnselected?: boolean;
       onSelectAll?: () => void;
       onSelectNone?: () => void;
@@ -129,13 +129,15 @@ export const Columns = {
       item,
       testIdPrefix = "table",
       includeDescription = true,
+      onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
+      onClick?: () => void;
     }) => (
       <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemLink to={item.getUrl()}>
+        <ItemLink to={item.getUrl()} onClick={onClick}>
           <EntityItem.Name name={item.name} variant="list" />
           <PLUGIN_MODERATION.ModerationStatusIcon
             size={16}
@@ -164,7 +166,11 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+    Header: ({
+      sortingOptions,
+      onSortingOptionsChange,
+      isTrashed,
+    }: HeaderProps & { isTrashed: boolean }) => (
       <SortableColumnHeader
         name="last_edited_by"
         sortingOptions={sortingOptions}
@@ -172,7 +178,9 @@ export const Columns = {
         hideAtContainerBreakpoint="sm"
         containerName="ItemsTableContainer"
       >
-        {t`Last edited by`}
+        {isTrashed
+          ? c("Precedes the name of a user").t`Deleted by`
+          : t`Last edited by`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -204,7 +212,11 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+    Header: ({
+      sortingOptions,
+      onSortingOptionsChange,
+      isTrashed,
+    }: HeaderProps & { isTrashed: boolean }) => (
       <SortableColumnHeader
         name="last_edited_at"
         sortingOptions={sortingOptions}
@@ -212,7 +224,9 @@ export const Columns = {
         hideAtContainerBreakpoint="md"
         containerName="ItemsTableContainer"
       >
-        {t`Last edited at`}
+        {isTrashed
+          ? c("Time which the item was deleted").t`Deleted at`
+          : t`Last edited at`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -265,7 +279,9 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && <ModelDetailLink model={item} />}
+            {item.model === "dataset" && !item.archived && (
+              <ModelDetailLink model={item} />
+            )}
           </RowActionsContainer>
         </ItemCell>
       );
@@ -288,3 +304,8 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 };
+
+export enum SortDirection {
+  Asc = "asc",
+  Desc = "desc",
+}
