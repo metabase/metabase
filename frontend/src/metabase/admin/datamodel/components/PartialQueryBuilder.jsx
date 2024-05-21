@@ -58,7 +58,7 @@ class PartialQueryBuilder extends Component {
       return;
     }
 
-    // only set the query if it doesn't already have an aggregation or filter
+    // only set the query if it doesn't already have a filter
     const question = getSegmentOrMetricQuestion(value, table, metadata);
     if (!question.legacyQuery({ useStructuredQuery: true }).isRaw()) {
       return;
@@ -95,7 +95,6 @@ class PartialQueryBuilder extends Component {
           query={query}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
-          supportMultipleAggregations={false}
           canChangeTable={this.props.canChangeTable}
         >
           <div className={cx(CS.flex, CS.alignCenter, CS.mx2, CS.my2)}>

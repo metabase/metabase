@@ -5,9 +5,14 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
-import type {
-  NewDashCardOpts,
-  SetDashboardAttributesOpts,
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import {
+  type NewDashCardOpts,
+  type SetDashboardAttributesOpts,
+  type navigateToNewCardFromDashboard,
+  setArchivedDashboard,
+  moveDashboardToCollection,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
@@ -16,7 +21,9 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import Dashboards from "metabase/entities/dashboards";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -85,7 +92,7 @@ type DashboardProps = {
   isDirty: boolean;
   dashboard: IDashboard;
   dashcardData: DashCardDataMap;
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
   databases: Record<DatabaseId, Database>;
   editingParameter?: Parameter | null;
   parameters: UiParameter[];
@@ -119,7 +126,6 @@ type DashboardProps = {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
-  archiveDashboard: (id: DashboardId) => Promise<void>;
 
   setEditingDashboard: (dashboard: IDashboard | null) => void;
   setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
@@ -134,6 +140,7 @@ type DashboardProps = {
   addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
+  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
@@ -215,6 +222,8 @@ function DashboardInner(props: DashboardProps) {
     toggleSidebar,
   } = props;
 
+  const dispatch = useDispatch();
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
@@ -259,6 +268,7 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const canWrite = Boolean(dashboard?.can_write);
+  const canRestore = Boolean(dashboard?.can_restore);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -430,13 +440,19 @@ function DashboardInner(props: DashboardProps) {
       );
     }
     return (
-      // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
-      // TODO: Check if onEditingChange is being used.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       <DashboardGridConnected
-        {...props}
+        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
+        isFullscreen={props.isFullscreen}
+        isEditingParameter={props.isEditingParameter}
+        isEditing={props.isEditing}
+        parameterValues={props.parameterValues}
+        dashcardData={props.dashcardData}
+        dashboard={props.dashboard}
+        slowCards={props.slowCards}
+        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
+        selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
       />
     );
@@ -515,6 +531,22 @@ function DashboardInner(props: DashboardProps) {
     >
       {() => (
         <DashboardStyled>
+          {dashboard.archived && (
+            <ArchivedEntityBanner
+              name={dashboard.name}
+              entityType="dashboard"
+              canWrite={canWrite}
+              canRestore={canRestore}
+              onUnarchive={() => dispatch(setArchivedDashboard(false))}
+              onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
+              onDeletePermanently={() => {
+                const { id } = dashboard;
+                const deleteAction = Dashboards.actions.delete({ id });
+                dispatch(deletePermanently(deleteAction));
+              }}
+            />
+          )}
+
           <DashboardHeaderContainer
             data-element-id="dashboard-header-container"
             id="Dashboard-Header-Container"
@@ -551,7 +583,42 @@ function DashboardInner(props: DashboardProps) {
             </ParametersAndCardsContainer>
 
             <DashboardSidebars
-              {...props}
+              dashboard={dashboard}
+              parameters={parameters}
+              showAddParameterPopover={props.showAddParameterPopover}
+              removeParameter={props.removeParameter}
+              addCardToDashboard={props.addCardToDashboard}
+              editingParameter={props.editingParameter}
+              clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+              onReplaceAllDashCardVisualizationSettings={
+                props.onReplaceAllDashCardVisualizationSettings
+              }
+              onUpdateDashCardVisualizationSettings={
+                props.onUpdateDashCardVisualizationSettings
+              }
+              onUpdateDashCardColumnSettings={
+                props.onUpdateDashCardColumnSettings
+              }
+              setParameterName={props.setParameterName}
+              setParameterType={props.setParameterType}
+              setParameterDefaultValue={props.setParameterDefaultValue}
+              setParameterIsMultiSelect={props.setParameterIsMultiSelect}
+              setParameterQueryType={props.setParameterQueryType}
+              setParameterSourceType={props.setParameterSourceType}
+              setParameterSourceConfig={props.setParameterSourceConfig}
+              setParameterFilteringParameters={
+                props.setParameterFilteringParameters
+              }
+              setParameterRequired={props.setParameterRequired}
+              dashcardData={props.dashcardData}
+              isFullscreen={props.isFullscreen}
+              params={props.params}
+              sidebar={props.sidebar}
+              closeSidebar={props.closeSidebar}
+              selectedTabId={props.selectedTabId}
+              getEmbeddedParameterVisibility={
+                props.getEmbeddedParameterVisibility
+              }
               setDashboardAttribute={handleSetDashboardAttribute}
               onCancel={() => setSharing(false)}
             />

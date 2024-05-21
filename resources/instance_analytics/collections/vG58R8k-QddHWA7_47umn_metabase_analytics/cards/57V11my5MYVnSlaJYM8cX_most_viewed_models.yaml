@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: false
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -157,7 +156,144 @@ dataset_query:
         - 0
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
+result_metadata:
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+    join-alias: Content - Entity Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  name: name
+  nfc_path: null
+  parent_id: null
+  position: 6
+  semantic_type: type/Name
+  settings: null
+  source: breakout
+  source_alias: Content - Entity Qualified
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_id
+  - base-type: type/Integer
+    join-alias: Content - Entity Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_id
+  name: entity_id
+  nfc_path: null
+  parent_id: null
+  position: 0
+  semantic_type: type/PK
+  settings: null
+  source: breakout
+  source_alias: Content - Entity Qualified
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: V Databases - Question Database → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_databases
+    - name
+  - base-type: type/Text
+    join-alias: V Databases - Question Database
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - name
+  name: name_2
+  nfc_path: null
+  parent_id: null
+  position: 4
+  semantic_type: type/Name
+  settings: null
+  source: breakout
+  source_alias: V Databases - Question Database
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: V Databases - Question Database → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_databases
+    - entity_id
+  - base-type: type/Integer
+    join-alias: V Databases - Question Database
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_id
+  name: entity_id_2
+  nfc_path: null
+  parent_id: null
+  position: 0
+  semantic_type: type/PK
+  settings: null
+  source: breakout
+  source_alias: V Databases - Question Database
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  visibility_type: normal
+- aggregation_index: 0
+  base_type: type/Integer
+  display_name: Count
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
 visualization_settings:
   column_settings:
     '["name","count"]':
@@ -233,5 +369,6 @@ serdes/meta:
   label: most_viewed_models
   model: Card
 initially_published_at: null
+last_used_at: null
 metabase_version: vUNKNOWN (1308cef)
 type: question

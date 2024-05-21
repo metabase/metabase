@@ -1,7 +1,8 @@
 import {
-  restore,
+  entityPickerModal,
+  entityPickerModalTab,
   mockSessionProperty,
-  popover,
+  restore,
   startNewQuestion,
 } from "e2e/support/helpers";
 
@@ -24,22 +25,16 @@ describe("issue 19341", () => {
   it("should correctly disable nested queries (metabase#19341)", () => {
     // Test "Saved Questions" table is hidden in QB data selector
     startNewQuestion();
-    popover().within(() => {
-      // Wait until picker init
-      // When working as expected, the test environment only has "Sample Database" DB
-      // So it should automatically select it as a database
-      // When "Orders" table name appears, it means the picker has selected the sample database
-      cy.findByText("Loading...").should("not.exist");
-      cy.findByText("Orders");
-
-      cy.findByText("Sample Database").click(); // go back to DB list
-      cy.findByText("Saved Questions").should("not.exist");
+    entityPickerModal().within(() => {
+      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByText("Orders").should("exist");
+      cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search for a table…").type("Ord");
-      cy.findByText("Loading...").should("not.exist");
+      cy.findByPlaceholderText("Search…").type("Ord");
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.findAllByTestId("search-result-item").then($result => {
+      cy.findAllByTestId("result-item").then($result => {
         const searchResults = $result.toArray();
         const modelTypes = new Set(
           searchResults.map(k => k.getAttribute("data-model-type")),
@@ -49,17 +44,12 @@ describe("issue 19341", () => {
         expect(modelTypes).to.include("table");
       });
 
-      cy.icon("close").click();
-
-      cy.findByText("Sample Database").click();
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
-    popover().within(() => {
-      cy.findByText("Sample Database").click(); // go back to DB list
-      cy.findByText("Saved Questions").should("not.exist");
-    });
+    entityPickerModal().findAllByRole("tab").should("not.exist");
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");

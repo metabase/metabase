@@ -155,9 +155,11 @@ export function diagnose({
   if (possibleError) {
     console.warn("diagnostic error", possibleError.message);
 
-    // diagnoseExpression should return a user friendly message, which we'll be
-    // able to return directly
-    return { message: t`Invalid expression` };
+    // diagnoseExpression returns some messages which are user-friendly and some which are not.
+    // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
+    return possibleError.friendly
+      ? possibleError
+      : { message: t`Invalid expression` };
   }
 
   return null;

@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
@@ -15,7 +20,6 @@ describe("issue 26091", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
@@ -24,14 +28,8 @@ describe("issue 26091", () => {
     cy.visit("/");
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.wait("@getCollectionContent");
-    });
-
-    startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -47,10 +45,20 @@ describe("issue 26091", () => {
     turnIntoModel();
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Old model").should("be.visible");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Recents").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("not.exist");
+      cy.findByText("Orders Model").should("not.exist");
+
+      entityPickerModalTab("Models").click();
+      cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
     });
   });
 });

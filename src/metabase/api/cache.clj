@@ -122,9 +122,9 @@
     {:status (if (= cnt -1) 404 200)
      :body   {:count   cnt
               :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
-                         [true -1]  (tru "Could not find a question for the criteria you specified.")
-                         [true 0]   (tru "No cached results to invalidate.")
-                         [true 1]   (trun "Invalidated a cached result." "Invalidated {0} cached results." cnt)
+                         [true -1]  (tru "Could not find any questions for the criteria you specified.")
+                         [true 0]   (tru "No cached results to clear.")
+                         [true 1]   (trun "Cleared a cached result." "Cleared {0} cached results." cnt)
                          [false -1] (tru "Nothing to invalidate.")
                          [false 0]  (tru "No cache configuration to invalidate.")
                          [false 1]  (trun "Invalidated cache configuration." "Invalidated {0} cache configurations." cnt))}}))

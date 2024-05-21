@@ -8,14 +8,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
-  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -49,7 +47,17 @@ import {
 } from "../strategies";
 import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
-import { LoaderInButton } from "./StrategyForm.styled";
+import {
+  FormBox,
+  FormWrapper,
+  LoaderInButton,
+  StyledForm,
+} from "./StrategyForm.styled";
+
+interface ButtonLabels {
+  save: string;
+  discard: string;
+}
 
 export const StrategyForm = ({
   targetId,
@@ -62,6 +70,10 @@ export const StrategyForm = ({
   shouldShowName = true,
   formStyle = {},
   onReset,
+  buttonLabels = {
+    save: t`Save changes`,
+    discard: t`Discard changes`,
+  },
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -73,6 +85,7 @@ export const StrategyForm = ({
   shouldShowName?: boolean;
   formStyle?: React.CSSProperties;
   onReset?: () => void;
+  buttonLabels?: ButtonLabels;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
@@ -95,6 +108,7 @@ export const StrategyForm = ({
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
         formStyle={formStyle}
+        buttonLabels={buttonLabels}
       />
     </FormProvider>
   );
@@ -108,6 +122,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation,
   shouldShowName = true,
   formStyle = {},
+  buttonLabels,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -116,6 +131,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   formStyle?: React.CSSProperties;
+  buttonLabels: ButtonLabels;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -142,32 +158,12 @@ const StrategyFormBody = ({
   }, [selectedStrategyType, values, setFieldValue]);
 
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Form
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
-          ...formStyle,
-        }}
-      >
-        <Box
-          className="strategy-form-box"
-          style={{
-            borderBottom: `1px solid ${color("border")}`,
-            overflow: "auto",
-            flexGrow: 1,
-          }}
-        >
+    <FormWrapper>
+      <StyledForm style={{ ...formStyle }}>
+        <FormBox className="strategy-form-box">
           {shouldShowName && (
-            <Box lh="1rem" px="lg" py="xs" color="text-medium">
-              <Group spacing="sm">
+            <Box lh="1rem" px="lg" py="md" color="text-medium">
+              <Group spacing="lg">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -218,15 +214,16 @@ const StrategyFormBody = ({
               <ScheduleStrategyFormFields />
             )}
           </Stack>
-        </Box>
+        </FormBox>
         <FormButtons
           targetId={targetId}
           targetModel={targetModel}
           targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
+          buttonLabels={buttonLabels}
         />
-      </Form>
-    </div>
+      </StyledForm>
+    </FormWrapper>
   );
 };
 
@@ -249,6 +246,7 @@ type FormButtonsProps = {
   targetModel: CacheableModel;
   shouldAllowInvalidation: boolean;
   targetName?: string;
+  buttonLabels: ButtonLabels;
 };
 
 const FormButtons = ({
@@ -256,6 +254,7 @@ const FormButtons = ({
   targetModel,
   shouldAllowInvalidation,
   targetName,
+  buttonLabels,
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
 
@@ -270,7 +269,11 @@ const FormButtons = ({
   if (isSavingPossible) {
     return (
       <FormButtonsGroup>
-        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
+        <SaveAndDiscardButtons
+          dirty={dirty}
+          isFormPending={isFormPending}
+          buttonLabels={buttonLabels}
+        />
       </FormButtonsGroup>
     );
   }
@@ -329,20 +332,21 @@ const ScheduleStrategyFormFields = () => {
 const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
+  buttonLabels,
 }: {
   dirty: boolean;
   isFormPending: boolean;
+  buttonLabels: ButtonLabels;
 }) => {
   return (
     <>
-      <Button
-        disabled={!dirty || isFormPending}
-        type="reset"
-      >{t`Discard changes`}</Button>
+      <Button disabled={!dirty || isFormPending} type="reset">
+        {buttonLabels.discard}
+      </Button>
       <FormSubmitButton
         miw="10rem"
         h="40px"
-        label={t`Save changes`}
+        label={buttonLabels.save}
         successLabel={
           <Group spacing="xs">
             <Icon name="check" /> {t`Saved`}
@@ -351,6 +355,7 @@ const SaveAndDiscardButtons = ({
         activeLabel={<LoaderInButton size="1rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
+        className="strategy-form-submit-button"
       />
     </>
   );
@@ -373,10 +378,14 @@ const StrategySelector = ({
     <section>
       <FormRadioGroup
         label={
-          <Text
-            lh="1rem"
-            color="text-medium"
-          >{t`When should cached query results be invalidated?`}</Text>
+          <Stack spacing="xs">
+            <Text lh="1rem" color="text-medium">
+              {t`Select the cache invalidation policy`}
+            </Text>
+            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+              {t`This determines how long cached results will be stored.`}
+            </Text>
+          </Stack>
         }
         name="type"
       >

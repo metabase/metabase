@@ -16,7 +16,6 @@ runs:
           const java = 11;
 
           const defaultRunner = "ubuntu-22.04";
-          const beefierRunner = "buildjet-2vcpu-ubuntu-2204";
 
           const defaultOptions = {
             "java-version": java,
@@ -38,6 +37,7 @@ runs:
             ["embedding", {} ],
             ["filters", {} ],
             ["joins", {} ],
+            ["metrics", {} ],
             ["models", {} ],
             ["native", {} ],
             ["native-filters", {} ],
@@ -45,6 +45,7 @@ runs:
             ["organization", {} ],
             ["permissions", {} ],
             ["question", {} ],
+            ["search", {}],
             ["sharing", {} ],
             ["visualizations-charts", {} ],
             ["visualizations-tabular", {} ],

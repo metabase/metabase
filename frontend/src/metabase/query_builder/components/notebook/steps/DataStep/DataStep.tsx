@@ -1,11 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import {
+  DataPickerModal,
+  getDataPickerValue,
+} from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
+import { loadMetadataForTable } from "metabase/questions/actions";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -19,13 +26,13 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) => {
+  const dispatch = useDispatch();
   const { stageIndex } = step;
-
   const question = step.question;
-  const collectionId = question.collectionId();
-  const databaseId = Lib.databaseID(query);
+  const questionRef = useLatest(question);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!table);
 
   const pickerLabel = table
     ? Lib.displayInfo(query, stageIndex, table).displayName
@@ -40,12 +47,19 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
-    const metadata = question.metadata();
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const handleTableChange = async (tableId: TableId) => {
+    await dispatch(loadMetadataForTable(tableId));
+    // using questionRef to access up-to-date metadata
+    const metadata = questionRef.current.metadata();
+    const table = checkNotNull(metadata.table(tableId));
+    const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
+
+  const value = useMemo(() => {
+    return table ? getDataPickerValue(query, stageIndex, table) : undefined;
+  }, [query, stageIndex, table]);
 
   return (
     <NotebookCell color={color}>
@@ -65,16 +79,19 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
-        />
+        <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+          {pickerLabel}
+        </DataStepCell>
+
+        {isDataPickerOpen && (
+          <DataPickerModal
+            title={t`Pick your starting data`}
+            value={value}
+            models={["table", "card", "dataset", "metric"]}
+            onChange={handleTableChange}
+            onClose={() => setIsDataPickerOpen(false)}
+          />
+        )}
       </NotebookCellItem>
     </NotebookCell>
   );
