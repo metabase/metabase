@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -15,6 +16,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
+  createSavedStructuredCard,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
@@ -44,7 +46,7 @@ const createQueryWithBreakout = () => {
   return Lib.breakout(query, 0, column);
 };
 
-const setup = async (
+const setup = (
   step = createMockNotebookStep(),
   { readOnly = false }: { readOnly?: boolean } = {},
 ) => {
@@ -85,8 +87,6 @@ const setup = async (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  await screen.findByText("Orders");
-
   return { getNextQuery, getNextTableName, getNextColumn };
 };
 
@@ -116,7 +116,7 @@ describe("DataStep", () => {
   });
 
   it("should render without a table selected", async () => {
-    await setupEmptyQuery();
+    setupEmptyQuery();
 
     const modal = await screen.findByTestId("entity-picker-modal");
     expect(
@@ -129,8 +129,8 @@ describe("DataStep", () => {
     expect(within(modal).getByText("People")).toBeInTheDocument();
   });
 
-  it("should render with a selected table", async () => {
-    await setup();
+  it("should render with a selected table", () => {
+    setup();
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
 
@@ -143,7 +143,7 @@ describe("DataStep", () => {
   });
 
   it("should change a table", async () => {
-    const { getNextTableName } = await setup();
+    const { getNextTableName } = setup();
 
     await userEvent.click(screen.getByText("Orders"));
     await userEvent.click(await screen.findByText("Products"));
@@ -151,9 +151,31 @@ describe("DataStep", () => {
     expect(getNextTableName()).toBe("Products");
   });
 
+  it("should render with a selected metric", () => {
+    const metric = createSavedStructuredCard({
+      id: 1,
+      name: "Revenue",
+      type: "metric",
+    });
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [metric],
+    });
+    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+    const query = Lib.queryFromTableOrCardMetadata(
+      metadataProvider,
+      Lib.tableOrCardMetadata(metadataProvider, `card__${metric.id}`),
+    );
+    const step = createMockNotebookStep({ query });
+    setup(step);
+
+    expect(screen.getByText(metric.name)).toBeInTheDocument();
+    expect(getIcon("metric")).toBeInTheDocument();
+  });
+
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
-      await setup();
+      setup();
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select none")).toBeChecked();
@@ -165,7 +187,7 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      await setup(createMockNotebookStep({ query }));
+      setup(createMockNotebookStep({ query }));
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -177,7 +199,7 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      await setup(createMockNotebookStep({ query }));
+      setup(createMockNotebookStep({ query }));
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -192,7 +214,7 @@ describe("DataStep", () => {
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -203,7 +225,7 @@ describe("DataStep", () => {
     });
 
     it("should allow de-selecting a column", async () => {
-      const { getNextColumn } = await setup();
+      const { getNextColumn } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -216,7 +238,7 @@ describe("DataStep", () => {
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select all"));
@@ -227,7 +249,7 @@ describe("DataStep", () => {
     });
 
     it("should leave one column when de-selecting all columns", async () => {
-      const { getNextQuery } = await setup();
+      const { getNextQuery } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select none"));
@@ -236,13 +258,13 @@ describe("DataStep", () => {
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
     });
 
-    it("should not display fields picker in read-only mode", async () => {
-      await setup(createMockNotebookStep(), { readOnly: true });
+    it("should not display fields picker in read-only mode", () => {
+      setup(createMockNotebookStep(), { readOnly: true });
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker until a table is selected", async () => {
-      await setupEmptyQuery();
+    it("should not display fields picker until a table is selected", () => {
+      setupEmptyQuery();
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
