@@ -103,22 +103,38 @@
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
-  so we can return its `:name`."
+  so we can return its `:name`.
+
+  A brief note here on `collection-join-id` and `collection-permission-id`. What the heck do these represent?
+
+  Permissions on Trashed items work differently than normal permissions. If something is in the trash, you can only
+  see it if you have the relevant permissions on the *original* collection the item was trashed from. This is set as
+  `trashed_from_collection_id`.
+
+  However, the item is actually *in* the Trash, and we want to show that to the frontend. Therefore, we need two
+  different collection IDs. One, the ID we should be checking permissions on, and two, the ID we should be joining to
+  Collections on."
   [honeysql-query                                :- ms/Map
-   collection-id-column                          :- keyword?
+   model                                         :- :string
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
+        collection-join-id       (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-permission-id (if (= model "collection")
+                                   :collection.id
+                                   (mi/parent-collection-id-column-for-perms (:db-model (search.config/model-to-db-model model))))
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-column
+                                  collection-permission-id
                                   visible-collections)]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
       ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= collection-id-column :collection.id)
+      (not= model "collection")
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-column :collection.id])
+                             [:= collection-join-id :collection.id])
 
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
@@ -139,7 +155,7 @@
                 [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-column nil]))))))
+               [:= collection-join-id nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -183,7 +199,7 @@
 
 (mu/defn ^:private with-last-editing-info :- :map
   [query :- :map
-   model :- [:enum "card" "dataset" "dashboard" "metric"]]
+   model :- [:enum "card" "dashboard"]]
   (-> query
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
@@ -208,18 +224,18 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
+  [model      :- :metabase.models.card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where [:= :card.type (if (= model "dataset") "model" "question")])
+      (sql.helpers/where [:= :card.type (name model)])
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)
-      (with-moderated-status model)))
+      (with-last-editing-info "card")
+      (with-moderated-status "card")))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -228,26 +244,33 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses model
+                                             search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
-  (shared-card-impl "card" search-ctx))
+  (shared-card-impl :question search-ctx))
 
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
-  (-> (shared-card-impl "dataset" search-ctx)
+  (-> (shared-card-impl :model search-ctx)
       (update :select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
-(defmethod search-query-for-model "collection"
+(defmethod search-query-for-model "metric"
   [_model search-ctx]
+  (-> (shared-card-impl :metric search-ctx)
+      (update :select (fn [columns]
+                        (cons [(h2x/literal "metric") :model] (rest columns))))))
+
+(defmethod search-query-for-model "collection"
+  [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses :collection.id search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -260,14 +283,8 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
-      (with-last-editing-info model)))
-
-(defmethod search-query-for-model "metric"
-  [model search-ctx]
-  (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
-      (with-last-editing-info model)))
+      (add-collection-join-and-where-clauses model search-ctx)
+      (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
   [query current-user-perms]
@@ -281,14 +298,16 @@
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
+            collection-id [:coalesce :model.trashed_from_collection_id :collection_id]
+
             collection-perm-clause
             [:or
-             (when has-root-access? [:= :model.collection_id nil])
+             (when has-root-access? [:= collection-id nil])
              [:and
-              [:not= :model.collection_id nil]
+              [:not= collection-id nil]
               [:or
-               (has-perm-clause "/collection/" :model.collection_id "/")
-               (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
+               (has-perm-clause "/collection/" collection-id "/")
+               (has-perm-clause "/collection/" collection-id "/read/")]]]]
         (sql.helpers/where
          query
          collection-perm-clause)))))
@@ -332,19 +351,18 @@
     [(into [:case] case-clauses)]))
 
 (defmulti ^:private check-permissions-for-model
-  {:arglists '([archived? search-ctx search-result])}
-  (fn [_archived? _search-ctx search-result]
-    ((comp keyword :model) search-result)))
+  {:arglists '([search-ctx search-result])}
+  (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
 (defmethod check-permissions-for-model :default
-  [archived? _search-ctx instance]
-  (if archived?
+  [search-ctx instance]
+  (if (:archived? search-ctx)
     (mi/can-write? instance)
     ;; We filter what we can (ie. everything that is in a collection) out already when querying
     true))
 
 (defmethod check-permissions-for-model :table
-  [_archived? search-ctx instance]
+  [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
   (and
    (data-perms/user-has-permission-for-table?
@@ -361,7 +379,7 @@
     (:id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
-  [_archived? search-ctx instance]
+  [search-ctx instance]
   (and
    (= :query-builder-and-native
       (data-perms/full-db-permission-for-user (:current-user-id search-ctx) :perms/create-queries (:database_id instance)))
@@ -369,20 +387,20 @@
       (data-perms/full-db-permission-for-user (:current-user-id search-ctx) :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
-  [archived? _search-ctx instance]
-  (if archived?
+  [search-ctx instance]
+  (if (:archived? search-ctx)
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :segment
-  [archived? _search-ctx instance]
-  (if archived?
+  [search-ctx instance]
+  (if (:archived? search-ctx)
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :database
-  [archived? _search-ctx instance]
-  (if archived?
+  [search-ctx instance]
+  (if (:archived? search-ctx)
     (mi/can-write? instance)
     (mi/can-read? instance)))
 
@@ -440,40 +458,46 @@
   [search-results]
   (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
         ;; effective location of the result.
-        result->loc (fn [{:keys [collection_id collection_location]}]
-                      (:effective_location
-                       (t2/hydrate
-                        (if (nil? collection_id)
-                          collection/root-collection
-                          {:location collection_location})
-                        :effective_location)))
+        result->loc  (fn [{:keys [collection_id collection_location]}]
+                        (:effective_location
+                         (t2/hydrate
+                          (if (nil? collection_id)
+                            collection/root-collection
+                            {:location collection_location})
+                          :effective_location)))
         ;; a map of collection-ids to collection info
-        col-id->name&loc (into {}
-                               (for [item search-results
-                                     :when (= (:model item) "dataset")]
-                                 [(:collection_id item)
-                                  {:name (:collection_name item)
-                                   :effective_location (result->loc item)}]))
-        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
+        col-id->info (into {}
+                           (for [item  search-results
+                                 :when (= (:model item) "dataset")]
+                              [(:collection_id item)
+                               {:id                 (:collection_id item)
+                                :name               (-> {:name (:collection_name item)
+                                                         :id   (:collection_id item)
+                                                         :type (:collection_type item)}
+                                                        collection/maybe-localize-trash-name
+                                                        :name)
+                                :type               (:collection_type item)
+                                :effective_location (result->loc item)}]))
+        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
-        to-fetch         (into #{} (comp (keep :effective_location)
-                                         (mapcat collection/location-path->ids)
-                                         ;; already have these names
-                                         (remove col-id->name&loc))
-                               (vals col-id->name&loc))
-        ;; the complete map of collection IDs to names
-        id->name         (merge (if (seq to-fetch)
-                                  (t2/select-pk->fn :name :model/Collection :id [:in to-fetch])
-                                  {})
-                                (update-vals col-id->name&loc :name))
-        annotate         (fn [x]
-                           (cond-> x
-                             (= (:model x) "dataset")
-                             (assoc :collection_effective_ancestors
-                                    (if-let [loc (result->loc x)]
-                                      (->> (collection/location-path->ids loc)
-                                           (map (fn [id] {:id id :name (id->name id)})))
-                                      []))))]
+        to-fetch     (into #{} (comp (keep :effective_location)
+                                      (mapcat collection/location-path->ids)
+                                      ;; already have these names
+                                      (remove col-id->info))
+                            (vals col-id->info))
+        ;; the now COMPLETE map of collection IDs to info
+        col-id->info (merge (if (seq to-fetch)
+                              (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
+                              {})
+                            (update-vals col-id->info #(dissoc % :effective_location)))
+        annotate     (fn [x]
+                        (cond-> x
+                          (= (:model x) "dataset")
+                          (assoc :collection_effective_ancestors
+                                 (if-let [loc (result->loc x)]
+                                   (->> (collection/location-path->ids loc)
+                                        (map col-id->info))
+                                   []))))]
     (map annotate search-results)))
 
 (defn- add-can-write [row]
@@ -481,7 +505,7 @@
     (assoc row :can_write (mi/can-write? row))
     row))
 
-(defn bit->boolean
+(defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
   (if (number? v)
@@ -489,7 +513,7 @@
     v))
 
 (mu/defn search
-  "Builds a search query that includes all the searchable entities and runs it."
+  "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
   (let [search-query       (full-search-query search-ctx)
         _                  (log/tracef "Searching with query:\n%s\n%s"
@@ -508,14 +532,20 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
-                            (filter (partial check-permissions-for-model (:archived? search-ctx) search-ctx))
+                            (map #(cond-> %
+                                    (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
+                            (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark bit->boolean))
+
                             (map #(update % :archived bit->boolean))
+                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
+
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true hydrate-user-metadata
@@ -583,20 +613,18 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id    current-user-id
-                        :current-user-perms current-user-perms
-                        :model-ancestors?   (boolean model-ancestors?)
+        ctx    (cond-> {:search-string      search-string
+                        :archived?          (boolean archived)
                         :models             models
-                        :search-string      search-string}
+                        :model-ancestors?   (boolean model-ancestors?)}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
-                 (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)                         (assoc :table-db-id table-db-id)
-                 (some? limit)                               (assoc :limit-int limit)
-                 (some? offset)                              (assoc :offset-int offset)
-                 (some? search-native-query)                 (assoc :search-native-query search-native-query)
-                 (some? verified)                            (assoc :verified verified))]
+                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
+                 (some? limit)                              (assoc :limit-int limit)
+                 (some? offset)                             (assoc :offset-int offset)
+                 (some? search-native-query)                (assoc :search-native-query search-native-query)
+                 (some? verified)                           (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))

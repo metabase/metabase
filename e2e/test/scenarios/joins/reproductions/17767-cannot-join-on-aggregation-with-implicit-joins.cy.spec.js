@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visualize } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  restore,
+  visualize,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -30,14 +35,10 @@ describe("issue 17767", () => {
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
-    popover().contains("Reviews").click();
-
-    // On
-    popover().contains("ID").click();
-    // =
-    popover()
-      .contains(/Products? ID/)
-      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Reviews").click();
+    });
 
     visualize(response => {
       expect(response.body.error).to.not.exist;

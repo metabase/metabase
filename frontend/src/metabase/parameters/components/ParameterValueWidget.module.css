@@ -4,7 +4,7 @@
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.selected {
@@ -39,23 +39,23 @@
 
 .parameter.noPopover input:focus {
   outline: none;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .parameter.noPopover input::-webkit-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input::-moz-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .parameter.noPopover input:-ms-input-placeholder {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .DashboardNight .parameter.noPopover input:focus,
@@ -67,5 +67,5 @@
   composes: mr1 from "style";
   font-size: 16px;
   font-weight: bold;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }

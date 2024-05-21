@@ -3,7 +3,10 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatChangeWithSign } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import {
+  getDaylightSavingsChangeTolerance,
+  parseTimestamp,
+} from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
@@ -194,7 +197,11 @@ const getTooltipFooterData = (
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
-  if (display === "scatter" || !isTimeSeriesAxis(chartModel.xAxisModel)) {
+  if (
+    display === "scatter" ||
+    display === "waterfall" ||
+    !isTimeSeriesAxis(chartModel.xAxisModel)
+  ) {
     return [];
   }
 
@@ -217,9 +224,15 @@ const getTooltipFooterData = (
     ? "quarter"
     : chartModel.xAxisModel.interval.unit;
 
+  const dateDifference = currentDate.diff(
+    previousDate,
+    chartModel.xAxisModel.interval.unit,
+    true,
+  );
+
   let isOneIntervalAgo =
-    currentDate.diff(previousDate, chartModel.xAxisModel.interval.unit) ===
-    chartModel.xAxisModel.interval.count;
+    Math.abs(dateDifference - chartModel.xAxisModel.interval.count) <=
+    getDaylightSavingsChangeTolerance(chartModel.xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
   // specially, because there are fewer days in this period due to Feburary
@@ -253,6 +266,15 @@ const getStackedTooltipModel = (
   seriesIndex: number,
   dataIndex: number,
 ) => {
+  const hoveredSeries = chartModel.seriesModels[seriesIndex];
+  const seriesStack = chartModel.stackModels.find(stackModel =>
+    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
+  );
+
+  if (!seriesStack) {
+    return undefined;
+  }
+
   const column =
     chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column;
 
@@ -265,17 +287,23 @@ const getStackedTooltipModel = (
       }),
     );
 
-  const rows: TooltipRowModel[] = chartModel.seriesModels.map(seriesModel => {
-    return {
-      name: seriesModel.name,
-      color: seriesModel.color,
-      value: chartModel.dataset[dataIndex][seriesModel.dataKey],
-      formatter,
-    };
-  });
+  const rows: (TooltipRowModel & { dataKey: DataKey })[] =
+    chartModel.seriesModels
+      .filter(seriesModel =>
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+      )
+      .map(seriesModel => {
+        return {
+          dataKey: seriesModel.dataKey,
+          name: seriesModel.name,
+          color: seriesModel.color,
+          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+          formatter,
+        };
+      });
   const [headerRows, bodyRows] = _.partition(
     rows,
-    (_row, index) => index === seriesIndex,
+    row => row.dataKey === hoveredSeries.dataKey,
   );
 
   const dimensionValue = chartModel.dataset[dataIndex][X_AXIS_DATA_KEY];

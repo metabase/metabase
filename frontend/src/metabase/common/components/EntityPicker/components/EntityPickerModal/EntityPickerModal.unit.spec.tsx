@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   mockScrollBy,
@@ -9,7 +10,10 @@ import {
   within,
 } from "__support__/ui";
 import { Button } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
 import {
+  createMockRecentCollectionItem,
+  createMockRecentTableItem,
   createMockSearchResult,
   createMockSearchResults,
 } from "metabase-types/api/mocks";
@@ -26,34 +30,48 @@ interface SetupOpts {
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]];
+  tabs?: EntityTab<SampleModelType>[];
   options?: EntityPickerModalOptions;
   selectedItem?: null | TypeWithModel<number, SampleModelType>;
   actionButtons?: JSX.Element[];
+  recentFilter?: (item: RecentItem[]) => RecentItem[];
+  recentItems?: RecentItem[];
+  defaultToRecentTab?: boolean;
+  initialValue?: { model: SampleModelType };
 }
 
 const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_TAB: EntityTab<SampleModelType> = {
+const TEST_CARD_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the foo",
   model: "card",
   element: <TestPicker name="foo" />,
 };
 
+const TEST_TABLE_TAB: EntityTab<SampleModelType> = {
+  icon: "audit",
+  displayName: "All the bar",
+  model: "table",
+  element: <TestPicker name="bar" />,
+};
+
 const setup = ({
   title = "Pick a thing",
   onItemSelect = jest.fn(),
   onClose = jest.fn(),
-  onConfirm = jest.fn(),
-  tabs = [TEST_TAB],
+  onConfirm,
+  tabs = [TEST_CARD_TAB],
   selectedItem = null,
+  recentItems = [],
+  recentFilter,
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsEndpoints(recentItems);
 
   renderWithProviders(
     <EntityPickerModal
@@ -61,9 +79,10 @@ const setup = ({
       onItemSelect={onItemSelect}
       canSelectItem={true}
       onClose={onClose}
+      onConfirm={onConfirm}
       tabs={tabs}
       selectedItem={selectedItem}
-      onConfirm={onConfirm}
+      recentFilter={recentFilter}
       {...rest}
     />,
   );
@@ -73,13 +92,31 @@ describe("EntityPickerModal", () => {
   afterAll(() => {
     jest.restoreAllMocks();
   });
+
+  it("should throw when options.hasConfirmButtons is true but onConfirm prop is missing", async () => {
+    expect(() => {
+      setup({
+        options: {
+          hasConfirmButtons: true,
+        },
+        onConfirm: undefined,
+      });
+    }).toThrow("onConfirm prop is required when hasConfirmButtons is true");
+  });
+
   it("should render a picker", async () => {
-    setup({});
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
   });
 
   it("should render a search bar by default and show confirmation button", async () => {
-    setup();
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByPlaceholderText("Search…")).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Select" }),
@@ -91,23 +128,24 @@ describe("EntityPickerModal", () => {
       options: {
         showSearch: false,
       },
+      onConfirm: jest.fn(),
     });
+
     expect(screen.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]] =
-      [
-        TEST_TAB,
+    setup({
+      tabs: [
+        TEST_CARD_TAB,
         {
           icon: "folder",
           displayName: "All the bar",
           model: "table",
           element: <TestPicker name="bar" />,
         },
-      ];
-    setup({
-      tabs,
+      ],
+      onConfirm: jest.fn(),
     });
 
     const tabList = await screen.findByRole("tablist");
@@ -152,10 +190,10 @@ describe("EntityPickerModal", () => {
     fetchMock.get("path:/api/user/recipients", { data: [] });
 
     const onItemSelect = jest.fn();
-    const onConfirm = jest.fn();
+
     setup({
       onItemSelect,
-      onConfirm,
+      onConfirm: jest.fn(),
     });
 
     await userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
@@ -183,7 +221,10 @@ describe("EntityPickerModal", () => {
       </Button>,
     ];
 
-    setup({ actionButtons });
+    setup({
+      actionButtons,
+      onConfirm: jest.fn(),
+    });
 
     expect(
       await screen.findByRole("button", { name: "Click Me" }),
@@ -193,5 +234,106 @@ describe("EntityPickerModal", () => {
     );
 
     expect(actionFn).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Recents Tab", () => {
+    const recentItems = [
+      createMockRecentCollectionItem({
+        id: 100,
+        model: "card",
+        name: "Recent Question",
+        description: "A card",
+        timestamp: "2021-09-01T00:00:00",
+      }),
+      createMockRecentCollectionItem({
+        id: 200,
+        model: "card",
+        name: "Recent Question 2",
+        description: "sometimes invisible",
+        timestamp: "2021-09-01T00:00:00",
+      }),
+      createMockRecentCollectionItem({
+        id: 101,
+        model: "dashboard",
+        name: "Recent dashboard",
+        description: "A board",
+        timestamp: "2021-09-01T00:00:00",
+      }),
+      createMockRecentTableItem({
+        id: 102,
+        model: "table",
+        name: "Recent_Table",
+        display_name: "Recent Table",
+        description: "A tableau",
+        timestamp: "2021-09-01T00:00:00",
+      }),
+    ];
+
+    it("should not show a recents tab when there are no recent items", async () => {
+      setup({ onConfirm: jest.fn() });
+
+      await screen.findByText("Test picker foo");
+
+      expect(screen.queryByText("Recents")).not.toBeInTheDocument();
+    });
+
+    it("should show a recents tab when there are recent items", async () => {
+      setup({
+        recentItems,
+        onConfirm: jest.fn(),
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Recent Question")).toBeInTheDocument();
+    });
+
+    it("should not default to the recent tab if defaultToRecents is false", async () => {
+      setup({
+        recentItems,
+        defaultToRecentTab: false,
+        initialValue: { model: "card" },
+        onConfirm: jest.fn(),
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
+    });
+
+    it("should group recents by time", async () => {
+      setup({
+        recentItems,
+        onConfirm: jest.fn(),
+      });
+
+      expect(await screen.findByText("Earlier")).toBeInTheDocument();
+    });
+
+    it("should filter out irrelevant models", async () => {
+      setup({
+        onConfirm: jest.fn(),
+        recentItems,
+        tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
+      });
+
+      expect(await screen.findByText("Recent Question")).toBeInTheDocument();
+      expect(await screen.findByText("Recent Table")).toBeInTheDocument();
+      expect(screen.queryByText("Recent Dashboard")).not.toBeInTheDocument();
+    });
+
+    it("should accept an arbitrary filter", async () => {
+      setup({
+        onConfirm: jest.fn(),
+        recentItems,
+        recentFilter: items =>
+          items.filter(item => !item.description?.includes("invisible")),
+      });
+
+      expect(await screen.findByText("Recent Question")).toBeInTheDocument();
+      expect(screen.queryByText("Recent Question 2")).not.toBeInTheDocument();
+    });
   });
 });

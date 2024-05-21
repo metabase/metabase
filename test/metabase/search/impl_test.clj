@@ -1,10 +1,10 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.api.search-test]]."
+  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
+  into this namespace."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
@@ -30,7 +30,7 @@
              :else [:inline 1]]]
            (search.impl/order-clause "Foo")))))
 
-(deftest ^:parallel search-db-call-count-test
+(deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
     (t2.with-temp/with-temp
       [:model/Card      _              {:name (str "card db 1 " search-string)}
@@ -44,28 +44,23 @@
        :model/Database  _              {:name (str "database 3 " search-string)}
        :model/Table     {table-id :id} {:db_id  db-id
                                         :schema nil}
-       :model/LegacyMetric _           {:table_id table-id
-                                        :name     (str "metric 1 " search-string)}
-       :model/LegacyMetric _           {:table_id table-id
-                                        :name     (str "metric 1 " search-string)}
-       :model/LegacyMetric _           {:table_id table-id
-                                        :name     (str "metric 2 " search-string)}
-       :model/Segment _                {:table_id table-id
+       :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
+       :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
+       :model/Card      _              {:name (str "metric 2 " search-string) :type :metric}
+       :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 1 " search-string)}
-       :model/Segment _                {:table_id table-id
+       :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 2 " search-string)}
-       :model/Segment _                {:table_id table-id
+       :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 3 " search-string)}]
-      (mt/with-test-user :crowberto
-        (letfn [(do-search []
-                  (search.impl/search
-                   {:archived?          false
-                    :current-user-id    api/*current-user-id*
-                    :current-user-perms @api/*current-user-permissions-set*
-                    :limit-int          100
-                    :model-ancestors?   false
-                    :models             search.config/all-models
-                    :search-string      search-string}))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [do-search (fn []
+                          (search.impl/search {:search-string      search-string
+                                               :archived?          false
+                                               :models             search.config/all-models
+                                               :current-user-perms #{"/"}
+                                               :model-ancestors?   false
+                                               :limit-int          100}))]
           ;; warm it up, in case the DB call depends on the order of test execution and it needs to
           ;; do some initialization
           (do-search)
@@ -74,10 +69,9 @@
             ;; the call count number here are expected to change if we change the search api
             ;; we have this test here just to keep tracks this number to remind us to put effort
             ;; into keep this number as low as we can
-            (is (= 9
-                   (call-count)))))))))
+            (is (= 6 (call-count)))))))))
 
-(deftest ^:parallel created-at-correctness-test
+(deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
         new          #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
@@ -121,22 +115,22 @@
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
-         :model/LegacyMetric     {_metric-new :id}  {:name       search-term
-                                                     :created_at new
-                                                     :table_id (mt/id :checkins)}]
+         :model/Card       {metric-new :id}   {:name       search-term
+                                               :type       :metric
+                                               :created_at new}
+         :model/Card       {metric-old :id}   {:name       search-term
+                                               :type       :metric
+                                               :created_at two-years-ago}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [test-search (fn [created-at expected]
                             (testing (format "searching with created-at = %s" created-at)
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (is (= expected
-                                       (->> (search.impl/search
-                                             (search.impl/search-context
-                                              {:archived           false
-                                               :created-at         created-at
-                                               :current-user-id    api/*current-user-id*
-                                               :current-user-perms @api/*current-user-permissions-set*
-                                               :models             search.config/all-models
-                                               :search-string      search-term}))
+                                       (->> (#'api.search/search (#'api.search/search-context
+                                                                  {:search-string search-term
+                                                                   :archived      false
+                                                                   :models        search.config/all-models
+                                                                   :created-at    created-at}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -146,14 +140,16 @@
                             ["database"   db-new]
                             ["dataset"    model-new]
                             ["dashboard"  dashboard-new]
-                            ["table"      table-new]}
+                            ["table"      table-new]
+                            ["metric"     metric-new]}
               old-result  #{["action"     action-old]
                             ["card"       card-old]
                             ["collection" coll-old]
                             ["database"   db-old]
                             ["dataset"    model-old]
                             ["dashboard"  dashboard-old]
-                            ["table"      table-old]}]
+                            ["table"      table-old]
+                            ["metric"     metric-old]}]
           ;; absolute datetime
           (test-search "Q2-2021" old-result)
           (test-search "2023-05-04" new-result)
@@ -175,16 +171,16 @@
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id} {:name search-term}
-         :model/Dashboard  {dashboard-old :id} {:name search-term}
-         :model/Card       {card-new :id}      {:name search-term}
-         :model/Card       {card-old :id}      {:name search-term}
-         :model/Card       {model-new :id}     {:name search-term
-                                                :type :model}
-         :model/Card       {model-old :id}     {:name search-term
-                                                :type :model}
-         :model/LegacyMetric {metric-new :id}  {:name search-term :table_id (mt/id :checkins)}
-         :model/LegacyMetric {metric-old :id}  {:name search-term :table_id (mt/id :checkins)}
+        [:model/Dashboard  {dashboard-new :id} {:name       search-term}
+         :model/Dashboard  {dashboard-old :id} {:name       search-term}
+         :model/Card       {card-new :id}      {:name       search-term}
+         :model/Card       {card-old :id}      {:name       search-term}
+         :model/Card       {model-new :id}     {:name       search-term
+                                                :type       :model}
+         :model/Card       {model-old :id}     {:name       search-term
+                                                :type       :model}
+         :model/Card       {metric-new :id}    {:name       search-term :type :metric}
+         :model/Card       {metric-old :id}    {:name       search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
@@ -200,8 +196,8 @@
                                                            ["Card" card-old two-years-ago]
                                                            ["Card" model-new new]
                                                            ["Card" model-old two-years-ago]
-                                                           ["Metric" metric-new new]
-                                                           ["Metric" metric-old two-years-ago]]]
+                                                           ["Card" metric-new new]
+                                                           ["Card" metric-old two-years-ago]]]
                                                       {:model       model
                                                        :model_id    model-id
                                                        :object      "{}"
@@ -213,14 +209,11 @@
                             (testing (format "searching with last-edited-at = %s" last-edited-at)
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (is (= expected
-                                       (->> (search.impl/search
-                                             (search.impl/search-context
-                                              {:archived           false
-                                               :current-user-id    api/*current-user-id*
-                                               :current-user-perms @api/*current-user-permissions-set*
-                                               :last-edited-at     last-edited-at
-                                               :models             search.config/all-models
-                                               :search-string      search-term}))
+                                       (->> (#'api.search/search (#'api.search/search-context
+                                                                  {:search-string  search-term
+                                                                   :archived       false
+                                                                   :models         search.config/all-models
+                                                                   :last-edited-at last-edited-at}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))

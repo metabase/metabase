@@ -15,8 +15,19 @@ export const SearchButton = () => {
 
   return (
     <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
-      <Button leftIcon={<Icon name="search" />} onClick={handleClick}>
-        Search
+      <Button
+        h="36px"
+        w="240px"
+        leftIcon={<Icon name="search" />}
+        onClick={handleClick}
+        // TODO: Adjust this with Mantine V7
+        styles={{
+          inner: {
+            justifyContent: "start",
+          },
+        }}
+      >
+        {t`Search`}
       </Button>
     </Tooltip>
   );

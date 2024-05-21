@@ -1,0 +1,308 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 167,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1561, null],
+          "effective_type": "type/BigInteger",
+          "id": 1561,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "category",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1562, { "temporal-unit": "default" }],
+          "effective_type": "type/Date",
+          "id": 1562,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": { "distinct-count": 4, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2017-01-01",
+                "latest": "2017-01-04"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1563, null],
+          "effective_type": "type/BigInteger",
+          "id": 1563,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 8, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -5,
+                "q1": -4,
+                "q3": 2,
+                "max": 5,
+                "sd": 3.559026084010437,
+                "avg": -1
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Unaggregated Timeseries",
+      "creator_id": 1,
+      "updated_at": "2023-12-18T22:41:59.371143Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "database": 2,
+        "query": { "source-table": "card__181" }
+      },
+      "id": 182,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "xXJnvo81DWhDWcCzNaJ0e",
+      "collection_preview": true,
+      "visualization_settings": {
+        "table.pivot_column": "category",
+        "table.cell_column": "change",
+        "graph.dimensions": ["category"],
+        "graph.label_value_formatting": "auto",
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.x_axis.scale": "timeseries",
+        "graph.show_values": true,
+        "graph.metrics": ["change"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-18T22:39:09.432279Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1561, null],
+            "effective_type": "type/BigInteger",
+            "id": 1561,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "default",
+            "name": "category",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1562, { "temporal-unit": "default" }],
+            "effective_type": "type/Date",
+            "id": 1562,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": { "distinct-count": 4, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2017-01-01",
+                  "latest": "2017-01-04"
+                }
+              }
+            },
+            "base_type": "type/Date"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "change",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1563, null],
+            "effective_type": "type/BigInteger",
+            "id": 1563,
+            "visibility_type": "normal",
+            "display_name": "Change",
+            "fingerprint": {
+              "global": { "distinct-count": 8, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": -5,
+                  "q1": -4,
+                  "q3": 2,
+                  "max": 5,
+                  "sd": 3.559026084010437,
+                  "avg": -1
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        [2, "2017-01-01T00:00:00-08:00", 2234.53345],
+        [4, "2017-01-01T00:00:00-08:00", 2234.53345],
+        [1, "2017-01-02T00:00:00-08:00", 2234.53345],
+        [6, "2017-01-02T00:00:00-08:00", 2234.53345],
+        [10, "2017-01-02T00:00:00-08:00", 2234.53345],
+        [5, "2017-01-03T00:00:00-08:00", 2234.53345],
+        [7, "2017-01-03T00:00:00-08:00", 2234.53345],
+        [8, "2017-01-03T00:00:00-08:00", 2234.53345],
+        [3, "2017-01-04T00:00:00-08:00", 2234.53345],
+        [9, "2017-01-04T00:00:00-08:00", 2234.53345]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 167,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1561, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1561,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 167,
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "category",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1562, { "temporal-unit": "default" }],
+          "effective_type": "type/Date",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1562,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": { "distinct-count": 4, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2017-01-01",
+                "latest": "2017-01-04"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 167,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1563, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1563,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 8, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -5,
+                "q1": -4,
+                "q3": 2,
+                "max": 5,
+                "sd": 3.559026084010437,
+                "avg": -1
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.show_values": true,
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1561}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1562}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1563}": {}
+        },
+        "table.cell_column": "change",
+        "graph.series_order_dimension": null,
+        "graph.metrics": ["change"],
+        "graph.series_order": null,
+        "table.pivot_column": "category",
+        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "graph.x_axis.scale": "timeseries",
+        "graph.dimensions": ["category"]
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_timeseries_20231218143728\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_timeseries_20231218143728\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_timeseries_20231218143728\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_unaggregated_timeseries_20231218143728\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

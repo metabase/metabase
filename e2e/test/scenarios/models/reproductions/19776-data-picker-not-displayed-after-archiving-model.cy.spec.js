@@ -13,7 +13,7 @@ describeOSS("issue 19776", { tags: "@OSS" }, () => {
     cy.visit("/collection/root");
 
     openEllipsisMenuFor(modelName);
-    popover().contains("Archive").click();
+    popover().contains("Move to trash").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Archived model");

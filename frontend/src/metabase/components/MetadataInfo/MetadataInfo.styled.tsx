@@ -38,7 +38,7 @@ export const Description = styled.div`
 `;
 
 export const EmptyDescription = styled(Description)`
-  color: ${color("text-light")};
+  color: ${({ theme }) => theme.fn.themeColor("text-light")};
   font-weight: 700;
 `;
 

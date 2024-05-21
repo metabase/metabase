@@ -37,6 +37,7 @@ type SizeState = {
 type BaseInnerProps = {
   className?: string;
   style?: CSSProperties;
+  onUpdateSize?: () => void;
 };
 
 function ExplicitSize<T extends BaseInnerProps>({
@@ -76,11 +77,16 @@ function ExplicitSize<T extends BaseInnerProps>({
       }
 
       _getElement() {
-        let element = ReactDOM.findDOMNode(this);
-        if (selector && element instanceof Element) {
-          element = element.querySelector(selector) || element;
+        try {
+          let element = ReactDOM.findDOMNode(this);
+          if (selector && element instanceof Element) {
+            element = element.querySelector(selector) || element;
+          }
+          return element instanceof Element ? element : null;
+        } catch (e) {
+          console.error(e);
+          return null;
         }
-        return element instanceof Element ? element : null;
       }
 
       componentDidMount() {
@@ -183,7 +189,9 @@ function ExplicitSize<T extends BaseInnerProps>({
         if (element) {
           const { width, height } = element.getBoundingClientRect();
           if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height });
+            this.setState({ width, height }, () =>
+              this.props?.onUpdateSize?.(),
+            );
           }
         }
       };

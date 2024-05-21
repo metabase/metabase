@@ -552,6 +552,28 @@
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
+(deftest table-metric-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (mt/with-temp [:model/Card metric {:type :metric
+                                       :name "Category metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Venues metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :venues)}
+                   :model/Card _      {:type :question
+                                       :name "Category question"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Archived metric"
+                                       :archived true
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}]
+      (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
+              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
+
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 

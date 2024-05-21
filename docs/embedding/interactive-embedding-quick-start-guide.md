@@ -19,7 +19,7 @@ The code featured in this guide can be found in our [sample repo](https://github
 
 ### Create a dashboard in Metabase
 
-You'll first need to create something to embed. In the left nav, go to **Browse data** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
+You'll first need to create something to embed. In the left nav, go to **Browse** > **Databases** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
 
 Visit that dashboard in the "Automatically generated dashboards" collection and make a note of its URL. If that dashboard is the first dashboard you created, it's probably `/dashboard/1` followed by a description, e.g. `/dashboard/1-a-look-at-your-invoices-table`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
 
@@ -228,7 +228,7 @@ Now to apply permissions to that group so that people only see data specific to 
 
 Metabase ships with two initial groups: "Admins" and "All Users". By default, Metabase gives the "All Users" group access to connected data sources. And since Metabase grants people the privileges of their most permissive group, you'll want to restrict what the "All Users" groups can see before you add them to groups with limited or no access to data sources and collections.
 
-To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **Data access** column, select **No self-service**. Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
+To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
 
 ![Resetting permissions of the All Users group to](./images/all-users.png)
 

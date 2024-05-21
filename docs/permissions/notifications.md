@@ -44,7 +44,7 @@ Notification **recipients** can see whatever the notification **creator** can se
 
 - Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections.md#your-personal-collection).
 - Beau adds Anya to the dashboard subscription.
-- Anya will see the dashboard results in her email, even though she doesn't have permissions to view that dashboard in Beau's personal collection.
+- Anya will see the dashboard results in her email, even though she lacks permissions to view that dashboard in Beau's personal collection.
 
 ## More control over email options
 

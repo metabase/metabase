@@ -245,7 +245,7 @@
   [:or
    ::lib.schema.aggregation/aggregation
    ::lib.schema.common/external-op
-   ::lib.schema.metadata/legacy-metric])
+   ::lib.schema.metadata/metric])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
@@ -256,7 +256,7 @@
     stage-number :- :int
     aggregable :- Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
-   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/legacy-metric)
+   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
      (recur query stage-number (lib.ref/ref aggregable))
      (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 
