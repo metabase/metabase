@@ -6,7 +6,7 @@ title: Migrating from legacy permissions
 
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
-The TL;DR: we split the old **Data access** setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions)
+The TL;DR: we split the old **Data access** setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions).
 
 ## How Metabase migrated your permissions
 
@@ -32,17 +32,17 @@ This table is just if you're interested in Metabase archeologically. Metabase ha
 
 Before, Metabase had **Data access** and **Native query editing**. Now, Metabase has [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Here's how Metabase migrated each pairing to the new system.
 
-| **Data access**            | **Native query editing** | **->** | **View data**        | **Create queries**            |
-| -------------------------- | ------------------------ | ------ | -------------------- | ----------------------------- |
-| Unrestricted               | Yes                      | **->** | Can view             | Query builder and native code |
-| Unrestricted               | No                       | **->** | Can view             | Query builder                 |
-| No self-service            | No                       | **->** | Can view             | No                            |
-| Blocked                    | No                       | **->** | Blocked              | No                            |
-| Impersonated               | Yes                      | **->** | Impersonated         | Query builder and native code |
-| Impersonated               | No                       | **->** | Impersonated         | Query builder                 |
-| Unrestricted (granular)    | No                       | **->** | Can view             | Query builder (granular)      |
-| Sandboxed (granular)       | No                       | **->** | Sandboxed (granular) | Query builder (granular)      |
-| No self-service (granular) | No                       | **->** | Can view             | No (granular)                 |
+| **Data access**            | **Native query editing** | **>** | **View data**        | **Create queries**            |
+| -------------------------- | ------------------------ | ----- | -------------------- | ----------------------------- |
+| Unrestricted               | Yes                      | **>** | Can view             | Query builder and native code |
+| Unrestricted               | No                       | **>** | Can view             | Query builder                 |
+| No self-service            | No                       | **>** | Can view             | No                            |
+| Blocked                    | No                       | **>** | Blocked              | No                            |
+| Impersonated               | Yes                      | **>** | Impersonated         | Query builder and native code |
+| Impersonated               | No                       | **>** | Impersonated         | Query builder                 |
+| Unrestricted (granular)    | No                       | **>** | Can view             | Query builder (granular)      |
+| Sandboxed (granular)       | No                       | **>** | Sandboxed (granular) | Query builder (granular)      |
+| No self-service (granular) | No                       | **>** | Can view             | No (granular)                 |
 
 ## The `No self-service (deprecated)` View access level
 
