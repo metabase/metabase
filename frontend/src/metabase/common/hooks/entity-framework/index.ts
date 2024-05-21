@@ -12,6 +12,7 @@ export * from "./use-dashboard-query";
 export * from "./use-database-list-query";
 export * from "./use-database-query";
 export * from "./use-group-list-query";
+export * from "./use-model-indexes-list-query";
 export * from "./use-question-list-query";
 export * from "./use-question-query";
 export * from "./use-revision-list-query";

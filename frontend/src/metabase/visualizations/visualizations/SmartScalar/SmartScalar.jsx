@@ -340,7 +340,6 @@ function PreviousValueComparison({
         align="center"
         justify="center"
         mx="sm"
-        my="xs"
         lh="1.2rem"
         className={cx(
           DashboardS.fullscreenNormalText,

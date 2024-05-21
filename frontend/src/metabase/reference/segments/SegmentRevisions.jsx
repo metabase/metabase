@@ -16,7 +16,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getSegmentRevisions,
-  getMetric,
   getSegment,
   getTables,
   getUser,
@@ -31,7 +30,6 @@ const emptyStateData = {
 const mapStateToProps = (state, props) => {
   return {
     revisions: getSegmentRevisions(state, props),
-    metric: getMetric(state, props),
     segment: getSegment(state, props),
     tables: getTables(state, props),
     user: getUser(state, props),
@@ -48,7 +46,6 @@ class SegmentRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     revisions: PropTypes.object.isRequired,
-    metric: PropTypes.object.isRequired,
     segment: PropTypes.object.isRequired,
     tables: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
@@ -57,18 +54,10 @@ class SegmentRevisions extends Component {
   };
 
   render() {
-    const {
-      style,
-      revisions,
-      metric,
-      segment,
-      tables,
-      user,
-      loading,
-      loadingError,
-    } = this.props;
+    const { style, revisions, segment, tables, user, loading, loadingError } =
+      this.props;
 
-    const entity = metric.id ? metric : segment;
+    const entity = segment;
 
     const userColorAssignments =
       user && Object.keys(revisions).length > 0

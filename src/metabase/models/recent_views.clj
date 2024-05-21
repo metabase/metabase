@@ -138,7 +138,7 @@
     [:id [:int {:min 1}]]
     [:name :string]
     [:description [:maybe :string]]
-    [:model [:enum :dataset :card :dashboard :collection :table]]
+    [:model [:enum :dataset :card :metric :dashboard :collection :table]]
     [:can_write :boolean]
     [:timestamp :string]]
    [:multi {:dispatch :model}
@@ -149,6 +149,10 @@
     [:dataset [:map
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
+    [:metric [:map
+              [:parent_collection ::pc]
+              [:display :string]
+              [:moderated_status [:enum "verified" nil]]]]
     [:dashboard [:map [:parent_collection ::pc]]]
     [:table [:map
              [:display_name :string]
@@ -165,7 +169,7 @@
   For most items, we gather information from the db in a single query, but certain things are more prudent to check with
   code (e.g. a collection's parent collection.)"
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
-    (or (get {"model" :dataset "question" :card} card_type)
+    (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
         (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
@@ -245,6 +249,42 @@
                           {:id (:collection-id dataset)
                            :name (:collection-name dataset)
                            :authority_level (:collection-authority-level dataset)}
+                          (root-coll))}))
+
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (some-> metric :display name)
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (if (:collection-id metric)
+                          {:id (:collection-id metric)
+                           :name (:collection-name metric)
+                           :authority_level (:collection-authority-level metric)}
+                          (root-coll))}))
+
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (some-> metric :display name)
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (if (:collection-id metric)
+                          {:id (:collection-id metric)
+                           :name (:collection-name metric)
+                           :authority_level (:collection-authority-level metric)}
                           (root-coll))}))
 
 ;; == Recent Dashboards ==
@@ -334,7 +374,12 @@
                        [:db.name :database-name]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
-              :where (if (seq table-ids) [:in :t.id table-ids] [])
+              :where (let [base-condition [:or
+                                           [:= :visibility_type nil]
+                                           [:!= :visibility_type "hidden"]]]
+                       (if (seq table-ids)
+                         [:and base-condition [:in :t.id table-ids]]
+                         base-condition))
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
@@ -395,7 +440,5 @@
   [user-id]
   (if-let [views (not-empty (do-query user-id))]
     (let [entity->id->data (get-entity->id->data views)]
-      (->> views
-           (map (partial post-process entity->id->data))
-           (remove nil?)))
+      (keep (partial post-process entity->id->data) views))
     []))
