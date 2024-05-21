@@ -315,7 +315,7 @@ function addCustomAggregation({
     getNotebookStep("summarize").icon("add").click();
   }
 
-  popover().contains("Custom Expression").click();
+  popover().contains("Custom expression…").click();
   enterCustomColumnDetails({ formula, name });
   popover().button("Done").click();
 }

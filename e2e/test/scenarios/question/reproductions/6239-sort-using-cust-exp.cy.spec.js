@@ -15,7 +15,7 @@ describe("issue 6239", () => {
 
     summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
+    cy.findByText("Custom expression…").click();
 
     cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
 

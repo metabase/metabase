@@ -44,7 +44,7 @@ describe("issue 17512", () => {
 
 function addSummarizeCustomExpression(formula, name) {
   summarize({ mode: "notebook" });
-  popover().contains("Custom Expression").click();
+  popover().contains("Custom expression…").click();
 
   expressionEditorWidget().within(() => {
     enterCustomColumnDetails({

@@ -1040,7 +1040,7 @@ describe("scenarios > question > filter", () => {
     it("with CountIf", () => {
       cy.icon("notebook").click();
       summarize({ mode: "notebook" });
-      popover().contains("Custom Expression").click();
+      popover().contains("Custom expression…").click();
       expressionEditorWidget().within(() => {
         enterCustomColumnDetails({
           formula: "CountIf(boolean)",

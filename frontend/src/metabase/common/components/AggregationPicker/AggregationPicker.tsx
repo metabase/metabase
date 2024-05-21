@@ -127,7 +127,7 @@ export function AggregationPicker({
     }
     if (hasExpressions) {
       items.push({
-        name: t`Custom expression …`,
+        name: t`Custom expression…`,
         icon: "sum",
       });
     }

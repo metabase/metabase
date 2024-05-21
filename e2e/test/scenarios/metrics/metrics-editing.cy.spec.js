@@ -601,7 +601,6 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");

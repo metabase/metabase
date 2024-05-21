@@ -542,7 +542,7 @@ describe("scenarios > question > custom column", () => {
       .click();
     popover().within(() => {
       cy.icon("chevronleft").click();
-      cy.findByText("Custom Expression").click();
+      cy.findByText("Custom expression…").click();
     });
     cy.get(".ace_line").contains("Sum([MyCC \\[2027\\]]");
   });

@@ -392,7 +392,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       it(`should work on custom aggregation with ${filter}`, () => {
         summarize({ mode: "notebook" });
-        popover().contains("Custom Expression").click();
+        popover().contains("Custom expression…").click();
 
         enterCustomColumnDetails({ formula: expression });
 

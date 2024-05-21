@@ -70,7 +70,7 @@ describe("issue 18207", () => {
   });
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
-    popover().contains("Custom Expression").click();
+    popover().contains("Custom expression…").click();
     expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "Max([Vendor])",

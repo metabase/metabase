@@ -28,7 +28,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
+    cy.findByText("Custom expression…").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
     cy.findByPlaceholderText("Something nice and descriptive")
       .as("name")

@@ -156,7 +156,7 @@ describe("scenarios > question > summarize sidebar", () => {
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
-    popover().contains("Custom Expression").click();
+    popover().contains("Custom expression…").click();
     expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "2 * Max([Total])",
@@ -178,7 +178,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
 
-    popover().contains("Custom Expression").click();
+    popover().contains("Custom expression…").click();
     expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula:
@@ -198,7 +198,7 @@ describe("scenarios > question > summarize sidebar", () => {
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
     openReviewsTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
-    popover().contains("Custom Expression").click();
+    popover().contains("Custom expression…").click();
 
     enterCustomColumnDetails({ formula: "Distinct([R" });
 
@@ -291,7 +291,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
 
     popover().within(() => {
-      cy.findByText("Custom Expression").click();
+      cy.findByText("Custom expression…").click();
 
       enterCustomColumnDetails({ formula: "floor" });
 
