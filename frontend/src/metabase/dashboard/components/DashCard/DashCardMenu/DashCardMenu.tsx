@@ -24,7 +24,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { CardMenuRoot } from "./DashCardMenu.styled";
+import { CardEntityMenu } from "./DashCardMenu.styled";
 
 interface OwnProps {
   question: Question;
@@ -132,7 +132,7 @@ const DashCardMenu = ({
   ]);
 
   return (
-    <CardMenuRoot
+    <CardEntityMenu
       className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
