@@ -9,7 +9,6 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { isNotNull } from "metabase/lib/types";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -25,18 +24,8 @@ import {
   QueryErrorMessage,
   QueryErrorContent,
 } from "./VisualizationError.styled";
+import { EmailAdmin } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
-
-function EmailAdmin(): JSX.Element | null {
-  const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
-  return hasAdminEmail ? (
-    <span className={QueryBuilderS.QueryErrorAdminEmail}>
-      <a className={CS.noDecoration} href={`mailto:${hasAdminEmail}`}>
-        {hasAdminEmail}
-      </a>
-    </span>
-  ) : null;
-}
 
 interface VisualizationErrorProps {
   via: Record<string, any>[];
