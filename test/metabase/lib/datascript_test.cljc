@@ -75,15 +75,15 @@
   {:db/id             -10
    :mbql/database     [:metadata.database/id 1]
 
-   :mbql.stage/_query [{:db/id                      -1}
-                       {:db/id                      -2
-                        :mbql.stage/previous-stage  -1}
-                       {:db/id                      -3
-                        :mbql.stage/previous-stage  -2}
-                       {:db/id                      -4
-                        :mbql.stage/previous-stage  -3}
-                       {:db/id                      -5
-                        :mbql.stage/previous-stage  -4}]
+   :mbql.stage/_query [{:db/id              -1}
+                       {:db/id              -2
+                        :mbql.stage/source  -1}
+                       {:db/id              -3
+                        :mbql.stage/source  -2}
+                       {:db/id              -4
+                        :mbql.stage/source  -3}
+                       {:db/id              -5
+                        :mbql.stage/source  -4}]
    :mbql.query/stage0 -1
    :mbql.query/stage  -5})
 
@@ -385,8 +385,8 @@
 
 (defn- expected-join-fields [the-join table-key]
   (->> (for [field-key (meta/fields table-key)
-             :let [field (meta/field-metadata table-key field-key)]]
-         {:metadata.column/handle [(:db/id the-join) (:name field)]
+             :let [field  (meta/field-metadata table-key field-key)]]
+         {#_#_:metadata.column/handle [(:db/id the-join) (:name field)]
           :metadata.column/source the-join
           :metadata.column/name   (:name field)
           :metadata.column/mirror {:metadata.field/id (:id field)}
@@ -667,13 +667,22 @@
                     (as-> #_query $q
                       (ld/join $q -1 [:metadata.table/id (meta/id :products)]
                                [(ld/expr :=
-                                         [:metadata.column/handle [(-> $q (ld/joins -1) first :db/id) "PRODUCT_ID"]]
-                                         #_[:metadata.field/id (meta/id :orders :product-id)]
+                                         ;; TODO: This sucks; figure out some better shorthand for retrieving columns
+                                         ;; for use in tests.
+                                         [:metadata.column/handle
+                                          [(-> $q (ld/joins -1) first :db/id)
+                                           (d/entid (d/entity-db $q) [:metadata.field/id (meta/id :orders :product-id)])
+                                           "PRODUCT_ID"]]
                                          [:metadata.field/id (meta/id :reviews :product-id)])])))
           [orders-join
            products-join] (ld/joins query -1)
-          user-id         (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "USER_ID"]])
-          product-id      (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "PRODUCT_ID"]])]
+          db              (d/entity-db query)
+          base-user-id    (d/entid db [:metadata.field/id (meta/id :orders :user-id)])
+          base-product-id (d/entid db [:metadata.field/id (meta/id :orders :product-id)])
+          user-id         (d/entity (d/entity-db query)
+                                    [:metadata.column/handle [(:db/id orders-join) base-user-id "USER_ID"]])
+          product-id      (d/entity (d/entity-db query)
+                                    [:metadata.column/handle [(:db/id orders-join) base-product-id "PRODUCT_ID"]])]
       (is (=? (concat (expected-fields :people)
                       (expected-join-fields orders-join :orders)
                       (expected-join-fields products-join :products))
@@ -692,9 +701,16 @@
                              [(ld/expr :=
                                        [:metadata.field/id (meta/id :orders :id)]
                                        [:metadata.field/id (meta/id :orders :id)])]))
-          [orders-join] (ld/joins query -1)
-          user-id         (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "USER_ID"]])
-          product-id      (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "PRODUCT_ID"]])]
+          [orders-join]   (ld/joins query -1)
+          db              (d/entity-db query)
+          base-user-id    (d/entid db [:metadata.field/id (meta/id :orders :user-id)])
+          base-product-id (d/entid db [:metadata.field/id (meta/id :orders :product-id)])
+          user-id         (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join)
+                                                                                  base-user-id
+                                                                                  "USER_ID"]])
+          product-id      (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join)
+                                                                                  base-product-id
+                                                                                  "PRODUCT_ID"]])]
       (is (=? (concat (expected-fields :orders)
                       (expected-join-fields orders-join :orders))
               (ld/returned-columns query -1)))
@@ -766,7 +782,10 @@
           q3    (ld/join q2 -1 ; Products -> Orders
                          [:metadata.table/id (meta/id :orders)]
                          [(ld/expr :=
-                                   [:metadata.column/handle [(-> q2 (ld/joins -1) last :db/id) "ID"]]
+                                   [:metadata.column/handle
+                                    [(-> q2 (ld/joins -1) last :db/id)
+                                     (d/entid (d/entity-db q2) [:metadata.field/id (meta/id :products :id)])
+                                     "ID"]]
                                    [:metadata.field/id (meta/id :orders :product-id)])])
           q4    (ld/join q3 -1 ; Orders (source) -> People
                          [:metadata.table/id (meta/id :people)]
@@ -777,14 +796,23 @@
                          [:metadata.table/id (meta/id :people)]
                          [(ld/expr :=
                                    [:metadata.column/handle
-                                    [(-> q4 (ld/joins -1) second :db/id) "USER_ID"]]
+                                    [(-> q4 (ld/joins -1) second :db/id)
+                                     (d/entid (d/entity-db q4) [:metadata.field/id (meta/id :orders :user-id)])
+                                     "USER_ID"]]
                                    [:metadata.field/id (meta/id :people :id)])])
           [products-join
            orders-join
            people-join1
            people-join2] (ld/joins query -1)
-          user-id         (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "USER_ID"]])
-          product-id      (d/entity (d/entity-db query) [:metadata.column/handle [(:db/id orders-join) "PRODUCT_ID"]])]
+          db              (d/entity-db query)
+          base-user-id    (d/entid db [:metadata.field/id (meta/id :orders :user-id)])
+          base-product-id (d/entid db [:metadata.field/id (meta/id :orders :product-id)])
+          user-id         (d/entity db [:metadata.column/handle [(:db/id orders-join)
+                                                                 base-user-id
+                                                                 "USER_ID"]])
+          product-id      (d/entity db [:metadata.column/handle [(:db/id orders-join)
+                                                                 base-product-id
+                                                                 "PRODUCT_ID"]])]
       (is (=? (concat (expected-fields :orders)
                       (expected-join-fields products-join :products)
                       (expected-join-fields orders-join   :orders)
@@ -853,6 +881,30 @@
                                             :metadata.column/mirror
                                             {:metadata.field/id (meta/id :people :id)}}}]}]}
                 people-join2))))))
+
+(deftest ^:parallel multi-stage-test
+  (testing "multi-stage query"
+    (let [query       (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                          (ld/aggregate -1 (ld/agg-count))
+                          (ld/breakout -1 (ld/with-temporal-bucketing
+                                            [:metadata.field/id (meta/id :orders :created-at)]
+                                            :month))
+                          ld/append-stage)
+          stage0      (:mbql.query/stage0 query)
+          stage0-cols [{:metadata.column/source stage0
+                        :metadata.column/mirror (-> stage0 :mbql.stage/breakout first)
+                        :metadata.column/name   (-> stage0 :mbql.stage/breakout first :metadata.column/name)}
+                       {:metadata.column/source stage0
+                        :metadata.column/mirror (-> stage0 :mbql.stage/aggregation first)
+                        :metadata.column/name   (-> stage0 :mbql.stage/aggregation first :metadata.column/name)}]]
+      (testing "stage 0 returned-columns have the stage as their source"
+        (is (=? stage0-cols
+                (ld/returned-columns query 0))))
+      (testing "stage 1 visible-columns has those columns"
+        (is (=? [{:lib/type                             :metadata/column-group
+                  :metabase.lib.column-group/group-type :group-type/main
+                  :metabase.lib.column-group/columns    stage0-cols}]
+                (ld/visible-column-groups query -1)))))))
 
 ;; TODO: Test multiple stages and add a bunch more gnarly double-join cases. Really need to stress-test that column
 ;; model.

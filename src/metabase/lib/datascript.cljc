@@ -38,9 +38,11 @@
    :metadata.column/effective-type {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
    :metadata.column/semantic-type  {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
 
-   ;; [source-id name] pairs are unique.
-   :metadata.column/handle         {:db/cardinality :db.cardinality/one,
-                                    :db/tupleAttrs  [:metadata.column/source :metadata.column/name],
+   ;; [source-id mirror-id name] triples are unique.
+   :metadata.column/handle         {:db/cardinality :db.cardinality/one
+                                    :db/tupleAttrs  [:metadata.column/source
+                                                     :metadata.column/mirror
+                                                     :metadata.column/name]
                                     :db/unique      :db.unique/identity}
 
    ;; Mirroring is used for eg. explicit join columns which are straight copies of input columns with some adjustment.
@@ -97,7 +99,6 @@
 
    ;; MBQL Stages - Effectively a doubly-linked list since DataScript refs are always indexed both ways.
    ;; You can move from a stage to its successor with `:mbql.stage/_previous-stage`
-   :mbql.stage/previous-stage     {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :mbql.stage/query              {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
 
    ;; Sources are in several flavours:
@@ -108,8 +109,11 @@
    ;; - :mbql.join.implicit/* for implicit joins
    ;; - :mbql.select/* to filter which columns are coming through.
 
-   ;; Primary source of a stage.
+   ;; Primary source of a stage - forms a linked list of stages in a multi-stage query.
    :mbql.stage/source             {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
+
+   ;; Stages which are not last have reified column lists.
+   :mbql.stage/returned           {:db/cardinality :db.cardinality/many, :db/valueType :db.type/ref}
 
    ;; Joins on the stage are an ordered list (:mbql/series); each join has a source and condition list.
    :mbql.join/source              {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
@@ -271,11 +275,11 @@
     ;; Ascending order: k == target
     [(stages-asc ?stage-k-1 ?target ?k ?stage)
      [(= ?target ?k)]
-     [?stage :mbql.stage/previous-stage ?stage-k-1]]
+     [?stage :mbql.stage/source ?stage-k-1]]
     ;; Ascending order: k < target
     [(stages-asc ?stage-k-1 ?target ?k ?stage)
      [(> ?target ?k)]
-     [?stage-k :mbql.stage/previous-stage ?stage-k-1]
+     [?stage-k :mbql.stage/source ?stage-k-1]
      [(inc ?k) ?k+1]
      (stages-asc ?stage-k ?target ?k+1 ?stage)]])
 
@@ -622,6 +626,7 @@
                    adjusted-ref (if (= (entid stage ref-source)
                                        source-id)
                                   [:metadata.column/handle [(:db/id join-clause)
+                                                            ref-eid
                                                             (:metadata.column/name ref-entity)]]
                                   (:mbql/ref rhs))]
                (assoc cnd :mbql.clause/argument [lhs (assoc rhs :mbql/ref adjusted-ref)]))))}]))
@@ -722,17 +727,22 @@
   [])
 
 (defmethod returned-columns-method :mbql/stage [stage]
-  (if-let [brks+aggs (not-empty (concat (stage-breakouts stage)
-                                        (stage-aggregations stage)))]
-    ;; With a breakout or aggregation: return the breakouts followed by the aggregations.
-    brks+aggs
+  (if-let [retcols (:mbql.stage/returned stage)]
+    ;; This isn't the last stage, so return the reified list of returned columns.
+    (sort-by :mbql/series retcols)
 
-    ;; Unaggregated: main source, joins in order, expressions.
-    (concat (returned-columns-method (:mbql.stage/source stage))
-            (->> (:mbql.stage/join stage)
-                 (sort-by :mbql/series)
-                 (mapcat returned-columns-method))
-            (stage-expressions stage))))
+    ;; No reified columns, so return them dynamically.
+    (if-let [brks+aggs (not-empty (concat (stage-breakouts stage)
+                                          (stage-aggregations stage)))]
+      ;; With a breakout or aggregation: return the breakouts followed by the aggregations.
+      brks+aggs
+
+      ;; Unaggregated: main source, joins in order, expressions.
+      (concat (returned-columns-method (:mbql.stage/source stage))
+              (->> (:mbql.stage/join stage)
+                   (sort-by :mbql/series)
+                   (mapcat returned-columns-method))
+              (stage-expressions stage)))))
 
 (defmethod returned-columns-method :metadata/table [table]
   (->> table
@@ -815,7 +825,32 @@
   [query-entity stage-number]
   (mapcat :metabase.lib.column-group/columns (visible-column-groups query-entity stage-number)))
 
-
+;; Multiple stages ==============================================================================
+(defn append-stage
+  "Appends a new stage to the provided query. This stage will have reified columns for all its [[returned-columns]],
+  with `:metadata.column/mirror` pointed at the original column, and `:metadata.column/source` pointed at the earlier
+  stage."
+  ;; TODO: Update columns for intermediate stages when they get edited.
+  [query-entity]
+  (let [stage   (:mbql.query/stage query-entity)
+        reified (map-indexed (fn [i column]
+                               (merge {:metadata.column/mirror (:db/id column)
+                                       :metadata.column/source (:db/id stage)
+                                       ;; TODO: Aliasing columns? They need to be unique!
+                                       :mbql/series            i}
+                                      (when-let [n (:metadata.column/name column)]
+                                        {:metadata.column/name n})))
+                             (returned-columns-method stage))]
+    (-> (d/entity-db query-entity)
+        (d/db-with
+          [;; Updating the top-level query with its new stage, whose source is the earlier stage.
+           {:db/id               (:db/id query-entity)
+            :mbql.query/stage    {:mbql.stage/source (:db/id stage)
+                                  :mbql.stage/query  (:db/id query-entity)}}
+           ;; Updating the original stage to have its reified set of columns.
+           {:db/id               (:db/id stage)
+            :mbql.stage/returned reified}])
+        (d/entity (:db/id query-entity)))))
 
 ;; Problem: Populating metadata DB ==============================================================
 ;; On JS we can maintain a single, sometimes updated atom with the entire picture in it; the FE takes
