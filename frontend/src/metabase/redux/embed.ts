@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
 import {
   combineReducers,

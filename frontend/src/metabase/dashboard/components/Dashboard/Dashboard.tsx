@@ -468,7 +468,7 @@ function DashboardInner(props: DashboardProps) {
         isEditing={props.isEditing}
         parameterValues={props.parameterValues}
         dashcardData={props.dashcardData}
-        dashboard={props.dashboard}
+        dashboard={dashboard}
         slowCards={props.slowCards}
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
