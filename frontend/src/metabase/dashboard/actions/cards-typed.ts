@@ -39,7 +39,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
-import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import { cancelFetchCardQuery, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
@@ -250,7 +250,7 @@ export const removeCardFromDashboard = createThunkAction(
     }) =>
     dispatch => {
       // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
-      dispatch(cancelFetchCardData(cardId, dashcardId));
+      dispatch(cancelFetchCardQuery(cardId, dashcardId));
       return { dashcardId };
     },
 );

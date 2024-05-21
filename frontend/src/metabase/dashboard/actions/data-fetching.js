@@ -47,11 +47,14 @@ export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 export const FETCH_CARD_DATA_PENDING =
   "metabase/dashboard/FETCH_CARD_DATA/pending";
 
-export const CANCEL_FETCH_CARD_DATA =
+export const FETCH_CARD_QUERY = "metabase/dashboard/FETCH_CARD_QUERY";
+export const FETCH_CARD_METADATA = "metabase/dashboard/FETCH_CARD_METADATA";
+
+export const CANCEL_FETCH_CARD_QUERY =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
-export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
+export const CLEAR_CARD_QUERY = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
@@ -118,7 +121,7 @@ const loadingComplete = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
+  function (card, dashcard, options) {
     return async function (dispatch, getState) {
       dispatch({
         type: FETCH_CARD_DATA_PENDING,
@@ -128,6 +131,15 @@ export const fetchCardData = createThunkAction(
         },
       });
 
+      await dispatch(fetchCardQuery(card, dashcard, options));
+    };
+  },
+);
+
+export const fetchCardQuery = createThunkAction(
+  FETCH_CARD_QUERY,
+  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
+    return async function (dispatch, getState) {
       // If the dataset_query was filtered then we don't have permission to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
@@ -170,7 +182,7 @@ export const fetchCardData = createThunkAction(
         }
       }
 
-      cancelFetchCardData(card.id, dashcard.id);
+      cancelFetchCardQuery(card.id, dashcard.id);
 
       // When dashcard parameters change, we need to clean previous (stale)
       // state so that the loader spinner shows as expected (#33767)
@@ -183,7 +195,7 @@ export const fetchCardData = createThunkAction(
 
       if (clearCache || hasParametersChanged) {
         // clears the card data to indicate the card is reloading
-        dispatch(clearCardData(card.id, dashcard.id));
+        dispatch(clearCardQuery(card.id, dashcard.id));
       }
 
       let result = null;
@@ -343,7 +355,7 @@ export const fetchDashboardCardData =
 
       for (const id of loadingIds) {
         const dashcard = getDashCardById(getState(), id);
-        dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
+        dispatch(cancelFetchCardQuery(dashcard.card.id, dashcard.id));
       }
 
       dispatch({
@@ -409,7 +421,7 @@ export const cancelFetchDashboardCardData = createThunkAction(
   () => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
-      dispatch(cancelFetchCardData(card.id, dashcard.id));
+      dispatch(cancelFetchCardQuery(card.id, dashcard.id));
     }
   },
 );
@@ -421,8 +433,8 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
 }
 
 // machinery to support query cancellation
-export const cancelFetchCardData = createAction(
-  CANCEL_FETCH_CARD_DATA,
+export const cancelFetchCardQuery = createAction(
+  CANCEL_FETCH_CARD_QUERY,
   (card_id, dashcard_id) => {
     const deferred = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
     if (deferred) {
@@ -433,8 +445,8 @@ export const cancelFetchCardData = createAction(
   },
 );
 
-export const clearCardData = createAction(
-  CLEAR_CARD_DATA,
+export const clearCardQuery = createAction(
+  CLEAR_CARD_QUERY,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
 

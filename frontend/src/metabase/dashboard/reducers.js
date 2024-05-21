@@ -29,11 +29,11 @@ import {
   MARK_NEW_CARD_SEEN,
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
-  CLEAR_CARD_DATA,
+  CLEAR_CARD_QUERY,
   MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
-  CANCEL_FETCH_CARD_DATA,
+  CANCEL_FETCH_CARD_QUERY,
   SHOW_ADD_PARAMETER_POPOVER,
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
@@ -48,6 +48,7 @@ import {
   FETCH_CARD_DATA_PENDING,
   SET_DISPLAY_THEME,
   fetchDashboard,
+  FETCH_CARD_QUERY,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
@@ -318,11 +319,11 @@ const dashcardData = handleActions(
       next: (state, { payload: { clearCache = true } = {} }) =>
         clearCache ? {} : state,
     },
-    [FETCH_CARD_DATA]: {
+    [FETCH_CARD_QUERY]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
     },
-    [CLEAR_CARD_DATA]: {
+    [CLEAR_CARD_QUERY]: {
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
@@ -444,7 +445,7 @@ const loadingDashCards = handleActions(
         };
       },
     },
-    [CANCEL_FETCH_CARD_DATA]: {
+    [CANCEL_FETCH_CARD_QUERY]: {
       next: (state, { payload: { dashcard_id } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
