@@ -559,11 +559,44 @@ function DashboardInner(props: DashboardProps) {
              * in Redux state which kicks off a fetch for the dashboard cards.
              */}
             <DashboardHeader
-              {...props}
+              dashboardId={dashboardId}
+              isEditing={isEditing}
+              location={location}
+              dashboard={dashboard}
+              isNightMode={shouldRenderAsNightMode}
+              parametersWidget={parametersWidget}
+              isFullscreen={isFullscreen}
+              fetchDashboard={fetchDashboard}
               onEditingChange={handleSetEditing}
               setDashboardAttribute={handleSetDashboardAttribute}
               addParameter={addParameter}
               onSharingClick={handleToggleSharing}
+              addCardToDashboard={addCardToDashboard}
+              onRefreshPeriodChange={onRefreshPeriodChange}
+              addMarkdownDashCardToDashboard={
+                props.addMarkdownDashCardToDashboard
+              }
+              addHeadingDashCardToDashboard={
+                props.addHeadingDashCardToDashboard
+              }
+              addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
+              updateDashboardAndCards={props.updateDashboardAndCards}
+              dashboardBeforeEditing={props.dashboardBeforeEditing}
+              isDirty={props.isDirty}
+              onFullscreenChange={props.onFullscreenChange}
+              sidebar={props.sidebar}
+              setSidebar={props.setSidebar}
+              closeSidebar={props.closeSidebar}
+              databases={props.databases}
+              isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
+              showAddParameterPopover={props.showAddParameterPopover}
+              hideAddParameterPopover={props.hideAddParameterPopover}
+              isAdditionalInfoVisible={props.isAdditionalInfoVisible}
+              isAdmin={props.isAdmin}
+              canManageSubscriptions={props.canManageSubscriptions}
+              hasNightModeToggle={props.hasNightModeToggle}
+              onNightModeChange={props.onNightModeChange}
+              refreshPeriod={props.refreshPeriod}
             />
           </DashboardHeaderContainer>
 
