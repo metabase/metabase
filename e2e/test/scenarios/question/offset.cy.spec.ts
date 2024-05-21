@@ -172,7 +172,7 @@ describe("scenarios > question > offset", () => {
 
       cy.log("custom aggregation expressions");
       cy.icon("sum").click();
-      popover().findByText("Custom Expression").click();
+      popover().findByText("Custom expression…").click();
       verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
       cy.realPress("Escape");
@@ -230,7 +230,7 @@ describe("scenarios > question > offset", () => {
       getNotebookStep("summarize")
         .findByText("Pick the metric you want to see")
         .click();
-      popover().findByText("Custom Expression").click();
+      popover().findByText("Custom expression…").click();
       enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in aggregation expressions");
