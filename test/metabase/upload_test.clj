@@ -11,6 +11,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -1390,6 +1391,31 @@
                                               [["Luke Skywalker"]]))
                        (set (rows-for-table table)))))
               (io/delete-file file))))))))
+
+(deftest append-duplicate-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should add new rows even if it is the same as the original upload."
+      (let [csv-rows    ["id,name" "10,Luke Skywalker" "20,Darth Vader"]
+            parsed-rows [[10 "Luke Skywalker"]
+                         [20 "Darth Vader"]]]
+        (with-upload-table!
+          [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
+                                                           (ordered-map/ordered-map
+                                                            :id int-type
+                                                            :name vchar-type))
+                                        :rows             parsed-rows})]
+          (let [file (csv-file-with csv-rows)]
+            (is (some? (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+            (testing "Check the data was uploaded into the table correctly"
+              (if (mysql/mariadb? (mt/db))
+                ;; For MariaDB, the auto-incrementing column isn't continuous if the insert is duplicated. So this test
+                ;; skips checking the auto-incrementing column.
+                (let [drop-auto-pk #(map rest %)]
+                  (is (= (concat parsed-rows parsed-rows)
+                         (drop-auto-pk (rows-for-table table)))))
+                (is (= (rows-with-auto-pk (concat parsed-rows parsed-rows))
+                       (rows-for-table table)))))
+            (io/delete-file file)))))))
 
 (deftest ^:mb/once update-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
