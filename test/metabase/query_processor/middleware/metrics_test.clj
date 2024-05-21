@@ -123,6 +123,28 @@
                      :aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]}]}
           (adjust query)))))
 
+(deftest ^:parallel adjust-expression-name-collision-test
+  (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
+                                            (lib/expression "foobar" (lib/+ 1 1))
+                                            (as-> $q
+                                              (lib/expression $q "qux" (lib/+ (lib/expression-ref $q "foobar") 1))
+                                              (lib/filter $q (lib/= (lib/expression-ref $q "qux") (lib/expression-ref $q "foobar"))))))
+        query (-> (lib/query mp (meta/table-metadata :products))
+                  (lib/expression "foobar" (lib/- 2 2))
+                  (as-> $q
+                    (lib/expression $q "qux" (lib/- (lib/expression-ref $q "foobar") 2))
+                    (lib/filter $q (lib/= (lib/expression-ref $q "foobar") (lib/expression-ref $q "qux"))))
+                  (lib/aggregate (lib.metadata/metric mp (:id source-metric))))]
+    (is (=?
+          {:stages [{:expressions [[:- {:lib/expression-name "foobar"} 2 2]
+                                   [:- {:lib/expression-name "qux"} [:expression {} "foobar"] 2]
+                                   [:+ {:lib/expression-name "foobar_2"} 1 1]
+                                   [:+ {:lib/expression-name "qux_2"} [:expression {} "foobar_2"] 1]]
+                     :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]
+                               [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]]
+                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+          (adjust query)))))
+
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
         query (-> (lib/query mp source-metric)
