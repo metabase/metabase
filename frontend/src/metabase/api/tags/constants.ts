@@ -6,6 +6,7 @@ export const TAG_TYPES = [
   "api-key",
   "bookmark",
   "card",
+  "cloud-migration",
   "collection",
   "dashboard",
   "database",

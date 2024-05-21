@@ -66,7 +66,8 @@ function ParametersList({
       setEditingParameter={setEditingParameter}
       setValue={
         setParameterValue &&
-        (value => setParameterValue(valuePopulatedParameter.id, value))
+        (value =>
+          setParameterValue(valuePopulatedParameter.id, value, dashboard?.id))
       }
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}

@@ -196,9 +196,6 @@ export const DashboardApi = {
   cardQueryPivot: POST(
     "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
-  exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
-  ),
 };
 
 export const CollectionsApi = {
@@ -554,15 +551,6 @@ export const MetabotApi = {
   databasePrompt: POST("/api/metabot/database/:databaseId"),
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
-};
-
-export const ApiKeysApi = {
-  list: GET("/api/api-key"),
-  create: POST("/api/api-key"),
-  count: GET("/api/api-key/count"),
-  delete: DELETE("/api/api-key/:id"),
-  edit: PUT("/api/api-key/:id"),
-  regenerate: PUT("/api/api-key/:id/regenerate"),
 };
 
 export const CacheConfigApi = {

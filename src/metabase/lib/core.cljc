@@ -285,6 +285,7 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-preview
   can-run
   can-save
   query

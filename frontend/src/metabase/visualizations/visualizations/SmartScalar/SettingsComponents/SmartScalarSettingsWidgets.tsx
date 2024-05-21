@@ -1,21 +1,20 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
 import {
-  restrictToVerticalAxis,
   restrictToParentElement,
+  restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
 import {
+  SortableContext,
   arrayMove,
   verticalListSortingStrategy,
-  SortableContext,
 } from "@dnd-kit/sortable";
 import { useCallback } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Sortable } from "metabase/core/components/Sortable";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { Stack } from "metabase/ui";
 import type { DatasetColumn, SmartScalarComparison } from "metabase-types/api";
 

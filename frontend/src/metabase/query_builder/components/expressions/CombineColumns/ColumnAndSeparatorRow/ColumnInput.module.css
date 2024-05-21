@@ -9,12 +9,12 @@ button.root {
   }
 
   &:hover .button {
-    color: var(--color-text-dark);
+    color: var(--mb-color-text-dark);
   }
 
   &.open,
   &:focus-visible {
-    border-color: var(--color-brand);
+    border-color: var(--mb-color-brand);
     outline: none;
   }
 }

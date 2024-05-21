@@ -32,6 +32,18 @@ export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
 
+export function entityPickerModalLevel(level) {
+  return cy.findByTestId(`item-picker-level-${level}`);
+}
+
+export function entityPickerModalItem(level, name) {
+  return entityPickerModalLevel(level).findByText(name).parents("button");
+}
+
+export function entityPickerModalTab(name) {
+  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+}
+
 export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
@@ -66,8 +78,8 @@ export function closeNavigationSidebar() {
   navigationSidebar().should("not.be.visible");
 }
 
-export function browseData() {
-  return navigationSidebar().findByLabelText("Browse data");
+export function browseDatabases() {
+  return navigationSidebar().findByLabelText("Browse databases");
 }
 
 /**

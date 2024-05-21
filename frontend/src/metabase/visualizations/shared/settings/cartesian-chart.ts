@@ -5,11 +5,18 @@ import { getMaxDimensionsSupported } from "metabase/visualizations";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
+  columnsAreValid,
   getDefaultDimensionsAndMetrics,
   getFriendlyName,
+  preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isAny,
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardDisplayType,
@@ -19,7 +26,48 @@ import type {
   SeriesOrderSetting,
 } from "metabase-types/api";
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+export function getDefaultDimensionFilter(display: string) {
+  return display === "scatter" ? isAny : isDimension;
+}
+
+export function getDefaultMetricFilter(display: string) {
+  return display === "scatter" ? isNumeric : isMetric;
+}
+
+export function getAreDimensionsAndMetricsValid(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  return rawSeries.some(
+    ({ card, data }) =>
+      columnsAreValid(
+        card.visualization_settings["graph.dimensions"],
+        data,
+        settings["graph._dimension_filter"],
+      ) &&
+      columnsAreValid(
+        card.visualization_settings["graph.metrics"],
+        data,
+        settings["graph._metric_filter"],
+      ),
+  );
+}
+
+export function getDefaultDimensions(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  return preserveExistingColumnsOrder(
+    settings["graph.dimensions"] ?? [],
+    getDefaultColumns(rawSeries).dimensions,
+  );
+}
+
+export function getDefaultMetrics(rawSeries: RawSeries) {
+  return getDefaultColumns(rawSeries).metrics;
+}
+
+export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
 
 export const isStackingValueValid = (
   cardDisplay: CardDisplayType,
@@ -54,22 +102,6 @@ export const getDefaultStackingValue = (
       (settings["graph.dimensions"] ?? []).length > 1);
 
   return shouldStack ? "stacked" : null;
-};
-
-export const getDefaultStackDisplayValue = (
-  cardDisplay: string,
-  seriesDisplays: string[],
-) => {
-  const firstStackable = _.find(seriesDisplays, display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
-  );
-  if (firstStackable) {
-    return firstStackable;
-  }
-  if (STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return cardDisplay;
-  }
-  return "bar";
 };
 
 export const getSeriesOrderVisibilitySettings = (
@@ -204,9 +236,7 @@ export const getDefaultXAxisScale = (
 
 export const getDefaultLegendIsReversed = (
   vizSettings: ComputedVisualizationSettings,
-) =>
-  vizSettings["stackable.stack_display"] != null &&
-  vizSettings["stackable.stack_type"] != null;
+) => vizSettings["stackable.stack_type"] != null;
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";

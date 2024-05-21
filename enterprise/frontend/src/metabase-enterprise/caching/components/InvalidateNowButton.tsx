@@ -21,14 +21,15 @@ import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
 export const InvalidateNowButton = ({
   targetId,
+  targetModel,
   targetName,
 }: InvalidateNowButtonProps) => {
   const dispatch = useDispatch();
 
-  const invalidateTargetDatabase = useCallback(async () => {
+  const invalidateTarget = useCallback(async () => {
     try {
       const invalidate = CacheConfigApi.invalidate(
-        { include: "overrides", database: targetId },
+        { include: "overrides", [targetModel]: targetId },
         { hasBody: false },
       );
       await resolveSmoothly(invalidate);
@@ -45,10 +46,10 @@ export const InvalidateNowButton = ({
       }
       throw e;
     }
-  }, [dispatch, targetId]);
+  }, [dispatch, targetId, targetModel]);
 
   return (
-    <FormProvider initialValues={{}} onSubmit={invalidateTargetDatabase}>
+    <FormProvider initialValues={{}} onSubmit={invalidateTarget}>
       <InvalidateNowFormBody targetName={targetName} />
     </FormProvider>
   );
@@ -86,14 +87,14 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           label={
             <Group spacing="sm">
               <Icon color={color("danger")} name="trash" />
-              <Text>{t`Invalidate cache now`}</Text>
+              <Text>{t`Clear cache`}</Text>
             </Group>
           }
           activeLabel={
             <Group spacing="sm">
               <Loader size="1rem" />
-              <Text>{c("Shown when a cache is being invalidated")
-                .t`Invalidating… `}</Text>
+              <Text>{c("Shown when a cache is being cleared")
+                .t`Clearing cache… `}</Text>
             </Group>
           }
           successLabel={

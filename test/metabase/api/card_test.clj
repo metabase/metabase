@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
@@ -61,30 +60,31 @@
 
 (def card-defaults
   "The default card params."
-  {:archived               false
-   :collection_id          nil
-   :collection_position    nil
-   :collection_preview     true
-   :dataset_query          {}
-   :type                   "question"
-   :description            nil
-   :display                "scalar"
-   :enable_embedding       false
-   :initially_published_at nil
-   :entity_id              nil
-   :embedding_params       nil
-   :made_public_by_id      nil
-   :parameters             []
-   :parameter_mappings     []
-   :moderation_reviews     ()
-   :public_uuid            nil
-   :query_type             nil
-   :cache_ttl              nil
-   :average_query_time     nil
-   :last_query_start       nil
-   :result_metadata        nil
-   :cache_invalidated_at   nil
-   :view_count             0})
+  {:archived                   false
+   :collection_id              nil
+   :collection_position        nil
+   :collection_preview         true
+   :dataset_query              {}
+   :type                       "question"
+   :description                nil
+   :display                    "scalar"
+   :enable_embedding           false
+   :initially_published_at     nil
+   :entity_id                  nil
+   :embedding_params           nil
+   :made_public_by_id          nil
+   :parameters                 []
+   :parameter_mappings         []
+   :moderation_reviews         ()
+   :public_uuid                nil
+   :query_type                 nil
+   :cache_ttl                  nil
+   :average_query_time         nil
+   :last_query_start           nil
+   :result_metadata            nil
+   :cache_invalidated_at       nil
+   :view_count                 0
+   :trashed_from_collection_id nil})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -285,9 +285,11 @@
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2", :archived true}
-                   :model/Card card-3 {:name "Card 3", :archived true}]
+                   :model/Card card-2 {:name "Card 2"}
+                   :model/Card card-3 {:name "Card 3"}]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-2)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-3)) {:archived true})
         (is (= #{"Card 2" "Card 3"}
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
@@ -1184,32 +1186,32 @@
 
         (testing "Should be able to fetch the Card if you have Collection read perms"
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (is (= (merge
-                  card-defaults
-                  (select-keys card [:id :name :entity_id :created_at :updated_at :last_used_at])
-                  {:dashboard_count        0
-                   :parameter_usage_count  0
-                   :creator_id             (mt/user->id :rasta)
-                   :creator                (merge
-                                            (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
-                                            {:common_name  "Rasta Toucan"
-                                             :is_superuser false
-                                             :is_qbnewb    true
-                                             :last_name    "Toucan"
-                                             :first_name   "Rasta"
-                                             :email        "rasta@metabase.com"})
-                   :dataset_query          (mt/obj->json->obj (:dataset_query card))
-                   :display                "table"
-                   :query_type             "query"
-                   :visualization_settings {}
-                   :can_write              false
-                   :database_id            (mt/id) ; these should be inferred from the dataset_query
-                   :table_id               (mt/id :venues)
-                   :collection_id          (u/the-id collection)
-                   :collection             (into {:is_personal false} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
-                   :metabase_version       config/mb-version-string})
-                 (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
+          (is (=? (merge
+                   card-defaults
+                   (select-keys card [:id :name :entity_id :created_at :updated_at :last_used_at])
+                   {:dashboard_count        0
+                    :parameter_usage_count  0
+                    :creator_id             (mt/user->id :rasta)
+                    :creator                (merge
+                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                             {:common_name  "Rasta Toucan"
+                                              :is_superuser false
+                                              :is_qbnewb    true
+                                              :last_name    "Toucan"
+                                              :first_name   "Rasta"
+                                              :email        "rasta@metabase.com"})
+                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
+                    :display                "table"
+                    :query_type             "query"
+                    :visualization_settings {}
+                    :can_write              false
+                    :database_id            (mt/id) ; these should be inferred from the dataset_query
+                    :table_id               (mt/id :venues)
+                    :collection_id          (u/the-id collection)
+                    :collection             (into {:is_personal false} collection)
+                    :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                    :metabase_version       config/mb-version-string})
+                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [:model/User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
                          :model/Revision _             {:model    "Card"
@@ -3020,7 +3022,7 @@
   (some->> (deref #'task.persist-refresh/refresh-job-key)
            task/job-info
            :triggers
-           (map (comp qc/from-job-data :data))
+           (map :data)
            (filter (comp #{"individual"} #(get % "type")))
            (map #(get % "persisted-id"))
            set))
@@ -3558,20 +3560,39 @@
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test
-  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+  (testing "The `:format-rows` query processor middleware results in formatted/unformatted rows when set to true/false."
     (let [q             {:database (mt/id)
                          :type     :native
                          :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
-          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
-                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
-      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}]
-        (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
-                                                            [:csv false ["2000" "2024-03-26"]]
-                                                            [:json true ["2,000" "March 26, 2024"]]
-                                                            [:json false [2000 "2024-03-26"]]]]
+          output-helper {:csv  (fn [output] (->> output csv/read-csv))
+                         :json (fn [[row]] [(map name (keys row)) (vals row)])}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query q
+                                                   :display       :table
+                                                   :visualization_settings
+                                                   {:column_settings
+                                                    {"[\"name\",\"NUMBER\"]" {:column_title "Custom Title"}
+                                                     "[\"name\",\"DATE\"]"   {:column_title "Custom Title 2"}}}}]
+        (doseq [[export-format apply-formatting? expected] [[:csv true [["Custom Title" "Custom Title 2"]
+                                                                        ["2,000" "March 26, 2024"]]]
+                                                            [:csv false [["NUMBER" "DATE"]
+                                                                         ["2000" "2024-03-26"]]]
+                                                            [:json true [["Custom Title" "Custom Title 2"]
+                                                                         ["2,000" "March 26, 2024"]]]
+                                                            [:json false [["NUMBER" "DATE"]
+                                                                          [2000 "2024-03-26"]]]]]
           (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
               (is (= expected
                      (->> (mt/user-http-request
                            :crowberto :post 200
                            (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+
+(deftest ^:parallel can-restore
+  (t2.with-temp/with-temp [:model/Collection collection-a {:name "A"}
+                           :model/Card {card-id :id} {:name "My Card"
+                                                      :collection_id (u/the-id collection-a)}]
+    ;; trash the card
+    (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+    ;; trash the parent collection
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))

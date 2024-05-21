@@ -22,7 +22,9 @@ export type QuestionUrlBuilderParams = {
 };
 
 export function question(
-  card: Card | null,
+  card: Partial<
+    Pick<Card, "id" | "name" | "type" | "card_id" | "model">
+  > | null,
   {
     mode = "view",
     hash = "",

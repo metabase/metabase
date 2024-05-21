@@ -18,6 +18,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -177,16 +178,23 @@
                 options))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   unique-name-fn                :- ::lib.metadata.calculation/unique-name-fn
+   {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
-   (for [expression (lib.expression/expressions-metadata query stage-number)]
-     (let [base-type (:base-type expression)]
-       (-> (assoc expression
+    (for [[clause metadata] (map vector
+                                 (:expressions (lib.util/query-stage query stage-number))
+                                 (lib.expression/expressions-metadata query stage-number))
+          ;; Only include "late" expressions when required.
+          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
+          :when (or include-late-exprs?
+                    (not (lib.util.match/match-one clause :offset)))]
+     (let [base-type (:base-type metadata)]
+       (-> (assoc metadata
                   :lib/source               :source/expressions
-                  :lib/source-column-alias  (:name expression)
-                  :lib/desired-column-alias (unique-name-fn (:name expression)))
+                  :lib/source-column-alias  (:name metadata)
+                  :lib/desired-column-alias (unique-name-fn (:name metadata)))
            (u/assoc-default :effective-type (or base-type :type/*)))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
@@ -258,7 +266,7 @@
    (previous-stage-or-source-visible-columns query stage-number options)
    ;; 2: expressions (aka calculated columns) added in this stage
    (when include-expressions?
-     (expressions-metadata query stage-number unique-name-fn))
+     (expressions-metadata query stage-number unique-name-fn {}))
    ;; 3: columns added by joins at this stage
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
@@ -304,7 +312,7 @@
         ;; we don't want to include all visible joined columns, so calculate that separately
         (previous-stage-or-source-visible-columns query stage-number {:include-implicitly-joinable? false
                                                                       :unique-name-fn               unique-name-fn})
-        (expressions-metadata query stage-number unique-name-fn)
+        (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
         (lib.join/all-joins-expected-columns query stage-number options))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native

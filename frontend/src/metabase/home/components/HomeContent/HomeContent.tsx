@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import {
   useListRecentItemsQuery,
   useListPopularItemsQuery,
@@ -14,7 +16,7 @@ import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
@@ -22,11 +24,16 @@ export const HomeContent = (): JSX.Element | null => {
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
-  const { data: recentItems, error: recentItemsError } =
+  const { data: recentItemsRaw, error: recentItemsError } =
     useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: popularItems, error: popularItemsError } =
     useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const error = databasesError || recentItemsError || popularItemsError;
+
+  const recentItems = useMemo(
+    () => (recentItemsRaw && recentsFilter(recentItemsRaw)) ?? [],
+    [recentItemsRaw],
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

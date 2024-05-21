@@ -21,67 +21,69 @@
    :creator_id             (mt/user->id :crowberto)})
 
 (defn- card->revision-object [card]
-  {:archived               false
-   :collection_id          nil
-   :collection_position    nil
-   :collection_preview     true
-   :database_id            (mt/id)
-   :dataset_query          (:dataset_query card)
-   :type                   :question
-   :description            nil
-   :display                :table
-   :enable_embedding       false
-   :embedding_params       nil
-   :name                   (:name card)
-   :parameters             []
-   :parameter_mappings     []
-   :cache_ttl              nil
-   :query_type             :query
-   :table_id               (mt/id :categories)
-   :visualization_settings {}})
+  {:archived                   false
+   :collection_id              nil
+   :collection_position        nil
+   :collection_preview         true
+   :database_id                (mt/id)
+   :dataset_query              (:dataset_query card)
+   :type                       :question
+   :description                nil
+   :display                    :table
+   :enable_embedding           false
+   :embedding_params           nil
+   :name                       (:name card)
+   :parameters                 []
+   :parameter_mappings         []
+   :cache_ttl                  nil
+   :query_type                 :query
+   :table_id                   (mt/id :categories)
+   :visualization_settings     {}
+   :trashed_from_collection_id (:trashed_from_collection_id card)})
 
 (defn- dashboard->revision-object [dashboard]
-  {:collection_id       (:collection_id dashboard)
-   :description         nil
-   :cache_ttl           nil
-   :auto_apply_filters  true
-   :name                (:name dashboard)
-   :width               (:width dashboard)
-   :tabs                []
-   :cards               []
-   :archived            false
-   :collection_position nil
-   :enable_embedding    false
-   :embedding_params    nil
-   :parameters          []})
+  {:collection_id              (:collection_id dashboard)
+   :description                nil
+   :cache_ttl                  nil
+   :auto_apply_filters         true
+   :name                       (:name dashboard)
+   :width                      (:width dashboard)
+   :tabs                       []
+   :cards                      []
+   :archived                   false
+   :collection_position        nil
+   :enable_embedding           false
+   :embedding_params           nil
+   :parameters                 []
+   :trashed_from_collection_id (:trashed_from_collection_id dashboard)})
 
 (deftest card-create-test
   (testing :event/card-create
     (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
       (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
-      (is (= {:model        "Card"
-              :model_id     card-id
-              :user_id      (mt/user->id :crowberto)
-              :object       (card->revision-object card)
-              :is_reversion false
-              :is_creation  true}
-             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                            :model       "Card"
-                            :model_id    card-id))))))
+      (is (=? {:model        "Card"
+               :model_id     card-id
+               :user_id      (mt/user->id :crowberto)
+               :object       (card->revision-object card)
+               :is_reversion false
+               :is_creation  true}
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                             :model       "Card"
+                             :model_id    card-id))))))
 
 (deftest card-update-test
   (testing :event/card-update
-   (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-     (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
-     (is (= {:model        "Card"
-             :model_id     card-id
-             :user_id      (mt/user->id :crowberto)
-             :object       (card->revision-object card)
-             :is_reversion false
-             :is_creation  false}
-            (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                           :model       "Card"
-                           :model_id    card-id))))))
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
+      (is (=? {:model        "Card"
+               :model_id     card-id
+               :user_id      (mt/user->id :crowberto)
+               :object       (card->revision-object card)
+               :is_reversion false
+               :is_creation  false}
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                             :model       "Card"
+                             :model_id    card-id))))))
 
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update

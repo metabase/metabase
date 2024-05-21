@@ -5,13 +5,13 @@ import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import getAdminRoutes from "metabase/admin/routes";
-import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
+import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
@@ -134,7 +134,13 @@ export const getRoutes = store => {
           />
 
           <Route path="search" title={t`Search`} component={SearchApp} />
-          <Route path="archive" title={t`Archive`} component={ArchiveApp} />
+          {/* Send historical /archive route to trash - can remove in v52 */}
+          <Redirect path="archive" to="trash" replace />
+          <Route
+            path="trash"
+            title={t`Trash`}
+            component={TrashCollectionLanding}
+          />
 
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />

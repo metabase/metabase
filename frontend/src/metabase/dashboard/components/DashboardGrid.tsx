@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
+import type { ComponentType } from "react";
 import { Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
@@ -56,6 +57,7 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
+import type { SetDashCardAttributesOpts } from "../actions";
 import { removeCardFromDashboard } from "../actions";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
@@ -81,12 +83,22 @@ type LayoutItem = {
   dashcard: BaseDashboardCard;
 };
 
-type DashboardChangeItem = {
-  id: DashCardId;
-  attributes: Partial<BaseDashboardCard>;
-};
+interface DashboardGridState {
+  visibleCardIds: Set<number>;
+  initialCardSizes: { [key: string]: { w: number; h: number } };
+  layouts: { desktop: LayoutItem[]; mobile: LayoutItem[] };
+  addSeriesModalDashCard: BaseDashboardCard | null;
+  replaceCardModalDashCard: BaseDashboardCard | null;
+  isDragging: boolean;
+  isAnimationPaused: boolean;
+}
 
-type DashboardGridProps = ConnectedProps<typeof connector> & {
+const mapDispatchToProps = { addUndo, removeCardFromDashboard };
+const connector = connect(null, mapDispatchToProps);
+
+type DashboardGridReduxProps = ConnectedProps<typeof connector>;
+
+type OwnProps = {
   dashboard: Dashboard;
   dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId;
@@ -94,7 +106,7 @@ type DashboardGridProps = ConnectedProps<typeof connector> & {
   slowCards: Record<CardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
-  isPublic: boolean;
+  isPublic?: boolean;
   isXray: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
@@ -118,9 +130,9 @@ type DashboardGridProps = ConnectedProps<typeof connector> & {
   }) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
 
-  setDashCardAttributes: (options: DashboardChangeItem) => void;
+  setDashCardAttributes: (options: SetDashCardAttributesOpts) => void;
   setMultipleDashCardAttributes: (changes: {
-    dashcards: Array<DashboardChangeItem>;
+    dashcards: Array<SetDashCardAttributesOpts>;
   }) => void;
 
   undoRemoveCardFromDashboard: (options: { dashcardId: DashCardId }) => void;
@@ -139,24 +151,10 @@ type DashboardGridProps = ConnectedProps<typeof connector> & {
 
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
 
-  addUndo: (options: {
-    message: string;
-    undo: boolean;
-    action: () => void;
-  }) => void;
+  onEditingChange?: (dashboard: Dashboard | null) => void;
 };
 
-interface DashboardGridState {
-  visibleCardIds: Set<number>;
-  initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: { desktop: LayoutItem[]; mobile: LayoutItem[] };
-  addSeriesModalDashCard: BaseDashboardCard | null;
-  replaceCardModalDashCard: BaseDashboardCard | null;
-  isDragging: boolean;
-  isAnimationPaused: boolean;
-}
-
-const mapDispatchToProps = { addUndo, removeCardFromDashboard };
+type DashboardGridProps = OwnProps & DashboardGridReduxProps;
 
 class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   static contextType = ContentViewportContext;
@@ -261,7 +259,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       return;
     }
 
-    const changes: DashboardChangeItem[] = [];
+    const changes: SetDashCardAttributesOpts[] = [];
 
     layout.forEach(layoutItem => {
       const dashboardCard = this.getVisibleCards().find(
@@ -538,17 +536,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublic={this.props.isPublic}
         isXray={this.props.isXray}
-        onRemove={this.onDashCardRemove.bind(this, dc)}
-        onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+        onRemove={() => this.onDashCardRemove(dc)}
+        onAddSeries={() => this.onDashCardAddSeries(dc)}
         onReplaceCard={() => this.onReplaceCard(dc)}
-        onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
-        onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
+        onUpdateVisualizationSettings={settings =>
+          this.props.onUpdateDashCardVisualizationSettings(dc.id, settings)
+        }
+        onReplaceAllVisualizationSettings={settings =>
+          this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
+        }
         mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
@@ -676,9 +672,7 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
   throw new Error(`Unknown card.type: ${type}`);
 };
 
-const connector = connect(null, mapDispatchToProps);
-
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,
-)(DashboardGrid);
+)(DashboardGrid) as ComponentType<OwnProps>;
