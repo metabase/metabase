@@ -10,7 +10,8 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > title drill", () => {
   describe("on a native question without connected dashboard parameters", () => {
@@ -433,6 +434,91 @@ describe("scenarios > dashboard > title drill", () => {
 
       cy.findByTestId("object-detail").should("not.exist");
       cy.location("href").should("include", "/question#");
+    });
+  });
+
+  describe("on various charts", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("titles are actual HTML anchors", () => {
+      cy.createDashboardWithQuestions({
+        dashboardName: "Dashboard with aggregated Q2",
+        questions: [
+          {
+            name: "Line chart",
+            display: "line",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+          {
+            name: "Row chart",
+            display: "row",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+          {
+            name: "Map chart",
+            display: "map",
+            query: {
+              "source-table": PEOPLE_ID,
+              limit: 5,
+            },
+          },
+          {
+            name: "Funnel chart",
+            display: "funnel",
+            query: {
+              "source-table": PEOPLE_ID,
+              aggregation: [["count"]],
+              breakout: [["field", PEOPLE.SOURCE]],
+              limit: 5,
+            },
+          },
+        ],
+        cards: [
+          { row: 0, col: 0, size_x: 6, size_y: 6 },
+          { row: 0, col: 6, size_x: 6, size_y: 6 },
+          { row: 6, col: 0, size_x: 6, size_y: 6 },
+          { row: 6, col: 6, size_x: 6, size_y: 6 },
+        ],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+
+        getDashboardCard(0)
+          .findByRole("link", { name: "Line chart" })
+          .should("have.attr", "href")
+          .and("include", "/question#");
+
+        getDashboardCard(1)
+          .findByRole("link", { name: "Row chart" })
+          .should("have.attr", "href")
+          .and("include", "/question#");
+
+        getDashboardCard(2)
+          .findByRole("link", { name: "Map chart" })
+          .should("have.attr", "href")
+          .and("include", "/question#");
+
+        getDashboardCard(3)
+          .findByRole("link", { name: "Funnel chart" })
+          .should("have.attr", "href")
+          .and("include", "/question#");
+      });
     });
   });
 });
