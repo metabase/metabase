@@ -1,12 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  popover,
-  visitDashboard,
   addOrUpdateDashboardCard,
-  getDashboardCard,
   appBar,
+  dashboardGrid,
+  filterWidget,
+  getDashboardCard,
+  popover,
+  queryBuilderMain,
+  restore,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -28,7 +30,8 @@ describe("scenarios > dashboard > title drill", () => {
       };
 
       cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { dashboard_id } }) => {
+        ({ body: { dashboard_id }, questionId }) => {
+          cy.wrap(questionId).as("questionId");
           visitDashboard(dashboard_id);
         },
       );
@@ -36,22 +39,21 @@ describe("scenarios > dashboard > title drill", () => {
 
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        // wait for qustion to load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
+        cy.get("@questionId").then(questionId => {
+          dashboardGrid()
+            .findByRole("link", { name: "Q1" })
+            .should("have.attr", "href", `/question/${questionId}-bar`)
+            .click();
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Q1").click();
+          queryBuilderMain().within(() => {
+            cy.findByText("This question is written in SQL.").should("exist");
 
-        // check that we're in the QB now
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("This question is written in SQL.");
+            cy.findByText("foo").should("exist");
+            cy.findByText("bar").should("exist");
+          });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("bar");
+          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        });
       });
     });
 
