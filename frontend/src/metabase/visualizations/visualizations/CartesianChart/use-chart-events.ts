@@ -125,7 +125,7 @@ export const useChartEvents = (
         handler: (event: EChartsSeriesMouseEvent) => {
           const clickData = getSeriesClickData(chartModel, settings, event);
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             onOpenTimelines?.();
 
             const clickedTimelineEvents = getTimelineEventsForEvent(
