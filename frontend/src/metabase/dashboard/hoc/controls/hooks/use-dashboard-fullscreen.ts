@@ -1,55 +1,28 @@
-import { useState } from "react";
-import { useMount, useUnmount } from "react-use";
-import screenfull from "screenfull";
+import { useFullscreen } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 
 import type { DashboardFullscreenControls } from "metabase/dashboard/hoc/controls/types";
 
 export const useDashboardFullscreen = (): DashboardFullscreenControls => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { toggle, fullscreen } = useFullscreen();
 
-  const _fullScreenChanged = () => {
-    setIsFullscreen(screenfull.isFullscreen);
-  };
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  useMount(() => {
-    if (screenfull.isEnabled) {
-      document.addEventListener(
-        screenfull.raw.fullscreenchange,
-        _fullScreenChanged,
-      );
-    }
-  });
+  useEffect(() => {
+    setIsFullscreen(fullscreen);
+  }, [fullscreen]);
 
-  useUnmount(() => {
-    if (screenfull.isEnabled) {
-      document.removeEventListener(
-        screenfull.raw.fullscreenchange,
-        _fullScreenChanged,
-      );
-    }
-  });
-
-  const onFullscreenChange = async (
-    newIsFullscreen: boolean,
-    browserFullscreen: boolean = true,
+  const onFullscreenChange = (
+    nextIsFullscreen: boolean,
+    openInBrowserFullscreen: boolean = true,
   ) => {
-    if (newIsFullscreen !== isFullscreen) {
-      if (screenfull.isEnabled && browserFullscreen) {
-        if (newIsFullscreen) {
-          try {
-            // Some browsers block this unless it was initiated by user
-            // interaction. If it fails, we catch the error since we still
-            // want to set the "isFullscreen" option in state.
-            await screenfull.request();
-          } catch (e) {
-            console.warn(`Couldn't enable browser fullscreen: ${e}`);
-          }
-        } else {
-          await screenfull.exit();
-        }
-      }
-      setIsFullscreen(newIsFullscreen);
+    if (nextIsFullscreen === isFullscreen) {
+      return;
     }
+    if (isFullscreen || (nextIsFullscreen && openInBrowserFullscreen)) {
+      toggle();
+    }
+    setIsFullscreen(nextIsFullscreen);
   };
 
   return { isFullscreen, onFullscreenChange };

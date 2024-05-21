@@ -194,9 +194,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
-      {/* Suppressing for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
-      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-      {/* @ts-expect-error */}
+      {/* @ts-expect-error for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
       <Dashboard
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}

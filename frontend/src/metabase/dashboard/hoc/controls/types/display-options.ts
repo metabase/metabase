@@ -1,14 +1,11 @@
-import type {
-  EmbedDisplayControls,
-  EmbedThemeControls,
-} from "metabase/dashboard/hoc/controls/types/embed-display-options";
+import type { EmbedDisplayControls } from "metabase/dashboard/hoc/controls/types/embed-display-options";
 
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;
   onFullscreenChange: (
     newIsFullscreen: boolean,
     browserFullscreen?: boolean,
-  ) => Promise<void>;
+  ) => void;
 };
 
 export type RefreshPeriod = number | null;
@@ -23,5 +20,4 @@ export type DashboardRefreshPeriodControls = {
 
 export type DashboardDisplayOptionControls = EmbedDisplayControls &
   DashboardFullscreenControls &
-  EmbedThemeControls &
   DashboardRefreshPeriodControls;

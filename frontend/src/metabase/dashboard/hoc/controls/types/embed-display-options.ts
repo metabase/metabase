@@ -16,8 +16,8 @@ export type EmbedHideParametersControls = {
 };
 
 export type EmbedThemeControls = {
-  theme: DisplayTheme | null;
-  setTheme: (theme: DisplayTheme | null) => void;
+  theme: DisplayTheme;
+  setTheme: (theme: DisplayTheme) => void;
   hasNightModeToggle: boolean;
   onNightModeChange: (isNightMode: boolean) => void;
   isNightMode: boolean;
