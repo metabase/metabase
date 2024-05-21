@@ -33,7 +33,7 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashboard } from "./metadata";
+import { loadMetadataForDashboard, loadMetadataForDashcard } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -48,7 +48,6 @@ export const FETCH_CARD_DATA_PENDING =
   "metabase/dashboard/FETCH_CARD_DATA/pending";
 
 export const FETCH_CARD_QUERY = "metabase/dashboard/FETCH_CARD_QUERY";
-export const FETCH_CARD_METADATA = "metabase/dashboard/FETCH_CARD_METADATA";
 
 export const CANCEL_FETCH_CARD_QUERY =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
@@ -131,7 +130,10 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      await dispatch(fetchCardQuery(card, dashcard, options));
+      await Promise.all([
+        dispatch(fetchCardQuery(card, dashcard, options)),
+        dispatch(loadMetadataForDashcard(dashcard)),
+      ]);
     };
   },
 );

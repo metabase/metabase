@@ -5,13 +5,19 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { isVirtualDashCard } from "../utils";
 
 export const loadMetadataForDashboard = dashCards => async dispatch => {
-  const cards = dashCards
+  await Promise.all(
+    dashCards.map(dashcard => dispatch(loadMetadataForDashcard(dashcard))),
+  );
+};
+
+export const loadMetadataForDashcard = dashcard => async dispatch => {
+  const cards = [dashcard]
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
   await Promise.all([
     dispatch(loadMetadataForCards(cards)),
-    dispatch(loadMetadataForLinkedTargets(dashCards)),
+    dispatch(loadMetadataForLinkedTargets([dashcard])),
   ]);
 };
 
