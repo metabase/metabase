@@ -520,7 +520,6 @@ function DashboardInner(props: DashboardProps) {
       </ParametersWidgetContainer>
     );
   };
-
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -597,6 +596,7 @@ function DashboardInner(props: DashboardProps) {
               hasNightModeToggle={props.hasNightModeToggle}
               onNightModeChange={props.onNightModeChange}
               refreshPeriod={props.refreshPeriod}
+              setRefreshElapsedHook={props.setRefreshElapsedHook}
             />
           </DashboardHeaderContainer>
 
