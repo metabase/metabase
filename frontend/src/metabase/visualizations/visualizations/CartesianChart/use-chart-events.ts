@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   GOAL_LINE_SERIES_ID,
   ORIGINAL_INDEX_DATA_KEY,
+  TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
@@ -84,7 +85,7 @@ export const useChartEvents = (
             return;
           }
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             const eventData = getTimelineEventsHoverData(
               timelineEventsModel,
               event,
