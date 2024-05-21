@@ -1,3 +1,4 @@
+import { getEmbeddingChartColors } from "embedding-sdk/lib/theme/get-embedding-chart-colors";
 import type { MetabaseColor, MetabaseColors } from "embedding-sdk/types/theme";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
@@ -52,6 +53,15 @@ export function getEmbeddingColorPalette(
       mappedThemeColors[mappedKey] = value;
     }
   });
+
+  // Map the chart colors
+  if (sdkColors.charts) {
+    const mappedChartColors = getEmbeddingChartColors(sdkColors.charts);
+
+    Object.entries(mappedChartColors).forEach(([key, value]) => {
+      mappedThemeColors[key as ColorName] = value;
+    });
+  }
 
   return {
     ...originalColors,
