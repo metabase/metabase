@@ -137,10 +137,10 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_values) {
-        dispatch(addParamValues(result.param_values));
+        await dispatch(addParamValues(result.param_values));
       }
       if (result.param_fields) {
-        dispatch(addFields(result.param_fields));
+        await dispatch(addFields(result.param_fields));
       }
 
       const metadata = getMetadata(getState());
