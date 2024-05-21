@@ -60,30 +60,41 @@ export function MultiAutocomplete({
     onBlur?.(event);
   };
 
-  const handleSearchChange = (newSearchValue: string) => {
-    setSearchValue(newSearchValue);
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const text = event.clipboardData.getData("Text");
+    const values = parseValues(text);
+    const validValues = values.filter(value =>
+      shouldCreate?.(value, selectedValues),
+    );
 
-    const isValid = shouldCreate?.(newSearchValue, selectedValues);
-    if (isValid) {
-      setSelectedValues([...lastSelectedValues, newSearchValue]);
-    } else {
-      setSelectedValues(lastSelectedValues);
+    if (validValues.length > 0) {
+      event.preventDefault();
+      const newSelectedValues = [...lastSelectedValues, ...validValues];
+      setSelectedValues(newSelectedValues);
+      setLastSelectedValues(newSelectedValues);
     }
   };
 
-  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const text = event.clipboardData.getData("Text");
-    const values = text.split(/[\n,]/g);
-    if (values.length > 1) {
-      const validValues = [...new Set(values)]
-        .map(value => value.trim())
-        .filter(value => shouldCreate?.(value, selectedValues));
-      if (validValues.length > 0) {
-        event.preventDefault();
-        const newSelectedValues = [...lastSelectedValues, ...validValues];
-        setSelectedValues(newSelectedValues);
-        setLastSelectedValues(newSelectedValues);
-      }
+  const handleSearchChange = (newSearchValue: string) => {
+    const values = parseValues(newSearchValue);
+    const validValues = values.filter(value =>
+      shouldCreate?.(value, lastSelectedValues),
+    );
+
+    const last = values.at(-1);
+
+    if (last === "") {
+      setSearchValue("");
+      const newSelectedValues = [...lastSelectedValues, ...validValues];
+      setSelectedValues(newSelectedValues);
+      setLastSelectedValues(newSelectedValues);
+    } else {
+      setSearchValue(values.at(-1) ?? "");
+      setSelectedValues([...lastSelectedValues, ...validValues]);
+      setLastSelectedValues([
+        ...lastSelectedValues,
+        ...validValues.slice(0, -1),
+      ]);
     }
   };
 
@@ -136,4 +147,8 @@ function defaultShouldCreate(query: string, selectedValues: string[]) {
   return (
     query.trim().length > 0 && !selectedValues.some(value => value === query)
   );
+}
+
+function parseValues(text: string): string[] {
+  return Array.from(new Set(text.split(/[\n,]/g).map(value => value.trim())));
 }
