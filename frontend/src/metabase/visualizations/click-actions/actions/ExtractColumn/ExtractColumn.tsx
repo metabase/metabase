@@ -4,11 +4,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics";
 import { ExtractColumn } from "metabase/query_builder/components/expressions/ExtractColumn";
+import { Box } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
-
-import css from "./ExtractColumn.module.css";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -54,14 +53,14 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <div className={css.wrapper}>
+      <Box h="65vh" mah={rem(550)}>
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
           onSubmit={handleSubmit}
           onCancel={onClose}
         />
-      </div>
+      </Box>
     );
   };
 
