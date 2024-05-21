@@ -27,7 +27,7 @@ export const SearchButton = () => {
           },
         }}
       >
-        Search
+        {t`Search`}
       </Button>
     </Tooltip>
   );
