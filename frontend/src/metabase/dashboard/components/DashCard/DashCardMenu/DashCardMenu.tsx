@@ -131,6 +131,10 @@ const DashCardMenu = ({
     onEditQuestion,
   ]);
 
+  if (menuItems.length === 0) {
+    return null;
+  }
+
   return (
     <CardEntityMenu
       className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
