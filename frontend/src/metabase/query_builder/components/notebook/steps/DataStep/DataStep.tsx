@@ -10,7 +10,8 @@ import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { Group, Icon, IconName, Popover, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase/ui";
+import { Group, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -187,7 +188,7 @@ function DataFieldPicker({
 function getDataSourceIcon(displayInfo: Lib.TableDisplayInfo): IconName {
   switch (true) {
     case displayInfo.isQuestion:
-      return "table";
+      return "table2";
     case displayInfo.isModel:
       return "model";
     case displayInfo.isMetric:
