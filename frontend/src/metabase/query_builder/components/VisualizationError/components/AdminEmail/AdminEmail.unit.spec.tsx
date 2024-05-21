@@ -2,11 +2,11 @@ import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 
-import { EmailAdmin } from "./EmailAdmin";
+import { AdminEmail } from "./AdminEmail";
 
-describe("EmailAdmin", () => {
+describe("AdminEmail", () => {
   it("should render admin's email as a link (metabase#42929)", async () => {
-    renderWithProviders(<EmailAdmin />);
+    renderWithProviders(<AdminEmail />);
 
     const link = screen.getByText("admin@metabase.test");
     expect(link).toBeInTheDocument();

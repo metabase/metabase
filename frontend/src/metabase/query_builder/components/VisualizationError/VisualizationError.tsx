@@ -24,7 +24,7 @@ import {
   QueryErrorMessage,
   QueryErrorContent,
 } from "./VisualizationError.styled";
-import { EmailAdmin } from "./components";
+import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
@@ -54,7 +54,7 @@ export function VisualizationError({
           type="timeout"
           title={t`Your question took too long`}
           message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
-          action={<EmailAdmin />}
+          action={<AdminEmail />}
         />
       );
     } else {
@@ -64,7 +64,7 @@ export function VisualizationError({
           type="serverError"
           title={t`We're experiencing server issues`}
           message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
-          action={<EmailAdmin />}
+          action={<AdminEmail />}
         />
       );
     }
