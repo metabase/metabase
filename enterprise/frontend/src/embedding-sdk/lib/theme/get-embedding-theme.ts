@@ -1,6 +1,7 @@
 import { merge } from "icepick";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
+import { getEmbeddingChartColors } from "embedding-sdk/lib/theme/get-embedding-chart-colors";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
@@ -14,6 +15,9 @@ import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
 import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
+
+// Exclude sdk colors that are not 1:1 mappable.
+type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
 const getFontFamily = (theme: MetabaseTheme) =>
   theme.fontFamily ?? DEFAULT_FONT;
@@ -48,9 +52,10 @@ export function getEmbeddingThemeOverride(
     for (const name in theme.colors) {
       const color = theme.colors[name as MetabaseColor];
 
-      if (color) {
+      if (color && typeof color === "string") {
         const themeColorName =
-          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MetabaseColor];
+          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
+
         override.colors[themeColorName] = colorTuple(color);
       }
     }
@@ -59,7 +64,7 @@ export function getEmbeddingThemeOverride(
   return override;
 }
 
-const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
+const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MappableSdkColor, ColorName> = {
   brand: "brand",
   border: "border",
   filter: "filter",
@@ -91,9 +96,22 @@ export function getThemedColorsPalette(
   const mappedThemeColors: ColorPalette = {};
 
   Object.entries(themeColors).forEach(([key, value]) => {
-    const mappedKey = SDK_TO_MAIN_APP_COLORS_MAPPING[key as MetabaseColor];
-    mappedThemeColors[mappedKey] = value;
+    const mappedKey = SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor];
+
+    // Some colors are not 1:1 mappable, ignore them.
+    if (mappedKey) {
+      mappedThemeColors[mappedKey] = value;
+    }
   });
+
+  // Map the chart colors
+  if (themeColors.charts) {
+    const mappedChartColors = getEmbeddingChartColors(themeColors.charts);
+
+    Object.entries(mappedChartColors).forEach(([key, value]) => {
+      mappedThemeColors[key as ColorName] = value;
+    });
+  }
 
   return {
     ...originalColors,
