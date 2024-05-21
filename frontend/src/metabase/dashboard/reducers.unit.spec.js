@@ -353,7 +353,6 @@ describe("dashboard reducers", () => {
           startTime: 100,
           endTime: 200,
         },
-        dashcardData: { 3: { 1: {} } },
       });
     });
 
