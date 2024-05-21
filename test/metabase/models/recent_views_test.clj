@@ -100,20 +100,32 @@
     [:model/Database {db-id :id} {:name "test-data"}
      :model/Table {table-id :id} {:name "name" :db_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)'
-    (is true)
-    (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
-      (is (= [{:description nil,
-               :can_write true,
-               :name "name",
-               :parent_collection {},
-               :id table-id,
-               :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
-               :timestamp String,
-               :display_name "Name",
-               :model :table}]
-             (mapv fixup
-                   (mt/with-test-user :rasta
-                     (recent-views/get-list (mt/user->id :rasta)))))))))
+    (doseq [[read? write? expected] [[false true []]
+                                     [false false []]
+                                     [true false [{:description nil,
+                                                   :can_write false,
+                                                   :name "name",
+                                                   :parent_collection {},
+                                                   :id table-id,
+                                                   :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
+                                                   :timestamp String,
+                                                   :display_name "Name",
+                                                   :model :table}]]
+                                     [true true [{:description nil,
+                                                  :can_write true,
+                                                  :name "name",
+                                                  :parent_collection {},
+                                                  :id table-id,
+                                                  :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
+                                                  :timestamp String,
+                                                  :display_name "Name",
+                                                  :model :table}]]]]
+      (with-redefs [mi/can-read? (constantly read?)
+                    mi/can-write? (constantly write?)]
+        (is (= expected
+               (mapv fixup
+                     (mt/with-test-user :rasta
+                       (recent-views/get-list (mt/user->id :rasta))))))))))
 
 
 (deftest update-users-recent-views!-duplicates-test

@@ -19,14 +19,20 @@
   E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
   (:require
    [clojure.set :as set]
+   [colorize.core :as colorize]
    [java-time.api :as t]
+   [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -434,13 +440,36 @@
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))}))
 
-(mu/defn get-list :- [:sequential Item]
+(def ^:private ItemValidator (mc/validator Item))
+
+(defn error-avoider
+  "The underlying data model here can become inconsistent, and it's better to return the recents data that we know is
+  correct than throw an error. So, in prod, we silently filter out known-bad recent views."
+  [item]
+  (if (and item (ItemValidator item))
+    item
+    (when-not config/is-prod?
+      (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
+                  (pr-str item)
+                  (me/humanize
+                   (mr/explain Item item)
+                   {:wrap (fn [{:keys [value message]}]
+                            (str message "| got: " (pr-str value)))})))))
+
+(defn get-list
   "Gets all recent views for a given user. Returns a list of at most 20 [[Item]]s per [[models-of-interest]].
 
   [[do-query]] can return nils, and we remove them here becuase models can be deleted, and we don't want to show those
-  in the recent views."
+  in the recent views.
+
+  Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
+  sequence, so there's no need to do it twice."
   [user-id]
   (if-let [views (not-empty (do-query user-id))]
     (let [entity->id->data (get-entity->id->data views)]
-      (keep (partial post-process entity->id->data) views))
+      (into []
+            (comp
+             (map (partial post-process entity->id->data))
+             (keep error-avoider))
+            views))
     []))
