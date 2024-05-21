@@ -95,6 +95,52 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
+  it("should accept quote-delimited values containing commas", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    await userEvent.type(input, '"foo bar",', {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(["foo bar"]);
+    expect(input).toHaveValue("");
+
+    await userEvent.type(input, "baz,", {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(["foo bar", "baz"]);
+    expect(input).toHaveValue("");
+  });
+
+  it("should correctly parse escaped quotes", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    await userEvent.type(input, '"foo \\"bar\\"",', {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(['foo "bar"']);
+    expect(input).toHaveValue("");
+
+    await userEvent.type(input, "baz,", {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(['foo "bar"', "baz"]);
+    expect(input).toHaveValue("");
+  });
+
+  it("should accept quote-delimited values containing commas when pasting", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    input.focus();
+    await userEvent.paste('"foo bar",baz');
+    expect(onChange).toHaveBeenLastCalledWith(["foo bar", "baz"]);
+    expect(input).toHaveValue("");
+  });
+
+  it("should correctly parse escaped quotes when pasting", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    input.focus();
+    await userEvent.paste('"foo \\"bar\\"",baz');
+    expect(onChange).toHaveBeenLastCalledWith(['foo "bar"', "baz"]);
+    expect(input).toHaveValue("");
+  });
+
   it("should accept values with spaces in them", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
     await userEvent.type(input, "foo bar,", {

@@ -4,6 +4,8 @@ import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 
+import { parseValues, cleanValue } from "./util";
+
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
 };
@@ -70,7 +72,7 @@ export function MultiAutocomplete({
     const text = `${before}${pasted}${after}`;
     const values = parseValues(text);
     const validValues = values
-      .map(value => value.trim())
+      .map(cleanValue)
       .filter(value => shouldCreate?.(value, selectedValues));
 
     event.preventDefault();
@@ -86,7 +88,7 @@ export function MultiAutocomplete({
   const handleSearchChange = (newSearchValue: string) => {
     const values = parseValues(newSearchValue);
     const validValues = values
-      .map(value => value.trim())
+      .map(cleanValue)
       .filter(value => shouldCreate?.(value, lastSelectedValues));
 
     const last = values.at(-1);
@@ -157,8 +159,4 @@ function defaultShouldCreate(query: string, selectedValues: string[]) {
   return (
     query.trim().length > 0 && !selectedValues.some(value => value === query)
   );
-}
-
-function parseValues(text: string): string[] {
-  return Array.from(new Set(text.split(/[\n,]/g)));
 }
