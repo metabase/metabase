@@ -168,8 +168,6 @@ describe("AggregationPicker", () => {
     it("should list basic operators", () => {
       setup();
 
-      expect(screen.getByText("Basic Metrics")).toBeInTheDocument();
-
       [
         "Count of rows",
         "Sum of ...",
@@ -291,7 +289,7 @@ describe("AggregationPicker", () => {
       const expression = "count + 1";
       const expressionName = "My expression";
 
-      await userEvent.click(screen.getByText("Custom Expression"));
+      await userEvent.click(screen.getByText("Custom expression…"));
       await userEvent.type(screen.getByLabelText("Expression"), expression);
       await userEvent.type(screen.getByLabelText("Name"), expressionName);
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -329,12 +327,12 @@ describe("AggregationPicker", () => {
         }),
         metadata: createMetadata({ hasExpressionSupport: false }),
       });
-      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+      expect(screen.queryByText("Custom expression…")).not.toBeInTheDocument();
     });
 
     it("shouldn't be shown if `hasExpressionInput` prop is false", () => {
       setup({ hasExpressionInput: false });
-      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+      expect(screen.queryByText("Custom expression…")).not.toBeInTheDocument();
     });
 
     it("should open the editor even if `hasExpressionInput` prop is false if expression is used", () => {
