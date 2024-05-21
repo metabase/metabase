@@ -15,7 +15,7 @@ describe("LogoBadge", () => {
 
     expect(screen.getByRole("link")).toHaveProperty(
       "href",
-      "https://www.metabase.com/powered-by-metabase?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=embedded_banner",
+      "https://www.metabase.com/powered-by-metabase?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=embedded_banner_localhost",
     );
   });
 });
