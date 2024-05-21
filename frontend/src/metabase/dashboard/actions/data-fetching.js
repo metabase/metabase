@@ -33,7 +33,7 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashboard, loadMetadataForDashcard } from "./metadata";
+import { loadMetadataForDashcard } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -389,20 +389,6 @@ export const fetchDashboardCardData =
       });
     }
   };
-
-export const fetchDashboardCardMetadata = createThunkAction(
-  FETCH_DASHBOARD_CARD_METADATA,
-  () => async (dispatch, getState) => {
-    const allDashCards = getDashboardComplete(getState()).dashcards;
-    const selectedTabId = getSelectedTabId(getState());
-
-    const cards = allDashCards.filter(
-      dc =>
-        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
-    );
-    await dispatch(loadMetadataForDashboard(cards));
-  },
-);
 
 export const reloadDashboardCards = () => async (dispatch, getState) => {
   const dashboard = getDashboardComplete(getState());

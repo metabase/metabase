@@ -4,12 +4,6 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 
 import { isVirtualDashCard } from "../utils";
 
-export const loadMetadataForDashboard = dashCards => async dispatch => {
-  await Promise.all(
-    dashCards.map(dashcard => dispatch(loadMetadataForDashcard(dashcard))),
-  );
-};
-
 export const loadMetadataForDashcard = dashcard => async dispatch => {
   const cards = [dashcard]
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
