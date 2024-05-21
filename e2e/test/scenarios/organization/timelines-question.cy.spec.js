@@ -392,6 +392,20 @@ describe("scenarios > organization > timelines > question", () => {
 
       echartsIcon("warning").should("not.exist");
     });
+
+    it("should color the event icon when hovering", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      echartsIcon("star").realHover();
+      echartsIcon("star", true).should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
