@@ -235,31 +235,54 @@ const buildEChartsBarSeries = (
   };
 };
 
-function getShowSymbol(
-  seriesModel: SeriesModel,
-  seriesSettings: SeriesSettings,
+function getShowAutoSymbols(
+  seriesModels: SeriesModel[],
   dataset: ChartDataset,
+  seriesSettingsByDataKey: Record<string, SeriesSettings>,
   chartWidth: number,
-) {
-  // "line.marker_enabled" corresponds to the "Show dots on lines" series setting
-  // and can be true, false, or undefined
-  // true = on
-  // false = off
-  // undefined = auto
-  const isAuto = seriesSettings["line.marker_enabled"] == null;
-  if (!isAuto) {
-    return seriesSettings["line.marker_enabled"];
-  }
+): boolean {
   if (chartWidth <= 0) {
     return false;
   }
-  const numDots =
-    seriesSettings["line.missing"] !== "none"
-      ? dataset.length
-      : dataset.filter(datum => datum[seriesModel.dataKey] != null).length;
 
-  // symbolSize is the dot's diameter
-  return chartWidth / numDots > CHART_STYLE.symbolSize;
+  const seriesWithSymbols = seriesModels.filter(seriesModel => {
+    const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    return ["area", "line"].includes(seriesSettings.display ?? "");
+  });
+
+  // at least half of the chart width should not have a symbol on it
+  const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
+  const totalNumberOfDots = seriesWithSymbols.reduce((sum, seriesModel) => {
+    const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    const numDots =
+      seriesSettings["line.missing"] !== "none"
+        ? dataset.length
+        : dataset.filter(datum => datum[seriesModel.dataKey] != null).length;
+
+    return sum + numDots;
+  }, 0);
+
+  return totalNumberOfDots < maxNumberOfDots;
+}
+
+function getShowSymbol(
+  areAutoSymbolsVisible: boolean,
+  seriesSettings: SeriesSettings,
+  chartWidth: number,
+): boolean {
+  if (chartWidth <= 0) {
+    return false;
+  }
+
+  if (seriesSettings["line.marker_enabled"] === false) {
+    return false;
+  }
+
+  if (seriesSettings["line.marker_enabled"] === true) {
+    return true;
+  }
+
+  return areAutoSymbolsVisible;
 }
 
 const buildEChartsLineAreaSeries = (
@@ -271,14 +294,14 @@ const buildEChartsLineAreaSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
+  areAutoSymbolsVisible: boolean,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
-    seriesModel,
+    areAutoSymbolsVisible,
     seriesSettings,
-    dataset,
     chartWidth,
   );
 
@@ -540,6 +563,12 @@ export const buildEChartsSeries = (
   ).length;
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
+  const areAutoSymbolsVisible = getShowAutoSymbols(
+    chartModel.seriesModels,
+    chartModel.transformedDataset,
+    seriesSettingsByDataKey,
+    chartWidth,
+  );
 
   const series = chartModel.seriesModels
     .map(seriesModel => {
@@ -564,6 +593,7 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             hasMultipleSeries,
+            areAutoSymbolsVisible,
             chartWidth,
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
