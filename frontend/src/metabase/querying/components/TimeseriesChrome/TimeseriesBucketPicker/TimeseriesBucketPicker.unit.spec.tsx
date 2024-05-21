@@ -108,4 +108,21 @@ describe("TimeseriesBucketPicker", () => {
 
     expect(getNextBucketName()).toBeNull();
   });
+
+  it("should show all options when the current bucket is below the More button", async () => {
+    const _query = createQuery();
+    const _column = findBreakoutColumn(_query);
+    const bucket = findTemporalBucket(_query, _column, "Quarter of year");
+
+    const { query, column } = createQueryWithBreakout({
+      query: _query,
+      column: _column,
+      bucket,
+    });
+
+    setup({ query, column });
+
+    await userEvent.click(screen.getByText("Quarter of year"));
+    expect(await screen.findByText("Month of year")).toBeInTheDocument();
+  });
 });
