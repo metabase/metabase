@@ -25,6 +25,7 @@ import {
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
+  getAceEditor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -175,8 +176,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    enterCustomColumnDetails({ formula: "[Price] > 1" });
-    cy.get("@formula").blur();
+    getAceEditor().type("[Price] > 1");
+    getAceEditor().blur();
 
     cy.button("Done").click();
 
@@ -187,9 +188,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula")
-      .invoke("val", "") // this is a more reliable .clear()
-      .type("[Price] > 1 AND [Price] < 5{enter}");
+    getAceEditor().invoke("val", ""); // this is a more reliable .clear()
+    getAceEditor().type("[Price] > 1 AND [Price] < 5{enter}");
 
     // In case it does exist, it usually is an error in expression (caused by not clearing
     // the input properly before typing), and this check helps to highlight that.
