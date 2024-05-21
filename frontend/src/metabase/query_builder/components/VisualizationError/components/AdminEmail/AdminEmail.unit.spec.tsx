@@ -5,7 +5,7 @@ import { renderWithProviders } from "__support__/ui";
 import { AdminEmail } from "./AdminEmail";
 
 describe("AdminEmail", () => {
-  it("should render admin's email as a link (metabase#42929)", async () => {
+  it("should render admin's email as a link (metabase#42929)", () => {
     renderWithProviders(<AdminEmail />);
 
     const link = screen.getByText("admin@metabase.test");
