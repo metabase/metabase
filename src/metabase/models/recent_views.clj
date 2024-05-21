@@ -196,26 +196,28 @@
   (if-not (seq card-ids)
     []
     (t2/select :model/Card
-               {:select [:report_card.name
-                         :report_card.description
-                         :report_card.archived
-                         :report_card.id
-                         :report_card.display
-                         [:report_card.collection_id :entity-coll-id]
+               {:select [:card.name
+                         :card.description
+                         :card.archived
+                         :card.id
+                         :card.display
+                         :card.trashed_from_collection_id
+                         [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
-                         [:c.id :collection_id]
-                         [:c.name :collection_name]
-                         [:c.authority_level :collection_authority_level]]
-                :where [:in :report_card.id card-ids]
+                         [:collection.id :collection_id]
+                         [:collection.name :collection_name]
+                         [:collection.authority_level :collection_authority_level]]
+                :from [[:report_card :card]]
+                :where [:in :card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
                              [:= :mr.moderated_item_type "card"]
                              [:= :mr.most_recent true]
                              [:in :mr.moderated_item_id card-ids]]
-                            [:collection :c]
+                            [:collection]
                             [:and
-                             [:= :c.id :report_card.collection_id]
-                             [:= :c.archived false]]]})))
+                             [:= :collection.id :card.collection_id]
+                             [:= :collection.archived false]]]})))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -328,7 +330,8 @@
     []
     (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
-                                 {:select [:id :name :description :authority_level :archived :location]
+                                 {:select [:id :name :description :authority_level
+                                           :archived :location :trashed_from_location]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})
