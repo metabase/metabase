@@ -8,6 +8,8 @@ import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
+import css from "./ExtractColumn.module.css";
+
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 
@@ -52,12 +54,14 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <ExtractColumn
-        query={query}
-        stageIndex={stageIndex}
-        onSubmit={handleSubmit}
-        onCancel={onClose}
-      />
+      <div className={css.wrapper}>
+        <ExtractColumn
+          query={query}
+          stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      </div>
     );
   };
 
