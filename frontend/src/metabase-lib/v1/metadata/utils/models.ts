@@ -119,7 +119,7 @@ export function isAdHocModelQuestion(
   }
 
   const isModel =
-    question.type() === "model" || originalQuestion.type() === "model";
+    question.type() !== "question" || originalQuestion.type() !== "question";
   const isSameQuestion = question.id() === originalQuestion.id();
   const isSelfReferencing =
     Lib.sourceTableOrCardId(question.query()) ===

@@ -1,5 +1,6 @@
 import { merge } from "icepick";
 
+import { DEFAULT_FONT } from "embedding-sdk/config";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
@@ -14,6 +15,9 @@ import type { EmbeddingThemeOverride } from "../../types/theme/private";
 import { colorTuple } from "./color-tuple";
 import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
 
+const getFontFamily = (theme: MetabaseTheme) =>
+  theme.fontFamily ?? DEFAULT_FONT;
+
 /**
  * Transforms a public-facing Metabase theme configuration
  * into a Mantine theme override for internal use.
@@ -27,8 +31,9 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: EmbeddingThemeOverride = {
+    fontFamily: getFontFamily(theme),
+
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
-    ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
       ...components,

@@ -511,7 +511,7 @@ describeEE("formatting > whitelabel", () => {
   describe("metabot", () => {
     it("should toggle metabot visibility", () => {
       cy.visit("/");
-      cy.findByAltText("Metabot");
+      cy.findAllByAltText("Metabot").should("have.length", 2);
 
       cy.visit("/admin/settings/whitelabel/conceal-metabase");
       cy.findByRole("main")

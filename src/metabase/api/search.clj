@@ -8,13 +8,15 @@
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchableModel
+                                                     SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
@@ -205,7 +207,7 @@
 
 (mu/defn ^:private with-last-editing-info :- :map
   [query :- :map
-   model :- [:enum "card" "dataset" "dashboard" "metric"]]
+   model :- [:enum "card" "dashboard"]]
   (-> query
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
@@ -234,18 +236,18 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
+  [model      :- ::card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where [:= :card.type (if (= model "dataset") "model" "question")])
+      (sql.helpers/where [:= :card.type (name model)])
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses model search-ctx)
+      (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)
-      (with-moderated-status model)))
+      (with-last-editing-info "card")
+      (with-moderated-status "card")))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -259,13 +261,19 @@
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
-  (shared-card-impl "card" search-ctx))
+  (shared-card-impl :question search-ctx))
 
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
-  (-> (shared-card-impl "dataset" search-ctx)
+  (-> (shared-card-impl :model search-ctx)
       (update :select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
+
+(defmethod search-query-for-model "metric"
+  [_model search-ctx]
+  (-> (shared-card-impl :metric search-ctx)
+      (update :select (fn [columns]
+                        (cons [(h2x/literal "metric") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
   [model search-ctx]
@@ -288,13 +296,7 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses model search-ctx)
-      (with-last-editing-info model)))
-
-(defmethod search-query-for-model "metric"
-  [model search-ctx]
-  (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
-      (with-last-editing-info model)))
+      (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
   [query current-user-perms]
@@ -468,44 +470,46 @@
   [search-results]
   (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
         ;; effective location of the result.
-        result->loc (fn [{:keys [collection_id collection_location]}]
-                      (:effective_location
-                       (t2/hydrate
-                        (if (nil? collection_id)
-                          collection/root-collection
-                          {:location collection_location})
-                        :effective_location)))
+        result->loc  (fn [{:keys [collection_id collection_location]}]
+                        (:effective_location
+                         (t2/hydrate
+                          (if (nil? collection_id)
+                            collection/root-collection
+                            {:location collection_location})
+                          :effective_location)))
         ;; a map of collection-ids to collection info
-        col-id->name&loc (into {}
-                               (for [item search-results
-                                     :when (= (:model item) "dataset")]
-                                 [(:collection_id item)
-                                  {:name (-> {:name (:collection_name item)
-                                              :id (:collection_id item)
-                                              :type (:collection_type item)}
-                                             collection/maybe-localize-trash-name
-                                             :name)
-                                   :effective_location (result->loc item)}]))
-        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
+        col-id->info (into {}
+                           (for [item  search-results
+                                 :when (= (:model item) "dataset")]
+                              [(:collection_id item)
+                               {:id                 (:collection_id item)
+                                :name               (-> {:name (:collection_name item)
+                                                         :id   (:collection_id item)
+                                                         :type (:collection_type item)}
+                                                        collection/maybe-localize-trash-name
+                                                        :name)
+                                :type               (:collection_type item)
+                                :effective_location (result->loc item)}]))
+        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
-        to-fetch         (into #{} (comp (keep :effective_location)
-                                         (mapcat collection/location-path->ids)
-                                         ;; already have these names
-                                         (remove col-id->name&loc))
-                               (vals col-id->name&loc))
-        ;; the complete map of collection IDs to names
-        id->name         (merge (if (seq to-fetch)
-                                  (t2/select-pk->fn :name :model/Collection :id [:in to-fetch])
-                                  {})
-                                (update-vals col-id->name&loc :name))
-        annotate         (fn [x]
-                           (cond-> x
-                             (= (:model x) "dataset")
-                             (assoc :collection_effective_ancestors
-                                    (if-let [loc (result->loc x)]
-                                      (->> (collection/location-path->ids loc)
-                                           (map (fn [id] {:id id :name (id->name id)})))
-                                      []))))]
+        to-fetch     (into #{} (comp (keep :effective_location)
+                                      (mapcat collection/location-path->ids)
+                                      ;; already have these names
+                                      (remove col-id->info))
+                            (vals col-id->info))
+        ;; the now COMPLETE map of collection IDs to info
+        col-id->info (merge (if (seq to-fetch)
+                              (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
+                              {})
+                            (update-vals col-id->info #(dissoc % :effective_location)))
+        annotate     (fn [x]
+                        (cond-> x
+                          (= (:model x) "dataset")
+                          (assoc :collection_effective_ancestors
+                                 (if-let [loc (result->loc x)]
+                                   (->> (collection/location-path->ids loc)
+                                        (map col-id->info))
+                                   []))))]
     (map annotate search-results)))
 
 (defn- add-can-write [row]
@@ -533,13 +537,15 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
+                            (map #(cond-> %
+                                    (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
-                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
 
                             (map #(update % :archived api/bit->boolean))
+                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)

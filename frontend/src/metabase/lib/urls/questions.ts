@@ -106,11 +106,10 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
-
   const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
+    return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
   }
 
   return url;
