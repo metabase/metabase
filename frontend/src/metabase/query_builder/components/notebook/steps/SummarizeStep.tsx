@@ -13,14 +13,8 @@ function SummarizeStep({
   step,
   ...props
 }: NotebookStepUiComponentProps) {
-  const isMetric = step.question.type() === "metric";
-
   return (
-    <Flex
-      align="center"
-      direction={{ base: "column", md: "row" }}
-      gap={isMetric ? "md" : "sm"}
-    >
+    <Flex align="center" direction={{ base: "column", md: "row" }} gap="sm">
       <Box w={{ base: "100%", md: "50%" }}>
         <AggregateStep
           step={step}
@@ -29,7 +23,7 @@ function SummarizeStep({
           {...props}
         />
       </Box>
-      {!isMetric && <Box c={color} fw="bold">{t`by`}</Box>}
+      <Box c={color} fw="bold">{t`by`}</Box>
       <Box w={{ base: "100%", md: "50%" }}>
         <BreakoutStep
           step={step}

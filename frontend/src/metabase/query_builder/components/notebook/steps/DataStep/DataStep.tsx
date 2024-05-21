@@ -10,14 +10,14 @@ import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { Group, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import { DataStepCell, DataStepIconButton } from "./DataStep.styled";
+import { DataStepIconButton } from "./DataStep.styled";
 
 export const DataStep = ({
   query,
@@ -32,11 +32,8 @@ export const DataStep = ({
   const questionRef = useLatest(question);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
+  const tableInfo = table ? Lib.displayInfo(query, stageIndex, table) : null;
   const [isDataPickerOpen, setIsDataPickerOpen] = useState(!table);
-
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
-    : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
     return (
@@ -79,9 +76,14 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
-          {pickerLabel}
-        </DataStepCell>
+        <Group
+          p={NotebookCell.CONTAINER_PADDING}
+          spacing="xs"
+          onClick={() => setIsDataPickerOpen(true)}
+        >
+          {tableInfo?.isMetric && <Icon name="metric" />}
+          {tableInfo?.displayName ?? t`Pick your starting data`}
+        </Group>
 
         {isDataPickerOpen && (
           <DataPickerModal
