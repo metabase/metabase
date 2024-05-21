@@ -43,7 +43,7 @@ const propTypes = {
   handleFirstFieldFocus: PropTypes.func.isRequired,
   onFieldMetadataChange: PropTypes.func.isRequired,
   onMappedDatabaseColumnChange: PropTypes.func.isRequired,
-  modelIndexes: PropTypes.array.isRequired,
+  modelIndexes: PropTypes.array,
 };
 
 function getVisibilityTypeName(visibilityType) {

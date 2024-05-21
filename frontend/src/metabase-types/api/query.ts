@@ -1,10 +1,10 @@
 import type {
   DatabaseId,
   FieldId,
-  MetricId,
   TableId,
   SegmentId,
   TemplateTags,
+  CardId,
 } from "metabase-types/api";
 
 export interface NativeQuery {
@@ -124,6 +124,12 @@ type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
 
+type OffsetOptions = {
+  "lib/uuid": string;
+  name: string;
+  "display-name": string;
+};
+
 // "card__4" like syntax meaning a query is using card 4 as a data source
 type NestedQueryTableId = string;
 
@@ -155,12 +161,7 @@ type StdDevAgg = ["stddev", ConcreteFieldReference];
 type SumAgg = ["sum", ConcreteFieldReference];
 type MinAgg = ["min", ConcreteFieldReference];
 type MaxAgg = ["max", ConcreteFieldReference];
-type OffsetAgg = [
-  "offset",
-  { "lib/uuid": string; name: string; "display-name": string },
-  Aggregation,
-  number,
-];
+type OffsetAgg = ["offset", OffsetOptions, Aggregation, NumericLiteral];
 
 type CommonAggregation =
   | CountAgg
@@ -175,7 +176,7 @@ type CommonAggregation =
   | MaxAgg
   | OffsetAgg;
 
-type MetricAgg = ["metric", MetricId];
+type MetricAgg = ["metric", CardId];
 
 type InlineExpressionAgg = [
   "aggregation-options",
@@ -364,6 +365,7 @@ export type Expression =
   | boolean
   | [ExpressionOperator, ExpressionOperand]
   | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
+  | ["offset", OffsetOptions, ExpressionOperand, NumericLiteral]
   | [
       ExpressionOperator,
       ExpressionOperand,

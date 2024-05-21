@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import { useQuestionQuery } from "metabase/common/hooks";
-import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ValuesSourceConfig } from "metabase-types/api";
 
 interface ValuesSourceCardModalProps {
@@ -25,7 +26,9 @@ export const ValuesSourceCardModal = ({
 }: ValuesSourceCardModalProps): JSX.Element => {
   const { data: question } = useQuestionQuery({ id: sourceConfig.card_id });
 
-  const initialValue = getInitialValue(question);
+  const initialValue =
+    question &&
+    getQuestionPickerValue({ id: question.id(), type: question.type() });
 
   const handleSubmit = useCallback(
     (newQuestion: QuestionPickerValueItem) => {
@@ -43,17 +46,4 @@ export const ValuesSourceCardModal = ({
       onClose={onClose}
     />
   );
-};
-
-const getInitialValue = (
-  question?: Question,
-): Pick<QuestionPickerValueItem, "id" | "model"> | undefined => {
-  if (!question) {
-    return undefined;
-  }
-
-  return {
-    id: question.id(),
-    model: question.type() === "model" ? "dataset" : "card",
-  };
 };
