@@ -268,20 +268,23 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        dashboardGrid().findByText("42");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("GUI Question").click();
+        dashboardGrid()
+          .findByRole("link", { name: "GUI Question" })
+          .as("title");
+        cy.get("@title")
+          .should("have.attr", "href")
+          .and("include", "/question#");
+        cy.get("@title").click();
 
         // make sure the query builder filter is present
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Category is Doohickey");
+        cy.findByTestId("qb-filters-panel")
+          .findByText("Category is Doohickey")
+          .should("exist");
 
         // make sure the results match
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("42");
+        queryBuilderMain().findByText("42").should("exist");
       });
     });
 
