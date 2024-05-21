@@ -87,16 +87,42 @@ export function getDataLabelFormatter(
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   formatter: LabelFormatter,
   labelDataKey?: DataKey,
+  settings?: ComputedVisualizationSettings,
+  chartDataDensity?: ChartDataDensity,
 ) {
   const accessKey = labelDataKey ?? seriesModel.dataKey;
+
+  const shouldSkipLabelFn = getSkipLabelFn(chartDataDensity, settings);
 
   return (params: CallbackDataParams) => {
     const value = (params.data as Datum)[accessKey];
 
-    if (typeof value !== "number") {
+    if (shouldSkipLabelFn(params) || typeof value !== "number") {
       return " ";
     }
+
     return formatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
+  };
+}
+
+function getSkipLabelFn(
+  chartDataDensity?: ChartDataDensity,
+  settings?: ComputedVisualizationSettings,
+): (params: CallbackDataParams) => boolean {
+  if (!settings || !chartDataDensity) {
+    return () => false;
+  }
+  if (settings["graph.label_value_frequency"] === "all") {
+    return () => false;
+  }
+
+  const { maxNumberOfDots, totalNumberOfDots } = chartDataDensity;
+  if (totalNumberOfDots <= maxNumberOfDots) {
+    return () => false;
+  }
+
+  return (params: CallbackDataParams) => {
+    return params.dataIndex % 3 !== 0;
   };
 }
 
@@ -105,6 +131,8 @@ export const buildEChartsLabelOptions = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   renderingContext: RenderingContext,
   formatter?: LabelFormatter,
+  settings?: ComputedVisualizationSettings,
+  chartDataDensity?: ChartDataDensity,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
   return {
@@ -120,7 +148,14 @@ export const buildEChartsLabelOptions = (
     textBorderWidth: 3,
     formatter:
       formatter &&
-      getDataLabelFormatter(seriesModel, yAxisScaleTransforms, formatter),
+      getDataLabelFormatter(
+        seriesModel,
+        yAxisScaleTransforms,
+        formatter,
+        undefined,
+        settings,
+        chartDataDensity,
+      ),
   };
 };
 
@@ -235,23 +270,26 @@ const buildEChartsBarSeries = (
   };
 };
 
-function getShowAutoSymbols(
+type ChartDataDensity = {
+  chartWidth: number;
+  maxNumberOfDots: number;
+  totalNumberOfDots: number;
+};
+
+function getChartDataDensity(
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
   seriesSettingsByDataKey: Record<string, SeriesSettings>,
   chartWidth: number,
-): boolean {
-  if (chartWidth <= 0) {
-    return false;
-  }
-
+): ChartDataDensity {
   const seriesWithSymbols = seriesModels.filter(seriesModel => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     return ["area", "line"].includes(seriesSettings.display ?? "");
   });
 
   // at least half of the chart width should not have a symbol on it
-  const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
+  const maxNumberOfDots =
+    chartWidth > 0 ? chartWidth / (2 * CHART_STYLE.symbolSize) : 1;
   const totalNumberOfDots = seriesWithSymbols.reduce((sum, seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     const numDots =
@@ -262,14 +300,18 @@ function getShowAutoSymbols(
     return sum + numDots;
   }, 0);
 
-  return totalNumberOfDots < maxNumberOfDots;
+  return {
+    chartWidth,
+    totalNumberOfDots,
+    maxNumberOfDots,
+  };
 }
 
 function getShowSymbol(
-  areAutoSymbolsVisible: boolean,
+  chartDataDensity: ChartDataDensity,
   seriesSettings: SeriesSettings,
-  chartWidth: number,
 ): boolean {
+  const { chartWidth, maxNumberOfDots, totalNumberOfDots } = chartDataDensity;
   if (chartWidth <= 0) {
     return false;
   }
@@ -282,7 +324,7 @@ function getShowSymbol(
     return true;
   }
 
-  return areAutoSymbolsVisible;
+  return totalNumberOfDots <= maxNumberOfDots;
 }
 
 const buildEChartsLineAreaSeries = (
@@ -293,16 +335,11 @@ const buildEChartsLineAreaSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
-  areAutoSymbolsVisible: boolean,
-  chartWidth: number,
+  chartDataDensity: ChartDataDensity,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): LineSeriesOption => {
-  const isSymbolVisible = getShowSymbol(
-    areAutoSymbolsVisible,
-    seriesSettings,
-    chartWidth,
-  );
+  const isSymbolVisible = getShowSymbol(chartDataDensity, seriesSettings);
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
 
@@ -353,6 +390,8 @@ const buildEChartsLineAreaSeries = (
       yAxisScaleTransforms,
       renderingContext,
       labelFormatter,
+      settings,
+      chartDataDensity,
       "top",
     ),
     labelLayout: {
@@ -562,7 +601,7 @@ export const buildEChartsSeries = (
   ).length;
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
-  const areAutoSymbolsVisible = getShowAutoSymbols(
+  const chartDataDensity = getChartDataDensity(
     chartModel.seriesModels,
     chartModel.transformedDataset,
     seriesSettingsByDataKey,
@@ -591,8 +630,7 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             hasMultipleSeries,
-            areAutoSymbolsVisible,
-            chartWidth,
+            chartDataDensity,
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
