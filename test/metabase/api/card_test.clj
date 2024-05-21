@@ -483,25 +483,31 @@
                                   {:name       "A Native query"
                                    :display    :scalar
                                    :query_type "native"})
+       :model/Card metric  (simple-mbql-chart-query {:name "A Metric" :type :metric :visualization_settings {} :display :line})
+       :model/Card metric-2 (merge (mt/card-with-source-metadata-for-query
+                                     (mt/mbql-query venues {:aggregation [[:sum $venues.price]]}))
+                                   {:name "Another Metric" :type :metric :display :scalar})
 
        ;; compatible but user doesn't have access so should not be readble
        :model/Card _       (simple-mbql-chart-query {:name "A Line with no access"   :display :line})
        ;; incomptabile cards
        :model/Card pie     (simple-mbql-chart-query {:name "A pie" :display :pie})
        :model/Card table   (simple-mbql-chart-query {:name "A table" :display :table})
-       :model/Card native-2(merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+       :model/Card native-2 (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
                                   {:name       "A Native query table"
                                    :display    :table
                                    :query_type "native"})]
-      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2]
-       (doseq [[card-id display-type expected]
-               [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
-                [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
-                [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
-                [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
+      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2 metric metric-2]
+       (doseq [:let [excluded #{"A Scalar 2" "Another Metric" "A Line with no access" "A pie" "A table" "A Native query table"}]
+               [card-id display-type expected excluded]
+               [[(:id line)   :line   #{"A Native query" "An Area" "A Bar" "A Metric"} excluded]
+                [(:id bar)    :bar    #{"A Native query" "An Area" "A Line" "A Metric"} excluded]
+                [(:id area)   :area   #{"A Native query" "A Bar" "A Line" "A Metric"} excluded]
+                [(:id scalar) :scalar #{"A Native query" "A Scalar 2" "Another Metric"} (disj excluded "A Scalar 2" "Another Metric")]]]
          (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
            (let [returned-card-names (set (map :name (mt/user-http-request :rasta :get 200 (format "/card/%d/series" card-id))))]
              (is (set/subset? expected returned-card-names))
+             (is (empty? (set/intersection excluded returned-card-names)))
              (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
 
 (deftest paging-and-filtering-works-for-series-card-test
