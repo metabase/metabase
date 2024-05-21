@@ -860,13 +860,13 @@
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
-    (let [uploads-db-settings (public-settings/uploads-database)
+    (let [uploads-db-settings (public-settings/uploads-settings)
           model (upload/create-csv-upload! {:collection-id collection-id
                                             :filename      filename
                                             :file          file
-                                            :schema-name   (:uploads_schema_name uploads-db-settings)
-                                            :table-prefix  (:uploads_table_prefix uploads-db-settings)
-                                            :db-id         (or (:id uploads-db-settings)
+                                            :schema-name   (:schema_name uploads-db-settings)
+                                            :table-prefix  (:table_prefix uploads-db-settings)
+                                            :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
       {:status 200

@@ -809,47 +809,32 @@ See [fonts](../configuring-metabase/fonts.md).")
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
-(defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
-  :visibility :authenticated
-  :export?    true
-  :type       :boolean
-  :audit      :getter
-  :default    false)
-
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
 
-(defsetting uploads-database
+(defsetting uploads-settings
   (deferred-tru "Database for uploads")
   :visibility :authenticated
   :export?    true
   :type       :json
-  :audit      :getter ;; TODO: what does this do
-  :default    {:id                   nil
-               :uploads_schema_name  nil
-               :uploads_table_prefix nil}
+  :audit      :getter ;; TODO: what does this do?
   :getter     (fn []
-                (let [db (t2/select-one [:model/Database] :uploads_enabled true)]
-                  {:id                   db
-                   :uploads_schema_name  (:uploads_schema_name db)
-                   :uploads_table_prefix (:uploads_table_prefix db)}))
-  :setter     (fn [{:keys [id uploads_schema_name uploads_table_prefix]}]
+                (let [db (t2/select-one :model/Database :uploads_enabled true)]
+                  {:db_id        (:id db)
+                   :schema_name  (:uploads_schema_name db)
+                   :table_prefix (:uploads_table_prefix db)}))
+  :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
-                  (nil? id)
+                  (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
                                                                      :uploads_table_prefix nil})
                   (or (not-handling-api-request?)
-                      (mi/can-write? :model/Database id))
-                  (t2/with-transaction [_conn]
-                    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
-                                                                       :uploads_schema_name  nil
-                                                                       :uploads_table_prefix nil})
-                    (t2/update! :model/Database id {:uploads_enabled      true
-                                                    :uploads_schema_name  uploads_schema_name
-                                                    :uploads_table_prefix uploads_table_prefix}))
+                      (mi/can-write? :model/Database db_id))
+                  (t2/update! :model/Database db_id {:uploads_enabled      true
+                                                     :uploads_schema_name  schema_name
+                                                     :uploads_table_prefix table_prefix})
                   :else
                   (api/throw-403))))
 

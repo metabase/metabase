@@ -285,7 +285,8 @@
            auxiliary-sync-steps     :never
            csv-file-prefix          "example csv file"}
       :as args}]
-  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+  (mt/with-discard-model-updates [:model/Database]
+    (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
       (let [file        (or file (csv-file-with
                                   ["id, name"
@@ -313,14 +314,26 @@
                                         :table-prefix  table-prefix})))))))
 
 (defn do-with-uploads-allowed
-  "Set uploads-enabled to true, and uses an admin user, run the thunk"
+  "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
-  (mt/with-temporary-setting-values [uploads-enabled true]
+  (mt/with-discard-model-updates [:model/Database]
+    (t2/update! :model/Database (mt/id) {:uploads_enabled true})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
 (defmacro with-uploads-allowed [& body]
   `(do-with-uploads-allowed (fn [] ~@body)))
+
+(defn do-with-uploads-disabled
+  "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
+  [thunk]
+  (mt/with-discard-model-updates [:model/Database]
+    (t2/update! :model/Database (mt/id) {:uploads_enabled false})
+    (mt/with-current-user (mt/user->id :crowberto)
+      (thunk))))
+
+(defmacro with-uploads-disabled [& body]
+  `(do-with-uploads-disabled (fn [] ~@body)))
 
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
@@ -1098,62 +1111,59 @@
 
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [action & {:keys [uploads-enabled user-id file table-id is-upload]
-             :or {uploads-enabled true
-                  user-id         (mt/user->id :crowberto)
+  [action & {:keys [user-id file table-id is-upload]
+             :or {user-id         (mt/user->id :crowberto)
                   file            (csv-file-with
                                    ["name"
                                     "Luke Skywalker"
                                     "Darth Vader"])
                   is-upload       true}}]
-  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
-    (mt/with-current-user user-id
-      (mt/with-model-cleanup [:model/Table]
-        (let [new-table (when (nil? table-id)
-                          (create-upload-table!))
-              table-id (or table-id (:id new-table))]
-          (t2/update! :model/Table table-id {:is_upload is-upload})
-          (try (update-csv! action {:table-id table-id, :file file})
-               (finally
+  (mt/with-current-user user-id
+    (mt/with-model-cleanup [:model/Table]
+      (let [new-table (when (nil? table-id)
+                        (create-upload-table!))
+            table-id (or table-id (:id new-table))]
+        (t2/update! :model/Table table-id {:is_upload is-upload})
+        (try (update-csv! action {:table-id table-id, :file file})
+             (finally
                  ;; Drop the table in the testdb if a new one was created.
-                 (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
-                   (driver/drop-table! driver/*driver*
-                                       (mt/id)
-                                       (#'upload/table-identifier new-table))))))))))
+               (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
+                 (driver/drop-table! driver/*driver*
+                                     (mt/id)
+                                     (#'upload/table-identifier new-table)))))))))
 
 (deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (testing "Happy path"
-          (is (= {:row-count 2}
-                 (update-csv-with-defaults! action))))
-        (testing "Even if the uploads database, schema and table prefix are not set, appends succeed"
-          (mt/with-temporary-setting-values [uploads-database-id  nil
-                                             uploads-schema-name  nil
-                                             uploads-table-prefix nil]
-            (is (some? (update-csv-with-defaults! action)))))
-        (testing "Uploads must be enabled"
-          (is (= {:message "Uploads are not enabled."
-                  :data    {:status-code 422}}
-                 (catch-ex-info (update-csv-with-defaults! action :uploads-enabled false)))))
-        (testing "The table must exist"
-          (is (= {:message "Not found."
-                  :data    {:status-code 404}}
-                 (catch-ex-info (update-csv-with-defaults! action :table-id Integer/MAX_VALUE)))))
-        (testing "The table must be an uploaded table"
-          (is (= {:message "The table must be an uploaded table."
-                  :data    {:status-code 422}}
-                 (catch-ex-info (update-csv-with-defaults! action :is-upload false)))))
-        (testing "The CSV file must not be empty"
-          (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
-                  :data    {:status-code 422}}
-                 (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
-        (testing "Uploads must be supported"
-          (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
-            (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+        (mt/with-discard-model-updates [:model/Database]
+          ;; start with uploads disabled for all databases
+          (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
+          (testing "Updates fail if uploads are disabled for all databases."
+            (is (= {:message "Uploads are not enabled."
                     :data    {:status-code 422}}
-                   (catch-ex-info (update-csv-with-defaults! action))))))))))
+                   (catch-ex-info (update-csv-with-defaults! action)))))
+          (mt/with-temp [:model/Database _ {:uploads_enabled true}]
+            (testing "Updates succeed if uploads are enabled for one database, even if it is not the current one."
+              (is (= {:row-count 2}
+                     (update-csv-with-defaults! action))))
+            (testing "The table must exist"
+              (is (= {:message "Not found."
+                      :data    {:status-code 404}}
+                     (catch-ex-info (update-csv-with-defaults! action :table-id Integer/MAX_VALUE)))))
+            (testing "The table must be an uploaded table"
+              (is (= {:message "The table must be an uploaded table."
+                      :data    {:status-code 422}}
+                     (catch-ex-info (update-csv-with-defaults! action :is-upload false)))))
+            (testing "The CSV file must not be empty"
+              (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
+                      :data    {:status-code 422}}
+                     (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
+            (testing "Uploads must be supported"
+              (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+                (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                        :data    {:status-code 422}}
+                       (catch-ex-info (update-csv-with-defaults! action))))))))))))
 
 (deftest update-column-match-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1221,7 +1231,7 @@
                                   There are new columns in the CSV file that are not in the table:
                                   - _mb_row_id
                                   - extra_2"))}]
-             (with-upload-table!
+            (with-upload-table!
                [table (create-upload-table!
                        {:col->upload-type (ordered-map/ordered-map
                                            :id int-type

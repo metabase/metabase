@@ -280,13 +280,16 @@
     :synchronous (sync/sync-table! table)
     :never nil))
 
+(defn- uploads-enabled? []
+  (some? (:db_id (public-settings/uploads-settings))))
+
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
   entry points. Returns nil otherwise."
   [db]
   (let [driver (driver.u/database->driver db)]
     (cond
-      (not (public-settings/uploads-enabled))
+      (not (uploads-enabled?))
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 

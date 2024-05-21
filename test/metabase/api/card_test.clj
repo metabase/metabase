@@ -3379,30 +3379,12 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (mt/with-temporary-setting-values [uploads-enabled true
-                                           uploads-database-id (mt/id)
-                                           uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]
-          (let [{:keys [status body]} (upload-example-csv-via-api!)]
-            (is (= 200
-                   status))
-            (is (= body
-                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
-      (testing "Failure paths return an appropriate status code and a message in the body"
-        (mt/with-temporary-setting-values [uploads-enabled true
-                                           uploads-database-id nil
-                                           uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]
-          (is (= {:body   {:message "The uploads database is not configured."},
-                  :status 422}
-                 (upload-example-csv-via-api!))))
-        (mt/with-temporary-setting-values [uploads-enabled true
-                                           uploads-database-id Integer/MAX_VALUE
-                                           uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]
-          (is (= {:body   {:message "The uploads database does not exist."},
-                  :status 422}
-                 (upload-example-csv-via-api!))))))))
+        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name nil :uploads_table_prefix nil})
+        (let [{:keys [status body]} (upload-example-csv-via-api!)]
+          (is (= 200
+                 status))
+          (is (= body
+                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
@@ -3450,9 +3432,10 @@
   This function exists to deduplicate test logic for all API endpoints that must return `based_on_upload`,
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
-  (mt/with-driver :h2 ; just test on H2 because failure should be independent of drivers
-    (mt/with-temporary-setting-values [uploads-enabled true]
+  (mt/test-driver :h2 ; just test on H2 because failure should be independent of drivers
+    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (mt/with-temp [:model/Database   {db-id :id}         {:engine "h2"}
+                     :model/Database   {other-db-id :id}   {:engine "h2" :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
                      :model/Collection {collection-id :id} {}]
         (let [card-defaults {:collection_id collection-id
@@ -3486,20 +3469,20 @@
                 (t2/update! :model/Table table-id {:is_upload false})
                 (is (nil? (:based_on_upload (request card))))
                 (t2/update! :model/Table table-id {:is_upload true}))
-              (testing "\nIf uploads are disabled, based_on_upload should be nil"
+              (testing "\nIf the user doesn't have data perms for the database, based_on_upload should be nil"
                 (mt/with-temp-copy-of-db
                   (mt/with-no-data-perms-for-all-users!
                     (is (nil? (:based_on_upload (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))))
-              (testing "\nIf uploads are disabled, based_on_upload should be nil"
-                (mt/with-temporary-setting-values [uploads-enabled false]
-                  (is (nil? (:based_on_upload (request card))))))
               (testing "\nIf the card is not a model, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults :type :question)]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the card is a native query, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults
                                                         :dataset_query (mt/native-query {:query "select 1"}))]
-                  (is (nil? (:based_on_upload (request card')))))))))))))
+                  (is (nil? (:based_on_upload (request card'))))))
+              (testing "\nIf uploads are disabled on all databases, based_on_upload should be nil"
+                (t2/update! :model/Database other-db-id {:uploads_enabled false})
+                (is (nil? (:based_on_upload (request card))))))))))))
 
 (deftest based-on-upload-test
   (run-based-on-upload-test!

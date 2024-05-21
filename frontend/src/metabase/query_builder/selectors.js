@@ -1006,18 +1006,11 @@ export const getDashboard = state => {
 };
 
 export const canUploadToQuestion = question => state => {
-  const uploadsEnabled = getSetting(state, "uploads-enabled");
-  if (!uploadsEnabled) {
-    return false;
-  }
-  const uploadsDbId = getSetting(state, "uploads-database").id;
-  const canUploadToDb =
-    uploadsDbId === question.databaseId() &&
-    Databases.selectors
-      .getObject(state, {
-        entityId: uploadsDbId,
-      })
-      ?.canUpload();
+  const canUploadToDb = Databases.selectors
+    .getObject(state, {
+      entityId: question.databaseId(),
+    })
+    ?.canUpload();
   return canUploadToDb;
 };
 

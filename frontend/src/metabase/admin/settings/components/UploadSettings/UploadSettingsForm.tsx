@@ -20,7 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Stack, Group, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
-import type { UploadsDatabaseSettings } from "metabase-types/api/settings";
+import type { UploadsSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 
 import SettingHeader from "../SettingHeader";
@@ -33,8 +33,7 @@ const enableErrorMessage = t`There was a problem enabling uploads. Please try ag
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
 export interface UploadSettings {
-  uploads_enabled: boolean;
-  uploads_database: UploadsDatabaseSettings;
+  uploads_settings: UploadsSettings;
 }
 
 interface UploadSettingProps {
@@ -53,8 +52,7 @@ interface UploadSettingProps {
 
 const mapStateToProps = (state: State) => ({
   settings: {
-    uploads_enabled: getSetting(state, "uploads-enabled"),
-    uploads_database: getSetting(state, "uploads-database"),
+    uploads_settings: getSetting(state, "uploads-settings"),
   },
 });
 
@@ -85,13 +83,13 @@ export function UploadSettingsFormView({
   saveStatusRef,
 }: UploadSettingProps) {
   const [dbId, setDbId] = useState<number | null>(
-    settings.uploads_database.id ?? null,
+    settings.uploads_settings.db_id ?? null,
   );
   const [schemaName, setSchemaName] = useState<string | null>(
-    settings.uploads_database.uploads_schema_name ?? null,
+    settings.uploads_settings.schema_name ?? null,
   );
   const [tablePrefix, setTablePrefix] = useState<string | null>(
-    settings.uploads_database.uploads_table_prefix ?? null,
+    settings.uploads_settings.table_prefix ?? null,
   );
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
   const dispatch = useDispatch();
@@ -122,11 +120,10 @@ export function UploadSettingsFormView({
   const handleEnableUploads = async () => {
     showSaving();
     return updateSettings({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: dbId,
-        uploads_schema_name: schemaName,
-        uploads_table_prefix: tablePrefix,
+      "uploads-settings": {
+        db_id: dbId,
+        schema_name: schemaName,
+        table_prefix: tablePrefix,
       },
     })
       .then(() => {
@@ -141,11 +138,10 @@ export function UploadSettingsFormView({
   const handleDisableUploads = () => {
     showSaving();
     return updateSettings({
-      "uploads-enabled": false,
-      "uploads-database": {
-        id: null,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+      "uploads-settings": {
+        db_id: null,
+        schema_name: null,
+        table_prefix: null,
       },
     })
       .then(() => {
@@ -160,9 +156,9 @@ export function UploadSettingsFormView({
   const showPrefix = !!dbId;
   const hasValidSettings = Boolean(dbId && (!showSchema || schemaName));
   const settingsChanged =
-    dbId !== settings.uploads_database.id ||
-    schemaName !== settings.uploads_database.uploads_schema_name ||
-    tablePrefix !== settings.uploads_database.uploads_table_prefix;
+    dbId !== settings.uploads_settings.db_id ||
+    schemaName !== settings.uploads_settings.schema_name ||
+    tablePrefix !== settings.uploads_settings.table_prefix;
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
@@ -230,7 +226,7 @@ export function UploadSettingsFormView({
         )}
       </Group>
       <Group mt="lg">
-        {settings.uploads_enabled ? (
+        {settings.uploads_settings.db_id ? (
           settingsChanged ? (
             <ActionButton
               ref={updateButtonRef}

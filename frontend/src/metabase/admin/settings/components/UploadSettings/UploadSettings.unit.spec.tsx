@@ -58,11 +58,10 @@ interface SetupOpts {
 function setup({
   databases = TEST_DATABASES,
   settings = {
-    uploads_enabled: false,
-    uploads_database: {
-      id: null,
-      uploads_schema_name: null,
-      uploads_table_prefix: null,
+    uploads_settings: {
+      db_id: null,
+      schema_name: null,
+      table_prefix: null,
     },
   },
 }: SetupOpts = {}) {
@@ -159,11 +158,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: 1,
-        uploads_schema_name: "uploads",
-        uploads_table_prefix: null,
+      "uploads-settings": {
+        db_id: 1,
+        schema_name: "uploads",
+        table_prefix: null,
       },
     });
   });
@@ -185,11 +183,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: "my_prefix_",
+      "uploads-settings": {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: "my_prefix_",
       },
     });
   });
@@ -216,11 +213,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: 1,
-        uploads_schema_name: "uploads",
-        uploads_table_prefix: "my_prefix_",
+      "uploads-settings": {
+        db_id: 1,
+        schema_name: "uploads",
+        table_prefix: "my_prefix_",
       },
     });
   });
@@ -258,11 +254,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: "upload_",
+      "uploads-settings": {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: "upload_",
       },
     });
 
@@ -272,11 +267,10 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should be able to disable uploads", async () => {
     const { updateSpy } = setup({
       settings: {
-        uploads_enabled: true,
-        uploads_database: {
-          id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+        uploads_settings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: null,
         },
       },
     });
@@ -285,11 +279,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": false,
-      "uploads-database": {
-        id: null,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+      "uploads-settings": {
+        db_id: null,
+        schema_name: null,
+        table_prefix: null,
       },
     });
   });
@@ -297,11 +290,10 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should show an error if disabling fails", async () => {
     const { updateSpy, savingSpy, clearSpy, savedSpy } = setup({
       settings: {
-        uploads_enabled: true,
-        uploads_database: {
-          id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+        uploads_settings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: null,
         },
       },
     });
@@ -311,11 +303,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": false,
-      "uploads-database": {
-        id: null,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+      "uploads-settings": {
+        db_id: null,
+        schema_name: null,
+        table_prefix: null,
       },
     });
 
@@ -328,11 +319,10 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should populate db and schema from existing settings", async () => {
     setup({
       settings: {
-        uploads_enabled: true,
-        uploads_database: {
-          id: 1,
-          uploads_schema_name: "top_secret",
-          uploads_table_prefix: null,
+        uploads_settings: {
+          db_id: 1,
+          schema_name: "top_secret",
+          table_prefix: null,
         },
       },
     });
@@ -344,11 +334,10 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should populate db and stable prefix from existing settings", async () => {
     setup({
       settings: {
-        uploads_enabled: true,
-        uploads_database: {
-          id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: "my_uploads_",
+        uploads_settings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: "my_uploads_",
         },
       },
     });
@@ -360,14 +349,16 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should show a message if there are no schema for the selected db", async () => {
     setup({
       settings: {
-        uploads_enabled: false,
-        uploads_database: {
-          id: 5,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+        uploads_settings: {
+          db_id: null,
+          schema_name: null,
+          table_prefix: null,
         },
       },
     });
+    const dbItem = await screen.findByText("Select a database");
+    await userEvent.click(dbItem);
+    await userEvent.click(await screen.findByText("Db Cinco"));
 
     expect(
       await screen.findByText(/We couldn't find any schema/i),
@@ -380,11 +371,10 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should be able to update db settings", async () => {
     const { updateSpy } = setup({
       settings: {
-        uploads_enabled: true,
-        uploads_database: {
-          id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+        uploads_settings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: null,
         },
       },
     });
@@ -413,11 +403,10 @@ describe("Admin > Settings > UploadSetting", () => {
     );
 
     expect(updateSpy).toHaveBeenCalledWith({
-      "uploads-enabled": true,
-      "uploads-database": {
-        id: 1,
-        uploads_schema_name: "uploads",
-        uploads_table_prefix: null,
+      "uploads-settings": {
+        db_id: 1,
+        schema_name: "uploads",
+        table_prefix: null,
       },
     });
   });
@@ -445,11 +434,10 @@ describe("Admin > Settings > UploadSetting", () => {
     it("should show enabled disable button when a db is populated", async () => {
       setup({
         settings: {
-          uploads_enabled: true,
-          uploads_database: {
-            id: 2,
-            uploads_schema_name: null,
-            uploads_table_prefix: null,
+          uploads_settings: {
+            db_id: 2,
+            schema_name: null,
+            table_prefix: null,
           },
         },
       });
@@ -473,11 +461,10 @@ describe("Admin > Settings > UploadSetting", () => {
     it("should show the only the update button when a db is changed", async () => {
       setup({
         settings: {
-          uploads_enabled: true,
-          uploads_database: {
-            id: 2,
-            uploads_schema_name: null,
-            uploads_table_prefix: null,
+          uploads_settings: {
+            db_id: 2,
+            schema_name: null,
+            table_prefix: null,
           },
         },
       });
@@ -510,11 +497,10 @@ describe("Admin > Settings > UploadSetting", () => {
     it("should show the update button when a table prefix is changed", async () => {
       setup({
         settings: {
-          uploads_enabled: true,
-          uploads_database: {
-            id: 2,
-            uploads_schema_name: null,
-            uploads_table_prefix: "up_",
+          uploads_settings: {
+            db_id: 2,
+            schema_name: null,
+            table_prefix: "up_",
           },
         },
       });
@@ -531,11 +517,10 @@ describe("Admin > Settings > UploadSetting", () => {
     it("should show a loading spinner on submit", async () => {
       const { updateSpy } = setup({
         settings: {
-          uploads_enabled: true,
-          uploads_database: {
-            id: 2,
-            uploads_schema_name: null,
-            uploads_table_prefix: "up_",
+          uploads_settings: {
+            db_id: 2,
+            schema_name: null,
+            table_prefix: "up_",
           },
         },
       });
@@ -560,11 +545,10 @@ describe("Admin > Settings > UploadSetting", () => {
     it("should reset button loading state on input change", async () => {
       const { updateSpy } = setup({
         settings: {
-          uploads_enabled: true,
-          uploads_database: {
-            id: 2,
-            uploads_schema_name: null,
-            uploads_table_prefix: "up_",
+          uploads_settings: {
+            db_id: 2,
+            schema_name: null,
+            table_prefix: "up_",
           },
         },
       });

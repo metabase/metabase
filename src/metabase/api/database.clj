@@ -248,7 +248,7 @@
   "Add an entry about whether the user can upload to this DB."
   [db]
   (assoc db :can_upload (and (:uploads_enabled db)
-                             (upload/can-create-upload? db :uploads_schema_name))))
+                             (upload/can-create-upload? db (:uploads_schema_name db)))))
 
 (defn- add-can-upload-to-dbs
   "Add an entry to each DB about whether the user can upload to it."

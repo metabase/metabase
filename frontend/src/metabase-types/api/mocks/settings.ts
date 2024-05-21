@@ -231,11 +231,10 @@ export const createMockSettings = (
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
-  "uploads-enabled": false,
-  "uploads-database": {
-    id: null,
-    uploads_schema_name: null,
-    uploads_table_prefix: null,
+  "uploads-settings": {
+    db_id: null,
+    schema_name: null,
+    table_prefix: null,
   },
   "user-visibility": null,
   "last-acknowledged-version": "v1",
