@@ -90,7 +90,8 @@ describe("issue 22788", () => {
 
     saveDashboard();
 
-    addFilterAndAssert();
+    cy.findAllByText("Gizmo");
+    cy.findAllByText("Doohickey").should("not.exist");
   });
 });
 

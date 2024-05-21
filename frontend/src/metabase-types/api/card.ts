@@ -14,7 +14,7 @@ import type {
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question";
+export type CardType = "model" | "question" | "metric";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -30,6 +30,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
+  can_restore: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;

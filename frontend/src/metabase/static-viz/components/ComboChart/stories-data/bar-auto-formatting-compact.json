@@ -196,7 +196,6 @@
           }
         },
         "graph.dimensions": ["CREATED_AT"],
-        "stackable.stack_display": "bar",
         "stackable.stack_type": "null"
       },
       "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
@@ -373,7 +372,6 @@
           }
         },
         "graph.dimensions": ["CREATED_AT", "CATEGORY"],
-        "stackable.stack_display": "bar",
         "stackable.stack_type": "null"
       },
       "results_timezone": "America/Montevideo",

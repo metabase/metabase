@@ -24,7 +24,21 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder - beforeunload events", () => {
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   afterEach(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
     jest.resetAllMocks();
   });
 

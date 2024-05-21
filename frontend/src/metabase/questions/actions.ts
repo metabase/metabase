@@ -2,8 +2,7 @@ import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
@@ -11,53 +10,66 @@ export interface LoadMetadataOptions {
 }
 
 export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(loadDependentMetadata(card, [], options));
+  (card: Card, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const getDependencies = () => {
+      const question = new Question(card, getMetadata(getState()));
+      return Lib.dependentMetadata(
+        question.query(),
+        question.id(),
+        question.type(),
+      );
+    };
+    await dispatch(loadMetadata(getDependencies, [], options));
   };
 
-const loadDependentMetadata =
+export const loadMetadataForTable =
+  (tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const dependencies: Lib.DependentItem[] = [{ type: "table", id: tableId }];
+    await dispatch(loadMetadataForDependentItems(dependencies));
+    const metadata = getMetadata(getState());
+    const table = metadata.table(tableId);
+    if (!table?.db_id) {
+      return;
+    }
+
+    const getDependencies = () => {
+      const metadataProvider = Lib.metadataProvider(
+        table.db_id,
+        getMetadata(getState()),
+      );
+      return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
+    };
+    await dispatch(loadMetadata(getDependencies, dependencies, options));
+  };
+
+const loadMetadata =
   (
-    card: Card,
-    dependencies: Lib.DependentItem[],
+    getDependencies: () => Lib.DependentItem[],
+    prevDependencies: Lib.DependentItem[],
     options?: LoadMetadataOptions,
   ) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const question = new Question(card, getMetadata(getState()));
-    const withAdhocMetadata = shouldLoadAdhocMetadata(question);
-    const nextDependencies = getDependencies(question, withAdhocMetadata);
-    const dependenciesDiff = getDependenciesDiff(
-      dependencies,
+  async (dispatch: Dispatch) => {
+    const nextDependencies = getDependencies();
+    const newDependencies = getNewDependencies(
+      prevDependencies,
       nextDependencies,
     );
-    if (dependenciesDiff.length > 0) {
-      await dispatch(loadMetadataForDependentItems(dependenciesDiff, options));
-      const mergedDependencies = [...dependencies, ...dependenciesDiff];
-      await dispatch(loadDependentMetadata(card, mergedDependencies, options));
-    } else if (withAdhocMetadata) {
-      const adhocCard = question.composeQuestionAdhoc().card();
-      await dispatch(loadDependentMetadata(adhocCard, dependencies, options));
+    if (newDependencies.length > 0) {
+      const mergedDependencies = [...prevDependencies, ...newDependencies];
+      await dispatch(loadMetadataForDependentItems(newDependencies, options));
+      await dispatch(
+        loadMetadata(getDependencies, mergedDependencies, options),
+      );
     }
   };
-
-function shouldLoadAdhocMetadata(question: Question) {
-  return question.isSaved() && question.type() !== "question";
-}
-
-function getDependencies(question: Question, withAdhocMetadata: boolean) {
-  const dependencies = [...Lib.dependentMetadata(question.query())];
-  if (withAdhocMetadata) {
-    const tableId = getQuestionVirtualTableId(question.id());
-    dependencies.push({ id: tableId, type: "table" });
-  }
-
-  return dependencies;
-}
 
 function getDependencyKey(dependency: Lib.DependentItem) {
   return `${dependency.type}/${dependency.id}`;
 }
 
-function getDependenciesDiff(
+function getNewDependencies(
   prevDependencies: Lib.DependentItem[],
   nextDependencies: Lib.DependentItem[],
 ) {

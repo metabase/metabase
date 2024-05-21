@@ -27,7 +27,7 @@ type GetDashboardActionsProps = {
     isBrowserFullscreen?: boolean,
   ) => void;
   onNightModeChange: (isNightMode: boolean) => void;
-  onRefreshPeriodChange: (period: number) => void;
+  onRefreshPeriodChange: (period: number | null) => void;
   onSharingClick?: () => void;
   refreshPeriod: number | null;
   setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
@@ -72,7 +72,7 @@ export const getDashboardActions = ({
   const shouldShowSubscriptionsButton =
     emailConfigured || slackConfigured || isAdmin;
 
-  if (!isEditing && !isEmpty && !isPublic) {
+  if (!isEditing && !isEmpty && !isPublic && !dashboard?.archived) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
     if (
       shouldShowSubscriptionsButton &&
@@ -101,7 +101,7 @@ export const getDashboardActions = ({
     }
   }
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && !dashboard?.archived) {
     buttons.push(
       <RefreshWidgetButton
         key="refresh"
@@ -112,7 +112,12 @@ export const getDashboardActions = ({
     );
   }
 
-  if (!isEditing && isFullscreen && hasNightModeToggle) {
+  if (
+    !isEditing &&
+    isFullscreen &&
+    !dashboard?.archived &&
+    hasNightModeToggle
+  ) {
     buttons.push(
       <Tooltip
         key="night"

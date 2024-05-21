@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardCreateEndpoint,
-  setupCardQueryMetadataEndpoint,
+  setupCardEndpoints,
 } from "__support__/server-mocks";
 import {
   screen,
@@ -39,7 +39,21 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder - unsaved changes warning", () => {
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   afterEach(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
     jest.resetAllMocks();
   });
 
@@ -76,7 +90,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/model/new",
       });
       setupCardCreateEndpoint();
-      setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
+      setupCardEndpoints(TEST_NATIVE_CARD);
 
       await startNewNotebookModel();
       await waitForSaveToBeEnabled();
@@ -217,8 +231,11 @@ describe("QueryBuilder - unsaved changes warning", () => {
       it("does not show custom warning modal when saving edited query", async () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          initialRoute: "/",
         });
+
+        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
         await waitForSaveChangesToBeEnabled();
@@ -310,8 +327,11 @@ describe("QueryBuilder - unsaved changes warning", () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          initialRoute: "/",
         });
+
+        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        await waitForLoaderToBeRemoved();
 
         /**
          * When initialRoute is `/model/${TEST_MODEL_CARD.id}/metadata`,
@@ -718,8 +738,11 @@ describe("QueryBuilder - unsaved changes warning", () => {
     it("does not show custom warning modal when saving edited question", async () => {
       const { history } = await setup({
         card: TEST_STRUCTURED_CARD,
-        initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+        initialRoute: "/",
       });
+
+      history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      await waitForLoaderToBeRemoved();
 
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();

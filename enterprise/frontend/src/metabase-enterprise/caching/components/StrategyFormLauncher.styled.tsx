@@ -8,7 +8,7 @@ import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 export const PolicyToken = styled(Button)<
-  { variant: string; ref: MutableRefObject<HTMLButtonElement> } & ButtonProps
+  { variant?: string; ref?: MutableRefObject<HTMLButtonElement> } & ButtonProps
 >`
   cursor: pointer;
   display: flex;
@@ -19,7 +19,7 @@ export const PolicyToken = styled(Button)<
   ${({ variant }) =>
     css`
       border-color: ${color(
-        ["filled", "outline"].includes(variant) ? "brand" : "border",
+        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
       )} !important;
     `};
   span {

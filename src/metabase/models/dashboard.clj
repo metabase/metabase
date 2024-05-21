@@ -47,6 +47,7 @@
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
 (doto :model/Dashboard
+  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
@@ -620,7 +621,8 @@
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
-        (update :made_public_by_id serdes/*export-user*))))
+        (update :made_public_by_id serdes/*export-user*)
+        (dissoc :view_count))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
@@ -682,10 +684,11 @@
        set))
 
 (defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id dashcards parameters]}]
+  [{:keys [collection_id dashcards parameters trashed_from_collection_id]}]
   (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]

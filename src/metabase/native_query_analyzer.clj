@@ -16,9 +16,16 @@
    [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(comment nqa.replacement/keep-me)
+
+(p/import-vars
+ [nqa.replacement replace-names])
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
@@ -125,15 +132,3 @@
                         direct-ids)]
       {:direct   direct-ids
        :indirect indirect-ids})))
-
-;; TODO: does not support template tags
-(defn replace-names
-  "Returns a modified query with the given table and column renames applied. `renames` is expected to be a map with
-  `:tables` and `:columns` keys, and values of the shape `old-name -> new-name`:
-
-  (replace-names \"SELECT o.id, o.total FROM orders o\" {:columns {\"id\" \"pk\"
-                                                                   \"total\" \"amount\"}
-                                                         :tables {\"orders\" \"purchases\"}})
- ;; => \"SELECT o.pk, o.amount FROM purchases o\""
-  [sql-query renames]
-  (macaw/replace-names sql-query renames))

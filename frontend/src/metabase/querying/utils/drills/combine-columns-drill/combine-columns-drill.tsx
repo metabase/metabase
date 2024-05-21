@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
@@ -24,21 +26,25 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   const DrillPopover = ({
     onChangeCardAndRun,
     onClose,
-  }: ClickActionPopoverProps) => (
-    <CombineColumnsDrill
-      column={column}
-      query={query}
-      stageIndex={stageIndex}
-      onSubmit={newQuery => {
-        const nextQuestion = question.setQuery(newQuery);
-        const nextCard = nextQuestion.card();
+  }: ClickActionPopoverProps) => {
+    const dispatch = useDispatch();
+    return (
+      <CombineColumnsDrill
+        column={column}
+        query={query}
+        stageIndex={stageIndex}
+        onSubmit={newQuery => {
+          const nextQuestion = question.setQuery(newQuery);
+          const nextCard = nextQuestion.card();
 
-        trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
-        onChangeCardAndRun({ nextCard });
-        onClose();
-      }}
-    />
-  );
+          trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
+          dispatch(setUIControls({ scrollToLastColumn: true }));
+          onChangeCardAndRun({ nextCard });
+          onClose();
+        }}
+      />
+    );
+  };
 
   return [
     {

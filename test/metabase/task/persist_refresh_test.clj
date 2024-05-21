@@ -225,3 +225,33 @@
                         (t2/select-one TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
+(deftest save-task-history-test
+  (mt/with-model-cleanup [TaskHistory]
+    (testing "if tasks succeed, task_details should be saved and status is sucecss"
+      (let [task-name (mt/random-name)]
+        (#'task.persist-refresh/save-task-history! task-name (mt/id)
+                                                   (fn []
+                                                     {:foo "bar"}))
+        (is (=? {:task         task-name
+                 :task_details {:foo "bar"}
+                 :status       :success}
+                (t2/select-one :model/TaskHistory :task task-name)))))
+
+    (testing "if the task fails, task history should have status is faield"
+      (let [task-name (mt/random-name)]
+        (#'task.persist-refresh/save-task-history! task-name (mt/id)
+                                                   (fn []
+                                                     {:error-details ["some-error"]}))
+        (is (=? {:task         task-name
+                 :task_details {:error-details ["some-error"]}
+                 :status       :failed}
+                (t2/select-one :model/TaskHistory :task task-name)))))
+
+    (testing "send an email if persist-refresh fails"
+      (let [email-sent (atom false)]
+       (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
+                                                                                 (reset! email-sent true))]
+         (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
+                                                    (fn []
+                                                      {:error-details ["some-error"]}))
+         (is (true? @email-sent)))))))

@@ -126,7 +126,7 @@
 (mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
 
-  Handles either pMBQL (MLv2) queries or legacy MBQL queries. Handles source Cards by fetching them as needed."
+ Handles either pMBQL (MLv2) queries or legacy MBQL queries. Handles source Cards by fetching them as needed."
   [query :- [:maybe :map]]
   (when query
     (when-let [f (case (lib/normalized-query-type query)

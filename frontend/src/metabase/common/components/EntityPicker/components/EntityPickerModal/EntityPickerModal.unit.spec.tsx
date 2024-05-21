@@ -30,12 +30,14 @@ interface SetupOpts {
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]];
+  tabs?: EntityTab<SampleModelType>[];
   options?: EntityPickerModalOptions;
   selectedItem?: null | TypeWithModel<number, SampleModelType>;
   actionButtons?: JSX.Element[];
   recentFilter?: (item: RecentItem[]) => RecentItem[];
   recentItems?: RecentItem[];
+  defaultToRecentTab?: boolean;
+  initialValue?: { model: SampleModelType };
 }
 
 const TestPicker = ({ name }: { name: string }) => (
@@ -60,7 +62,7 @@ const setup = ({
   title = "Pick a thing",
   onItemSelect = jest.fn(),
   onClose = jest.fn(),
-  onConfirm = jest.fn(),
+  onConfirm,
   tabs = [TEST_CARD_TAB],
   selectedItem = null,
   recentItems = [],
@@ -77,9 +79,9 @@ const setup = ({
       onItemSelect={onItemSelect}
       canSelectItem={true}
       onClose={onClose}
+      onConfirm={onConfirm}
       tabs={tabs}
       selectedItem={selectedItem}
-      onConfirm={onConfirm}
       recentFilter={recentFilter}
       {...rest}
     />,
@@ -90,13 +92,31 @@ describe("EntityPickerModal", () => {
   afterAll(() => {
     jest.restoreAllMocks();
   });
+
+  it("should throw when options.hasConfirmButtons is true but onConfirm prop is missing", async () => {
+    expect(() => {
+      setup({
+        options: {
+          hasConfirmButtons: true,
+        },
+        onConfirm: undefined,
+      });
+    }).toThrow("onConfirm prop is required when hasConfirmButtons is true");
+  });
+
   it("should render a picker", async () => {
-    setup({});
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
   });
 
   it("should render a search bar by default and show confirmation button", async () => {
-    setup();
+    setup({
+      onConfirm: jest.fn(),
+    });
+
     expect(await screen.findByPlaceholderText("Search…")).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Select" }),
@@ -108,13 +128,15 @@ describe("EntityPickerModal", () => {
       options: {
         showSearch: false,
       },
+      onConfirm: jest.fn(),
     });
+
     expect(screen.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]] =
-      [
+    setup({
+      tabs: [
         TEST_CARD_TAB,
         {
           icon: "folder",
@@ -122,9 +144,8 @@ describe("EntityPickerModal", () => {
           model: "table",
           element: <TestPicker name="bar" />,
         },
-      ];
-    setup({
-      tabs,
+      ],
+      onConfirm: jest.fn(),
     });
 
     const tabList = await screen.findByRole("tablist");
@@ -169,10 +190,10 @@ describe("EntityPickerModal", () => {
     fetchMock.get("path:/api/user/recipients", { data: [] });
 
     const onItemSelect = jest.fn();
-    const onConfirm = jest.fn();
+
     setup({
       onItemSelect,
-      onConfirm,
+      onConfirm: jest.fn(),
     });
 
     await userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
@@ -200,7 +221,10 @@ describe("EntityPickerModal", () => {
       </Button>,
     ];
 
-    setup({ actionButtons });
+    setup({
+      actionButtons,
+      onConfirm: jest.fn(),
+    });
 
     expect(
       await screen.findByRole("button", { name: "Click Me" }),
@@ -246,7 +270,7 @@ describe("EntityPickerModal", () => {
     ];
 
     it("should not show a recents tab when there are no recent items", async () => {
-      setup({});
+      setup({ onConfirm: jest.fn() });
 
       await screen.findByText("Test picker foo");
 
@@ -254,7 +278,10 @@ describe("EntityPickerModal", () => {
     });
 
     it("should show a recents tab when there are recent items", async () => {
-      setup({ recentItems });
+      setup({
+        recentItems,
+        onConfirm: jest.fn(),
+      });
 
       expect(
         await screen.findByRole("tab", { name: /Recents/ }),
@@ -262,14 +289,32 @@ describe("EntityPickerModal", () => {
       expect(await screen.findByText("Recent Question")).toBeInTheDocument();
     });
 
+    it("should not default to the recent tab if defaultToRecents is false", async () => {
+      setup({
+        recentItems,
+        defaultToRecentTab: false,
+        initialValue: { model: "card" },
+        onConfirm: jest.fn(),
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
+    });
+
     it("should group recents by time", async () => {
-      setup({ recentItems });
+      setup({
+        recentItems,
+        onConfirm: jest.fn(),
+      });
 
       expect(await screen.findByText("Earlier")).toBeInTheDocument();
     });
 
     it("should filter out irrelevant models", async () => {
       setup({
+        onConfirm: jest.fn(),
         recentItems,
         tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
       });
@@ -281,6 +326,7 @@ describe("EntityPickerModal", () => {
 
     it("should accept an arbitrary filter", async () => {
       setup({
+        onConfirm: jest.fn(),
         recentItems,
         recentFilter: items =>
           items.filter(item => !item.description?.includes("invisible")),

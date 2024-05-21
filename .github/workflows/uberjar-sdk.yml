@@ -1,0 +1,157 @@
+name: Build + Docker Uberjar for SDK
+
+on:
+  # This workflow will be called from "release-embedding-sdk.yml"
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Valid git reference e.g. branches, tags, hashes'
+        type: string
+        required: true
+      image_name:
+        description: Docker image used to upload to Dockerhub
+        type: string
+        required: true
+
+jobs:
+  build:
+    name: Build MB ${{ matrix.edition }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        edition: [ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.git_ref }}
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: uberjar
+    - name: Build
+      run: ./bin/build.sh
+    - name: Prepare uberjar artifact
+      uses: ./.github/actions/prepare-uberjar-artifact
+      with:
+        name: metabase-ee-uberjar
+
+  check_jar_health:
+    runs-on: ubuntu-22.04
+    name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
+    needs: build
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        edition: [ee]
+        java-version: [11, 17]
+    steps:
+    - name: Prepare JRE (Java Run-time Environment)
+      uses: actions/setup-java@v4
+      with:
+        java-package: jre
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+    - run: java -version
+    - uses: actions/download-artifact@v4
+      name: Retrieve uberjar artifact
+      with:
+        name: metabase-ee-uberjar
+    - name: Launch uberjar
+      run: java -jar ./target/uberjar/metabase.jar &
+    - name: Wait for Metabase to start
+      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+
+  containerize_test_and_push_container:
+    runs-on: ubuntu-22.04
+    name: Containerize ${{ matrix.edition }}
+    needs: check_jar_health
+    strategy:
+      matrix:
+        edition: [ee]
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      - name: Extract and clean branch name
+        shell: bash
+        run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Set image name to env
+        run: echo "image_name=${{ inputs.image_name || steps.extract_branch.outputs.branch }}" >> "$GITHUB_ENV"
+
+      - name: Verify the intended tag of the container image
+        run: echo "Container image will be tagged as ${{ env.image_name }}-${{ matrix.edition }}"
+
+      - name: Check out the code (Dockerfile needed)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Download uploaded artifacts to insert into container
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-ee-uberjar
+          path: bin/docker/
+
+      - name: Move the ${{ matrix.edition }} uberjar to the context dir
+        run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2.5.0
+        with:
+          driver-opts: network=host
+
+      - name: Build ${{ matrix.edition }} container
+        uses: docker/build-push-action@v3
+        with:
+          context: bin/docker/.
+          platforms: linux/amd64
+          network: host
+          tags: localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
+          no-cache: true
+          push: true
+
+      - name: Launch ${{ matrix.edition }} container
+        run: docker run --rm -dp 3000:3000 localhost:5000/metabase-dev:${{ env.image_name }}-${{ matrix.edition }}
+        timeout-minutes: 5
+
+      - name: Is Docker running?
+        run: docker ps
+
+      - name: Wait for Metabase to start and reach 100% health
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        timeout-minutes: 3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Retag and push images
+        run: docker tag localhost:5000/metabase-dev:${{ env.image_name }}-ee ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ env.image_name }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_OFFLINE_SCAN: true
+        with:
+          image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ env.image_name }}
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'

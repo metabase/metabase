@@ -32,7 +32,7 @@ describe("HomeGreeting", () => {
     });
 
     expect(screen.getByText(/John/)).toBeInTheDocument();
-    expect(screen.getByRole("img")).toBeInTheDocument();
+    expect(screen.getAllByRole("img")).toHaveLength(2);
   });
 
   it("should render without logo", () => {

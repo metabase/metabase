@@ -1,10 +1,12 @@
 import {
-  popover,
-  restore,
-  visualize,
-  startNewQuestion,
-  queryBuilderMain,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
+  popover,
+  queryBuilderMain,
+  restore,
+  startNewQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("issue 20683", { tags: "@external" }, () => {
@@ -15,8 +17,8 @@ describe("issue 20683", { tags: "@external" }, () => {
 
   it("should filter postgres with the 'current quarter' filter (metabase#20683)", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
