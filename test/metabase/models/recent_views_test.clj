@@ -9,8 +9,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def test-user :rasta)
-
 (defn- clear-test-user-recent-views
   []
   (log/infof "Clearing %s's recent views" (pr-str :rasta))
