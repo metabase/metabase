@@ -32,6 +32,8 @@ To filter your search results, hit `cmd/ctrl + k` to bring up the command palett
 
 ![Search results](./images/search-results.png)
 
+Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in that are in collections you have permission to view.
+
 You can search by:
 
 - **Content type**: dashboard, question, model, collection, database, table.
@@ -42,8 +44,6 @@ You can search by:
 - **Verified items only**. Only show items that [have been verified](#verified-items).
 - **Search the contents of native queries**: search through the SQL/native code in questions.
 - **Search items in trash**: include the depths of oblivion in your search.
-
-Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in that are in collections you have permission to view.
 
 ## Browse your data
 
