@@ -280,6 +280,9 @@ const theme = {
 
     /** Color used for aggregations and breakouts context */
     summarize: "#88BF4D",
+
+    /** Color used for popover shadows */
+    shadow: "rgba(0,0,0,0.08)",
   },
 
   table: {
