@@ -13,7 +13,7 @@ export const ItemTitle = styled.div`
 export const ItemIcon = styled(QueryColumnInfoIcon)`
   margin: 0 0.5em;
   margin-left: 0.75em;
-  color: ${color("text-dark")};
+  color: ${color("text-light")};
 `;
 
 export const ItemList = styled.ul`

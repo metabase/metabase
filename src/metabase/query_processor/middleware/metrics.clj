@@ -11,17 +11,28 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(defn- replace-metric-aggregation-refs [x lookup]
-  (lib.util.match/replace x
-    [:metric _ metric-id]
-    (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
-      (update (lib.util/fresh-uuids replacement)
-              1
-              merge
-              {:name metric-name}
-              (select-keys (get &match 1) [:lib/uuid :name]))
-      (throw (ex-info "Incompatible metric" {:match &match
-                                             :lookup lookup})))))
+(defn- replace-metric-aggregation-refs [query stage-number lookup]
+  (if-let [aggregations (lib/aggregations query stage-number)]
+    (let [columns (lib/visible-columns query stage-number)]
+      (assoc-in query [:stages stage-number :aggregation]
+                (lib.util.match/replace aggregations
+                  [:metric _ metric-id]
+                  (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
+                    ;; We have to replace references from the source-metric with references appropriate for
+                    ;; this stage (expression/aggregation -> field, field-id to string)
+                    (let [replacement (lib.util.match/replace replacement
+                                        [(tag :guard #{:expression :field :aggregation}) _ _]
+                                        (if-let [col (lib/find-matching-column &match columns)]
+                                          (lib/ref col)
+                                          ;; This is probably due to a field-id where it shouldn't be
+                                          &match))]
+                      (update (lib.util/fresh-uuids replacement)
+                              1
+                              merge
+                              {:name metric-name}
+                              (select-keys (get &match 1) [:lib/uuid :name])))
+                    (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
+    query))
 
 (defn- find-metric-ids
   [x]
@@ -39,10 +50,12 @@
                       (let [metric-query (lib.convert/->pMBQL
                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                                             (lib/query query (:dataset-query card-metadata))))]
-                        [(:id card-metadata)
-                         {:query metric-query
-                          :aggregation (first (lib/aggregations metric-query))
-                          :name (:name card-metadata)}]))))
+                        (if-let [aggregation (first (lib/aggregations metric-query))]
+                          [(:id card-metadata)
+                           {:query metric-query
+                            :aggregation aggregation
+                            :name (:name card-metadata)}]
+                          (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
 (defn- expression-with-name-from-source
@@ -67,7 +80,7 @@
                             (as-> query $q
                               (reduce expression-with-name-from-source $q expressions)
                               (reduce lib/filter $q filters)
-                              (update-in $q [:stages 0 :aggregation] replace-metric-aggregation-refs lookup)))
+                              (replace-metric-aggregation-refs $q 0 lookup)))
                           (throw (ex-info "Incompatible metric" {:query query
                                                                  :metric metric-query}))))
                       (temp-query-at-stage-path query path)
@@ -106,25 +119,26 @@
 
    The following stages will have `[:metric {} id]` clauses
    replaced with the actual aggregation of the metric."
-  [query stage-path expanded-stages idx metric-metadata]
+  [query stage-path expanded-stages last-metric-stage-number metric-metadata]
   (mu/disable-enforcement
-    (let [[pre-transition-stages [last-metric-stage following-stage & following-stages]] (split-at idx expanded-stages)
+    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
           metric-name (:name metric-metadata)
           metric-aggregation (-> last-metric-stage :aggregation first)
           stage-query (temp-query-at-stage-path query stage-path)
-          last-metric-stage-number idx
           stage-query (update-in stage-query
-                                 [:stages idx]
+                                 [:stages last-metric-stage-number]
                                  (fn [stage]
                                    (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
-          stage-query (lib/with-fields stage-query idx (lib/fieldable-columns stage-query idx))
+          stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
           new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
                   {:name metric-name :aggregation metric-aggregation}}
-          new-following-stage (replace-metric-aggregation-refs
-                                following-stage
-                                lookup)
+          stage-query (replace-metric-aggregation-refs
+                        stage-query
+                        (inc last-metric-stage-number)
+                        lookup)
+          new-following-stage (lib.util/query-stage stage-query (inc last-metric-stage-number))
           combined-stages (vec (remove nil? (concat pre-transition-stages
                                                     [new-metric-stage new-following-stage]
                                                     following-stages)))]

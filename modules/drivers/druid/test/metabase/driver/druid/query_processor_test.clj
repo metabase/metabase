@@ -9,7 +9,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [#_Card Field Table]]
+   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -541,26 +541,6 @@
            (mt/rows+column-names
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
-
-;; FIXME metrics v2
-#_(deftest metrics-inside-aggregation-clauses-test
-  (mt/test-driver :druid
-    (testing "check that we can handle METRICS inside expression aggregation clauses"
-      (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query
-                                                       (mt/mbql-query checkins
-                                                         {:aggregation [:sum $venue_price]
-                                                          :filter      [:> $venue_price 1]
-                                                          :source-table (mt/id :checkins)})
-                                                       :type :metric}]
-          (is (= [["2" 1231.0]
-                  ["3"  346.0]
-                  ["4" 197.0]]
-                 (mt/rows
-                  (mt/run-mbql-query checkins
-                    {:aggregation [:+ [:metric metric-id] 1]
-                     :breakout    [$venue_price]
-                     :source-table (str "card__" metric-id)})))))))))
 
 (deftest order-by-aggregation-test
   (mt/test-driver :druid
