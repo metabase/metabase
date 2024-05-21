@@ -247,10 +247,7 @@ function getShowAutoSymbols(
 
   const seriesWithSymbols = seriesModels.filter(seriesModel => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-    if (["area", "line"].includes(seriesSettings.display ?? "")) {
-      return true;
-    }
-    return false;
+    return ["area", "line"].includes(seriesSettings.display ?? "");
   });
 
   // at least half of the chart width should not have a symbol on it
