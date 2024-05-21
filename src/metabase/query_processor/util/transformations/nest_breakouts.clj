@@ -77,7 +77,7 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata :filters)
+        (dissoc :expressions :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols))))
 
 (mu/defn ^:private nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]

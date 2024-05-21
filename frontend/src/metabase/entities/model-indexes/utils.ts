@@ -25,7 +25,10 @@ export const canIndexField = (field: FieldEntity, model: Question): boolean => {
 
 export const getPkRef = (fields?: Field[]) => fields?.find(isPK)?.field_ref;
 
-export const fieldHasIndex = (modelIndexes: ModelIndex[], field: Field) =>
-  !!modelIndexes.some((index: any) =>
+export const fieldHasIndex = (
+  modelIndexes: ModelIndex[] | undefined,
+  field: Field,
+) =>
+  !!modelIndexes?.some((index: any) =>
     _.isEqual(index.value_ref, field.field_ref),
   );

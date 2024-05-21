@@ -13,7 +13,7 @@
 }
 
 .RefreshOptionItem.Enabled.Selected {
-  color: var(--color-summarize);
+  color: var(--mb-color-summarize);
 }
 
 .RefreshOptionItem .RefreshOptionIcon {

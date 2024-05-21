@@ -26,7 +26,7 @@ const modelIconMap: Record<SearchModel, IconName> = {
   dashboard: "dashboard",
   card: "table",
   segment: "segment",
-  metric: "funnel",
+  metric: "metric",
 };
 
 const secondaryModelIconMap: Partial<Record<SearchModel, IconName>> = {

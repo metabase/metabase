@@ -6876,6 +6876,91 @@ databaseChangeLog:
       rollback: # we can't reliably add back the constraint while downgrading
 
   - changeSet:
+      id: v50.2024-05-08T09:00:00
+      author: qnkhuat
+      comment: Add task_history.status
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "the status of task history, could be started, failed, success, unknown"
+                  constraints:
+                    nullable: false
+                  defaultValue: "unknown"
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:01
+      author: qnkhuat
+      comment: Drop default value task_history.status
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:02
+      author: qnkhuat
+      comment: Add "started" as default value for task_history.status, now that backfill is done.
+      changes:
+        - addDefaultValue:
+            defaultValue: "started"
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.ended_at
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:04
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.duration
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: int
+            columnName: duration
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:05
+      author: qnkhuat
+      comment: Drop default value task_history.ended_at
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+      rollback:
+        - addDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:06
+      author: qnkhuat
+      comment: Add null as default value for task_history.ended_at
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: task_history
+            columnName: ended_at
+      # the migration above will add one
+      rollback:
+
+  - changeSet:
       id: v50.2024-05-13T16:00:00
       author: filipesilva
       comment: Create cloud migration
@@ -7228,6 +7313,78 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v51.2024-05-13T15:30:57
+      author: metamben
+      comment: Backup of dataset_query rewritten by the metrics v2 migration
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset_query_metrics_v2_migration_backup
+                  remarks: The copy of dataset_query before the metrics v2 migration
+                  type: ${text.type}
+
+  - changeSet:
+      id: v51.2024-05-13T16:00:00
+      author: metamben
+      comment: Migrate v1 metrics to v2 metrics
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateMetricsToV2"
+
+  - changeSet:
+      id: v51.2024-05-20T19:10:34
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.collection_preview to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v51.2024-05-20T20:37:55
+      author: johnswanson
+      comment: Add NOT NULL constraint to report_card.collection_preview
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: collection_preview
+            defaultNullValue: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v51.2024-05-20T20:38:34
+      author: johnswanson
+      comment: Add default value to report_card.collection_preview
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: true
+            tableName: report_card
+            columnName: collection_preview
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

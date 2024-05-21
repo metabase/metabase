@@ -209,8 +209,12 @@
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                                          (update acc (case (keyword card-type)
+                                                       :model :dataset
+                                                       :metric :metric
+                                                       :card) conj collection-id))
                                         {:dataset #{}
+                                         :metric  #{}
                                          :card    #{}}
                                         (t2/reducible-query {:select-distinct [:collection_id :type]
                                                              :from            [:report_card]
@@ -225,6 +229,7 @@
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
     "dataset"    ; Model. TODO : update this
+    "metric"
     "collection"
     "dashboard"
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
@@ -380,13 +385,17 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.trashed_from_collection_id
                      :c.archived
                      :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [(h2x/literal (case card-type
+                                     :model "dataset"
+                                     :metric  "metric"
+                                     "card"))
+                      :model]
                      [:u.id :last_edit_user]
                      [:u.email :last_edit_email]
                      [:u.first_name :last_edit_first_name]
@@ -403,7 +412,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    dataset?
+                    (= :model card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -414,15 +423,30 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
-      (cond-> dataset?
+                   (case card-type
+                     :model
+                     [:= :c.type (h2x/literal "model")]
+
+                     :metric
+                     [:= :c.type (h2x/literal "metric")]
+
+                     [:= :c.type (h2x/literal "question")])]}
+      (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
-  (card-query true collection options))
+  (card-query :model collection options))
+
+(defmethod collection-children-query :metric
+  [_ collection options]
+  (card-query :metric collection options))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
@@ -433,10 +457,6 @@
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
          (post-process-collection-children :card collection))))
-
-(defmethod collection-children-query :card
-  [_ collection options]
-  (card-query false collection options))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
@@ -473,7 +493,10 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
+  (let [parsed-query (-> row :dataset_query json/parse-string)
+        ;; TODO TB handle pMBQL native queries
+        native-query (when (contains? parsed-query "native")
+                       (-> parsed-query mbql.normalize/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))
@@ -487,6 +510,10 @@
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
+  [_ _ rows]
+  (map post-process-card-row rows))
+
+(defmethod post-process-collection-children :metric
   [_ _ rows]
   (map post-process-card-row rows))
 
@@ -576,8 +603,12 @@
 
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                  (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                  (update acc (case (keyword card-type)
+                               :model :dataset
+                               :metric :metric
+                               :card) conj collection-id))
                 {:dataset #{}
+                 :metric  #{}
                  :card    #{}}
                 (t2/reducible-query {:select-distinct [:collection_id :type]
                                      :from            [:report_card]
@@ -658,6 +689,7 @@
     :collection :model/Collection
     :card       :model/Card
     :dataset    :model/Card
+    :metric     :model/Card
     :dashboard  :model/Dashboard
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
@@ -697,7 +729,6 @@
                    (map coalesce-edit-info)))
        (map remove-unwanted-keys)
        (sort-by (comp ::index meta))))
-
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -740,10 +771,11 @@
   (let [rankings {:dashboard  1
                   :pulse      2
                   :dataset    3
-                  :card       4
-                  :snippet    5
-                  :collection 6
-                  :timeline   7}]
+                  :metric     4
+                  :card       5
+                  :snippet    6
+                  :collection 7
+                  :timeline   8}]
     (conj select-clause [[:inline (get rankings model 100)]
                          :model_ranking])))
 
@@ -751,7 +783,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
+        (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -848,7 +880,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

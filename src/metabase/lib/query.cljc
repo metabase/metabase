@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -54,32 +55,50 @@
 
 (defmulti can-run-method
   "Returns whether the query is runnable based on first stage :lib/type"
-  (fn [query]
+  (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
 (defmethod can-run-method :default
-  [_query]
+  [_query _card-type]
   true)
+
+(defmethod can-run-method :mbql.stage/mbql
+  [query card-type]
+  (or (not= card-type :metric)
+      (let [last-stage (lib.util/query-stage query -1)]
+        (= (-> last-stage :aggregation count) 1))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
-  [query :- ::lib.schema/query]
+  [query :- ::lib.schema/query
+   card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
          (mr/validate ::lib.schema/query query))
-       (boolean (can-run-method query))))
+       (boolean (can-run-method query card-type))))
+
+(defmulti can-save-method
+  "Returns whether the query can be saved based on first stage :lib/type."
+  (fn [query _card-type]
+    (:lib/type (lib.util/query-stage query 0))))
+
+(defmethod can-save-method :default
+  [_query _card-type]
+  true)
 
 (mu/defn can-save :- :boolean
-  "Returns whether the query can be saved."
-  [query :- ::lib.schema/query]
+  "Returns whether `query` for a card of `card-type` can be saved."
+  [query :- ::lib.schema/query
+   card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
-       (can-run query)))
+       (can-run query card-type)
+       (boolean (can-save-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
 
   See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
   [query :- ::lib.schema/query]
-  (and (can-run query)
+  (and (can-run query "question")
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
        (every? (fn [stage]
                  (boolean
@@ -180,11 +199,26 @@
                      [{:lib/type     :mbql.stage/mbql
                        :source-table (u/the-id table-metadata)}]))
 
+(declare query)
+
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]
-  (query-with-stages metadata-providerable
-                     [{:lib/type     :mbql.stage/mbql
-                       :source-card (u/the-id card-metadata)}]))
+  (let [card-id (u/the-id card-metadata)
+        base-query (query-with-stages metadata-providerable
+                                      [{:lib/type :mbql.stage/mbql
+                                        :source-card card-id}])]
+    (if (= (:type card-metadata) :metric)
+      (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
+            metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
+            base-query (reduce
+                        #(lib.util/add-summary-clause %1 0 :breakout %2)
+                        base-query
+                        metric-breakouts)]
+        (-> base-query
+            (lib.util/add-summary-clause
+             0 :aggregation
+             (lib.options/ensure-uuid [:metric {} card-id]))))
+      base-query)))
 
 (defmethod query-method :mbql.stage/mbql
   [metadata-providerable mbql-stage]
@@ -210,6 +244,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(defn ->legacy-MBQL
+  "Convert the pMBQL `a-query` into a legacy MBQL query."
+  [a-query]
+  (-> a-query lib.convert/->legacy-MBQL))
 
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.
@@ -241,12 +280,12 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-legacy-metric?]]."
+  with [[uses-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-legacy-metric? :- :boolean
+(mu/defn uses-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
   some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
