@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { color } from "metabase/lib/colors";
@@ -126,9 +126,11 @@ describe("Text", () => {
         await userEvent.click(
           screen.getByTestId("editing-dashboard-text-preview"),
         );
-        expect(
-          screen.getByTestId("editing-dashboard-text-input"),
-        ).toHaveFocus();
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("editing-dashboard-text-input"),
+          ).toHaveFocus();
+        });
       });
 
       it("should have input placeholder when it has no content", async () => {
