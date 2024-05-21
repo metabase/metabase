@@ -33,7 +33,7 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashcard } from "./metadata";
+import { loadMetadataForDashcards } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -129,7 +129,7 @@ export const fetchCardData = createThunkAction(
 
       await Promise.all([
         dispatch(fetchCardQuery(card, dashcard, options)),
-        dispatch(loadMetadataForDashcard(dashcard)),
+        dispatch(loadMetadataForDashcards([dashcard])),
       ]);
 
       return {
