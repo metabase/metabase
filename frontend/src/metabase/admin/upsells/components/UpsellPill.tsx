@@ -28,7 +28,11 @@ export function _UpsellPill({
   });
 
   return (
-    <UpsellPillComponent href={url} onClickCapture={() => trackUpsellClicked({ source, campaign })} data-testid="upsell-pill">
+    <UpsellPillComponent
+      href={url}
+      onClickCapture={() => trackUpsellClicked({ source, campaign })}
+      data-testid="upsell-pill"
+    >
       <UpsellGem />
       {children}
     </UpsellPillComponent>

@@ -52,7 +52,9 @@ export const _UpsellCard = ({
       <UpsellCTALink
         onClickCapture={() => trackUpsellClicked({ source, campaign })}
         href={url}
-      >{buttonText}</UpsellCTALink>
+      >
+        {buttonText}
+      </UpsellCTALink>
     </UpsellCardComponent>
   );
 };
