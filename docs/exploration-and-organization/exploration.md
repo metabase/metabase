@@ -12,7 +12,7 @@ As long as you're not the very first user in your team's Metabase, the easiest w
 
 ## Command palette
 
-The command palette lets you jump to anywhere in your Metabase.
+The command palette lets you create new things, search your content, or jump to anywhere in your Metabase.
 
 To bring up the command palette, hit cmd/ctrl + k. That's `cmd + k` for Macs, or `ctrl + k` for Windows PCs.
 
@@ -20,13 +20,15 @@ You can use the command palette to:
 
 - Create new things (like new questions and dashboards)
 - Find things (saved questions, dashboards, models, etc.)
-- Find and jump to Admin settings
+- Find and jump to Admin and account settings.
 
-So anytime you want to do or find anything in Metabase, just hit cmd/ctrl + k and start typing what you want to do.
+So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` and start typing what you want to do.
 
-## Search
+> The command palette is currently unavailable in [interactive embedding](../embedding/interactive-embedding.md) contexts.
 
-If you want to refine your search with filters, use the search bar and click through to the search results page.
+## Advanced search
+
+To filter your search results, hit `cmd/ctrl + K` to bring up the command palette and enter your search term. The first result is a link to "Search and filter all X results".
 
 You can select a result from the dropdown, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
 
@@ -36,19 +38,28 @@ Searches take into account items’ titles, descriptions, and other metadata —
 
 You can search by:
 
-- **Content type**: dashboard, question, model, etc.
+- **Content type**: dashboard, question, model, collection, database, table.
 - **Creator**: who made the thing.
 - **Last editor**: who made the last saved change on the thing.
-- **Creation date**.
-- **Last edited date**.
+- **Creation date**: when the thing entered our universe.
+- **Last edit date**: when someone last cared enough to update the thing.
 - **Verified items only**. Only show items that [have been verified](#verified-items).
-- **Search the contents of native queries**. Toggle this option if you want to search through SQL/native code in questions.
+- **Search the contents of native queries**: search through the SQL/native code in questions.
+- **Search items in trash**: include the depths of oblivion in your search.
 
 ## Browse your data
 
-Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page or clicking the **Browse data** button in the side nav bar, and then selecting a database and clicking on one of its tables to see it. You can also hover over any table and click on the bolt icon to see an automatic exploration of the table's data. Give it a try!
-
 ![Browse data](./images/browse-data.png)
+
+To explore databases and models, click on either the **Models** or **Databases** browsers in the left sidebar.
+
+### Browse models
+
+The models browser list all the models in your Metabase. [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [Verified models](#verified-items).
+
+### Browse databases
+
+The data browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
 To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/basics/questions/data-browser.html).
 
