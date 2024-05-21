@@ -163,7 +163,7 @@ export default class DatabaseList extends Component {
           ) : null}
         </section>
 
-        {/* Needed to make this a composed modal to get the padding we wanted. 
+        {/* Needed to make this a composed modal to get the padding we wanted.
             Not sure why the padding prop didn't work */}
         <Modal.Root
           opened={isPermissionModalOpened}
