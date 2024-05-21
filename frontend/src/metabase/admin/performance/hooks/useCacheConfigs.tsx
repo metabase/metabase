@@ -3,11 +3,7 @@ import { useAsync } from "react-use";
 import _ from "underscore";
 
 import { CacheConfigApi } from "metabase/services";
-import type {
-  CacheConfigAPIResponse,
-  Config,
-  CacheableModel,
-} from "metabase-types/api";
+import type { CacheConfigAPIResponse, CacheConfig } from "metabase-types/api";
 
 import { rootId, translateConfigFromAPI } from "../strategies";
 
@@ -17,7 +13,7 @@ export const useCacheConfigs = ({
   configurableModels,
   id,
 }: {
-  configurableModels: CacheableModel[];
+  configurableModels: CacheConfig[];
   id?: number;
 }) => {
   const configsApiResult = useAsync(async () => {
@@ -35,7 +31,7 @@ export const useCacheConfigs = ({
 
   const configsFromAPI = configsApiResult.value;
 
-  const [configs, setConfigs] = useState<Config[]>([]);
+  const [configs, setConfigs] = useState<CacheConfig[]>([]);
 
   const rootStrategyOverriddenOnce = configs.some(
     config => config.model_id !== rootId,
