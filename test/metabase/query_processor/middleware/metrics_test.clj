@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -15,11 +16,19 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(def counter (atom (rand-int 2000)))
+(def ^:private counter (atom 2000))
 
 (defn- basic-metric-query []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
       (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))))
+
+(defn- fresh-card-id
+  [metadata-provider]
+  (loop []
+    (let [id (swap! counter inc)]
+      (if (seq (lib.metadata.protocols/metadatas metadata-provider :metadata/card #{id}))
+        (recur)
+        id))))
 
 (defn- mock-metric
   ([]
@@ -30,16 +39,16 @@
    (mock-metric metadata-provider query nil))
   ([metadata-provider query card-details]
    (let [metric (merge {:lib/type :metadata/card
-                        :id (swap! counter inc)
+                        :id (fresh-card-id metadata-provider)
                         :database-id (meta/id)
                         :name "Mock metric"
                         :type :metric
                         :dataset-query query}
                        card-details)]
      [metric (lib/composed-metadata-provider
-               metadata-provider
-               (lib.tu/mock-metadata-provider
-                 {:cards [metric]}))])))
+              metadata-provider
+              (lib.tu/mock-metadata-provider
+               {:cards [metric]}))])))
 
 (def adjust
   (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
@@ -133,15 +142,14 @@
                                                (lib/filter (lib/< (meta/field-metadata :products :price) 100))))
         query (-> (lib/query mp second-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
-    (is (=?
-          {:stages [{:source-table (meta/id :products)}
-                    {:filters [[:> {} [:field {} (meta/id :products :price)] 1]]
-                     :aggregation complement}
-                    {:filters [[:< {} [:field {} (meta/id :products :price)] 100]]
-                     :aggregation complement}
-                    {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
-                     :aggregation some?}]}
-          (adjust query)))))
+    (is (=? {:stages [{:source-table (meta/id :products)}
+                      {:filters [[:> {} [:field {} (meta/id :products :price)] 1]]
+                       :aggregation complement}
+                      {:filters [[:< {} [:field {} (meta/id :products :price)] 100]]
+                       :aggregation complement}
+                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                       :aggregation some?}]}
+            (adjust query)))))
 
 (deftest ^:parallel question-based-on-metric-based-on-metric-based-on-metric-test
   (let [[first-metric mp] (mock-metric)
