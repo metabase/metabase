@@ -1,7 +1,5 @@
 import type { MetabaseFontFamily } from "../fonts";
 
-import type { ChartColors } from "./chart-colors";
-
 /**
  * Theme configuration for embedded Metabase components.
  */
@@ -54,7 +52,7 @@ export interface MetabaseColors {
   summarize?: string;
 
   /** Chart colors */
-  charts?: ChartColors;
+  charts?: ChartColor[];
 }
 
 export type MetabaseColor = keyof MetabaseColors;
@@ -83,3 +81,11 @@ export interface MetabaseComponentTheme {
     };
   };
 }
+
+export type ChartColor =
+  | string
+  | {
+      base: string;
+      lighter?: string;
+      darker?: string;
+    };
