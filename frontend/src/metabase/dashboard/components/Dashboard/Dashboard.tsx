@@ -583,7 +583,42 @@ function DashboardInner(props: DashboardProps) {
             </ParametersAndCardsContainer>
 
             <DashboardSidebars
-              {...props}
+              dashboard={dashboard}
+              parameters={parameters}
+              showAddParameterPopover={props.showAddParameterPopover}
+              removeParameter={props.removeParameter}
+              addCardToDashboard={props.addCardToDashboard}
+              editingParameter={props.editingParameter}
+              clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+              onReplaceAllDashCardVisualizationSettings={
+                props.onReplaceAllDashCardVisualizationSettings
+              }
+              onUpdateDashCardVisualizationSettings={
+                props.onUpdateDashCardVisualizationSettings
+              }
+              onUpdateDashCardColumnSettings={
+                props.onUpdateDashCardColumnSettings
+              }
+              setParameterName={props.setParameterName}
+              setParameterType={props.setParameterType}
+              setParameterDefaultValue={props.setParameterDefaultValue}
+              setParameterIsMultiSelect={props.setParameterIsMultiSelect}
+              setParameterQueryType={props.setParameterQueryType}
+              setParameterSourceType={props.setParameterSourceType}
+              setParameterSourceConfig={props.setParameterSourceConfig}
+              setParameterFilteringParameters={
+                props.setParameterFilteringParameters
+              }
+              setParameterRequired={props.setParameterRequired}
+              dashcardData={props.dashcardData}
+              isFullscreen={props.isFullscreen}
+              params={props.params}
+              sidebar={props.sidebar}
+              closeSidebar={props.closeSidebar}
+              selectedTabId={props.selectedTabId}
+              getEmbeddedParameterVisibility={
+                props.getEmbeddedParameterVisibility
+              }
               setDashboardAttribute={handleSetDashboardAttribute}
               onCancel={() => setSharing(false)}
             />
