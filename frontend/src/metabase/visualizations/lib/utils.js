@@ -250,6 +250,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
 
     return {
       ...nextCard,
+      type: "question",
       // Original card id is needed for showing the "started from" lineage in dirty cards.
       original_card_id: alreadyHadLineage
         ? // Just recycle the original card id of previous card if there was one

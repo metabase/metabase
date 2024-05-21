@@ -300,19 +300,22 @@
                              :name "foo"
                              :widget-type :text
                              :display-name "foo"
-                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})))
-  (is (lib/can-run lib.tu/venues-query))
+                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                   :question))
+  (is (lib/can-run lib.tu/venues-query :question))
   (mu/disable-enforcement
-    (is (not (lib/can-run (lib/native-query meta/metadata-provider ""))))
+    (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
     (is (not (lib/can-run (lib/with-template-tags
                             (lib/native-query meta/metadata-provider "select * {{foo}}")
                             {"foo" {:type :dimension
                                     :id "1"
                                     :name "foo"
                                     :widget-type :text
-                                    :display-name "foo"}}))))
+                                    :display-name "foo"}})
+                          :question)))
     (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
-                                     [:stages 0] dissoc :collection))))))
+                                     [:stages 0] dissoc :collection)
+                          :question)))))
 
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))

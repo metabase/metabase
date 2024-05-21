@@ -26,7 +26,6 @@ import {
   entityPickerModal,
   entityPickerModalTab,
 } from "e2e/support/helpers";
-import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -818,33 +817,111 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    createMetric({
-      name: "Revenue",
-      description: "Sum of orders subtotal",
-      table_id: ORDERS_ID,
-      definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-      },
-    }).then(({ body }) => {
-      const metricId = body.id;
-
-      const questionDetails = {
+    cy.createQuestion(
+      {
         query: {
           "source-table": ORDERS_ID,
-          breakout: [["field", ORDERS.CREATED_AT, null]],
-          aggregation: [["metric", metricId]],
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        },
+        type: "metric",
+        name: "Revenue",
+      },
+      {
+        wrapId: true,
+        idAlias: "metricId",
+      },
+    );
+
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${metricId}`,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          aggregation: ["metric", metricId],
         },
       };
 
       createQuestion(questionDetails, { visitQuestion: true });
+
+      openNotebook();
+
+      getNotebookStep("summarize").contains("Revenue").click();
+
+      popover()
+        .findByTestId("expression-editor-textfield")
+        .contains("[Revenue]");
     });
+  });
 
-    openNotebook();
+  it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
+    cy.createQuestion(
+      {
+        name: "Revenue",
+        description: "Sum of orders subtotal",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "metricId",
+      },
+    );
 
-    getNotebookStep("summarize").contains("Revenue").click();
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${metricId}`,
+          aggregation: ["metric", metricId],
+        },
+      };
 
-    popover().findByTestId("expression-editor-textfield").contains("[Revenue]");
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      openNotebook();
+
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At").click();
+      cy.findByText("Sort").click();
+
+      // Sorts ascending by default
+      // Revenue appears twice, but it's the only integer column to order by
+      popover().icon("int").click();
+
+      // Let's make sure it's possible to sort descending as well
+      cy.icon("arrow_up").click();
+
+      cy.icon("arrow_down").parent().contains("Revenue");
+
+      visualize();
+      // Visualization will render line chart by default. Switch to the table.
+      cy.icon("table2").click();
+
+      cy.findAllByRole("grid").as("table");
+      cy.get("@table")
+        .first()
+        .as("tableHeader")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "Revenue");
+        });
+
+      cy.get("@table")
+        .last()
+        .as("tableBody")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "50,072.98");
+        });
+    });
   });
 });
 

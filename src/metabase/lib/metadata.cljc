@@ -48,6 +48,19 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
+(mu/defn metadatas-for-table :- [:sequential [:or
+                                              ::lib.schema.metadata/column
+                                              ::lib.schema.metadata/metric
+                                              ::lib.schema.metadata/legacy-metric
+                                              ::lib.schema.metadata/segment]]
+  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
+   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, ':metadata/legacy-metric',
+   `:metadata/segment`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- [:enum :metadata/column, :metadata/metric, :metadata/legacy-metric, :metadata/segment]
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id))
+
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -123,6 +136,14 @@
    metric-id             :- ::lib.schema.id/legacy-metric]
   (lib.metadata.protocols/legacy-metric (->metadata-provider metadata-providerable) metric-id))
 
+(mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metric-id             :- ::lib.schema.id/metric]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+    (when (= (:type card-meta) :metric)
+      (assoc card-meta :lib/type :metadata/metric))))
+
 (mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
   "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
   `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID
@@ -151,10 +172,10 @@
                   (or (and source-table (table query source-table))
                       (and source-card  (card  query source-card))
                       (and
-                        (= (:lib/type stage0) :mbql.stage/native)
-                        ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
-                        ;; TODO Find a way to unify has-write-permissions and this function?
-                        (= :write (:native-permissions (database query)))))))))
+                       (= (:lib/type stage0) :mbql.stage/native)
+                       ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
+                       ;; TODO Find a way to unify has-write-permissions and this function?
+                       (= :write (:native-permissions (database query)))))))))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use

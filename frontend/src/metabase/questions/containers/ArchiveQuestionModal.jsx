@@ -27,6 +27,13 @@ const getLabels = question => {
     };
   }
 
+  if (type === "metric") {
+    return {
+      title: t`Archive this metric?`,
+      message: t`This metric will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
@@ -42,7 +49,6 @@ class ArchiveQuestionModal extends Component {
 
     const { title, message } = getLabels(question);
     const widgetCount = question.getParameterUsageCount();
-
     const additionalWarning =
       widgetCount > 0
         ? " " +

@@ -41,18 +41,15 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
-declare const LegacyMetricMetadata: unique symbol;
-export type LegacyMetricMetadata = unknown & {
-  _opaque: typeof LegacyMetricMetadata;
+declare const MetricMetadata: unique symbol;
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadata;
 };
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable =
-  | AggregationClause
-  | LegacyMetricMetadata
-  | ExpressionClause;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -137,6 +134,7 @@ export type TableDisplayInfo = {
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
   isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -229,12 +227,12 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type LegacyMetricDisplayInfo = {
+export type MetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<

@@ -1,10 +1,10 @@
 import type {
   DatabaseId,
   FieldId,
-  MetricId,
   TableId,
   SegmentId,
   TemplateTags,
+  CardId,
 } from "metabase-types/api";
 
 export interface NativeQuery {
@@ -175,7 +175,7 @@ type CommonAggregation =
   | MaxAgg
   | OffsetAgg;
 
-type MetricAgg = ["metric", MetricId];
+type MetricAgg = ["metric", CardId];
 
 type InlineExpressionAgg = [
   "aggregation-options",

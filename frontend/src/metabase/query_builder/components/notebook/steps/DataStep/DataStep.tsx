@@ -116,6 +116,7 @@ export const DataStep = ({
           <DataPickerModal
             title={t`Pick your starting data`}
             value={value}
+            models={["table", "card", "dataset", "metric"]}
             onChange={handleTableChange}
             onClose={() => setIsDataPickerOpen(false)}
           />

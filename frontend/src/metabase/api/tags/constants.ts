@@ -13,7 +13,6 @@ export const TAG_TYPES = [
   "field",
   "field-values",
   "indexed-entity",
-  "metric",
   "permissions-group",
   "persisted-info",
   "persisted-model",
@@ -39,7 +38,7 @@ export const TAG_TYPE_MAPPING = {
   dataset: "card",
   action: "action",
   segment: "segment",
-  metric: "metric",
+  metric: "card",
   snippet: "snippet",
   pulse: "subscription",
 } as const;

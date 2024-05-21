@@ -12,11 +12,13 @@ export const useAvailableData = ({ databaseId }: Props = {}) => {
     table_db_id: databaseId,
   });
   const availableModels = data?.available_models ?? [];
-  const hasModels = availableModels.includes("dataset");
   const hasQuestions = availableModels.includes("card");
+  const hasModels = availableModels.includes("dataset");
+  const hasMetrics = availableModels.includes("metric");
 
   return {
-    hasModels,
     hasQuestions,
+    hasModels,
+    hasMetrics,
   };
 };

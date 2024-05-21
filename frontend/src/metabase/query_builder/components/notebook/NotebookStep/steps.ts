@@ -21,7 +21,7 @@ export type StepUIItem = {
   priority?: number;
   transparent?: boolean;
   compact?: boolean;
-  getColor: () => string;
+  color: string;
   component: React.ComponentType<NotebookStepUiComponentProps>;
 };
 
@@ -29,13 +29,13 @@ export const STEP_UI: Record<string, StepUIItem> = {
   data: {
     title: t`Data`,
     component: DataStep,
-    getColor: () => color("brand"),
+    color: color("brand"),
   },
   join: {
     title: t`Join data`,
     icon: "join_left_outer",
     priority: 1,
-    getColor: () => color("brand"),
+    color: color("brand"),
     component: JoinStep,
   },
   expression: {
@@ -43,35 +43,35 @@ export const STEP_UI: Record<string, StepUIItem> = {
     icon: "add_data",
     component: ExpressionStep,
     transparent: true,
-    getColor: () => color("bg-dark"),
+    color: color("bg-dark"),
   },
   filter: {
     title: t`Filter`,
     icon: "filter",
     component: FilterStep,
     priority: 10,
-    getColor: () => color("filter"),
+    color: color("filter"),
   },
   summarize: {
     title: t`Summarize`,
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
-    getColor: () => color("summarize"),
+    color: color("summarize"),
   },
   aggregate: {
     title: t`Aggregate`,
     icon: "sum",
     component: AggregateStep,
     priority: 5,
-    getColor: () => color("summarize"),
+    color: color("summarize"),
   },
   breakout: {
     title: t`Breakout`,
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
-    getColor: () => color("accent4"),
+    color: color("accent4"),
   },
   sort: {
     title: t`Sort`,
@@ -79,7 +79,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
     component: SortStep,
     compact: true,
     transparent: true,
-    getColor: () => color("bg-dark"),
+    color: color("bg-dark"),
   },
   limit: {
     title: t`Row limit`,
@@ -87,6 +87,6 @@ export const STEP_UI: Record<string, StepUIItem> = {
     component: LimitStep,
     compact: true,
     transparent: true,
-    getColor: () => color("bg-dark"),
+    color: color("bg-dark"),
   },
 };
