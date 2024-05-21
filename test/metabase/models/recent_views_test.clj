@@ -99,7 +99,7 @@
   (mt/with-temp
     [:model/Database {db-id :id} {:name "test-data"}
      :model/Table {table-id :id} {:name "name" :db_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)'
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)
     (doseq [[read? write? expected] [[false true []]
                                      [false false []]
                                      [true false [{:description nil,
