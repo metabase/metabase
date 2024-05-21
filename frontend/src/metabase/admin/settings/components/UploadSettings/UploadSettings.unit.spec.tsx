@@ -345,9 +345,11 @@ describe("Admin > Settings > UploadSetting", () => {
     setup({
       settings: {
         uploads_enabled: true,
-        uploads_database_id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: "my_uploads_",
+        uploads_database: {
+          id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: "my_uploads_",
+        },
       },
     });
 
@@ -359,9 +361,11 @@ describe("Admin > Settings > UploadSetting", () => {
     setup({
       settings: {
         uploads_enabled: false,
-        uploads_database_id: 5,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+        uploads_database: {
+          id: 5,
+          uploads_schema_name: null,
+          uploads_table_prefix: null,
+        },
       },
     });
 
@@ -377,9 +381,11 @@ describe("Admin > Settings > UploadSetting", () => {
     const { updateSpy } = setup({
       settings: {
         uploads_enabled: true,
-        uploads_database_id: 2,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
+        uploads_database: {
+          id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: null,
+        },
       },
     });
     await userEvent.click(await screen.findByText("Db Dos"));
@@ -440,9 +446,11 @@ describe("Admin > Settings > UploadSetting", () => {
       setup({
         settings: {
           uploads_enabled: true,
-          uploads_database_id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+          uploads_database: {
+            id: 2,
+            uploads_schema_name: null,
+            uploads_table_prefix: null,
+          },
         },
       });
       expect(
@@ -466,9 +474,11 @@ describe("Admin > Settings > UploadSetting", () => {
       setup({
         settings: {
           uploads_enabled: true,
-          uploads_database_id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: null,
+          uploads_database: {
+            id: 2,
+            uploads_schema_name: null,
+            uploads_table_prefix: null,
+          },
         },
       });
       await userEvent.click(await screen.findByText("Db Dos"));
@@ -501,9 +511,11 @@ describe("Admin > Settings > UploadSetting", () => {
       setup({
         settings: {
           uploads_enabled: true,
-          uploads_database_id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: "up_",
+          uploads_database: {
+            id: 2,
+            uploads_schema_name: null,
+            uploads_table_prefix: "up_",
+          },
         },
       });
 
@@ -520,9 +532,11 @@ describe("Admin > Settings > UploadSetting", () => {
       const { updateSpy } = setup({
         settings: {
           uploads_enabled: true,
-          uploads_database_id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: "up_",
+          uploads_database: {
+            id: 2,
+            uploads_schema_name: null,
+            uploads_table_prefix: "up_",
+          },
         },
       });
       updateSpy.mockImplementation(
@@ -547,9 +561,11 @@ describe("Admin > Settings > UploadSetting", () => {
       const { updateSpy } = setup({
         settings: {
           uploads_enabled: true,
-          uploads_database_id: 2,
-          uploads_schema_name: null,
-          uploads_table_prefix: "up_",
+          uploads_database: {
+            id: 2,
+            uploads_schema_name: null,
+            uploads_table_prefix: "up_",
+          },
         },
       });
       updateSpy.mockImplementation(
