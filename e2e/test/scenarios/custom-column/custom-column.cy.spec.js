@@ -2,21 +2,23 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  entityPickerModal,
-  restore,
-  popover,
-  summarize,
-  visualize,
-  openOrdersTable,
-  openPeopleTable,
-  visitQuestionAdhoc,
+  cartesianChartCircle,
+  checkExpressionEditorHelperPopoverPosition,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   getNotebookStep,
-  checkExpressionEditorHelperPopoverPosition,
+  openOrdersTable,
+  openPeopleTable,
+  popover,
   queryBuilderMain,
-  cartesianChartCircle,
-  entityPickerModalTab,
+  restore,
+  startNewQuestion,
+  summarize,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -68,6 +70,24 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.findByTestId("query-visualization-root").contains("Math");
+  });
+
+  it("should not show default period in date column name (metabase#36631)", () => {
+    const name = "Base question";
+    createQuestion({ name, query: { "source-table": ORDERS_ID } });
+
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(name).click();
+    });
+    cy.button("Custom column").click();
+    enterCustomColumnDetails({ formula: "[cre" });
+
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .should("have.length", 1)
+      .and("contain.text", "Created At")
+      .and("not.contain.text", "Default period");
   });
 
   it("should not show binning for a numeric custom column", () => {
