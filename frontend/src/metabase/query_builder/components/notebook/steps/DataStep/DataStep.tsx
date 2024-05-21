@@ -10,7 +10,7 @@ import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { Group, Icon, Popover, Tooltip } from "metabase/ui";
+import { Group, Icon, IconName, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -81,7 +81,7 @@ export const DataStep = ({
           spacing="xs"
           onClick={() => setIsDataPickerOpen(true)}
         >
-          {tableInfo?.isMetric && <Icon name="metric" />}
+          {tableInfo && <Icon name={getDataSourceIcon(tableInfo)} />}
           {tableInfo?.displayName ?? t`Pick your starting data`}
         </Group>
 
@@ -182,4 +182,17 @@ function DataFieldPicker({
       onSelectNone={handleSelectNone}
     />
   );
+}
+
+function getDataSourceIcon(displayInfo: Lib.TableDisplayInfo): IconName {
+  switch (true) {
+    case displayInfo.isQuestion:
+      return "table";
+    case displayInfo.isModel:
+      return "model";
+    case displayInfo.isMetric:
+      return "metric";
+    default:
+      return "table";
+  }
 }

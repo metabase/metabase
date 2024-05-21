@@ -7,6 +7,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -14,6 +15,7 @@ import {
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { CardType } from "metabase-types/api";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
@@ -133,6 +135,7 @@ describe("DataStep", () => {
     setup();
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(getIcon("table")).toBeInTheDocument();
 
     expect(
       screen.queryByText("Pick your starting data"),
@@ -142,6 +145,31 @@ describe("DataStep", () => {
     expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
 
+  it.each<{ type: CardType; icon: IconName }>([
+    { type: "question", icon: "table" },
+    { type: "model", icon: "model" },
+    { type: "metric", icon: "metric" },
+  ])("should render with a selected card", ({ type, icon }) => {
+    const card = createSavedStructuredCard({
+      id: 1,
+      type,
+    });
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    });
+    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+    const query = Lib.queryFromTableOrCardMetadata(
+      metadataProvider,
+      Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+    );
+    const step = createMockNotebookStep({ query });
+    setup(step);
+
+    expect(screen.getByText(card.name)).toBeInTheDocument();
+    expect(getIcon(icon)).toBeInTheDocument();
+  });
+
   it("should change a table", async () => {
     const { getNextTableName } = setup();
 
@@ -149,28 +177,6 @@ describe("DataStep", () => {
     await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
-  });
-
-  it("should render with a selected metric", () => {
-    const metric = createSavedStructuredCard({
-      id: 1,
-      name: "Revenue",
-      type: "metric",
-    });
-    const metadata = createMockMetadata({
-      databases: [createSampleDatabase()],
-      questions: [metric],
-    });
-    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
-    const query = Lib.queryFromTableOrCardMetadata(
-      metadataProvider,
-      Lib.tableOrCardMetadata(metadataProvider, `card__${metric.id}`),
-    );
-    const step = createMockNotebookStep({ query });
-    setup(step);
-
-    expect(screen.getByText(metric.name)).toBeInTheDocument();
-    expect(getIcon("metric")).toBeInTheDocument();
   });
 
   describe("fields selection", () => {
