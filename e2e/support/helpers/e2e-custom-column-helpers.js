@@ -2,7 +2,12 @@ export function expressionEditorWidget() {
   return cy.findByTestId("expression-editor");
 }
 
-export function enterCustomColumnDetails({ formula, name } = {}) {
+/**
+ * @param {Object} option
+ * @param {string} option.formula
+ * @param {string=} option.name
+ */
+export function enterCustomColumnDetails({ formula, name }) {
   cy.get(".ace_text-input")
     .first()
     .as("formula")
