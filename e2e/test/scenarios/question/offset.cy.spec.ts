@@ -6,6 +6,7 @@ import {
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
+  getAceEditor,
   getNotebookStep,
   modal,
   openNotebook,
@@ -82,14 +83,14 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
       cy.button("Custom column").click();
-      enterCustomColumnDetails({ formula: prefix });
+      getAceEditor().type(prefix);
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: suffix });
+      getAceEditor().type(suffix);
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -101,7 +102,7 @@ describe("scenarios > question > offset", () => {
       cy.button("Sort").click();
       popover().findByText("ID").click();
       getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({ formula: expression });
+      getAceEditor().type(expression);
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -200,12 +201,12 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Filter").click();
       popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      getAceEditor().type(prefix);
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: suffix });
+      getAceEditor().type(suffix);
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -235,14 +236,14 @@ describe("scenarios > question > offset", () => {
         .findByText("Pick the metric you want to see")
         .click();
       popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      getAceEditor().type(prefix);
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: suffix });
+      getAceEditor().type(suffix);
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -575,10 +576,10 @@ function verifyInvalidColumnName(
   prefix: string,
   suffix: string,
 ) {
-  enterCustomColumnDetails({ formula: prefix });
+  getAceEditor().type(prefix);
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-  enterCustomColumnDetails({ formula: suffix });
+  getAceEditor().type(suffix);
   cy.realPress("Tab");
   popover().within(() => {
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
