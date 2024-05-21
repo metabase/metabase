@@ -28,11 +28,7 @@ So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` 
 
 ## Advanced search
 
-To filter your search results, hit `cmd/ctrl + K` to bring up the command palette and enter your search term. The first result is a link to "Search and filter all X results".
-
-You can select a result from the dropdown, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
-
-Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
+To filter your search results, hit `cmd/ctrl + k` to bring up the command palette and enter your search term. The first result is a link to "Search and filter all X results".
 
 ![Search results](./images/search-results.png)
 
@@ -46,6 +42,8 @@ You can search by:
 - **Verified items only**. Only show items that [have been verified](#verified-items).
 - **Search the contents of native queries**: search through the SQL/native code in questions.
 - **Search items in trash**: include the depths of oblivion in your search.
+
+Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in that are in collections you have permission to view.
 
 ## Browse your data
 
