@@ -134,7 +134,7 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <RoundedBox>
+      <RoundedBox twoColumns={canOverrideRootStrategy}>
         {canOverrideRootStrategy && (
           <PLUGIN_CACHING.StrategyFormLauncherPanel
             configs={configs}
@@ -146,7 +146,7 @@ const StrategyEditorForDatabases_Base = ({
             shouldShowResetButton={shouldShowResetButton}
           />
         )}
-        <Panel>
+        <Panel hasLeftBorder={canOverrideRootStrategy}>
           {targetId !== null && (
             <StrategyForm
               targetId={targetId}

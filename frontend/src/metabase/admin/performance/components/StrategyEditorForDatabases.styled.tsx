@@ -2,23 +2,23 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-export const Panel = styled.section`
+export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   overflow-y: auto;
-  display: flex;
-  flex-flow: column nowrap;
   background-color: ${color("white")};
   height: 100%;
-  &:last-child {
-    border-left: 1px solid ${color("border")};
-  }
+
+  ${props =>
+    props.hasLeftBorder && `border-left: 1px solid ${color("border")};`}
 `;
 
-export const RoundedBox = styled.div`
+export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
   margin-bottom: 1rem;
   width: 100%;
 
   display: grid;
-  grid-template-columns: minmax(5rem, 30rem) minmax(5rem, auto);
+  grid-template-columns: minmax(5rem, 30rem) ${props =>
+      props.twoColumns ? "minmax(5rem, auto)" : ""};
+  max-width: ${props => (props.twoColumns ? "100%" : "30rem")};
 
   overflow: hidden;
 
