@@ -451,10 +451,7 @@
     (when-not config/is-prod?
       (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
                   (pr-str item)
-                  (me/humanize
-                   (mr/explain Item item)
-                   {:wrap (fn [{:keys [value message]}]
-                            (str message "| got: " (pr-str value)))})))))
+                  (me/humanize (mr/explain Item item))))))
 
 (defn get-list
   "Gets all recent views for a given user. Returns a list of at most 20 [[Item]]s per [[models-of-interest]].
