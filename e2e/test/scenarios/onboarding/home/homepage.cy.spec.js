@@ -183,7 +183,12 @@ describe("scenarios > home > custom homepage", () => {
 
     it("should give you the option to set a custom home page in settings", () => {
       cy.visit("/admin/settings/general");
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Disabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Enabled").should("exist");
+      });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
         .findByRole("button")
@@ -193,14 +198,29 @@ describe("scenarios > home > custom homepage", () => {
 
       undoToast().findByText("Changes saved").should("be.visible");
 
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Orders in a dashboard",
+      );
+
       cy.log(
         "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
       );
 
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Enabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Disabled").should("exist");
+      });
+
       undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Disabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Enabled").should("exist");
+      });
+
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
         "Select a dashboard",
@@ -211,6 +231,11 @@ describe("scenarios > home > custom homepage", () => {
         .click();
 
       entityPickerModal().findByText("Orders in a dashboard").click();
+
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Orders in a dashboard",
+      );
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should(
