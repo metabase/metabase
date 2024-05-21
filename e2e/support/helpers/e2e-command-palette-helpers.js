@@ -7,7 +7,8 @@ export const pressPageUp = () => cy.get("body").type("{pageup}");
 export const pressPageDown = () => cy.get("body").type("{pagedown}");
 export const pressHome = () => cy.get("body").type("{home}");
 export const pressEnd = () => cy.get("body").type("{end}");
-export const commandPaletteInput = () => cy.findByPlaceholderText("Jump to...");
+export const commandPaletteInput = () =>
+  cy.findByPlaceholderText("Search for anything or jump somewhere…");
 
 export const commandPaletteSearch = (query, viewAll = true) => {
   cy.intercept("GET", "/api/search?q=*").as("paletteSearch");
