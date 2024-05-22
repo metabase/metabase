@@ -1723,7 +1723,7 @@
   (doseq [{:keys [message card deleted? expected-email-re f]}
           [{:message           "Archiving a Card should trigger Alert deletion"
             :deleted?          true
-            :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
+            :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was trashed by Rasta Toucan"
             :f                 (fn [{:keys [card]}]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
            {:message           "Validate changing a display type triggers alert deletion"
