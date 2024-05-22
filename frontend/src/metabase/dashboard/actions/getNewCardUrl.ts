@@ -42,6 +42,12 @@ export const getNewCardUrl = (
   const dashboard = dashboards[dashboardId];
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
+  if (!cardAfterClick.query) {
+    // If there's no query, then we don't have permissions for it
+    // It would be invalid to generate URL for such card
+    return undefined;
+  }
+
   let question = new Question(cardAfterClick, metadata);
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   if (isEditable) {
