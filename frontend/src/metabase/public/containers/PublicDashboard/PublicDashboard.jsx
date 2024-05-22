@@ -110,7 +110,6 @@ class PublicDashboardInner extends Component {
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
-      this.props.fetchDashboardCardMetadata();
       return;
     }
 

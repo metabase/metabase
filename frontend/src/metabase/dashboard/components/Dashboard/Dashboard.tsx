@@ -125,7 +125,6 @@ interface DashboardProps {
     reload?: boolean;
     clearCache?: boolean;
   }) => Promise<void>;
-  fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   loadDashboardParams: () => void;
   addCardToDashboard: (opts: {
@@ -212,7 +211,6 @@ function DashboardInner(props: DashboardProps) {
     editingParameter,
     fetchDashboard,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     initialize,
     isAutoApplyFilters,
     isEditing,
@@ -377,7 +375,6 @@ function DashboardInner(props: DashboardProps) {
     }
     if (previousTabId !== selectedTabId) {
       fetchDashboardCardData();
-      fetchDashboardCardMetadata();
       return;
     }
     const didDashboardLoad = !previousDashboard && dashboard;
@@ -392,7 +389,6 @@ function DashboardInner(props: DashboardProps) {
     dashboard,
     dashboardId,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     handleLoadDashboard,
     parameterValues,
     previousDashboard,
