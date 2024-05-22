@@ -629,7 +629,6 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
-
 ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
@@ -699,6 +698,13 @@
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; test search-related stuff.
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/search
+  :test/search
+  {:exec-args {:only [metabase.api.search-test
+                      "test/metabase/search"]}}
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
