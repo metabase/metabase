@@ -127,10 +127,14 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      const [{ payload }] = await Promise.all([
-        dispatch(fetchCardQuery(card, dashcard, options)),
-        dispatch(loadMetadataForDashcards([dashcard])),
-      ]);
+      const requests = [dispatch(fetchCardQuery(card, dashcard, options))];
+
+      const dashboardType = getDashboardType(dashcard.dashboard_id);
+      if (dashboardType === "normal" || dashboardType === "inline") {
+        requests.push(dispatch(loadMetadataForDashcards([dashcard])));
+      }
+
+      const [{ payload }] = await Promise.all(requests);
 
       return {
         dashcard_id: dashcard.id,
