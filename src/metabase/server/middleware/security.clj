@@ -164,11 +164,10 @@
 (defn- access-control-headers
   [origin]
   (merge
-   (if
+   (when
     (approved-origin? origin (embedding-app-origin))
      {"Access-Control-Allow-Origin" origin
-      "Vary"                        "Origin"}
-     nil)
+      "Vary"                        "Origin"})
 
    {"Access-Control-Allow-Headers"   "*"
     "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
