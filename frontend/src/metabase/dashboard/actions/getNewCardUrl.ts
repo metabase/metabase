@@ -81,17 +81,25 @@ export const getNewCardUrl = (
   const isDrillingFromNativeModelOrMetric =
     isFromModelOrMetric && isPreviousNative;
 
-  const url = ML_Urls.getUrlWithParameters(
-    question,
-    parametersMappedToCard,
-    parameterValues,
-    {
-      clean: !isDrillingFromNativeModelOrMetric,
-      objectId,
-    },
-  );
+  // This try/catch block is a temporary workaround for metabase#42999.
+  // Without it, the "should work when set through the filter widget" test in
+  // "dashboard-filters-text-category.cy.spec.js" will fail for multi-value filters.
+  // Remove it once metabase#42999 is fixed.
+  try {
+    const url = ML_Urls.getUrlWithParameters(
+      question,
+      parametersMappedToCard,
+      parameterValues,
+      {
+        clean: !isDrillingFromNativeModelOrMetric,
+        objectId,
+      },
+    );
 
-  return url;
+    return url;
+  } catch (error) {
+    return undefined;
+  }
 };
 
 export function getParametersMappedToDashcard(
