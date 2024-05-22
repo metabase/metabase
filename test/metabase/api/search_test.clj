@@ -14,6 +14,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
+   [metabase.models.interface :as mi]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -341,7 +342,7 @@
            :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards [v-card-id v-model-id v-metric-id]
+              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
                 (is (= #{"card" "dataset" "metric"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
                                                   :q search-term
@@ -1255,10 +1256,9 @@
   (let [search-term "created-at-filtering"]
     (with-search-items-in-root-collection search-term
       (testing "returns only applicable models"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today")
-                   :available_models
-                   set))))
+        (is (=? {:available_models #(= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+                                       (set %))}
+                (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"))))
 
       (testing "works with others filter too"
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
@@ -1499,25 +1499,30 @@
                                           :filter_items_in_personal_collection "exclude"))))))))
 
 (deftest archived-search-results-with-no-write-perms-test
-  (testing "Results which the searching user has no write permissions for are filtered out. #33602"
+  (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
     (mt/with-temp [Collection  {collection-id :id} {:name "collection test collection"}
-                   Card        _ (archived-with-trashed-from-id {:name "card test card is returned"})
-                   Card        _ (archived-with-trashed-from-id {:name "card test card"
-                                                                 :collection_id collection-id})
-                   Card        _ (archived-with-trashed-from-id {:name "dataset test dataset" :type :model
-                                                                 :collection_id collection-id})
+                   Card        {card-1-id :id} (archived-with-trashed-from-id {:name "card test card is returned"})
+                   Card        {card-2-id :id} (archived-with-trashed-from-id {:name "card test card"
+                                                                               :collection_id collection-id})
+                   Card        {card-3-id :id} (archived-with-trashed-from-id {:name "dataset test dataset"
+                                                                               :type :model
+                                                                               :collection_id collection-id})
                    Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
-                                            :collection_id collection-id})]
+                                                                 :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
                                                      {:archived true}))
+      (testing "Sanity check: Lucky should not be able to write our test Collection"
+        (mt/with-test-user :lucky
+          (is (not (mi/can-write? :model/Collection collection-id)))))
       (is (= ["card test card is returned"]
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data
+                  (filter #(#{card-1-id card-2-id card-3-id} (:id %)))
                   (map :name)))))))
 
 (deftest model-ancestors-gets-ancestor-collections

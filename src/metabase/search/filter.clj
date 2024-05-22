@@ -24,7 +24,6 @@
   (:import
    (java.time LocalDate)))
 
-
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 

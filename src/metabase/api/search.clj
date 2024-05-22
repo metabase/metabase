@@ -116,7 +116,6 @@
                                 :last-edit-date        (some? last_edited_at)
                                 :verified-items        (some? verified)
                                 :search-native-queries (some? search_native_query)})))
-
     results))
 
 (api/define-routes)

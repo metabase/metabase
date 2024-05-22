@@ -354,10 +354,28 @@
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
+(defn- assert-current-user-perms-set-is-bound
+  "TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user-permissions-set*]] to be
+  bound (since [[mi/can-write?]] and [[mi/can-read?]] depend on it) despite search context requiring
+  `:current-user-perms` to be passed in. We should fix things so search works independently of API-specific dynamic
+  variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
+  on dynamic variables."
+  []
+  (assert (seq @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
+          "metabase.api.common/*current-user-permissions-set* must be bound in order to check search permissions"))
+
+(defn- can-write? [instance]
+  (assert-current-user-perms-set-is-bound)
+  (mi/can-write? instance))
+
+(defn- can-read? [instance]
+  (assert-current-user-perms-set-is-bound)
+  (mi/can-read? instance))
+
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (mi/can-write? instance)
+    (can-write? instance)
     ;; We filter what we can (ie. everything that is in a collection) out already when querying
     true))
 
@@ -389,20 +407,20 @@
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (mi/can-write? instance)
-    (mi/can-read? instance)))
+    (can-write? instance)
+    (can-read? instance)))
 
 (defmethod check-permissions-for-model :segment
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (mi/can-write? instance)
-    (mi/can-read? instance)))
+    (can-write? instance)
+    (can-read? instance)))
 
 (defmethod check-permissions-for-model :database
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (mi/can-write? instance)
-    (mi/can-read? instance)))
+    (can-write? instance)
+    (can-read? instance)))
 
 (mu/defn query-model-set :- [:set SearchableModel]
   "Queries all models with respect to query for one result to see if we get a result or not"
@@ -502,7 +520,7 @@
 
 (defn- add-can-write [row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
-    (assoc row :can_write (mi/can-write? row))
+    (assoc row :can_write (can-write? row))
     row))
 
 (defn- bit->boolean
@@ -540,7 +558,7 @@
                             (map #(update % :bookmark bit->boolean))
 
                             (map #(update % :archived bit->boolean))
-                            (filter (partial check-permissions-for-model (:archived? search-ctx)))
+                            (filter (partial check-permissions-for-model search-ctx))
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
@@ -554,20 +572,20 @@
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
-                               (assoc :can_write (mi/can-write? item))))]
+                               (assoc :can_write (can-write? item))))]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    {:total            (count total-results)
+    {:available_models (query-model-set search-ctx)
      :data             (cond->> total-results
                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
                          true (map add-perms-for-col))
-     :available_models (query-model-set search-ctx)
      :limit            (:limit-int search-ctx)
+     :models           (:models search-ctx)
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
-     :models           (:models search-ctx)}))
+     :total            (count total-results)}))
 
 (mr/def ::search-context.input
   [:map {:closed true}
@@ -607,16 +625,18 @@
            search-native-query
            verified]}      :- ::search-context.input] :- SearchContext
   ;; for prod where Malli is disabled
-  {:pre [(pos-int? current-user-id) (some? current-user-perms)]}
+  {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:search-string      search-string
-                        :archived?          (boolean archived)
+        ctx    (cond-> {:archived?          (boolean archived)
+                        :current-user-id current-user-id
+                        :current-user-perms current-user-perms
+                        :model-ancestors?   (boolean model-ancestors?)
                         :models             models
-                        :model-ancestors?   (boolean model-ancestors?)}
+                        :search-string      search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)

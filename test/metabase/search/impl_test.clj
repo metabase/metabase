@@ -1,10 +1,11 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
@@ -58,6 +59,7 @@
                           (search.impl/search {:search-string      search-string
                                                :archived?          false
                                                :models             search.config/all-models
+                                               :current-user-id    (mt/user->id :crowberto)
                                                :current-user-perms #{"/"}
                                                :model-ancestors?   false
                                                :limit-int          100}))]
@@ -72,8 +74,8 @@
             (is (= 6 (call-count)))))))))
 
 (deftest created-at-correctness-test
-  (let [search-term "created-at-filtering"
-        new          #t "2023-05-04T10:00Z[UTC]"
+  (let [search-term   "created-at-filtering"
+        new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
@@ -126,11 +128,13 @@
                             (testing (format "searching with created-at = %s" created-at)
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (is (= expected
-                                       (->> (#'api.search/search (#'api.search/search-context
-                                                                  {:search-string search-term
-                                                                   :archived      false
-                                                                   :models        search.config/all-models
-                                                                   :created-at    created-at}))
+                                       (->> (search.impl/search (search.impl/search-context
+                                                                 {:search-string      search-term
+                                                                  :archived           false
+                                                                  :models             search.config/all-models
+                                                                  :created-at         created-at
+                                                                  :current-user-id    (mt/user->id :crowberto)
+                                                                  :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -171,16 +175,16 @@
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-new :id} {:name       search-term}
-         :model/Dashboard  {dashboard-old :id} {:name       search-term}
-         :model/Card       {card-new :id}      {:name       search-term}
-         :model/Card       {card-old :id}      {:name       search-term}
-         :model/Card       {model-new :id}     {:name       search-term
-                                                :type       :model}
-         :model/Card       {model-old :id}     {:name       search-term
-                                                :type       :model}
-         :model/Card       {metric-new :id}    {:name       search-term :type :metric}
-         :model/Card       {metric-old :id}    {:name       search-term :type :metric}
+        [:model/Dashboard  {dashboard-new :id} {:name search-term}
+         :model/Dashboard  {dashboard-old :id} {:name search-term}
+         :model/Card       {card-new :id}      {:name search-term}
+         :model/Card       {card-old :id}      {:name search-term}
+         :model/Card       {model-new :id}     {:name search-term
+                                                :type :model}
+         :model/Card       {model-old :id}     {:name search-term
+                                                :type :model}
+         :model/Card       {metric-new :id}    {:name search-term :type :metric}
+         :model/Card       {metric-old :id}    {:name search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
@@ -209,11 +213,13 @@
                             (testing (format "searching with last-edited-at = %s" last-edited-at)
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (is (= expected
-                                       (->> (#'api.search/search (#'api.search/search-context
-                                                                  {:search-string  search-term
-                                                                   :archived       false
-                                                                   :models         search.config/all-models
-                                                                   :last-edited-at last-edited-at}))
+                                       (->> (search.impl/search (search.impl/search-context
+                                                                 {:search-string      search-term
+                                                                  :archived           false
+                                                                  :models             search.config/all-models
+                                                                  :last-edited-at     last-edited-at
+                                                                  :current-user-id    (mt/user->id :crowberto)
+                                                                  :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
