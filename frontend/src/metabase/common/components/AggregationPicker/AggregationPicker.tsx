@@ -34,6 +34,7 @@ interface AggregationPickerProps {
 }
 
 type OperatorListItem = {
+  type: "operator";
   operator: Lib.AggregationOperator;
   name: string;
   icon?: IconName;
@@ -42,6 +43,7 @@ type OperatorListItem = {
 };
 
 type MetricListItem = {
+  type: "metric";
   metric: Lib.MetricMetadata;
   name: string;
   icon?: IconName;
@@ -49,20 +51,13 @@ type MetricListItem = {
 };
 
 type ExpressionListItem = {
+  type: "expression";
   name: string;
   icon?: IconName;
   selected?: boolean;
 };
 
 type ListItem = OperatorListItem | MetricListItem | ExpressionListItem;
-
-function isOperatorListItem(item: ListItem): item is OperatorListItem {
-  return "operator" in item;
-}
-
-function isMetricListItem(item: ListItem): item is MetricListItem {
-  return "metric" in item;
-}
 
 export function AggregationPicker({
   className,
@@ -127,6 +122,7 @@ export function AggregationPicker({
     }
     if (hasExpressions) {
       items.push({
+        type: "expression",
         name: t`Custom expression…`,
         icon: "sum",
       });
@@ -179,9 +175,9 @@ export function AggregationPicker({
 
   const handleChange = useCallback(
     (item: ListItem) => {
-      if (isOperatorListItem(item)) {
+      if (item.type === "operator") {
         handleOperatorSelect(item);
-      } else if (isMetricListItem(item)) {
+      } else if (item.type === "metric") {
         handleMetricSelect(item);
       } else {
         openExpressionEditor();
@@ -313,6 +309,7 @@ function getOperatorListItem(
 ): OperatorListItem {
   const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
   return {
+    type: "operator",
     operator,
     name: operatorInfo.displayName,
     requiresColumn: operatorInfo.requiresColumn,
@@ -328,6 +325,7 @@ function getMetricListItem(
 ): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
+    type: "metric",
     metric,
     name: metricInfo.displayName,
     icon: "metric",
