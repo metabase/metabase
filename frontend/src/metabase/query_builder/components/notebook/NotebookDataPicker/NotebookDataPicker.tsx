@@ -17,7 +17,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 
-interface NotebookPickerButtonProps {
+interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
@@ -42,7 +42,7 @@ export function NotebookDataPicker({
   hasMetrics,
   isDisabled,
   onChange,
-}: NotebookPickerButtonProps) {
+}: NotebookDataPickerProps) {
   const [isOpen, setIsOpen] = useState(!table);
   const store = useStore();
   const dispatch = useDispatch();
