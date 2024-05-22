@@ -34,7 +34,8 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
-                         :cache_field_values_schedule :metadata_sync_schedule])
+                         :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
+                         :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false

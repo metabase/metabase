@@ -3386,7 +3386,7 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name nil :uploads_table_prefix nil})
+        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name "PUBLIC" :uploads_table_prefix nil})
         (let [{:keys [status body]} (upload-example-csv-via-api!)]
           (is (= 200
                  status))

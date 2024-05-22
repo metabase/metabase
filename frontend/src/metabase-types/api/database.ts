@@ -51,6 +51,9 @@ export interface Database extends DatabaseData {
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
   can_upload: boolean;
+  uploads_enabled: boolean;
+  uploads_schema_name: string | null;
+  uploads_table_prefix: string | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -69,9 +72,6 @@ export interface DatabaseData {
   is_sample: boolean;
   is_full_sync: boolean;
   is_on_demand: boolean;
-  uploads_enabled: boolean;
-  uploads_schema_name: string | null;
-  uploads_table_prefix: string | null;
   settings?: DatabaseSettings | null;
 }
 

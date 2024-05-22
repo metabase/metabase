@@ -37,6 +37,9 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   native_permissions: "write",
   initial_sync_status: "complete",
   features: COMMON_DATABASE_FEATURES,
+  uploads_enabled: false,
+  uploads_schema_name: null,
+  uploads_table_prefix: null,
   ...opts,
 });
 
@@ -53,9 +56,6 @@ export const createMockDatabaseData = (
   is_sample: false,
   is_full_sync: false,
   is_on_demand: false,
-  uploads_enabled: false,
-  uploads_schema_name: null,
-  uploads_table_prefix: null,
   ...opts,
 });
 
