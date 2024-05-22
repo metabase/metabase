@@ -279,10 +279,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for date parameter", () => {
       const filter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
         type: "date/single",
         value: "01-01-2020",
       });
@@ -293,10 +290,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for string parameter", () => {
       const containsFilter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/contains",
         value: "foo",
       });
@@ -305,10 +299,7 @@ describe("parameters/utils/mbql", () => {
       });
 
       const startsFilter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/starts-with",
         value: ["foo"],
       });
@@ -319,10 +310,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for category parameter", () => {
       const filter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "category",
         value: ["foo", "bar"],
       });
@@ -333,10 +321,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for number parameter", () => {
       const valueFilter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.RATING, { "base-type": "type/Integer" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: 111,
       });
@@ -345,10 +330,7 @@ describe("parameters/utils/mbql", () => {
       });
 
       const arrayFilter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.RATING, { "base-type": "type/Integer" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: [111],
       });
@@ -357,10 +339,7 @@ describe("parameters/utils/mbql", () => {
       });
 
       const betweenFilter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: [
-          "dimension",
-          ["field", PRODUCTS.RATING, { "base-type": "type/Integer" }],
-        ],
+        target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/between",
         value: [1, 100],
       });

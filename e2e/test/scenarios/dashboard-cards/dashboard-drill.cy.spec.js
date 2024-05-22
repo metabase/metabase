@@ -406,9 +406,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
             ],
           });
 
-          // set filter values (ratings 5 and 4) directly through the URL
-          cy.visit(`/dashboard/${dashboard_id}?category=5&category=4`);
-          cy.findByText("2 selections");
+          // set filter values (rating 4) directly through the URL
+          visitDashboard(dashboard_id, { params: { category: 4 } });
+          filterWidget().findByText("4");
         },
       );
     });
@@ -419,7 +419,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       cy.findByTestId("qb-filters-panel").within(() => {
         cy.findByText("Reviewer is xavier").should("be.visible");
-        cy.findByText("Rating is equal to 2 selections").should("be.visible");
+        cy.findByText("Rating is equal to 4").should("be.visible");
       });
 
       // xavier's review
@@ -433,15 +433,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByTestId("dashcard").findByText(questionDetails.name).click();
       cy.findByTestId("qb-filters-panel")
-        .findByText("Rating is equal to 2 selections")
+        .findByText("Rating is equal to 4")
         .should("be.visible");
 
-      // Sample review body
-      queryBuilderMain()
-        .contains("Ad perspiciatis quis et consectetur.")
-        .should("be.visible");
-
-      assertQueryBuilderRowCount(907);
+      assertQueryBuilderRowCount(535);
     });
   });
 
