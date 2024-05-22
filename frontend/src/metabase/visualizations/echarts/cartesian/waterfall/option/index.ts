@@ -7,6 +7,7 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
   LabelFormatter,
+  WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   buildEChartsLabelOptions,
@@ -202,7 +203,7 @@ export const buildEChartsWaterfallSeries = (
 };
 
 export const getWaterfallChartOption = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: WaterfallChartModel,
   chartWidth: number,
   chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
@@ -224,7 +225,7 @@ export const getWaterfallChartOption = (
     chartModel,
     settings,
     chartMeasurements,
-    chartModel?.waterfallLabelFormatter,
+    chartModel.waterfallLabelFormatter,
     renderingContext,
   );
 

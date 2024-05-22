@@ -7,7 +7,10 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  CartesianChartModel,
+  WaterfallChartModel,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
@@ -142,7 +145,7 @@ export function useModelsAndOption({
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartOption(
-          chartModel,
+          chartModel as WaterfallChartModel,
           width,
           chartMeasurements,
           timelineEventsModel,

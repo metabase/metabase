@@ -213,11 +213,14 @@ export type BaseCartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
   stackedLabelsFormatters?: StackedSeriesFormatters;
-  waterfallLabelFormatter?: LabelFormatter;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
+};
+
+export type WaterfallChartModel = BaseCartesianChartModel & {
+  waterfallLabelFormatter: LabelFormatter | undefined;
 };
 
 export type ShowWarning = (warning: string) => void;
