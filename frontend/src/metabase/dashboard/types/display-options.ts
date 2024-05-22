@@ -1,4 +1,4 @@
-import type { EmbedDisplayControls } from "metabase/dashboard/hoc/controls/types/embed-display-options";
+import type { EmbedDisplayControls } from "metabase/dashboard/types/embed-display-options";
 
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;

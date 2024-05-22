@@ -3,7 +3,6 @@ import type { Location } from "history";
 import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
@@ -31,18 +30,18 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
 import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
 import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
-import type {
-  DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
-  EmbedThemeControls,
-} from "metabase/dashboard/hoc/controls";
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
-import type { FetchDashboardResult } from "metabase/dashboard/types";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  EmbedThemeControls,
+  FetchDashboardResult,
+} from "metabase/dashboard/types";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";

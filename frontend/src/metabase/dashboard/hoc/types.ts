@@ -1,7 +1,8 @@
 import type { Location } from "history";
 
-import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
 import type { DashboardId } from "metabase-types/api";
+
+import type { DashboardDisplayOptionControls } from "../types";
 
 export type DashboardControlsProps = {
   location: Location;

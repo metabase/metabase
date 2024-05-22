@@ -4,17 +4,19 @@ import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import type { RefreshPeriod } from "metabase/dashboard/hoc/controls";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-} from "metabase/dashboard/hoc/controls";
+} from "metabase/dashboard/hooks";
 import {
   DEFAULT_EMBED_DISPLAY_OPTIONS,
   useEmbedDisplayOptions,
-} from "metabase/dashboard/hoc/controls/hooks/use-embed-display-options";
-import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
-import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types/hash-options";
+} from "metabase/dashboard/hooks/use-embed-display-options";
+import type {
+  RefreshPeriod,
+  DashboardDisplayOptionControls,
+} from "metabase/dashboard/types";
+import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";

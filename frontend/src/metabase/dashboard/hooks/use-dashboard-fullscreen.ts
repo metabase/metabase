@@ -1,7 +1,7 @@
 import { useFullscreen } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 
-import type { DashboardFullscreenControls } from "metabase/dashboard/hoc/controls/types";
+import type { DashboardFullscreenControls } from "../types";
 
 export const useDashboardFullscreen = (): DashboardFullscreenControls => {
   const { toggle, fullscreen } = useFullscreen();

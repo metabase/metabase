@@ -14,7 +14,6 @@ import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
-import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types";
 import { parseHashOptions } from "metabase/lib/browser";
 import {
   initializeIframeResizer,
@@ -37,6 +36,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";

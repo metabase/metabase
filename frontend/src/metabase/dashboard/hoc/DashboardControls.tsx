@@ -5,11 +5,12 @@ import {
   useDashboardNav,
   useDashboardUrlParams,
   useRefreshDashboard,
-} from "metabase/dashboard/hoc/controls";
+} from "metabase/dashboard/hooks";
+
 import type {
   DashboardControlsPassedProps,
   DashboardControlsProps,
-} from "metabase/dashboard/hoc/types";
+} from "./types";
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?

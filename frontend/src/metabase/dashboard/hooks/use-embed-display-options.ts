@@ -1,11 +1,9 @@
 import { useState } from "react";
 
-import { useEmbedTheme } from "metabase/dashboard/hoc/controls/hooks/use-embed-theme";
-import type {
-  EmbedDisplayControls,
-  EmbedDisplayParams,
-} from "metabase/dashboard/hoc/controls/types";
+import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
 import { isWithinIframe } from "metabase/lib/dom";
+
+import type { EmbedDisplayControls, EmbedDisplayParams } from "../types";
 
 export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,

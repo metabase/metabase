@@ -7,7 +7,7 @@ import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedThemeControls,
-} from "metabase/dashboard/hoc/controls";
+} from "metabase/dashboard/types";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 import {

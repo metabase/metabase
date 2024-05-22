@@ -2,8 +2,9 @@ import { useInterval } from "@mantine/hooks";
 import { useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
-import type { DashboardRefreshPeriodControls } from "metabase/dashboard/hoc/controls/types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+import type { DashboardRefreshPeriodControls } from "../types";
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({
