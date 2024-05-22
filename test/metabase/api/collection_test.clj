@@ -818,7 +818,7 @@
         (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-b)))))
         (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-a)))))
         ;; we can't unarchive collection B without specifying a location, because it wasn't trashed directly.
-        (is (= "You must specify a new `parent_id` to un-trash to." (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection-b)) {:archived false})))
+        (is (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection-b)) {:archived false}))
 
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-b)) {:archived false :parent_id (u/the-id destination)})
         ;; collection A is still here!
@@ -900,6 +900,33 @@
                (->> (get-items :crowberto (collection/trash-collection-id))
                     (map :name)
                     set)))))))
+
+(deftest deleting-collections
+  (t2.with-temp/with-temp [Collection col {:name "A"}
+                           Collection sub {:name "sub-A" :location (collection/children-location col)}
+                           Collection subsub {:name "subsub" :location (collection/children-location sub)}]
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subsub)) {:archived true})
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id sub)) {:archived true})
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id col)) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id col)))
+    (is (t2/exists? :model/Collection :id (u/the-id sub)))
+    (is (t2/exists? :model/Collection :id (u/the-id subsub)))
+    ;; the subcollections were moved up a level.
+    (is (= "/" (t2/select-one-fn :location :model/Collection :id (u/the-id sub))))
+    (is (= (format "/%s/" (u/the-id sub))
+           (t2/select-one-fn :location :model/Collection :id (u/the-id subsub))))))
+
+(deftest deleting-collections-2
+  (t2.with-temp/with-temp [Collection col {:name "A"}
+                           Collection sub {:name "sub-A" :location (collection/children-location col)}
+                           Collection subsub {:name "subsub" :location (collection/children-location sub)}]
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subsub)) {:archived true})
+    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id col)) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id col)))
+    (is (not (t2/exists? :model/Collection :id (u/the-id sub))))
+    (is (t2/exists? :model/Collection :id (u/the-id subsub)))
+    ;; the subcollections were moved up a level.
+    (is (= "/" (t2/select-one-fn :location :model/Collection :id (u/the-id subsub))))))
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"

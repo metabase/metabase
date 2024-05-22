@@ -8156,6 +8156,36 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v50.2024-05-22T14:05:22
+      author: johnswanson
+      comment: Add `collection.trash_operation_id`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trash_operation_id
+                  type: char(36)
+                  remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-23T18:44:37
+      author: johnswanson
+      comment: Add `collection.trashed_directly`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trashed_directly
+                  type: ${boolean.type}
+                  remarks: "Whether the item was trashed independently or as a subcollection"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration

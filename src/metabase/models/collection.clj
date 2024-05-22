@@ -603,11 +603,16 @@
     (into
       [:and
        ;; it is a descendant of Collection A
-       [:like :location (h2x/literal (str (children-location collection) "%"))]
+       (if (is-trash? collection)
+         [:= :trashed_directly true]
+         [:like :location (h2x/literal (str (children-location collection) "%"))])
+       (when (:trash_operation_id collection)
+         [:= :trash_operation_id (:trash_operation_id collection)])
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
+       (when-not (is-trash? collection)
+         (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids))
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
@@ -732,6 +737,89 @@
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
+(mu/defn archive-collection!
+  "Mark a collection as archived, along with all its children."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (api/check-403
+   (perms/set-has-full-permissions-for-set?
+    @api/*current-user-permissions-set*
+    (perms-for-archiving collection)))
+  (let [trash-operation-id      (random-uuid)
+        affected-collection-ids (cons (u/the-id collection)
+                                      (collection->descendant-ids collection
+                                                                  :archived [:not= true]))]
+    (t2/with-transaction [_conn]
+      (t2/update! :model/Collection (u/the-id collection)
+                  {:trash_operation_id trash-operation-id
+                   :trashed_directly   true
+                   :archived           true})
+      (t2/query-one
+       {:update :collection
+        :set    {:trash_operation_id trash-operation-id
+                 :trashed_directly   false
+                 :archived           true}
+        :where  [:and
+                 [:like :location (str (children-location collection) "%")]
+                 [:not :archived]]})
+      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]}
+                    {:archived true}))
+      (doseq [model [:model/Card :model/Dashboard]]
+        (t2/update! model {:collection_id    [:in affected-collection-ids]
+                           :trashed_directly false}
+                    {:archived true})))))
+
+(mu/defn unarchive-collection!
+  "Mark a collection as unarchived, along with any children that were archived along with the collection."
+  [collection :- CollectionWithLocationAndIDOrRoot
+   ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
+   ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
+   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (assert (:trash_operation_id collection))
+  (when (not (contains? updates :parent_id))
+    (api/check-400
+     (:can_restore (t2/hydrate collection :can_restore))))
+  (let [trash-operation-id (:trash_operation_id collection)
+        current-parent-id (:parent_id (t2/hydrate collection :parent_id))
+        new-parent-id (if (contains? updates :parent_id)
+                        (:parent_id updates)
+                        current-parent-id)
+        new-parent (if new-parent-id
+                     (t2/select-one :model/Collection :id new-parent-id)
+                     root-collection)
+        new-location (children-location new-parent)
+        orig-children-location (children-location collection)
+        new-children-location (children-location (assoc collection :location new-location))
+        affected-collection-ids (cons (u/the-id collection)
+                                      (collection->descendant-ids collection
+                                                                  :trash_operation_id [:= trash-operation-id]
+                                                                  :archived [:= true]))]
+    (api/check-400
+     (and (some? new-parent) (not (:archived new-parent))))
+
+    (t2/with-transaction [_conn]
+      (t2/update! :model/Collection (u/the-id collection)
+                  {:location              new-location
+                   :trash_operation_id    nil
+                   :trashed_directly      nil
+                   :archived              false})
+      (t2/query-one
+       {:update :collection
+        :set    {:location              [:replace :location orig-children-location new-children-location]
+                 :trash_operation_id    nil
+                 :trashed_directly      nil
+                 :archived              false}
+        :where  [:and
+                 [:like :location (str orig-children-location "%")]
+                 [:= :trash_operation_id (:trash_operation_id collection)]]})
+      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]}
+                    {:archived false}))
+      (doseq [model [:model/Card :model/Dashboard]]
+        (t2/update! model {:collection_id    [:in affected-collection-ids]
+                           :trashed_directly false}
+                    {:archived false})))))
+
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection, moving it to the trash if necessary. Note that namespaced collections are never
   moved to the trash."
@@ -740,61 +828,9 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
                      :archived :boolean]]]
-  (let [namespaced?   (some? (:namespace collection))
-        archived?     (:archived updates)
-        new-parent-id (cond
-                        ;; don't move namespaced collections.
-                        namespaced? (location-path->parent-id
-                                     (:location collection))
-
-                        ;; move archived things to the trash, no matter what.
-                        archived? (trash-collection-id)
-
-                        (contains? updates :parent_id)
-                        (:parent_id updates)
-
-                        (and (= (:location collection) (trash-path))
-                             (:trashed_from_location collection))
-                        (location-path->parent-id
-                         (:trashed_from_location collection))
-
-                        :else (throw (ex-info (tru "You must specify a new `parent_id` to un-trash to.")
-                                              {:status-code 400})))
-        new-parent              (if new-parent-id
-                                  (t2/select-one :model/Collection :id new-parent-id)
-                                  root-collection)
-        new-location            (children-location new-parent)
-        orig-children-location  (children-location collection)
-        new-children-location   (children-location (assoc collection :location new-location))
-        affected-collection-ids (cons (u/the-id collection)
-                                      (collection->descendant-ids collection))]
-    (api/check-403
-     (perms/set-has-full-permissions-for-set?
-      @api/*current-user-permissions-set*
-      (perms-for-moving collection new-parent)))
-
-    (api/check-400
-     ;; we can never move a collection to a trashed collection. (the Trash itself isn't archived)
-     (and (some? new-parent) (not (:archived new-parent))))
-
-    (t2/with-transaction [_conn]
-      (t2/update! :model/Collection (u/the-id collection)
-                  {:location              new-location
-                   :trashed_from_location (when archived? (:location collection))
-                   :archived              archived?})
-      (t2/query-one
-       {:update :collection
-        :set    {:location              [:replace :location orig-children-location new-children-location]
-                 :trashed_from_location nil
-                 :archived              archived?}
-        :where  [:like :location (str orig-children-location "%")]})
-      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
-                    {:archived archived?}))
-      (doseq [model [:model/Card :model/Dashboard]]
-        (t2/update! model {:collection_id    [:in affected-collection-ids]
-                           :trashed_directly false}
-                    {:archived archived?})))))
+  (if (:archived updates)
+    (archive-collection! collection)
+    (unarchive-collection! collection updates)))
 
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
@@ -1041,8 +1077,8 @@
   ;; This should never happen, but just to make sure...
   (when (= (u/the-id collection) (trash-collection-id))
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
-  ;; Delete all the Children of this Collection
-  (t2/delete! Collection :location (children-location collection))
+  ;; delete all collection children
+  (t2/delete! :model/Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
     (doseq [model [:model/Card
                    :model/Dashboard
@@ -1520,37 +1556,14 @@
   Collections."
   [colls]
   (when (seq colls)
-    (let [;; skip any collections that aren't archived, or are the root collection
-          ids-to-fetch      (->> colls
-                                 (remove collection.root/is-root-collection?)
-                                 (filter :archived)
-                                 (map u/the-id))
-          coll-id->restore-coll* (if (seq ids-to-fetch)
-                                   (into {}
-                                         (map (juxt :unarchiving_coll_id identity))
-                                         (t2/select :model/Collection
-                                                    {:select    [:trashed_from_coll.*
-                                                                 [:coll.id :unarchiving_coll_id]
-                                                                 [:coll.trashed_from_location :unarchiving_trashed_from_location]]
-                                                     :from      [[:collection :coll]]
-                                                     :left-join [[:collection :trashed_from_coll] [:=
-                                                                                                   [:concat :trashed_from_coll.location :trashed_from_coll.id "/"]
-                                                                                                   :coll.trashed_from_location]]
-                                                     :where     [:in :coll.id (into #{} ids-to-fetch)]}))
-                                   {})
-          ;; given a collection, return the collection we will be restoring TO.
-          coll->restore-coll  (fn [coll]
-                                (when (not (or (collection.root/is-root-collection? coll)
-                                               (not (:archived coll))))
-                                  (let [restore-destination (coll-id->restore-coll* (u/the-id coll))]
-                                    (cond
-                                      (:id restore-destination) restore-destination
-                                      (= "/" (:unarchiving_trashed_from_location restore-destination)) collection.root/root-collection
-                                      :else nil))))]
-      (for [coll colls]
-        (cond-> coll
-          (:archived coll) (assoc :can_restore (if-let [restore-destination (coll->restore-coll coll)]
-                                                 (perms/set-has-full-permissions-for-set?
-                                                  @api/*current-user-permissions-set*
-                                                  (perms-for-moving coll restore-destination))
-                                                 false)))))))
+    ;; TODO PERFORMANCE, N+1 QUERIES BELOW
+    (for [coll colls
+          :let [trashed-directly? (:trashed_directly coll)
+                parent-archived? (t2/select-one-fn :archived :model/Collection
+                                                   :id (:parent_id (t2/hydrate coll :parent_id)))]]
+      (cond-> coll
+        (:archived coll) (assoc :can_restore (and (perms/set-has-full-permissions-for-set?
+                                                   @api/*current-user-permissions-set*
+                                                   (perms-for-archiving coll))
+                                                  trashed-directly?
+                                                  (not parent-archived?)))))))
