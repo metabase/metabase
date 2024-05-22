@@ -27,7 +27,7 @@ export const LegendLabel = ({ children, className, href, onClick }: Props) => {
   }
 
   return (
-    <Link className={cx(S.text, S.link, className)} to={href}>
+    <Link className={cx(S.text, S.link, className)} to={href} onClick={onClick}>
       {children}
     </Link>
   );
