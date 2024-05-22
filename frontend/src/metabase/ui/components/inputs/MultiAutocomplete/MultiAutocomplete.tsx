@@ -1,8 +1,11 @@
 import type { MultiSelectProps, SelectItem } from "@mantine/core";
-import { MultiSelect } from "@mantine/core";
+import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { Icon } from "metabase/ui";
 
 import { parseValues, cleanValue } from "./util";
 
@@ -108,6 +111,14 @@ export function MultiAutocomplete({
     }
   };
 
+  const info = (
+    <Tooltip
+      label={t`Separate values with commas or newlines. Use double quotes for values containing commas.`}
+    >
+      <Icon name="info_filled" color="red" />
+    </Tooltip>
+  );
+
   return (
     <MultiSelect
       {...props}
@@ -122,6 +133,7 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
+      rightSection={info}
     />
   );
 }
