@@ -40,7 +40,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
-import { cancelFetchCardQuery, fetchCardData } from "./data-fetching";
+import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -250,7 +250,7 @@ export const removeCardFromDashboard = createThunkAction(
     }) =>
     dispatch => {
       // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
-      dispatch(cancelFetchCardQuery(cardId, dashcardId));
+      dispatch(cancelFetchCardData(cardId, dashcardId));
       return { dashcardId };
     },
 );

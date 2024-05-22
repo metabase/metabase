@@ -46,7 +46,7 @@ export const FETCH_CARD_DATA_PENDING =
 
 export const FETCH_CARD_QUERY = "metabase/dashboard/FETCH_CARD_QUERY";
 
-export const CANCEL_FETCH_CARD_QUERY =
+export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
@@ -191,7 +191,7 @@ export const fetchCardQuery = createThunkAction(
         }
       }
 
-      cancelFetchCardQuery(card.id, dashcard.id);
+      cancelFetchCardData(card.id, dashcard.id);
 
       // When dashcard parameters change, we need to clean previous (stale)
       // state so that the loader spinner shows as expected (#33767)
@@ -364,7 +364,7 @@ export const fetchDashboardCardData =
 
       for (const id of loadingIds) {
         const dashcard = getDashCardById(getState(), id);
-        dispatch(cancelFetchCardQuery(dashcard.card.id, dashcard.id));
+        dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
       }
 
       dispatch({
@@ -416,7 +416,7 @@ export const cancelFetchDashboardCardData = createThunkAction(
   () => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
-      dispatch(cancelFetchCardQuery(card.id, dashcard.id));
+      dispatch(cancelFetchCardData(card.id, dashcard.id));
     }
   },
 );
@@ -428,8 +428,8 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
 }
 
 // machinery to support query cancellation
-export const cancelFetchCardQuery = createAction(
-  CANCEL_FETCH_CARD_QUERY,
+export const cancelFetchCardData = createAction(
+  CANCEL_FETCH_CARD_DATA,
   (card_id, dashcard_id) => {
     const deferred = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
     if (deferred) {

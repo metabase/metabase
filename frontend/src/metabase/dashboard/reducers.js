@@ -33,7 +33,7 @@ import {
   MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
-  CANCEL_FETCH_CARD_QUERY,
+  CANCEL_FETCH_CARD_DATA,
   SHOW_ADD_PARAMETER_POPOVER,
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
@@ -444,7 +444,7 @@ const loadingDashCards = handleActions(
         };
       },
     },
-    [CANCEL_FETCH_CARD_QUERY]: {
+    [CANCEL_FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
