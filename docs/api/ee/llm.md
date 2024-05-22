@@ -8,7 +8,7 @@ summary: |
 
 API endpoints for LLM.
 
-## `POST metabase-enterprise.llm.api/card/summarize`
+## `POST /api/ee/llm/card/summarize`
 
 Summarize a question.
 
@@ -36,7 +36,7 @@ Summarize a question.
 
 -  **`display`** value must be a non-blank string.
 
-## `POST metabase-enterprise.llm.api/dashboard/summarize/:id`
+## `POST /api/ee/llm/dashboard/summarize/:id`
 
 Provide a summary of a dashboard.
 
@@ -46,4 +46,4 @@ Provide a summary of a dashboard.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)
