@@ -10,6 +10,7 @@
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
    [metabase.config :as config]
+   [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
@@ -18,7 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -45,6 +46,17 @@
   :feature      :email-restrict-recipients
   :type         :keyword
   :default      :all
+  :getter       (fn []
+                  (cond
+                    (not (premium-features/enable-email-restrict-recipients?))
+                    :all
+
+                    (email/email-configured?)
+                    (or (setting/get-value-of-type :keyword :user-visibility)
+                        :all)
+
+                    :else
+                    :none))
   :audit        :raw-value)
 
 (defn check-self-or-superuser

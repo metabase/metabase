@@ -6,8 +6,13 @@
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card Collection Dashboard LoginHistory PermissionsGroup
-            PermissionsGroupMembership User]]
+    :refer [Card
+            Collection
+            Dashboard
+            LoginHistory
+            PermissionsGroup
+            PermissionsGroupMembership
+            User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -168,80 +173,82 @@
 
 (deftest user-recipients-list-oss-test
   (testing "GET /api/user/recipients without :email-restrict-recipients feature"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (let [crowberto "crowberto@metabase.com"
-            lucky     "lucky@metabase.com"
-            rasta     "rasta@metabase.com"]
+    (mt/with-premium-features #{}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-fake-inbox
+          (let [crowberto "crowberto@metabase.com"
+                lucky     "lucky@metabase.com"
+                rasta     "rasta@metabase.com"]
+            (testing "return all users for anyone"
+              (is (= [crowberto lucky rasta]
+                     (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                          (filter mt/test-user?)
+                          (map :email))))
 
-        (testing "return all users for anyone"
-          (is (= [crowberto lucky rasta]
-                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                      (filter mt/test-user?)
-                      (map :email))))
+              (is (= [crowberto lucky rasta]
+                     (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                          (filter mt/test-user?)
+                          (map :email)))))
 
-          (is (= [crowberto lucky rasta]
-                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                      (filter mt/test-user?)
-                      (map :email)))))
+            (testing "not affected by the visibility setting"
+              (doseq [visibility-value [:all :group :none]]
+                (mt/with-temporary-setting-values [user-visibility visibility-value]
+                  (testing "`user-visibility` setting returns the default value"
+                    (is (= :all (api.user/user-visibility))))
 
-        (testing "not affected by the visibility setting"
-          (doseq [visibility-value [:all :group :none]]
-            (mt/with-temporary-setting-values [user-visibility visibility-value]
-              (testing "`user-visibility` setting returns the default value"
-                (is (= :all (api.user/user-visibility))))
-
-              (testing "return all user by default"
-                (is (= [crowberto lucky rasta]
-                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                            (filter mt/test-user?)
-                            (map :email))))))))))))
+                  (testing "return all user by default"
+                    (is (= [crowberto lucky rasta]
+                           (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                                (filter mt/test-user?)
+                                (map :email))))))))))))))
 
 (deftest user-recipients-list-ee-test
-  (mt/with-premium-features #{:email-restrict-recipients}
-    (testing "GET /api/user/recipients"
+  (testing "GET /api/user/recipients"
+    (mt/with-premium-features #{:email-restrict-recipients}
       (mt/with-non-admin-groups-no-root-collection-perms
-        (let [crowberto "crowberto@metabase.com"
-              lucky     "lucky@metabase.com"
-              rasta     "rasta@metabase.com"]
-          (testing "Returns all users when user-visibility is all users"
-            (mt/with-temporary-setting-values [user-visibility :all]
-              (is (= [crowberto lucky rasta]
-                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email))))))
+        (mt/with-fake-inbox
+          (let [crowberto "crowberto@metabase.com"
+                lucky     "lucky@metabase.com"
+                rasta     "rasta@metabase.com"]
+            (testing "Returns all users when user-visibility is all users"
+              (mt/with-temporary-setting-values [user-visibility :all]
+                (is (= [crowberto lucky rasta]
+                       (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))
 
-          (testing "Returns all users when admin"
-            (mt/with-temporary-setting-values [user-visibility "none"]
-              (is (= [crowberto lucky rasta]
-                     (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email))))))
+            (testing "Returns all users when admin"
+              (mt/with-temporary-setting-values [user-visibility "none"]
+                (is (= [crowberto lucky rasta]
+                       (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))
 
-          (testing "Returns users in the group when user-visibility is same group"
-            (mt/with-temporary-setting-values [user-visibility :group]
-              (t2.with-temp/with-temp
-                [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
-                 :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id2}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2}]
-                (is (= [crowberto rasta]
-                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                            (map :email))))
+            (testing "Returns users in the group when user-visibility is same group"
+              (mt/with-temporary-setting-values [user-visibility :group]
+                (t2.with-temp/with-temp
+                  [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
+                   :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id2}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2}]
+                  (is (= [crowberto rasta]
+                         (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                              (map :email))))
 
-               (testing "But returns self if the user is sandboxed"
-                 (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-                   (is (= [rasta]
-                          (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                               (map :email)))))))))
+                 (testing "But returns self if the user is sandboxed"
+                   (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                     (is (= [rasta]
+                            (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                                 (map :email)))))))))
 
-          (testing "Returns only self when user-visibility is none"
-            (mt/with-temporary-setting-values [user-visibility :none]
-              (is (= [rasta]
-                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email)))))))))))
+            (testing "Returns only self when user-visibility is none"
+              (mt/with-temporary-setting-values [user-visibility :none]
+                (is (= [rasta]
+                       (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))))))))
 
 (deftest admin-user-list-test
   (testing "GET /api/user"
