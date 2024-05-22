@@ -51,8 +51,7 @@ describe("useTableListQuery", () => {
   });
 
   it("should get an empty setting", async () => {
-    // TODO: not sure what an empty setting is
-    renderWithProviders(<TestComponent settingName={"uploads-schema-name"} />);
+    renderWithProviders(<TestComponent settingName={"email-smtp-host"} />);
     expect(screen.getByText("null")).toBeInTheDocument();
     expect(screen.getByText("object")).toBeInTheDocument();
     expect(screen.getByText("isNull")).toBeInTheDocument();
