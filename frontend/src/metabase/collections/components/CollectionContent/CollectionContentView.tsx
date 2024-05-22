@@ -203,13 +203,15 @@ export const CollectionContentView = ({
     deleteBookmark(collectionId.toString(), "collection");
   };
 
-  const canUpload =
+  const canCreateUpload =
     uploadsEnabled &&
     canUploadToDb &&
     collection.can_write &&
     !isTrashedCollection(collection);
 
-  const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
+  const dropzoneProps = canCreateUpload
+    ? getComposedDragProps(getRootProps())
+    : {};
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -250,7 +252,7 @@ export const CollectionContentView = ({
 
         return (
           <CollectionRoot {...dropzoneProps}>
-            {canUpload && (
+            {canCreateUpload && (
               <>
                 <ModelUploadModal
                   collectionId={collectionId}
@@ -298,7 +300,7 @@ export const CollectionContentView = ({
                   )}
                   onCreateBookmark={handleCreateBookmark}
                   onDeleteBookmark={handleDeleteBookmark}
-                  canUpload={canUpload}
+                  canUpload={canCreateUpload}
                   uploadsEnabled={uploadsEnabled}
                   saveFile={saveFile}
                 />
