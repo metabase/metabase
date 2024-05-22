@@ -8,7 +8,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   DataKey,
-  BaseCartesianChartModel,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
@@ -42,7 +42,7 @@ export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
 });
 
 export const getCartesianChartOption = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],

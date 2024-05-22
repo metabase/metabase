@@ -16,7 +16,7 @@ import {
   getStackedLabelsFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -81,7 +81,7 @@ export const getCartesianChartModel = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-): BaseCartesianChartModel => {
+): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);

@@ -26,7 +26,7 @@ import type {
   NumericAxisScaleTransforms,
   LabelFormatter,
   StackModel,
-  BaseCartesianChartModel,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -444,7 +444,7 @@ function getStackedDataLabelFormatter(
 }
 
 export const getStackTotalsSeries = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
@@ -515,7 +515,7 @@ const getDisplaySeriesSettingsByDataKey = (
 };
 
 export const buildEChartsSeries = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   chartMeasurements: ChartMeasurements,

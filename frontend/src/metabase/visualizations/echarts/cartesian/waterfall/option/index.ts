@@ -4,7 +4,7 @@ import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   ChartDataset,
   LabelFormatter,
   WaterfallChartModel,
@@ -75,7 +75,7 @@ const getLabelLayoutFn = (
 };
 
 const computeWaterfallBarWidth = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   boundaryWidth: number,
 ) => {
   if (isCategoryAxis(chartModel.xAxisModel)) {
@@ -94,7 +94,7 @@ const computeWaterfallBarWidth = (
 };
 
 export const buildEChartsWaterfallSeries = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   labelFormatter: LabelFormatter | undefined,
