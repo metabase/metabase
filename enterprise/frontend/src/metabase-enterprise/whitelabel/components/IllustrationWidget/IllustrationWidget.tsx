@@ -147,7 +147,7 @@ export function IllustrationWidget({
           align="center"
           justify="center"
           w="7.5rem"
-          style={{ borderRight: `1px solid ${color("border")}` }}
+          style={{ borderRight: `1px solid ${() => color("border")}` }}
         >
           {getPreviewImage({
             value,

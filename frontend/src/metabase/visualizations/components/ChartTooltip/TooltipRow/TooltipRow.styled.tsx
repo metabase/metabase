@@ -69,12 +69,12 @@ export const ValueCell = styled(Cell)`
 
 export const PercentCell = styled(Cell)`
   padding-left: 1rem;
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   text-align: right;
 `;
 
 export const TotalRowRoot = styled.tr`
   width: 100%;
   border-radius: 60px;
-  background-color: ${darken("text-dark", 0.6)};
+  background-color: ${() => darken("text-dark", 0.6)};
 `;

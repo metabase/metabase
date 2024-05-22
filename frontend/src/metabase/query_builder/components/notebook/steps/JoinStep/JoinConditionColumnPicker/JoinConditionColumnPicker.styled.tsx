@@ -7,13 +7,13 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 const noColumnStyle = (isOpen = false) => css`
   min-height: 34px;
   padding: 8px 20px;
-  color: ${alpha("brand", 0.45)};
+  color: ${() => alpha("brand", 0.45)};
   border: 2px solid ${isOpen ? color("brand") : alpha("brand", 0.45)};
   border-radius: 4px;
 
   &:hover,
   &:focus {
-    border-color: ${color("brand")};
+    border-color: ${() => color("brand")};
   }
 `;
 
@@ -26,7 +26,7 @@ const hasColumnStyle = (isOpen = false) => css`
 
   &:hover,
   &:focus {
-    background-color: ${lighten("brand", 0.1)};
+    background-color: ${() => lighten("brand", 0.1)};
   }
 `;
 
@@ -50,5 +50,5 @@ export const JoinCellItem = styled.button<{
 `;
 
 export const JoinColumnPicker = styled(QueryColumnPicker)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;

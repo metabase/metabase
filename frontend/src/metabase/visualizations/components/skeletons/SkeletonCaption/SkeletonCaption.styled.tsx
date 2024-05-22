@@ -19,7 +19,7 @@ export interface SkeletonTitleProps {
 }
 
 export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: ${props => (props.size === "large" ? "1rem" : "")};
   line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;
@@ -31,11 +31,11 @@ export const SkeletonPlaceholder = styled.div`
   width: 40%;
   height: 1.0625rem;
   border-radius: 1rem;
-  background-color: ${color("bg-medium")};
+  background-color: ${() => color("bg-medium")};
 `;
 
 export const SkeletonCaptionDescription = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-left: 0.5rem;
   visibility: hidden;
 `;

@@ -27,9 +27,9 @@ export const InfoIcon = styled(Icon)`
   margin-top: 0.3125rem;
   margin-left: 0.5rem;
   cursor: pointer;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

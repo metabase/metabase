@@ -7,5 +7,5 @@ export const MetabotRoot = styled.main`
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background-color: ${color("bg-white")};
+  background-color: ${() => color("bg-white")};
 `;

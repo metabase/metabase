@@ -15,16 +15,16 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   overflow: hidden;
   display: flex;
   align-items: center;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
-  background: ${color("white")};
+  background: ${() => color("white")};
 
   &.dragging {
     cursor: grabbing;
     pointer-events: auto !important;
   }
 
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   ${props =>
     props.isDraggable &&
@@ -32,7 +32,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     cursor: grab;
     &:hover {
       ${ColumnItemDragHandle} {
-        color: ${color("brand")};
+        color: ${() => color("brand")};
       }
     }
     `}

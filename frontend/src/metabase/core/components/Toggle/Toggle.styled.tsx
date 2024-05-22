@@ -39,8 +39,8 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   width: ${props => (props.small ? "28px" : "48px")};
   height: ${props => (props.small ? "17px" : "24px")};
   border-radius: 99px;
-  border: 1px solid ${color("border")};
-  background-color: ${color("bg-medium")};
+  border: 1px solid ${() => color("border")};
+  background-color: ${() => color("bg-medium")};
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
   flex-shrink: 0;
@@ -48,7 +48,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   &[disabled] {
     cursor: not-allowed;
     opacity: 0.5;
-    background-color: ${color("bg-medium")};
+    background-color: ${() => color("bg-medium")};
   }
 
   &:after {
@@ -59,9 +59,9 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     position: absolute;
     top: 1px;
     transform: translateX(${getTranslateX});
-    background-color: ${color("white")};
+    background-color: ${() => color("white")};
     transition: transform 0.3s;
-    box-shadow: 2px 2px 6px ${color("shadow")};
+    box-shadow: 2px 2px 6px ${() => color("shadow")};
   }
 
   ${focusOutlineStyle("brand")};

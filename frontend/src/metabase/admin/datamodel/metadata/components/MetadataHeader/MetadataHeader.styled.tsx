@@ -5,6 +5,6 @@ import { color } from "metabase/lib/colors";
 
 export const TableSettingsLink = styled(Link)`
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

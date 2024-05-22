@@ -57,7 +57,7 @@ export const Root = styled.div<{
     props.borderBottom &&
     css`
       padding-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid ${() => color("border")};
     `}
 
   input {
@@ -65,7 +65,7 @@ export const Root = styled.div<{
 
     &:hover {
       transition: border 0.3s;
-      border-color: ${color("brand")};
+      border-color: ${() => color("brand")};
     }
   }
 `;
@@ -97,10 +97,10 @@ export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`
-      color: ${color("bg-dark")};
+      color: ${() => color("bg-dark")};
 
       &:hover {
-        color: ${color("brand")};
+        color: ${() => color("brand")};
       }
     `}
 `;

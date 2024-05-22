@@ -8,6 +8,6 @@ export const TimeLabel = styled.div`
   cursor: pointer;
 
   &:hover {
-    color: ${color("filter")};
+    color: ${() => color("filter")};
   }
 `;

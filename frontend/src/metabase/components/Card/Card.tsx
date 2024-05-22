@@ -16,15 +16,16 @@ const Card = styled.div<CardProps>`
     ${props => (props.dark ? "transparent" : color("bg-medium"))};
   ${props => props.dark && `color: white`};
   border-radius: 6px;
-  box-shadow: 0 7px 20px ${color("shadow")};
+  box-shadow: 0 7px 20px ${() => color("shadow")};
   line-height: 24px;
   ${props =>
     props.hoverable &&
     `&:hover {
-    box-shadow: 0 10px 22px ${alpha(color("shadow"), 0.09)};
+    box-shadow: 0 10px 22px ${() => alpha(color("shadow"), 0.09)};
   }`};
   ${props => props.flat && `box-shadow: none;`};
-  ${props => props.compact && `box-shadow: 0 1px 2px ${color("shadow")};`};
+  ${props =>
+    props.compact && `box-shadow: 0 1px 2px ${() => color("shadow")};`};
 `;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

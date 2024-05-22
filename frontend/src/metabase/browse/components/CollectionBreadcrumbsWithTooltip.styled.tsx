@@ -13,7 +13,7 @@ export const Breadcrumb = styled(Anchor)<
     AnchorHTMLAttributes<HTMLAnchorElement> &
     RefProp<HTMLAnchorElement>
 >`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -21,7 +21,7 @@ export const Breadcrumb = styled(Anchor)<
   padding-top: 1px;
   padding-bottom: 1px;
   :hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
     text-decoration: none;
   }
 `;

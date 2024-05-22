@@ -15,15 +15,15 @@ export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   align-items: center;
   gap: 1rem;
 
-  background-color: ${color("brand-lighter")};
+  background-color: ${() => color("brand-lighter")};
   opacity: ${props => (props.isDragActive ? 0.9 : 0)};
   transition: opacity 0.2s;
-  border: 1px dashed ${color("brand")};
+  border: 1px dashed ${() => color("brand")};
   border-radius: 0.5rem;
   margin: 0.5rem 4%;
   padding: 4rem;
 
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-size: 1.125rem;
   font-weight: bold;
 

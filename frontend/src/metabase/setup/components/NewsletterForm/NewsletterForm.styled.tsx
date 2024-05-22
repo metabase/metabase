@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 export const EmailFormRoot = styled.div`
   position: relative;
   padding: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
 `;
 
@@ -25,8 +25,8 @@ export const EmailFormLabel = styled.div`
 export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
-  color: ${color("text-medium")};
-  background-color: ${color("white")};
+  color: ${() => color("text-medium")};
+  background-color: ${() => color("white")};
 `;
 
 export const EmailFormLabelIcon = styled(Icon)`
@@ -42,7 +42,7 @@ export const EmailFormLabelText = styled.div`
 `;
 
 export const EmailFormHeader = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
@@ -66,14 +66,14 @@ export const EmailFormSuccessContainer = styled.div`
 `;
 
 export const EmailFormSuccessIcon = styled(Icon)`
-  color: ${color("success")};
+  color: ${() => color("success")};
   width: 1rem;
   height: 1rem;
   margin-right: 1rem;
 `;
 
 export const EmailFormSuccessText = styled.div`
-  color: ${color("success")};
+  color: ${() => color("success")};
   font-size: 1rem;
   font-weight: bold;
 `;

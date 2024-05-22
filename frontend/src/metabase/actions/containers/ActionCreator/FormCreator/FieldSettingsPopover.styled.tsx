@@ -10,7 +10,7 @@ export const SettingsPopoverBody = styled.div`
 
 export const SectionLabel = styled.label`
   display: block;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-weight: bold;
   padding-left: ${space(0)};
   margin-bottom: ${space(1)};
@@ -21,7 +21,7 @@ export const RequiredToggleLabel = styled.label`
 `;
 
 export const Divider = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   margin: ${space(2)} 0;
 `;
 
@@ -34,8 +34,8 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

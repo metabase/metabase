@@ -9,7 +9,7 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateTitle = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 2rem;
@@ -18,11 +18,11 @@ export const EmptyStateTitle = styled.div`
 `;
 
 export const EmptyStateIconForeground = styled.path`
-  fill: ${color("bg-light")};
-  stroke: ${color("brand")};
+  fill: ${() => color("bg-light")};
+  stroke: ${() => color("brand")};
 `;
 
 export const EmptyStateIconBackground = styled.path`
-  fill: ${color("brand-light")};
-  stroke: ${color("brand")};
+  fill: ${() => color("brand-light")};
+  stroke: ${() => color("brand")};
 `;

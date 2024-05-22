@@ -9,6 +9,6 @@ export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
 })<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
   ${({ highlightOnHover }) =>
     highlightOnHover
-      ? `:hover { background-color: ${alpha("error", 0.15)}; }`
+      ? `:hover { background-color: ${() => alpha("error", 0.15)}; }`
       : ""}
 `;

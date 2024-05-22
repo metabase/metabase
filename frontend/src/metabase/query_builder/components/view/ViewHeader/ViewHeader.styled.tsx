@@ -15,7 +15,7 @@ import { QuestionDataSource } from "./components/QuestionDataSource";
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;
 }>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
@@ -52,7 +52,7 @@ export const AdHocViewHeading = styled(ViewHeading)`
 `;
 
 export const BackButton = styled(Button)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   padding: 0.75rem;
 `;
 
@@ -61,14 +61,14 @@ export const BackButtonContainer = styled.span`
 `;
 
 export const SaveButton = styled(Link)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: ${() => color("bg-white")};
 
   :hover {
-    background-color: ${color("bg-light")};
+    background-color: ${() => color("bg-light")};
   }
 `;
 
@@ -104,7 +104,7 @@ export const IconHeaderButton = styled(HeaderButton)`
 
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   //margin-left: 4px;
 
   ${breakpointMaxSmall} {
@@ -169,7 +169,7 @@ export const HeaderDivider = styled.span`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 `;
@@ -184,7 +184,7 @@ export const ViewHeaderActionPanel = styled.div`
     margin-left: 0;
     width: 100%;
     justify-content: space-between;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid ${() => color("border")};
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
   }
@@ -197,8 +197,8 @@ export const ViewHeaderIconButtonContainer = styled.div`
     width: 2rem;
 
     &:hover {
-      color: ${color("brand")};
-      background-color: ${color("bg-medium")};
+      color: ${() => color("brand")};
+      background-color: ${() => color("bg-medium")};
     }
   }
 `;
@@ -210,7 +210,7 @@ interface ViewRunButtonWithTooltipProps {
 export const ViewRunButtonWithTooltip = styled(
   RunButtonWithTooltip,
 )<ViewRunButtonWithTooltipProps>`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
 
   &:hover {
     color: ${props => (props.isDirty ? color("white") : color("brand"))};

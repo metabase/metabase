@@ -11,7 +11,7 @@ export const TargetTrigger = styled.div`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
-    background-color: ${color("bg-light")};
+    color: ${() => color("brand")};
+    background-color: ${() => color("bg-light")};
   }
 `;

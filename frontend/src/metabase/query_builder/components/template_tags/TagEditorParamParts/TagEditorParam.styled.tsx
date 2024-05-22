@@ -6,13 +6,13 @@ import ParameterValueWidget from "metabase/parameters/components/ParameterValueW
 export const TagContainer = styled.div`
   padding: 1.5rem 1.5rem 0 1.5rem;
   margin-bottom: 1.5rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;
 export const TagName = styled.h3`
   font-weight: 900;
   margin-bottom: 2rem;
   align-self: flex-end;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 interface ContainerLabelProps {
@@ -23,13 +23,13 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
   display: block;
   margin-bottom: 0.5em;
   padding-top: ${props => (props.paddingTop ? "0.5rem" : "0")};
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-weight: 700;
 `;
 
 export const ErrorSpan = styled.span`
   margin: 0 0.5rem;
-  color: ${color("error")};
+  color: ${() => color("error")};
 `;
 
 interface InputContainerProps {
@@ -43,10 +43,10 @@ export const InputContainer = styled.label<InputContainerProps>`
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   padding: 0.5rem;
   font-weight: 700;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   border-radius: 0.5rem;
-  background-color: ${color("white")};
-  border: 2px solid ${color("border")};
+  background-color: ${() => color("white")};
+  border: 2px solid ${() => color("border")};
 `;
 
 export const ToggleContainer = styled.div`
@@ -60,6 +60,6 @@ export const ToggleLabel = styled.label`
   gap: 0.5rem;
   margin-top: 0.35rem;
   font-weight: 700;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   cursor: pointer;
 `;

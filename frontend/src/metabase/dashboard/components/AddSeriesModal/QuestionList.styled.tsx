@@ -19,7 +19,7 @@ export const QuestionListContainer = styled.ul`
 
 export const LoadMoreButton = styled.button`
   align-items: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   cursor: pointer;
   display: flex;
   font-family: var(--mb-default-font-family);
@@ -43,7 +43,7 @@ export const SearchContainer = styled.div`
   flex-direction: row;
   align-items: center;
   flex: 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 `;
 
 export const SearchInput = styled(Input)`

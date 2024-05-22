@@ -8,7 +8,7 @@ export const LinkFooter = styled.div`
 `;
 
 export const LinkButton = styled(Button)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: normal;
   padding: 0;
   border: none;

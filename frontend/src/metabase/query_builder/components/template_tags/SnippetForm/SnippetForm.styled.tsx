@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const FormSnippetTextArea = styled(FormTextArea)`
   ${FormTextArea.Root} {
     width: 100%;
-    background-color: ${color("bg-light")};
+    background-color: ${() => color("bg-light")};
 
     font-family: Monaco, monospace;
     font-size: 0.875em;

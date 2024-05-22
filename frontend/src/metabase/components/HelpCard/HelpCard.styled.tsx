@@ -8,10 +8,10 @@ import { Icon } from "metabase/ui";
 const CardRootMixin = css`
   display: block;
   padding: 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.375rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 6px ${color("shadow")};
+  background-color: ${() => color("white")};
+  box-shadow: 0 1px 6px ${() => color("shadow")};
   box-sizing: border-box;
 `;
 
@@ -29,7 +29,7 @@ export const CardRootLink = styled(ExternalLink)`
   ${CardRootMixin};
 
   &:hover {
-    background-color: ${color("bg-light")};
+    background-color: ${() => color("bg-light")};
   }
 `;
 
@@ -44,19 +44,19 @@ export const CardHeaderLink = styled(ExternalLink)`
 export const CardTitle = styled.span`
   display: block;
   flex: 1 1 auto;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: bold;
   margin: 0 0.5rem;
 `;
 
 export const CardIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 export const CardMessage = styled.div`
   display: block;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   line-height: 1.25rem;
 
   p {
@@ -68,7 +68,7 @@ export const CardMessage = styled.div`
   }
 
   a {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
     cursor: pointer;
     font-weight: bold;
   }

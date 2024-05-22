@@ -9,7 +9,7 @@ export const InfoLink = styled(ExternalLink)`
 
   &:hover,
   :focus {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 

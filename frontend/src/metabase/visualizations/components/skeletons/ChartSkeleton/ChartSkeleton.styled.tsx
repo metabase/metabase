@@ -16,6 +16,6 @@ export const fadingKeyframes = keyframes`
   }
 `;
 export const animationStyles = css`
-  color: ${color("bg-medium")};
+  color: ${() => color("bg-medium")};
   animation: ${fadingKeyframes} 1.5s infinite;
 `;

@@ -22,8 +22,8 @@ export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
 `;
 
 export const ParameterFormBadge = styled.span`
-  color: ${color("text-dark")};
-  background-color: ${color("bg-medium")};
+  color: ${() => color("text-dark")};
+  background-color: ${() => color("bg-medium")};
   padding: ${space(0)} ${space(1)};
   border-radius: ${space(0)};
 `;

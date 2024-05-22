@@ -30,7 +30,7 @@ export const LoadingSpinner = styled(_LoadingSpinner)`
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 LoadingSpinner.defaultProps = {
@@ -66,7 +66,7 @@ export const Li = styled.li`
   padding: 0.3em 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 
   &:last-child {
     border-bottom: none;

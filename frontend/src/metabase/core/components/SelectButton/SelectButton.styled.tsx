@@ -37,8 +37,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${getColor};
 
   &:focus {
-    border-color: ${color("brand")};
-    outline: 2px solid ${color("focus")};
+    border-color: ${() => color("brand")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   &:not(:focus-visible) {
@@ -46,8 +46,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: ${color("bg-light")};
-    color: ${color("text-medium")};
+    background-color: ${() => color("bg-light")};
+    color: ${() => color("text-medium")};
     pointer-events: none;
   }
 `;

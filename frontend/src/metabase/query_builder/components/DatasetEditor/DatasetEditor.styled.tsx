@@ -20,7 +20,7 @@ export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("brand")};
+  background-color: ${() => color("brand")};
 `;
 
 export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
@@ -36,12 +36,12 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   text-overflow: ellipsis;
   overflow-x: hidden;
 
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   background-color: transparent;
   font-weight: bold;
   cursor: pointer;
 
-  border: 1px solid ${color("brand")};
+  border: 1px solid ${() => color("brand")};
   border-radius: 8px;
 
   transition: all 0.25s;
@@ -49,8 +49,8 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   ${props =>
     props.isSelected &&
     css`
-      color: ${color("text-white")};
-      background-color: ${color("brand")};
+      color: ${() => color("text-white")};
+      background-color: ${() => color("brand")};
     `}
 
   .Icon {
@@ -59,12 +59,12 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   }
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${() => color("white")};
+    background-color: ${() => color("brand")};
 
     .Icon {
-      background-color: ${color("white")};
-      color: ${color("brand")};
+      background-color: ${() => color("white")};
+      color: ${() => color("brand")};
     }
   }
 `;
@@ -89,7 +89,7 @@ export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: ${color("bg-white")};
+  background-color: ${() => color("bg-white")};
   height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 
@@ -109,7 +109,7 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
     props.isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid ${() => color("border")};
     `}
 `;
 

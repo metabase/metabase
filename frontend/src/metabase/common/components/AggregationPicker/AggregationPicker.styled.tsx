@@ -10,8 +10,8 @@ export const ColumnPickerHeaderContainer = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 0.5rem;
-  border-bottom: 1px solid ${color("border")};
-  color: ${color("text-medium")};
+  border-bottom: 1px solid ${() => color("border")};
+  color: ${() => color("text-medium")};
 `;
 
 export const ColumnPickerHeaderTitleContainer = styled.a`

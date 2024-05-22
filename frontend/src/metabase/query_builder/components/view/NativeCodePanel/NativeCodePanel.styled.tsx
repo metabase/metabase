@@ -41,7 +41,7 @@ export const CodeCopyButton = styled(IconButtonWrapper)<CodeCopyButtonProps>`
   right: 1rem;
   width: 1rem;
   height: 1rem;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   background-color: ${props =>
     color(props.isHighlighted ? "brand-light" : "bg-light")};
   visibility: hidden;

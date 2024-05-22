@@ -4,7 +4,7 @@ import Input from "metabase/core/components/Input";
 import { color } from "metabase/lib/colors";
 
 export const NativeQueryEditorPromptRoot = styled.div`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
   height: 3rem;
   display: flex;
   align-items: center;

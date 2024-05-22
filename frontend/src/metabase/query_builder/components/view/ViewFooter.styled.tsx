@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
+import { color } from "metabase/lib/colors";
 
 import ViewSection from "./ViewSection";
 
@@ -15,6 +16,6 @@ export const FooterButtonGroup = styled(ButtonGroup)`
   align-items: stretch;
 
   ${Button.Root} {
-    border: 1px solid ${"white"};
+    border: 1px solid ${() => color("white")};
   }
 `;

@@ -11,7 +11,7 @@ export interface EditableTextRootProps {
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -26,7 +26,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
     props.isEditing &&
     !props.isDisabled &&
     css`
-      border-color: ${color("border")};
+      border-color: ${() => color("border")};
     `}
 
   ${({ isEditingMarkdown }) =>

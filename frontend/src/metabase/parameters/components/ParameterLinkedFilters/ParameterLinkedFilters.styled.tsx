@@ -12,18 +12,18 @@ export const SectionHeader = styled.div`
 `;
 
 export const SectionMessage = styled.p`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const SectionMessageLink = styled.span`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   cursor: pointer;
 `;
 
 export const ParameterRoot = styled.div`
   margin-bottom: 1rem;
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
 `;
 
 export const ParameterBody = styled.div`
@@ -35,7 +35,7 @@ export const ParameterBody = styled.div`
 
 export const ParameterName = styled.div`
   cursor: pointer;
-  border-bottom: 1px dashed ${color("border")};
+  border-bottom: 1px dashed ${() => color("border")};
   font-weight: bold;
 `;
 
@@ -45,11 +45,11 @@ export const FieldListRoot = styled.div`
 
 export const FieldListHeader = styled.div`
   display: flex;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;
 
 export const FieldListTitle = styled.div`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   width: 50%;
   padding: 0.5rem 1rem 0;
 `;
@@ -58,7 +58,7 @@ export const FieldListItem = styled.div`
   display: flex;
 
   &:not(:last-child) {
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid ${() => color("border")};
   }
 `;
 
@@ -68,5 +68,5 @@ export const FieldRoot = styled.div`
 `;
 
 export const FieldLabel = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;

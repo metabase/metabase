@@ -9,6 +9,6 @@ export const CollapsibleSectionContent = styled.div`
   margin-bottom: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

@@ -35,7 +35,7 @@ export const DeleteDatabaseModalSection = styled.div<DeleteDatabaseModalSectionP
 `;
 
 export const ErrorMessage = styled.div`
-  color: ${color("error")};
+  color: ${() => color("error")};
   padding: 0 1rem;
 `;
 

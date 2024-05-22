@@ -21,13 +21,13 @@ export const ListItemLink = styled(Link)`
   display: flex;
   align-items: center;
 
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 
   ${ListItemName} {
     margin-left: 4px;
   }
 
   &:hover {
-    color: ${darken("brand")};
+    color: ${() => darken("brand")};
   }
 `;

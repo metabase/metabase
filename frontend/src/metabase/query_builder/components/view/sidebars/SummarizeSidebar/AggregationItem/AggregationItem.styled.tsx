@@ -9,16 +9,16 @@ export const Root = styled.button`
   padding: 0.5rem;
   font-weight: bold;
   border-radius: 6px;
-  color: ${color("white")};
-  background-color: ${color("summarize")};
+  color: ${() => color("white")};
+  background-color: ${() => color("summarize")};
   transition: background 300ms linear, border 300ms linear;
   min-height: 34px;
   min-width: 34px;
   cursor: pointer;
 
   &:hover {
-    background-color: ${alpha("summarize", 0.8)};
-    border-color: ${alpha("summarize", 0.8)};
+    background-color: ${() => alpha("summarize", 0.8)};
+    border-color: ${() => alpha("summarize", 0.8)};
   }
 `;
 

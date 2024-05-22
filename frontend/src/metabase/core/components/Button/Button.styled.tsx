@@ -22,14 +22,14 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   ${({ purple }) =>
     purple &&
     css`
-      color: ${color("white")};
-      background-color: ${color("filter")};
-      border: 1px solid ${color("filter")};
+      color: ${() => color("white")};
+      background-color: ${() => color("filter")};
+      border: 1px solid ${() => color("filter")};
 
       &:hover {
-        color: ${color("white")};
-        background-color: ${alpha("filter", 0.88)};
-        border-color: ${alpha("filter", 0.88)};
+        color: ${() => color("white")};
+        background-color: ${() => alpha("filter", 0.88)};
+        border-color: ${() => alpha("filter", 0.88)};
       }
     `}
 
@@ -39,7 +39,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       border: none;
       padding: 0;
 
-      color: ${color("brand")};
+      color: ${() => color("brand")};
 
       &:hover {
         background-color: unset;
@@ -54,10 +54,10 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       line-height: 1.5rem;
       padding: 0.5rem;
 
-      color: ${color("brand")};
+      color: ${() => color("brand")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: ${() => color("bg-light")};
       }
     `}
 `;

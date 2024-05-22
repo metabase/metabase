@@ -11,7 +11,7 @@ export const FormLauncher = styled(Anchor)<
   font-weight: bold;
   &:hover,
   &:active {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
     text-decoration: none;
   }
 `;

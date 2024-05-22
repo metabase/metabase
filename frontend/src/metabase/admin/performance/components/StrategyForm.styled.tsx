@@ -28,7 +28,7 @@ export const StyledForm = styled(Form)`
 `;
 
 export const FormBox = styled(Box)<BoxProps>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   overflow: auto;
   flex-grow: 1;
 `;

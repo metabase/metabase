@@ -56,8 +56,8 @@ export const InputField = styled.input<InputProps>`
   ${props => inputPadding(props.fieldSize)}
   ${props => inputTypography(props.fieldSize)}
   font-family: inherit;
-  color: ${color("text-dark")};
-  border: 1px solid ${color("border")};
+  color: ${() => color("text-dark")};
+  border: 1px solid ${() => color("border")};
   border-radius: ${space(1)};
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   outline: none;
@@ -71,7 +71,7 @@ export const InputField = styled.input<InputProps>`
 
   &:disabled {
     cursor: default;
-    background-color: ${color("bg-light")};
+    background-color: ${() => color("bg-light")};
   }
 
   ${props => focusOutlineStyle(props.colorScheme)};
@@ -79,7 +79,7 @@ export const InputField = styled.input<InputProps>`
   ${props =>
     props.hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: ${() => color("error")};
     `};
 
   ${props =>
@@ -144,7 +144,7 @@ export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
 `;
 
 export const InputSubtitle = styled.div`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   position: absolute;
   top: 1.25em;
   left: 1.25em;

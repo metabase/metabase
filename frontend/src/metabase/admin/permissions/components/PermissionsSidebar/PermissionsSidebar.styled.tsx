@@ -9,7 +9,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid ${() => color("border")};
 `;
 
 export const SidebarHeader = styled.div`
@@ -19,13 +19,13 @@ export const SidebarHeader = styled.div`
 
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
 `;
 
 export const BackButton = styled.button`
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 14px;
@@ -35,6 +35,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: ${color("filter")};
+    color: ${() => color("filter")};
   }
 `;

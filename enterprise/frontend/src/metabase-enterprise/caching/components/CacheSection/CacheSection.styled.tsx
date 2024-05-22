@@ -40,7 +40,7 @@ export const CachePopover = styled.div`
     padding: 0.625rem;
     margin: 0 0.5rem;
 
-    border: 1px solid ${color("border")};
+    border: 1px solid ${() => color("border")};
   }
 
   ${Button.Root} {

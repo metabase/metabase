@@ -21,6 +21,6 @@ export const CardListItem = styled(Link)`
   }
 
   &:hover {
-    background-color: ${color("brand-light")};
+    background-color: ${() => color("brand-light")};
   }
 `;

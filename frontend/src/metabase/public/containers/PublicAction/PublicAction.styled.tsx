@@ -38,7 +38,7 @@ const titleStyle = css`
   font-weight: 700;
   font-size: 1.125rem;
   line-height: 1.375rem;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
 `;
 
 export const FormTitle = styled.h1`

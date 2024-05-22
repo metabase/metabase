@@ -60,13 +60,13 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 export const EntityMenuContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const EntityItemActions = styled.div`

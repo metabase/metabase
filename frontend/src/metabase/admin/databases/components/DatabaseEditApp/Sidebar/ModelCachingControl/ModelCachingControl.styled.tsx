@@ -13,7 +13,7 @@ export const ControlContainer = styled.div`
 export const HoverableIcon = styled(Icon)`
   cursor: pointer;
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
@@ -22,17 +22,17 @@ export const PopoverContent = styled.div`
 `;
 
 export const FeatureTitle = styled.h4`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-weight: 700;
 `;
 
 export const FeatureDescriptionText = styled.p`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-weight: 400;
 `;
 
 export const ErrorMessage = styled.p`
   width: 80%;
-  color: ${color("error")};
+  color: ${() => color("error")};
   line-height: 1.5rem;
 `;

@@ -4,10 +4,10 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const DownloadIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
     cursor: pointer;
   }
 `;

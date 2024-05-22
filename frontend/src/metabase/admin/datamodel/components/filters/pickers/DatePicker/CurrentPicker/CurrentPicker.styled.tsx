@@ -12,8 +12,8 @@ export const CurrentContainer = styled.div<{ first?: boolean }>`
 `;
 
 export const CurrentPopover = styled.div`
-  color: ${color("white")};
-  background-color: ${color("black")};
+  color: ${() => color("white")};
+  background-color: ${() => color("black")};
   padding: ${space(1)} ${space(2)};
 `;
 

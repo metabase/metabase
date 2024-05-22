@@ -21,7 +21,7 @@ export const GrowFlex = styled(Flex)`
 `;
 
 export const SinglePickerView = styled.div`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
   flex-grow: 1;
   height: 0;
 `;

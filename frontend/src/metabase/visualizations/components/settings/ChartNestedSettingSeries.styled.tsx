@@ -6,11 +6,11 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const OptionsIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 

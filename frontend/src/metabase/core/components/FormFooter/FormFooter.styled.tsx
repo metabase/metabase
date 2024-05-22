@@ -11,7 +11,7 @@ const FormFooter = styled.div<FormFooterProps>`
   ${props =>
     props.hasTopBorder
       ? css`
-          border-top: 1px solid ${color("border")};
+          border-top: 1px solid ${() => color("border")};
           margin-top: 0.5rem;
           padding-top: 1.5rem;
         `

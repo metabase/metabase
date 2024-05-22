@@ -18,9 +18,10 @@ export const PolicyToken = styled(Button)<
   border-style: solid;
   ${({ variant }) =>
     css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${() =>
+        color(
+          ["filled", "outline"].includes(variant || "") ? "brand" : "border",
+        )} !important;
     `};
   span {
     gap: 0.5rem;

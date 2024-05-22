@@ -11,9 +11,9 @@ export const BrowseHeaderContent = styled.div`
 export const BrowseHeaderIconContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

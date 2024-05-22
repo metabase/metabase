@@ -5,6 +5,6 @@ import { Flex } from "metabase/ui";
 
 export const FilterFooterRoot = styled(Flex)`
   &:not(:only-child) {
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid ${() => color("border")};
   }
 `;

@@ -17,7 +17,7 @@ export const PulseCard = styled(Card)<PulesCardProps>`
       cursor: pointer;
 
       &:hover {
-        background-color: ${color("brand")};
+        background-color: ${() => color("brand")};
       }
     `}
 `;

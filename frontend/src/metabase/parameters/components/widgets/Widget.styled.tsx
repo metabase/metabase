@@ -18,7 +18,7 @@ export const Footer = styled.div`
   display: flex;
   justify-content: flex-end;
   padding: ${space(1)};
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;
 
 export const TokenFieldWrapper = styled.div`

@@ -8,7 +8,7 @@ export const Container = styled.div`
   display: flex;
   flex-wrap: nowrap;
   padding-left: ${space(1)};
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 `;
 
 type TabButtonProps = {
@@ -40,7 +40,7 @@ export const BackButton = styled(TabButton)`
   border: none;
   border-radius: 0;
   margin-left: ${space(1)};
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   &:hover {
     color: ${({ primaryColor }) => primaryColor};

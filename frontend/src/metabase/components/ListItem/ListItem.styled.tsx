@@ -22,7 +22,7 @@ export const Root = styled.li<Props>`
 
 export const ListItemLink = styled(Link)`
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
@@ -30,6 +30,6 @@ export const ListItemName = styled(Ellipsified)`
   max-width: 100%;
   overflow: hidden;
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

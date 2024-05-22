@@ -5,22 +5,22 @@ import SelectList from "metabase/components/SelectList";
 import { color, lighten } from "metabase/lib/colors";
 
 const completeConditionStyle = (isOpened = false) => css`
-  color: ${color("white")};
+  color: ${() => color("white")};
   background-color: ${isOpened ? lighten("brand", 0.1) : "transparent"};
 
   &:hover,
   &:focus {
-    background-color: ${lighten("brand", 0.1)};
+    background-color: ${() => lighten("brand", 0.1)};
   }
 `;
 
 const incompleteConditionStyle = (isOpened = false) => css`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   border: 2px solid ${isOpened ? color("brand") : "transparent"};
 
   &:hover,
   &:focus {
-    border: 2px solid ${color("brand")};
+    border: 2px solid ${() => color("brand")};
   }
 `;
 

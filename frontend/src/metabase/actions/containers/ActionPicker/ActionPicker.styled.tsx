@@ -18,7 +18,7 @@ export const ActionsList = styled.ul`
 export const ActionItem = styled.li<{ isSelected?: boolean }>`
   display: flex;
   font-weight: bold;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
@@ -26,10 +26,10 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   cursor: pointer;
 
   ${({ isSelected }) =>
-    isSelected ? `background-color: ${alpha("brand", 0.2)};` : ""}
+    isSelected ? `background-color: ${() => alpha("brand", 0.2)};` : ""}
 
   &:hover {
-    background-color: ${alpha("brand", 0.35)};
+    background-color: ${() => alpha("brand", 0.35)};
   }
 `;
 
@@ -39,12 +39,12 @@ export const EmptyState = styled(UnstyledEmptyState)`
 
 export const EmptyModelStateContainer = styled.div`
   padding: ${space(2)};
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   text-align: center;
 `;
 
 export const EditButton = styled(Button)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   padding: 0 0.5rem;
 `;
 

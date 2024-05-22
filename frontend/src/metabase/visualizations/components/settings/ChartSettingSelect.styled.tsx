@@ -6,6 +6,6 @@ import { color } from "metabase/lib/colors";
 
 export const SelectWithHighlightingIcon = styled(Select)`
   ${SelectButton.Icon}:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

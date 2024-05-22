@@ -11,12 +11,12 @@ export interface DashCardRootProps {
 }
 
 const rootNightModeStyle = css`
-  border-color: ${color("bg-night")};
-  background-color: ${color("bg-night")};
+  border-color: ${() => color("bg-night")};
+  background-color: ${() => color("bg-night")};
 `;
 
 const rootSlowCardStyle = css`
-  border-color: ${color("accent4")};
+  border-color: ${() => color("accent4")};
 `;
 
 const rootTransparentBackgroundStyle = css`
@@ -26,12 +26,12 @@ const rootTransparentBackgroundStyle = css`
 `;
 
 const hiddenBackgroundStyle = css`
-  background: ${color("bg-light")};
+  background: ${() => color("bg-light")};
   box-shadow: none !important;
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
@@ -50,6 +50,6 @@ export const VirtualDashCardOverlayRoot = styled.div`
 `;
 
 export const VirtualDashCardOverlayText = styled.h4`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   padding: 1rem;
 `;

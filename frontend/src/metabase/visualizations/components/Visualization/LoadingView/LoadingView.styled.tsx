@@ -13,11 +13,11 @@ export const Root = styled.div`
 
   padding: 0.5rem;
 
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 export const SlowQueryMessageContainer = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const ShortMessage = styled.span`
@@ -31,5 +31,5 @@ export const Duration = styled.span`
 `;
 
 export const StyledLoadingSpinner = styled(LoadingSpinner)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;

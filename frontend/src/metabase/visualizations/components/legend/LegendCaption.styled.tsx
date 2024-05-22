@@ -10,7 +10,7 @@ export const LegendCaptionRoot = styled.div`
 `;
 
 export const LegendLabel = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
@@ -26,11 +26,11 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(Icon)`
-  color: ${lighten("text-light", 0.1)};
+  color: ${() => lighten("text-light", 0.1)};
   margin: 0 0.375rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${() => color("text-medium")};
   }
 `;
 

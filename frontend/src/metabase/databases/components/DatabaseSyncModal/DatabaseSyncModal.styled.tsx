@@ -15,7 +15,7 @@ export const ModalBody = styled.div`
 `;
 
 export const ModalTitle = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
@@ -24,7 +24,7 @@ export const ModalTitle = styled.div`
 `;
 
 export const ModalMessage = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   line-height: 1.5rem;
   margin-bottom: 3rem;
   text-align: center;
@@ -41,10 +41,10 @@ export const ModalCloseIcon = styled(Icon)`
   right: 1rem;
   width: 1rem;
   height: 1rem;
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   cursor: pointer;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${() => color("text-medium")};
   }
 `;

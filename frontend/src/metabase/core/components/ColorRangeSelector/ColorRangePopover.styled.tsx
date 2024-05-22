@@ -22,5 +22,5 @@ export const PopoverColorRangeList = styled.div`
 
 export const PopoverDivider = styled.div`
   margin: 0.75rem -0.75rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;

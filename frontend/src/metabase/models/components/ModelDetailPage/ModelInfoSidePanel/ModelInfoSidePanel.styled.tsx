@@ -9,7 +9,7 @@ export const ModelInfoSection = styled.div``;
 
 export const ModelInfoPanel = styled.div`
   padding-left: 2rem;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid ${() => color("border")};
   width: 15rem;
 
   ${ModelInfoSection}:not(:first-of-type) {
@@ -19,7 +19,7 @@ export const ModelInfoPanel = styled.div`
 
 export const ModelInfoTitle = styled.span`
   display: block;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-weight: 600;
 
   padding-left: 4px;
@@ -31,20 +31,17 @@ export const valueBlockStyle = css`
   padding-left: 4px;
 `;
 
-const commonInfoTextStyle = css`
-  ${valueBlockStyle}
-  color: ${color("text-medium")};
-`;
-
 export const ModelInfoText = styled.span`
-  ${commonInfoTextStyle}
+  ${valueBlockStyle};
+  color: ${() => color("text-medium")};
 `;
 
 export const ModelDescription = styled(EditableText)`
-  ${commonInfoTextStyle}
+  ${valueBlockStyle};
+  color: ${() => color("text-medium")};
 `;
 
 export const ModelInfoLink = styled(Link)`
-  ${commonInfoTextStyle}
-  color: ${color("brand")};
+  ${valueBlockStyle};
+  color: ${() => color("text-medium")};
 `;

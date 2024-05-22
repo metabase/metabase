@@ -40,7 +40,7 @@ export const SidebarGroup = Object.assign(_SidebarGroup, {
 export const SidebarContent = styled.div`
   padding: 1.5rem;
 
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
   border-radius: 8px;
 
   ${SidebarGroup}:last-child {

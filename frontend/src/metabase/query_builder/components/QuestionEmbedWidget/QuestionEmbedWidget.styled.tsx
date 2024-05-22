@@ -10,7 +10,7 @@ export const TriggerIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 
   ${breakpointMinSmall} {

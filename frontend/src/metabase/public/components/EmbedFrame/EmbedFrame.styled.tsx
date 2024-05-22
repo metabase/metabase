@@ -32,9 +32,9 @@ export const Root = styled.div<{
   ${props =>
     props.isBordered &&
     css`
-      border: 1px solid ${color("border")};
+      border: 1px solid ${() => color("border")};
       border-radius: 8px;
-      box-shadow: 0 2px 2px ${color("shadow")};
+      box-shadow: 0 2px 2px ${() => color("shadow")};
     `}
 `;
 
@@ -70,7 +70,7 @@ export const DashboardTabsContainer = styled(FullWidthContainer)`
 `;
 
 export const Separator = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 `;
 
 export const Body = styled.main`
@@ -82,7 +82,7 @@ export const Body = styled.main`
 `;
 
 export const ActionButtonsContainer = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-left: auto;
 `;
 
@@ -90,7 +90,7 @@ export type FooterVariant = "default" | "large";
 
 const footerVariantStyles = {
   default: css`
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid ${() => color("border")};
   `,
   large: css`
     justify-content: center;

@@ -6,6 +6,6 @@ import { color } from "metabase/lib/colors";
 export const ModelLinkRoot = styled(Link)`
   display: inline-flex;
   align-items: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: bold;
 `;

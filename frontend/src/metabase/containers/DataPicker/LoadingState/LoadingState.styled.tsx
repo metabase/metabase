@@ -7,5 +7,5 @@ export const LoadingStateContainer = styled.div`
   flex: 1;
   align-items: center;
   justify-content: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;

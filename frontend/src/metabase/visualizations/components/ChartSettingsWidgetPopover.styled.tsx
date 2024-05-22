@@ -18,7 +18,7 @@ export const PopoverRoot = styled.div<PopoverRootProps>`
 
 export const PopoverTabs = styled(Radio)`
   padding: 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   margin: 0 1rem 1rem 1rem;
 
   ${Radio.RadioLabelVariants.join(", ")} {

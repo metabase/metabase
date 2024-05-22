@@ -24,12 +24,12 @@ export const ModelCard = styled(Card)`
   justify-content: flex-start;
   align-items: flex-start;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
 
   box-shadow: none;
   &:hover {
     h1 {
-      color: ${color("brand")};
+      color: ${() => color("brand")};
     }
   }
   transition: box-shadow 0.15s;
@@ -61,12 +61,12 @@ export const CollectionHeaderContainer = styled.button`
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
   margin-top: 0.75rem;
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
   :first-of-type {
     margin-top: 1rem;
@@ -78,12 +78,12 @@ export const CollectionHeaderLink = styled(Link)`
   display: flex;
   align-items: center;
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   margin-inline-start: auto;
 `;
 
@@ -121,7 +121,7 @@ export const CollectionHeaderToggleContainer = styled.div`
     background-color: inherit;
     div,
     svg {
-      color: ${color("brand")};
+      color: ${() => color("brand")};
     }
   }
 `;
@@ -130,7 +130,7 @@ export const CollectionSummary = styled.div`
   margin-inline-start: auto;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
@@ -139,7 +139,7 @@ export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
 `;
 
 export const BannerModelIcon = styled(FixedSizeIcon)`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   margin-inline-end: 0.5rem;
 `;
 

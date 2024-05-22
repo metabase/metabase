@@ -11,11 +11,11 @@ export const ToastRoot = styled.div`
 `;
 
 export const StyledIcon = styled(Icon)`
-  color: ${color("text-white")};
+  color: ${() => color("text-white")};
   margin-right: ${space(1)};
 `;
 
 export const CollectionLink = styled(Collections.Link)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   margin-left: ${space(0)};
 `;

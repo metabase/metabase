@@ -11,7 +11,7 @@ export const CardActionMenuContainer = styled.div`
   top: 0.3125rem;
   right: 0.3125rem;
   z-index: 3;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   visibility: hidden;
 `;
 
@@ -33,9 +33,9 @@ export const CardRoot = styled(Link)<CardRootProps>`
   overflow: hidden;
   height: ${props => props.isPreview && "15.625rem"};
   padding: ${props => (props.isPreview ? "0" : "0.5rem 0")};
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
 
   &:hover {
     ${CardActionMenuContainer} {
@@ -43,11 +43,11 @@ export const CardRoot = styled(Link)<CardRootProps>`
     }
 
     ${LegendLabel} {
-      color: ${color("brand")};
+      color: ${() => color("brand")};
     }
 
     ${ChartSkeleton.Title} {
-      color: ${color("brand")};
+      color: ${() => color("brand")};
     }
 
     ${ChartSkeleton.Description} {

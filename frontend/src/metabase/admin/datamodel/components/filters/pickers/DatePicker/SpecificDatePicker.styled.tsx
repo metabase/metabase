@@ -13,6 +13,6 @@ export const DateInputContainer = styled.div<DateInputContainerProps>`
   margin-bottom: 1rem;
 
   &:focus-within {
-    border-color: ${color("brand")};
+    border-color: ${() => color("brand")};
   }
 `;

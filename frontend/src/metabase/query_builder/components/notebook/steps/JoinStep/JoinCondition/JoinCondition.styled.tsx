@@ -5,5 +5,5 @@ import { Flex } from "metabase/ui";
 
 export const JoinConditionRoot = styled(Flex)`
   border-radius: 0.5rem;
-  background-color: ${color("brand")};
+  background-color: ${() => color("brand")};
 `;

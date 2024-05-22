@@ -7,9 +7,9 @@ export const PopoverTrigger = styled.div`
   align-items: center;
   cursor: pointer;
   margin: 1rem 0;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

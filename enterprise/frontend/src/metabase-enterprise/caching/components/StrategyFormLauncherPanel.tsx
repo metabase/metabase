@@ -46,7 +46,10 @@ export const StrategyFormLauncherPanel = ({
 
   return (
     <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
-      <Box p="lg" style={{ borderBottom: `1px solid ${color("border")}` }}>
+      <Box
+        p="lg"
+        style={{ borderBottom: `1px solid ${() => color("border")}` }}
+      >
         <StrategyFormLauncher
           forId={rootId}
           title={t`Default policy`}

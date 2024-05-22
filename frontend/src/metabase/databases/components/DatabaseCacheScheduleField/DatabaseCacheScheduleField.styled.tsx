@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const ScheduleOptionList = styled.div`
-  border: 1px solid ${color("border")};
-  box-shadow: 0 2px 2px ${color("shadow")};
+  border: 1px solid ${() => color("border")};
+  box-shadow: 0 2px 2px ${() => color("shadow")};
 `;
 
 interface ScheduleOptionRootProps {
@@ -15,7 +15,7 @@ export const ScheduleOptionRoot = styled.div<ScheduleOptionRootProps>`
   display: flex;
   cursor: ${props => !props.isSelected && "pointer"};
   padding: 1.5rem 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 
   &:last-child {
     border-bottom: none;
@@ -68,7 +68,7 @@ export const ScheduleOptionContent = styled.div`
 `;
 
 export const ScheduleOptionText = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-size: 1rem;
   line-height: 1.5rem;
   max-width: 38.75rem;

@@ -4,11 +4,11 @@ import { color } from "metabase/lib/colors";
 
 export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   overflow-y: auto;
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
   height: 100%;
 
   ${props =>
-    props.hasLeftBorder && `border-left: 1px solid ${color("border")};`}
+    props.hasLeftBorder && `border-left: 1px solid ${() => color("border")};`}
 `;
 
 export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
@@ -23,7 +23,7 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
   overflow: hidden;
 
   border-radius: 1rem;
-  border: 2px solid ${color("border")};
+  border: 2px solid ${() => color("border")};
 `;
 
 export const TabWrapper = styled.div`

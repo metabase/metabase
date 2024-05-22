@@ -33,19 +33,19 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: ${color("bg-medium")};
+        background-color: ${() => color("bg-medium")};
       `;
     }
     return css`
-      background-color: ${color("white")};
+      background-color: ${() => color("white")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: ${() => color("bg-light")};
       }
     `;
   }}
 
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
 
   overflow: hidden;
 
@@ -67,7 +67,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: ${color("border")};
+        border-color: ${() => color("border")};
         ${activeInputCSS};
       `};
   }
@@ -147,12 +147,12 @@ export const CloseSearchButton = styled.button`
   width: 3rem;
   height: 100%;
 
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
 
   cursor: pointer;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${() => color("text-medium")};
   }
 `;
 
@@ -161,7 +161,7 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

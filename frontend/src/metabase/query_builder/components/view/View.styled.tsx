@@ -11,7 +11,7 @@ import { ViewTitleHeader } from "./ViewHeader";
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
-  background-color: ${color("bg-white")};
+  background-color: ${() => color("bg-white")};
   height: 100%;
   position: relative;
 `;
@@ -56,7 +56,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
 const headerHeight = "4rem";
 
 export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   padding-top: 8px;
   padding-bottom: 8px;
   min-height: ${headerHeight};
@@ -64,14 +64,14 @@ export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
 
 export const QueryBuilderViewHeaderContainer = styled.div`
   flex-shrink: 0;
-  background-color: ${color("bg-white")};
+  background-color: ${() => color("bg-white")};
   position: relative;
   z-index: 3;
 `;
 
 export const NativeQueryEditorContainer = styled.div`
   margin-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   z-index: 2;
 `;
 

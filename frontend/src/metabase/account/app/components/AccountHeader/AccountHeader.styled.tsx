@@ -14,8 +14,8 @@ export const AccountHeaderRoot = styled.div`
   justify-content: center;
   align-items: center;
   padding-top: ${space(1)};
-  border-bottom: 1px solid ${color("border")};
-  background-color: ${color("white")};
+  border-bottom: 1px solid ${() => color("border")};
+  background-color: ${() => color("white")};
 
   ${breakpointMinSmall} {
     padding-top: ${space(2)};
@@ -41,7 +41,7 @@ export const HeaderTitle = styled.h2`
 
 export const HeaderSubtitle = styled.h3`
   text-align: center;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

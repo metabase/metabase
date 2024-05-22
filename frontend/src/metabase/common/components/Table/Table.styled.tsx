@@ -11,12 +11,12 @@ export const StyledTable = styled(Table)`
   margin-block: 1rem;
   position: relative;
   border-radius: 0.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
 
   th {
     text-align: left;
     padding: 0.5rem;
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid ${() => color("border")};
   }
 
   tbody {
@@ -26,11 +26,11 @@ export const StyledTable = styled(Table)`
   }
 
   tbody > tr:hover {
-    background-color: ${color("brand-lighter")};
+    background-color: ${() => color("brand-lighter")};
   }
 
   td {
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid ${() => color("border")};
     padding-inline: 0.5rem;
   }
   &:first-of-type td,

@@ -25,7 +25,7 @@ export const QueryErrorHeader = styled.div`
 
 export const QueryErrorTitle = styled.div`
   flex: 1 1 auto;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
@@ -33,7 +33,7 @@ export const QueryErrorTitle = styled.div`
 
 export const QueryErrorIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("error")};
+  color: ${() => color("error")};
   width: 1rem;
   height: 1rem;
   margin-right: 0.75rem;
@@ -46,14 +46,14 @@ export const QueryErrorMessage = styled.div`
   font-family: ${monospaceFontFamily};
   font-size: 0.75rem;
   line-height: 1.125rem;
-  border: 1px solid ${color("brand")};
+  border: 1px solid ${() => color("brand")};
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
   overflow-wrap: break-word;
 `;
 
 export const QueryErrorLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   margin: 1rem 0;
   font-size: 0.75rem;
   line-height: 1rem;

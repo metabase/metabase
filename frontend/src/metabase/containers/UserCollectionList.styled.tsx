@@ -15,7 +15,7 @@ export const ListGridItem = styled(GridItem)`
   width: 33.33%;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 

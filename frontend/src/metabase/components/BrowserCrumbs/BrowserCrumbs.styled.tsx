@@ -18,11 +18,11 @@ export const BrowserCrumbsLink = styled(Link)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
 export const BrowserCrumbsIcon = styled(Icon)`
   margin: 0 0.5rem;
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
 `;

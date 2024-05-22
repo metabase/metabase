@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { SidebarItem } from "./SidebarItem";
 
 export const Heading = styled.h4`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   padding-top: 22px;
   padding-bottom: 16px;
   margin-bottom: 8px;
@@ -18,11 +18,11 @@ export const SidebarContent = styled.div`
 
 export const SidebarContentBordered = styled(SidebarContent)`
   padding-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 `;
 
 export const SidebarHeader = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   padding-left: 32px;
   padding-right: 36px;
   margin-bottom: 16px;

@@ -14,7 +14,7 @@ export const ItemLink = styled(Link)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   height: 1.5rem;
   width: 1.5rem;
 `;
@@ -31,7 +31,7 @@ export const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
   line-height: 1.5rem;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   transition: color 0.2s ease;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -39,7 +39,7 @@ export const Title = styled.div`
 `;
 
 export const Description = styled(MarkdownPreview)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const Body = styled.div`
@@ -50,7 +50,7 @@ export const Body = styled.div`
 
   &:hover {
     ${Title} {
-      color: ${color("brand")};
+      color: ${() => color("brand")};
     }
 
     ${ActionsContainer} {

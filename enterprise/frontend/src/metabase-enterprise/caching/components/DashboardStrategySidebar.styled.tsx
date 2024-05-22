@@ -8,7 +8,7 @@ export const DashboardStrategySidebarBody = styled(Group)`
   flex-flow: column nowrap;
   height: 100%;
   .form-buttons-group {
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid ${() => color("border")};
     position: sticky;
     bottom: 0;
   }

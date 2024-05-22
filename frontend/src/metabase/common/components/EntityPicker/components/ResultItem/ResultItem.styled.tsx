@@ -18,13 +18,13 @@ export const ChunkyListItem = styled.button<{
   &:hover {
     ${({ isSelected }) =>
       !isSelected
-        ? `background-color: ${color("brand-lighter")};
-      color: ${color("text-dark")};`
+        ? `background-color: ${() => color("brand-lighter")};
+      color: ${() => color("text-dark")};`
         : ""}
   }
 
   ${({ isLast }) =>
-    !isLast ? `border-bottom: 1px solid ${color("border")}` : ""};
+    !isLast ? `border-bottom: 1px solid ${() => color("border")}` : ""};
 
   display: flex;
   gap: 1rem;
@@ -34,7 +34,7 @@ export const ChunkyListItem = styled.button<{
 `;
 
 export const ChunkyList = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
   display: flex;
   flex-direction: column;

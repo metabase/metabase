@@ -7,18 +7,18 @@ export const EditGroupButton = styled.li`
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${() => color("white")};
+    background-color: ${() => color("brand")};
   }
 `;
 
 export const DeleteModalTrigger = styled.li`
-  color: ${color("error")};
+  color: ${() => color("error")};
   cursor: pointer;
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${() => color("white")};
+    background-color: ${() => color("brand")};
   }
 `;

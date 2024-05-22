@@ -12,7 +12,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
   padding: 1rem;
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;
@@ -65,7 +65,7 @@ export const LayoutEditButton = styled(Button)`
   right: 1rem;
 
   &:hover {
-    color: ${color("brand")};
-    background: ${lighten("brand", 0.6)};
+    color: ${() => color("brand")};
+    background: ${() => lighten("brand", 0.6)};
   }
 `;

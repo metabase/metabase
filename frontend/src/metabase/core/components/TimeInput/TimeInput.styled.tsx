@@ -16,12 +16,12 @@ export const InputField = styled(NumericInput)`
 `;
 
 export const InputDivider = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   margin: 0 0.5rem;
 `;
 
 export const InputClearIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
 `;
 
 interface InputPeriodButtonProps {

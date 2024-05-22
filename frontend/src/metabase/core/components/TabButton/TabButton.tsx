@@ -190,7 +190,7 @@ export interface RenameableTabButtonProps
 
 // These styles need to be here instead of .styled to avoid circular dependency
 const borderStyle = css`
-  border: 1px solid ${color("brand")};
+  border: 1px solid ${() => color("brand")};
   box-shadow: 0px 0px 0px 1px ${lighten(color("brand"), 0.28)};
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{

@@ -16,7 +16,7 @@ export const FilterWidgetRoot = styled.div<FilterWidgetRootProps>`
   ${({ isSelected }) =>
     isSelected &&
     css`
-      border-color: ${color("filter")};
+      border-color: ${() => color("filter")};
     `}
 `;
 
@@ -35,7 +35,7 @@ export const FilterSection = styled.div`
 `;
 
 export const FilterField = styled(FilterSection)`
-  color: ${color("filter")};
+  color: ${() => color("filter")};
   font-weight: 700;
 
   &:hover {
@@ -43,14 +43,14 @@ export const FilterField = styled(FilterSection)`
   }
 
   ${QueryOption} {
-    color: ${color("filter")};
+    color: ${() => color("filter")};
   }
 `;
 
 export const FilterOperator = styled(FilterSection)`
-  color: ${color("filter")};
+  color: ${() => color("filter")};
 
   ${QueryOption} {
-    color: ${color("filter")};
+    color: ${() => color("filter")};
   }
 `;

@@ -7,7 +7,7 @@ export interface AmPmLabelProps {
 }
 
 export const AmPmLabel = styled.span<AmPmLabelProps>`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: 900;
   margin-right: 0.5rem;
   cursor: pointer;

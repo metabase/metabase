@@ -13,7 +13,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   display: flex;
   min-height: 100%;
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
 `;
 
 export const LayoutBody = styled.div`
@@ -45,8 +45,8 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 15px ${color("shadow")};
+  background-color: ${() => color("white")};
+  box-shadow: 0 1px 15px ${() => color("shadow")};
   border-radius: 6px;
   min-height: 20rem;
   min-width: 35rem;
@@ -64,6 +64,6 @@ export const LayoutCard = styled.div`
 export const CheckmarkIcon = styled(Icon)`
   border-radius: 100%;
   padding: 1rem;
-  color: ${color("brand")};
-  background: ${alpha(color("brand"), 0.3)};
+  color: ${() => color("brand")};
+  background: ${() => alpha(color("brand"), 0.3)};
 `;

@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
 export const FilterButton = styled(Button)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   margin: 0.5rem;
 `;
 
@@ -30,7 +30,7 @@ interface ParametersListContainerProps {
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
 
   ${({ isSmallScreen, isShowingMobile }) =>
     isSmallScreen &&
@@ -40,7 +40,7 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       left: 0;
 
       width: 100%;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid ${() => color("border")};
 
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};

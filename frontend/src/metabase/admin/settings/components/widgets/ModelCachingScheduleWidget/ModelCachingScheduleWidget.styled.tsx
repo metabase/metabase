@@ -1,4 +1,3 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -27,13 +26,9 @@ export const StyledSettingSelect = styled(SettingSelect)`
   margin-top: 12px;
 `;
 
-export const commonLabelStyle = css`
-  display: block;
-  color: ${color("text-medium")};
-`;
-
 export const SelectLabel = styled.span`
-  ${commonLabelStyle}
+  display: block;
+  color: ${() => color("text-medium")};
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 0.875rem;
@@ -43,5 +38,5 @@ export const SelectLabel = styled.span`
 
 export const Description = styled.span`
   margin-top: 1.5rem;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;

@@ -92,7 +92,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
         },
         track: {
           backgroundColor: theme.fn.themeColor("bg-medium"),
-          border: error ? `1px solid ${color("accent3")}` : "none",
+          border: error ? `1px solid ${() => color("accent3")}` : "none",
           boxSizing: "border-box",
           borderRadius: rem(24),
           height: getSize({ size, sizes: TRACK_HEIGHTS }),

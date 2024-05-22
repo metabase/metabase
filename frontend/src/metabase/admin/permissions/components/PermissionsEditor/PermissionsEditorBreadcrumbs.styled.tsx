@@ -4,7 +4,7 @@ import { color, lighten } from "metabase/lib/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;
-  color: ${color("bg-dark")};
+  color: ${() => color("bg-dark")};
   position: relative;
   margin: 0 6px;
   top: 2px;
@@ -12,10 +12,10 @@ export const BreadcrumbsSeparator = styled.div`
 
 export const BreadcrumbsLink = styled.a`
   cursor: pointer;
-  color: ${color("filter")};
+  color: ${() => color("filter")};
   transition: color 200ms;
 
   &:hover {
-    color: ${lighten("accent7", 0.2)};
+    color: ${() => lighten("accent7", 0.2)};
   }
 `;

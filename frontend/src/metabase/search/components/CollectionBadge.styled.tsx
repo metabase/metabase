@@ -13,6 +13,6 @@ export const CollectionLink = styled(Link)`
   text-decoration: dashed;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

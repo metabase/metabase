@@ -16,11 +16,11 @@ export const ItemIcon = styled(Icon)<{ color?: string | null }>`
 `;
 
 const activeItemCss = css`
-  background-color: ${color("brand")};
+  background-color: ${() => color("brand")};
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${color("white")};
+    color: ${() => color("white")};
   }
 `;
 

@@ -9,7 +9,7 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
@@ -40,7 +40,7 @@ export const StepLabel = styled.div<Props>`
 `;
 
 export const StepLabelText = styled.span`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: 700;
   line-height: 1;
 `;
@@ -48,5 +48,5 @@ export const StepLabelText = styled.span`
 export const StepLabelIcon = styled(Icon)`
   width: 1rem;
   height: 1rem;
-  color: ${color("white")};
+  color: ${() => color("white")};
 `;

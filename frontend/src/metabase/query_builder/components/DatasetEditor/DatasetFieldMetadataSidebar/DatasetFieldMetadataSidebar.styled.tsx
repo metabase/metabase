@@ -8,17 +8,17 @@ const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
   ${Radio.RadioGroupVariants.join(", ")} {
-    color: ${color("text-dark")};
+    color: ${() => color("text-dark")};
   }
 
   ${SelectButton.Root} {
-    color: ${color("text-dark")};
+    color: ${() => color("text-dark")};
     transition: border 0.3s;
     outline: none;
   }
 
   ${SelectButton.Root}:focus {
-    border-color: ${color("brand")};
+    border-color: ${() => color("brand")};
   }
 `;
 
@@ -42,5 +42,5 @@ export const FormTabsContainer = styled.div`
 export const Divider = styled.div`
   height: 1px;
   width: 100%;
-  background-color: ${color("bg-medium")};
+  background-color: ${() => color("bg-medium")};
 `;

@@ -14,7 +14,7 @@ export const Anchor = styled.a`
   padding: ${space(2)};
 
   &:hover {
-    background-color: ${color("bg-medium")};
+    background-color: ${() => color("bg-medium")};
   }
 `;
 

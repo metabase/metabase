@@ -13,15 +13,15 @@ export const RowToggleIconRoot = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${color("white")};
+  color: ${() => color("white")};
   padding: 4px;
   border-radius: 4px;
-  background-color: ${color("text-light")};
+  background-color: ${() => color("text-light")};
   transition: all 200ms;
   outline: none;
 
   &:hover {
-    background-color: ${darken("text-light", 0.2)};
+    background-color: ${() => darken("text-light", 0.2)};
   }
 `;
 
@@ -82,7 +82,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     `}
 
   &:hover {
-    background-color: ${color("border")};
+    background-color: ${() => color("border")};
   }
 `;
 
@@ -120,7 +120,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
 `;
 
 export const ResizeHandle = styled.div`
@@ -134,10 +134,10 @@ export const ResizeHandle = styled.div`
   cursor: ew-resize;
 
   &:active {
-    background-color: ${color("brand")};
+    background-color: ${() => color("brand")};
   }
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: ${() => color("brand")};
   }
 `;

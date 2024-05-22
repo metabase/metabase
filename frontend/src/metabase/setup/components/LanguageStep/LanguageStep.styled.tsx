@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const StepDescription = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin: 0.875rem 0;
 `;
 
@@ -12,7 +12,7 @@ export const LocaleGroup = styled.ol`
   padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.25rem;
 `;
 
@@ -40,12 +40,12 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   font-weight: 700;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${() => color("white")};
+    background-color: ${() => color("brand")};
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

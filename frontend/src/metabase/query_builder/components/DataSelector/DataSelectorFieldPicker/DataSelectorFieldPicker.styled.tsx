@@ -10,7 +10,7 @@ export const Container = styled.div`
 
 export const HeaderContainer = styled.div`
   align-items: center;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   cursor: pointer;
   display: flex;
 `;

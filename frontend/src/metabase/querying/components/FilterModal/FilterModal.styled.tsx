@@ -14,7 +14,7 @@ interface ColumnItemRootProps extends BoxProps {
 }
 
 export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
   padding: 1rem 2rem;
   padding-left: 0;
 
@@ -24,12 +24,12 @@ export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
 
   &:hover,
   :focus-within {
-    background-color: ${color("bg-light")};
+    background-color: ${() => color("bg-light")};
   }
 `;
 
 export const ModalHeader = styled(Modal.Header)`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid ${() => color("border")};
 `;
 
 export const ModalBody = styled(Modal.Body)`
@@ -41,7 +41,7 @@ export const ModalBody = styled(Modal.Body)`
 `;
 
 export const ModalFooter = styled(Flex)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;
 
 export const TabsListSidebar = styled(Tabs.List)`

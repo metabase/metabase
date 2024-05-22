@@ -11,21 +11,21 @@ export const NativeCardDefault = styled.div`
 `;
 
 export const NativeCardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-bottom: 0.5rem;
   width: 1.25rem;
   height: 1.25rem;
 `;
 
 export const NativeCardText = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   max-width: 15rem;
   text-align: center;
   line-height: 1.5rem;
 `;
 
 export const NativeCardLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: bold;
   margin-top: 0.5rem;
 `;

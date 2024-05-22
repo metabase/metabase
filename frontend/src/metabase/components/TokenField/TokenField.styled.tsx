@@ -13,11 +13,11 @@ export const TokenFieldContainer = styled.ul`
 
   max-height: 130px;
 
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
   overflow-x: auto;
   overflow-y: auto;
   border-radius: ${space(1)};
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
 `;
 
 export const TokenInputItem = styled.li`
@@ -31,5 +31,5 @@ export const TokenInputItem = styled.li`
 export const PrefixContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;

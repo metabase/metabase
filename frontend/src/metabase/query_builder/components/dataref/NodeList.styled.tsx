@@ -20,7 +20,7 @@ export const NodeListIcon = styled(Icon)`
 `;
 
 export const NodeListItemIcon = styled(Icon)`
-  color: ${color("focus")};
+  color: ${() => color("focus")};
   margin-top: 1px;
   width: ${space(2)};
 `;
@@ -33,7 +33,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   border-radius: 8px;
   display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: 700;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -43,7 +43,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   padding: ${space(1)};
   text-decoration: none;
   :hover {
-    background-color: ${color("bg-medium")};
+    background-color: ${() => color("bg-medium")};
   }
 
   ${props =>
@@ -76,7 +76,7 @@ export const NodeListTitleText = styled.span`
 
 export const QuestionId = styled.span`
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-left: ${space(0)};
 `;
 

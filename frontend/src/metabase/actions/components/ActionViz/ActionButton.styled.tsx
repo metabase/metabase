@@ -13,7 +13,7 @@ export const StyledButton = styled(Button)<{
   ${({ focus }) =>
     focus
       ? `
-    border: 2px solid ${color("focus")};
+    border: 2px solid ${() => color("focus")};
   `
       : ""}
 `;

@@ -13,12 +13,12 @@ export const DatabaseCard = styled(Card)`
   margin-bottom: 1rem;
   box-shadow: none;
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
 export const DatabaseCardLink = styled(Link)`
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

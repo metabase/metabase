@@ -20,8 +20,8 @@ export const FilterButton = styled(Button, {
   transition: border 300ms linear, background 300ms linear;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("filter")};
+    color: ${() => color("white")};
+    background-color: ${() => color("filter")};
   }
 
   @media (prefers-reduced-motion) {

@@ -6,7 +6,7 @@ export const ToggleRoot = styled.div`
   display: flex;
   flex: 1 1 auto;
   max-width: 33rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
 `;
 
@@ -15,7 +15,7 @@ export const ImageContainer = styled.div`
   width: 7.5rem;
   justify-content: center;
   align-items: center;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid ${() => color("border")};
 `;
 
 export const ToggleContainer = styled.div`

@@ -11,7 +11,7 @@ export const LoadingStateContainer = styled.div`
   transform: translateY(10px);
   align-items: center;
   height: 16px;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
 `;
 
 export const InfoModalTitle = styled.h2`
@@ -20,15 +20,15 @@ export const InfoModalTitle = styled.h2`
 `;
 
 export const InfoModalBody = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const NewBadge = styled.div`
   padding: 5px 10px;
   font-size: 0.875rem;
   font-weight: 700;
-  color: ${color("brand")};
-  background-color: ${color("brand-lighter")};
+  color: ${() => color("brand")};
+  background-color: ${() => color("brand-lighter")};
   margin: 0 auto;
   border-radius: 6px;
 `;

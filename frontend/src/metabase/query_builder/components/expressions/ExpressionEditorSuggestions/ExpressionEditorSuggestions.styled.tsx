@@ -17,8 +17,8 @@ export const SuggestionMatch = styled.span`
 `;
 
 const highlighted = css`
-  color: ${color("white")};
-  background-color: ${color("brand")};
+  color: ${() => color("white")};
+  background-color: ${() => color("brand")};
 `;
 
 export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
@@ -39,11 +39,11 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
   background: white;
   height: 2rem;
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   position: sticky;
   bottom: 0;
@@ -85,10 +85,10 @@ export const GroupTitle = styled(ExpressionListItem)`
   text-transform: uppercase;
   font-weight: bold;
   font-size: 12px;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   pointer-events: none;
 
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 
   &:first-child {
     border-top: none;

@@ -15,7 +15,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1rem;
   font-weight: bold;
   margin-bottom: 0.125rem;
@@ -23,13 +23,13 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-size: 0.75rem;
   word-wrap: break-word;
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   width: 1rem;
   height: 1rem;
 `;
@@ -41,13 +41,13 @@ export const CardIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 1rem;
 `;
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 0.75rem;
 `;
 
@@ -56,19 +56,19 @@ export interface CardProps {
 }
 
 const selectedStyles = css`
-  background-color: ${color("brand")};
+  background-color: ${() => color("brand")};
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: ${color("white")};
+    color: ${() => color("white")};
   }
 
   ${CardIcon} {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 
   ${CardIconContainer} {
-    border-color: ${color("white")};
-    background-color: ${color("white")};
+    border-color: ${() => color("white")};
+    background-color: ${() => color("white")};
   }
 `;
 

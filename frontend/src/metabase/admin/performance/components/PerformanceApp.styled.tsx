@@ -5,7 +5,7 @@ import { Tabs } from "metabase/ui";
 
 export const TabsList = styled(Tabs.List)`
   padding: 0 2.5rem;
-  background-color: ${color("bg-light")};
+  background-color: ${() => color("bg-light")};
   border-bottom-width: 1px;
   margin-top: 1.5rem;
 `;
@@ -17,7 +17,7 @@ export const Tab = styled(Tabs.Tab)`
   padding: 0.625rem 0px;
   margin-inline-end: 1.25rem;
   :hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
     background-color: inherit;
     border-color: transparent;
   }

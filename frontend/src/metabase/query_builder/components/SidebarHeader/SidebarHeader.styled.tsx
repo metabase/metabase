@@ -16,13 +16,13 @@ export const HeaderIcon = styled(Icon)`
 const backButtonStyle = () => css`
   cursor: pointer;
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
 const defaultBackButtonStyle = () => css`
   ${backButtonStyle()}
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -60,12 +60,12 @@ export const HeaderTitleContainer = styled.span<{
 `;
 
 export const CloseButton = styled.a`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   text-decoration: none;
 
   margin-left: auto;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

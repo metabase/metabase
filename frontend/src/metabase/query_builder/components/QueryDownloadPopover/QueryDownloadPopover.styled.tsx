@@ -34,24 +34,24 @@ export const DownloadButtonRoot = styled.button`
   cursor: pointer;
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: ${() => color("brand")};
   }
 `;
 
 export const DownloadButtonText = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
+    color: ${() => color("white")};
   }
 `;
 
 export const DownloadButtonSecondaryText = styled.div`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
+    color: ${() => color("white")};
   }
 `;

@@ -16,7 +16,7 @@ export const Container = styled.div<{ isSmall: boolean }>`
 `;
 
 export const TextCardDefault = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   margin: ${space(1)} 0;
   display: flex;
   flex-direction: row;
@@ -35,7 +35,7 @@ export const CardLabel = styled.div`
 
 export const Header = styled.h4`
   width: 100%;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-bottom: ${space(1)};
   text-align: center;
 `;
@@ -45,14 +45,14 @@ export const TargetButton = styled.div<{ variant: string }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
   cursor: pointer;
-  border: 2px solid ${color("brand")};
+  border: 2px solid ${() => color("brand")};
   border-radius: 8px;
   min-height: 30px;
   padding: 0.25em 0.5em;
   margin: 0 0.25rem;
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 
   ${({ variant }) =>
     variant === "disabled" &&
@@ -65,26 +65,26 @@ export const TargetButton = styled.div<{ variant: string }>`
   ${({ variant }) =>
     variant === "mapped" &&
     css`
-      border-color: ${color("brand")};
-      background-color: ${color("brand")};
-      color: ${color("white")};
+      border-color: ${() => color("brand")};
+      background-color: ${() => color("brand")};
+      color: ${() => color("white")};
     `}
 
   ${({ variant }) =>
     variant === "unauthed" &&
     css`
       pointer-events: none;
-      border-color: ${color("bg-light")};
-      background-color: ${color("bg-light")};
-      color: ${color("text-medium")};
+      border-color: ${() => color("bg-light")};
+      background-color: ${() => color("bg-light")};
+      color: ${() => color("text-medium")};
     `}
 
   ${({ variant }) =>
     variant === "invalid" &&
     css`
-      border-color: ${color("error")};
-      background-color: ${color("error")};
-      color: ${color("white")};
+      border-color: ${() => color("error")};
+      background-color: ${() => color("error")};
+      color: ${() => color("white")};
     `}
 `;
 
@@ -100,14 +100,14 @@ export const TargetButtonText = styled.span`
 `;
 
 export const CloseIconButton = styled(Button)<{ icon?: string; size?: number }>`
-  color: ${color("white")};
+  color: ${() => color("white")};
   background-color: transparent;
   border: none;
   padding: ${space(0)} !important;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${alpha("white", 0.2)};
+    color: ${() => color("white")};
+    background-color: ${() => alpha("white", 0.2)};
   }
 `;
 

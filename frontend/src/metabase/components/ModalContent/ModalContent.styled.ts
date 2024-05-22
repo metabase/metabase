@@ -43,12 +43,12 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   cursor: pointer;
   padding: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: ${() => color("text-medium")};
   }
 `;
 
@@ -58,7 +58,7 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   margin: -0.5rem 0 -0.5rem -0.5rem;
 
   :hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 
@@ -74,7 +74,7 @@ export const HeaderTextContainer = styled.div<{
     onClick &&
     css`
       &:hover > * {
-        color: ${color("brand")};
+        color: ${() => color("brand")};
         cursor: pointer;
       }
     `}

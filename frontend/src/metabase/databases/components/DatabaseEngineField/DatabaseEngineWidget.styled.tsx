@@ -33,25 +33,26 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   justify-content: center;
   height: 5.375rem;
   padding: 1rem;
-  border: 1px solid ${color("bg-medium")};
+  border: 1px solid ${() => color("bg-medium")};
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
   cursor: pointer;
-  outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
+  outline: ${props =>
+    props.isActive ? `2px solid ${() => color("focus")}` : ""};
 
   &:hover {
-    border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.6)};
+    border-color: ${() => color("brand")};
+    background-color: ${() => lighten("brand", 0.6)};
   }
 `;
 
 export const EngineCardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   margin-top: 0.5rem;
 `;
 
 export const EngineCardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   width: 1rem;
   height: 1rem;
   padding: 0.5rem;
@@ -72,12 +73,12 @@ export const EngineEmptyStateRoot = styled.div`
 `;
 
 export const EngineEmptyIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   margin-bottom: 0.5rem;
 `;
 
 export const EngineEmptyText = styled.div`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 26rem;

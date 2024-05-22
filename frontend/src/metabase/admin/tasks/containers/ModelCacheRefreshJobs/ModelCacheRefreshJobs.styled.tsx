@@ -6,8 +6,8 @@ export const ErrorBox = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 4px;
 
-  color: ${color("text-dark")};
-  background-color: ${color("bg-light")};
+  color: ${() => color("text-dark")};
+  background-color: ${() => color("bg-light")};
 
   font-family: Monaco, monospace;
   font-weight: 400;
@@ -19,12 +19,12 @@ export const IconButtonContainer = styled.button`
   cursor: pointer;
 
   .Icon {
-    color: ${color("text-light")};
+    color: ${() => color("text-light")};
   }
 
   &:hover {
     .Icon {
-      color: ${color("text-dark")};
+      color: ${() => color("text-dark")};
     }
   }
 `;

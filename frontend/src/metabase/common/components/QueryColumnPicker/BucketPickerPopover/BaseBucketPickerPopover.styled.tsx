@@ -7,7 +7,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 
 export const TriggerIcon = styled(Icon)`
-  color: ${color("white")} !important;
+  color: ${() => color("white")} !important;
   flex: 0 0 auto;
   margin-left: 0.5rem;
 `;
@@ -25,11 +25,11 @@ export const TriggerButton = styled.button`
   align-items: center;
   min-width: 0;
 
-  color: ${alpha(color("white"), 0.5)};
+  color: ${() => alpha(color("white"), 0.5)};
   font-weight: 700;
   border-left: 2px solid transparent;
   padding: 0.5rem;
-  border-left: 2px solid ${alpha(color("border"), 0.1)};
+  border-left: 2px solid ${() => alpha(color("border"), 0.1)};
   margin-left: auto;
 
   cursor: pointer;
@@ -39,7 +39,7 @@ export const TriggerButton = styled.button`
   }
 
   &:hover {
-    color: ${color("white")};
+    color: ${() => color("white")};
   }
 `;
 
@@ -89,7 +89,7 @@ export const MoreButton = styled(Button)`
   }
 
   &:hover {
-    background-color: ${color("brand-lighter")};
+    background-color: ${() => color("brand-lighter")};
   }
 `;
 

@@ -26,11 +26,11 @@ export const InputContainer = styled.div<InputContainerProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid ${() => color("brand")};
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid ${() => color("brand")};
   }
 
   ${({ isPreviewing, isEmpty }) =>
@@ -41,8 +41,8 @@ export const InputContainer = styled.div<InputContainerProps>`
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid ${color("brand")};
-      color: ${color("text-light")};
+      border: 1px solid ${() => color("brand")};
+      color: ${() => color("text-light")};
     `}
 `;
 
@@ -50,7 +50,7 @@ export const TextInput = styled.input`
   border: none;
   background: none;
   max-height: 100%;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1.375rem;
   font-weight: 700;
   height: inherit;

@@ -25,7 +25,7 @@ export const LeftPaneContainer = styled.div<{ hasContent?: boolean }>`
     hasContent &&
     css`
       flex: 1;
-      border-right: 1px solid ${color("border")};
+      border-right: 1px solid ${() => color("border")};
     `}
 
   ${Tree.Node.Root} {
@@ -38,13 +38,13 @@ export const BackButton = styled.button`
   align-items: center;
   cursor: pointer;
 
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-weight: 700;
 
   padding-bottom: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 

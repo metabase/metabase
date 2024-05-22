@@ -7,6 +7,6 @@ export const PasswordCopyButton = styled(CopyButton)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;

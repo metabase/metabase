@@ -14,7 +14,7 @@ export const HeaderRoot = styled.header`
 `;
 
 export const HeaderTitle = styled.h2`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
@@ -22,11 +22,11 @@ export const HeaderTitle = styled.h2`
 `;
 
 export const HeaderMessage = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const SectionRoot = styled.section`
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem;
   margin-bottom: 2rem;
 
@@ -48,7 +48,7 @@ export const SectionHeader = styled.header`
 export const SectionTitle = styled.h3`
   flex: 1 1 auto;
   margin: 0 1rem 0 0;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-size: 1rem;
   font-weight: bold;
   line-height: 1.5rem;
@@ -56,18 +56,18 @@ export const SectionTitle = styled.h3`
 
 export const SectionToggle = styled(Button)`
   flex: 0 0 auto;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   width: 2.5rem;
   height: 2.5rem;
 `;
 
 export const SectionBody = styled.div`
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;
 
 export const SectionMessage = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
 `;

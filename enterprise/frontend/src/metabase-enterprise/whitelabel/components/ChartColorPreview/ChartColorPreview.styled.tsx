@@ -17,7 +17,7 @@ export const TableRoot = styled.div`
 export const TableHeader = styled.div`
   display: block;
   padding: 1rem 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-radius: 0.5rem 0.5rem 0 0;
 
   ${breakpointMinLarge} {
@@ -27,7 +27,7 @@ export const TableHeader = styled.div`
 `;
 
 export const TableTitle = styled.div`
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
   font-size: 1rem;
   font-weight: bold;
 `;
@@ -36,7 +36,7 @@ export const TableBody = styled.div`
   flex: 1 1 0;
   padding: 3rem 1.5rem;
   min-height: 24rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${() => color("border")};
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 

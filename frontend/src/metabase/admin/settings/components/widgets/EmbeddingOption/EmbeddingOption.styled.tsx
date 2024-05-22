@@ -20,11 +20,11 @@ export const Label = styled.span`
   font-weight: 700;
   border-radius: 0.25rem;
   text-transform: uppercase;
-  color: ${color("white")};
-  background: ${color("brand")};
+  color: ${() => color("white")};
+  background: ${() => color("brand")};
 `;
 
 export const BoldExternalLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-weight: bold;
 `;

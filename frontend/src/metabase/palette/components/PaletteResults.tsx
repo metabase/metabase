@@ -85,7 +85,7 @@ export const PaletteResults = withRouter(
                       isFirst
                         ? undefined
                         : {
-                            borderTop: `1px solid ${color("border")}`,
+                            borderTop: `1px solid ${() => color("border")}`,
                             marginTop: "1rem",
                           }
                     }

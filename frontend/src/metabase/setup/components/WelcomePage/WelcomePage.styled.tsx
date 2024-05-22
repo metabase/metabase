@@ -21,12 +21,12 @@ export const PageMain = styled.main`
 `;
 
 export const PageTitle = styled.h1`
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   font-size: 2.2rem;
 `;
 
 export const PageBody = styled.div`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-size: 1.286em;
   line-height: 1.457em;
   margin: 1rem 0;

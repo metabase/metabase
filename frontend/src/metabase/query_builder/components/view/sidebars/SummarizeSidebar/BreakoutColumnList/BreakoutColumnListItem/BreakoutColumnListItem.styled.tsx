@@ -22,14 +22,14 @@ export const TitleContainer = styled.div`
 `;
 
 export const RemoveButton = styled(Button)`
-  color: ${color("white")};
+  color: ${() => color("white")};
   background-color: transparent;
 
   opacity: 0.6;
   transition: all 100ms;
 
   &:hover {
-    color: ${color("white")};
+    color: ${() => color("white")};
     background-color: transparent;
     opacity: 1;
   }
@@ -44,7 +44,7 @@ RemoveButton.defaultProps = {
 export const AddButton = styled(Button)`
   width: 34px;
   margin-left: 0.5rem;
-  color: ${color("white")};
+  color: ${() => color("white")};
   transition: none;
 `;
 
@@ -55,7 +55,7 @@ AddButton.defaultProps = {
 };
 
 export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const Title = styled.div`
@@ -68,17 +68,17 @@ export const Title = styled.div`
 const selectedStyle = css`
   ${Content},
   ${ColumnTypeIcon} {
-    background-color: ${color("summarize")};
-    color: ${color("white")};
+    background-color: ${() => color("summarize")};
+    color: ${() => color("white")};
   }
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${alpha("white", 0.65)};
+    color: ${() => alpha("white", 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
-    color: ${color("white")};
+    color: ${() => color("white")};
     opacity: 1;
   }
 `;
@@ -86,32 +86,32 @@ const selectedStyle = css`
 const unselectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
-    color: ${color("text-light")};
+    color: ${() => color("text-light")};
   }
 
   ${ColumnTypeIcon} {
-    color: ${color("text-light")};
+    color: ${() => color("text-light")};
   }
 
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${color("summarize")};
-      background-color: ${color("bg-light")};
+      color: ${() => color("summarize")};
+      background-color: ${() => color("bg-light")};
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: ${() => color("bg-medium")};
     }
 
     ${BucketPickerPopover.TriggerButton} {
       opacity: 1;
-      color: ${color("text-light")};
+      color: ${() => color("text-light")};
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {
-      color: ${color("text-medium")};
+      color: ${() => color("text-medium")};
     }
   }
 `;

@@ -15,7 +15,7 @@ import { SidebarLink } from "./SidebarItems";
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
-  border-inline-end: 1px solid ${color("border")};
+  border-inline-end: 1px solid ${() => color("border")};
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -33,7 +33,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: ${color("white")};
+  background-color: ${() => color("white")};
 
   overflow: auto;
   overflow-x: hidden;
@@ -96,7 +96,7 @@ export const SidebarHeadingWrapper = styled.div`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
@@ -111,7 +111,7 @@ export const CollectionsMoreIconContainer = styled.button`
 `;
 
 export const CollectionsMoreIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: ${() => color("text-medium")};
 `;
 
 export const CollectionMenuList = styled.ul`
@@ -129,12 +129,12 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: ${color("brand")};
+  color: ${() => color("brand")};
   text-align: center;
 `;
 
 export const LoadingAndErrorTitle = styled.h2`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   font-weight: 400;
   margin-top: ${space(1)};
 `;
@@ -144,13 +144,13 @@ export const PaddedSidebarLink = styled(SidebarLink)`
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
-  background: ${color("brand")};
+  background: ${() => color("brand")};
   border-radius: 8px;
-  color: ${color("white")};
+  color: ${() => color("white")};
   margin: ${space(1)};
   padding: 2px 6px;
   svg {
-    color: ${color("brand-light")};
+    color: ${() => color("brand-light")};
   }
   transition: background-color 0.3s linear;
 
@@ -159,11 +159,11 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   }
 
   &:hover {
-    background: ${lighten("brand", 0.12)};
-    color: ${color("white")};
+    background: ${() => lighten("brand", 0.12)};
+    color: ${() => color("white")};
 
     svg {
-      color: ${color("brand-light")} !important;
+      color: ${() => color("brand-light")} !important;
     }
   }
 `;

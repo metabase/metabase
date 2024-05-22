@@ -20,12 +20,12 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
       cursor: pointer;
 
       &:hover {
-        color: ${color("brand")};
+        color: ${() => color("brand")};
       }
     `}
 `;
 
 export const LabelIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: ${() => color("text-light")};
   margin-top: 0.2rem;
 `;

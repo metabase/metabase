@@ -7,8 +7,8 @@ export const SidebarAside = styled.aside<{ $width: number }>`
   flex-direction: column;
   width: ${props => props.$width}px;
   min-width: ${props => props.$width}px;
-  border-left: 1px solid ${color("border")};
-  background: ${color("bg-white")};
+  border-left: 1px solid ${() => color("border")};
+  background: ${() => color("bg-white")};
 `;
 
 export const ChildrenContainer = styled.div`
@@ -25,5 +25,5 @@ export const ButtonContainer = styled.div<{ spaceBetween?: boolean }>`
   align-items: center;
   gap: 20px;
   padding: 12px 32px;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid ${() => color("border")};
 `;

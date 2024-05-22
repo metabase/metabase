@@ -151,7 +151,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
 export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: ${() => color("text-dark")};
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -172,7 +172,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-top: 0.375rem;
     padding-left: 1rem;
     padding-right: 1rem;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid ${() => color("border")};
   }
 `;
 
