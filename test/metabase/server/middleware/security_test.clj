@@ -110,6 +110,7 @@
   (testing "Should return false if parameters are nil"
     (is (false? (approved-origin? nil "example.com")))
     (is (false? (approved-origin? "example.com" nil))))
+
   (testing "Approved origins with exact protocol and port match"
     (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
       (is (true? (approved-origin? "http://example1.com" approved)))
