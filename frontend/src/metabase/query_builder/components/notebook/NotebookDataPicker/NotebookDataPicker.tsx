@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
-import { t } from "ttag";
 
 import {
   DataPickerModal,
@@ -84,7 +83,7 @@ export function NotebookDataPicker({
       </UnstyledButton>
       {isOpen && (
         <DataPickerModal
-          title={t`Pick data to join`}
+          title={title}
           value={tableValue}
           databaseId={databaseId}
           models={[
