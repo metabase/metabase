@@ -83,16 +83,13 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [appdb]: ./loading-from-h2.md
 [bugs]: ./bugs.md
 [cant-see-tables]: ./cant-see-tables.md
-[chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
 [cloud]: https://www.metabase.com/start/
 [db-connection]: ./db-connection.md
 [db-performance]: ./db-performance.md
 [docker]: ./docker.md
-[edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
 [error-message]: error-message.md
 [feature-request]: requesting-new-features.md
 [filters]: ./filters.md
-[firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
 [incorrect-times]: ./timezones.md
 [known-issues]: ./known-issues.md
@@ -106,8 +103,6 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [proxies]: ./proxies.md
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.md
-[safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
-[server-logs]: ./server-logs.md
 [saml]: ./saml.md
 [sandbox]: ./sandboxing.md
 [slow-dashboard]: ./my-dashboard-is-slow.md
