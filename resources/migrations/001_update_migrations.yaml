@@ -5931,6 +5931,56 @@ databaseChangeLog:
       rollback: # nothing to do, since uploads_schema_name didn't exist before
 
   - changeSet:
+      id: v49.2024-05-20T19:10:34
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.collection_preview to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-20T20:37:55
+      author: johnswanson
+      comment: Add NOT NULL constraint to report_card.collection_preview
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: collection_preview
+            defaultNullValue: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+  - changeSet:
+      id: v49.2024-05-20T20:38:34
+      author: johnswanson
+      comment: Add default value to report_card.collection_preview
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: true
+            tableName: report_card
+            columnName: collection_preview
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -7438,57 +7488,6 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
-
-  - changeSet:
-      id: v51.2024-05-20T19:10:34
-      author: johnswanson
-      comment: >-
-        Modify type of report_card.collection_preview to ${boolean.type} on mysql,mariadb
-      dbms: mysql,mariadb
-      changes:
-        - modifyDataType:
-            tableName: report_card
-            columnName: collection_preview
-            newDataType: ${boolean.type}
-      rollback:
-        - modifyDataType:
-            tableName: report_card
-            columnName: collection_preview
-            newDataType: boolean
-            defaultValueBoolean: true
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-
-  - changeSet:
-      id: v51.2024-05-20T20:37:55
-      author: johnswanson
-      comment: Add NOT NULL constraint to report_card.collection_preview
-      changes:
-        - addNotNullConstraint:
-            columnDataType: ${boolean.type}
-            tableName: report_card
-            columnName: collection_preview
-            defaultNullValue: true
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-
-  - changeSet:
-      id: v51.2024-05-20T20:38:34
-      author: johnswanson
-      comment: Add default value to report_card.collection_preview
-      changes:
-        - addDefaultValue:
-            defaultValueBoolean: true
-            tableName: report_card
-            columnName: collection_preview
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

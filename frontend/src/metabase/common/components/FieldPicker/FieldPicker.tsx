@@ -92,7 +92,7 @@ export const FieldPicker = ({
                 stageIndex={stageIndex}
                 column={item.column}
                 position="top-start"
-                size={18}
+                size={16}
               />
               <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
             </Label>

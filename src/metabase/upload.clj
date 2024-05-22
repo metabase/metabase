@@ -110,10 +110,14 @@
   (let [external-type (keyword "metabase.upload" (name column-type))]
     (driver/upload-type->database-type driver external-type)))
 
+(defn- defaulting-database-type [driver upload-type]
+  (or (database-type driver upload-type)
+      (database-type driver ::upload-types/varchar-255)))
+
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
-  (update-vals col->upload-type (partial database-type driver)))
+  (update-vals col->upload-type (partial defaulting-database-type driver)))
 
 (defn current-database
   "The database being used for uploads."
