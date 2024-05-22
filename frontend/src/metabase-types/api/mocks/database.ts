@@ -53,6 +53,9 @@ export const createMockDatabaseData = (
   is_sample: false,
   is_full_sync: false,
   is_on_demand: false,
+  uploads_enabled: false,
+  uploads_schema_name: null,
+  uploads_table_prefix: null,
   ...opts,
 });
 
