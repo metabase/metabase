@@ -784,7 +784,7 @@
     - the query is a GUI query, and does not have any joins
     - the base table of the card is based on an upload
     - the user has permissions to upload to the table
-    - uploads are enabled
+    - uploads are enabled for at least one database
   Otherwise based_on_upload is nil."
   [cards]
   (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))

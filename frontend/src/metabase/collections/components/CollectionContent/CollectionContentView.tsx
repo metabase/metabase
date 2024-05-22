@@ -82,7 +82,7 @@ export const CollectionContentView = ({
   isAdmin,
   uploadFile,
   uploadsEnabled,
-  canCreateUploadInDb: canCreateUploadInDb,
+  canCreateUploadInDb,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
