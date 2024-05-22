@@ -187,6 +187,14 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
+  it("should accept tab-separated values when pasting", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    input.focus();
+    await userEvent.paste("foo\tbar");
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
+    expect(input).toHaveValue("");
+  });
+
   it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
     const { input, onChange } = setup({
       data: EXAMPLE_DATA,

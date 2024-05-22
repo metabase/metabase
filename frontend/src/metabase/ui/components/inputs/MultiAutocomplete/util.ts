@@ -1,3 +1,5 @@
+const separators = [",", "\n", "\t"];
+
 export function parseValues(text: string): string[] {
   let insideDoubleQuotes = false;
   let escaping = false;
@@ -23,7 +25,7 @@ export function parseValues(text: string): string[] {
   }
 
   for (const char of text) {
-    if (char === "," || char === "\n") {
+    if (separators.includes(char)) {
       if (insideDoubleQuotes) {
         value += char;
       } else {
