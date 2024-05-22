@@ -15,7 +15,6 @@ import {
   setParameterValueToDefault,
   setParameterValue,
   cancelFetchDashboardCardData,
-  fetchDashboardCardMetadata,
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
@@ -79,7 +78,6 @@ const mapStateToProps = (state: State, props: OwnProps) => {
 const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
-  fetchDashboardCardMetadata,
   setParameterValueToDefault,
   setParameterValue,
   setErrorPage,
@@ -158,7 +156,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
-      this.props.fetchDashboardCardMetadata();
       return;
     }
 
