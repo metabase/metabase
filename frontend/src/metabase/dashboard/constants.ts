@@ -39,7 +39,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     toastDashboardId: null,
   },
   tabDeletions: {},
-  theme: null,
+  theme: "light",
 };
 
 export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;

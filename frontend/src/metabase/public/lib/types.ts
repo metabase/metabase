@@ -1,6 +1,6 @@
 import type { Card, Dashboard } from "metabase-types/api";
 
-export type DisplayTheme = "light" | "night" | "transparent" | null;
+export type DisplayTheme = "light" | "night" | "transparent";
 
 export type EmbedModalStep = "application" | "legalese" | null;
 

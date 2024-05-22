@@ -11,7 +11,7 @@ export const DEFAULT_EMBED_DISPLAY_OPTIONS: EmbedDisplayParams = {
   hideDownloadButton: null,
   hideParameters: null,
   font: null,
-  theme: null,
+  theme: "light",
 };
 
 export const useEmbedDisplayOptions = (): EmbedDisplayControls => {

@@ -12,7 +12,7 @@ export const useEmbedTheme = (): EmbedThemeControls => {
   const setTheme = (theme: DisplayTheme) => dispatch(setDisplayTheme(theme));
 
   const onNightModeChange = (isNightMode: boolean) => {
-    setTheme(isNightMode ? "night" : null);
+    setTheme(isNightMode ? "night" : "light");
   };
 
   const isNightMode = theme === "night";
