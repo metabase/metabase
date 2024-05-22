@@ -1,5 +1,4 @@
 import cx from "classnames";
-import * as console from "console";
 import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -159,10 +158,6 @@ function EmbedFrame({
     hide_parameters,
     hide_download_button,
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
-
-  useEffect(() => {
-    console.log(location.hash, parseHashOptions(location.hash));
-  }, [location.hash]);
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
