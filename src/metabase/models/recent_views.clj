@@ -167,6 +167,7 @@
                          [:name :string]]]]]
     [:collection [:map
                   [:parent_collection ::pc]
+                  [:effective_location :string]
                   [:authority_level [:enum "official" nil]]]]]])
 
 (defmulti fill-recent-view-info
@@ -342,7 +343,10 @@
                                           [:in :id collection-ids]
                                           [:= :archived false]]})
           coll->parent-id (fn [c]
-                            (some-> c collection/effective-location-path collection/location-path->ids last))
+                            (some-> c
+                                    collection/effective-location-path
+                                    collection/location-path->ids
+                                    last))
           parent-ids (into #{} (keep coll->parent-id) collections)
           id->parent-coll (merge {nil (root-coll)}
                                  (when (seq parent-ids)
@@ -350,8 +354,12 @@
                                                      {:select [:id :name :authority_level]
                                                       :where [:in :id parent-ids]})))]
       ;; replace the collection ids with their collection data:
-      (map (fn [c] (assoc c :effective_parent (->> c coll->parent-id id->parent-coll)))
-           collections))))
+      (map
+       (fn [c]
+         (assoc c
+                :effective_parent (->> (coll->parent-id c) id->parent-coll)
+                :effective_location (collection/effective-location-path c)))
+       collections))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
@@ -364,6 +372,7 @@
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
+     :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
 ;; ================== Recent Tables ==================
