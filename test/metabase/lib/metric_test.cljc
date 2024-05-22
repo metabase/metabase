@@ -60,6 +60,12 @@
     (testing "Should return Metrics with the same Table ID as query's `:source-table`"
       (is (=? [expected-metric-metadata]
               (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+    (testing "Shouldn't return archived Metrics`"
+      (is (nil? (lib.metric/available-metrics
+                 (lib/query (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             (assoc-in metrics-db [:cards 0 :archived] true))
+                   (meta/table-metadata :venues))))))
     (testing "Should return the position in the list of aggregations"
       (let [metrics (lib.metric/available-metrics query-with-metric)]
         (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
