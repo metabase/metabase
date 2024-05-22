@@ -50,7 +50,7 @@ export const CANCEL_FETCH_CARD_QUERY =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
-export const CLEAR_CARD_QUERY = "metabase/dashboard/CLEAR_CARD_DATA";
+export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
@@ -127,7 +127,7 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      await Promise.all([
+      const [{ payload }] = await Promise.all([
         dispatch(fetchCardQuery(card, dashcard, options)),
         dispatch(loadMetadataForDashcards([dashcard])),
       ]);
@@ -135,7 +135,7 @@ export const fetchCardData = createThunkAction(
       return {
         dashcard_id: dashcard.id,
         card_id: card.id,
-        currentTime: performance.now(),
+        ...payload,
       };
     };
   },
@@ -200,7 +200,7 @@ export const fetchCardQuery = createThunkAction(
 
       if (clearCache || hasParametersChanged) {
         // clears the card data to indicate the card is reloading
-        dispatch(clearCardQuery(card.id, dashcard.id));
+        dispatch(clearCardData(card.id, dashcard.id));
       }
 
       let result = null;
@@ -436,8 +436,8 @@ export const cancelFetchCardQuery = createAction(
   },
 );
 
-export const clearCardQuery = createAction(
-  CLEAR_CARD_QUERY,
+export const clearCardData = createAction(
+  CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
 
