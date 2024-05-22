@@ -9,6 +9,7 @@ import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
@@ -68,6 +69,13 @@ export function useModelsAndOption({
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartModel(
+          seriesToRender,
+          settings,
+          renderingContext,
+          showWarning,
+        );
+      case "scatter":
+        return getScatterPlotModel(
           seriesToRender,
           settings,
           renderingContext,
