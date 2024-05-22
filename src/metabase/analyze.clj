@@ -27,7 +27,8 @@
    infer-entity-type-by-name]
   [metabase.analyze.fingerprint.fingerprinters
    col-wise
-   constant-fingerprinter]
+   constant-fingerprinter
+   fingerprint-fields]
   [metabase.analyze.fingerprint.schema
    Fingerprint]
   [metabase.analyze.query-results
