@@ -70,29 +70,15 @@ export function useModelsAndOption({
     : false;
 
   const chartModel = useMemo(() => {
-    switch (card.display) {
-      case "waterfall":
-        return getWaterfallChartModel(
-          seriesToRender,
-          settings,
-          renderingContext,
-          showWarning,
-        );
-      case "scatter":
-        return getScatterPlotModel(
-          seriesToRender,
-          settings,
-          renderingContext,
-          showWarning,
-        );
-      default:
-        return getCartesianChartModel(
-          seriesToRender,
-          settings,
-          renderingContext,
-          showWarning,
-        );
+    let getModel = getCartesianChartModel;
+
+    if (card.display === "waterfall") {
+      getModel = getWaterfallChartModel;
+    } else if (card.display === "scatter") {
+      getModel = getScatterPlotModel;
     }
+
+    return getModel(seriesToRender, settings, renderingContext, showWarning);
   }, [card.display, seriesToRender, settings, renderingContext, showWarning]);
 
   const chartMeasurements = useMemo(
