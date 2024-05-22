@@ -343,10 +343,7 @@
                                           [:in :id collection-ids]
                                           [:= :archived false]]})
           coll->parent-id (fn [c]
-                            (some-> c
-                                    collection/effective-location-path
-                                    collection/location-path->ids
-                                    last))
+                            (some-> c collection/effective-location-path collection/location-path->ids last))
           parent-ids (into #{} (keep coll->parent-id) collections)
           id->parent-coll (merge {nil (root-coll)}
                                  (when (seq parent-ids)
@@ -355,7 +352,7 @@
                                                       :where [:in :id parent-ids]})))]
       ;; replace the collection ids with their collection data:
       (map
-       (fn [c]
+       (fn effective-collection-assocer [c]
          (assoc c
                 :effective_parent (->> (coll->parent-id c) id->parent-coll)
                 :effective_location (collection/effective-location-path c)))

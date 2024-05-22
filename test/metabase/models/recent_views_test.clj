@@ -79,15 +79,20 @@
              (mapv fixup
                    (recent-views/get-list (mt/user->id :rasta))))))))
 
+(defn- ->location
+  "Helper to turn some strings into a collection location path:"
+  [& parents]
+  (str/join "/" (concat [""] parents [""])))
+
 (deftest simple-get-list-collection-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "parent coll"}
-     :model/Collection {my-coll-id :id} {:name "name" :location (str "/" coll-id "/")}]
+     :model/Collection {my-coll-id :id} {:name "name" :location (->location coll-id)}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection my-coll-id)
     (is (= [{:description nil
              :can_write true
              :name "name"
-             :effective_location (str "/" coll-id "/")
+             :effective_location (->location coll-id)
              :parent_collection {:id coll-id, :name "parent coll", :authority_level nil}
              :id my-coll-id
              :timestamp String
@@ -96,11 +101,6 @@
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views/get-list (mt/user->id :rasta))))))))
-
-(defn- ->location
-  "Helper to turn some strings into a collection location path:"
-  [& parents]
-  (str "/" (str/join "/" parents) "/"))
 
 (deftest nested-collections-get-list-collection-test
   (mt/with-temp
@@ -176,7 +176,7 @@
 
            :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
 
-           :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (str "/" parent-coll-id "/")}
+           :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (->location parent-coll-id)}
 
            :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
            :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
@@ -196,7 +196,7 @@
                   {:id "ID",
                    :name "my collection",
                    :description "this is my collection",
-                   :effective_location (str "/" parent-coll-id "/")
+                   :effective_location (->location parent-coll-id)
                    :model :collection,
                    :can_write true,
                    :authority_level nil,
