@@ -153,4 +153,24 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
   });
+
+  it("should handle pasting when there is some text in the input", async () => {
+    const { input, onChange } = setup({
+      data: EXAMPLE_DATA,
+    });
+    await userEvent.type(input, "foo123", {
+      pointerEventsCheck: 0,
+    });
+    await userEvent.type(input, "{left}", {
+      pointerEventsCheck: 0,
+    });
+
+    input.focus();
+    // @ts-expect-error: input does have setSelectionRange, and testing-library does not provide a wrapper
+    input.setSelectionRange(3, 3);
+    await userEvent.paste("quu,xyz");
+
+    expect(onChange).toHaveBeenLastCalledWith(["fooquu", "xyz123"]);
+    expect(input).toHaveValue("");
+  });
 });

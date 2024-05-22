@@ -61,17 +61,25 @@ export function MultiAutocomplete({
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const text = event.clipboardData.getData("text");
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    const before = value.slice(0, input.selectionStart ?? value.length);
+    const after = value.slice(input.selectionEnd ?? value.length);
+
+    const pasted = event.clipboardData.getData("text");
+    const text = `${before}${pasted}${after}`;
     const values = parseValues(text);
     const validValues = values
       .map(value => value.trim())
       .filter(value => shouldCreate?.(value, selectedValues));
 
+    event.preventDefault();
+
     if (validValues.length > 0) {
-      event.preventDefault();
       const newSelectedValues = [...lastSelectedValues, ...validValues];
       setSelectedValues(newSelectedValues);
       setLastSelectedValues(newSelectedValues);
+      setSearchValue("");
     }
   };
 
