@@ -8,7 +8,7 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .ListSectionHeader {
@@ -65,7 +65,7 @@
 }
 
 .ListItemDisabled .ListItemTitle {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
@@ -78,7 +78,7 @@
 .ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .ListItemDisabled .ListItemDescription {
