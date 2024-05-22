@@ -210,6 +210,13 @@
           (let [crowberto "crowberto@metabase.com"
                 lucky     "lucky@metabase.com"
                 rasta     "rasta@metabase.com"]
+            (testing "Returns no users when email is not enabled"
+              (mt/with-temporary-setting-values [email-smtp-host nil]
+                (is (= [rasta]
+                       (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))
+
             (testing "Returns all users when user-visibility is all users"
               (mt/with-temporary-setting-values [user-visibility :all]
                 (is (= [crowberto lucky rasta]
