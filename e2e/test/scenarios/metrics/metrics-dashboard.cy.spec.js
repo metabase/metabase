@@ -194,7 +194,7 @@ describe("scenarios > metrics > dashboard", () => {
     combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
   });
 
-  it.skip("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
+  it("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
     combineAndVerifyMetrics(
       ORDERS_TIMESERIES_METRIC,
       PRODUCTS_TIMESERIES_METRIC,

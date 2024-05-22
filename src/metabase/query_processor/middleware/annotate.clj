@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.analyze :as analyze]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -592,11 +592,11 @@
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
-  (apply fingerprinters/col-wise
+  (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
            (if (contains? #{nil :type/*} driver-base-type)
              (driver.common/values->base-type)
-             (fingerprinters/constant-fingerprinter driver-base-type)))))
+             (analyze/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
   [query metadata rf]

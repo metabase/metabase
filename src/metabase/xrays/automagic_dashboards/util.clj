@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analyze.classifiers.core :as classifiers]
+   [metabase.analyze :as analyze]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -89,6 +89,6 @@
            (update field :base_type keyword)
            (update field :semantic_type keyword)
            (mi/instance Field field)
-           (classifiers/run-classifiers field {}))))
+           (analyze/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))

@@ -24,7 +24,6 @@
   (:import
    (java.time LocalDate)))
 
-
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
@@ -63,6 +62,15 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
+(defn- sandboxed-or-impersonated-user? []
+  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
+  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
+  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
+  ;; all.
+  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
+          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
+  (premium-features/sandboxed-or-impersonated-user?))
+
 (mu/defn ^:private search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
@@ -80,20 +88,20 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-        (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
-        [:= 0 1]
+         (and (= model "indexed-entity") (sandboxed-or-impersonated-user?))
+         [:= 0 1]
 
-        (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
-        [:and
-         [:= (search.config/column-with-model-alias model :query_type) "native"]
-         [:like [:lower column] wildcarded-token]]
+         (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
+         [:and
+          [:= (search.config/column-with-model-alias model :query_type) "native"]
+          [:like [:lower column] wildcarded-token]]
 
-        (and (#{"action"} model)
-             (= column (search.config/column-with-model-alias model :dataset_query)))
-        [:like [:lower :query_action.dataset_query] wildcarded-token]
+         (and (#{"action"} model)
+              (= column (search.config/column-with-model-alias model :dataset_query)))
+         [:like [:lower :query_action.dataset_query] wildcarded-token]
 
-        :else
-        [:like [:lower column] wildcarded-token])))))
+         :else
+         [:like [:lower column] wildcarded-token])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;

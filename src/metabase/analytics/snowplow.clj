@@ -41,6 +41,7 @@
    ::model                "1-0-0"
    ::timeline             "1-0-0"
    ::task                 "1-0-0"
+   ::upsell               "1-0-0"
    ::action               "1-0-0"
    ::embed_share          "1-0-0"
    ::llm_usage            "1-0-0"
@@ -63,6 +64,8 @@
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
    ::new-task-history               ::task
+   ::upsell_viewed                  ::upsell
+   ::upsell_clicked                 ::upsell
    ::new-search-query               ::search
    ::search-results-filtered        ::search
    ::action-created                 ::action

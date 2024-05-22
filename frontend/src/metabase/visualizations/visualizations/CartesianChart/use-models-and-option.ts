@@ -112,6 +112,19 @@ export function useModelsAndOption({
     [chartModel.seriesModels, hovered],
   );
 
+  const selectedOrHoveredTimelineEventIds = useMemo(() => {
+    const ids = [];
+
+    if (selectedTimelineEventIds != null) {
+      ids.push(...selectedTimelineEventIds);
+    }
+    if (hovered?.timelineEvents != null) {
+      ids.push(...hovered.timelineEvents.map(e => e.id));
+    }
+
+    return ids;
+  }, [selectedTimelineEventIds, hovered?.timelineEvents]);
+
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -124,7 +137,7 @@ export function useModelsAndOption({
           width,
           chartMeasurements,
           timelineEventsModel,
-          selectedTimelineEventIds ?? [],
+          selectedOrHoveredTimelineEventIds,
           settings,
           isPlaceholder ?? false,
           renderingContext,
@@ -134,7 +147,7 @@ export function useModelsAndOption({
           chartModel as CartesianChartModel,
           chartMeasurements,
           timelineEventsModel,
-          selectedTimelineEventIds ?? [],
+          selectedOrHoveredTimelineEventIds,
           settings,
           width,
           isPlaceholder ?? false,
@@ -147,13 +160,13 @@ export function useModelsAndOption({
     chartModel,
     chartMeasurements,
     renderingContext,
-    selectedTimelineEventIds,
     settings,
     timelineEventsModel,
     hoveredSeriesDataKey,
     width,
     height,
     isPlaceholder,
+    selectedOrHoveredTimelineEventIds,
   ]);
 
   return { chartModel, timelineEventsModel, option };
