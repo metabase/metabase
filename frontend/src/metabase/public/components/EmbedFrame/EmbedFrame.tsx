@@ -23,7 +23,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { setOptions } from "metabase/redux/embed";
+import { setInitialUrlOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -155,7 +155,7 @@ function EmbedFrame({
 
   const dispatch = useDispatch();
   useEffect(() => {
-    dispatch(setOptions(location));
+    dispatch(setInitialUrlOptions(location));
   }, [dispatch, location]);
 
   const {

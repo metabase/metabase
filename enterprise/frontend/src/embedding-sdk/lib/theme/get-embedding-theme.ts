@@ -1,5 +1,6 @@
 import { merge } from "icepick";
 
+import { DEFAULT_FONT } from "embedding-sdk/config";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
@@ -12,7 +13,13 @@ import type {
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
-import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "./default-component-theme";
+import {
+  DEFAULT_EMBEDDED_COMPONENT_THEME,
+  EMBEDDING_SDK_COMPONENTS_OVERRIDES,
+} from "./default-component-theme";
+
+const getFontFamily = (theme: MetabaseTheme) =>
+  theme.fontFamily ?? DEFAULT_FONT;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -27,13 +34,16 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: EmbeddingThemeOverride = {
+    fontFamily: getFontFamily(theme),
+
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
-    ...(theme.fontFamily && { fontFamily: theme.fontFamily }),
 
     other: {
       ...components,
       ...(theme.fontSize && { fontSize: theme.fontSize }),
     },
+
+    components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
   };
 
   if (theme.colors) {
@@ -64,8 +74,8 @@ const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<MetabaseColor, ColorName> = {
   "text-tertiary": "text-light",
   background: "bg-white",
   "background-hover": "bg-light",
+  shadow: "shadow",
 
-  // shadow: "shadow",
   // positive: "success",
   // negative: "danger",
   // warning: "warning",
