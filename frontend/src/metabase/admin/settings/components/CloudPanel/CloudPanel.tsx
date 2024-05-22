@@ -9,6 +9,7 @@ import { useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { UtilApi } from "metabase/services";
 import { Box, Text } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
@@ -38,6 +39,15 @@ export const CloudPanel = ({
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
     undefined,
   );
+
+  const [isProdStore, setIsProdStore] = useState(true);
+  useEffect(() => {
+    // TODO: figure out a better place to pull this info from...
+    UtilApi.bug_report_details().then(details => {
+      const runMode = details["metabase-info"]["run-mode"];
+      setIsProdStore(runMode !== "dev");
+    });
+  }, []);
 
   const {
     data: migration,
