@@ -29,7 +29,8 @@
 
 (defn handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
-  The right way to fix this is to move them -- see #22687"
+  The right way to fix this is to move them -- see #22687
+  See also /enterprise/backend/metabase_enterprise/api/routes.clj"
   [name]
   (-> name
       (str/replace #"^metabase\.api\." "/api/")
@@ -44,6 +45,7 @@
       ;; /api/ee/sso/sso/ -> /auth/sso
       (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
       (str/replace #"^metabase-enterprise\.advanced-config\.api\.logs" "/api/ee/logs")
+      (str/replace #"^metabase-enterprise\.llm\.api" "/api/ee/autodescribe")
       ;; this should be only the replace for enterprise once we resolved #22687
       (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")
       (str/replace #"^metabase-enterprise\.([^\.]+)\.api" "/api/ee/$1")))

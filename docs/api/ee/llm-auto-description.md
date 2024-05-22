@@ -1,14 +1,14 @@
 ---
-title: "LLM"
+title: "LLM Auto-description"
 summary: |
-  API endpoints for LLM.
+  API endpoints for LLM Auto-description.
 ---
 
-# LLM
+# LLM Auto-description
 
-API endpoints for LLM.
+API endpoints for LLM Auto-description.
 
-## `POST /api/ee/llm/card/summarize`
+## `POST /api/ee/autodescribe/card/summarize`
 
 Summarize a question.
 
@@ -36,7 +36,7 @@ Summarize a question.
 
 -  **`display`** value must be a non-blank string.
 
-## `POST /api/ee/llm/dashboard/summarize/:id`
+## `POST /api/ee/autodescribe/dashboard/summarize/:id`
 
 Provide a summary of a dashboard.
 

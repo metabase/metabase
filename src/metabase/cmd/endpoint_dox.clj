@@ -37,6 +37,17 @@
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
     (str/replace name re u/upper-case-en)))
 
+(defn handle-nonstandard-namespaces
+  "Some namespaces are not named in a way that is easy to read. This function
+  handles those edge cases."
+  [name]
+  (-> name
+      (str/replace #"(.api.|-)" " ")
+      (str/replace ".api" "") ; account for `serialization.api` namespace
+      (str/replace "Llm" "LLM Auto-description")
+      (capitalize-initialisms initialisms)
+      (str/replace "SSO SSO" "SSO")))
+
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
   Handles some edge cases for enterprise endpoints."
@@ -47,10 +58,7 @@
       handle-enterprise-ns
       last
       u/capitalize-first-char
-      (str/replace #"(.api.|-)" " ")
-      (str/replace ".api" "") ; account for `serialization.api` namespace
-      (capitalize-initialisms initialisms)
-      (str/replace "SSO SSO" "SSO")))
+      handle-nonstandard-namespaces))
 
 (defn- handle-quotes
   "Used for formatting YAML string punctuation for frontmatter descriptions."

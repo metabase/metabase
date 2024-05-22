@@ -53,7 +53,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Google](api/google.md)
 - [LDAP](api/ldap.md)
 - [Legacy metric](api/legacy-metric.md)
-- [LLM*](api/ee/llm.md)
+- [LLM Auto-description*](api/ee/llm-auto-description.md)
 - [Login history](api/login-history.md)
 - [Metabot](api/metabot.md)
 - [Model index](api/model-index.md)
