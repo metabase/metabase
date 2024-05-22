@@ -319,7 +319,8 @@
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates [:model/Database]
-    (t2/update! :model/Database (mt/id) {:uploads_enabled true})
+    (t2/update! :model/Database (mt/id) {:uploads_enabled     true
+                                         :uploads_schema_name (sql.tx/session-schema driver/*driver*)})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
