@@ -11,7 +11,7 @@ Cypress.Commands.add(
             cy.createQuestionAndAddToDashboard(
               query,
               dashboard.id,
-              cards[index],
+              cards ? cards[index] : undefined,
             ),
           ),
         ).then(dashcardResponses => {
