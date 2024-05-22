@@ -210,6 +210,9 @@
   (d/conn-from-db (fresh-db)))
 
 ;; Internals ====================================================================================
+(defn- entity? [possible-entity]
+  (datascript.impl.entity/entity? possible-entity))
+
 (defn- entities-without-uuid [db]
   (d/q '[:find [?e ...] :in $ :where
          [?e _ _]
@@ -406,6 +409,7 @@
         (string? arg)
         (boolean? arg)) {:mbql/lit arg}
     (map? arg)          {:mbql/ref (or (:db/id arg) arg)}
+    (:db/id arg)        {:mbql/ref (:db/id arg)}
     (entid? arg)        {:mbql/ref arg}
     :else (throw (ex-info (str "clause-argument does not know what to do with " (pr-str arg)) {:arg arg}))))
 
@@ -576,6 +580,21 @@
   [query-entity stage-number]
   (stage-joins (query-stage query-entity stage-number)))
 
+(defn- entity->db [db-or-entity]
+  (if (d/db? db-or-entity)
+    db-or-entity
+    (d/entity-db db-or-entity)))
+
+(defn- entid [db-or-entity entid-or-entity]
+  (or (when (number? entid-or-entity) entid-or-entity)
+      (:db/id entid-or-entity)
+      (d/entid (entity->db db-or-entity) entid-or-entity)))
+
+(defn- entity [db-or-other-entity entid-or-entity]
+  (if (entity? entid-or-entity)
+    entid-or-entity
+    (d/entity (entity->db db-or-other-entity) (entid db-or-other-entity entid-or-entity))))
+
 (defn- tx-join-columns [series stage]
   (let [join (->> stage
                   :mbql.stage/join
@@ -596,14 +615,6 @@
 
 (defn- add-mbql-series [maps]
   (map-indexed #(assoc %2 :mbql/series %1) maps))
-
-(defn- entid [db-or-entity entid-or-entity]
-  (or (when (number? entid-or-entity) entid-or-entity)
-      (:db/id entid-or-entity)
-      (let [db (if (d/db? db-or-entity)
-                 db-or-entity
-                 (d/entity-db db-or-entity))]
-        (d/entid db entid-or-entity))))
 
 (defn- fix-join-conditions
   "When adding a `join-clause` with conditions, those conditions will probably contain `:mbql/ref`s pointing to columns
@@ -649,7 +660,7 @@
                                       :mbql.join/condition (add-mbql-series conditions)})))
 
   ([query-entity stage-number join-clause]
-   (let [series      (count (joins query-entity stage-number))]
+   (let [series     (count (joins query-entity stage-number))]
      (-> query-entity
          (with-stage stage-number
            (fn [stage]
@@ -704,6 +715,38 @@
         fk-column      (:mbql.join.implicit/fk-column imp-join)
         fk-source-name (-> fk-column :metadata.column/source source-name)]
     (str target-name "__via__" fk-source-name "__" (:metadata.column/name fk-column))))
+
+;; Column names for synthesized columns =========================================================
+(def ^:private column-dispatch-keys
+  {:metadata.column/mirror    :column/mirror
+   :metadata.field/id         :column/field
+   :mbql.expression/name      :column/expression
+   :mbql.aggregation/operator :column/aggregation
+   :mbql.breakout/origin      :column/breakout})
+
+(defn- column-dispatch [maplike]
+  (some column-dispatch-keys (keys maplike)))
+
+(defmulti column-name
+  "Returns a plausible, nearly unique (might need `_2` disambiguation) column names, based on the kind of column."
+  column-dispatch)
+
+(defmethod column-name :column/field [column]
+  (:metadata.column/name column))
+
+(defmethod column-name :column/mirror [column]
+  (column-name (:metadata.column/mirror column)))
+
+(defmethod column-name :column/expression [column]
+  (:mbql.expression/name column))
+
+(defmethod column-name :column/aggregation [{:mbql.aggregation/keys [operator column]}]
+  (if column
+    (str (name operator) "__" (column-name column))
+    (name operator)))
+
+(defmethod column-name :column/breakout [column]
+  (column-name (:mbql.breakout/origin column)))
 
 ;; Returned columns =============================================================================
 (defmulti returned-columns-method
@@ -834,12 +877,12 @@
   [query-entity]
   (let [stage   (:mbql.query/stage query-entity)
         reified (map-indexed (fn [i column]
-                               (merge {:metadata.column/mirror (:db/id column)
-                                       :metadata.column/source (:db/id stage)
-                                       ;; TODO: Aliasing columns? They need to be unique!
-                                       :mbql/series            i}
-                                      (when-let [n (:metadata.column/name column)]
-                                        {:metadata.column/name n})))
+                               {:metadata.column/mirror (:db/id column)
+                                :metadata.column/source (:db/id stage)
+                                ;; TODO: Aliasing columns? They need to be unique!
+                                :metadata.column/name   (or (:metadata.column/name column)
+                                                            (column-name column))
+                                :mbql/series            i})
                              (returned-columns-method stage))]
     (-> (d/entity-db query-entity)
         (d/db-with
@@ -851,6 +894,46 @@
            {:db/id               (:db/id stage)
             :mbql.stage/returned reified}])
         (d/entity (:db/id query-entity)))))
+
+;; Paths to columns etc. ========================================================================
+;; These are all test helpers to navigate a starting entity. See [[stage>]] for the details.
+;; Note that convention that all functions of this shape `(foo> entity path...)` *end* with `>`,
+;; while all functions that build path fragments *start* with `>`, like [[>cols]].
+(defn- path-step [x path-part]
+  (cond
+    (entity? path-part)  (first (core/filter #(= (:db/id %) (:db/id path-part)) x))
+    (string? path-part)  (first (core/filter #(= (:metadata.column/name %) path-part) x))
+    (number? path-part)  (first (core/filter #(= (:mbql/series %) path-part) x))
+    (fn? path-part)      (path-part x)
+    (keyword? path-part) (path-part x)
+    :else                (throw (ex-info "path-step cannot understand path part" {:path-part path-part}))))
+
+(defn- in>* [entity path-parts]
+  (reduce path-step entity path-parts))
+
+(defn in>
+  "Test helper that navigates from the provided `entity` to some inner value.
+
+  - Keywords are applied directly on the entity
+  - Functions are likewise applied directly
+  - Strings search a list for the matching `:metadata.column/name`
+  - Numbers search a list for the matching `:mbql/series`
+  - Entities are *not* used directly.
+      - Instead, their :db/id is used to look up the version of that entity within the navigated entity's DB.
+      - The navigated entity's DB might be newer (or older) than the one provided in the path.
+
+  Returns the entity navigated to."
+  [query & parts]
+  (in>* query parts))
+
+(defn stage>
+  "Test helper which wraps [[in>]] with the common logic of starting from a query's latest stage.
+
+  The first argument `stage-or-query` can be either a query or stage entity."
+  [stage-or-query & parts]
+  (in>* (or (:mbql.query/stage stage-or-query)
+            stage-or-query)
+        parts))
 
 ;; Problem: Populating metadata DB ==============================================================
 ;; On JS we can maintain a single, sometimes updated atom with the entire picture in it; the FE takes
