@@ -13,7 +13,7 @@ const EXAMPLE_DATA = [
 type SetupOpts = Omit<TestInputProps, "onChange">;
 
 function setup(opts: SetupOpts) {
-  const onChange = jest.fn() as MultiAutocompleteProps["onChange"];
+  const onChange = jest.fn();
   render(<TestInput {...opts} onChange={onChange} aria-label="Filter value" />);
 
   const input = screen.getByRole("searchbox");
