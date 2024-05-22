@@ -60,8 +60,21 @@
   (testing "With a reference to a card"
     (t2.with-temp/with-temp
       [:model/Card {card-id :id} {:type          :model
-                                  :dataset_query (mt/native-query {:query "SELECT TOTAL, TAX FROM ORDERS"})}]
-      (is (= (format "SELECT SUBTOTAL FROM {{#%s}} LIMIT 3" card-id)
-             (replace-names (q (format "SELECT TOTAL FROM {{#%s}} LIMIT 3" card-id))
-                            {:columns {"TOTAL" "SUBTOTAL"}
-                             :tables  {"ORDERS" "PURCHASES"}}))))))
+                                  :dataset_query (mt/native-query {:query "SELECT total, tax FROM orders"})}]
+      (is (= (format "SELECT subtotal FROM {{#%s}} LIMIT 3" card-id)
+             (replace-names (q (format "SELECT total FROM {{#%s}} LIMIT 3" card-id))
+                            {:columns {"total" "subtotal"}
+                             :tables  {"orders" "purchases"}}))))))
+
+(deftest ^:parallel snippet-test
+  (testing "With a snippet"
+    (t2.with-temp/with-temp
+      [:model/NativeQuerySnippet {snippet-id :id} {:name    "a lovely snippet"
+                                                   :content "where subtotal > 10"}]
+      (is (= "SELECT amount FROM purchases {{snippet: a lovely snippet}}"
+             (replace-names (assoc-in
+                             (q "SELECT total FROM orders {{snippet: a lovely snippet}}")
+                             [:native :template-tags "snippet: a lovely snippet" :snippet-id]
+                             snippet-id)
+                            {:columns {"total" "amount"}
+                             :tables  {"orders" "purchases"}}))))))
