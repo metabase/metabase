@@ -160,7 +160,6 @@ export function useModelsAndOption({
           settings,
           width,
           isPlaceholder ?? false,
-          hoveredSeriesDataKey,
           renderingContext,
         );
       default:

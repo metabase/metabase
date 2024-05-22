@@ -9,7 +9,7 @@ import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../../chart-measurements/types";
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
-import type { CartesianChartModel, DataKey } from "../../model/types";
+import type { CartesianChartModel } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import { getGoalLineSeriesOption } from "../../option/goal-line";
@@ -29,7 +29,6 @@ export function getScatterPlotOption(
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isPlaceholder: boolean,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -105,7 +104,7 @@ export function getScatterPlotOption(
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      hoveredSeriesDataKey,
+      null,
       renderingContext,
     ),
   };
