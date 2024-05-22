@@ -124,7 +124,9 @@
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
-(defn- parse-url [url]
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url"
+  [url]
   (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
         matches (re-matches pattern url)]
     (if matches

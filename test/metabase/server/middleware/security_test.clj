@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.server.middleware.security :as mw.security :refer [approved-origin?]]
+   [metabase.server.middleware.security :as mw.security :refer [approved-origin?
+                                                                parse-url]]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [stencil.core :as stencil]))
@@ -91,6 +92,19 @@
            (is (str/includes? style-src (str "nonce-" nonce))))
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
+
+(deftest test-parse-url
+  (testing "Should parse valid urls"
+    (is (= (parse-url "http://example.com") {:protocol "http" :domain "example.com" :port nil}))
+    (is (= (parse-url "https://example.com") {:protocol "https" :domain "example.com" :port nil}))
+    (is (= (parse-url "http://example.com:8080") {:protocol "http" :domain "example.com" :port "8080"}))
+    (is (= (parse-url "example.com:80") {:protocol nil :domain "example.com" :port "80"}))
+    (is (= (parse-url "example.com:*") {:protocol nil :domain "example.com" :port "*"})))
+
+  (testing "Should throw for invalid urls"
+    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "ftp://example.com")))
+    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "://example.com")))
+    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "example:com")))))
 
 (deftest test-approved-origin?
   (testing "Should return false if parameters are nil"
