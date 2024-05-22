@@ -64,15 +64,21 @@
 
 (defn- update-metric-query-expression-names
   [metric-query unique-name-fn]
-  (reduce
-    (fn [metric-query [_ {:lib/keys [expression-name]} :as expression]]
-      (lib/replace-clause
-        metric-query
-        expression
-        (lib/with-expression-name expression (unique-name-fn expression-name))))
-    metric-query
-    ;; Rename in reverse order so dependent expressions are updated in order
-    (reverse (lib/expressions metric-query))))
+  (let [original+new-name-pairs (into []
+                                      (keep (fn [[_ {:lib/keys [expression-name]}]]
+                                              (let [new-name (unique-name-fn expression-name)]
+                                                (when-not (= new-name expression-name)
+                                                  [expression-name new-name]))))
+                                      (lib/expressions metric-query))]
+    (reduce
+      (fn [metric-query [original-name new-name]]
+        (let [expression (m/find-first (comp #{original-name} :lib/expression-name second) (lib/expressions metric-query))]
+          (lib/replace-clause
+            metric-query
+            expression
+            (lib/with-expression-name expression new-name))))
+      metric-query
+      original+new-name-pairs)))
 
 (defn- temp-query-at-stage-path
   [query stage-path]
