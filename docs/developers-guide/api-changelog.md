@@ -33,6 +33,21 @@ title: API changelog
 - `GET /api/transform/:db-id/:schema/:transform-name`, which hasn't been used internally by Metabase for ages, has
   been removed.
 
+## Metabase 0.49.5
+NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/card/:token/query/:export-format` was fixed in 0.49.5.
+
+- `POST /api/card/:card-id/query/:export-format`
+- `POST /api/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format`
+- `POST /api/dataset/:export-format`
+- `GET /api/embed/card/:token/query/:export-format`
+- `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format`
+
+    The above endpoints now accept the `format_rows` query parameter. It is an optional boolean parameter that will default to `true` if not included in the request.
+    When `format_rows` is `true`, the export will have formatting applied such that the values match what they appear as in the app.
+    When `format_rows` is `false`, formatting is not applied and exports will behave as they did prior to 0.49.0.
+
+    The value of `format_rows` has no effect when exporting xlsx files.
+
 ## Metabase 0.49.0
 - `POST /api/card` and `PUT /api/card/:id`
 
