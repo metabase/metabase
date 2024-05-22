@@ -82,7 +82,7 @@ export const CollectionContentView = ({
   isAdmin,
   uploadFile,
   uploadsEnabled,
-  canUploadToDb,
+  canCreateUploadInDb: canCreateUploadInDb,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -94,7 +94,7 @@ export const CollectionContentView = ({
   isAdmin: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
-  canUploadToDb: boolean;
+  canCreateUploadInDb: boolean;
 }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
@@ -204,8 +204,7 @@ export const CollectionContentView = ({
   };
 
   const canCreateUpload =
-    uploadsEnabled &&
-    canUploadToDb &&
+    canCreateUploadInDb &&
     collection.can_write &&
     !isTrashedCollection(collection);
 

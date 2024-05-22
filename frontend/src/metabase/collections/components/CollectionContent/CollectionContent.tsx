@@ -47,7 +47,7 @@ export function CollectionContent({
     getSetting(state, "uploads-enabled"),
   );
 
-  const canUploadToDb = useSelector(
+  const canCreateUploadInDb = useSelector(
     state =>
       uploadDbId &&
       Databases.selectors
@@ -100,7 +100,7 @@ export function CollectionContent({
       isAdmin={isAdmin}
       uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
-      canUploadToDb={canUploadToDb}
+      canCreateUploadInDb={canCreateUploadInDb}
     />
   );
 }
