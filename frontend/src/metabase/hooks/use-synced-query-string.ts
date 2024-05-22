@@ -18,7 +18,7 @@ export function useSyncedQueryString(
       return;
     }
     const object = fn();
-    const searchString = buildSearchString(object);
+    const searchString = buildSearchString({ object });
 
     if (searchString !== window.location.search) {
       history.replaceState(
@@ -27,6 +27,18 @@ export function useSyncedQueryString(
         window.location.pathname + searchString + window.location.hash,
       );
     }
+
+    return () => {
+      // remove the elements of object from the query string when the component is unmounted
+      const search = buildSearchString({
+        filterFn: key => !(key in object),
+      });
+      history.replaceState(
+        null,
+        document.title,
+        window.location.pathname + search + window.location.hash,
+      );
+    };
     // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deps]);
@@ -34,14 +46,22 @@ export function useSyncedQueryString(
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
 
-function buildSearchString(object: Record<string, any>) {
+const containsAllowedParams = (objectKey: string) => {
+  return QUERY_PARAMS_ALLOW_LIST.includes(objectKey);
+};
+
+function buildSearchString({
+  object = {},
+  filterFn = containsAllowedParams,
+}: {
+  object?: Record<string, any>;
+  filterFn?: (objectKey: string) => boolean;
+}) {
   const currentSearchParams = querystring.parse(
     window.location.search.replace("?", ""),
   );
   const filteredSearchParams = Object.fromEntries(
-    Object.entries(currentSearchParams).filter(entry =>
-      QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
-    ),
+    Object.entries(currentSearchParams).filter(entry => filterFn(entry[0])),
   );
 
   const search = querystring.stringify({
