@@ -1,9 +1,9 @@
 (ns metabase.analyze.classify-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze :as analyze]
    [metabase.analyze.classifiers.core :as classifiers]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]))
 
 (defn- ->field [field]
@@ -22,7 +22,7 @@
     (let [field      (->field {:name "state", :base_type :type/Text})
           classified (classifiers/run-classifiers field {:global
                                                       {:distinct-count
-                                                       (dec field-values/category-cardinality-threshold)
+                                                       (dec analyze/category-cardinality-threshold)
                                                        :nil% 0.3}})]
       (is (= {:has_field_values :auto-list, :semantic_type :type/Category}
              (select-keys classified [:has_field_values :semantic_type]))))))

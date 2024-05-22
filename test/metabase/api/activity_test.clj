@@ -107,7 +107,7 @@
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}
-                 Card      metric  {:name                   "rand-name"
+                 Card      metric  {:name                   "rand-metric-name"
                                     :type                   :metric
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
@@ -115,28 +115,27 @@
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
-          (doseq [{:keys [topic event]} [{:topic :event/card-query :event {:card-id (:id dataset)}}
-                                         {:topic :event/card-query :event {:card-id (:id dataset)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/dashboard-read :event {:object dash}}
-                                         {:topic :event/card-query :event {:card-id (:id card1)}}
-                                         {:topic :event/dashboard-read :event {:object dash}}
-                                         {:topic :event/table-read :event {:object table1}}
-                                         {:topic :event/card-query :event {:card-id (:id archived)}}
-                                         {:topic :event/table-read :event {:object hidden-table}}
-                                         {:topic :event/card-query :event {:card-id (:id metric)}}]]
+          (doseq [[topic event] [[:event/card-query     {:card-id (:id dataset)}]
+                                 [:event/card-query     {:card-id (:id dataset)}]
+                                 [:event/card-query     {:card-id (:id card1)}]
+                                 [:event/card-query     {:card-id (:id card1)}]
+                                 [:event/card-query     {:card-id (:id card1)}]
+                                 [:event/dashboard-read {:object dash}]
+                                 [:event/card-query     {:card-id (:id card1)}]
+                                 [:event/dashboard-read {:object dash}]
+                                 [:event/table-read     {:object table1}]
+                                 [:event/card-query     {:card-id (:id archived)}]
+                                 [:event/table-read     {:object hidden-table}]
+                                 [:event/card-query     {:card-id (:id metric)}]]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
-              (is (=?
-                   [{:model "metric" :id (u/the-id metric)}
-                    {:model "table" :id (u/the-id table1)}
-                    {:model "dashboard" :id (u/the-id dash)}
-                    {:model "card" :id (u/the-id card1)}
-                    {:model "dataset" :id (u/the-id dataset)}]
-                   recent-views)))))
+              (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+                      {:model "table" :id (u/the-id table1) :name "rand-name"}
+                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
+                      {:model "card" :id (u/the-id card1) :name "rand-name"}
+                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
+                     (map #(select-keys % [:model :id :name]) recent-views))))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})

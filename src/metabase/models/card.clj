@@ -9,7 +9,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.api.common :as api]
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
@@ -587,7 +587,7 @@
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata dataset?]}]
-  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
+  (let [valid-metadata? (and metadata (mc/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
