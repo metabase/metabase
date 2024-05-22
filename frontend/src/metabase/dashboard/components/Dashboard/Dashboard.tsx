@@ -477,27 +477,45 @@ function DashboardInner(props: DashboardProps) {
     );
   };
 
-  const parametersWidget = (
-    <SyncedParametersList
-      parameters={getValuePopulatedParameters({
-        parameters,
-        values: isAutoApplyFilters ? parameterValues : draftParameterValues,
-      })}
-      editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
-      dashboard={dashboard}
-      isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
-      isEditing={isEditing}
-      setParameterValue={setParameterValue}
-      setParameterIndex={setParameterIndex}
-      setEditingParameter={setEditingParameter}
-      setParameterValueToDefault={setParameterValueToDefault}
-      enableParameterRequiredBehavior
-    />
+  const parametersWidget = useMemo(
+    () => (
+      <SyncedParametersList
+        parameters={getValuePopulatedParameters({
+          parameters,
+          values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+        })}
+        editingParameter={editingParameter}
+        hideParameters={hiddenParameterSlugs}
+        dashboard={dashboard}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        setParameterValue={setParameterValue}
+        setParameterIndex={setParameterIndex}
+        setEditingParameter={setEditingParameter}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
+      />
+    ),
+    [
+      dashboard,
+      draftParameterValues,
+      editingParameter,
+      hiddenParameterSlugs,
+      isAutoApplyFilters,
+      isEditing,
+      isFullscreen,
+      parameterValues,
+      parameters,
+      setEditingParameter,
+      setParameterIndex,
+      setParameterValue,
+      setParameterValueToDefault,
+      shouldRenderAsNightMode,
+    ],
   );
 
-  const renderParameterList = () => {
+  const renderParameterList = useCallback(() => {
     if (!hasVisibleParameters) {
       return null;
     }
@@ -538,7 +556,16 @@ function DashboardInner(props: DashboardProps) {
         </ParametersFixedWidthContainer>
       </ParametersWidgetContainer>
     );
-  };
+  }, [
+    dashboard?.width,
+    hasScroll,
+    hasVisibleParameters,
+    isEditing,
+    isFullscreen,
+    parametersWidget,
+    shouldRenderAsNightMode,
+    visibleParameters.length,
+  ]);
 
   return (
     <DashboardLoadingAndErrorWrapper
