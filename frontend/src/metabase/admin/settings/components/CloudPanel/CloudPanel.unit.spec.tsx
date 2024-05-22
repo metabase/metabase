@@ -225,7 +225,7 @@ const expectInitState = async () => {
 
 const expectStartConfirmationModal = async () => {
   expect(
-    await screen.findByText("Migrate this instance to Metabase Cloud now?"),
+    await screen.findByText(/Get started with Metabase Cloud/),
   ).toBeInTheDocument();
 };
 
