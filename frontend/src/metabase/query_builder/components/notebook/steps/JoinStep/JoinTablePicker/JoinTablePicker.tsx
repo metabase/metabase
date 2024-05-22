@@ -52,7 +52,7 @@ export function JoinTablePicker({
         query={query}
         stageIndex={stageIndex}
         table={table}
-        databaseId={databaseId}
+        databaseId={databaseId ?? undefined}
         placeholder={t`Pick data…`}
         isDisabled={isDisabled}
         onChange={onChange}

@@ -22,7 +22,7 @@ interface NotebookDataPickerProps {
   query: Lib.Query;
   stageIndex: number;
   table?: Lib.TableMetadata | Lib.CardMetadata;
-  databaseId?: DatabaseId | null;
+  databaseId?: DatabaseId;
   placeholder?: string;
   hasMetrics?: boolean;
   isDisabled?: boolean;
@@ -86,7 +86,7 @@ export function NotebookDataPicker({
         <DataPickerModal
           title={t`Pick data to join`}
           value={tableValue}
-          databaseId={databaseId ?? undefined}
+          databaseId={databaseId}
           models={[
             "table",
             "card",
