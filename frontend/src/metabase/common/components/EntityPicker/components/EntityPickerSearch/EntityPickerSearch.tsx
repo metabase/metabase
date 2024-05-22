@@ -16,7 +16,7 @@ import type {
 
 import type { TypeWithModel } from "../../types";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
-import { ResultItem, ChunkyList } from "../ResultItem";
+import { ChunkyList, ResultItem } from "../ResultItem";
 
 import { getSearchTabText } from "./utils";
 
@@ -92,7 +92,7 @@ export const EntityPickerSearchResults = <
   return (
     <Box h="100%" bg="bg-light">
       {searchResults.length > 0 ? (
-        <Stack h="100%">
+        <Stack h="100%" bg="bg-light">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
               <Box p="xl" {...props}>

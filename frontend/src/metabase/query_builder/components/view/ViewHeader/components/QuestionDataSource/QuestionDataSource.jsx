@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
 
+import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
@@ -18,7 +19,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
-import { TablesDivider, TableInfoIcon } from "./QuestionDataSource.styled";
+import { TablesDivider, IconWrapper } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -78,7 +79,10 @@ export function QuestionDataSource({
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.type() === "model") {
+            if (
+              sourceQuestion.type() === "model" ||
+              sourceQuestion.type() === "metric"
+            ) {
               return (
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}
@@ -260,7 +264,16 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
     >
       <span>
         {table.displayName()}
-        {!subHead && <TableInfoIcon table={table} />}
+        {!subHead && (
+          <IconWrapper>
+            <TableInfoIcon
+              table={table}
+              icon="info_filled"
+              size={12}
+              position="bottom"
+            />
+          </IconWrapper>
+        )}
       </span>
     </HeadBreadcrumbs.Badge>
   ));

@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, testPairedTooltipValues } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "18063",
@@ -52,8 +52,4 @@ function selectFieldValue(field, value) {
     });
 
   popover().contains(value).click();
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

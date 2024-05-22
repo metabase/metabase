@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import {
   setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -28,20 +29,36 @@ import { QuestionPickerModal } from "./QuestionPickerModal";
 type NestedCollectionItem = Partial<CollectionItem> & {
   id: any;
   is_personal?: boolean;
-  descendants: NestedCollectionItem[];
+  descendants?: NestedCollectionItem[];
 };
 
-const myQuestion = createMockCard({
-  id: 100,
-  name: "My Question",
-  collection_id: 3,
+const myQuestion = createMockCollectionItem({
+  ...createMockCard({
+    id: 100,
+    name: "My Question",
+    collection_id: 3,
+  }),
+  model: "card",
 });
 
-const myModel = createMockCard({
-  id: 101,
-  name: "My Model",
-  collection_id: 3,
-  type: "model",
+const myModel = createMockCollectionItem({
+  ...createMockCard({
+    id: 101,
+    name: "My Model",
+    collection_id: 3,
+    type: "model",
+  }),
+  model: "dataset",
+});
+
+const myMetric = createMockCollectionItem({
+  ...createMockCard({
+    id: 102,
+    name: "My Metric",
+    collection_id: 3,
+    type: "metric",
+  }),
+  model: "metric",
 });
 
 const collectionTree: NestedCollectionItem[] = [
@@ -63,18 +80,7 @@ const collectionTree: NestedCollectionItem[] = [
             id: 3,
             name: "Collection 3",
             model: "collection",
-            descendants: [
-              {
-                ...myQuestion,
-                model: "card",
-                descendants: [],
-              },
-              {
-                ...myModel,
-                model: "dataset",
-                descendants: [],
-              },
-            ],
+            descendants: [myQuestion, myModel, myMetric],
             location: "/4/",
             can_write: true,
             is_personal: false,
@@ -119,7 +125,7 @@ const flattenCollectionTree = (
   if (!nodes) {
     return [];
   }
-  return nodes.flatMap(({ descendants, ...node }) => [
+  return nodes.flatMap(({ descendants = [], ...node }) => [
     node,
     ...flattenCollectionTree(descendants),
   ]);
@@ -137,7 +143,6 @@ const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
     setupCollectionItemsEndpoint({
       collection: createMockCollection({ id: node.id }),
       collectionItems,
-      models: ["collection", "dataset", "card"],
     });
 
     if (collectionItems.length > 0) {
@@ -149,7 +154,7 @@ const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
 interface SetupOpts {
   initialValue?: {
     id: CollectionId;
-    model: "collection" | "card" | "dataset";
+    model: "collection" | "card" | "dataset" | "metric";
   };
   onChange?: (item: QuestionPickerItem) => void;
   models?: [QuestionPickerValueModel, ...QuestionPickerValueModel[]];
@@ -159,6 +164,7 @@ interface SetupOpts {
 const commonSetup = () => {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,
@@ -319,6 +325,20 @@ describe("QuestionPickerModal", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render the metric tab if explicitly enabled", async () => {
+    await setupModal({ models: ["card", "dataset", "metric"] });
+
+    expect(
+      await screen.findByRole("tab", { name: /Questions/ }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: /Models/ }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: /Metrics/ }),
+    ).toBeInTheDocument();
+  });
+
   it("can render a single tab (which hides the tab bar)", async () => {
     await setupModal({ models: ["dataset"] });
 
@@ -362,6 +382,25 @@ describe("QuestionPickerModal", () => {
 
     expect(
       await screen.findByRole("button", { name: /My Model/ }),
+    ).toHaveAttribute("data-active", "true");
+  });
+
+  it("should auto-select the metric tab when a metric is selected", async () => {
+    await setupModal({
+      initialValue: { id: 102, model: "metric" },
+      models: ["card", "dataset", "metric"],
+    });
+
+    expect(
+      await screen.findByRole("tab", { name: /Questions/ }),
+    ).toHaveAttribute("aria-selected", "false");
+    expect(await screen.findByRole("tab", { name: /Metrics/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /My Metric/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -420,5 +459,14 @@ describe("QuestionPickerModal", () => {
     expect(
       screen.queryByRole("tab", { name: /Search/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should be able to search for metrics", async () => {
+    await setupSearchEndpoints([myQuestion, myModel, myMetric]);
+    await setupModal({ models: ["card", "dataset", "metric"] });
+    const searchInput = await screen.findByPlaceholderText(/search/i);
+    await userEvent.type(searchInput, myMetric.name);
+    expect(await screen.findByText(myMetric.name)).toBeInTheDocument();
+    expect(screen.queryByText(myQuestion.name)).not.toBeInTheDocument();
   });
 });

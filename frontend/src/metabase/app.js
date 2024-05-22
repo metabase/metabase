@@ -1,11 +1,5 @@
 import "regenerator-runtime/runtime";
 
-// Use of classList.add and .remove in Background and FitViewPort Hocs requires
-// this polyfill so that those work in older browsers
-import "classlist-polyfill";
-
-import "number-to-locale-string";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import

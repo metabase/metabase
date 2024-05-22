@@ -4,6 +4,7 @@ import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
+  getInitialSelectedTabId,
   getParameterValues,
   getQuestions,
   getSelectedTabId,
@@ -126,10 +127,11 @@ export const fetchDashboard = createAsyncThunk(
       fetchDashboardCancellation = null;
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        const selectedTabId = getSelectedTabId(getState());
+        const selectedTabId =
+          getSelectedTabId(getState()) ?? getInitialSelectedTabId(result);
 
         const cards =
-          selectedTabId === undefined
+          selectedTabId == null
             ? result.dashcards
             : result.dashcards.filter(
                 (c: DashboardCard) => c.dashboard_tab_id === selectedTabId,
@@ -167,9 +169,15 @@ export const fetchDashboard = createAsyncThunk(
         questions,
       );
 
+      const lastUsedParametersValues = result["last_used_param_values"] ?? {};
+
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(parameters, queryParams);
+        : getParameterValuesByIdFromQueryParams(
+            parameters,
+            queryParams,
+            lastUsedParametersValues,
+          );
 
       entities = entities ?? normalize(result, dashboard).entities;
 

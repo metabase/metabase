@@ -38,7 +38,7 @@
       (testing "deleting the entity_id for one of them"
         (t2/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
-               (t2/select-fn-set :entity_id Collection))))
+               (t2/select-fn-set :entity_id Collection :type nil))))
 
       (testing "backfill"
         (serdes.backfill/backfill-ids-for! Collection)
@@ -54,14 +54,14 @@
       (testing "deleting the entity_id for one of them"
         (t2/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
-               (t2/select-fn-set :entity_id Collection))))
+               (t2/select-fn-set :entity_id Collection :type nil))))
 
       (testing "backfilling twice"
         (serdes.backfill/backfill-ids-for! Collection)
         (let [first-eid (t2/select-one-fn :entity_id Collection :id c2-id)]
           (t2/update! Collection c2-id {:entity_id nil})
           (is (= #{c1-eid nil}
-                 (t2/select-fn-set :entity_id Collection)))
+                 (t2/select-fn-set :entity_id Collection :type nil)))
           (serdes.backfill/backfill-ids-for! Collection)
           (testing "produces the same entity_id both times"
             (is (= first-eid (t2/select-one-fn :entity_id Collection :id c2-id)))))))))

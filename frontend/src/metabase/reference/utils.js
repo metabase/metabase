@@ -53,7 +53,6 @@ export const getQuestion = ({
   dbId: databaseId,
   tableId,
   fieldId,
-  metricId,
   segmentId,
   getCount,
   visualization,
@@ -72,10 +71,6 @@ export const getQuestion = ({
 
     if (fieldId) {
       query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
-    }
-
-    if (metricId) {
-      query = aggregateByMetricId(query, metricId);
     }
 
     if (segmentId) {
@@ -119,17 +114,6 @@ function filterBySegmentId(query, segmentId) {
   }
 
   return Lib.filter(query, stageIndex, segmentMetadata);
-}
-
-function aggregateByMetricId(query, metricId) {
-  const stageIndex = -1;
-  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
-
-  if (!metricMetadata) {
-    return query;
-  }
-
-  return Lib.aggregate(query, stageIndex, metricMetadata);
 }
 
 export const getQuestionUrl = getQuestionArgs =>

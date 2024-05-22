@@ -300,7 +300,7 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, objectId, settingsSyncOptions }) => {
+  handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
     const { rawSeries } = this.props;
 
     const previousCard =
@@ -311,7 +311,6 @@ class Visualization extends PureComponent {
       nextCard,
       previousCard,
       objectId,
-      settingsSyncOptions,
     });
   };
 

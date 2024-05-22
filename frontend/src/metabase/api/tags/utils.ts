@@ -19,7 +19,6 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  Metric,
   NativeQuerySnippet,
   ModelCacheRefreshStatus,
   PopularItem,
@@ -39,6 +38,7 @@ import {
   COLLECTION_ITEM_MODELS,
   SEARCH_MODELS,
 } from "metabase-types/api";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -81,7 +81,7 @@ export function provideActivityItemListTags(
 export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function provideAlertListTags(
@@ -131,6 +131,12 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
     idTag("card", card.id),
     ...(card.collection ? provideCollectionTags(card.collection) : []),
   ];
+}
+
+export function provideCloudMigrationTags(
+  migration: CloudMigration,
+): TagDescription<TagType>[] {
+  return [idTag("cloud-migration", migration.id)];
 }
 
 export function provideCollectionItemListTags(
@@ -272,19 +278,6 @@ export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
-export function provideMetricListTags(
-  metrics: Metric[],
-): TagDescription<TagType>[] {
-  return [listTag("metric"), ...metrics.flatMap(provideMetricTags)];
-}
-
-export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
-  return [
-    idTag("metric", metric.id),
-    ...(metric.table ? provideTableTags(metric.table) : []),
-  ];
-}
-
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
@@ -413,7 +406,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
-    ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
 }
 

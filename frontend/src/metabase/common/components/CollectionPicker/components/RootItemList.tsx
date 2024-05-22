@@ -36,6 +36,7 @@ export const RootItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
@@ -135,6 +136,7 @@ export const RootItemList = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

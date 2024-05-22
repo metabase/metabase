@@ -103,12 +103,12 @@
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :order-by))))
 
-(defn- orderable-column? [{:keys [base-type], :as _column-metadata}]
+(defn- orderable-column? [{:keys [base-type]}]
   (some (fn [orderable-base-type]
           (isa? base-type orderable-base-type))
         lib.schema.expression/orderable-types))
 
-(mu/defn orderable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn orderable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get column metadata for all the columns you can order by in a given `stage-number` of a `query`. Rules are as
   follows:
 
@@ -156,7 +156,7 @@
                             (comp (map lib.ref/ref)
                                   (keep-indexed (fn [index an-order-by]
                                                   (when-let [col (lib.equality/find-matching-column
-                                                                   query stage-number an-order-by columns)]
+                                                                  query stage-number an-order-by columns)]
                                                     [col index]))))
                             existing-order-bys)]
          (mapv #(let [pos (matching %)]

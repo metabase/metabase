@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
@@ -206,21 +207,22 @@ export function colorShade(hex, shade = 0) {
 }
 
 // cache computed cardinalities in a weak map since they are computationally expensive
-const cardinalityCache = new WeakMap();
+const cardinalityCache = new Map();
 
 export function getColumnCardinality(cols, rows, index) {
   const col = cols[index];
-  if (!cardinalityCache.has(col)) {
+  const key = getColumnKey(col);
+  if (!cardinalityCache.has(key)) {
     const dataset = crossfilter(rows);
     cardinalityCache.set(
-      col,
+      key,
       dataset
         .dimension(d => d[index])
         .group()
         .size(),
     );
   }
-  return cardinalityCache.get(col);
+  return cardinalityCache.get(key);
 }
 
 const extentCache = new WeakMap();
@@ -248,6 +250,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
 
     return {
       ...nextCard,
+      type: "question",
       // Original card id is needed for showing the "started from" lineage in dirty cards.
       original_card_id: alreadyHadLineage
         ? // Just recycle the original card id of previous card if there was one

@@ -12,8 +12,10 @@ import {
   filter,
   filterField,
   chartPathWithFillColor,
+  assertQueryBuilderRowCount,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
-import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -153,8 +155,8 @@ describe("scenarios > question > nested", () => {
     const metric = {
       name: "Sum of discounts",
       description: "Discounted orders.",
-      table_id: ORDERS_ID,
-      definition: {
+      type: "metric",
+      query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         filter: ["!=", ["field", ORDERS.DISCOUNT, null], 0],
@@ -162,12 +164,17 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    createMetric(metric).then(({ body: { id: metricId } }) => {
+    cy.createQuestion(metric, {
+      wrapId: true,
+      idAlias: "metricId",
+    });
+
+    cy.get("@metricId").then(metricId => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": `card__${metricId}`,
           aggregation: [["metric", metricId]],
           breakout: [
             ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
@@ -185,7 +192,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      cy.get("[data-testid=cell-data]").contains(metric.name);
+      assertQueryBuilderRowCount(5);
     });
   });
 
@@ -395,10 +402,10 @@ describe("scenarios > question > nested", () => {
       cy.findByText("New").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15725").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("15725").click();
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
