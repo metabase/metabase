@@ -371,12 +371,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     adminOnly: false,
     component: UploadSettings,
     settings: [
-      // TODO: double-check how this data is used and if it's still necessary
       {
         key: "uploads-settings",
-        display_name: t`Uploads settings`,
-        description: t`TODO`,
-        placeholder: t`TODO`,
       },
     ],
   },
