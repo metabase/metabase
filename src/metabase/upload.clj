@@ -309,7 +309,7 @@
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
   (or (cond
-        (:uploads_enabled db)
+        (not (:uploads_enabled db))
         (ex-info (tru "Uploads are not enabled.")
                  {:status-code 422})
         (and (str/blank? schema-name)
