@@ -123,10 +123,10 @@ export const useDashboardUrlParams = ({
     location,
   });
 
-  useLocationSync<boolean | null>({
+  useLocationSync<boolean>({
     key: "fullscreen",
     value: isFullscreen,
-    onChange: onFullscreenChange,
+    onChange: value => onFullscreenChange(value ?? false),
     location,
   });
 
