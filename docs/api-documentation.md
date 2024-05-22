@@ -65,7 +65,6 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Public](api/public.md)
 - [Pulse](api/pulse.md)
 - [Revision](api/revision.md)
-- [Routes](api/routes.md)
 - [Sandbox GTAP*](api/ee/sandbox-gtap.md)
 - [Sandbox table*](api/ee/sandbox-table.md)
 - [Sandbox user*](api/ee/sandbox-user.md)

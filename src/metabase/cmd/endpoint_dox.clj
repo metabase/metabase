@@ -51,7 +51,7 @@
 (defn- upstream-endpoint?
   "Filters out endpoints that are not part of the Metabase API."
  [endpoint]
-  (contains? #{"LLM Auto-description" "SCIM"} (:ns-name endpoint)))
+  (contains? #{"LLM Auto-description" "SCIM" "Routes"} (:ns-name endpoint)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
