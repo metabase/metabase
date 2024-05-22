@@ -36,6 +36,15 @@
                                     sentinel snippet-contents sentinel))]
     (first-unique raw-query #(delimited-snippet (gensym "mb_") content))))
 
+(defn- gen-option-sentinels
+  [raw-query]
+  (let [unique-sentinels?       (fn [[open close]] (not (or (str/includes? raw-query open)
+                                                            (str/includes? raw-query close))))
+        gen-sentinel-candidates (fn [] (let [postfix (gensym "mb_")]
+                                         [(str "/* opt_open_" postfix " */")
+                                          (str "/* opt_close_" postfix " */")]))]
+    (first (filter unique-sentinels? (repeatedly gen-sentinel-candidates)))))
+
 (defn- braceify
   [s]
   (format "{{%s}}" s))
@@ -74,6 +83,20 @@
             (recur rest
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
+
+          (params/Optional? token)
+          (let [[open-sentinel close-sentinel] (gen-option-sentinels raw-query)
+                {inner-query :query
+                 inner-subs  :substitutions} (parse-tree->clean-query raw-query (:args token) param->value)]
+            (recur rest
+                   (str query-so-far
+                        open-sentinel
+                        inner-query
+                        close-sentinel)
+                   (merge inner-subs
+                          substitutions
+                          {open-sentinel  "[["
+                           close-sentinel "]]"})))
 
           ;; Plain variable
           (and (params/Param? token)

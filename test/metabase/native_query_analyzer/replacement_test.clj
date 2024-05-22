@@ -78,3 +78,11 @@
                              snippet-id)
                             {:columns {"total" "amount"}
                              :tables  {"orders" "purchases"}}))))))
+
+(deftest ^:parallel optional-test
+  (testing "With optional tags"
+    (is (= "SELECT cost FROM purchases WHERE id IS NOT NULL [[ AND pretax > {{subtotal}} ]] [[ AND {{amazing_filter}} ]]"
+           (replace-names (q "SELECT total FROM orders WHERE id IS NOT NULL [[ AND subtotal > {{subtotal}} ]] [[ AND {{amazing_filter}} ]]")
+                          {:columns {"total"    "cost"
+                                     "subtotal" "pretax"}
+                           :tables {"orders" "purchases"}})))))
