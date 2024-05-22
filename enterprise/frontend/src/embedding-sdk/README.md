@@ -7,12 +7,13 @@ The Metabase Embedding SDK for React offers a way to integrate Metabase into you
 Features currently supported:
 * embedding questions - static
 * embedding questions - w/drill-down
+* theming with CSS variables
 * plugins for custom actions
 
 Features planned:
-* embedding dashboards - static
+* embedding dashboards - static (WIP)
 * embedding dashboards - w/ drill-down
-* styling/theming via CSS
+* embedding the collection browser
 * subscribing to events
 
 # Prerequisites
