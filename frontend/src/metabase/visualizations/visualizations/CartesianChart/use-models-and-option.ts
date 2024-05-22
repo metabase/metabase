@@ -10,6 +10,7 @@ import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesia
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
@@ -148,6 +149,18 @@ export function useModelsAndOption({
           selectedOrHoveredTimelineEventIds,
           settings,
           isPlaceholder ?? false,
+          renderingContext,
+        );
+      case "scatter":
+        return getScatterPlotOption(
+          chartModel as CartesianChartModel,
+          chartMeasurements,
+          timelineEventsModel,
+          selectedOrHoveredTimelineEventIds,
+          settings,
+          width,
+          isPlaceholder ?? false,
+          hoveredSeriesDataKey,
           renderingContext,
         );
       default:

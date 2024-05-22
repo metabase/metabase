@@ -42,7 +42,7 @@ import {
   isTimeSeriesAxis,
 } from "../model/guards";
 import { getStackTotalValue } from "../model/series";
-import { buildEChartsScatterSeries } from "../scatter/series";
+import { buildEChartsScatterSeries } from "../scatter/option/series";
 
 import { getSeriesYAxisIndex } from "./utils";
 
