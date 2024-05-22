@@ -22,6 +22,7 @@
      metabase.actions.test-util/with-actions-test-data
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
+     metabase.analytics.snowplow-test/with-fake-snowplow-collector
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
      metabase.test.data.users/with-group

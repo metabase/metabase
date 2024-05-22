@@ -52,7 +52,7 @@ import {
   Separator,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import LogoBadge from "./LogoBadge";
+import { LogoBadge } from "./LogoBadge";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 

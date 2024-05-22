@@ -140,7 +140,7 @@
   (fn []
     (with-start-and-finish-logging* #(log/info %) message f)))
 
-(defn with-start-and-finish-debug-logging
+(defn- do-with-start-and-finish-debug-logging
   "Similar to `with-start-and-finish-logging except invokes `f` and returns its result and logs at the debug level"
   {:style/indent [:form]}
   [message f]
@@ -456,22 +456,23 @@
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
-        results    (with-start-and-finish-debug-logging (format "step ''%s'' for %s"
-                                                                step-name
-                                                                (name-for-logging database))
-                     (fn [& args]
-                       (try
-                         (task-history/with-task-history {:task            step-name
-                                                          :db_id           (u/the-id database)
-                                                          :on-success-info (fn [result]
-                                                                             {:task_details (dissoc result :start-time :end-time :log-summary-fn)})}
-                           (apply sync-fn database args))
-                         (catch Throwable e
-                           (if *log-exceptions-and-continue?*
-                             (do
-                              (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
+        results    (do-with-start-and-finish-debug-logging
+                    (format "step ''%s'' for %s"
+                            step-name
+                            (name-for-logging database))
+                    (fn [& args]
+                      (try
+                        (task-history/with-task-history {:task            step-name
+                                                         :db_id           (u/the-id database)
+                                                         :on-success-info (fn [result]
+                                                                            {:task_details (dissoc result :start-time :end-time :log-summary-fn)})}
+                          (apply sync-fn database args))
+                        (catch Throwable e
+                          (if *log-exceptions-and-continue?*
+                            (do
+                              (log/warnf e "Error running step ''%s'' for %s" step-name (name-for-logging database))
                               {:throwable e})
-                             (throw e))))))
+                            (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time

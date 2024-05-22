@@ -139,8 +139,8 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                      "overflow"
                                      "indexed")}))
         (catch Exception e
-          (log/error e (format "Error saving model-index values for model-index: %d, model: %d"
-                               (:id model-index) (:model-id model-index)))
+          (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
+                      (:id model-index) (:model-id model-index))
           (t2/update! ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)
