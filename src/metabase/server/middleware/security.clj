@@ -137,27 +137,27 @@
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
   [raw-origin approved-origins]
-  (if (or (empty? raw-origin) (empty? approved-origins))
-    false
-    (let [approved-list (str/split approved-origins #" ")
-          origin        (parse-url raw-origin)]
-      (boolean (some (fn [approved-origin-raw]
-                       (or
-                        (= approved-origin-raw "*")
-                        (let [approved-origin (parse-url approved-origin-raw)]
-                          (and
+  (boolean
+   (when (and (seq raw-origin) (seq approved-origins))
+     (let [approved-list (str/split approved-origins #" ")
+           origin        (parse-url raw-origin)]
+       (boolean (some (fn [approved-origin-raw]
+                        (or
+                         (= approved-origin-raw "*")
+                         (let [approved-origin (parse-url approved-origin-raw)]
+                           (and
                         ;;  domain check
-                           (if (str/starts-with? (:domain approved-origin) "*.")
-                             (str/ends-with? (:domain origin) (str/replace-first (:domain approved-origin) "*." "."))
-                             (= (:domain origin) (:domain approved-origin)))
+                            (if (str/starts-with? (:domain approved-origin) "*.")
+                              (str/ends-with? (:domain origin) (str/replace-first (:domain approved-origin) "*." "."))
+                              (= (:domain origin) (:domain approved-origin)))
                         ;;  protocol check
-                           (or (nil? (:protocol approved-origin))
-                               (= (:protocol origin) (:protocol approved-origin)))
+                            (or (nil? (:protocol approved-origin))
+                                (= (:protocol origin) (:protocol approved-origin)))
                         ;;  port check
-                           (or
-                            (= (:port approved-origin) "*")
-                            (= (:port origin) (:port approved-origin)))))))
-                     approved-list)))))
+                            (or
+                             (= (:port approved-origin) "*")
+                             (= (:port origin) (:port approved-origin)))))))
+                      approved-list))))))
 
 (defn- access-control-headers
   [origin]
