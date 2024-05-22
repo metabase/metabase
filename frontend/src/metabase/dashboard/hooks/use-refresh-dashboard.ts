@@ -10,7 +10,7 @@ export const useRefreshDashboard = ({
   queryParams,
 }: {
   dashboardId: DashboardId;
-  queryParams: Record<string, any>;
+  queryParams: Record<string, unknown>;
 }): {
   refreshDashboard: () => Promise<void>;
 } => {
