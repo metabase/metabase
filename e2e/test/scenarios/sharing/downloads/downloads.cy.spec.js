@@ -27,6 +27,7 @@ import {
   setFilter,
   entityPickerModal,
   entityPickerModalTab,
+  showDashboardCardActions,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -257,7 +258,7 @@ describe("scenarios > question > download", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1").realHover();
+      showDashboardCardActions(0);
       getDashboardCardMenu(0).click();
 
       popover().within(() => {
@@ -266,7 +267,7 @@ describe("scenarios > question > download", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2").realHover();
+      showDashboardCardActions(1);
       getDashboardCardMenu(1).click();
 
       popover().within(() => {
