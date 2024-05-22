@@ -287,6 +287,7 @@
            csv-file-prefix          "example csv file"}
       :as args}]
   (mt/with-discard-model-updates [:model/Database]
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
       (let [file        (or file (csv-file-with
@@ -329,6 +330,7 @@
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates [:model/Database]
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database (mt/id) {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
@@ -983,11 +985,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
-        (doseq [uploads-enabled-value [false nil]]
-          (is (thrown-with-msg?
-                java.lang.Exception
-                #"^Uploads are not enabled\.$"
-                (upload-example-csv! :uploads-enabled uploads-enabled-value :schema-name "public", :table-prefix "uploaded_magic_")))))
+        (is (thrown-with-msg?
+              java.lang.Exception
+              #"^Uploads are not enabled\.$"
+              (upload-example-csv! :uploads-enabled false :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Database ID must be valid"
         (is (thrown-with-msg?
               java.lang.Exception
