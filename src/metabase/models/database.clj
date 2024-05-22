@@ -46,7 +46,6 @@
    :metadata_sync_schedule      mi/transform-cron-string
    :cache_field_values_schedule mi/transform-cron-string
    :start_of_week               mi/transform-keyword
-   :settings                    mi/transform-encrypted-json
    :dbms_version                mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)

@@ -20,6 +20,7 @@
    [pretty.core :as pretty]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
+   [toucan2.jdbc.read :as t2.jdbc.read]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.query :as t2.query]))
@@ -68,14 +69,42 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone]}))
+         {:select [:id
+                   :engine
+                   :name
+                   :dbms_version
+                   :is_audit
+                   :details
+                   :timezone
+                   ;; SELECT ARRAY(SELECT ARRAY[key,value] FROM database_setting WHERE database_id = id) AS settings
+                   [[:array {:select [[[:array [:key :value]]]]
+                             :from   [[:database_setting]]
+                             :where  [:= :database_id :id]}]
+                    :settings]]
+          :from      [[(t2/table-name :model/Database)]]}))
+
+(methodical/defmethod t2.jdbc.read/read-column-thunk [:default :metadata/database java.sql.Types/ARRAY]
+  "Read Postgres arrays."
+  [^java.sql.Connection conn model ^java.sql.ResultSet rset ^java.sql.ResultSetMetaData rsmeta ^Long i]
+  (let [thunk (next-method conn model rset rsmeta i)]
+    (letfn [(read-array [value]
+              (if (instance? org.postgresql.jdbc.PgArray value)
+                (mapv read-array (.getArray ^org.postgresql.jdbc.PgArray value))
+                value))]
+      (fn thunk* []
+        (read-array (thunk))))))
 
 (t2/define-after-select :metadata/database
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
   (let [database (instance->metadata database :metadata/database)
-        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
+        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})
+        database (update database :settings (fn [settings-array]
+                                              (into {}
+                                                    (map (fn [[k v]]
+                                                           [(keyword k) v]))
+                                                    settings-array)))]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 

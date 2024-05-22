@@ -23,6 +23,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.db.custom-migrations.migrate-database-settings :as migrate-database-settings]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -1396,3 +1397,7 @@
 (define-reversible-migration MigrateMetricsToV2
   (metrics-v2/migrate-up!)
   (metrics-v2/migrate-down!))
+
+(define-reversible-migration MigrateDatabaseSettings
+  (migrate-database-settings/migrate-up!)
+  (migrate-database-settings/migrate-down!))

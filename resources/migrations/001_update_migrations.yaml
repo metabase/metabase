@@ -7386,7 +7386,78 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v51.2024-05-22T02:25:57
+      author: camsaul
+      comment: Create new database_setting table
+      changes:
+        - createTable:
+            tableName: database_setting
+            remarks: Add new table for Database-local Settings to replace database.settings
+            columns:
+              - column:
+                  name: database_id
+                  remarks: ID of the Database this Setting applies to
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_database(id)
+                    foreignKeyName: fk_database_setting_database_id
+                    deleteCascade: true
+              # types below match what's in the `setting` table
+              - column:
+                  name: key
+                  remarks: Setting name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  remarks: Serialized Setting value
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+      # rollback gets generated automatically
+
+  - changeSet:
+      id: v51.2024-05-22T02:31:21
+      author: camsaul
+      comment: Add unique constraint to database_setting table for database_id + key
+      changes:
+        - addUniqueConstraint:
+            tableName: database_setting
+            columnNames: database_id, key
+            constraintName: unique_database_setting_database_id_key
+      rollback: # Not needed
+
+  - changeSet:
+      id: v51.2024-05-22T02:32:48
+      author: camsaul
+      comment: Add index to database_setting on database_id
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateDatabaseSettings"
+
+  - changeSet:
+      id: v51.2024-05-22T02:34:10
+      author: camsaul
+      comment: Drop the database.settings column we migrated to the database_setting table
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: settings
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing Database-local Settings for this Database"
+
+
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
