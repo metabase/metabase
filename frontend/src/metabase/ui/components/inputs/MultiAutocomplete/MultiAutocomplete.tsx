@@ -89,7 +89,7 @@ export function MultiAutocomplete({
       setSelectedValues(newSelectedValues);
       setLastSelectedValues(newSelectedValues);
     } else {
-      setSearchValue(values.at(-1) ?? "");
+      setSearchValue(last ?? "");
       setSelectedValues([...lastSelectedValues, ...validValues]);
       setLastSelectedValues([
         ...lastSelectedValues,
