@@ -92,12 +92,16 @@ export function getDataLabelFormatter(
 ) {
   const accessKey = labelDataKey ?? seriesModel.dataKey;
 
-  const shouldSkipLabelFn = getSkipLabelFn(chartDataDensity, settings);
+  const getShowLabel = getShowLabelFn(chartDataDensity, settings);
 
   return (params: CallbackDataParams) => {
     const value = (params.data as Datum)[accessKey];
 
-    if (shouldSkipLabelFn(params) || typeof value !== "number") {
+    if (!getShowLabel(params)) {
+      return " ";
+    }
+
+    if (typeof value !== "number") {
       return " ";
     }
 
@@ -105,20 +109,20 @@ export function getDataLabelFormatter(
   };
 }
 
-function getSkipLabelFn(
+function getShowLabelFn(
   chartDataDensity?: ChartDataDensity,
   settings?: ComputedVisualizationSettings,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
-    return () => false;
+    return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
-    return () => false;
+    return () => true;
   }
 
   const { maxNumberOfDots, totalNumberOfDots } = chartDataDensity;
   if (totalNumberOfDots <= maxNumberOfDots) {
-    return () => false;
+    return () => true;
   }
 
   return (params: CallbackDataParams) => {
