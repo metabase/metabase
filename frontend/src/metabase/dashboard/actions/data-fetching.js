@@ -130,7 +130,7 @@ export const fetchCardData = createThunkAction(
       const requests = [dispatch(fetchCardQuery(card, dashcard, options))];
 
       const dashboardType = getDashboardType(dashcard.dashboard_id);
-      if (dashboardType === "normal" || dashboardType === "inline") {
+      if (dashboardType === "normal" || dashboardType === "transient") {
         requests.push(dispatch(loadMetadataForDashcards([dashcard])));
       }
 
