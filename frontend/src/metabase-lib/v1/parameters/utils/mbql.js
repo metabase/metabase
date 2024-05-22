@@ -10,6 +10,7 @@ import {
 import {
   getParameterSubType,
   isDateParameter,
+  isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   setStartingFrom,
@@ -183,23 +184,10 @@ function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
     return null;
   }
 
-  const columns = Lib.filterableColumns(query, stageIndex);
-  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    columns,
-    [parameter.target[1]],
-  );
-  if (columnIndex < 0) {
-    return null;
-  }
-
-  const column = columns[columnIndex];
-  const fieldRef = Lib.legacyRef(query, stageIndex, column);
-
+  const fieldRef = parameter.target[1];
   if (isDateParameter(parameter)) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
-  } else if (Lib.isNumeric(column)) {
+  } else if (isNumberParameter(parameter)) {
     return numberParameterValueToMBQL(parameter, fieldRef);
   } else {
     return stringParameterValueToMBQL(parameter, fieldRef);
