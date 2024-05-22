@@ -42,10 +42,10 @@ export function getXYTransform(element) {
   return { x, y };
 }
 
-export function echartsIcon(name, color = undefined) {
+export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    color ?? getColor("text-light"),
+    getColor(isSelected ? "brand" : "text-light"),
   );
   const dataUri = svgToDataUri(iconSvg);
 

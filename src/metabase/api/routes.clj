@@ -99,7 +99,7 @@
                                      :description "Metabase API"}]})
       (respond path))))
 
-(defroutes ^{:doc "Ring routes for API endpoints."} routes
+(defroutes ^{:doc "Ring routes for API endpoints.", :arglists '([request] [request respond raise])} routes
   ee-routes
   #'GET_docs*
   (context "/action"               [] (+auth api.action/routes))

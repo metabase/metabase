@@ -289,8 +289,6 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
-
-
 (defn send-creator-sentiment-email!
   "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
   and then base64 encoded."
