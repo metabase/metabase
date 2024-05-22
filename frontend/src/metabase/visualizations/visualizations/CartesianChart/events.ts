@@ -459,12 +459,8 @@ export const getTimelineEventsHoverData = (
   );
   const element = event.event.event.target as Element;
 
-  if (element?.nodeName !== "image") {
-    return null;
-  }
-
   return {
-    element,
+    element: element?.nodeName === "image" ? element : undefined,
     timelineEvents: hoveredTimelineEvents,
   };
 };
