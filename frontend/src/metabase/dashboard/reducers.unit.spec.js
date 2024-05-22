@@ -48,7 +48,7 @@ describe("dashboard reducers", () => {
         toastDashboardId: null,
       },
       tabDeletions: {},
-      theme: null,
+      theme: "light",
     });
   });
 
