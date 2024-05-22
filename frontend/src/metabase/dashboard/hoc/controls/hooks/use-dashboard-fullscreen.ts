@@ -13,7 +13,7 @@ export const useDashboardFullscreen = (): DashboardFullscreenControls => {
   }, [fullscreen]);
 
   const onFullscreenChange = (
-    nextIsFullscreen: boolean,
+    nextIsFullscreen: boolean | null,
     openInBrowserFullscreen: boolean = true,
   ) => {
     if (nextIsFullscreen === isFullscreen) {
@@ -22,7 +22,7 @@ export const useDashboardFullscreen = (): DashboardFullscreenControls => {
     if (isFullscreen || (nextIsFullscreen && openInBrowserFullscreen)) {
       toggle();
     }
-    setIsFullscreen(nextIsFullscreen);
+    setIsFullscreen(nextIsFullscreen ?? false);
   };
 
   return { isFullscreen, onFullscreenChange };

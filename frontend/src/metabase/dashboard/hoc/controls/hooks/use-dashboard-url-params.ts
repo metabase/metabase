@@ -1,21 +1,90 @@
 import type { Location } from "history";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { replace } from "react-router-redux";
-import { isEqual, pick } from "underscore";
+import { usePrevious } from "react-use";
+import { omit } from "underscore";
 
+import type { RefreshPeriod } from "metabase/dashboard/hoc/controls";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
 } from "metabase/dashboard/hoc/controls";
-import { useEmbedDisplayOptions } from "metabase/dashboard/hoc/controls/hooks/use-embed-display-options";
+import {
+  DEFAULT_EMBED_DISPLAY_OPTIONS,
+  useEmbedDisplayOptions,
+} from "metabase/dashboard/hoc/controls/hooks/use-embed-display-options";
 import type { DashboardDisplayOptionControls } from "metabase/dashboard/hoc/controls/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/hoc/controls/types/hash-options";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
+import { isNullOrUndefined } from "metabase/lib/types";
+import type { DisplayTheme } from "metabase/public/lib/types";
 
-const removeEmptyOptions = (obj: Record<string, unknown>) => {
-  return pick(obj, isNotFalsy);
+const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS: Record<string, any> = {
+  ...DEFAULT_EMBED_DISPLAY_OPTIONS,
+  fullscreen: false,
+  refresh: null,
+};
+
+const getDefaultDisplayOption = (key: string) =>
+  DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key];
+
+const isEmptyOrDefault = (value: any, key: string) =>
+  isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
+
+const useLocationSync = <T = any>({
+  key,
+  value,
+  onChange,
+  location,
+}: {
+  key: string;
+  value: T;
+  onChange: (value: T | null) => void;
+  location: Location;
+}) => {
+  const dispatch = useDispatch();
+  const previousValue = usePrevious(value) ?? null;
+  const hashValue = useMemo(() => {
+    const hashOptions = parseHashOptions(location.hash);
+    return hashOptions[key] ?? (null as T | null);
+  }, [key, location.hash]);
+
+  const latestValue = useMemo(() => {
+    let val: T;
+    if (value !== previousValue) {
+      val = value;
+    } else if (hashValue !== value) {
+      val = hashValue ?? getDefaultDisplayOption(key);
+    } else {
+      val = value;
+    }
+
+    return val;
+  }, [hashValue, key, previousValue, value]);
+
+  useEffect(() => {
+    if (latestValue !== previousValue) {
+      onChange(latestValue);
+
+      const hashOptions = parseHashOptions(location.hash);
+      const updatedOptions = isEmptyOrDefault(latestValue, key)
+        ? omit(hashOptions, key)
+        : {
+            ...hashOptions,
+            [key]: latestValue,
+          };
+
+      const hashString = stringifyHashOptions(updatedOptions);
+
+      dispatch(
+        replace({
+          ...location,
+          hash: hashString ? "#" + hashString : "",
+        }),
+      );
+    }
+  }, [dispatch, key, latestValue, location, onChange, previousValue]);
 };
 
 export const useDashboardUrlParams = ({
@@ -25,8 +94,6 @@ export const useDashboardUrlParams = ({
   location: Location;
   onRefresh: () => Promise<void>;
 }): DashboardDisplayOptionControls => {
-  const dispatch = useDispatch();
-
   const {
     bordered,
     font,
@@ -49,75 +116,50 @@ export const useDashboardUrlParams = ({
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
     useDashboardRefreshPeriod({ onRefresh });
 
-  const [readOnlyHashOptions, setReadOnlyHashOptions] =
-    useState<DashboardUrlHashOptions>({});
-
-  useEffect(() => {
-    const options = pick(parseHashOptions(location.hash), [
-      "bordered",
-      "font",
-      "titled",
-      "hide_download_button",
-      "fullscreen",
-      "theme",
-      "hide_parameters",
-      "refresh",
-    ]) as DashboardUrlHashOptions;
-
-    setBordered(options.bordered ?? bordered);
-    setTitled(options.titled ?? titled);
-    setHideDownloadButton(options.hide_download_button ?? hideDownloadButton);
-    setFont(options.font ?? font);
-    setHideParameters(options.hide_parameters ?? hideParameters);
-    onFullscreenChange(options.fullscreen ?? isFullscreen);
-    setTheme(options.theme ?? theme);
-    onRefreshPeriodChange(options.refresh ?? refreshPeriod);
-
-    setReadOnlyHashOptions({
-      bordered,
-      font,
-      titled,
-      hide_download_button: hideDownloadButton,
-      fullscreen: isFullscreen,
-      theme,
-      hide_parameters: hideParameters,
-      refresh: refreshPeriod,
-    });
-
-    // TODO: remove this eslint-disable once we have a proper way to handle this
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.hash]);
-
-  useEffect(() => {
-    const newOptions = {
-      fullscreen: isFullscreen,
-      theme,
-      refresh: refreshPeriod,
-    };
-
-    if (
-      !isEqual(newOptions, pick(readOnlyHashOptions, Object.keys(newOptions)))
-    ) {
-      setReadOnlyHashOptions(prevState => ({
-        ...prevState,
-        ...newOptions,
-      }));
-      const opts = stringifyHashOptions(removeEmptyOptions(newOptions));
-
-      dispatch(
-        replace({
-          ...location,
-          hash: opts ? "#" + opts : "",
-        }),
-      );
-    }
-  }, [
-    dispatch,
-    isFullscreen,
+  useLocationSync<RefreshPeriod>({
+    key: "refresh",
+    value: refreshPeriod,
+    onChange: onRefreshPeriodChange,
     location,
-    readOnlyHashOptions,
-    refreshPeriod,
-    theme,
+  });
+
+  useLocationSync<boolean | null>({
+    key: "fullscreen",
+    value: isFullscreen,
+    onChange: onFullscreenChange,
+    location,
+  });
+
+  useLocationSync<DisplayTheme>({
+    key: "theme",
+    value: theme,
+    onChange: setTheme,
+    location,
+  });
+
+  useEffect(() => {
+    const hashOptions = parseHashOptions(
+      location.hash,
+    ) as DashboardUrlHashOptions;
+    setTitled(hashOptions.titled ?? titled);
+    setBordered(hashOptions.bordered ?? bordered);
+    setFont(hashOptions.font ?? font);
+    setHideDownloadButton(
+      hashOptions.hide_download_button ?? hideDownloadButton,
+    );
+    setHideParameters(hashOptions.hide_parameters ?? hideParameters);
+  }, [
+    bordered,
+    font,
+    hideDownloadButton,
+    hideParameters,
+    location.hash,
+    setBordered,
+    setFont,
+    setHideDownloadButton,
+    setHideParameters,
+    setTitled,
+    titled,
   ]);
 
   return {

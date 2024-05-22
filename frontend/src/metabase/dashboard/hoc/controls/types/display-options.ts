@@ -1,9 +1,9 @@
 import type { EmbedDisplayControls } from "metabase/dashboard/hoc/controls/types/embed-display-options";
 
 export type DashboardFullscreenControls = {
-  isFullscreen: boolean;
+  isFullscreen: boolean | null;
   onFullscreenChange: (
-    newIsFullscreen: boolean,
+    newIsFullscreen: boolean | null,
     browserFullscreen?: boolean,
   ) => void;
 };
