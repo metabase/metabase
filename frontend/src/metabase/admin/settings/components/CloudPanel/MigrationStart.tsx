@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -27,20 +28,11 @@ export const MigrationStart = ({
     <>
       <Box mt="1rem">
         <Text size="md">
-          {t`It only takes a few clicks to migrate this instance to Metabase Cloud.`}
-          {isProSelfHosted && " "}
           {isProSelfHosted
-            ? t`There is no additional cost for your Pro account.`
-            : ""}
+            ? t`Migrate this instance to Metabase Cloud at no extra cost and get high availability, automatic upgrades, backups, and enterprise grade compliance.`
+            : t`Migrate this instance to Metabase Cloud with a free 14-day trial and get high availability, automatic upgrades, backups, and official support.`}{" "}
+          <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
         </Text>
-
-        <Text size="md" mt="1rem">{t`You will get:`}</Text>
-
-        <List size="md">
-          <List.Item>{t`Automatic upgrades`}</List.Item>
-          <List.Item>{t`Freedom from having to manage your own server`}</List.Item>
-          <List.Item>{t`A preconfigured SMTP server`}</List.Item>
-        </List>
 
         <Button
           mt="2rem"
