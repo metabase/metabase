@@ -136,6 +136,26 @@
          :port port})
       (throw (IllegalArgumentException. "Invalid URL")))))
 
+(defn approved-domain?
+  "Checks if the domain is compatible with the reference one"
+  [domain reference-domain]
+  (if (str/starts-with? reference-domain "*.")
+    (str/ends-with? domain (str/replace-first reference-domain "*." "."))
+    (= domain reference-domain)))
+
+(defn approved-protocol?
+  "Checks if the protocol is compatible with the reference one"
+  [protocol reference-protocol]
+  (or (nil? reference-protocol)
+      (= protocol reference-protocol)))
+
+(defn approved-port?
+  "Checks if the port is compatible with the reference one"
+  [port reference-port]
+  (or
+   (= reference-port "*")
+   (= port reference-port)))
+
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
   [raw-origin approved-origins]
@@ -148,17 +168,9 @@
                          (= approved-origin-raw "*")
                          (let [approved-origin (parse-url approved-origin-raw)]
                            (and
-                        ;;  domain check
-                            (if (str/starts-with? (:domain approved-origin) "*.")
-                              (str/ends-with? (:domain origin) (str/replace-first (:domain approved-origin) "*." "."))
-                              (= (:domain origin) (:domain approved-origin)))
-                        ;;  protocol check
-                            (or (nil? (:protocol approved-origin))
-                                (= (:protocol origin) (:protocol approved-origin)))
-                        ;;  port check
-                            (or
-                             (= (:port approved-origin) "*")
-                             (= (:port origin) (:port approved-origin)))))))
+                            (approved-domain? (:domain origin) (:domain approved-origin))
+                            (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                            (approved-port? (:port origin) (:port approved-origin))))))
                       approved-list))))))
 
 (defn- access-control-headers
