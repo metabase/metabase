@@ -8,7 +8,7 @@ import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type {
-  CartesianChartModel,
+  ScatterPlotModel,
   WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
@@ -156,7 +156,7 @@ export function useModelsAndOption({
         );
       case "scatter":
         return getScatterPlotOption(
-          chartModel as CartesianChartModel,
+          chartModel as ScatterPlotModel,
           chartMeasurements,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
@@ -167,7 +167,7 @@ export function useModelsAndOption({
         );
       default:
         return getCartesianChartOption(
-          chartModel as CartesianChartModel,
+          chartModel,
           chartMeasurements,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,

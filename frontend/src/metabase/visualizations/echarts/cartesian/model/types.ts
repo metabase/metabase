@@ -215,7 +215,7 @@ export type BaseCartesianChartModel = {
   stackedLabelsFormatters?: StackedSeriesFormatters;
 };
 
-export type CartesianChartModel = BaseCartesianChartModel & {
+export type ScatterPlotModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
 };
 
