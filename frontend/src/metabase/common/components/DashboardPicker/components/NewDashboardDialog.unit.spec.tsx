@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { NewCollectionDialog } from "./NewCollectionDialog";
+import { NewDashboardDialog } from "./NewDashboardDialog";
 
 const setup = (
   params: {
@@ -15,12 +15,12 @@ const setup = (
 ) => {
   const onClose = jest.fn();
   const onNewCollection = jest.fn();
-  fetchMock.post("path:/api/collection", { id: 2 });
+  fetchMock.post("path:/api/dashboard", { id: 2 });
   renderWithProviders(
-    <NewCollectionDialog
+    <NewDashboardDialog
       isOpen
       onClose={onClose}
-      onNewCollection={onNewCollection}
+      onNewDashboard={onNewCollection}
       {...params}
     />,
   );
@@ -32,48 +32,48 @@ describe("new collection dialog", () => {
       parentCollectionId: "root",
     });
     await userEvent.type(
-      screen.getByPlaceholderText("My new collection"),
+      screen.getByPlaceholderText("My new dashboard"),
       "Test collection",
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
     const [_, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
-    expect(body.parent_id).toBe(null);
+    expect(body.collection_id).toBe(null);
   });
 
   it("should handle a normal parentCollectionId", async () => {
     setup({ parentCollectionId: 12 });
     await userEvent.type(
-      screen.getByPlaceholderText("My new collection"),
+      screen.getByPlaceholderText("My new dashboard"),
       "Test collection",
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
     const [_, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
-    expect(body.parent_id).toBe(12);
+    expect(body.collection_id).toBe(12);
   });
 
   it("should handle a parentCollectionId of null", async () => {
     setup({ parentCollectionId: null });
     await userEvent.type(
-      screen.getByPlaceholderText("My new collection"),
+      screen.getByPlaceholderText("My new dashboard"),
       "Test collection",
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
     const [_, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
-    expect(body.parent_id).toBe(null);
+    expect(body.collection_id).toBe(null);
   });
 });
