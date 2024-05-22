@@ -67,7 +67,7 @@ describe("MultiAutocomplete", () => {
     });
     input.blur();
 
-    expect(onChange).toHaveBeenCalledWith(["foo"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
 
     // this one does _not_ trigger a change
@@ -76,7 +76,7 @@ describe("MultiAutocomplete", () => {
     });
     input.blur();
 
-    expect(onChange).toHaveBeenCalledWith(["foo"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
   });
 
@@ -85,13 +85,13 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo,", {
       pointerEventsCheck: 0,
     });
-    expect(onChange).toHaveBeenCalledWith(["foo"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
 
     await userEvent.type(input, "bar,", {
       pointerEventsCheck: 0,
     });
-    expect(onChange).toHaveBeenCalledWith(["foo", "bar"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
   });
 
@@ -100,7 +100,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo bar,", {
       pointerEventsCheck: 0,
     });
-    expect(onChange).toHaveBeenCalledWith(["foo bar"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo bar"]);
     expect(input).toHaveValue("");
   });
 
@@ -114,7 +114,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo,", {
       pointerEventsCheck: 0,
     });
-    expect(onChange).toHaveBeenCalledWith(["foo"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
 
     // this one does _not_ trigger a change
@@ -129,7 +129,7 @@ describe("MultiAutocomplete", () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
     input.focus();
     await userEvent.paste("foo,bar");
-    expect(onChange).toHaveBeenCalledWith(["foo", "bar"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
   });
 
@@ -137,7 +137,7 @@ describe("MultiAutocomplete", () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
     input.focus();
     await userEvent.paste("foo\nbar");
-    expect(onChange).toHaveBeenCalledWith(["foo", "bar"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
   });
 
@@ -150,7 +150,7 @@ describe("MultiAutocomplete", () => {
     });
     input.focus();
     await userEvent.paste("foo,bar,baz");
-    expect(onChange).toHaveBeenCalledWith(["foo", "bar"]);
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
   });
 });
