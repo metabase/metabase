@@ -816,7 +816,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting uploads-settings
   (deferred-tru "Database for uploads")
   :visibility :authenticated
-  :export?    true
+  :export?    false
   :type       :json
   :audit      :getter ;; TODO: what does this do?
   :getter     (fn []

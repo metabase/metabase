@@ -245,10 +245,9 @@
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
 (defn- add-can-upload
-  "Add an entry about whether the user can upload to this DB."
+  "Adds :can_upload boolean, which is true if the user can create a new upload to this DB."
   [db]
-  (assoc db :can_upload (and (:uploads_enabled db)
-                             (upload/can-create-upload? db (:uploads_schema_name db)))))
+  (assoc db :can_upload (upload/can-create-upload? db (:uploads_schema_name db))))
 
 (defn- add-can-upload-to-dbs
   "Add an entry to each DB about whether the user can upload to it."

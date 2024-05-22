@@ -308,8 +308,10 @@
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
-  (or (can-use-uploads-error db)
-      (cond
+  (or (cond
+        (:uploads_enabled db)
+        (ex-info (tru "Uploads are not enabled.")
+                 {:status-code 422})
         (and (str/blank? schema-name)
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
@@ -319,8 +321,8 @@
           (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
                                                                    :perms/view-data
                                                                    (u/the-id db)))
-          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
-          ;; (at least) `:query-builder` plus unrestricted view-data
+             ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
+             ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
                      (data-perms/full-schema-permission-for-user api/*current-user-id*
                                                                  :perms/create-queries
@@ -331,7 +333,8 @@
         (and (some? schema-name)
              (not (driver.s/include-schema? db schema-name)))
         (ex-info (tru "The schema {0} is not syncable." schema-name)
-                 {:status-code 422}))))
+                 {:status-code 422}))
+   (can-use-uploads-error db)))
 
 (defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."
