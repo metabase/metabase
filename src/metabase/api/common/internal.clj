@@ -43,13 +43,10 @@
       (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
       ;; /api/ee/sso/sso/ -> /auth/sso
       (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
-      ;; this should be only the replace for enterprise once we resolved #22687
-      (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
       (str/replace #"^metabase-enterprise\.advanced-config\.api\.logs" "/api/ee/logs")
-      (str/replace #"^metabase-enterprise\.upload-management\.api" "/api/ee/upload-management")
-      (str/replace #"^metabase-enterprise\.llm\.api" "/api/ee/llm")
-      (str/replace #"^metabase-enterprise\.scim\.api" "/api/ee/scim")
-      (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")))
+      ;; this should be only the replace for enterprise once we resolved #22687
+      (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")
+      (str/replace #"^metabase-enterprise\.([^\.]+)\.api" "/api/ee/$1")))
 
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
