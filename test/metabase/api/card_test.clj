@@ -22,6 +22,7 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
+   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -3603,3 +3604,35 @@
     ;; trash the parent collection
     (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
+
+(deftest nested-query-permissions-test
+  (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection allowed-collection    {}
+                       :model/Collection disallowed-collection {}
+                       :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                                :type     :native
+                                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                                :database_id   (mt/id)
+                                                                :collection_id (u/the-id disallowed-collection)}
+                       :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                                :collection_id (u/the-id allowed-collection)}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+          (letfn [(process-query-for-card [card]
+                    (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
+            (testing "Should not be able to run the parent Card"
+              (mt/with-test-user :rasta
+                (is (not (mi/can-read? disallowed-collection)))
+                (is (not (mi/can-read? parent-card))))
+              (is (= "You don't have permissions to do that."
+                     (process-query-for-card parent-card))))
+            (testing "Should be able to run the child Card (#15131)"
+              (mt/with-test-user :rasta
+                (is (not (mi/can-read? parent-card)))
+                (is (mi/can-read? allowed-collection))
+                (is (mi/can-read? child-card)))
+              (is (= [[1] [2]]
+                     (mt/rows (process-query-for-card child-card)))))))))))
