@@ -132,18 +132,18 @@
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
-  (letfn [(maybe-json? [body]
-            (and (string? body)
-                 (or (str/starts-with? body "[")
-                     (str/starts-with? body "{"))))]
-    (if-not (maybe-json? body)
-      body
-      (try
-        (auto-deserialize-dates (json/parse-string body parse-response-key))
-        (catch Throwable e
-          (log/warnf e "Error parsing string response as JSON: %s\nResponse:\n%s" (ex-message e) body)
-          (when-not (str/blank? body)
-            body))))))
+  (if-not (string? body)
+    body
+    (try
+      (auto-deserialize-dates (json/parse-string body parse-response-key))
+      (catch Throwable e
+        ;; if this actually looked like some sort of JSON response and we failed to parse it, log it so we can debug it
+        ;; more easily in the REPL.
+        (when (or (str/starts-with? body "{")
+                  (str/starts-with? body "["))
+          (log/warnf e "Error parsing string response as JSON: %s\nResponse:\n%s" (ex-message e) body))
+        (when-not (str/blank? body)
+          body)))))
 
 ;;; authentication
 

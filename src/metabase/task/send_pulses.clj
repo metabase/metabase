@@ -32,7 +32,7 @@
 (def ^:private send-pulse-job-key (jobs/key "metabase.task.send-pulses.send-pulse.job"))
 
 (defn- send-pulse-trigger-key
-  [pulse-id schedule-map]
+  ^TriggerKey [pulse-id schedule-map]
   (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
                         pulse-id (-> schedule-map
                                      u.cron/schedule-map->cron-string
