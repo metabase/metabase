@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -39,6 +40,15 @@
 (def ^:private query-with-metric
   (-> (lib/query metadata-provider (meta/table-metadata :venues))
       (lib/aggregate metric-clause)))
+
+(def ^:private metric-metadata
+  (lib.metadata/metric query-with-metric metric-id))
+
+(deftest ^:parallel display-info-unselected-metric-test
+  (testing "Include `:selected false` in display info for Metrics not in aggregations"
+    (are [metric] (not (:selected (lib/display-info lib.tu/venues-query metric)))
+      metric-clause
+      metric-metadata)))
 
 (deftest ^:parallel available-metrics-test
   (let [expected-metric-metadata {:lib/type      :metadata/metric

@@ -1,7 +1,7 @@
 (ns metabase.lib.legacy-metric-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -34,9 +34,6 @@
 (def ^:private query-with-metric
   (-> (lib/query metadata-provider (meta/table-metadata :venues))
       (lib/aggregate metric-clause)))
-
-(def ^:private metric-metadata
-  (lib.metadata/legacy-metric query-with-metric metric-id))
 
 (deftest ^:parallel uses-legacy-metric?-test
   (is (lib/uses-metric? query-with-metric metric-id))
@@ -85,12 +82,6 @@
                     (lib/display-info query-with-metric metric))
     metric-clause
     metric-metadata))
-
-(deftest ^:parallel display-info-unselected-metric-test
-  (testing "Include `:selected false` in display info for Metrics not in aggregations"
-    (are [metric] (not (:selected (lib/display-info lib.tu/venues-query metric)))
-      metric-clause
-      metric-metadata)))
 
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
