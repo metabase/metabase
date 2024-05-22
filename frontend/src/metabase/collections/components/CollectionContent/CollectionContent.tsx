@@ -41,7 +41,7 @@ export function CollectionContent({
   });
 
   const uploadDbId = useSelector(
-    state => getSetting(state, "uploads-settings").db_id,
+    state => getSetting(state, "uploads-settings")?.db_id,
   );
   const uploadsEnabled = !!uploadDbId;
 
