@@ -42,7 +42,6 @@ import {
   isTimeSeriesAxis,
 } from "../model/guards";
 import { getStackTotalValue } from "../model/series";
-import { buildEChartsScatterSeries } from "../scatter/option/series";
 
 import { getSeriesYAxisIndex } from "./utils";
 
@@ -614,13 +613,6 @@ export const buildEChartsSeries = (
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
-        case "scatter":
-          return buildEChartsScatterSeries(
-            seriesModel,
-            chartModel.bubbleSizeDomain,
-            yAxisIndex,
-            renderingContext,
-          );
       }
     })
     .flat()
@@ -635,11 +627,7 @@ export const buildEChartsSeries = (
         chartModel,
         chartModel.yAxisScaleTransforms,
         settings,
-        // It's guranteed that no series here will be scatter, since with
-        // scatter plots the `stackable.stack_type` is undefined. We can maybe
-        // remove this later after refactoring the scatter implementation to a
-        // separate codepath.
-        series as (LineSeriesOption | BarSeriesOption)[],
+        series,
       ),
     );
   }

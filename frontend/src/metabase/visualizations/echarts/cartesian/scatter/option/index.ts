@@ -13,10 +13,13 @@ import type { CartesianChartModel, DataKey } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import { getGoalLineSeriesOption } from "../../option/goal-line";
-import { buildEChartsSeries } from "../../option/series";
 import { getTrendLinesOption } from "../../option/trend-line";
+import type { EChartsSeriesOption } from "../../option/types";
+import { getSeriesYAxisIndex } from "../../option/utils";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
+
+import { buildEChartsScatterSeries } from "./series";
 
 export function getScatterPlotOption(
   chartModel: CartesianChartModel,
@@ -38,13 +41,14 @@ export function getScatterPlotOption(
       )
     : null;
 
-  const dataSeriesOptions = buildEChartsSeries(
-    // TODO refactor
-    chartModel,
-    settings,
-    chartWidth,
-    chartMeasurements,
-    renderingContext,
+  const dataSeriesOptions: EChartsSeriesOption[] = chartModel.seriesModels.map(
+    seriesModel =>
+      buildEChartsScatterSeries(
+        seriesModel,
+        chartModel.bubbleSizeDomain,
+        getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
+        renderingContext,
+      ),
   );
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
