@@ -56,7 +56,7 @@
                                      "city"   "town"}  ; make sure FFs aren't replaced
                            :tables  {"people" "folk"}})))))
 
-(deftest ^:parallel referenced-card-test
+(deftest referenced-card-test
   (testing "With a reference to a card"
     (t2.with-temp/with-temp
       [:model/Card {card-id :id} {:type          :model
@@ -66,7 +66,7 @@
                             {:columns {"total" "subtotal"}
                              :tables  {"orders" "purchases"}}))))))
 
-(deftest ^:parallel snippet-test
+(deftest snippet-test
   (testing "With a snippet"
     (t2.with-temp/with-temp
       [:model/NativeQuerySnippet {snippet-id :id} {:name    "a lovely snippet"
