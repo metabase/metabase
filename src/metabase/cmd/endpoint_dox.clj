@@ -48,10 +48,16 @@
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
 
-(defn- upstream-endpoint?
-  "Filters out endpoints that are not part of the Metabase API."
+(defn- exclude-from-docs?
+  "Should we exclude the endpoint from the docs?"
  [endpoint]
-  (contains? #{"LLM Auto-description" "SCIM" "Routes"} (:ns-name endpoint)))
+  (let [ep-name (:ns-name endpoint)
+        eps-to-exclude #{
+                        "LLM Auto-description"
+                        "SCIM"
+                        "Routes" ; api/routes
+                         }]
+    (contains? eps-to-exclude ep-name)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
@@ -216,7 +222,7 @@
   []
   (->> (collect-endpoints)
        (map process-endpoint)
-       (remove upstream-endpoint?)
+       (remove exclude-from-docs?)
        (group-by :ns-name)
        (into (sorted-map-by (fn [a b] (compare
                                        (u/lower-case-en a)
