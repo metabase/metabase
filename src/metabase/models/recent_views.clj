@@ -218,9 +218,9 @@
                 :where [:in :card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
+                             [:= :mr.moderated_item_id :card.id]
                              [:= :mr.moderated_item_type "card"]
-                             [:= :mr.most_recent true]
-                             [:in :mr.moderated_item_id card-ids]]
+                             [:= :mr.most_recent true]]
                             [:collection]
                             [:and
                              [:= :collection.id :card.collection_id]
