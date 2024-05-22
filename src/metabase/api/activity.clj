@@ -33,7 +33,8 @@
      "table"     [Table
                   :id :name :db_id :active
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
-                  :visibility_type [:metabase_database.name :database-name]])
+                  [:visibility_type :visibility_type]
+                  [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      (cond-> {:where [:in (self-qualify :id) ids]}

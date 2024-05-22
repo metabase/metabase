@@ -392,6 +392,52 @@ describe("scenarios > organization > timelines > question", () => {
 
       echartsIcon("warning").should("not.exist");
     });
+
+    it("should color the event icon when hovering", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      echartsIcon("star").should("be.visible");
+      echartsIcon("star").realHover();
+      echartsIcon("star", true).should("be.visible");
+    });
+
+    it("should open the sidebar when clicking an event icon", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      echartsIcon("star").should("be.visible");
+      echartsIcon("star").realClick();
+
+      // event should be selected in sidebar
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgb(80, 158, 227)",
+      );
+
+      // after clicking the icon again, it should be deselected in sidebar
+      echartsIcon("star", true).click();
+      timelineEventCard("RC1").should("be.visible");
+      timelineEventCard("RC1").should(
+        "have.css",
+        "border-left",
+        "4px solid rgba(0, 0, 0, 0)",
+      );
+    });
   });
 
   describe("as readonly user", () => {
@@ -430,10 +476,12 @@ describe("scenarios > organization > timelines > question", () => {
   });
 });
 
+function timelineEventCard(eventName) {
+  return cy.findByText(eventName).closest("[aria-label=Timeline event card]");
+}
+
 function toggleEventVisibility(eventName) {
-  cy.findByText(eventName)
-    .closest("[aria-label=Timeline event card]")
-    .within(() => {
-      cy.findByRole("checkbox").click();
-    });
+  timelineEventCard(eventName).within(() => {
+    cy.findByRole("checkbox").click();
+  });
 }

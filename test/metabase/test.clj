@@ -263,7 +263,7 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards]
+  with-verified-cards!]
 
  [tu.async
   wait-for-result
