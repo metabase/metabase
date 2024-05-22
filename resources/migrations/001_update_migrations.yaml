@@ -5827,110 +5827,6 @@ databaseChangeLog:
       rollback: # nothing
 
   - changeSet:
-      id: v49.2024-05-17T19:54:23
-      author: calherries
-      comment: Add metabase_database.uploads_enabled column
-      changes:
-        - addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: uploads_enabled
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: Whether uploads are enabled for this database
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v49.2024-05-17T19:54:24
-      author: calherries
-      comment: Add metabase_database.uploads_schema_name column
-      changes:
-        - addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: uploads_schema_name
-                  type: ${text.type}
-                  remarks: The schema name for uploads
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v49.2024-05-17T19:54:25
-      author: calherries
-      comment: Add metabase_database.uploads_table_prefix column
-      changes:
-        - addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: uploads_table_prefix
-                  type: ${text.type}
-                  remarks: The prefix for upload table names
-                  constraints:
-                    nullable: true
-
-
-  - changeSet:
-      id: v49.2024-05-17T19:54:26
-      author: calherries
-      comment: Update metabase_database.uploads_enabled value
-      changes:
-        - sql:
-            dbms: postgresql,mysql,mariadb
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_enabled = true
-              WHERE EXISTS (SELECT * FROM setting s WHERE s.key = 'uploads-database-id' AND cast(s.value AS INT) = d.id);
-        - sql:
-            dbms: h2
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_enabled = true
-              WHERE EXISTS (SELECT * FROM setting s WHERE s.`key` = 'uploads-database-id' AND cast(s.`value` AS INT) = d.id);
-      rollback: # nothing to do, since uploads_enabled didn't exist before
-
-  - changeSet:
-      id: v49.2024-05-17T19:54:27
-      author: calherries
-      comment: Update metabase_database.uploads_table_prefix value
-      changes:
-        - sql:
-            dbms: postgresql,mysql,mariadb
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_table_prefix = (SELECT s.value FROM setting s WHERE s.key = 'uploads-table-prefix')
-              WHERE uploads_enabled;
-        - sql:
-            dbms: h2
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_table_prefix = (SELECT s.`value` FROM setting s WHERE s.`key` = 'uploads-table-prefix')
-              WHERE uploads_enabled;
-      rollback: # nothing to do, since uploads_table_prefix didn't exist before
-
-  - changeSet:
-      id: v49.2024-05-17T19:54:28
-      author: calherries
-      comment: Update metabase_database.uploads_table_prefix value
-      changes:
-        - sql:
-            dbms: postgresql,mysql,mariadb
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_schema_name = (SELECT s.value FROM setting s WHERE s.key = 'uploads-schema-name')
-              WHERE uploads_enabled;
-        - sql:
-            dbms: h2
-            sql: >-
-              UPDATE metabase_database d
-              SET uploads_schema_name = (SELECT s.`value` FROM setting s WHERE s.`key` = 'uploads-schema-name')
-              WHERE uploads_enabled;
-      rollback: # nothing to do, since uploads_schema_name didn't exist before
-
-  - changeSet:
       id: v49.2024-05-20T19:10:34
       author: johnswanson
       comment: >-
@@ -7467,6 +7363,117 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:23
+      author: calherries
+      comment: Add metabase_database.uploads_enabled column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether uploads are enabled for this database
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:24
+      author: calherries
+      comment: Add metabase_database.uploads_schema_name column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_schema_name
+                  type: ${text.type}
+                  remarks: The schema name for uploads
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:25
+      author: calherries
+      comment: Add metabase_database.uploads_table_prefix column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_table_prefix
+                  type: ${text.type}
+                  remarks: The prefix for upload table names
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:26
+      author: calherries
+      comment: Update metabase_database.uploads_enabled value
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_enabled = true
+              WHERE EXISTS (SELECT * FROM setting s WHERE s.key = 'uploads-database-id' AND cast(s.value AS INT) = d.id);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_enabled = true
+              WHERE EXISTS (SELECT * FROM setting s WHERE s.key = 'uploads-database-id' AND cast(s.value AS UNSIGNED) = d.id);
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_enabled = true
+              WHERE EXISTS (SELECT * FROM setting s WHERE s.`key` = 'uploads-database-id' AND cast(s.`value` AS INT) = d.id);
+      rollback: # nothing to do, since uploads_enabled didn't exist before
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:27
+      author: calherries
+      comment: Update metabase_database.uploads_table_prefix value
+      changes:
+        - sql:
+            dbms: postgresql,mysql,mariadb
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_table_prefix = (SELECT s.value FROM setting s WHERE s.key = 'uploads-table-prefix')
+              WHERE uploads_enabled;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_table_prefix = (SELECT s.`value` FROM setting s WHERE s.`key` = 'uploads-table-prefix')
+              WHERE uploads_enabled;
+      rollback: # nothing to do, since uploads_table_prefix didn't exist before
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:28
+      author: calherries
+      comment: Update metabase_database.uploads_table_prefix value
+      changes:
+        - sql:
+            dbms: postgresql,mysql,mariadb
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_schema_name = (SELECT s.value FROM setting s WHERE s.key = 'uploads-schema-name')
+              WHERE uploads_enabled;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_database d
+              SET uploads_schema_name = (SELECT s.`value` FROM setting s WHERE s.`key` = 'uploads-schema-name')
+              WHERE uploads_enabled;
+      rollback: # nothing to do, since uploads_schema_name didn't exist before
+
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
