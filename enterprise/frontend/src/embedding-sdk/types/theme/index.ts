@@ -45,6 +45,9 @@ export interface MetabaseColors {
   /** Color used for borders */
   border?: string;
 
+  /** Color used for popover shadows */
+  shadow?: string;
+
   /** Color used for filters context */
   filter?: string;
 

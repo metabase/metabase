@@ -2,17 +2,19 @@ export function expressionEditorWidget() {
   return cy.findByTestId("expression-editor");
 }
 
-export function getAceEditor() {
-  return cy.get(".ace_text-input").first().should("exist");
-}
-
 /**
  * @param {Object} option
  * @param {string} option.formula
  * @param {string=} option.name
  */
 export function enterCustomColumnDetails({ formula, name }) {
-  getAceEditor().as("formula").focus().clear().type(formula);
+  cy.get(".ace_text-input")
+    .first()
+    .as("formula")
+    .should("exist")
+    .focus()
+    .clear()
+    .type(formula);
 
   if (name) {
     cy.findByPlaceholderText("Something nice and descriptive")

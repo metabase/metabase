@@ -66,7 +66,7 @@
         query (lib/query mp source-metric)]
     (is (=?
           {:stages [{:source-table (meta/id :products)}
-                    {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                    {:aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]}]}
           (adjust query)))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
@@ -103,7 +103,7 @@
                                 (lib/with-join-fields :all))))]
     (is (=?
           {:stages [{:source-table (meta/id :products)}
-                    {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]
+                    {:aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]
                      :joins [{:stages
                               [{:source-table (meta/id :orders)}],
                               :conditions
@@ -120,6 +120,28 @@
     (is (=?
           {:stages [{:expressions [[:+ {:lib/expression-name "source"} 1 1]]}
                     {:expressions [[:- {:lib/expression-name "target"} 2 2]]
+                     :aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]}]}
+          (adjust query)))))
+
+(deftest ^:parallel adjust-expression-name-collision-test
+  (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
+                                            (lib/expression "foobar" (lib/+ 1 1))
+                                            (as-> $q
+                                              (lib/expression $q "qux" (lib/+ (lib/expression-ref $q "foobar") 1))
+                                              (lib/filter $q (lib/= (lib/expression-ref $q "qux") (lib/expression-ref $q "foobar"))))))
+        query (-> (lib/query mp (meta/table-metadata :products))
+                  (lib/expression "foobar" (lib/- 2 2))
+                  (as-> $q
+                    (lib/expression $q "qux" (lib/- (lib/expression-ref $q "foobar") 2))
+                    (lib/filter $q (lib/= (lib/expression-ref $q "foobar") (lib/expression-ref $q "qux"))))
+                  (lib/aggregate (lib.metadata/metric mp (:id source-metric))))]
+    (is (=?
+          {:stages [{:expressions [[:- {:lib/expression-name "foobar"} 2 2]
+                                   [:- {:lib/expression-name "qux"} [:expression {} "foobar"] 2]
+                                   [:+ {:lib/expression-name "foobar_2"} 1 1]
+                                   [:+ {:lib/expression-name "qux_2"} [:expression {} "foobar_2"] 1]]
+                     :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]
+                               [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]]
                      :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
           (adjust query)))))
 
@@ -159,7 +181,7 @@
     (is (=? {:stages [{:aggregation complement}
                       {:aggregation complement}
                       {:aggregation complement}
-                      {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                      {:aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel joined-question-based-on-metric-based-on-metric-based-on-metric-test
@@ -170,7 +192,7 @@
                   (lib/join (lib/join-clause question [(lib/= 1 1)])))]
     (is (=? {:stages [{:joins [{:stages [{:aggregation complement}
                                          {:aggregation complement}
-                                         {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
+                                         {:aggregation [[:avg {} [:field {} (comp #{"rating"} u/lower-case-en)]]]}
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
             (adjust query)))))
@@ -258,7 +280,9 @@
                                             :name "new_metric"
                                             :type :metric}]
       (let [query (lib/query mp (lib.metadata/card mp (:id next-metric)))]
-        (is (=? [[53]]
+        (is (=? (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Gadget"))
+                                               (lib/aggregate (lib/count)))))
                 (mt/rows (qp/process-query query))))))))
 
 (deftest ^:parallel available-metrics-test
@@ -282,3 +306,16 @@
       (let [query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
         (is (=? [(lib.metadata/metric mp (:id source-metric))]
                 (lib/available-metrics query)))))))
+
+(deftest ^:parallel custom-aggregation-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/expression "total2" (lib// (lib.metadata/field mp (mt/id :orders :total)) 2))
+                         (as-> $q (lib/aggregate $q (lib/sum (m/find-first (comp #{"total2"} :name) (lib/visible-columns $q))))))]
+    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
+                                              :database_id (mt/id)
+                                              :name "new_metric"
+                                              :type :metric}]
+      (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
+        (is (=? (mt/rows (qp/process-query source-query))
+                (mt/rows (qp/process-query query))))))))
