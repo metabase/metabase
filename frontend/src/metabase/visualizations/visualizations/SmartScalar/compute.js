@@ -16,38 +16,44 @@ export function computeTrend(
   settings,
   { formatValue, getColor },
 ) {
-  const comparisons = settings["scalar.comparisons"] || [];
-  const currentMetricData = getCurrentMetricData({
-    series,
-    insights,
-    settings,
-  });
+  try {
+    const comparisons = settings["scalar.comparisons"] || [];
+    const currentMetricData = getCurrentMetricData({
+      series,
+      insights,
+      settings,
+    });
 
-  const { clicked, date, dateUnitSettings, formatOptions, value } =
-    currentMetricData;
+    const { clicked, date, dateUnitSettings, formatOptions, value } =
+      currentMetricData;
 
-  const displayValue = formatValue(value, formatOptions);
-  const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
+    const displayValue = formatValue(value, formatOptions);
+    const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
 
-  return {
-    value,
-    clicked,
-    formatOptions,
-    display: {
-      value: displayValue,
-      date: displayDate,
-    },
-    comparisons: comparisons.map(comparison =>
-      buildComparisonObject({
-        comparison,
-        currentMetricData,
-        series,
-        settings,
-        formatValue,
-        getColor,
-      }),
-    ),
-  };
+    return {
+      trend: {
+        value,
+        clicked,
+        formatOptions,
+        display: {
+          value: displayValue,
+          date: displayDate,
+        },
+        comparisons: comparisons.map(comparison =>
+          buildComparisonObject({
+            comparison,
+            currentMetricData,
+            series,
+            settings,
+            formatValue,
+            getColor,
+          }),
+        ),
+      },
+    };
+  } catch (error) {
+    return { error };
+  }
 }
 
 function buildComparisonObject({

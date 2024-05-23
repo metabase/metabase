@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
+import { SmallGenericError } from "metabase/components/ErrorPages";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -72,7 +73,7 @@ export function SmartScalar({
   const scalarRef = useRef(null);
 
   const insights = rawSeries?.[0].data?.insights;
-  const trend = useMemo(
+  const { trend, error } = useMemo(
     () =>
       computeTrend(series, insights, settings, {
         formatValue,
@@ -80,8 +81,8 @@ export function SmartScalar({
       }),
     [series, insights, settings],
   );
-  if (trend == null) {
-    return null;
+  if (error) {
+    return <SmallGenericError message={error.message}></SmallGenericError>;
   }
   const { value, clicked, comparisons, display, formatOptions } = trend;
 
