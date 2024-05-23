@@ -152,7 +152,7 @@ function computeComparison({
     return computeTrendStaticValue({ comparison });
   }
 
-  throw Error("Invalid comparison type specified");
+  throw Error("Invalid comparison type specified.");
 }
 
 function getCurrentMetricData({ series, insights, settings }) {
@@ -172,12 +172,12 @@ function getCurrentMetricData({ series, insights, settings }) {
   );
 
   if (dimensionColIndex === -1) {
-    throw Error("No date column was found");
+    throw Error("No date column was found.");
   }
 
   if (metricColIndex === -1) {
     throw Error(
-      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field",
+      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field.",
     );
   }
 
@@ -189,7 +189,7 @@ function getCurrentMetricData({ series, insights, settings }) {
     return !isEmpty(value) && !isEmpty(date);
   });
   if (latestRowIndex === -1) {
-    throw Error("All rows contain a null value");
+    throw Error("No rows contain a valid value.");
   }
   const date = rows[latestRowIndex][dimensionColIndex];
   const value = rows[latestRowIndex][metricColIndex];
@@ -365,12 +365,12 @@ function computeTrendPeriodsAgo({
   } = currentMetricData;
 
   if (isEmpty(dateUnitSettings.dateUnit)) {
-    throw Error("No date unit supplied for periods ago comparison");
+    throw Error("No date unit supplied for periods ago comparison.");
   }
 
   const { type, value } = comparison;
   if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
-    throw Error("No integer value supplied for periods ago comparison");
+    throw Error("No integer value supplied for periods ago comparison.");
   }
   const dateUnitsAgo = value ?? 1;
 
