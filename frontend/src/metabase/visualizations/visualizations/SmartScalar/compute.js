@@ -308,21 +308,24 @@ function computeComparisonPreviousValue({
   dateUnitSettings,
   formatValue,
 }) {
-  const previousRowIndex = _.findLastIndex(
-    rows,
-    (row, i) =>
-      i < nextValueRowIndex &&
-      !isEmpty(row[metricColIndex]) &&
-      !isEmpty(row[dimensionColIndex]),
-  );
-  const previousRow = rows[previousRowIndex];
+  const previousRowIndex = rows.findLastIndex((row, i) => {
+    if (i >= nextValueRowIndex) {
+      return false;
+    }
+
+    const date = row[dimensionColIndex];
+    const value = row[metricColIndex];
+
+    return !isEmpty(value) && !isEmpty(date);
+  });
+
   // if no row exists with non-null date and non-null value
-  if (isEmpty(previousRow)) {
+  if (previousRowIndex === -1) {
     return null;
   }
 
-  const prevDate = previousRow[dimensionColIndex];
-  const prevValue = previousRow[metricColIndex];
+  const prevDate = rows[previousRowIndex][dimensionColIndex];
+  const prevValue = rows[previousRowIndex][metricColIndex];
 
   const comparisonDescStr = computeComparisonStrPreviousValue({
     nextDate,
