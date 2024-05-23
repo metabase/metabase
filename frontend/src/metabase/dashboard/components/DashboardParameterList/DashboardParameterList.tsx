@@ -20,7 +20,7 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 interface DashboardParameterListProps {
-  isFullscreen?: boolean;
+  isFullscreen: boolean;
 }
 
 export function DashboardParameterList({

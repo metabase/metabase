@@ -22,10 +22,8 @@ import type {
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import Dashboards from "metabase/entities/dashboards";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -58,7 +56,7 @@ import type {
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
-import { DashboardParameterList } from "../DashboardParameterList";
+import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
@@ -68,9 +66,6 @@ import {
   DashboardBody,
   DashboardHeaderContainer,
   ParametersAndCardsContainer,
-  ParametersWidgetContainer,
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
 } from "./Dashboard.styled";
 import {
   DashboardEmptyState,
@@ -233,33 +228,10 @@ function DashboardInner(props: DashboardProps) {
     );
   }, [dashboard, selectedTabId]);
 
-  const hiddenParameterSlugs = useMemo(() => {
-    if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
-    }
-
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
-    const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
-    );
-
-    return hiddenParameters.map(p => p.slug).join(",");
-  }, [parameters, currentTabDashcards, isEditing]);
-
-  const visibleParameters = useMemo(
-    () => getVisibleParameters(parameters, hiddenParameterSlugs),
-    [parameters, hiddenParameterSlugs],
-  );
-
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
-  const hasVisibleParameters = visibleParameters.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -446,52 +418,6 @@ function DashboardInner(props: DashboardProps) {
     );
   };
 
-  const parametersWidget = (
-    <DashboardParameterList isFullscreen={isFullscreen} />
-  );
-
-  const renderParameterList = () => {
-    if (!hasVisibleParameters) {
-      return null;
-    }
-
-    if (isEditing) {
-      return (
-        <ParametersWidgetContainer
-          hasScroll
-          isSticky
-          isFullscreen={isFullscreen}
-          isNightMode={shouldRenderAsNightMode}
-          data-testid="edit-dashboard-parameters-widget-container"
-        >
-          <FixedWidthContainer
-            isFixedWidth={dashboard?.width === "fixed"}
-            data-testid="fixed-width-filters"
-          >
-            {parametersWidget}
-          </FixedWidthContainer>
-        </ParametersWidgetContainer>
-      );
-    }
-
-    return (
-      <ParametersWidgetContainer
-        hasScroll={hasScroll}
-        isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
-        isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
-        data-testid="dashboard-parameters-widget-container"
-      >
-        <ParametersFixedWidthContainer
-          isFixedWidth={dashboard?.width === "fixed"}
-          data-testid="fixed-width-filters"
-        >
-          {parametersWidget}
-          <FilterApplyButton />
-        </ParametersFixedWidthContainer>
-      </ParametersWidgetContainer>
-    );
-  };
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -580,7 +506,10 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
-              {renderParameterList()}
+              <DashboardParameterPanel
+                isFullscreen={isFullscreen}
+                hasScroll={hasScroll}
+              />
               <CardsContainer data-element-id="dashboard-cards-container">
                 {renderContent()}
               </CardsContainer>
@@ -631,16 +560,6 @@ function DashboardInner(props: DashboardProps) {
       )}
     </DashboardLoadingAndErrorWrapper>
   );
-}
-
-function isParametersWidgetContainersSticky(parameterCount: number) {
-  if (!isSmallScreen()) {
-    return true;
-  }
-
-  // Sticky header with more than 5 parameters
-  // takes too much space on small screens
-  return parameterCount <= 5;
 }
 
 function isSuccessfulFetchDashboardResult(
