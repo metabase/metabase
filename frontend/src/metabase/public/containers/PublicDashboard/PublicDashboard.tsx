@@ -272,7 +272,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   isPublic
                   mode={PublicMode as unknown as Mode}
                   metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
+                  navigateToNewCardFromDashboard={undefined}
                   dashcardData={this.props.dashcardData}
                   selectedTabId={this.props.selectedTabId}
                   parameterValues={this.props.parameterValues}

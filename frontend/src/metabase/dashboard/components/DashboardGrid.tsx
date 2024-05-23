@@ -568,7 +568,11 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
         }
         mode={this.props.mode}
-        getNewCardUrl={this.getNewCardUrl}
+        getNewCardUrl={
+          this.props.navigateToNewCardFromDashboard
+            ? this.getNewCardUrl
+            : undefined
+        }
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
