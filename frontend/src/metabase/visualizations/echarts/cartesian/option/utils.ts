@@ -1,4 +1,4 @@
-import type { CartesianChartModel, DataKey } from "../model/types";
+import type { DataKey, CartesianChartModel } from "../model/types";
 
 export function getSeriesYAxisIndex(
   dataKey: DataKey,

@@ -2,8 +2,8 @@ import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/const
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { RawSeries } from "metabase-types/api";
 
-import { getDatasetKey } from "../model/dataset";
-import type { ChartDataset, Datum } from "../model/types";
+import { getDatasetKey } from "../../model/dataset";
+import type { ChartDataset, Datum } from "../../model/types";
 
 export function getScatterPlotDataset(
   rawSeries: RawSeries,

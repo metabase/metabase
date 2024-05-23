@@ -4,7 +4,7 @@ import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTyp
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   DataKey,
   Extent,
   NumericAxisScaleTransforms,
@@ -107,7 +107,7 @@ export const getDimensionTicksDefaultOption = (
 };
 
 const getHistogramTicksOptions = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
 ) => {
@@ -185,7 +185,7 @@ const getCommonDimensionAxisOptions = (
 };
 
 export const buildDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   width: number,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
@@ -308,7 +308,7 @@ export const buildTimeSeriesDimensionAxis = (
 };
 
 export const buildCategoricalDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -411,7 +411,7 @@ export const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hoveredSeriesDataKey: DataKey | null,
@@ -455,7 +455,7 @@ const buildMetricsAxes = (
 };
 
 export const buildAxes = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   width: number,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,

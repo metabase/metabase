@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
+import { getObjectKeys } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
@@ -879,29 +879,4 @@ export const getCardsColumnByDataKeyMap = (
 
     return { ...acc, ...cardColumnByDataKeyMap };
   }, {} as Record<DataKey, DatasetColumn>);
-};
-
-export const getBubbleSizeDomain = (
-  seriesModels: SeriesModel[],
-  dataset: ChartDataset,
-): Extent | null => {
-  const bubbleSizeDataKeys = seriesModels
-    .map(seriesModel =>
-      "bubbleSizeDataKey" in seriesModel &&
-      seriesModel.bubbleSizeDataKey != null
-        ? seriesModel.bubbleSizeDataKey
-        : null,
-    )
-    .filter(isNotNull);
-
-  if (bubbleSizeDataKeys.length === 0) {
-    return null;
-  }
-
-  const bubbleSizeMaxValues = getObjectValues(
-    getDatasetExtents(bubbleSizeDataKeys, dataset),
-  ).map(extent => extent[1]);
-  const bubbleSizeDomainMax = Math.max(...bubbleSizeMaxValues);
-
-  return [0, bubbleSizeDomainMax];
 };
