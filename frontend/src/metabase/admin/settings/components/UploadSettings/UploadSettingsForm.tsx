@@ -32,15 +32,14 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
-export interface UploadSettings {
-  uploads_settings: UploadsSettings;
-}
-
 interface UploadSettingProps {
   databases: Database[];
-  settings: UploadSettings;
+  settings: { uploads_settings: UploadsSettings };
   updateSettings: (
-    settings: Record<string, string | number | boolean | null | any>,
+    settings: Record<
+      string,
+      string | number | boolean | UploadsSettings | null
+    >,
   ) => Promise<void>;
   saveStatusRef: React.RefObject<{
     setSaving: () => void;
