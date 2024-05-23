@@ -15,6 +15,7 @@ import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
@@ -207,11 +208,11 @@ function SdkWrapper({
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <SdkThemeProvider>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
-        </ThemeProvider>
+        </SdkThemeProvider>
       </EmotionCacheProvider>
     </Provider>
   );
