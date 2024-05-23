@@ -41,22 +41,23 @@
                        'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
 
 (defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  (deferred-tru
+   (str "Controls whether non-admins can list users via the `/api/user/recipients` endpoint when email is enabled."
+        "Possible values are `:all`, `:group`, and `:none`."))
   :visibility   :authenticated
-  :feature      :email-restrict-recipients
   :type         :keyword
   :default      :all
   :getter       (fn []
                   (cond
+                    (not (email/email-configured?))
+                    :none
+
                     (not (premium-features/enable-email-restrict-recipients?))
                     :all
 
-                    (email/email-configured?)
-                    (or (setting/get-value-of-type :keyword :user-visibility)
-                        :all)
-
                     :else
-                    :none))
+                    (or (setting/get-value-of-type :keyword :user-visibility)
+                        :all)))
   :audit        :raw-value)
 
 (defn check-self-or-superuser

@@ -175,10 +175,16 @@
   (testing "GET /api/user/recipients without :email-restrict-recipients feature"
     (mt/with-premium-features #{}
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-fake-inbox
-          (let [crowberto "crowberto@metabase.com"
-                lucky     "lucky@metabase.com"
-                rasta     "rasta@metabase.com"]
+        (let [crowberto "crowberto@metabase.com"
+              lucky     "lucky@metabase.com"
+              rasta     "rasta@metabase.com"]
+          (testing "without email set up, doesn't return other users"
+            (is (= [rasta]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                        (filter mt/test-user?)
+                        (map :email)))))
+
+          (mt/with-fake-inbox
             (testing "return all users for anyone"
               (is (= [crowberto lucky rasta]
                      (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
@@ -225,7 +231,7 @@
                             (map :email))))))
 
             (testing "Returns all users when admin"
-              (mt/with-temporary-setting-values [user-visibility "none"]
+              (mt/with-temporary-setting-values [user-visibility :none]
                 (is (= [crowberto lucky rasta]
                        (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
                             (filter mt/test-user?)
