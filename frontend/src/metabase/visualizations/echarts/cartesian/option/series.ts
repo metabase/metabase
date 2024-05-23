@@ -43,6 +43,7 @@ import {
   isTimeSeriesAxis,
 } from "../model/guards";
 import { getStackTotalValue } from "../model/series";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getSeriesYAxisIndex } from "./utils";
 
@@ -172,6 +173,52 @@ export const computeBarWidth = (
   return barWidth;
 };
 
+function getDataLabelSeriesOption(
+  dataKey: DataKey,
+  seriesOption: BarSeriesOption,
+  settings: ComputedVisualizationSettings,
+  formatter: (params: CallbackDataParams) => string,
+  position: "top" | "bottom",
+) {
+  const stackName = seriesOption.stack;
+
+  const dataLabelSeriesOption = {
+    yAxisIndex: seriesOption.yAxisIndex,
+    silent: true,
+    symbolSize: 0,
+    lineStyle: {
+      opacity: 0,
+    },
+    id: `${stackName}_${dataKey}`,
+    stack: stackName,
+    encode: {
+      y: dataKey,
+      x: X_AXIS_DATA_KEY,
+    },
+    label: {
+      ...seriesOption.label,
+      show: true,
+      position,
+      formatter,
+    },
+    labelLayout: {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+    },
+    z: Z_INDEXES.dataLabels,
+    blur: {
+      label: {
+        opacity: 1,
+      },
+    },
+  };
+
+  if (seriesOption.type === "bar") {
+    return { ...dataLabelSeriesOption, type: "bar" as const };
+  }
+
+  return { ...dataLabelSeriesOption, type: "line" as const };
+}
+
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
   xAxisModel: XAxisModel,
@@ -231,35 +278,27 @@ const buildEChartsBarSeries = (
 
   if (
     !settings["graph.show_values"] ||
-    settings["stackable.stack_type"] != null
+    settings["stackable.stack_type"] != null ||
+    labelFormatter == null
   ) {
     return seriesOption;
   }
 
-  const labelOptions = [
-    POSITIVE_STACK_TOTAL_DATA_KEY,
-    NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ].map(signKey => {
+  const labelOptions = ["+" as const, "-" as const].map(sign => {
     const option: BarSeriesOption = {
-      ...generateStackOption(
-        yAxisScaleTransforms,
-        settings,
-        signKey,
-        [seriesModel.dataKey],
+      ...getDataLabelSeriesOption(
+        getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
         seriesOption,
-        labelFormatter,
-      ),
-      type: "bar", // ensure type is bar for typescript
-    };
-    if (option?.label != null) {
-      option.label.formatter =
-        labelFormatter &&
+        settings,
         getDataLabelFormatter(
           seriesModel,
           yAxisScaleTransforms,
           labelFormatter,
-        );
-    }
+        ),
+        sign === "+" ? "top" : "bottom",
+      ),
+      type: "bar", // ensure type is bar for typescript
+    };
 
     if (option?.blur?.label != null) {
       option.blur.label.show = false;

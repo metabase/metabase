@@ -9,6 +9,9 @@ export const POSITIVE_STACK_TOTAL_DATA_KEY =
 export const NEGATIVE_STACK_TOTAL_DATA_KEY =
   `${NULL_CHAR}_negativeStackTotal` as const;
 
+export const POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX = `${NULL_CHAR}_positive_bar_data_label`;
+export const NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX = `${NULL_CHAR}_negative_bar_data_label`;
+
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x` as const;
 
