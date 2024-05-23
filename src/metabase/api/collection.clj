@@ -556,7 +556,9 @@
                                                                           :read)))
                    (if (collection/is-trash? collection)
                      [:= :d.trashed_directly true]
-                     [:= :collection_id (:id collection)])
+                     [:and
+                      [:= :collection_id (:id collection)]
+                      [:not= :d.trashed_directly true]])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 

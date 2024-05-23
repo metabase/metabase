@@ -387,7 +387,12 @@
   (let [parent-id           (or (:id parent-collection) "")
         child-literal       (if (collection.root/is-root-collection? parent-collection)
                               "/"
-                              (format "%%/%s/" (str parent-id)))]
+                              (format "%%/%s/" (str parent-id)))
+        collection-ids      (if (= collection-ids :all)
+                              (t2/select-pks-set :model/Collection :archived (or
+                                                                              (is-trash? parent-collection)
+                                                                              (:archived parent-collection)))
+                              collection-ids)]
     (into
      ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
      ;; the (1 = 1) is to prevent this
@@ -602,7 +607,12 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*
+                                                                        (if (or
+                                                                             (:archived collection)
+                                                                             (is-trash? collection))
+                                                                          :write
+                                                                          :read))]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
@@ -615,8 +625,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (when-not (is-trash? collection)
-         (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids))
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
