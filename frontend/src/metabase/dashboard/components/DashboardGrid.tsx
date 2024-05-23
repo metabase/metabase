@@ -18,10 +18,8 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
-  isQuestionDashCard,
   getVisibleCardIds,
-  isActionDashCard,
-  isVirtualDashCard,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
@@ -514,7 +512,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     dashcard: DashboardCard;
     objectId?: number | string;
   }) => {
-    if (isActionDashCard(dashcard) || isVirtualDashCard(dashcard)) {
+    if (!isQuestionDashCard(dashcard)) {
       return undefined;
     }
 
