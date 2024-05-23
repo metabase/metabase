@@ -59,6 +59,16 @@ export function getEmbeddingThemeOverride(
         override.colors[themeColorName] = colorTuple(color);
       }
     }
+
+    if (theme.colors.charts) {
+      const mappedChartColors = getEmbeddingChartColors(theme.colors.charts);
+
+      for (const [key, value] of Object.entries(mappedChartColors)) {
+        if (value) {
+          override.colors[key] = colorTuple(value);
+        }
+      }
+    }
   }
 
   return override;
