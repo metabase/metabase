@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { isProduction } from "metabase/env";
+import { useSetting } from "metabase/common/hooks";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -71,9 +71,11 @@ export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
 export const getCheckoutUrl = (migration: CloudMigration) => {
-  const baseUrl = isProduction
-    ? `https://store.metabase.com`
-    : `https://store.staging.metabase.com`;
+  // Only used from components, but passing the setting value from all callers is a PITA.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const baseUrl = useSetting("migration-use-staging")
+    ? `https://store.staging.metabase.com`
+    : `https://store.metabase.com`;
   return `${baseUrl}/checkout?migration-id=${migration.external_id}`;
 };
 

@@ -33,12 +33,13 @@
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
 
-(defsetting migration-store-url
-  (deferred-tru "Store URL for migrations. Internal test use only.")
-  :visibility :internal
-  :default    (if config/is-dev?
-               "https://store-api.staging.metabase.com/api/v2/migration"
-               "https://store-api.metabase.com/api/v2/migration")
+(defsetting migration-use-staging
+  (deferred-tru
+    (str "If cloud migrations should target staging, true on dev. Internal test use only."
+         "Internal test use only. Set to admin visibility so FE can use it too."))
+  :type       :boolean
+  :visibility :admin
+  :default    config/is-dev?
   :doc        false
   :export?    false)
 
@@ -69,6 +70,13 @@
   :default    false
   :doc        false
   :export?    false)
+
+(defn migration-store-url
+  "Store URL for migrations."
+  []
+  (if (migration-use-staging)
+    "https://store-api.staging.metabase.com/api/v2/migration"
+    "https://store-api.metabase.com/api/v2/migration"))
 
 (def ^:private read-only-mode-inclusions
   (->> copy/entities (map t2/table-name) (into #{})))
@@ -289,7 +297,7 @@
 
   ;; test settings you might want to change manually
   ;; force prod if even in dev
-  #_(migration-store-url! "https://store-api.metabase.com/api/v2/migration")
+  #_(migration-use-staging! false)
   ;; make sure to use a version that store supports, and a dump for that version.
   #_(migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:

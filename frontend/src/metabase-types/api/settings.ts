@@ -236,6 +236,7 @@ interface AdminSettings {
   "google-auth-configured": boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "migration-use-staging"?: boolean;
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
