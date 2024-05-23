@@ -5,39 +5,49 @@
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
 Features currently supported:
-* embedding questions - static
-* embedding questions - w/drill-down
-* plugins for custom actions
+
+- embedding questions - static
+- embedding questions - w/drill-down
+- theming with CSS variables
+- plugins for custom actions
 
 Features planned:
-* embedding dashboards - static
-* embedding dashboards - w/ drill-down
-* styling/theming via CSS
-* subscribing to events
+
+- embedding dashboards - static (WIP)
+- embedding dashboards - w/ drill-down
+- embedding the collection browser
+- subscribing to events
 
 # Prerequisites
 
-* You have an application using React 17 or higher
-* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-* You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
+- You have an application using React 17 or higher
+- You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
+- You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
 
 # Getting started
 
 ## Start Metabase
 
 Currently, the SDK only works with specific versions of Metabase.
+
+> Note these are not considered stable. Do not use these in production.
+
 You have the following options:
 
 ### 1. Running on Docker
+
 Start the Metabase container:
+
 ```bash
 docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.4
 ```
 
 ### 2. Running the Jar file
+
 1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.4/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
+
 ```bash
 java -jar metabase.jar
 ```
@@ -45,11 +55,11 @@ java -jar metabase.jar
 ## Configure Metabase
 
 1. Go to Admin settings > Authentication > JWT
-    1. Set JWT Identity Provider URI to your JWT endpoint
-    1. Generate JWT signing key and take note of this value. You will need it later.
+   1. Set JWT Identity Provider URI to your JWT endpoint
+   1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
-    1. Enable embedding if not already enabled
-    1. Inside interactive embedding, set Authorized Origins to your application URL
+   1. Enable embedding if not already enabled
+   1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
@@ -62,19 +72,19 @@ The SDK will call this endpoint if it doesn't have a token or to refresh the tok
 Example:
 
 ```ts
-const express = require("express")
+const express = require("express");
 
-const jwt = require("jsonwebtoken")
-const fetch = require("node-fetch")
+const jwt = require("jsonwebtoken");
+const fetch = require("node-fetch");
 
 async function metabaseAuthHandler(req, res) {
-  const { user } = req.session
+  const { user } = req.session;
 
   if (!user) {
     return res.status(401).json({
-      status: 'error',
-      message: 'not authenticated',
-    })
+      status: "error",
+      message: "not authenticated",
+    });
   }
 
   const token = jwt.sign(
@@ -86,36 +96,38 @@ async function metabaseAuthHandler(req, res) {
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
     // This is the JWT signing secret in your Metabase JWT authentication setting
-    METABASE_JWT_SHARED_SECRET
-  )
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`
+    METABASE_JWT_SHARED_SECRET,
+  );
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
 
   try {
-    const response = await fetch(ssoUrl, { method: 'GET' })
-    const token = await response.json()
+    const response = await fetch(ssoUrl, { method: "GET" });
+    const token = await response.json();
 
-    return res.status(200).json(token)
+    return res.status(200).json(token);
   } catch (error) {
     if (error instanceof Error) {
       res.status(401).json({
-        status: 'error',
-        message: 'authentication failed',
+        status: "error",
+        message: "authentication failed",
         error: error.message,
-      })
+      });
     }
   }
 }
 
-const app = express()
+const app = express();
 
 // Middleware
 
 // If your FE application is on a different domain from your BE, you need to enable CORS
 // by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
 // to your FE application URL.
-app.use(cors({
-  credentials: true,
-}))
+app.use(
+  cors({
+    credentials: true,
+  }),
+);
 
 app.use(
   session({
@@ -124,14 +136,14 @@ app.use(
     saveUninitialized: true,
     cookie: { secure: false },
   }),
-)
-app.use(express.json())
+);
+app.use(express.json());
 
 // routes
-app.get("/sso/metabase", metabaseAuthHandler)
+app.get("/sso/metabase", metabaseAuthHandler);
 app.listen(PORT, () => {
-  console.log(`API running at http://localhost:${PORT}`)
-})
+  console.log(`API running at http://localhost:${PORT}`);
+});
 ```
 
 ## Installation
@@ -162,7 +174,7 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-}
+};
 
 // See the "Customizing appearance" section for more information
 const theme = {
@@ -175,8 +187,8 @@ const theme = {
     "text-primary": "#4C5773",
     "text-secondary": "#696E7B",
     "text-tertiary": "#949AAB",
-  }
-}
+  },
+};
 
 export default function App() {
   return (
@@ -235,7 +247,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
 
-Here are the full list of the theme properties you can customize. Every property is optional.
+Here are is full list of theme properties supported. All of them are optional.
 
 ```ts
 const theme = {
@@ -286,6 +298,9 @@ const theme = {
 
     /** Color used to indicate dangerous actions and negative values/trends */
     negative: "#FF7979",
+
+    /** Color used for popover shadows */
+    shadow: "rgba(0,0,0,0.08)",
   },
 
   table: {
@@ -305,14 +320,14 @@ const theme = {
       backgroundColor: "#F5E9EB",
     },
   },
-}
+};
 ```
 
 ### Implementing custom actions
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
+`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the behavior of components. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
 
-We'll support more plugins in next releases.
+We'll support more plugins in next releases. Please share your uses cases for us!
 
 ```jsx
 // You can provide a custom action with your own `onClick` logic.
@@ -357,15 +372,15 @@ const plugins = {
       ...clickActions,
       createCustomAction(clicked),
       createCustomActionWithView(clicked),
-    ]
-  }
-}
+    ];
+  },
+};
 
 const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={questionId}  />
+    <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
 ```
@@ -375,10 +390,11 @@ return (
 The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
 
 # Feedback
+
 For issues and feedback, there are two options:
 
-* Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
-* Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
+- Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
+- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
 
 For security issues, please follow the instructions for responsible disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 

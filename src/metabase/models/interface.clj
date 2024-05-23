@@ -493,11 +493,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  t2.u/dispatch-on-first-arg)
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
-  something like
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
+  be something like
 
     #{\"/db/1/schema/public/table/20/\"}
 

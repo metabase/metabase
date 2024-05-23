@@ -1,8 +1,11 @@
+import { useMount } from "react-use";
+
 import { Flex, Image, Text } from "metabase/ui";
 
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { UpsellCTALink, UpsellCardComponent } from "./Upsells.styled";
+import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
 type UpsellCardProps = {
@@ -30,8 +33,12 @@ export const _UpsellCard = ({
     source,
   });
 
+  useMount(() => {
+    trackUpsellViewed({ source, campaign });
+  });
+
   return (
-    <UpsellCardComponent>
+    <UpsellCardComponent data-testid="upsell-card">
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
       <Flex gap="sm" justify="center" p="1rem" pb="0.75rem">
         <UpsellGem />
@@ -42,7 +49,12 @@ export const _UpsellCard = ({
       <Text size="0.75rem" lh="1rem" px="1rem" pb="1rem">
         {children}
       </Text>
-      <UpsellCTALink href={url}>{buttonText}</UpsellCTALink>
+      <UpsellCTALink
+        onClickCapture={() => trackUpsellClicked({ source, campaign })}
+        href={url}
+      >
+        {buttonText}
+      </UpsellCTALink>
     </UpsellCardComponent>
   );
 };
