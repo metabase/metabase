@@ -62,8 +62,12 @@ export const DataPickerModal = ({
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { hasModels, hasQuestions } = useAvailableData({ databaseId });
 
-  const shouldShowItem = useMemo(() => {
-    return createShouldShowItem(databaseId);
+  const modelsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["dataset"], databaseId);
+  }, [databaseId]);
+
+  const questionsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["card"], databaseId);
   }, [databaseId]);
 
   const searchParams = useMemo(() => {
@@ -107,7 +111,7 @@ export const DataPickerModal = ({
               initialValue={isModelItem(value) ? value : undefined}
               models={MODEL_PICKER_MODELS}
               options={options}
-              shouldShowItem={shouldShowItem}
+              shouldShowItem={modelsShouldShowItem}
               onItemSelect={handleCardChange}
             />
           ),
@@ -135,7 +139,7 @@ export const DataPickerModal = ({
               initialValue={isQuestionItem(value) ? value : undefined}
               models={QUESTION_PICKER_MODELS}
               options={options}
-              shouldShowItem={shouldShowItem}
+              shouldShowItem={questionsShouldShowItem}
               onItemSelect={handleCardChange}
             />
           ),
