@@ -1,6 +1,5 @@
 import { Component } from "react";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import { createSelector, weakMapMemoize } from "reselect";
 import _ from "underscore";
 
@@ -9,13 +8,14 @@ import { getUserAttributes } from "metabase/selectors/user";
 
 function getExtraDataForClick(
   entities,
+  settings,
   userAttributes,
   dashboard,
   dashcard,
   parameterValuesBySlug,
-  location,
-  routerParams,
 ) {
+  const entityState = { entities, settings };
+
   return clicked => {
     const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
       .groupBy(target => target.entity.name)
@@ -23,8 +23,8 @@ function getExtraDataForClick(
         _.chain(targets)
           .map(({ entity, entityType, entityId }) =>
             entityType === "question"
-              ? entity.selectors.getObject({ entities }, { entityId })?.card()
-              : entity.selectors.getObject({ entities }, { entityId }),
+              ? entity.selectors.getObject(entityState, { entityId })?.card()
+              : entity.selectors.getObject(entityState, { entityId }),
           )
           .filter(object => object != null)
           .indexBy(object => object.id)
@@ -37,8 +37,6 @@ function getExtraDataForClick(
       dashboard,
       dashcard,
       userAttributes,
-      location,
-      routerParams,
     };
   };
 }
@@ -46,12 +44,11 @@ function getExtraDataForClick(
 const createGetExtraDataForClick = createSelector(
   [
     state => state.entities,
+    state => state.settings,
     state => getUserAttributes(state),
     (_state, props) => props.dashboard,
     (_state, props) => props.dashcard,
     (_state, props) => props.parameterValuesBySlug,
-    (_state, props) => props.location,
-    (_state, props) => props.params,
   ],
   getExtraDataForClick,
   {
@@ -65,19 +62,17 @@ const createGetExtraDataForClick = createSelector(
  * @deprecated HOCs are deprecated
  */
 export const WithVizSettingsData = ComposedComponent => {
-  return withRouter(
-    connect(
-      (state, props) => {
-        const getExtraDataForClick = createGetExtraDataForClick(state, props);
-        return { getExtraDataForClick };
-      },
-      dispatch => ({ dispatch }),
-    )(
-      class WithVizSettingsData extends Component {
-        render() {
-          return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
-        }
-      },
-    ),
+  return connect(
+    (state, props) => {
+      const getExtraDataForClick = createGetExtraDataForClick(state, props);
+      return { getExtraDataForClick };
+    },
+    dispatch => ({ dispatch }),
+  )(
+    class WithVizSettingsData extends Component {
+      render() {
+        return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
+      }
+    },
   );
 };
