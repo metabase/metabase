@@ -1,5 +1,5 @@
 :root {
-  --title-color: var(--color-text-medium);
+  --title-color: var(--mb-color-text-medium);
 }
 
 .field {

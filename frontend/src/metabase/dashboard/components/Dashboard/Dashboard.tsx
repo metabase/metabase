@@ -10,6 +10,7 @@ import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntity
 import {
   type NewDashCardOpts,
   type SetDashboardAttributesOpts,
+  type navigateToNewCardFromDashboard,
   setArchivedDashboard,
   moveDashboardToCollection,
 } from "metabase/dashboard/actions";
@@ -91,7 +92,7 @@ type DashboardProps = {
   isDirty: boolean;
   dashboard: IDashboard;
   dashcardData: DashCardDataMap;
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
   databases: Record<DatabaseId, Database>;
   editingParameter?: Parameter | null;
   parameters: UiParameter[];
@@ -139,6 +140,7 @@ type DashboardProps = {
   addParameter: (option: ParameterMappingOptions) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
+  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterIndex: (id: ParameterId, index: number) => void;
   setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
@@ -438,13 +440,19 @@ function DashboardInner(props: DashboardProps) {
       );
     }
     return (
-      // TODO: We should make these props explicit, keeping in mind the DashboardControls inject props as well.
-      // TODO: Check if onEditingChange is being used.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       <DashboardGridConnected
-        {...props}
+        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
+        isFullscreen={props.isFullscreen}
+        isEditingParameter={props.isEditingParameter}
+        isEditing={props.isEditing}
+        parameterValues={props.parameterValues}
+        dashcardData={props.dashcardData}
+        dashboard={props.dashboard}
+        slowCards={props.slowCards}
+        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
+        selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
       />
     );
@@ -512,7 +520,6 @@ function DashboardInner(props: DashboardProps) {
       </ParametersWidgetContainer>
     );
   };
-
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -551,11 +558,45 @@ function DashboardInner(props: DashboardProps) {
              * in Redux state which kicks off a fetch for the dashboard cards.
              */}
             <DashboardHeader
-              {...props}
+              dashboardId={dashboardId}
+              isEditing={isEditing}
+              location={location}
+              dashboard={dashboard}
+              isNightMode={shouldRenderAsNightMode}
+              parametersWidget={parametersWidget}
+              isFullscreen={isFullscreen}
+              fetchDashboard={fetchDashboard}
               onEditingChange={handleSetEditing}
               setDashboardAttribute={handleSetDashboardAttribute}
               addParameter={addParameter}
               onSharingClick={handleToggleSharing}
+              addCardToDashboard={addCardToDashboard}
+              onRefreshPeriodChange={onRefreshPeriodChange}
+              addMarkdownDashCardToDashboard={
+                props.addMarkdownDashCardToDashboard
+              }
+              addHeadingDashCardToDashboard={
+                props.addHeadingDashCardToDashboard
+              }
+              addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
+              updateDashboardAndCards={props.updateDashboardAndCards}
+              dashboardBeforeEditing={props.dashboardBeforeEditing}
+              isDirty={props.isDirty}
+              onFullscreenChange={props.onFullscreenChange}
+              sidebar={props.sidebar}
+              setSidebar={props.setSidebar}
+              closeSidebar={props.closeSidebar}
+              databases={props.databases}
+              isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
+              showAddParameterPopover={props.showAddParameterPopover}
+              hideAddParameterPopover={props.hideAddParameterPopover}
+              isAdditionalInfoVisible={props.isAdditionalInfoVisible}
+              isAdmin={props.isAdmin}
+              canManageSubscriptions={props.canManageSubscriptions}
+              hasNightModeToggle={props.hasNightModeToggle}
+              onNightModeChange={props.onNightModeChange}
+              refreshPeriod={props.refreshPeriod}
+              setRefreshElapsedHook={props.setRefreshElapsedHook}
             />
           </DashboardHeaderContainer>
 
@@ -575,7 +616,42 @@ function DashboardInner(props: DashboardProps) {
             </ParametersAndCardsContainer>
 
             <DashboardSidebars
-              {...props}
+              dashboard={dashboard}
+              parameters={parameters}
+              showAddParameterPopover={props.showAddParameterPopover}
+              removeParameter={props.removeParameter}
+              addCardToDashboard={props.addCardToDashboard}
+              editingParameter={props.editingParameter}
+              clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
+              onReplaceAllDashCardVisualizationSettings={
+                props.onReplaceAllDashCardVisualizationSettings
+              }
+              onUpdateDashCardVisualizationSettings={
+                props.onUpdateDashCardVisualizationSettings
+              }
+              onUpdateDashCardColumnSettings={
+                props.onUpdateDashCardColumnSettings
+              }
+              setParameterName={props.setParameterName}
+              setParameterType={props.setParameterType}
+              setParameterDefaultValue={props.setParameterDefaultValue}
+              setParameterIsMultiSelect={props.setParameterIsMultiSelect}
+              setParameterQueryType={props.setParameterQueryType}
+              setParameterSourceType={props.setParameterSourceType}
+              setParameterSourceConfig={props.setParameterSourceConfig}
+              setParameterFilteringParameters={
+                props.setParameterFilteringParameters
+              }
+              setParameterRequired={props.setParameterRequired}
+              dashcardData={props.dashcardData}
+              isFullscreen={props.isFullscreen}
+              params={props.params}
+              sidebar={props.sidebar}
+              closeSidebar={props.closeSidebar}
+              selectedTabId={props.selectedTabId}
+              getEmbeddedParameterVisibility={
+                props.getEmbeddedParameterVisibility
+              }
               setDashboardAttribute={handleSetDashboardAttribute}
               onCancel={() => setSharing(false)}
             />

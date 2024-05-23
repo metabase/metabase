@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
@@ -35,7 +34,7 @@ const SdkContentWrapperInner = styled.div<
     fontFiles: FontFile[] | null;
   }
 >`
-  --mb-default-font-family: "${({ theme }) => getFontFamily(theme)}";
+  --mb-default-font-family: "${({ theme }) => theme.fontFamily}";
   --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
   --mb-color-brand-alpha-04: ${({ theme }) =>
     alpha(theme.fn.themeColor("brand"), 0.04)};
@@ -47,6 +46,8 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-shadow: ${({ theme }) => theme.fn.themeColor("shadow")};
   --mb-color-border: ${({ theme }) => theme.fn.themeColor("border")};
   --mb-color-text-dark: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
+  --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
@@ -67,13 +68,10 @@ const SdkContentWrapperInner = styled.div<
       `,
     )}
 
-  svg {
+  :where(svg) {
     display: inline;
   }
 `;
-
-const getFontFamily = (theme: EmbeddingTheme) =>
-  theme.fontFamily ?? DEFAULT_FONT;
 
 const getWrapperStyle = (theme: EmbeddingTheme) => css`
   font-size: ${theme.other.fontSize ?? "0.875em"};

@@ -13,7 +13,7 @@
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .QueryFilters {
@@ -112,7 +112,7 @@
 }
 
 .SelectionModuleDescription {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
   font-size: 0.8rem;
 }
 
@@ -311,7 +311,7 @@
 }
 
 .QuestionTooltipTarget {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;
