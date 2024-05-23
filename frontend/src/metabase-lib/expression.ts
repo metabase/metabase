@@ -51,7 +51,7 @@ export function expressionableColumns(
 export function expressionParts(
   query: Query,
   stageIndex: number,
-  clause: ExpressionClause | FilterClause | JoinCondition,
+  clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
   return ML.expression_parts(query, stageIndex, clause);
 }

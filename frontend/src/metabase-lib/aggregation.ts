@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   Aggregable,
@@ -73,4 +74,18 @@ export function aggregateByCount(query: Query): Query {
 
   const aggregation = aggregationClause(countOperator);
   return aggregate(query, stageIndex, aggregation);
+}
+
+export function aggregateOffset(
+  query: Query,
+  stageIndex: number,
+  aggregationClause: AggregationClause,
+): Query {
+  const { operator, options, args } = expressionParts(
+    query,
+    stageIndex,
+    aggregationClause,
+  );
+
+  return query;
 }
