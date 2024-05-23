@@ -7,12 +7,13 @@ The Metabase Embedding SDK for React offers a way to integrate Metabase into you
 Features currently supported:
 * embedding questions - static
 * embedding questions - w/drill-down
+* theming with CSS variables
 * plugins for custom actions
 
 Features planned:
-* embedding dashboards - static
+* embedding dashboards - static (WIP)
 * embedding dashboards - w/ drill-down
-* styling/theming via CSS
+* embedding the collection browser
 * subscribing to events
 
 # Prerequisites
@@ -26,6 +27,9 @@ Features planned:
 ## Start Metabase
 
 Currently, the SDK only works with specific versions of Metabase.
+
+>Note these are not considered stable. Do not use these in production.
+
 You have the following options:
 
 ### 1. Running on Docker
@@ -49,7 +53,7 @@ java -jar metabase.jar
     1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
     1. Enable embedding if not already enabled
-    1. Inside interactive embedding, set Authorized Origins to your application URL
+    1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
@@ -235,7 +239,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
 
-Here are the full list of the theme properties you can customize. Every property is optional.
+Here are is full list of theme properties supported. All of them are optional.
 
 ```ts
 const theme = {
@@ -280,6 +284,9 @@ const theme = {
 
     /** Color used for aggregations and breakouts context */
     summarize: "#88BF4D",
+
+    /** Color used for popover shadows */
+    shadow: "rgba(0,0,0,0.08)",
   },
 
   table: {
@@ -304,9 +311,9 @@ const theme = {
 
 ### Implementing custom actions
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
+`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the behavior of components. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
 
-We'll support more plugins in next releases.
+We'll support more plugins in next releases. Please share your uses cases for us!
 
 ```jsx
 // You can provide a custom action with your own `onClick` logic.

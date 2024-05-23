@@ -136,7 +136,12 @@
     body
     (try
       (auto-deserialize-dates (json/parse-string body parse-response-key))
-      (catch Throwable _
+      (catch Throwable e
+        ;; if this actually looked like some sort of JSON response and we failed to parse it, log it so we can debug it
+        ;; more easily in the REPL.
+        (when (or (str/starts-with? body "{")
+                  (str/starts-with? body "["))
+          (log/warnf e "Error parsing string response as JSON: %s\nResponse:\n%s" (ex-message e) body))
         (when-not (str/blank? body)
           body)))))
 
@@ -263,9 +268,10 @@
         (some #(re-find % content-type) [#"json" #"text"])
         (String. "UTF-8")))))
 
-(defn- coerce-mock-req-body
-  [resp]
-  (update resp :body
+(defn- coerce-mock-response-body
+  [response]
+  (update response
+          :body
           (fn [body]
             (cond
               ;; read the text response
@@ -279,7 +285,7 @@
 
               ;; Most APIs that execute a request returns a streaming response
               (instance? StreamingResponse body)
-              (read-streaming-response body (get-in resp [:headers "Content-Type"]))
+              (read-streaming-response body (get-in response [:headers "Content-Type"]))
 
               :else
               body))))
@@ -324,7 +330,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (handler/app request coerce-mock-req-body (fn [e] (throw e)))
+                       (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
                        (catch clojure.lang.ExceptionInfo e
                          (log/debug e method-name url)
                          (ex-data e))

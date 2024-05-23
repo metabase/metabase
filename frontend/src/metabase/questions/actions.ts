@@ -2,7 +2,7 @@ import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card, DatabaseId, TableId } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
@@ -35,16 +35,24 @@ export const loadMetadataForCards =
   };
 
 export const loadMetadataForTable =
-  (databaseId: DatabaseId, tableId: TableId, options?: LoadMetadataOptions) =>
+  (tableId: TableId, options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const dependencies: Lib.DependentItem[] = [{ type: "table", id: tableId }];
+    await dispatch(loadMetadataForDependentItems(dependencies));
+    const metadata = getMetadata(getState());
+    const table = metadata.table(tableId);
+    if (!table?.db_id) {
+      return;
+    }
+
     const getDependencies = () => {
       const metadataProvider = Lib.metadataProvider(
-        databaseId,
+        table.db_id,
         getMetadata(getState()),
       );
       return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
     };
-    await dispatch(loadMetadata(getDependencies, [], options));
+    await dispatch(loadMetadata(getDependencies, dependencies, options));
   };
 
 const loadMetadata =

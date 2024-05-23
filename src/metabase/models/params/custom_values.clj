@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -20,6 +19,12 @@
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
+
+(mu/defn ^:private normalize-query :- :string
+  "Normalize a `query` to lower-case."
+  [query :- :string]
+  (u/lower-case-en (str/trim query)))
+
 (defn- query-matches
   "Filters for values that match `query`.
 
@@ -27,10 +32,10 @@
   - [[value1], [value2]]
   - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search.util/normalize query)]
-    (filter (fn [v] (str/includes? (search.util/normalize (if (= (count v) 1)
-                                                            (first v)
-                                                            (second v)))
+  (let [normalized-query (normalize-query query)]
+    (filter (fn [v] (str/includes? (normalize-query (if (= (count v) 1)
+                                                      (first v)
+                                                      (second v)))
                                    normalized-query)) values)))
 
 (defn- static-list-values
