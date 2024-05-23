@@ -52,10 +52,10 @@
 (defsetting migration-dump-version
   (deferred-tru "Custom dump version for migrations. Internal test use only.")
   :visibility :internal
-  ;; Use a known and already released version override when in dev.
+  ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
   ;; a dump from that version, but it lets you test everything else up to that point works.
-  :default    (when config/is-dev? "v0.49.7")
+  :default    (when (= (config/mb-version-info :tag) "vLOCAL_DEV") "v0.50.0-RC1")
   :doc        false
   :export?    false)
 
