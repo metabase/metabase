@@ -37,22 +37,6 @@ export function aggregate(
   return ML.aggregate(query, stageIndex, clause);
 }
 
-export function aggregateByCount(query: Query): Query {
-  const stageIndex = -1;
-  const operators = availableAggregationOperators(query, stageIndex);
-  const countOperator = operators.find(operator => {
-    const info = displayInfo(query, stageIndex, operator);
-    return info.shortName === "count";
-  });
-
-  if (!countOperator) {
-    return query;
-  }
-
-  const aggregation = aggregationClause(countOperator);
-  return aggregate(query, stageIndex, aggregation);
-}
-
 export function aggregations(
   query: Query,
   stageIndex: number,
@@ -73,4 +57,20 @@ export function aggregationColumn(
   aggregation: AggregationClause,
 ): ColumnMetadata {
   return ML.aggregation_column(query, stageIndex, aggregation);
+}
+
+export function aggregateByCount(query: Query): Query {
+  const stageIndex = -1;
+  const operators = availableAggregationOperators(query, stageIndex);
+  const countOperator = operators.find(operator => {
+    const info = displayInfo(query, stageIndex, operator);
+    return info.shortName === "count";
+  });
+
+  if (!countOperator) {
+    return query;
+  }
+
+  const aggregation = aggregationClause(countOperator);
+  return aggregate(query, stageIndex, aggregation);
 }
