@@ -87,7 +87,7 @@ export interface MetabaseComponentTheme {
     };
   };
 
-  /** Numerical value displays */
+  /** Numerical value display */
   scalar?: {
     /** The primary numerical value */
     value?: {

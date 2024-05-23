@@ -295,21 +295,32 @@ const theme = {
     shadow: "rgba(0,0,0,0.08)",
   },
 
-  table: {
-    cell: {
-      // Text color of cells, defaults to `text-dark`
-      textColor: "#4C5773",
+  components: {
+    table: {
+      cell: {
+        // Text color of cells, defaults to `text-dark`
+        textColor: "#4C5773",
 
-      // Default background color of cells, defaults to `bg-white`
-      backgroundColor: "#FFFFFF",
+        // Default background color of cells, defaults to `bg-white`
+        backgroundColor: "#FFFFFF",
+      },
+
+      idColumn: {
+        // Text color of ID column, defaults to `brand`
+        textColor: "#9B5966",
+
+        // Background color of ID column, defaults to a lighter shade of `brand`
+        backgroundColor: "#F5E9EB",
+      },
     },
 
-    idColumn: {
-      // Text color of ID column, defaults to `brand`
-      textColor: "#9B5966",
-
-      // Background color of ID column, defaults to a lighter shade of `brand`
-      backgroundColor: "#F5E9EB",
+    // Numerical value display
+    scalar: {
+      // The primary value to display
+      value: {
+        fontSize: "24px",
+        lineHeight: "21px",
+      },
     },
   },
 }
