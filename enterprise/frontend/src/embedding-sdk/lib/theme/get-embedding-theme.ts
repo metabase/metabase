@@ -2,8 +2,6 @@ import { merge } from "icepick";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingChartColors } from "embedding-sdk/lib/theme/get-embedding-chart-colors";
-import { colors } from "metabase/lib/colors";
-import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import type {
   MetabaseTheme,
@@ -17,9 +15,8 @@ import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   EMBEDDING_SDK_COMPONENTS_OVERRIDES,
 } from "./default-component-theme";
-
-// Exclude sdk colors that are not 1:1 mappable.
-type MappableSdkColor = Exclude<MetabaseColor, "charts">;
+import type { MappableSdkColor } from "./embedding-color-palette";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
 const getFontFamily = (theme: MetabaseTheme) =>
   theme.fontFamily ?? DEFAULT_FONT;
