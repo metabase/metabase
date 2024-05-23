@@ -33,19 +33,18 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashboard } from "./metadata";
+import { loadMetadataForDashcards } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
 
-export const FETCH_DASHBOARD_CARD_METADATA =
-  "metabase/dashboard/FETCH_DASHBOARD_CARD_METADATA";
-
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 export const FETCH_CARD_DATA_PENDING =
   "metabase/dashboard/FETCH_CARD_DATA/pending";
+
+export const FETCH_CARD_QUERY = "metabase/dashboard/FETCH_CARD_QUERY";
 
 export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
@@ -118,7 +117,7 @@ const loadingComplete = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
+  function (card, dashcard, options) {
     return async function (dispatch, getState) {
       dispatch({
         type: FETCH_CARD_DATA_PENDING,
@@ -128,6 +127,28 @@ export const fetchCardData = createThunkAction(
         },
       });
 
+      const requests = [dispatch(fetchCardQuery(card, dashcard, options))];
+
+      const dashboardType = getDashboardType(dashcard.dashboard_id);
+      if (dashboardType === "normal" || dashboardType === "transient") {
+        requests.push(dispatch(loadMetadataForDashcards([dashcard])));
+      }
+
+      const [{ payload }] = await Promise.all(requests);
+
+      return {
+        dashcard_id: dashcard.id,
+        card_id: card.id,
+        ...payload,
+      };
+    };
+  },
+);
+
+export const fetchCardQuery = createThunkAction(
+  FETCH_CARD_QUERY,
+  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
+    return async function (dispatch, getState) {
       // If the dataset_query was filtered then we don't have permission to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
@@ -375,20 +396,6 @@ export const fetchDashboardCardData =
       });
     }
   };
-
-export const fetchDashboardCardMetadata = createThunkAction(
-  FETCH_DASHBOARD_CARD_METADATA,
-  () => async (dispatch, getState) => {
-    const allDashCards = getDashboardComplete(getState()).dashcards;
-    const selectedTabId = getSelectedTabId(getState());
-
-    const cards = allDashCards.filter(
-      dc =>
-        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
-    );
-    await dispatch(loadMetadataForDashboard(cards));
-  },
-);
 
 export const reloadDashboardCards = () => async (dispatch, getState) => {
   const dashboard = getDashboardComplete(getState());

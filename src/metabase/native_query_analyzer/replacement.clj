@@ -3,7 +3,10 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]))
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.common.parameters.values :as params.values]
+   [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.store :as qp.store]))
 
 (defn- first-unique
   [raw-query f]
@@ -14,13 +17,17 @@
   []
   (format "'%s'" (gensym "metabase_sentinel_")))
 
-(defn- sentinel-variable
+(defn- gen-variable-sentinel
   [raw-query]
   (first-unique raw-query gensymed-string))
 
-(defn- sentinel-field-filter
+(defn- gen-field-filter-sentinel
   [raw-query]
   (first-unique raw-query #(apply format "(%s = %s)" (repeat 2 (gensymed-string)))))
+
+(defn- gen-table-sentinel
+  [raw-query]
+  (first-unique raw-query #(str (gensym "metabase_sentinel_table_"))))
 
 (defn- braceify
   [s]
@@ -31,7 +38,7 @@
   (assoc all-subs new-sub (braceify (:k token))))
 
 (defn- parse-tree->clean-query
-  [raw-query tokens]
+  [raw-query tokens param->value]
   (loop
       [[token & rest] tokens
        query-so-far   ""
@@ -44,21 +51,33 @@
       (string? token)
       (recur rest (str query-so-far token) substitutions)
 
-      (params/Param? token)
-      (let [sub (sentinel-variable raw-query)]
-        (recur rest
-               (str query-so-far sub)
-               (add-tag substitutions sub token)))
-
-      (params/FieldFilter? token)
-      (let [sub (sentinel-field-filter raw-query)]
-        (recur rest
-               (str query-so-far sub)
-               (add-tag substitutions sub token)))
-
       :else
-      ;; will be addressed by #42582, etc.
-      (throw (ex-info "Unsupported token in native query" {:token token})))))
+      (let [v         (param->value (:k token))
+            card-ref? (params/ReferencedCardQuery? v)]
+        (cond
+          card-ref?
+          (let [sub (gen-table-sentinel raw-query)]
+            (recur rest
+                   (str query-so-far sub)
+                   (add-tag substitutions sub token)))
+
+          ;; Plain variable
+          (and (params/Param? token)
+               (not card-ref?))
+          (let [sub (gen-variable-sentinel raw-query)]
+            (recur rest
+                   (str query-so-far sub)
+                   (add-tag substitutions sub token)))
+
+          (params/FieldFilter? token)
+          (let [sub (gen-field-filter-sentinel raw-query)]
+            (recur rest
+                   (str query-so-far sub)
+                   (add-tag substitutions sub token)))
+
+          :else
+          ;; will be addressed by #42582, etc.
+          (throw (ex-info "Unsupported token in native query" {:token token})))))))
 
 (defn- replace-all
   "Return `the-string` with all the keys of `replacements` replaced by their values.
@@ -85,13 +104,21 @@
                   (update-keys clean-table)
                   (update-vals clean-table))}))
 
+(defn- param-values
+  [query]
+  (if (qp.store/initialized?)
+    (params.values/query->params-map (:native query))
+    (qp.setup/with-qp-setup [q query]
+      (params.values/query->params-map (:native q)))))
+
 (defn replace-names
   "Given a dataset_query and a map of renames (with keys `:tables` and `:columns`, as in Macaw), return a new inner query
   with the appropriate replacements made."
   [query renames]
-  (let [raw-query    (get-in query [:native :query])
-        parsed-query (params.parse/parse raw-query)
+  (let [raw-query                    (get-in query [:native :query])
+        parsed-query                 (params.parse/parse raw-query)
+        param->value                 (param-values query)
         {clean-query :query
-         tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query)
-        renamed-query (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
+         tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
+        renamed-query                (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
     (replace-all renamed-query tt-subs)))
