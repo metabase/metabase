@@ -1,57 +1,36 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
-import {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type {
-  DataKey,
-  CartesianChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
-import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
-import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
+import type { ChartMeasurements } from "../../chart-measurements/types";
+import { X_AXIS_DATA_KEY } from "../../constants/dataset";
+import type { ScatterPlotModel } from "../../model/types";
+import { getSharedEChartsOptions } from "../../option";
+import { buildAxes } from "../../option/axis";
+import { getGoalLineSeriesOption } from "../../option/goal-line";
+import { getTrendLinesOption } from "../../option/trend-line";
+import type { EChartsSeriesOption } from "../../option/types";
+import { getSeriesYAxisIndex } from "../../option/utils";
+import { getTimelineEventsSeries } from "../../timeline-events/option";
+import type { TimelineEventsModel } from "../../timeline-events/types";
 
-import { getGoalLineSeriesOption } from "./goal-line";
-import { getTrendLinesOption } from "./trend-line";
+import { buildEChartsScatterSeries } from "./series";
 
-export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
-  useUTC: true,
-  animation: !isPlaceholder,
-  animationDuration: 0,
-  animationDurationUpdate: 1, // by setting this to 1ms we visually eliminate shape transitions while preserving opacity transitions
-  toolbox: {
-    show: false,
-  },
-  brush: {
-    toolbox: ["lineX" as const],
-    xAxisIndex: 0,
-    throttleType: "debounce" as const,
-    throttleDelay: 200,
-  },
-});
-
-export const getCartesianChartOption = (
-  chartModel: CartesianChartModel,
+export function getScatterPlotOption(
+  chartModel: ScatterPlotModel,
   chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isPlaceholder: boolean,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
-): EChartsCoreOption => {
+): EChartsCoreOption {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
@@ -61,12 +40,14 @@ export const getCartesianChartOption = (
       )
     : null;
 
-  const dataSeriesOptions = buildEChartsSeries(
-    chartModel,
-    settings,
-    chartWidth,
-    chartMeasurements,
-    renderingContext,
+  const dataSeriesOptions: EChartsSeriesOption[] = chartModel.seriesModels.map(
+    seriesModel =>
+      buildEChartsScatterSeries(
+        seriesModel,
+        chartModel.bubbleSizeDomain,
+        getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
+        renderingContext,
+      ),
   );
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
@@ -84,17 +65,10 @@ export const getCartesianChartOption = (
     timelineEventsSeries,
   ].flatMap(option => option ?? []);
 
-  // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
   ];
-
-  if (settings["stackable.stack_type"] != null) {
-    dimensions.push(
-      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
-    );
-  }
 
   const echartsDataset = [
     {
@@ -130,8 +104,8 @@ export const getCartesianChartOption = (
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      hoveredSeriesDataKey,
+      null,
       renderingContext,
     ),
   };
-};
+}

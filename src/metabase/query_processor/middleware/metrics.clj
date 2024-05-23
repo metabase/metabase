@@ -67,6 +67,24 @@
   [query [_ {:lib/keys [expression-name]} :as expression]]
   (lib/expression query 0 expression-name expression))
 
+(defn- update-metric-query-expression-names
+  [metric-query unique-name-fn]
+  (let [original+new-name-pairs (into []
+                                      (keep (fn [[_ {:lib/keys [expression-name]}]]
+                                              (let [new-name (unique-name-fn expression-name)]
+                                                (when-not (= new-name expression-name)
+                                                  [expression-name new-name]))))
+                                      (lib/expressions metric-query))]
+    (reduce
+      (fn [metric-query [original-name new-name]]
+        (let [expression (m/find-first (comp #{original-name} :lib/expression-name second) (lib/expressions metric-query))]
+          (lib/replace-clause
+            metric-query
+            expression
+            (lib/with-expression-name expression new-name))))
+      metric-query
+      original+new-name-pairs)))
+
 (defn- temp-query-at-stage-path
   [query stage-path]
   (cond-> query
@@ -77,18 +95,24 @@
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
   (if-let [lookup (fetch-referenced-metrics query (:aggregation (first expanded-stages)))]
-    (let [new-query (reduce
+    (let [temp-query (temp-query-at-stage-path query path)
+          unique-name-fn (lib.util/unique-name-generator
+                           (:lib/metadata query)
+                           (map
+                             (comp :lib/expression-name second)
+                             (lib/expressions temp-query)))
+          new-query (reduce
                       (fn [query [_metric-id {metric-query :query}]]
                         (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
-                                 (= 1 (lib/stage-count metric-query)))
-                          (let [{:keys [expressions filters]} (lib.util/query-stage metric-query 0)]
+                              (= 1 (lib/stage-count metric-query)))
+                          (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
                             (as-> query $q
-                              (reduce expression-with-name-from-source $q expressions)
-                              (reduce #(lib/filter %1 0 %2) $q filters)
+                              (reduce expression-with-name-from-source $q (lib/expressions metric-query 0))
+                              (reduce #(lib/filter %1 0 %2) $q (lib/filters metric-query 0))
                               (replace-metric-aggregation-refs $q 0 lookup)))
                           (throw (ex-info "Incompatible metric" {:query query
                                                                  :metric metric-query}))))
-                      (temp-query-at-stage-path query path)
+                      temp-query
                       lookup)]
       (:stages new-query))
     expanded-stages))
