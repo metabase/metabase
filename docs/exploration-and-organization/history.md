@@ -5,9 +5,9 @@ title: History
 # History
 
 For questions, dashboards, and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, and revert to previous versions.
+For questions, dashboards, and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, and revert to previous versions.
 
 You can also archive, unarchive, and permanently delete outdated items.
-
 
 ## Viewing tracked changes
 
@@ -73,24 +73,8 @@ You can unarchive multiple items at once from the same collection:
 1. Go to the collection.
 2. Hover over the icon beside the name of the item and click the checkbox that appears.
 3. When you're done selecting your items, click **Unarchive** at the bottom of the page.
+   See [Archive](./archive.md)
 
 ## Deleting items permanently
 
-1. Open the main Metabase sidebar.
-2. Click the `...` beside the "Collections" header in the sidebar.
-3. Click **View archive**.
-4. Hover over the item and click the **trash bin** icon.
-
-The item will get permanently deleted from your application database.
-
-Remember that [archiving](#archiving-items) and deleting items can have unanticipated ripple effects on related [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), and [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md).
-
-We recommend archiving because you can always unarchive if something breaks. If you delete an item and accidentally break something, you might have to recreate all of that work from scratch (unless you're prepared to revert to a backup of your application database).
-
-### Deleting multiple items permanently
-
-You can delete multiple items at once from the same collection:
-
-1. Go to the collection.
-2. Hover over the icon beside the name of the item and click the checkbox that appears.
-3. When you're done selecting your items, click **Delete** at the bottom of the page.
+See [Deleting items permanently](./archive.md#deleting-items-permanently)

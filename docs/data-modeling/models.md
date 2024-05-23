@@ -161,9 +161,15 @@ You can also use the data reference sidebar to browse the models available. To o
 
 ## Model version history
 
-For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, revert to previous versions, and archive outdated items.
+For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes and revert to previous versions.
 
 See [History](../exploration-and-organization/history.md).
+
+## Archive a model
+
+You can archive or permanently delete outdated or unneeded models.
+
+See [Archive](../exploration-and-organization/archive.md).
 
 ## Verifying a model
 

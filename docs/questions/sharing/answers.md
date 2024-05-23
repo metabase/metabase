@@ -48,7 +48,7 @@ Open the **three dot** (...) menu to:
 - Move to another [collection](../../exploration-and-organization/collections.md)
 - Turn into a [model](../../data-modeling/models.md)
 - Duplicate
-- [Archive](../../exploration-and-organization/history.md)
+- [Archive](../../exploration-and-organization/archive.md)
 
 Click the **info** icon to:
 
