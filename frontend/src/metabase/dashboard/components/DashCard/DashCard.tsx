@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -368,6 +368,6 @@ function DashCardInner({
   );
 }
 
-export const DashCard = Object.assign(DashCardInner, {
+export const DashCard = Object.assign(memo(DashCardInner), {
   root: DashCardRoot,
 });
