@@ -1,7 +1,6 @@
 import type { ComponentStory } from "@storybook/react";
 
-import { getStore } from "__support__/entities-store";
-import { TestWrapper } from "__support__/ui";
+import { VisualizationWrapper } from "__support__/storybook";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -27,12 +26,10 @@ const MOCK_SERIES = mockSeries({
 });
 
 const Template: ComponentStory<typeof SmartScalar> = () => {
-  const store = getStore();
-
   return (
-    <TestWrapper store={store} withRouter={false} withKBar={false} withDND>
+    <VisualizationWrapper>
       <Visualization rawSeries={MOCK_SERIES} width={500} />
-    </TestWrapper>
+    </VisualizationWrapper>
   );
 };
 
