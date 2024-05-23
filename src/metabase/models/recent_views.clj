@@ -472,7 +472,7 @@
     (let [entity->id->data (get-entity->id->data views)]
       (into []
             (comp
-             (map (partial post-process entity->id->data))
+             (keep (partial post-process entity->id->data))
              (keep error-avoider))
             views))
     []))
