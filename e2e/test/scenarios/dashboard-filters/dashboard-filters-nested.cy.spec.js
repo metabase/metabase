@@ -78,11 +78,8 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     // Add multiple values (metabase#18113)
     filterWidget().click();
     popover().within(() => {
-      cy.findByPlaceholderText("Enter some text")
-        .type("Gizmo")
-        .blur()
-        .type("Gadget")
-        .blur();
+      cy.findByText("Gizmo").click();
+      cy.findByText("Gadget").click();
     });
 
     cy.button("Add filter").click();
