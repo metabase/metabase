@@ -12,7 +12,7 @@
   You can use [[reset-changes!]] to clear our all the current trackings.
   And [[untrack-all!]] or [[untrack!]] to stop tracking."
   (:require
-   [clojure.pprint :as pprint]
+   [clojure.string :as str]
    [metabase.util :as u]
    [methodical.core :as m]
    [toucan2.core :as t2]
@@ -29,6 +29,19 @@
 
 (def ^:private tracked-models (atom #{}))
 
+(defn- indent [prefix s]
+  (str/join "\n"
+            (map
+             (fn [line] (str prefix line))
+             (str/split-lines s))))
+
+(defn- sort-map-for-printing [m]
+  (into (sorted-map-by (fn [a b]
+                         (cond (= a :id) -1
+                               (= b :id) 1
+                               :else (compare a b)))) m))
+
+#_:clj-kondo/ignore ;; printlns
 (defn on-change
   "When a change occurred, execute this function.
 
@@ -43,7 +56,7 @@
   "
   [path change-info]
   (println (u/colorize :magenta :new-change) (u/colorize :magenta path))
-  (pprint/pprint change-info))
+  (println (->> change-info sort-map-for-printing u/pprint-to-str (indent "  "))))
 
 (defn- clean-change
   [change]
@@ -98,7 +111,7 @@
 (defn track!
   "Start tracking a list of models.
 
-  (track! 'Card 'Dashboard)"
+  (track! :model/Card :model/Dashboard)"
   [& models]
   (doseq [model (map t2.model/resolve-model models)]
     (track-one! model)
