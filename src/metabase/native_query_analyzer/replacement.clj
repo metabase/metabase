@@ -36,6 +36,16 @@
                                     sentinel snippet-contents sentinel))]
     (first-unique raw-query #(delimited-snippet (gensym "mb_") content))))
 
+(defn- gen-option-sentinels
+  [raw-query]
+  (let [unique-sentinels?       (fn [[open close]] (not (or (str/includes? raw-query open)
+                                                            (str/includes? raw-query close))))
+        gen-sentinel-candidates (fn [] (let [postfix  (gensym "mb_")
+                                             template "/* opt_%s_%s */"]
+                                         [(format template "open"  postfix)
+                                          (format template "close" postfix)]))]
+    (first (filter unique-sentinels? (repeatedly gen-sentinel-candidates)))))
+
 (defn- braceify
   [s]
   (format "{{%s}}" s))
@@ -75,10 +85,24 @@
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
 
+          (params/Optional? token)
+          (let [[open-sentinel close-sentinel] (gen-option-sentinels raw-query)
+                {inner-query :query
+                 inner-subs  :substitutions} (parse-tree->clean-query raw-query (:args token) param->value)]
+            (recur rest
+                   (str query-so-far
+                        open-sentinel
+                        inner-query
+                        close-sentinel)
+                   (merge inner-subs
+                          substitutions
+                          {open-sentinel  "[["
+                           close-sentinel "]]"})))
+
           ;; Plain variable
-          (and (params/Param? token)
-               (not card-ref?)
-               (not snippet?))
+          ;; Note that the order of the clauses matters: `card-ref?` or `snippet?` could be true when is a `Param?`,
+          ;; so we need to handle those cases specially first and leave this as the the token fall-through
+          (params/Param? token)
           (let [sub (gen-variable-sentinel raw-query)]
             (recur rest
                    (str query-so-far sub)
@@ -91,7 +115,7 @@
                    (add-tag substitutions sub token)))
 
           :else
-          ;; will be addressed by #42582, etc.
+          ;; "this should never happen" but if it does we certainly want to know about it.
           (throw (ex-info "Unsupported token in native query" {:token token})))))))
 
 (defn- replace-all
