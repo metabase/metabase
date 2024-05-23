@@ -816,9 +816,9 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting uploads-settings
   (deferred-tru "Database for uploads")
   :visibility :authenticated
-  :export?    false
+  :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json
-  :audit      :getter ;; TODO: what does this do?
+  :audit      :getter
   :getter     (fn []
                 (let [db (t2/select-one :model/Database :uploads_enabled true)]
                   {:db_id        (:id db)
