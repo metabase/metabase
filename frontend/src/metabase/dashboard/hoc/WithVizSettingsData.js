@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import { createSelector, weakMapMemoize } from "reselect";
 import _ from "underscore";
 
@@ -12,6 +13,8 @@ function getExtraDataForClick(
   dashboard,
   dashcard,
   parameterValuesBySlug,
+  location,
+  routerParams,
 ) {
   return clicked => {
     const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
@@ -34,6 +37,8 @@ function getExtraDataForClick(
       dashboard,
       dashcard,
       userAttributes,
+      location,
+      routerParams,
     };
   };
 }
@@ -45,6 +50,8 @@ const createGetExtraDataForClick = createSelector(
     (_state, props) => props.dashboard,
     (_state, props) => props.dashcard,
     (_state, props) => props.parameterValuesBySlug,
+    (_state, props) => props.location,
+    (_state, props) => props.routerParams,
   ],
   getExtraDataForClick,
   {
@@ -58,17 +65,19 @@ const createGetExtraDataForClick = createSelector(
  * @deprecated HOCs are deprecated
  */
 export const WithVizSettingsData = ComposedComponent => {
-  return connect(
-    (state, props) => {
-      const getExtraDataForClick = createGetExtraDataForClick(state, props);
-      return { getExtraDataForClick };
-    },
-    dispatch => ({ dispatch }),
-  )(
-    class WithVizSettingsData extends Component {
-      render() {
-        return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
-      }
-    },
+  return withRouter(
+    connect(
+      (state, props) => {
+        const getExtraDataForClick = createGetExtraDataForClick(state, props);
+        return { getExtraDataForClick };
+      },
+      dispatch => ({ dispatch }),
+    )(
+      class WithVizSettingsData extends Component {
+        render() {
+          return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
+        }
+      },
+    ),
   );
 };
