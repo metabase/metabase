@@ -992,7 +992,7 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (upload-test/with-uploads-allowed
+        (upload-test/with-uploads-enabled
           (is (= {:status 200, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
@@ -1023,7 +1023,7 @@
   (mt/test-driver :h2
     (mt/with-empty-db
      (testing "Happy path"
-       (upload-test/with-uploads-allowed
+       (upload-test/with-uploads-enabled
          (is (= {:status 200, :body nil}
                 (update-csv-via-api! :metabase.upload/replace)))))
      (testing "Failure paths return an appropriate status code and a message in the body"
