@@ -48,7 +48,7 @@
   (testing "DELETE ee/upload-management/:id"
     (mt/test-driver :h2
       (mt/with-empty-db
-       (upload-test/with-uploads-allowed
+       (upload-test/with-uploads-enabled
          (testing "Behind a feature flag"
            (mt/with-premium-features #{} ;; not :upload-management
              (is (str/starts-with? (mt/user-http-request :crowberto :delete 402 (delete-url 1))
