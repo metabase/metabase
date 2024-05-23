@@ -132,7 +132,7 @@ export function renderWithProviders(
     }
 
     return (
-      <Wrapper
+      <TestWrapper
         {...props}
         store={store}
         history={history}
@@ -157,7 +157,7 @@ export function renderWithProviders(
   };
 }
 
-function Wrapper({
+export function TestWrapper({
   children,
   store,
   history,
