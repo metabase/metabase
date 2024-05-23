@@ -71,16 +71,22 @@ export interface DashCardProps {
 
   headerIcon?: IconProps;
 
-  onAddSeries: () => void;
-  onReplaceCard: () => void;
-  onRemove: () => void;
+  onAddSeries: (dashcard: StoreDashcard) => void;
+  onReplaceCard: (dashcard: StoreDashcard) => void;
+  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  onReplaceAllVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  onUpdateVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -287,12 +293,14 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={onAddSeries}
-            onRemove={onRemove}
-            onReplaceCard={onReplaceCard}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllVisualizationSettings={
-              onReplaceAllVisualizationSettings
+            onAddSeries={() => onAddSeries(dashcard)}
+            onRemove={() => onRemove(dashcard)}
+            onReplaceCard={() => onReplaceCard(dashcard)}
+            onUpdateVisualizationSettings={settings =>
+              onUpdateVisualizationSettings(dashcard.id, settings)
+            }
+            onReplaceAllVisualizationSettings={settings =>
+              onReplaceAllVisualizationSettings(dashcard.id, settings)
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -327,7 +335,9 @@ function DashCardInner({
           isMobile={isMobile}
           isPublic={isPublic}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={settings =>
+            onUpdateVisualizationSettings(dashcard.id, settings)
+          }
           onChangeCardAndRun={changeCardAndRunHandler}
           onChangeLocation={onChangeLocation}
         />
