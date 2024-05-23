@@ -11,8 +11,8 @@ import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { useEmbeddingThemeOptions } from "metabase/hooks/use-embedding-theme-options";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useMantineTheme } from "metabase/ui";
 
 import {
   ScalarRoot,
@@ -37,7 +37,9 @@ const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
 }) => {
-  const { scalar: scalarTheme } = useEmbeddingThemeOptions();
+  const {
+    other: { scalar: scalarTheme },
+  } = useMantineTheme();
 
   const fontSize = useMemo(() => {
     if (scalarTheme?.value?.fontSize) {
