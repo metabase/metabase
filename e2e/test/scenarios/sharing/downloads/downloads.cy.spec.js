@@ -258,7 +258,6 @@ describe("scenarios > question > download", () => {
         visitDashboard(dashboard.id);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       showDashboardCardActions(0);
       getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
@@ -268,7 +267,6 @@ describe("scenarios > question > download", () => {
         cy.findByText(".png").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       showDashboardCardActions(1);
       getDashboardCard(1).findByText("User ID").should("be.visible");
       getDashboardCardMenu(1).click();
