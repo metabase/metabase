@@ -182,7 +182,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   }
 
   // get latest value and date
-  const latestRowIndex = rows.findLastIndex(row => {
+  const latestRowIndex = _.findLastIndex(rows, row => {
     const date = row[dimensionColIndex];
     const value = row[metricColIndex];
 
@@ -314,7 +314,7 @@ function computeComparisonPreviousValue({
   dateUnitSettings,
   formatValue,
 }) {
-  const previousRowIndex = rows.findLastIndex((row, i) => {
+  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
     if (i >= nextValueRowIndex) {
       return false;
     }
