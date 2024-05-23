@@ -76,7 +76,7 @@ export interface DashCardProps {
   onReplaceCard: () => void;
   onRemove: () => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  getNewCardUrl: (
+  getNewCardUrl?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => string | undefined;
   navigateToNewCardFromDashboard?: (
@@ -242,35 +242,29 @@ function DashCardInner({
   }, [dashcard.id, showClickBehaviorSidebar]);
 
   const changeCardAndRunHandler =
-    useMemo<DashCardOnChangeCardAndRunHandler | null>(() => {
-      if (!navigateToNewCardFromDashboard) {
-        return null;
-      }
-
-      return ({ nextCard, previousCard, objectId }) => {
-        navigateToNewCardFromDashboard({
+    useCallback<DashCardOnChangeCardAndRunHandler>(
+      ({ nextCard, previousCard, objectId }) => {
+        return navigateToNewCardFromDashboard?.({
           nextCard,
           previousCard,
           dashcard,
           objectId,
         });
-      };
-    }, [dashcard, navigateToNewCardFromDashboard]);
+      },
+      [dashcard, navigateToNewCardFromDashboard],
+    );
 
-  const getHref = useMemo<DashCardGetNewCardUrlHandler | null>(() => {
-    if (!getNewCardUrl) {
-      return null;
-    }
-
-    return ({ nextCard, previousCard, objectId }) => {
-      return getNewCardUrl({
+  const getHref = useCallback<DashCardGetNewCardUrlHandler>(
+    ({ nextCard, previousCard, objectId }) => {
+      return getNewCardUrl?.({
         nextCard,
         previousCard,
         dashcard,
         objectId,
       });
-    };
-  }, [dashcard, getNewCardUrl]);
+    },
+    [dashcard, getNewCardUrl],
+  );
 
   return (
     <ErrorBoundary>
@@ -327,7 +321,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          getHref={getHref}
+          getHref={getNewCardUrl ? getHref : null}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -344,7 +338,9 @@ function DashCardInner({
           isPublic={isPublic}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={changeCardAndRunHandler}
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
+          }
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>
