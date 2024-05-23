@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { getStore } from "__support__/entities-store";
 import {
   setupDashboardsEndpoints,
@@ -6,10 +8,18 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import {
+  createMockCard,
   createMockDashboard,
+  createMockDashboardCard,
+  createMockDashboardTab,
   createMockSettings,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
@@ -44,6 +54,102 @@ function setup({ dashboards = [] }) {
 }
 
 describe("fetchDashboard", () => {
+  it("should fetch metadata for all cards when there are no tabs", async () => {
+    const dashboard = createMockDashboard({
+      dashcards: [
+        createMockDashboardCard({
+          card: createMockCard({
+            dataset_query: createMockStructuredDatasetQuery({
+              query: {
+                "source-table": PRODUCTS_ID,
+              },
+            }),
+          }),
+        }),
+        createMockDashboardCard({
+          card: createMockCard({
+            dataset_query: createMockStructuredDatasetQuery({
+              query: {
+                "source-table": ORDERS_ID,
+              },
+            }),
+          }),
+        }),
+      ],
+    });
+    const store = setup({
+      dashboards: [dashboard],
+    });
+
+    await store.dispatch(
+      fetchDashboard({
+        dashId: dashboard.id,
+        queryParams: {},
+        options: {},
+      }),
+    );
+
+    expect(
+      fetchMock.calls(`path:/api/table/${PRODUCTS_ID}/query_metadata`),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.calls(`path:/api/table/${ORDERS_ID}/query_metadata`),
+    ).toHaveLength(1);
+  });
+
+  it("should fetch metadata for cards on the first tab when there are tabs", async () => {
+    const dashboard = createMockDashboard({
+      dashcards: [
+        createMockDashboardCard({
+          card: createMockCard({
+            dataset_query: createMockStructuredDatasetQuery({
+              query: {
+                "source-table": PRODUCTS_ID,
+              },
+            }),
+          }),
+          dashboard_tab_id: 1,
+        }),
+        createMockDashboardCard({
+          card: createMockCard({
+            dataset_query: createMockStructuredDatasetQuery({
+              query: {
+                "source-table": ORDERS_ID,
+              },
+            }),
+          }),
+          dashboard_tab_id: 2,
+        }),
+      ],
+      tabs: [
+        createMockDashboardTab({
+          id: 1,
+        }),
+        createMockDashboardTab({
+          id: 2,
+        }),
+      ],
+    });
+    const store = setup({
+      dashboards: [dashboard],
+    });
+
+    await store.dispatch(
+      fetchDashboard({
+        dashId: dashboard.id,
+        queryParams: {},
+        options: {},
+      }),
+    );
+
+    expect(
+      fetchMock.calls(`path:/api/table/${PRODUCTS_ID}/query_metadata`),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.calls(`path:/api/table/${ORDERS_ID}/query_metadata`),
+    ).toHaveLength(0);
+  });
+
   it("should cancel previous dashboard fetch when a new one is initiated (metabase#35959)", async () => {
     const store = setup({
       dashboards: [

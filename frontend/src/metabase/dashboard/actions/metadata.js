@@ -4,14 +4,14 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 
 import { isVirtualDashCard } from "../utils";
 
-export const loadMetadataForDashcards = dashcards => async dispatch => {
-  const cards = dashcards
+export const loadMetadataForDashboard = dashCards => async dispatch => {
+  const cards = dashCards
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
   await Promise.all([
     dispatch(loadMetadataForCards(cards)),
-    dispatch(loadMetadataForLinkedTargets(dashcards)),
+    dispatch(loadMetadataForLinkedTargets(dashCards)),
   ]);
 };
 

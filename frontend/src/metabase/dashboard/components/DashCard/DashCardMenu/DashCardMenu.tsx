@@ -6,7 +6,6 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
-import { getIsLoadingComplete } from "metabase/dashboard/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
@@ -22,9 +21,8 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import { CardEntityMenu } from "./DashCardMenu.styled";
+import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
   question: Question;
@@ -42,20 +40,12 @@ interface TriggerProps {
   onClick: () => void;
 }
 
-interface StateProps {
-  isLoadingComplete: boolean;
-}
-
 interface DispatchProps {
   onEditQuestion: (question: Question) => void;
   onDownloadResults: (opts: DownloadQueryResultsOpts) => void;
 }
 
-type DashCardMenuProps = OwnProps & StateProps & DispatchProps;
-
-const mapStateToProps = (state: State): StateProps => ({
-  isLoadingComplete: getIsLoadingComplete(state),
-});
+type DashCardMenuProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onEditQuestion: editQuestion,
@@ -70,7 +60,6 @@ const DashCardMenu = ({
   uuid,
   token,
   params,
-  isLoadingComplete,
   onEditQuestion,
   onDownloadResults,
 }: DashCardMenuProps) => {
@@ -104,39 +93,25 @@ const DashCardMenu = ({
     [question, result, handleDownload],
   );
 
-  const menuItems = useMemo(() => {
-    const items = [];
-    if (isLoadingComplete && canEditQuestion(question)) {
-      items.push({
+  const menuItems = useMemo(
+    () => [
+      canEditQuestion(question) && {
         title: `Edit question`,
         icon: "pencil",
         action: () => onEditQuestion(question),
-      });
-    }
-    if (canDownloadResults(result)) {
-      items.push({
+      },
+      canDownloadResults(result) && {
         title: loading ? t`Downloading…` : t`Download results`,
         icon: "download",
         disabled: loading,
         content: handleMenuContent,
-      });
-    }
-    return items;
-  }, [
-    question,
-    result,
-    loading,
-    isLoadingComplete,
-    handleMenuContent,
-    onEditQuestion,
-  ]);
-
-  if (menuItems.length === 0) {
-    return null;
-  }
+      },
+    ],
+    [question, result, loading, handleMenuContent, onEditQuestion],
+  );
 
   return (
-    <CardEntityMenu
+    <CardMenuRoot
       className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
@@ -153,6 +128,7 @@ const DashCardMenu = ({
 
 interface QueryDownloadWidgetOpts {
   question: Question;
+  result?: Dataset;
   isXray?: boolean;
   isEmbed: boolean;
   isPublic?: boolean;
@@ -174,6 +150,7 @@ const canDownloadResults = (result?: Dataset) => {
 
 DashCardMenu.shouldRender = ({
   question,
+  result,
   isXray,
   isEmbed,
   isPublic,
@@ -188,10 +165,16 @@ DashCardMenu.shouldRender = ({
   if (isEmbed) {
     return isEmbed;
   }
-  return !isInternalQuery && !isPublic && !isEditing && !isXray;
+  return (
+    !isInternalQuery &&
+    !isPublic &&
+    !isEditing &&
+    !isXray &&
+    (canEditQuestion(question) || canDownloadResults(result))
+  );
 };
 
 export const DashCardMenuConnected = connect(
-  mapStateToProps,
+  null,
   mapDispatchToProps,
 )(DashCardMenu);

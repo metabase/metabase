@@ -498,7 +498,6 @@ export function FieldValuesWidgetInner({
             }}
             onInputChange={onInputChange}
             parseFreeformValue={parseFreeformValue}
-            updateOnInputBlur
           />
         )}
       </div>
