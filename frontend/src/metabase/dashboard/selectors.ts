@@ -14,6 +14,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -210,7 +211,7 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
-export const getParameterValuesBySlug = createSelector(
+export const getParameterValuesBySlugMap = createSelector(
   [getDashboardComplete, getParameterValues],
   (dashboard, parameterValues) => {
     if (!dashboard) {

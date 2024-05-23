@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
-import { getParameterValuesBySlug } from "metabase/dashboard/selectors";
+import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useStore } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
@@ -67,7 +67,7 @@ const DashCardMenu = ({
 
   const [{ loading }, handleDownload] = useAsyncFn(
     async (opts: { type: string; enableFormatting: boolean }) => {
-      const params = getParameterValuesBySlug(store.getState());
+      const params = getParameterValuesBySlugMap(store.getState());
 
       await onDownloadResults({
         ...opts,

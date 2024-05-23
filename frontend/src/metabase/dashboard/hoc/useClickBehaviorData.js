@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   getDashboardComplete,
   getDashCardById,
-  getParameterValuesBySlug,
+  getParameterValuesBySlugMap,
 } from "metabase/dashboard/selectors";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 import { useStore } from "metabase/lib/redux";
@@ -15,7 +15,7 @@ function createGetExtraDataForClick(store, dashcardId) {
     const state = store.getState();
     const dashboard = getDashboardComplete(state);
     const dashcard = getDashCardById(state, dashcardId);
-    const parameterValuesBySlug = getParameterValuesBySlug(state);
+    const parameterValuesBySlug = getParameterValuesBySlugMap(state);
     const userAttributes = getUserAttributes(state);
 
     const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
