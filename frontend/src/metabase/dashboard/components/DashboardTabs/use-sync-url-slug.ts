@@ -70,19 +70,24 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       return;
     }
 
-    const maybeSelectedTab = tabs.find(t => t.id === getIdFromSlug(slug));
-    if (
-      !prevTabs?.length &&
-      maybeSelectedTab &&
-      selectedTabId !== maybeSelectedTab.id
-    ) {
-      dispatch(selectTab({ tabId: maybeSelectedTab.id }));
+    const tabFromSlug = tabs.find(t => t.id === getIdFromSlug(slug));
+
+    // If the tabs haven't been loaded before, the tab data from slug exists,
+    // and the current tab differs from the slug.
+    const isTabFromSlugLoaded =
+      !prevTabs?.length && tabFromSlug && selectedTabId !== tabFromSlug.id;
+
+    // Selects the tab once the tab data has been loaded.
+    if (isTabFromSlugLoaded) {
+      dispatch(selectTab({ tabId: tabFromSlug.id }));
+
       updateURLSlug({
         slug: getSlug({
-          tabId: maybeSelectedTab.id,
-          name: maybeSelectedTab.name,
+          tabId: tabFromSlug.id,
+          name: tabFromSlug.name,
         }),
       });
+
       return;
     }
 
