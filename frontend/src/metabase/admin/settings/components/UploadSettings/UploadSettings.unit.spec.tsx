@@ -7,9 +7,9 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import type { UploadsSettings } from "metabase-types/api/settings";
 import { createMockState } from "metabase-types/store/mocks";
 
-import type { UploadSettings } from "./UploadSettingsForm";
 import { UploadSettingsFormView } from "./UploadSettingsForm";
 
 const TEST_DATABASES = [
@@ -52,7 +52,7 @@ const TEST_DATABASES = [
 
 interface SetupOpts {
   databases?: Database[];
-  settings?: UploadSettings;
+  settings?: { uploads_settings: UploadsSettings };
 }
 
 function setup({
