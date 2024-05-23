@@ -9,37 +9,38 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
+  ParameterId,
+  ParameterValueOrArray,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { DashboardState } from "metabase-types/store";
+import type { StoreDashboard } from "metabase-types/store";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)
  * should come from this function, which merges any currently applied dashboard filters
  * into the new card / URL parameters.
  */
-export const getNewCardUrl = (
-  metadata: Metadata,
-  dashboardState: DashboardState,
-  {
-    nextCard,
-    previousCard,
-    dashcard,
-    objectId,
-  }: {
-    nextCard: Card;
-    previousCard: Card;
-    dashcard: QuestionDashboardCard;
-    objectId?: number | string;
-  },
-): string | undefined => {
-  const { dashboardId, dashboards, parameterValues } = dashboardState;
-
-  if (dashboardId === null) {
+export const getNewCardUrl = ({
+  metadata,
+  dashboard,
+  parameterValues,
+  nextCard,
+  previousCard,
+  dashcard,
+  objectId,
+}: {
+  metadata: Metadata;
+  dashboard: Dashboard | StoreDashboard | undefined;
+  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  nextCard: Card;
+  previousCard: Card;
+  dashcard: QuestionDashboardCard;
+  objectId?: number | string;
+}): string | undefined => {
+  if (!dashboard) {
     return undefined;
   }
 
-  const dashboard = dashboards[dashboardId];
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
   if (!cardAfterClick.dataset_query) {

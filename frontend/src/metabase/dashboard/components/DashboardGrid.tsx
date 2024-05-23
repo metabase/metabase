@@ -55,7 +55,6 @@ import type {
   ParameterValueOrArray,
   DashboardCard,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -108,9 +107,6 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapStateToProps = (state: State) => ({
-  dashboardState: state.dashboard,
-});
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
@@ -125,7 +121,7 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(mapStateToProps, mapDispatchToProps);
+const connector = connect(null, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
@@ -522,9 +518,12 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       return undefined;
     }
 
-    const { metadata, dashboardState } = this.props;
+    const { dashboard, metadata, parameterValues } = this.props;
 
-    return getNewCardUrl(metadata, dashboardState, {
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
       dashcard,
       nextCard,
       previousCard,

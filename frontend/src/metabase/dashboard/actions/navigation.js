@@ -42,16 +42,23 @@ export const navigateToNewCardFromDashboard = createThunkAction(
   ({ nextCard, previousCard, dashcard, objectId }) =>
     async (dispatch, getState) => {
       const state = getState();
-      const { dashboardId } = state.dashboard;
+      const { dashboardId, dashboards, parameterValues } = state.dashboard;
+      const dashboard = dashboardId ? dashboards[dashboardId] : undefined;
       const metadata = getMetadata(state);
-      const url = getNewCardUrl(metadata, state.dashboard, {
+      const url = getNewCardUrl({
+        metadata,
+        dashboard,
+        parameterValues,
         nextCard,
         previousCard,
         dashcard,
         objectId,
       });
 
-      dispatch(openUrl(url));
+      if (url) {
+        dispatch(openUrl(url));
+      }
+
       return { dashboardId };
     },
 );
