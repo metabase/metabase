@@ -52,17 +52,15 @@ const TEST_DATABASES = [
 
 interface SetupOpts {
   databases?: Database[];
-  settings?: { uploads_settings: UploadsSettings };
+  uploadsSettings?: UploadsSettings;
 }
 
 function setup({
   databases = TEST_DATABASES,
-  settings = {
-    uploads_settings: {
-      db_id: null,
-      schema_name: null,
-      table_prefix: null,
-    },
+  uploadsSettings = {
+    db_id: null,
+    schema_name: null,
+    table_prefix: null,
   },
 }: SetupOpts = {}) {
   const state = createMockState({
@@ -82,7 +80,7 @@ function setup({
   renderWithProviders(
     <UploadSettingsFormView
       databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
-      settings={settings}
+      uploadsSettings={uploadsSettings}
       updateSettings={updateSpy}
       saveStatusRef={{
         current: {
@@ -266,12 +264,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to disable uploads", async () => {
     const { updateSpy } = setup({
-      settings: {
-        uploads_settings: {
-          db_id: 2,
-          schema_name: null,
-          table_prefix: null,
-        },
+      uploadsSettings: {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: null,
       },
     });
     await userEvent.click(
@@ -289,12 +285,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show an error if disabling fails", async () => {
     const { updateSpy, savingSpy, clearSpy, savedSpy } = setup({
-      settings: {
-        uploads_settings: {
-          db_id: 2,
-          schema_name: null,
-          table_prefix: null,
-        },
+      uploadsSettings: {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: null,
       },
     });
     updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
@@ -318,12 +312,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should populate db and schema from existing settings", async () => {
     setup({
-      settings: {
-        uploads_settings: {
-          db_id: 1,
-          schema_name: "top_secret",
-          table_prefix: null,
-        },
+      uploadsSettings: {
+        db_id: 1,
+        schema_name: "top_secret",
+        table_prefix: null,
       },
     });
 
@@ -333,12 +325,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should populate db and stable prefix from existing settings", async () => {
     setup({
-      settings: {
-        uploads_settings: {
-          db_id: 2,
-          schema_name: null,
-          table_prefix: "my_uploads_",
-        },
+      uploadsSettings: {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: "my_uploads_",
       },
     });
 
@@ -348,12 +338,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show a message if there are no schema for the selected db", async () => {
     setup({
-      settings: {
-        uploads_settings: {
-          db_id: null,
-          schema_name: null,
-          table_prefix: null,
-        },
+      uploadsSettings: {
+        db_id: null,
+        schema_name: null,
+        table_prefix: null,
       },
     });
     const dbItem = await screen.findByText("Select a database");
@@ -370,12 +358,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to update db settings", async () => {
     const { updateSpy } = setup({
-      settings: {
-        uploads_settings: {
-          db_id: 2,
-          schema_name: null,
-          table_prefix: null,
-        },
+      uploadsSettings: {
+        db_id: 2,
+        schema_name: null,
+        table_prefix: null,
       },
     });
     await userEvent.click(await screen.findByText("Db Dos"));
@@ -433,12 +419,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show enabled disable button when a db is populated", async () => {
       setup({
-        settings: {
-          uploads_settings: {
-            db_id: 2,
-            schema_name: null,
-            table_prefix: null,
-          },
+        uploadsSettings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: null,
         },
       });
       expect(
@@ -460,12 +444,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show the only the update button when a db is changed", async () => {
       setup({
-        settings: {
-          uploads_settings: {
-            db_id: 2,
-            schema_name: null,
-            table_prefix: null,
-          },
+        uploadsSettings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: null,
         },
       });
       await userEvent.click(await screen.findByText("Db Dos"));
@@ -496,12 +478,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show the update button when a table prefix is changed", async () => {
       setup({
-        settings: {
-          uploads_settings: {
-            db_id: 2,
-            schema_name: null,
-            table_prefix: "up_",
-          },
+        uploadsSettings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: "up_",
         },
       });
 
@@ -516,12 +496,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show a loading spinner on submit", async () => {
       const { updateSpy } = setup({
-        settings: {
-          uploads_settings: {
-            db_id: 2,
-            schema_name: null,
-            table_prefix: "up_",
-          },
+        uploadsSettings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: "up_",
         },
       });
       updateSpy.mockImplementation(
@@ -544,12 +522,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should reset button loading state on input change", async () => {
       const { updateSpy } = setup({
-        settings: {
-          uploads_settings: {
-            db_id: 2,
-            schema_name: null,
-            table_prefix: "up_",
-          },
+        uploadsSettings: {
+          db_id: 2,
+          schema_name: null,
+          table_prefix: "up_",
         },
       });
       updateSpy.mockImplementation(

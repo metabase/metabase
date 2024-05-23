@@ -34,7 +34,7 @@ const disableErrorMessage = t`There was a problem disabling uploads. Please try 
 
 interface UploadSettingProps {
   databases: Database[];
-  settings: { uploads_settings: UploadsSettings };
+  uploadsSettings: UploadsSettings;
   updateSettings: (
     settings: Record<
       string,
@@ -50,9 +50,7 @@ interface UploadSettingProps {
 }
 
 const mapStateToProps = (state: State) => ({
-  settings: {
-    uploads_settings: getSetting(state, "uploads-settings"),
-  },
+  uploadsSettings: getSetting(state, "uploads-settings"),
 });
 
 const mapDispatchToProps = {
@@ -77,18 +75,18 @@ const Header = () => (
 
 export function UploadSettingsFormView({
   databases,
-  settings,
+  uploadsSettings,
   updateSettings,
   saveStatusRef,
 }: UploadSettingProps) {
   const [dbId, setDbId] = useState<number | null>(
-    settings.uploads_settings.db_id ?? null,
+    uploadsSettings.db_id ?? null,
   );
   const [schemaName, setSchemaName] = useState<string | null>(
-    settings.uploads_settings.schema_name ?? null,
+    uploadsSettings.schema_name ?? null,
   );
   const [tablePrefix, setTablePrefix] = useState<string | null>(
-    settings.uploads_settings.table_prefix ?? null,
+    uploadsSettings.table_prefix ?? null,
   );
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
   const dispatch = useDispatch();
@@ -155,9 +153,9 @@ export function UploadSettingsFormView({
   const showPrefix = !!dbId;
   const hasValidSettings = Boolean(dbId && (!showSchema || schemaName));
   const settingsChanged =
-    dbId !== settings.uploads_settings.db_id ||
-    schemaName !== settings.uploads_settings.schema_name ||
-    tablePrefix !== settings.uploads_settings.table_prefix;
+    dbId !== uploadsSettings.db_id ||
+    schemaName !== uploadsSettings.schema_name ||
+    tablePrefix !== uploadsSettings.table_prefix;
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
@@ -225,7 +223,7 @@ export function UploadSettingsFormView({
         )}
       </Group>
       <Group mt="lg">
-        {settings.uploads_settings.db_id ? (
+        {uploadsSettings.db_id ? (
           settingsChanged ? (
             <ActionButton
               ref={updateButtonRef}
