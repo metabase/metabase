@@ -6,9 +6,7 @@
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
-   [metabase.models.view-log :refer [ViewLog]]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -69,7 +67,7 @@
   (mt/with-temp [:model/Collection coll   {:name "Analytics"}
                  :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
                  :model/Dashboard  dash-2 {:collection_id (:id coll)}]
-    (mt/with-model-cleanup [ViewLog]
+    (mt/with-model-cleanup [:model/RecentViews]
       (mt/with-test-user :crowberto
         (testing "view a dashboard in a personal collection"
           (events/publish-event! :event/dashboard-read {:object dash-1 :user-id (mt/user->id :crowberto)})
@@ -113,7 +111,7 @@
                                     :display                "table"
                                     :visualization_settings {}}]
     (testing "recent_views endpoint shows the current user's recently viewed items."
-      (mt/with-model-cleanup [ViewLog]
+      (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-test-user :crowberto
           (doseq [[topic event] [[:event/card-query     {:card-id (:id dataset)}]
                                  [:event/card-query     {:card-id (:id dataset)}]
@@ -163,12 +161,12 @@
                         (reverse views)
                         (range))
                    (group-by #(if (:card_id %) :card :other)))]
-    (t2/insert! ViewLog (:other views))
-    (t2/insert! QueryExecution (:card views))))
+    (t2/insert! :model/RecentViews (:other views))
+    (t2/insert! :model/QueryExecution (:card views))))
 
 (deftest popular-items-test
-  ;; Clear out the view log & query execution log so that test doesn't read stale state
-  (t2/delete! :model/ViewLog)
+  ;; Clear out recent views & query execution log so that test doesn't read stale state
+  (t2/delete! :model/RecentViews)
   (t2/delete! :model/QueryExecution)
   (mt/with-temp [Card      card1 {:name                   "rand-name"
                                   :creator_id             (mt/user->id :crowberto)
@@ -181,10 +179,12 @@
                                       :visualization_settings {}}
                  Dashboard dash1 {:name        "rand-name"
                                   :description "rand-name"
-                                  :creator_id  (mt/user->id :crowberto)}
+                                  :creator_id  (mt/user->id :crowberto)
+                                  :view_count  10}
                  Dashboard dash2 {:name        "other-dashboard"
                                   :description "just another dashboard"
-                                  :creator_id  (mt/user->id :crowberto)}
+                                  :creator_id  (mt/user->id :crowberto)
+                                  :view_count  5}
                  Table     table1 {:name "rand-name"}
                  Table     hidden-table {:name            "hidden table"
                                          :visibility_type "hidden"}
@@ -200,7 +200,7 @@
                                     :visualization_settings {}}]
     (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric]))]
       (testing "Items viewed by multiple users are never duplicated in the popular items list."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
+        (mt/with-model-cleanup [:model/RecentViews :model/QueryExecution]
           (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
                           [(mt/user->id :crowberto) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta)     "card"      (:id card1)]
@@ -213,7 +213,7 @@
                       (filter (comp test-ids u/the-id))
                       (map (juxt :model :id)))))))
       (testing "Items viewed by other users can still show up in popular items."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
+        (mt/with-model-cleanup [:model/RecentViews :model/QueryExecution]
           (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta) "card"      (:id card1)]
                           [(mt/user->id :rasta) "table"     (:id table1)]
@@ -228,7 +228,7 @@
                       (filter #(test-ids (:id %)))
                       (map (juxt :model :id)))))))
       (testing "Items with more views show up sooner in popular items."
-        (mt/with-model-cleanup [ViewLog QueryExecution]
+        (mt/with-model-cleanup [:model/RecentViews :model/QueryExecution]
           (create-views! (concat
                           ;; one item with many views is considered more popular
                           (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
