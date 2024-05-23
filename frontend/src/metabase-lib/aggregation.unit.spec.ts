@@ -1,6 +1,6 @@
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { aggregateOffset, aggregations } from "./aggregation";
+import { offsetClause, aggregations } from "./aggregation";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
@@ -15,11 +15,12 @@ describe("aggregation", () => {
     });
     const [aggregationClause] = aggregations(query, stageIndex);
 
-    const finalQuery = aggregateOffset(
+    const finalQuery = offsetClause(
       query,
       stageIndex,
       aggregationClause,
-      // offset, // TODO: pass this as an argument
+      name,
+      offset,
     );
 
     expect(toLegacyQuery(finalQuery)).toMatchObject({

@@ -1,12 +1,16 @@
 import * as ML from "cljs/metabase.lib.js";
+// TODO: fixme
+import { uuid } from "metabase/lib/uuid";
 
-import { expressionParts } from "./expression";
+import { expressionClause } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   Aggregable,
   AggregationClause,
   AggregationOperator,
   ColumnMetadata,
+  ExpressionClause,
+  FilterClause,
   Query,
 } from "./types";
 
@@ -76,16 +80,19 @@ export function aggregateByCount(query: Query): Query {
   return aggregate(query, stageIndex, aggregation);
 }
 
-export function aggregateOffset(
+// TODO: move to different file
+export function offsetClause(
   query: Query,
   stageIndex: number,
-  aggregationClause: AggregationClause,
+  clause: AggregationClause | ExpressionClause | FilterClause,
+  name: string,
+  offset: number,
 ): Query {
-  const { operator, options, args } = expressionParts(
-    query,
-    stageIndex,
-    aggregationClause,
-  );
+  const newClause = expressionClause("offset", [clause, offset], {
+    "lib/uuid": uuid(),
+    name,
+    "display-name": name,
+  });
 
-  return query;
+  return aggregate(query, stageIndex, newClause);
 }

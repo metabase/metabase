@@ -275,7 +275,8 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -285,10 +286,18 @@ export type ExpressionParts = {
   options: ExpressionOptions;
 };
 
-export type ExpressionOptions = {
-  "case-sensitive"?: boolean;
-  "include-current"?: boolean;
+export type OffsetExpressionOptions = {
+  "lib/uuid": string;
+  name: string;
+  "display-name": string;
 };
+
+export type ExpressionOptions =
+  | {
+      "case-sensitive"?: boolean;
+      "include-current"?: boolean;
+    }
+  | OffsetExpressionOptions;
 
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };

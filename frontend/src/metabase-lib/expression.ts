@@ -58,7 +58,7 @@ export function expressionParts(
 
 export function expressionClause(
   operator: ExpressionOperatorName,
-  args: (ExpressionArg | ExpressionClause)[],
+  args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {
   return ML.expression_clause(operator, args, options);
