@@ -1,3 +1,4 @@
+import { loadMetadataForDashcards } from "metabase/dashboard/actions/metadata";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
@@ -40,7 +41,6 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
-import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -158,7 +158,7 @@ export const addCardToDashboard =
     );
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
+    await dispatch(loadMetadataForDashcards([dashcard]));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
 
@@ -233,7 +233,7 @@ export const replaceCard =
     const dashcard = getDashCardById(getState(), dashcardId);
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
+    await dispatch(loadMetadataForDashcards([dashcard]));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
