@@ -34,7 +34,6 @@ class EntityMenu extends Component {
 
     const open = !this.state.open;
     this.setState({ open, menuItemContent: null });
-    this.props.onChange?.(open);
   };
 
   setFreezeMenu = freezeMenu => {

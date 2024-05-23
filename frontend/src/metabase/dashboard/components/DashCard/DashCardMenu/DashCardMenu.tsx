@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
@@ -10,7 +10,6 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import * as Lib from "metabase-lib";
@@ -23,7 +22,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { CardEntityMenu } from "./DashCardMenu.styled";
+import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
   question: Question;
@@ -64,8 +63,6 @@ const DashCardMenu = ({
   onEditQuestion,
   onDownloadResults,
 }: DashCardMenuProps) => {
-  const [isOpened, setIsOpened] = useState(false);
-
   const [{ loading }, handleDownload] = useAsyncFn(
     async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownloadResults({
@@ -96,13 +93,8 @@ const DashCardMenu = ({
     [question, result, handleDownload],
   );
 
-  const menuItems = useMemo(() => {
-    // performance optimization - do not parse the query when the menu is closed
-    if (!isOpened) {
-      return [];
-    }
-
-    return [
+  const menuItems = useMemo(
+    () => [
       canEditQuestion(question) && {
         title: `Edit question`,
         icon: "pencil",
@@ -114,14 +106,14 @@ const DashCardMenu = ({
         disabled: loading,
         content: handleMenuContent,
       },
-    ];
-  }, [question, result, loading, isOpened, handleMenuContent, onEditQuestion]);
+    ],
+    [question, result, loading, handleMenuContent, onEditQuestion],
+  );
 
   return (
-    <CardEntityMenu
+    <CardMenuRoot
       className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
-      onChange={setIsOpened}
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
           name="ellipsis"
@@ -178,8 +170,7 @@ DashCardMenu.shouldRender = ({
     !isPublic &&
     !isEditing &&
     !isXray &&
-    (getHasDataAccess(question.metadata().databasesList()) ||
-      canDownloadResults(result))
+    (canEditQuestion(question) || canDownloadResults(result))
   );
 };
 
