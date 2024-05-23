@@ -53,8 +53,6 @@
  [endpoint]
   (let [ep-name (:ns-name endpoint)
         eps-to-exclude #{
-                         "LLM Auto-description"
-                         "SCIM"
                          "Cloud migration"
                          "Routes" ; api/routes
                          }]

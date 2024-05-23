@@ -64,3 +64,7 @@ NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/
     When `format_rows` is `false`, formatting is not applied and exports will behave as they did prior to 0.49.0.
 
     The value of `format_rows` has no effect when exporting xlsx files.
+
+## API documentation
+
+See [API documentation](../api-documentation.md)

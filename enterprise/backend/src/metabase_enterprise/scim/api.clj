@@ -1,5 +1,7 @@
 (ns metabase-enterprise.scim.api
-  "/api/ee/scim/ endpoints"
+  "/api/ee/scim/ endpoints.
+
+This feature is still in development."
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api :refer [defendpoint]]
