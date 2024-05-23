@@ -53,7 +53,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <Box h="65vh" mah={rem(550)}>
+      <Box mah={rem(550)}>
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
