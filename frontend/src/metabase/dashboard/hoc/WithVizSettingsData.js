@@ -51,7 +51,7 @@ const createGetExtraDataForClick = createSelector(
     (_state, props) => props.dashcard,
     (_state, props) => props.parameterValuesBySlug,
     (_state, props) => props.location,
-    (_state, props) => props.routerParams,
+    (_state, props) => props.params,
   ],
   getExtraDataForClick,
   {
