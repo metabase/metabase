@@ -400,12 +400,12 @@
                                               (lib/filter (lib/= (meta/field-metadata :venues :name) "abc"))
                                               (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                                               (add-aggregation-options {:display-name "My Cool Aggregation"})))
-          {:keys [before after]} {:before {:source-table (meta/id :venues)
-                                           :aggregation  [[:metric (:id source-metric)]]}
-                                  :after  {:source-table (meta/id :venues)
-                                           :aggregation  [[:aggregation-options [:sum [:field (meta/id :venues :price) {}]]
-                                                           {:display-name "My Cool Aggregation"}]]
-                                           :filter       [:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]}}
+          before {:source-table (meta/id :venues)
+                  :aggregation  [[:metric (:id source-metric)]]}
+          after {:source-table (meta/id :venues)
+                 :aggregation  [[:aggregation-options [:sum [:field (meta/id :venues :price) {}]]
+                                 {:display-name "My Cool Aggregation"}]]
+                 :filter       [:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]}
           expand-macros (fn [mbql-query]
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
       (comment
