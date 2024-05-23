@@ -20,8 +20,8 @@ interface Props {
 export const LegendLabel = ({ children, className, href, onClick }: Props) => {
   const handleLinkClick = useCallback(
     (event: MouseEvent) => {
-      // prefer programmatic onClick handling over native browser's href handling
-      // due to loadMetadataForDashcards call in navigateToNewCardFromDashboard
+      // Prefer programmatic onClick handling over native browser's href handling.
+      // This helps to avoid e.g. 2 tabs opening when ctrl + clicking the link.
       event.preventDefault();
       onClick(event);
     },
