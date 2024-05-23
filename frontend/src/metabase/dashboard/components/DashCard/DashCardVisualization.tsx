@@ -199,6 +199,7 @@ export function DashCardVisualization({
     const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
+      result: mainSeries,
       isXray,
       isEmbed,
       isPublic,
