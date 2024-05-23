@@ -32,13 +32,13 @@ export function getEmbeddingChartColors(
       mappedColors[`accent${index}`] = color.base;
 
       // TODO: auto-generate when the darker colors are not provided
-      if (color.darker) {
-        mappedColors[`accent${index}-dark`] = color.darker;
+      if (color.shade) {
+        mappedColors[`accent${index}-dark`] = color.shade;
       }
 
       // TODO: auto-generate the lighter colors are not provided
-      if (color.lighter) {
-        mappedColors[`accent${index}-light`] = color.lighter;
+      if (color.tint) {
+        mappedColors[`accent${index}-light`] = color.tint;
       }
     }
   });

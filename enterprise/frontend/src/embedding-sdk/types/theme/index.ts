@@ -87,4 +87,12 @@ export interface MetabaseComponentTheme {
 
 export type ChartColor =
   | string
-  | { base: string; lighter?: string; darker?: string };
+  | {
+      base: string;
+
+      /** Lighter variation of the base color */
+      tint?: string;
+
+      /** Darker variation of the base color */
+      shade?: string;
+    };
