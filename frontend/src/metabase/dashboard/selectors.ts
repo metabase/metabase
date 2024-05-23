@@ -210,6 +210,16 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
+export const getParameterValuesBySlug = createSelector(
+  [getDashboardComplete, getParameterValues],
+  (dashboard, parameterValues) => {
+    if (!dashboard) {
+      return {};
+    }
+    return getParameterValuesBySlug(dashboard.parameters, parameterValues);
+  },
+);
+
 export const getCanShowAutoApplyFiltersToast = createSelector(
   [
     getDashboard,

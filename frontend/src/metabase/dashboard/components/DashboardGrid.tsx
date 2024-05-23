@@ -47,8 +47,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardTabId,
-  ParameterId,
-  ParameterValueOrArray,
   DashboardCard,
 } from "metabase-types/api";
 
@@ -124,7 +122,6 @@ type OwnProps = {
   dashboard: Dashboard;
   dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId | null;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
@@ -488,7 +485,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <DashCard
         dashcard={dc}
-        parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}

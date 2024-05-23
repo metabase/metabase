@@ -402,7 +402,6 @@ function DashboardInner(props: DashboardProps) {
         isFullscreen={props.isFullscreen}
         isEditingParameter={props.isEditingParameter}
         isEditing={props.isEditing}
-        parameterValues={props.parameterValues}
         dashcardData={props.dashcardData}
         dashboard={props.dashboard}
         slowCards={props.slowCards}

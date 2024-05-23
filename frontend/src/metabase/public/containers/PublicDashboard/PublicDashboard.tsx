@@ -275,7 +275,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   navigateToNewCardFromDashboard={() => {}}
                   dashcardData={this.props.dashcardData}
                   selectedTabId={this.props.selectedTabId}
-                  parameterValues={this.props.parameterValues}
                   slowCards={this.props.slowCards}
                   isEditing={false}
                   isEditingParameter={false}

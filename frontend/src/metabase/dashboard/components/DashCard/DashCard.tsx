@@ -23,15 +23,12 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
   Dashboard,
   DashboardCard,
   DashCardId,
-  ParameterId,
-  ParameterValueOrArray,
   VisualizationSettings,
   VirtualCard,
 } from "metabase-types/api";
@@ -56,7 +53,6 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
   mode?: Mode;
 
@@ -94,7 +90,6 @@ function DashCardInner({
   dashboard,
   slowCards,
   metadata,
-  parameterValues,
   gridItemWidth,
   totalNumGridCols,
   mode,
@@ -195,11 +190,6 @@ function DashCardInner({
 
   const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
-
-  const parameterValuesBySlug = useMemo(
-    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
-    [dashboard.parameters, parameterValues],
-  );
 
   const gridSize = useMemo(
     () => ({ width: dashcard.size_x, height: dashcard.size_y }),
@@ -334,8 +324,6 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          parameterValues={parameterValues}
-          parameterValuesBySlug={parameterValuesBySlug}
           metadata={metadata}
           mode={mode}
           gridSize={gridSize}
