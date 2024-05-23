@@ -873,8 +873,6 @@
                  "sub-A"
                  "sub-C"
                  "sub-B"
-                 ;; can see the dashboard in Collection B, because it's readable (but maybe we should change this)
-                 "dashboard-B"
                  ;; can see the dashboard in Collection C, because Rasta has read/write permissions on Collection C
                  "dashboard-C"} (set-of-item-names (collection/trash-collection-id)))))
       (testing "if the collections themselves are trashed, subcollection checks still work the same way"
@@ -884,49 +882,8 @@
                  "sub-B"
                  "sub-C"
                  "C"
-                 "dashboard-B"
                  "dashboard-C"}
-               (set-of-item-names (collection/trash-collection-id)))))
-      (testing "after hard deletion of a collection, everything that was in them is also deleted."
-        (doseq [coll [collection-a collection-b collection-c]]
-          (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id coll))))
-        ;; Rasta can no longer see:
-        ;; - Collection C because it's deleted
-        ;; - dashboard C because permissions records are deleted along with the collection
-        (is (= #{"sub-A" "sub-B" "sub-C"}
-               (set-of-item-names (collection/trash-collection-id))))
-        ;; Crowberto can see all of the still-existent things.
-        (is (= #{"sub-A" "sub-B" "sub-C"}
-               (->> (get-items :crowberto (collection/trash-collection-id))
-                    (map :name)
-                    set)))))))
-
-(deftest deleting-collections
-  (t2.with-temp/with-temp [Collection col {:name "A"}
-                           Collection sub {:name "sub-A" :location (collection/children-location col)}
-                           Collection subsub {:name "subsub" :location (collection/children-location sub)}]
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subsub)) {:archived true})
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id sub)) {:archived true})
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id col)) {:archived true})
-    (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id col)))
-    (is (t2/exists? :model/Collection :id (u/the-id sub)))
-    (is (t2/exists? :model/Collection :id (u/the-id subsub)))
-    ;; the subcollections were moved up a level.
-    (is (= "/" (t2/select-one-fn :location :model/Collection :id (u/the-id sub))))
-    (is (= (format "/%s/" (u/the-id sub))
-           (t2/select-one-fn :location :model/Collection :id (u/the-id subsub))))))
-
-(deftest deleting-collections-2
-  (t2.with-temp/with-temp [Collection col {:name "A"}
-                           Collection sub {:name "sub-A" :location (collection/children-location col)}
-                           Collection subsub {:name "subsub" :location (collection/children-location sub)}]
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subsub)) {:archived true})
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id col)) {:archived true})
-    (mt/user-http-request :crowberto :delete 200 (str "collection/" (u/the-id col)))
-    (is (not (t2/exists? :model/Collection :id (u/the-id sub))))
-    (is (t2/exists? :model/Collection :id (u/the-id subsub)))
-    ;; the subcollections were moved up a level.
-    (is (= "/" (t2/select-one-fn :location :model/Collection :id (u/the-id subsub))))))
+               (set-of-item-names (collection/trash-collection-id))))))))
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"

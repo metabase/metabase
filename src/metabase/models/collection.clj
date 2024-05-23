@@ -333,15 +333,19 @@
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
-  [permissions-set]
-  (if (contains? permissions-set "/")
-    :all
-    (set
-     (for [path  permissions-set
-           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
-           :when id-str]
-       (cond-> id-str
-         (not= id-str "root") Integer/parseInt)))))
+  ([permissions-set]
+   (permissions-set->visible-collection-ids permissions-set :read))
+  ([permissions-set read-or-write]
+   (if (contains? permissions-set "/")
+     :all
+     (set
+      (for [path  permissions-set
+            :let  [[_ id-str] (case read-or-write
+                                :read (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)
+                                :write (re-matches #"/collection/((?:\d+)|root)/" path))]
+            :when id-str]
+        (cond-> id-str
+          (not= id-str "root") Integer/parseInt))))))
 
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones

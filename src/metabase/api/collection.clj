@@ -425,7 +425,10 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        (if (collection/is-trash? collection)
+                                                                          :write
+                                                                          :read)))
                    (if (collection/is-trash? collection)
                      [:= :c.trashed_directly true]
                      [:and
@@ -547,7 +550,10 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        (if (collection/is-trash? collection)
+                                                                          :write
+                                                                          :read)))
                    (if (collection/is-trash? collection)
                      [:= :d.trashed_directly true]
                      [:= :collection_id (:id collection)])
