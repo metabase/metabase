@@ -4,7 +4,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
-import { Icon, Flex, Tooltip } from "metabase/ui";
+import { Flex, Tooltip, FixedSizeIcon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
@@ -15,11 +15,13 @@ export type ResultItemType = Pick<SearchResult, "model" | "name"> &
   Partial<
     Pick<
       SearchResult,
+      | "id"
       | "collection"
       | "description"
       | "collection_authority_level"
       | "moderated_status"
       | "display"
+      | "database_name"
     >
   >;
 
@@ -35,6 +37,7 @@ export const ResultItem = ({
   isLast?: boolean;
 }) => {
   const icon = getIcon(item);
+  const parentInfo = getParentInfo(item);
 
   return (
     <ChunkyListItem
@@ -46,7 +49,7 @@ export const ResultItem = ({
       data-testid="result-item"
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
-        <Icon
+        <FixedSizeIcon
           color={color(icon.color ?? (isSelected ? "white" : "brand"))}
           name={icon.name}
           style={{
@@ -63,12 +66,12 @@ export const ResultItem = ({
             label={item.description}
             zIndex={ENTITY_PICKER_Z_INDEX}
           >
-            <Icon color="brand" name="info" />
+            <FixedSizeIcon color="brand" name="info" />
           </Tooltip>
         )}
       </Flex>
 
-      {item.model !== "collection" && ( // we don't hydrate parent info for collections right now
+      {parentInfo && (
         <Flex
           style={{
             color: isSelected ? color("white") : color("text-light"),
@@ -78,15 +81,33 @@ export const ResultItem = ({
           gap="sm"
           w="20rem"
         >
-          <Icon
-            name={getIcon({ model: "collection", ...item.collection }).name}
-            style={{ flexShrink: 0 }}
-          />
-          <Ellipsified>
-            {t`in ${item.collection?.name ?? t`Our Analytics`}`}
-          </Ellipsified>
+          <FixedSizeIcon name={parentInfo.icon} />
+          <Ellipsified>{t`in ${parentInfo.name}`}</Ellipsified>
         </Flex>
       )}
     </ChunkyListItem>
   );
 };
+
+function getParentInfo(item: ResultItemType) {
+  if (item.model === "table") {
+    return {
+      icon: getIcon({ model: "database" }).name,
+      name: item.database_name ?? t`Database`,
+    };
+  }
+
+  if (item.model === "collection" && item?.collection?.id === item?.id) {
+    // some APIs return collection items with themselves populated as their own parent 🥴
+    return null;
+  }
+
+  if (!item.collection) {
+    return null;
+  }
+
+  return {
+    icon: getIcon({ model: "collection", ...item.collection }).name,
+    name: getName(item.collection) || t`Our Analytics`,
+  };
+}
