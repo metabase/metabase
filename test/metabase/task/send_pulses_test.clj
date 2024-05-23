@@ -195,7 +195,7 @@
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
-          (with-redefs [;; run the job every seconds
+          (with-redefs [;; run the job every second
                         u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
                         task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
                                                            (swap! sent-channel-ids set/union channel-ids))]
