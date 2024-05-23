@@ -640,20 +640,18 @@
                 {:dataset #{}
                  :metric  #{}
                  :card    #{}}
-                (when (seq descendant-collection-ids)
-                  (t2/reducible-query {:select-distinct [:collection_id :type]
-                                       :from            [:report_card]
-                                       :where           [:and
-                                                         [:= :archived false]
-                                                         [:in :collection_id descendant-collection-ids]]})))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
-        (->> (when (seq descendant-collection-ids)
-               (t2/query {:select-distinct [:collection_id]
-                          :from :report_dashboard
-                          :where [:and
-                                  [:= :archived false]
-                                  [:in :collection_id descendant-collection-ids]]}))
+        (->> (t2/query {:select-distinct [:collection_id]
+                        :from :report_dashboard
+                        :where [:and
+                                [:= :archived false]
+                                [:in :collection_id descendant-collection-ids]]})
              (map :collection_id)
              (into #{}))
 
@@ -727,24 +725,6 @@
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline))
 
-(defn- can-read-in-trash? [collection row]
-  (mi/can-write?
-   (t2/instance
-    (model-name->toucan-model (:model row))
-    (assoc (select-keys row [:id :archived]) :collection_id (:id collection)))))
-
-(defn- maybe-check-permissions
-  "Generally, if you have permission to read a collection, you have permission to read everything in it.
-  This is *not* true for the Trash collection. This contains all trashed items. In this case, we need to filter the
-  list down to those items for which the user actually has permissions.
-
-  Because this is the trash collection, we only want to show the user items which they could move out of the trash if
-  desired. Therefore, we want *write* permissions, not just read."
-  [collection rows]
-  (cond->> rows
-    (collection/is-trash? collection)
-    (filter #(can-read-in-trash? collection %))))
-
 (defn- fix-collection-id [item]
   (cond-> item (:trashed_directly item) (assoc :collection_id (collection/trash-collection-id))))
 
@@ -753,7 +733,6 @@
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
-       (maybe-check-permissions collection)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
