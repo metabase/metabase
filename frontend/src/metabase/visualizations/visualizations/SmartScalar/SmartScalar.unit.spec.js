@@ -348,4 +348,30 @@ describe("SmartScalar", () => {
       });
     });
   });
+
+  describe("should handle errors gracefully", () => {
+    it("should show error display if error is thrown", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = [{ unit: "month", col: "Count" }];
+
+      setup(
+        series({
+          rows,
+          insights,
+          comparisonType: getPeriodsAgoComparison("hi"),
+        }),
+      );
+
+      expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
+      await userEvent.hover(screen.getByLabelText("warning icon"));
+      expect(
+        screen.getByText(
+          "No integer value supplied for periods ago comparison. Click for more information",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });
