@@ -18,9 +18,9 @@ Organize questions, dashboards, and models with collections.
 
 View changes to a question, dashboard or model and revert to previous versions.
 
-## [Archive](./archive.md)
+## [Delete and restore items](./delete-and-restore.md)
 
-Archive or delete outdated questions, models, and dashboards.
+Move outdated outdated questions, models, and dashboards to trash, or delete them permanently.
 
 ## [Data reference](./data-model-reference.md)
 

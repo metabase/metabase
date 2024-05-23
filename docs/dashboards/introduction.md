@@ -266,10 +266,10 @@ For [questions](../questions/start.md), dashboards, and [models](../data-modelin
 
 See [History](../exploration-and-organization/history.md).
 
-## Archiving a dashboard
+## Deleting a dashboard
 
-You can archive or permanently delete a dashboard that you no longer need.
-See [Archiving a dashboard](../exploration-and-organization/archive.md).
+You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
+See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
 
 ## Tips on creating helpful dashboards
 

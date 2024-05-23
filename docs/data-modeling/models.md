@@ -165,11 +165,11 @@ For [questions](../questions/start.md), [dashboards](../dashboards/start.md), an
 
 See [History](../exploration-and-organization/history.md).
 
-## Archive a model
+## Delete a model
 
-You can archive or permanently delete outdated or unneeded models.
+You can move outdated or unneeded models to trash, or delete them permanently. Deleting a model will affect questions that use it as a data source.
 
-See [Archive](../exploration-and-organization/archive.md).
+See [Deleting and recovering models](../exploration-and-organization/deleting-items.md#deleting-and-restoring-models).
 
 ## Verifying a model
 
