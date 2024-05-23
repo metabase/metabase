@@ -29,10 +29,12 @@ export function useSyncedQueryString(
     }
 
     return () => {
-      // remove the elements of object from the query string when the component is unmounted
+      // Remove every previously-synced keys from the query string when the component is unmounted.
+      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
       const search = buildSearchString({
         filterFn: key => !(key in object),
       });
+
       history.replaceState(
         null,
         document.title,
