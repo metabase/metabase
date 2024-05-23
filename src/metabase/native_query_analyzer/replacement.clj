@@ -29,6 +29,13 @@
   [raw-query]
   (first-unique raw-query #(str (gensym "metabase_sentinel_table_"))))
 
+(defn- gen-snippet-sentinel
+  [raw-query {:keys [content]}]
+  (let [delimited-snippet (fn [sentinel snippet-contents]
+                            (format "/* snippet_start_%s */ %s /* snippet_end_%s */"
+                                    sentinel snippet-contents sentinel))]
+    (first-unique raw-query #(delimited-snippet (gensym "mb_") content))))
+
 (defn- braceify
   [s]
   (format "{{%s}}" s))
@@ -53,7 +60,8 @@
 
       :else
       (let [v         (param->value (:k token))
-            card-ref? (params/ReferencedCardQuery? v)]
+            card-ref? (params/ReferencedCardQuery? v)
+            snippet?  (params/ReferencedQuerySnippet? v)]
         (cond
           card-ref?
           (let [sub (gen-table-sentinel raw-query)]
@@ -61,9 +69,16 @@
                    (str query-so-far sub)
                    (add-tag substitutions sub token)))
 
+          snippet?
+          (let [sub (gen-snippet-sentinel raw-query v)]
+            (recur rest
+                   (str query-so-far sub)
+                   (add-tag substitutions sub token)))
+
           ;; Plain variable
           (and (params/Param? token)
-               (not card-ref?))
+               (not card-ref?)
+               (not snippet?))
           (let [sub (gen-variable-sentinel raw-query)]
             (recur rest
                    (str query-so-far sub)
