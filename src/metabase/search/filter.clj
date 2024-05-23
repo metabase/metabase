@@ -109,17 +109,17 @@
 
 (defmulti ^:private build-optional-filter-query
   "Build the query to filter by `filter`.
-  Dispath with an array of [filter model-name]."
-  {:arglists '([model fitler query filter-value])}
+  Dispatch with an array of [filter model-name]."
+  {:arglists '([model filter query filter-value])}
   (fn [filter model _query _filter-value]
     [filter model]))
 
 (defmethod build-optional-filter-query :default
-  [filter model _query _creator-id]
+  [filter model _query _filter-value]
   (throw (ex-info (format "%s filter for %s is not supported" filter model) {:filter filter :model model})))
 
 ;; Created by filters
-(defn- default-created-by-fitler-clause
+(defn- default-created-by-filter-clause
   [model creator-ids]
   (if (= 1 (count creator-ids))
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
@@ -128,7 +128,7 @@
 (doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
-    (sql.helpers/where query (default-created-by-fitler-clause model creator-ids))))
+    (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
 ;; Verified filters
 
