@@ -26,7 +26,6 @@ import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -34,7 +33,6 @@ import type {
   DashCardId,
   Database,
   DatabaseId,
-  Parameter,
   ParameterId,
   ParameterValueOrArray,
   CardId,
@@ -88,8 +86,6 @@ type DashboardProps = {
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, boolean>;
   databases: Record<DatabaseId, Database>;
-  editingParameter?: Parameter | null;
-  parameters: UiParameter[];
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
   metadata: Metadata;
@@ -196,7 +192,6 @@ function DashboardInner(props: DashboardProps) {
     location,
     onRefreshPeriodChange,
     parameterValues,
-    parameters,
     selectedTabId,
     setDashboardAttributes,
     setEditingDashboard,
@@ -517,11 +512,9 @@ function DashboardInner(props: DashboardProps) {
 
             <DashboardSidebars
               dashboard={dashboard}
-              parameters={parameters}
               showAddParameterPopover={props.showAddParameterPopover}
               removeParameter={props.removeParameter}
               addCardToDashboard={props.addCardToDashboard}
-              editingParameter={props.editingParameter}
               clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
               onReplaceAllDashCardVisualizationSettings={
                 props.onReplaceAllDashCardVisualizationSettings
