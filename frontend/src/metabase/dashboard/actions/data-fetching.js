@@ -47,7 +47,7 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashboard } from "./metadata";
+import { loadMetadataForDashcards } from "./metadata";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -277,7 +277,7 @@ export const fetchDashboard = createAsyncThunk(
 );
 
 export const fetchCardData = createThunkAction(
-  FETCH_CARD_QUERY,
+  FETCH_CARD_DATA,
   function (card, dashcard, options) {
     return async function (dispatch, getState) {
       dispatch({
@@ -292,7 +292,7 @@ export const fetchCardData = createThunkAction(
 
       const dashboardType = getDashboardType(dashcard.dashboard_id);
       if (dashboardType === "normal" || dashboardType === "transient") {
-        requests.push(dispatch(loadMetadataForDashboard([dashcard])));
+        requests.push(dispatch(loadMetadataForDashcards([dashcard])));
       }
 
       const [{ payload }] = await Promise.all(requests);

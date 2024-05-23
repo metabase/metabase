@@ -1,4 +1,4 @@
-import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
+import { loadMetadataForDashcards } from "metabase/dashboard/actions/metadata";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
@@ -45,7 +45,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, dashcard, objectId }) =>
     async (dispatch, getState) => {
-      await dispatch(loadMetadataForDashboard([dashcard]));
+      await dispatch(loadMetadataForDashcards([dashcard]));
 
       const metadata = getMetadata(getState());
       const { dashboardId, dashboards, parameterValues } = getState().dashboard;
