@@ -1,6 +1,6 @@
-import createCachedSelector from "re-reselect";
 import { Component } from "react";
 import { connect } from "react-redux";
+import { createSelector, weakMapMemoize } from "reselect";
 import _ from "underscore";
 
 import { getLinkTargets } from "metabase/lib/click-behavior";
@@ -38,7 +38,7 @@ function getExtraDataForClick(
   };
 }
 
-const createGetExtraDataForClick = createCachedSelector(
+const createGetExtraDataForClick = createSelector(
   [
     state => state.entities,
     state => getUserAttributes(state),
@@ -47,7 +47,11 @@ const createGetExtraDataForClick = createCachedSelector(
     (_state, props) => props.parameterValuesBySlug,
   ],
   getExtraDataForClick,
-)((_state, props) => props.dashcard.id);
+  {
+    memoize: weakMapMemoize,
+    argsMemoize: weakMapMemoize,
+  },
+);
 
 /**
  * This HOC gives access to data referenced in viz settings.
