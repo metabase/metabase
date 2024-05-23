@@ -11,8 +11,8 @@ import {
   getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
-  BaseCartesianChartModel,
   ShowWarning,
+  WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
@@ -35,7 +35,7 @@ export const getWaterfallChartModel = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-): BaseCartesianChartModel => {
+): WaterfallChartModel => {
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
