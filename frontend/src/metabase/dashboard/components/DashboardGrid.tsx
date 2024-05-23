@@ -22,7 +22,6 @@ import {
   getVisibleCardIds,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -31,7 +30,6 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -475,31 +473,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
 
-  getDashboardCardIcon = (dashCard: BaseDashboardCard) => {
-    const { isRegularCollection } = PLUGIN_COLLECTIONS;
-    const { dashboard } = this.props;
-    const isRegularQuestion = isRegularCollection({
-      authority_level: dashCard.collection_authority_level,
-    });
-    const isRegularDashboard = isRegularCollection({
-      authority_level: dashboard.collection_authority_level,
-    });
-    const authorityLevel = dashCard.collection_authority_level;
-    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
-      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
-      return {
-        name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
-        tooltip: opts.tooltips?.belonging,
-        size: iconSize,
-
-        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
-        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
-      };
-    }
-  };
-
   renderDashCard(
     dc: DashboardCard,
     {
@@ -515,7 +488,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <DashCard
         dashcard={dc}
-        headerIcon={this.getDashboardCardIcon(dc)}
         dashcardData={this.props.dashcardData}
         parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}

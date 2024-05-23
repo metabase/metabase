@@ -14,9 +14,10 @@ import {
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
+import { color } from "metabase/lib/colors";
 import { isJWT } from "metabase/lib/utils";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import type { IconProps } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -69,8 +70,6 @@ export interface DashCardProps {
   isPublic?: boolean;
   isXray?: boolean;
 
-  headerIcon?: IconProps;
-
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   onRemove: (dashcard: StoreDashcard) => void;
@@ -108,7 +107,6 @@ function DashCardInner({
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
-  headerIcon,
   onAddSeries,
   onReplaceCard,
   onRemove,
@@ -230,6 +228,30 @@ function DashCardInner({
       isAction
     );
   }, [isEditing, isAction, mainCard]);
+
+  const headerIcon = useMemo(() => {
+    const { isRegularCollection } = PLUGIN_COLLECTIONS;
+    const isRegularQuestion = isRegularCollection({
+      authority_level: dashcard.collection_authority_level,
+    });
+    const isRegularDashboard = isRegularCollection({
+      authority_level: dashboard.collection_authority_level,
+    });
+    const authorityLevel = dashcard.collection_authority_level;
+    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
+      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      const iconSize = 14;
+      return {
+        name: opts.icon,
+        color: opts.color ? color(opts.color) : undefined,
+        tooltip: opts.tooltips?.belonging,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashcard.col === 0 ? iconSize : 0,
+      };
+    }
+  }, [dashcard, dashboard.collection_authority_level]);
 
   const isEditingDashboardLayout =
     isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
