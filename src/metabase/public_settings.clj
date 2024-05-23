@@ -814,7 +814,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (nil? @api/*current-user*))
 
 (defsetting uploads-settings
-  (deferred-tru "Database for uploads")
+  (deferred-tru "Upload settings")
   :visibility :authenticated
   :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json
