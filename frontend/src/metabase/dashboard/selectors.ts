@@ -436,6 +436,41 @@ export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
   return dashboard.tabs?.[0]?.id || null;
 }
 
+export const getCurrentTabDashcards = createSelector(
+  [getDashboardComplete, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
+    );
+  },
+);
+
+export const getHiddenParameterSlugs = createSelector(
+  [getParameters, getCurrentTabDashcards, getIsEditing],
+  (parameters, currentTabDashcards, isEditing) => {
+    if (isEditing) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const currentTabParameterIds = currentTabDashcards.flatMap(
+      (dc: DashboardCard) =>
+        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(p => p.slug).join(",");
+  },
+);
+
 export const getParameterMappingsBeforeEditing = createSelector(
   [getDashboardBeforeEditing],
   editingDashboard => {

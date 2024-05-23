@@ -25,12 +25,10 @@ import Dashboards from "metabase/entities/dashboards";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -60,6 +58,7 @@ import type {
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
+import { DashboardParameterList } from "../DashboardParameterList";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
@@ -141,12 +140,8 @@ type DashboardProps = {
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
-  setParameterIndex: (id: ParameterId, index: number) => void;
-  setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
-  setParameterValueToDefault: (id: ParameterId) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -192,14 +187,11 @@ function DashboardInner(props: DashboardProps) {
     closeNavbar,
     dashboard,
     dashboardId,
-    draftParameterValues,
     editingOnLoad,
-    editingParameter,
     fetchDashboard,
     fetchDashboardCardData,
     fetchDashboardCardMetadata,
     initialize,
-    isAutoApplyFilters,
     isEditing,
     isFullscreen,
     isNavigatingBackToDashboard,
@@ -213,11 +205,7 @@ function DashboardInner(props: DashboardProps) {
     selectedTabId,
     setDashboardAttributes,
     setEditingDashboard,
-    setEditingParameter,
     setErrorPage,
-    setParameterIndex,
-    setParameterValue,
-    setParameterValueToDefault,
     setSharing,
     toggleSidebar,
   } = props;
@@ -459,23 +447,7 @@ function DashboardInner(props: DashboardProps) {
   };
 
   const parametersWidget = (
-    <SyncedParametersList
-      parameters={getValuePopulatedParameters({
-        parameters,
-        values: isAutoApplyFilters ? parameterValues : draftParameterValues,
-      })}
-      editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
-      dashboard={dashboard}
-      isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
-      isEditing={isEditing}
-      setParameterValue={setParameterValue}
-      setParameterIndex={setParameterIndex}
-      setEditingParameter={setEditingParameter}
-      setParameterValueToDefault={setParameterValueToDefault}
-      enableParameterRequiredBehavior
-    />
+    <DashboardParameterList isFullscreen={isFullscreen} />
   );
 
   const renderParameterList = () => {
@@ -563,7 +535,6 @@ function DashboardInner(props: DashboardProps) {
               location={location}
               dashboard={dashboard}
               isNightMode={shouldRenderAsNightMode}
-              parametersWidget={parametersWidget}
               isFullscreen={isFullscreen}
               fetchDashboard={fetchDashboard}
               onEditingChange={handleSetEditing}
