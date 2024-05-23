@@ -238,7 +238,8 @@
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes/extract-one-basics "Table" table)
-      (assoc :db_id (t2/select-one-fn :name 'Database :id db_id))))
+      (dissoc :view_count :estimated_row_count)
+      (assoc :db_id (t2/select-one-fn :name :model/Database :id db_id))))
 
 (defmethod serdes/load-xform "Table"
   [{:keys [db_id] :as table}]
