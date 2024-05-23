@@ -11,6 +11,7 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
+import { MigrationCreationError } from "./MigrationCreationError";
 import { MigrationError } from "./MigrationError";
 import { MigrationInProgress } from "./MigrationInProgress";
 import { MigrationStart } from "./MigrationStart";
@@ -103,6 +104,10 @@ export const CloudPanel = ({
 
           {migration && migrationState === "error" && (
             <MigrationError migration={migration} />
+          )}
+
+          {createCloudMigrationResult.isError && (
+            <MigrationCreationError error={createCloudMigrationResult.error} />
           )}
         </Box>
       </Box>
