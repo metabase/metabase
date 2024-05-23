@@ -185,7 +185,6 @@ export const getCartesianChartModel = (
     leftAxisModel,
     rightAxisModel,
     trendLinesModel,
-    bubbleSizeDomain: null,
     seriesLabelsFormatters,
     stackedLabelsFormatters,
   };

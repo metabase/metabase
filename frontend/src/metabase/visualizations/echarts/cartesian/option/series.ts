@@ -16,7 +16,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
-  CartesianChartModel,
   DataKey,
   StackTotalDataKey,
   ChartDataset,
@@ -27,6 +26,7 @@ import type {
   NumericAxisScaleTransforms,
   LabelFormatter,
   StackModel,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {

@@ -9,7 +9,7 @@ import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../../chart-measurements/types";
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
-import type { CartesianChartModel } from "../../model/types";
+import type { ScatterPlotModel } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import { getGoalLineSeriesOption } from "../../option/goal-line";
@@ -22,7 +22,7 @@ import type { TimelineEventsModel } from "../../timeline-events/types";
 import { buildEChartsScatterSeries } from "./series";
 
 export function getScatterPlotOption(
-  chartModel: CartesianChartModel,
+  chartModel: ScatterPlotModel,
   chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
