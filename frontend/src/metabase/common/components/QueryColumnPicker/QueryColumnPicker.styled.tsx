@@ -14,12 +14,15 @@ export const ColumnNameContainer = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  width: 100%;
+  flex-grow: 1;
 
   ${TriggerButton} {
     height: 100%;
-    padding: 0;
     flex-shrink: 1;
+    margin: -0.5rem 0;
     white-space: nowrap;
     overflow: hidden;
+    margin-left: auto;
   }
 `;
