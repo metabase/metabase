@@ -23,7 +23,7 @@ import {
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
-  CartesianChartModel,
+  ScatterPlotModel,
   ChartDataset,
   Extent,
   SeriesModel,
@@ -62,7 +62,7 @@ export function getScatterPlotModel(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-): CartesianChartModel {
+): ScatterPlotModel {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
