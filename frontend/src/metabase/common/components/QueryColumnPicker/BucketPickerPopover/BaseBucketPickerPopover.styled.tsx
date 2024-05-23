@@ -43,15 +43,6 @@ export const TriggerButton = styled.button`
   }
 `;
 
-export const Dot = styled.div`
-  width: 3px;
-  height: 3px;
-  margin-right: 0.5em;
-  background: currentColor;
-  border-radius: 100%;
-  opacity: 0.25;
-`;
-
 export const SelectListItem = styled(BaseSelectList.Item)<{
   activeColor: ColorName;
 }>`
