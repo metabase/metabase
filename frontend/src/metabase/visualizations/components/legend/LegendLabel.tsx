@@ -1,5 +1,10 @@
 import cx from "classnames";
-import type { MouseEventHandler, ReactNode } from "react";
+import {
+  useCallback,
+  type MouseEvent,
+  type MouseEventHandler,
+  type ReactNode,
+} from "react";
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";
 
@@ -13,6 +18,16 @@ interface Props {
 }
 
 export const LegendLabel = ({ children, className, href, onClick }: Props) => {
+  const handleLinkClick = useCallback(
+    (event: MouseEvent) => {
+      // prefer programmatic onClick handling over native browser's href handling
+      // due to loadMetadataForDashcards call in navigateToNewCardFromDashboard
+      event.preventDefault();
+      onClick(event);
+    },
+    [onClick],
+  );
+
   if (!href) {
     return (
       <div
@@ -27,7 +42,11 @@ export const LegendLabel = ({ children, className, href, onClick }: Props) => {
   }
 
   return (
-    <Link className={cx(S.text, S.link, className)} to={href} onClick={onClick}>
+    <Link
+      className={cx(S.text, S.link, className)}
+      to={href}
+      onClick={handleLinkClick}
+    >
       {children}
     </Link>
   );
