@@ -4,10 +4,8 @@ import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
-  getInitialSelectedTabId,
   getParameterValues,
   getQuestions,
-  getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
@@ -127,17 +125,7 @@ export const fetchDashboard = createAsyncThunk(
       fetchDashboardCancellation = null;
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        const selectedTabId =
-          getSelectedTabId(getState()) ?? getInitialSelectedTabId(result);
-
-        const cards =
-          selectedTabId == null
-            ? result.dashcards
-            : result.dashcards.filter(
-                (c: DashboardCard) => c.dashboard_tab_id === selectedTabId,
-              );
-
-        await dispatch(loadMetadataForDashboard(cards));
+        await dispatch(loadMetadataForDashboard(result.dashcards));
       }
 
       const isUsingCachedResults = entities != null;
