@@ -171,9 +171,9 @@ export default class DatabaseList extends Component {
           withCloseButton={false}
         >
           <Modal.Overlay />
-          <Modal.Content p="16px">
+          <Modal.Content p="1rem">
             <Modal.Header>
-              <Modal.Title fz="20px">{t`Your database was added! Want to configure permissions?`}</Modal.Title>
+              <Modal.Title fz="1.25rem">{t`Your database was added! Want to configure permissions?`}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
               <Text
