@@ -5,7 +5,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.server.middleware.security :as mw.security :refer [approved-origin?
+   [metabase.server.middleware.security :as mw.security :refer [approved-domain?
+                                                                approved-origin?
+                                                                approved-port?
+                                                                approved-protocol?
                                                                 parse-url]]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -105,6 +108,38 @@
     (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "ftp://example.com")))
     (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "://example.com")))
     (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (parse-url "example:com")))))
+
+(deftest test-approved-domain?
+  (testing "Exact match"
+    (is (true? (approved-domain? "example.com" "example.com")))
+    (is (false? (approved-domain? "example.com" "example.org"))))
+
+  (testing "Should support wildcards for subdomains"
+    (is (true? (approved-domain? "sub.example.com" "*.example.com")))
+    (is (false? (approved-domain? "example.com" "*.example.com")))
+    (is (false? (approved-domain? "sub.example.org" "*.example.com"))))
+
+  (testing "Should not allow subdomains if no wildcard is present"
+    (is (false? (approved-domain? "sub.example.com" "example.com")))))
+
+(deftest test-approved-protocol?
+  (testing "Exact protocol match"
+    (is (true? (approved-protocol? "http" "http")))
+    (is (true? (approved-protocol? "https" "https")))
+    (is (false? (approved-protocol? "http" "https"))))
+
+  (testing "Nil reference should allow any protocol"
+    (is (true? (approved-protocol? "http" nil)))
+    (is (true? (approved-protocol? "https" nil)))))
+
+(deftest test-approved-port?
+  (testing "Exact port match"
+    (is (true? (approved-port? "80" "80")))
+    (is (false? (approved-port? "80" "8080"))))
+
+  (testing "Wildcard port match"
+    (is (true? (approved-port? "80" "*")))
+    (is (true? (approved-port? "8080" "*")))))
 
 (deftest test-approved-origin?
   (testing "Should return false if parameters are nil"
