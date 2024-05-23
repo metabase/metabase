@@ -196,7 +196,8 @@ describe("DatabaseEditApp", () => {
         );
       });
 
-      expect(history.getCurrentLocation().search).toEqual("?created=true");
+      expect(history.getCurrentLocation().search).toContain("created=true");
+      expect(history.getCurrentLocation().search).toContain("createdDbId"); //Enpoint doesn't return an ID
 
       expect(
         screen.queryByTestId("leave-confirmation"),
