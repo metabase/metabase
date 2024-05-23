@@ -11,32 +11,25 @@ export function getEmbeddingChartColors(
 ): Record<string, string> {
   const mappedColors: Record<string, string> = {};
 
-  // Populate accent0 - accent7 colors, including the dark and light variations.
+  // Populate the 8 chart colors, including the shades and tints when available.
+  // When shades or tints are not explicitly defined, they're derived by `libs/colors/palette`.
   chartColors.slice(0, 8).forEach((color, index) => {
-    // TODO: auto-generate when the color is not provided
     if (!color) {
       return;
     }
 
     if (typeof color === "string") {
       mappedColors[`accent${index}`] = color;
-
-      // TODO: auto-generate the -dark and -light colors when they are not provided
-      mappedColors[`accent${index}-dark`] = color;
-      mappedColors[`accent${index}-light`] = color;
-
       return;
     }
 
     if (typeof color === "object") {
       mappedColors[`accent${index}`] = color.base;
 
-      // TODO: auto-generate when the darker colors are not provided
       if (color.shade) {
         mappedColors[`accent${index}-dark`] = color.shade;
       }
 
-      // TODO: auto-generate the lighter colors are not provided
       if (color.tint) {
         mappedColors[`accent${index}-light`] = color.tint;
       }

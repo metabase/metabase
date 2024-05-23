@@ -1,7 +1,6 @@
 import { merge } from "icepick";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
-import { getEmbeddingChartColors } from "embedding-sdk/lib/theme/get-embedding-chart-colors";
 
 import type {
   MetabaseTheme,
@@ -58,16 +57,6 @@ export function getEmbeddingThemeOverride(
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
         override.colors[themeColorName] = colorTuple(color);
-      }
-    }
-
-    if (theme.colors.charts) {
-      const mappedChartColors = getEmbeddingChartColors(theme.colors.charts);
-
-      for (const [key, value] of Object.entries(mappedChartColors)) {
-        if (value) {
-          override.colors[key] = colorTuple(value);
-        }
       }
     }
   }
