@@ -22,12 +22,12 @@ describe("aggregation", () => {
       // offset, // TODO: pass this as an argument
     );
 
-    expect(toLegacyQuery(finalQuery)).toEqual({
+    expect(toLegacyQuery(finalQuery)).toMatchObject({
       database: SAMPLE_DATABASE.id,
       query: {
         aggregation: [
           ["count"],
-          ["offset", createOffsetOptions(name), ["count"], offset],
+          ["offset", { name, "display-name": name }, ["count"], offset],
         ],
         "source-table": ORDERS_ID,
       },
@@ -35,11 +35,3 @@ describe("aggregation", () => {
     });
   });
 });
-
-function createOffsetOptions(name = "offset") {
-  return {
-    "lib/uuid": "af9c4d6d-dc77-49bb-9902-f769c9c6945c",
-    name,
-    "display-name": name,
-  };
-}
