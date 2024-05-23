@@ -282,7 +282,7 @@ export const AccordionListCell = ({
               {icon}
             </span>
           )}
-          <div className="List-item-content">
+          <div className={ListS.ListItemContent}>
             {name && (
               <h4
                 data-element-id="list-item-title"
