@@ -1867,3 +1867,44 @@
                            (dissoc :name))
                        (-> card
                            (dissoc :name))))))))))))
+
+(deftest migrate-uploads-settings-test
+  (testing "MigrateUploadsSettings"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+        (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB 1"
+                                                                             :engine     "h2"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :details    "{}"})
+              not-uploads-db-id (t2/insert-returning-pk! :metabase_database {:name       "DB 2"
+                                                                             :engine     "h2"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :details    "{}"})]
+          (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
+                          {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                          {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
+                          {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
+                _ (t2/insert! :setting settings)
+                get-settings #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})
+                settings-before (get-settings)]
+            (testing "make sure the settings are encrypted before the migrations"
+              (is (not-empty settings-before))
+              (is (every? encryption/possibly-encrypted-string?
+                          (map :value settings-before))))
+            (migrate!)
+            (testing "make sure the settings are removed after the migrations"
+              (is (empty? (get-settings))))
+            (is (=? {uploads-db-id     {:uploads_enabled true,  :uploads_schema_name "uploads", :uploads_table_prefix "uploads_"}
+                     not-uploads-db-id {:uploads_enabled false, :uploads_schema_name  nil,      :uploads_table_prefix nil}}
+                    (m/index-by :id (t2/select :metabase_database))))
+            ;; TODO: delete the rest of the test after merging because down-migrations flake with MySQL:
+            (migrate! :down 49)
+            (testing "make sure the settings contain the same decrypted values after the migrations"
+              (let [settings-after (get-settings)]
+                (is (not-empty settings-after))
+                (is (every? encryption/possibly-encrypted-string?
+                            (map :value settings-after)))
+                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
+                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
