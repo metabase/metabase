@@ -176,12 +176,17 @@ function getCurrentMetricData({ series, insights, settings }) {
   }
 
   // get latest value and date
-  const latestRowIndex = rows.length - 1;
+  const latestRowIndex = rows.findLastIndex(row => {
+    const date = row[dimensionColIndex];
+    const value = row[metricColIndex];
+
+    return !isEmpty(value) && !isEmpty(date);
+  });
+  if (latestRowIndex === -1) {
+    throw Error("All rows contain a null value");
+  }
   const date = rows[latestRowIndex][dimensionColIndex];
   const value = rows[latestRowIndex][metricColIndex];
-  if (isEmpty(value) || isEmpty(date)) {
-    throw Error("The latest data point contains a null value");
-  }
 
   // get metric column metadata
   const metricColumn = cols[metricColIndex];
