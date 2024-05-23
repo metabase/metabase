@@ -1,6 +1,6 @@
 import Questions from "metabase/entities/questions";
 import { getLinkTargets } from "metabase/lib/click-behavior";
-import { loadMetadataForCard } from "metabase/questions/actions";
+import { loadMetadataForCards } from "metabase/questions/actions";
 
 import { isVirtualDashCard } from "../utils";
 
@@ -10,17 +10,15 @@ export const loadMetadataForDashboard = dashCards => async dispatch => {
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
   await Promise.all([
-    dispatch(loadMetadataForCards(cards)),
+    dispatch(loadMetadataForAvailableCards(cards)),
     dispatch(loadMetadataForLinkedTargets(dashCards)),
   ]);
 };
 
-const loadMetadataForCards = cards => (dispatch, getState) => {
-  return Promise.all(
-    cards
-      .filter(card => card.dataset_query) // exclude queries without perms
-      .map(card => dispatch(loadMetadataForCard(card))),
-  );
+const loadMetadataForAvailableCards = cards => dispatch => {
+  // exclude queries without perms
+  const availableCards = cards.filter(card => card.dataset_query);
+  return dispatch(loadMetadataForCards(availableCards));
 };
 
 const loadMetadataForLinkedTargets =
@@ -43,5 +41,5 @@ const loadMetadataForLinkedTargets =
       )
       .filter(card => card != null);
 
-    await dispatch(loadMetadataForCards(cards));
+    await dispatch(loadMetadataForAvailableCards(cards));
   };
