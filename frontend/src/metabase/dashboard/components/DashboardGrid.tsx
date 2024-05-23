@@ -462,9 +462,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   };
 
-  onDashCardAddSeries(dc: BaseDashboardCard) {
+  onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
-  }
+  };
 
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
