@@ -46,7 +46,7 @@ import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getCardData,
+  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
@@ -129,7 +129,7 @@ const mapStateToProps = (state: State): StateProps => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
+    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     databases: metadata.databases,
     parameterValues: getParameterValues(state),

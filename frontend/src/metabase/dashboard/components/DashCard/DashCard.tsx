@@ -9,12 +9,14 @@ import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { getDashcardData } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -31,7 +33,6 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   VisualizationSettings,
-  DashCardDataMap,
   VirtualCard,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
@@ -54,7 +55,6 @@ export interface DashCardProps {
   dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: DashCardDataMap;
   slowCards: Record<CardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
@@ -91,7 +91,6 @@ export interface DashCardProps {
 
 function DashCardInner({
   dashcard,
-  dashcardData,
   dashboard,
   slowCards,
   metadata,
@@ -117,6 +116,9 @@ function DashCardInner({
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
 }: DashCardProps) {
+  const dashcardData = useSelector(state =>
+    getDashcardData(state, dashcard.id),
+  );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -163,13 +165,13 @@ function DashCardInner({
       }
 
       return {
-        ...getIn(dashcardData, [dashcard.id, card.id]),
+        ...getIn(dashcardData, [card.id]),
         card,
         isSlow,
         isUsuallyFast,
       };
     });
-  }, [cards, dashcard.id, dashcardData, slowCards]);
+  }, [cards, dashcardData, slowCards]);
 
   const isLoading = useMemo(
     () => isDashcardLoading(dashcard, dashcardData),

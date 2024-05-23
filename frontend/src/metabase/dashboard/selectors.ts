@@ -62,7 +62,14 @@ export const getClickBehaviorSidebarDashcard = (state: State) => {
     : null;
 };
 export const getDashboards = (state: State) => state.dashboard.dashboards;
-export const getCardData = (state: State) => state.dashboard.dashcardData;
+export const getDashcardDataMap = (state: State) =>
+  state.dashboard.dashcardData;
+
+export function getDashcardData(state: State, dashcardId: DashCardId) {
+  const dashcardData = getDashcardDataMap(state);
+  return dashcardData[dashcardId];
+}
+
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
   state.dashboard.parameterValues;
