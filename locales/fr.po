@@ -21123,7 +21123,7 @@ msgstr "Impossible d'inviter l'utilisateur, l'email n'est pas configuré"
 
 #: metabase/api/setup.clj:199
 msgid "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions."
-msgstr "Votre équipe utilise Slack ? Vous pouvez envoyer des mises à jour automatiques vis les abonnements aux tableaux de bord."
+msgstr "Votre équipe utilise Slack ? Vous pouvez envoyer des mises à jour automatiques via les abonnements aux tableaux de bord."
 
 #: metabase/api/slack.clj:29
 msgid "invalid token"
