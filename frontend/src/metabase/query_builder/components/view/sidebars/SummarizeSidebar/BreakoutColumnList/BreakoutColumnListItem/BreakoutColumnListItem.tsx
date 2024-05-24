@@ -34,7 +34,6 @@ export function BreakoutColumnListItem({
   query,
   item,
   breakout,
-  isPinned = false,
   onAddColumn,
   onUpdateColumn,
   onRemoveColumn,
@@ -58,8 +57,6 @@ export function BreakoutColumnListItem({
     [item.column, onRemoveColumn],
   );
 
-  const displayName = isPinned ? item.longDisplayName : item.displayName;
-
   return (
     <HoverParent
       as={Root}
@@ -77,7 +74,9 @@ export function BreakoutColumnListItem({
             position="left"
             size={18}
           />
-          <Title data-testid="dimension-list-item-name">{displayName}</Title>
+          <Title data-testid="dimension-list-item-name">
+            {item.displayName}
+          </Title>
           <BucketPickerPopover
             query={query}
             stageIndex={STAGE_INDEX}
