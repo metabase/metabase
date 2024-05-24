@@ -8,7 +8,7 @@ Sometimes your questions, dashboards, models, or collections outlive their usefu
 
 ![Move to trash](./images/move-to-trash.png)
 
-Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md/#advanced-search) ), and you won't be able to use them to create new questions and dashboards.
+Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md#advanced-search)), and you won't be able to use them to create new questions and dashboards.
 
 Moving items to Trash is not permanent: you'll be able to restore them to their original parent collection, or move them to another non-deleted collection. But if you'd' like to delete items permanently, [you can do that too](#permanently-deleting-items).
 
