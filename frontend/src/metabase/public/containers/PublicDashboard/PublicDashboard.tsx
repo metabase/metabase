@@ -28,7 +28,6 @@ import type {
 } from "metabase/dashboard/hoc/types";
 import {
   getDashboardComplete,
-  getDashcardDataMap,
   getSlowCards,
   getParameters,
   getParameterValues,
@@ -44,7 +43,6 @@ import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { setErrorPage } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
@@ -64,9 +62,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
     dashboardId: String(
       props.params.dashboardId || props.params.uuid || props.params.token,
     ),
-    metadata: getMetadata(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     parameters: getParameters(state),
     parameterValues: getParameterValues(state),
@@ -268,9 +264,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                   isPublic
                   mode={PublicMode as unknown as Mode}
-                  metadata={this.props.metadata}
                   navigateToNewCardFromDashboard={() => {}}
-                  dashcardData={this.props.dashcardData}
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
                   isEditing={false}
