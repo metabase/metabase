@@ -38,13 +38,11 @@ import type {
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
-import { rootId, strategyValidationSchema } from "../constants";
 import { useIsFormPending } from "../hooks/useIsFormPending";
-import {
-  getLabelString,
-  cronToScheduleSettings,
-  scheduleSettingsToCron,
-} from "../utils";
+import { getLabelString } from "../utils";
+import { rootId } from "../constants/simple";
+import { strategyValidationSchema } from "../constants/complex";
+import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
 import {
   FormBox,

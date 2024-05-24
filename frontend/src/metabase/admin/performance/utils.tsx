@@ -19,7 +19,7 @@ import type {
   StrategyType,
 } from "metabase-types/api";
 
-import { defaultMinDurationMs, rootId } from "./constants";
+import { defaultMinDurationMs, rootId } from "./constants/simple";
 import type { StrategyLabel } from "./types";
 
 const { strategies } = PLUGIN_CACHING;

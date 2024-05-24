@@ -9,7 +9,7 @@ import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
-import { extraStrategies } from "./strategies";
+import { enterpriseOnlyCachingStrategies } from "./constants";
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,
@@ -17,7 +17,7 @@ import {
   validateCacheTTL,
 } from "./utils";
 
-if (hasPremiumFeature("cache_granular_controls")) {
+if (false && hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.cacheTTLFormField = {
     name: "cache_ttl",
     validate: validateCacheTTL,
@@ -37,5 +37,11 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DashboardStrategySidebar = DashboardStrategySidebar;
   PLUGIN_CACHING.SidebarCacheSection = SidebarCacheSection;
   PLUGIN_CACHING.SidebarCacheForm = SidebarCacheForm;
-  Object.assign(PLUGIN_CACHING.strategies, extraStrategies);
+  PLUGIN_CACHING.strategies = {
+    inherit: PLUGIN_CACHING.strategies.inherit,
+    duration: enterpriseOnlyCachingStrategies.duration,
+    schedule: enterpriseOnlyCachingStrategies.schedule,
+    ttl: enterpriseOnlyCachingStrategies.ttl,
+    nocache: PLUGIN_CACHING.strategies.nocache,
+  }
 }

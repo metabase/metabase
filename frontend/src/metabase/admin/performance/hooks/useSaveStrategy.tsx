@@ -2,12 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import type { Config, CacheableModel, Strategy } from "metabase-types/api";
 
-import { rootId } from "../constants";
 import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
+import { rootId } from "../constants/simple";
+import { PLUGIN_CACHING } from "metabase/plugins";
 const { strategies } = PLUGIN_CACHING;
 
 export const useSaveStrategy = (

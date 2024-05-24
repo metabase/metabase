@@ -11,11 +11,11 @@ import { Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
-import { rootId } from "../constants";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "../hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "../hooks/useSaveStrategy";
 import type { UpdateTargetId } from "../types";
+import { rootId } from "../constants/simple";
 
 import {
   Panel,
