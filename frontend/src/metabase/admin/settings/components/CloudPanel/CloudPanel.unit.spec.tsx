@@ -231,7 +231,7 @@ const expectStartConfirmationModal = async () => {
 
 const expectProgressState = async () => {
   expect(
-    await screen.findByText("You are now migrating to Metabase Cloud"),
+    await screen.findByText("Migrating to Metabase Cloud..."),
   ).toBeInTheDocument();
 
   // expect to have correct store link for this exact migration
