@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useClickBehaviorData } from "metabase/dashboard/hooks/use-click-behavior-data";
+import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import {
   getVirtualCardType,
   isQuestionCard,
