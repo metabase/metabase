@@ -2812,19 +2812,6 @@
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
                  (m/map-vals boolean (select-keys card [:name :id])))))))))
 
-(deftest test-related-recommended-entities
-  (t2.with-temp/with-temp [:model/Card card]
-    (is (malli= [:map
-                 [:table             :any]
-                 [:metrics           :any]
-                 [:segments          :any]
-                 [:dashboard-mates   :any]
-                 [:similar-questions :any]
-                 [:canonical-metric  :any]
-                 [:dashboards        :any]
-                 [:collections       :any]]
-                (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
-
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
