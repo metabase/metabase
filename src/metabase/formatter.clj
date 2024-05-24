@@ -145,7 +145,7 @@
                                                    (false? (::mb.viz/currency-in-header column-settings)))]
                          (str (when prefix prefix)
                               (when (and inline-currency? (or (nil? currency-style)
-                                                       (= currency-style "symbol")))
+                                                           (= currency-style "symbol")))
                                 (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
                               (when (and inline-currency? (= currency-style "code"))
                                 (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))

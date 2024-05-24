@@ -594,3 +594,4 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
+#_(send-pulse! (t2/select-one :model/Pulse 15))

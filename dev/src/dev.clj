@@ -68,7 +68,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.database :refer [Database]]
+   [metabase.email :as email]
+   [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server :as server]
@@ -335,12 +336,12 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (t2/select-one Database :name "Application Database")
+    (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb/db-type)
                        @#'metabase.db.env/env)
-              app-db  (first (t2/insert-returning-instances! Database
+              app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
                                                               :details details}))]
@@ -390,3 +391,24 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
+
+(defn setup-email!
+  "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
+  [& settings]
+  (let [settings (merge {:host     "localhost"
+                         :port     1025
+                         :user     "metabase"
+                         :pass     "metabase@secret"
+                         :security :none}
+                        settings)]
+    (when (::email/error (email/test-smtp-connection settings))
+      (throw (ex-info "Failed to connect to SMTP server" {:settings settings})))
+    (setting/set-many! (update-keys settings
+                                    {:host        :email-smtp-host,
+                                     :user        :email-smtp-username,
+                                     :pass        :email-smtp-password,
+                                     :port        :email-smtp-port,
+                                     :security    :email-smtp-security,
+                                     :sender-name :email-from-name,
+                                     :sender      :email-from-address,
+                                     :reply-to    :email-reply-to}))))
