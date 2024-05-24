@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
@@ -82,8 +82,13 @@ export function SmartScalar({
     [series, insights, settings],
   );
 
-  if (error) {
-    onRenderError(error.message);
+  useEffect(() => {
+    if (error) {
+      onRenderError(error.message);
+    }
+  }, [error, onRenderError]);
+
+  if (trend == null) {
     return null;
   }
 
