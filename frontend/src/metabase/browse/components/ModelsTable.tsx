@@ -27,7 +27,10 @@ import type { ModelResult } from "metabase-types/api";
 import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
 
-import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
+import {
+  CollectionBreadcrumbsWithTooltip,
+  SimpleCollectionDisplay,
+} from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import {
   ModelCell,
@@ -70,6 +73,9 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
+
+  // for large datasets, we need to simplify the display to avoid performance issues
+  const isLargeDataset = models.length > 500;
 
   return (
     <Table>
@@ -127,14 +133,24 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
       </thead>
       <TBody>
         {sortedModels.map((model: ModelResult) => (
-          <TBodyRow model={model} key={`${model.model}-${model.id}`} />
+          <TBodyRow
+            model={model}
+            key={`${model.model}-${model.id}`}
+            simpleDisplay={isLargeDataset}
+          />
         ))}
       </TBody>
     </Table>
   );
 };
 
-const TBodyRow = ({ model }: { model: ModelResult }) => {
+const TBodyRow = ({
+  model,
+  simpleDisplay,
+}: {
+  model: ModelResult;
+  simpleDisplay: boolean;
+}) => {
   const icon = getIcon(model);
   const containerName = `collections-path-for-${model.id}`;
   const dispatch = useDispatch();
@@ -171,7 +187,9 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
         }`}
         {...collectionProps}
       >
-        {model.collection && (
+        {simpleDisplay ? (
+          <SimpleCollectionDisplay collection={model.collection} />
+        ) : (
           <CollectionBreadcrumbsWithTooltip
             containerName={containerName}
             collection={model.collection}
