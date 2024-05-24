@@ -19,7 +19,6 @@ const questionDetails: StructuredQuestionDetails = {
 describe("issue 43075", () => {
   beforeEach(() => {
     cy.viewport(1000, 300);
-    cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore();
     cy.signInAsAdmin();
