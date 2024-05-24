@@ -16,7 +16,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
-  CartesianChartModel,
   DataKey,
   StackTotalDataKey,
   ChartDataset,
@@ -27,6 +26,7 @@ import type {
   NumericAxisScaleTransforms,
   LabelFormatter,
   ChartDataDensity,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -45,7 +45,6 @@ import {
   getDisplaySeriesSettingsByDataKey,
   getStackTotalValue,
 } from "../model/series";
-import { buildEChartsScatterSeries } from "../scatter/series";
 
 import { getSeriesYAxisIndex } from "./utils";
 
@@ -208,7 +207,6 @@ export const computeContinuousScaleBarWidth = (
   xAxisModel: TimeSeriesXAxisModel | NumericXAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   stackedOrSingleSeries: boolean,
 ) => {
   let barWidth =
@@ -219,8 +217,6 @@ export const computeContinuousScaleBarWidth = (
     barWidth /= barSeriesCount;
   }
 
-  barWidth /= yAxisWithBarSeriesCount;
-
   return barWidth;
 };
 
@@ -228,7 +224,6 @@ export const computeBarWidth = (
   xAxisModel: XAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   isStacked: boolean,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
@@ -240,7 +235,6 @@ export const computeBarWidth = (
       xAxisModel,
       boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       stackedOrSingleSeries,
     );
   }
@@ -267,7 +261,6 @@ const buildEChartsBarSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
@@ -296,7 +289,6 @@ const buildEChartsBarSeries = (
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       !!stackName,
     ),
     encode: {
@@ -573,25 +565,6 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, number>,
   );
 
-  const barSeriesCountByYAxisIndex = chartModel.seriesModels.reduce(
-    (acc, seriesModel) => {
-      const isBar =
-        seriesSettingsByDataKey[seriesModel.dataKey].display === "bar";
-
-      if (isBar) {
-        const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
-        acc[yAxisIndex] = (acc[yAxisIndex] ?? 0) + 1;
-      }
-
-      return acc;
-    },
-    {} as Record<number, number>,
-  );
-
-  const yAxisWithBarSeriesCount = Object.keys(
-    barSeriesCountByYAxisIndex,
-  ).length;
-
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
@@ -636,17 +609,9 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             barSeriesCount,
-            yAxisWithBarSeriesCount,
             hasMultipleSeries,
             chartWidth,
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
-            renderingContext,
-          );
-        case "scatter":
-          return buildEChartsScatterSeries(
-            seriesModel,
-            chartModel.bubbleSizeDomain,
-            yAxisIndex,
             renderingContext,
           );
       }
@@ -663,11 +628,7 @@ export const buildEChartsSeries = (
         chartModel,
         chartModel.yAxisScaleTransforms,
         settings,
-        // It's guranteed that no series here will be scatter, since with
-        // scatter plots the `stackable.stack_type` is undefined. We can maybe
-        // remove this later after refactoring the scatter implementation to a
-        // separate codepath.
-        series as (LineSeriesOption | BarSeriesOption)[],
+        series,
       ),
     );
   }

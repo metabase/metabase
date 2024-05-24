@@ -97,7 +97,7 @@ describe("fetchDashboard", () => {
     ).toHaveLength(1);
   });
 
-  it("should fetch metadata for cards on the first tab when there are tabs", async () => {
+  it("should fetch metadata for all cards when there are tabs", async () => {
     const dashboard = createMockDashboard({
       dashcards: [
         createMockDashboardCard({
@@ -147,7 +147,7 @@ describe("fetchDashboard", () => {
     ).toHaveLength(1);
     expect(
       fetchMock.calls(`path:/api/table/${ORDERS_ID}/query_metadata`),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   it("should cancel previous dashboard fetch when a new one is initiated (metabase#35959)", async () => {

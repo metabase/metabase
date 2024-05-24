@@ -173,6 +173,10 @@ describe("scenarios > dashboard", () => {
             .should("have.text", "Our analytics")
             .click();
         });
+
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         entityPickerModal()
           .findByText("Create a new collection")
           .click({ force: true });

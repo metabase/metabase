@@ -200,7 +200,7 @@ export type ChartDataDensity = {
   totalNumberOfLabels: number;
 };
 
-export type BaseCartesianChartModel = {
+export type CartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
@@ -221,12 +221,15 @@ export type BaseCartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
   stackedLabelsFormatters?: StackedSeriesFormatters;
-  waterfallLabelFormatter?: LabelFormatter;
+  dataDensity: ChartDataDensity;
 };
 
-export type CartesianChartModel = BaseCartesianChartModel & {
+export type ScatterPlotModel = CartesianChartModel & {
   bubbleSizeDomain: Extent | null;
-  dataDensity: ChartDataDensity;
+};
+
+export type WaterfallChartModel = CartesianChartModel & {
+  waterfallLabelFormatter: LabelFormatter | undefined;
 };
 
 export type ShowWarning = (warning: string) => void;
