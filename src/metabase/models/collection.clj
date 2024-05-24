@@ -384,33 +384,35 @@
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
   [parent-collection :- CollectionWithLocationAndIDOrRoot, collection-ids :- VisibleCollections]
-  (let [parent-id           (or (:id parent-collection) "")
-        child-literal       (if (collection.root/is-root-collection? parent-collection)
-                              "/"
-                              (format "%%/%s/" (str parent-id)))
-        collection-ids      (if (= collection-ids :all)
-                              (t2/select-pks-set :model/Collection :archived (or
-                                                                              (is-trash? parent-collection)
-                                                                              (:archived parent-collection)))
-                              collection-ids)]
-    (into
-     ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
-     ;; the (1 = 1) is to prevent this
-     [:and [:= [:inline 1] [:inline 1]]]
-     (if (= collection-ids :all)
-       ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
-       ;; meaning, the effective children are always the direct children. So check for being a direct child.
-       [[:like :location (h2x/literal child-literal)]]
-       (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-             disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
-         (for [visible-collection-id disj-collection-ids]
-           [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
-
+  (if (is-trash? parent-collection)
+    ;; the only direct descendants of the Trash are those that were trashed directly. TODO: theoretically if someone
+    ;; Trashes collection A, which I don't have permissions on, and then trashes collection B, which I do - I should
+    ;; see collection B in the Trash. But this is not something we can figure out here, because we need to look at
+    ;; whether a visible ancestor was `trashed_directly`.
+    [:= :trashed_directly true]
+    (let [parent-id           (or (:id parent-collection) "")
+          child-literal       (if (collection.root/is-root-collection? parent-collection)
+                                "/"
+                                (format "%%/%s/" (str parent-id)))
+          collection-ids      (if (= collection-ids :all)
+                                (t2/select-pks-set :model/Collection :archived (:archived parent-collection))
+                                collection-ids)]
+      (into
+       ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+       ;; the (1 = 1) is to prevent this
+       [:and [:= [:inline 1] [:inline 1]]]
+       (if (= collection-ids :all)
+         ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+         ;; meaning, the effective children are always the direct children. So check for being a direct child.
+         [[:like :location (h2x/literal child-literal)]]
+         (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+               disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
+           (for [visible-collection-id disj-collection-ids]
+             [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))])))))))
 
 (mu/defn ^:private effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
-   (if (collection.root/is-root-collection? collection)
-     nil
+   (when-not (collection.root/is-root-collection? collection)
      (effective-location-path* (:location collection)
                                (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
@@ -616,19 +618,18 @@
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
-       ;; it is a descendant of Collection A
+       ;; it is a descendant of Collection A. For the Trash, this just means the collection is archived. Otherwise
+       ;; it's the location.
        (if (is-trash? collection)
-         [:= :trashed_directly true]
+         [:= :archived true]
          [:like :location (h2x/literal (str (children-location collection) "%"))])
+       ;; when we're looking at a particular trashed collection, we only see the subtree that was trashed together.
        (when (:trash_operation_id collection)
          [:= :trash_operation_id (:trash_operation_id collection)])
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
-       ;; it is NOT a descendant of a visible Collection other than A
-       ;; TODO: when we're looking at the trash, EVERYTHING is going to be visible
-       ;; by another path, because nothing is *actually* in the trash.
-       (when-not (is-trash? collection)
-         (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids))
+       ;; it is NOT a descendant of a visible Collection other than A - e.g. a visible subcollection.
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
