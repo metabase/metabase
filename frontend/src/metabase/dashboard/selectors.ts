@@ -89,6 +89,9 @@ export const getLoadingStartTime = (state: State) =>
 export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
 
+export const getIsMetadataLoading = (state: State) =>
+  state.dashboard.loadingMetadata.loadingStatus === "running";
+
 export const getIsSlowDashboard = createSelector(
   [getLoadingStartTime, getLoadingEndTime],
   (startTime, endTime) => {
