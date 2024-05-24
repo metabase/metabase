@@ -359,7 +359,10 @@ export function getChartDataDensity(
 
   const seriesDataKeysWithLabels: DataKey[] = [];
   const stackedDisplayWithLabels: StackDisplay[] = [];
-  if (!settings["graph.show_values"]) {
+  if (
+    !settings["graph.show_values"] ||
+    settings["graph.label_value_frequency"] === "all"
+  ) {
     return {
       seriesDataKeysWithLabels,
       stackedDisplayWithLabels,
