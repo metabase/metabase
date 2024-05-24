@@ -526,7 +526,8 @@
 (defn serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
-                      collection_authority_level collection_type collection_effective_ancestors effective_parent]}]
+                      collection_authority_level collection_type collection_effective_ancestors effective_parent
+                      trashed_directly model]}]
   (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -538,14 +539,17 @@
                                     (empty?
                                      (remove matching-columns search.config/displayed-columns)))
                            (match-context-thunk))
-         :collection     (merge {:id              collection_id
-                                 :name            collection_name
-                                 :authority_level collection_authority_level
-                                 :type            collection_type}
-                                (when effective_parent
-                                  effective_parent)
-                                (when collection_effective_ancestors
-                                  {:effective_ancestors collection_effective_ancestors}))
+         :collection     (if (and trashed_directly (not= "collection" model))
+                           (select-keys (collection/trash-collection)
+                                        [:id :name :authority_level :type])
+                           (merge {:id              collection_id
+                                   :name            collection_name
+                                   :authority_level collection_authority_level
+                                   :type            collection_type}
+                                  (when effective_parent
+                                    effective_parent)
+                                  (when collection_effective_ancestors
+                                    {:effective_ancestors collection_effective_ancestors})))
          :scores          all-scores)
         (update :dataset_query (fn [dataset-query]
                                  (when-let [query (some-> dataset-query json/parse-string)]
@@ -560,6 +564,7 @@
          :collection_location
          :collection_name
          :collection_type
+         :trashed_directly
          :display_name
          :effective_parent))))
 
@@ -592,6 +597,10 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
+                            (map #(if (and (t2/instance-of? :model/Collection %)
+                                           (:trashed_directly %))
+                                    (assoc % :location (collection/trash-path))
+                                    %))
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))

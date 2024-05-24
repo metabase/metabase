@@ -312,40 +312,67 @@
    [:set
     [:or [:= "root"] ms/PositiveInt]]])
 
-(mu/defn permissions-set->visible-collection-ids :- VisibleCollections
-  "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
-  permissions set allows you to view. For those with *root* permissions (e.g., an admin), this function will return
-  `:all`, signifying that you are allowed to view all Collections. For *Root Collection* permissions, the response
-  will include \"root\".
+(defn- permission-id->archived&trash-operation-id []
+  (into {} (t2/select-fn-vec (juxt :id identity)
+                             :model/Collection)))
 
-    (permissions-set->visible-collection-ids #{\"/collection/10/\"})   ; -> #{10}
-    (permissions-set->visible-collection-ids #{\"/\"})                 ; -> :all
-    (permissions-set->visible-collection-ids #{\"/collection/root/\"}) ; -> #{\"root\"}
+(defn permissions-set->collection-id->collection
+  [permissions-set & [read-or-write]]
+  (let [permission-id->archived&trash-operation-id (permission-id->archived&trash-operation-id)
+        ids-with-perm (set
+                       (for [path  permissions-set
+                             :let  [[_ id-str] (case read-or-write
+                                                 (nil :read)
+                                                 (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)
 
-  You probably don't want to consume the results of this function directly -- most of the time, the reason you are
-  calling this function in the first place is because you want add a `FILTER` clause to an application DB query (e.g.
-  to only fetch Cards that belong to Collections visible to the current User). Use
-  [[visible-collection-ids->honeysql-filter-clause]] to generate a filter clause that handles all possible outputs of
-  this function correctly.
+                                                 (re-matches #"/collection/((?:\d+)|root)/" path))]
+                             :when id-str]
+                         (cond-> id-str
+                           (not= id-str "root") Integer/parseInt)))
+        has-root-permission? (or (contains? permissions-set "/") (contains? ids-with-perm "root"))
+        root-map (when has-root-permission?
+                   {"root" collection.root/root-collection})
+        has-permission? (fn [[id _]]
+                          (if (contains? permissions-set "/")
+                            true
+                            (contains? ids-with-perm id)))]
+    (->> permission-id->archived&trash-operation-id
+         (filter has-permission?)
+         (merge root-map))))
 
-  !!! IMPORTANT NOTE !!!
+(defn permissions-set->visible-collection-ids-with-perm
+  [permissions-set read-or-write]
+  (->> (permissions-set->collection-id->collection permissions-set read-or-write)
+       (map key)
+       (into #{})))
 
-  Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
-  SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
-  [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
+(mu/defn permissions-set->visible-collection-ids
+  "Even better"
   ([permissions-set]
-   (permissions-set->visible-collection-ids permissions-set :read))
-  ([permissions-set read-or-write]
-   (if (contains? permissions-set "/")
-     :all
-     (set
-      (for [path  permissions-set
-            :let  [[_ id-str] (case read-or-write
-                                :read (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)
-                                :write (re-matches #"/collection/((?:\d+)|root)/" path))]
-            :when id-str]
-        (cond-> id-str
-          (not= id-str "root") Integer/parseInt))))))
+   (->> (permissions-set->collection-id->collection permissions-set)
+        (map key)
+        (into #{})))
+  ([collection permissions-set]
+   (let [collection-id->collection (permissions-set->collection-id->collection permissions-set
+                                                                               (if (or (:archived collection)
+                                                                                       (is-trash? collection))
+                                                                                 :write
+                                                                                 :read))
+         has-matching-archived? (fn [[_ other-collection]]
+                                  (or (is-trash? other-collection)
+                                      (= (or (:archived other-collection)
+                                             (is-trash? other-collection))
+                                         (or (:archived collection)
+                                             (is-trash? collection)))))
+         has-matching-trash-operation-id? (fn [[_ {:keys [trash_operation_id]}]]
+                                            (or (= (:trash_operation_id collection)
+                                                   trash_operation_id)
+                                                (is-trash? collection)))]
+     (->> collection-id->collection
+          (filter has-matching-archived?)
+          (filter has-matching-trash-operation-id?)
+          (map key)
+          (into #{})))))
 
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
@@ -413,9 +440,10 @@
 (mu/defn ^:private effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
    (when-not (collection.root/is-root-collection? collection)
-     (effective-location-path* (:location collection)
-                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
-
+     (effective-location-path* (if (:trashed_directly collection)
+                                 (trash-path)
+                                 (:location collection))
+                               (permissions-set->visible-collection-ids collection @*current-user-permissions-set*))))
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
@@ -609,12 +637,7 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*
-                                                                        (if (or
-                                                                             (:archived collection)
-                                                                             (is-trash? collection))
-                                                                          :write
-                                                                          :read))]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids collection @*current-user-permissions-set*)]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
@@ -828,7 +851,8 @@
                  :archived              false}
         :where  [:and
                  [:like :location (str orig-children-location "%")]
-                 [:= :trash_operation_id (:trash_operation_id collection)]]})
+                 [:= :trash_operation_id (:trash_operation_id collection)]
+                 [:not= :trashed_directly true]]})
       (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived false}))

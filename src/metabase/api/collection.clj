@@ -101,7 +101,9 @@
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids permissions-set))]
+                        (collection/permissions-set->visible-collection-ids
+                         (when archived (collection/trash-collection))
+                         permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -425,10 +427,10 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        (if (collection/is-trash? collection)
-                                                                          :write
-                                                                          :read)))
+                    (collection/permissions-set->visible-collection-ids-with-perm @api/*current-user-permissions-set*
+                                                                                  (if archived?
+                                                                                    :write
+                                                                                    :read)))
                    (if (collection/is-trash? collection)
                      [:= :c.trashed_directly true]
                      [:and
@@ -550,10 +552,10 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        (if (collection/is-trash? collection)
-                                                                          :write
-                                                                          :read)))
+                    (collection/permissions-set->visible-collection-ids-with-perm @api/*current-user-permissions-set*
+                                                                                  (if archived?
+                                                                                    :write
+                                                                                    :read)))
                    (if (collection/is-trash? collection)
                      [:= :d.trashed_directly true]
                      [:and
@@ -622,8 +624,7 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                @api/*current-user-permissions-set*)
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids parent-coll @api/*current-user-permissions-set*)
 
         descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
                                                                          :id
@@ -640,18 +641,20 @@
                 {:dataset #{}
                  :metric  #{}
                  :card    #{}}
-                (t2/reducible-query {:select-distinct [:collection_id :type]
-                                     :from            [:report_card]
-                                     :where           [:and
-                                                       [:= :archived false]
-                                                       [:in :collection_id descendant-collection-ids]]}))
+                (when (seq descendant-collection-ids)
+                  (t2/reducible-query {:select-distinct [:collection_id :type]
+                                       :from            [:report_card]
+                                       :where           [:and
+                                                         [:= :archived false]
+                                                         [:in :collection_id descendant-collection-ids]]})))
 
         collections-containing-dashboards
-        (->> (t2/query {:select-distinct [:collection_id]
-                        :from :report_dashboard
-                        :where [:and
-                                [:= :archived false]
-                                [:in :collection_id descendant-collection-ids]]})
+        (->> (when (seq descendant-collection-ids)
+               (t2/query {:select-distinct [:collection_id]
+                          :from :report_dashboard
+                          :where [:and
+                                  [:= :archived false]
+                                  [:in :collection_id descendant-collection-ids]]}))
              (map :collection_id)
              (into #{}))
 

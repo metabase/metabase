@@ -116,7 +116,8 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.util :as search.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.models.collection :as collection]))
 
 (defn- matches?
   [search-token match-token]

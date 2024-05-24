@@ -743,8 +743,8 @@
 (defn- archived-collection [m]
   (assoc m
          :archived true
-         :trashed_from_location "/"
-         :location (collection/trash-path)))
+         :trashed_directly true
+         :trash_operation_id (str (random-uuid))))
 
 (defn- archived-with-trashed-from-id [m]
   (assoc m

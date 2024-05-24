@@ -318,6 +318,7 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :trashed_directly
         :location
         bookmark-col))
 
