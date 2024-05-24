@@ -35,7 +35,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -747,17 +746,6 @@
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
   (t2/select [Card :name :id], :enable_embedding true, :archived false))
-
-(api/defendpoint GET "/:id/related"
-  "Return related entities."
-  [id]
-  {id ms/PositiveInt}
-  (-> (t2/select-one Card :id id) api/read-check related/related))
-
-(api/defendpoint POST "/related"
-  "Return related entities for an ad-hoc query."
-  [:as {query :body}]
-  (related/related (query/adhoc-query query)))
 
 (api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
