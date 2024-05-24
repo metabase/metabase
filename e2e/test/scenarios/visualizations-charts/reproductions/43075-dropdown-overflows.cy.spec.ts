@@ -29,7 +29,7 @@ describe("issue 43075", () => {
   });
 
   it("the breakout popover should fit within the window (metabase#43075)", () => {
-    cy.get("[data-testid=cell-data]").contains("54").click();
+    cy.findAllByTestId("cell-data").contains("54").click();
     popover().findByText("Break out by…").click();
     popover().findByText("Category").click();
 
