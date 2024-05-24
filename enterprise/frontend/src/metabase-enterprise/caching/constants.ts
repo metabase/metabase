@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { positiveInteger } from "metabase/admin/performance/constants/complex";
 import type { StrategyData } from "metabase/admin/performance/types";
 import { defaultCron } from "metabase/admin/performance/utils";
 import { DurationUnit } from "metabase-types/api";
-import { positiveInteger } from "metabase/admin/performance/constants/complex";
 
 export const durationUnits = new Set(Object.values(DurationUnit).map(String));
 

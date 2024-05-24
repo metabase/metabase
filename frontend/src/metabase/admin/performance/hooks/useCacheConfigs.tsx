@@ -9,8 +9,8 @@ import type {
   CacheableModel,
 } from "metabase-types/api";
 
-import { translateConfigFromAPI } from "../utils";
 import { rootId } from "../constants/simple";
+import { translateConfigFromAPI } from "../utils";
 
 import { useRecentlyTrue } from "./useRecentlyTrue";
 

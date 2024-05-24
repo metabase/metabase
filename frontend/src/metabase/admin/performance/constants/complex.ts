@@ -5,6 +5,7 @@ import type { CacheableModel } from "metabase-types/api";
 
 import type { StrategyData } from "../types";
 import { isValidStrategyName } from "../utils";
+
 import { defaultMinDurationMs } from "./simple";
 
 export const positiveInteger = Yup.number()
