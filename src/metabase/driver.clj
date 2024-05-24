@@ -792,10 +792,10 @@
   "Notify the driver that `database` is about to be deleted permanently. The driver should release any cached resources
   or connection pools associated with the Database.
 
-  Prior to 0.50.0, [[notify-database-updated]] was called whenever a Database was updated *or* deleted. Thus the
+  Prior to 0.51.0, [[notify-database-updated]] was called whenever a Database was updated *or* deleted. Thus the
   default implementation of this calls [[notify-database-updated]] for backward compatibility. You can implement this
   method separately if you want different behavior in the two situations."
-  {:added "0.50.0", :arglists '([driver database])}
+  {:added "0.51.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
