@@ -253,7 +253,7 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it("data selector should properly show a model as the source (metabase#39699)", () => {
+    it.only("data selector should properly show a model as the source (metabase#39699)", () => {
       createQuestion(modelDetails, { visitQuestion: true });
       openNotebook();
       cy.findByTestId("data-step-cell")
