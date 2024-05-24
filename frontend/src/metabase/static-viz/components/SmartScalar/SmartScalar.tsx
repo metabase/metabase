@@ -29,7 +29,11 @@ export function SmartScalar({
   });
 
   if (error || !trend) {
-    throw new Error(`Failed to compute trend data for ${card.name}`);
+    throw new Error(
+      `Failed to compute trend data for ${card.name}\: ${
+        (error as { message: string }).message
+      }`,
+    );
   }
 
   const comparisons: any[] = trend.comparisons || [];
