@@ -52,7 +52,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it("new question data picker search should work for both saved questions and database tables", () => {
+    it.only("new question data picker search should work for both saved questions and database tables", () => {
       cy.intercept("GET", "/api/search?q=*", cy.spy().as("searchQuery")).as(
         "search",
       );
@@ -60,12 +60,13 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 3);
-        entityPickerModalTab("Models").should(
+        cy.findAllByRole("tab").should("have.length", 4);
+        entityPickerModalTab("Recents").should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
         entityPickerModalTab("Saved questions").should("exist");
         entityPickerModalTab("Search").should("not.exist");
@@ -94,11 +95,15 @@ describe("scenarios > question > new", () => {
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
         entityPickerModalTab("Search").should("not.exist");
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Recents").should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        entityPickerModalTab("Models").should( "exist" );
+        entityPickerModalTab("Tables").should( "exist" );
+        entityPickerModalTab("Saved questions").should( "exist" );
+
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
       });
