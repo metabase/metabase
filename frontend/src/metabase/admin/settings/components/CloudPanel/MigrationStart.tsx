@@ -55,7 +55,7 @@ export const MigrationStart = ({
           </Modal.Header>
           <Modal.Body mt="md" py="0" px="6rem" ta="center">
             {/* TODO: get filled cloud icon from design */}
-            <Icon name="cloud" size="3rem" color={color("brand")} />
+            <Icon name="cloud_filled" size="3rem" color={color("brand")} />
             <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 
             <Text mt="1.5rem">
