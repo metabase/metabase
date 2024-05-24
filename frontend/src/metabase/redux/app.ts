@@ -1,3 +1,4 @@
+import type { ErrorInfo } from "react";
 import { push, LOCATION_CHANGE } from "react-router-redux";
 
 import {
@@ -26,11 +27,11 @@ interface LocationChangeAction {
 }
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
-export function setErrorPage(error: any) {
-  console.error("Error:", error);
+export function setErrorPage(_error: Error, errorInfo: ErrorInfo) {
+  console.error("Error:", errorInfo);
   return {
     type: SET_ERROR_PAGE,
-    payload: error,
+    payload: errorInfo,
   };
 }
 

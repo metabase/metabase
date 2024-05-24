@@ -6,7 +6,7 @@ import { SmallGenericError } from "metabase/components/ErrorPages";
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ErrorBoundary extends Component<
   {
-    onError?: (errorInfo: ErrorInfo) => void;
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
     errorComponent?: ComponentType;
     message?: string;
   },
@@ -30,7 +30,7 @@ export default class ErrorBoundary extends Component<
     console.error(error, errorInfo);
     // if we don't provide a specific onError action, the component will display a generic error message
     if (this.props.onError) {
-      this.props.onError(errorInfo);
+      this.props.onError(error, errorInfo);
       this.setState({
         hasError: false,
       });

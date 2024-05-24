@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { KBarProvider } from "kbar";
-import type { ReactNode } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 
@@ -59,7 +59,7 @@ interface AppStateProps {
 }
 
 interface AppDispatchProps {
-  onError: (error: unknown) => void;
+  onError: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface AppRouterOwnProps {
