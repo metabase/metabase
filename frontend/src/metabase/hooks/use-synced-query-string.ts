@@ -30,6 +30,23 @@ export function useSyncedQueryString(
         window.location.pathname + searchString + window.location.hash,
       );
     }
+
+    return () => {
+      // Remove every previously-synced keys from the query string when the component is unmounted.
+      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
+      const searchString = buildSearchString({
+        filterFn: key => !(key in object),
+      });
+
+      if (searchString !== window.location.search) {
+        history.replaceState(
+          null,
+          document.title,
+          window.location.pathname + searchString + window.location.hash,
+        );
+      }
+    };
+
     // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deps]);
