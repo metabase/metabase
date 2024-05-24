@@ -63,12 +63,6 @@ Deleting or restoring an item will affect other items that depend on that item.
 | Question based on deleted question | Works normally | Breaks with `Card not found` error | Works normally |
 | Alerts                             | Removed        | Removed                            | Not restored   |
 
-- **Dashboards**: If a deleted question was included in any dashboards, then the card with the question results will be removed from those dashboards. If the question is restored from **Trash**, its card will be restored to the dashboards that used to contain it.
-
-- **Derived questions**: If a trashed question was used as data source for a Query Builder question, or was [referenced in a SQL question](../questions/native-editor/referencing-saved-questions-in-queries.md), then the derived questions will continue to work while the base question is in **Trash**. If the base question is then [permanently deleted](#permanently-deleting-items), the derived questions will stop working, and you'll get a `Card not found` error.
-
-- **Alerts**: If you delete a question, all alerts on that question will be deleted as well. You will get an email notification that the alert has been deactivated. If you restore the question from Trash, the alerts _will not_ be restored – you'll need to recreate them.
-
 ### Dashboards
 
 | Affected item   | In Trash                   | Permanently deleted        | Restored |
@@ -76,31 +70,19 @@ Deleting or restoring an item will affect other items that depend on that item.
 | Subscriptions   | Deactivated                | Deactivated                | Restored |
 | Custom homepage | Revert to default homepage | Revert to default homepage | Restored |
 
-- **Dashboards subscriptions**: If a dashboard is deleted, any subscriptions to the dashboard will be deactivated. If a dashboard is restored from Trash, the subscriptions will be restored as well.
-
-- [**Custom home page**](../configuring-metabase/appearance.md#landing-page): If a deleted dashboard was set as a custom home page, the home page will revert to the default Metabase home page. If a dashboard is restored, the custom home page will be restored as well.
-
 ### Model
 
-| Affected item                      | In Trash       | Permanently deleted                | Restored              |
-| ---------------------------------- | -------------- | ---------------------------------- | --------------------- |
-| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated           |
-| Dashboard                          | Card removed   | Card removed                       | Card restored estored |
-| Action                             | Works normally | Deleted                            | Works normally        |
-
-Deleting a model will affect other items that depend on that model:
-
-- **Derived questions**: If a trashed model was used as data source for a Query Builder question, or was [referenced in a SQL question](../questions/native-editor/referencing-saved-questions-in-queries.md), then the derived questions will continue to work while the model is in Trash. If the model is [permanently deleted](#permanently-deleting-items), the derived questions will stop working, and you'll get a `Card does not exist` error.
-
-- **Actions**: If a model is trashed, the actions in this model will still work. If a model is permanently deleted, the actions in the deleted model will be deleted as well.
-
-- **Dashboards**: If a model is included as a card in any dashboards, then the card will be removed from those dashboards when the model is moved to Trash. If the model is restored from Trash, its card will be restored to the dashboards that used to contain it.
+| Affected item                      | In Trash       | Permanently deleted                | Restored       |
+| ---------------------------------- | -------------- | ---------------------------------- | -------------- |
+| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated    |
+| Dashboard                          | Card removed   | Card removed                       | Card restored  |
+| Action                             | Works normally | Deleted                            | Works normally |
 
 ## Collections
 
-| Affected item                | In Trash | Permanently deleted | Restored |
-| ---------------------------- | -------- | ------------------- | -------- |
-| Everything in the collection | In Trash | Permanently deleted | Restored |
+| Affected item                                  | In Trash | Permanently deleted | Restored |
+| ---------------------------------------------- | -------- | ------------------- | -------- |
+| All items and subcollecitons in the collection | In Trash | Permanently deleted | Restored |
 
 ## Permanently deleting items
 
