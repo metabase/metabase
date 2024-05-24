@@ -94,7 +94,7 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
-                (application-name-for-setting-descriptions))
+    (application-name-for-setting-descriptions))
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
@@ -145,7 +145,7 @@
   :base       setting/uuid-nonce-base)
 
 (defn- normalize-site-url [^String s]
-  (let [ ;; remove trailing slashes
+  (let [;; remove trailing slashes
         s (str/replace s #"/$" "")
         ;; add protocol if missing
         s (if (str/starts-with? s "http")
@@ -162,8 +162,8 @@
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru
-   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
-        "so changing it could break functionality or get you locked out of this instance."))
+    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+         "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :audit      :getter
   :getter     (fn []
@@ -208,7 +208,7 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-descriptions))
+    (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :public
@@ -380,10 +380,10 @@ To change the chart colors:
   :feature    :whitelabel
   :audit      :getter
   :setter     (fn [new-value]
-                  (when new-value
-                    (when-not (u.fonts/available-font? new-value)
-                      (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-                  (setting/set-value-of-type! :string :application-font new-value)))
+                (when new-value
+                  (when-not (u.fonts/available-font? new-value)
+                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
@@ -522,10 +522,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link
   (deferred-tru
-   (str
-    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
-    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
-    "or be hidden if it is not set."))
+    (str
+     "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+     "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+     "or be hidden if it is not set."))
   :type       :keyword
   :audit      :getter
   :visibility :public
@@ -544,11 +544,11 @@ See [fonts](../configuring-metabase/fonts.md).")
   [url]
   (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
                                       {:url url})]
-   (if-let [matches (re-matches #"^mailto:(.*)" url)]
-     (when-not (u/email? (second matches))
-       (throw validation-exception))
-     (when-not (u/url? url)
-       (throw validation-exception)))))
+    (if-let [matches (re-matches #"^mailto:(.*)" url)]
+      (when-not (u/email? (second matches))
+        (throw validation-exception))
+      (when-not (u/url? url)
+        (throw validation-exception)))))
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
@@ -558,8 +558,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :feature    :whitelabel
   :setter     (fn [new-value]
                 (let [new-value-string (str new-value)]
-                 (validate-help-url new-value-string)
-                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+                  (validate-help-url new-value-string)
+                  (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
   (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
@@ -596,8 +596,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting breakout-bin-width
   (deferred-tru
-   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
-        "this number will be used as the default bin width (in degrees)."))
+    (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+         "this number will be used as the default bin width (in degrees)."))
   :type    :double
   :default 10.0
   :audit   :getter)
@@ -620,8 +620,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-data
   (deferred-tru
-   (str "Whether or not to display data on the homepage. "
-        "Admins might turn this off in order to direct users to better content than raw data"))
+    (str "Whether or not to display data on the homepage. "
+         "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -640,8 +640,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-pin-message
   (deferred-tru
-   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
-        "pinned. Admins might hide this to direct users to better content than raw data"))
+    (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -812,6 +812,50 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings begin
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These settings were removed in v50 and will be removed in a future release. They are kept here for backwards compatibility
+;; to avoid breaking existing installations that may have set these values with environment variables, or via the config file.
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :visibility :authenticated
+  :export?    false
+  :type       :boolean
+  :default    false
+  :getter     (fn []  (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead"))
+  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :getter     (fn []  (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead"))
+  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn []  (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead"))
+  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn []  (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead"))
+  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
