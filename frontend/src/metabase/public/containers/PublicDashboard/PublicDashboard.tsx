@@ -29,7 +29,7 @@ import type {
 } from "metabase/dashboard/hoc/types";
 import {
   getDashboardComplete,
-  getCardData,
+  getDashcardDataMap,
   getSlowCards,
   getParameters,
   getParameterValues,
@@ -67,7 +67,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
     ),
     metadata: getMetadata(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
+    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     parameters: getParameters(state),
     parameterValues: getParameterValues(state),
@@ -274,7 +274,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   metadata={this.props.metadata}
                   dashcardData={this.props.dashcardData}
                   selectedTabId={this.props.selectedTabId}
-                  parameterValues={this.props.parameterValues}
                   slowCards={this.props.slowCards}
                   isEditing={false}
                   isEditingParameter={false}

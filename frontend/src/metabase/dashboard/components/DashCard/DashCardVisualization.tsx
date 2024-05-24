@@ -1,11 +1,10 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
+import { useClickBehaviorData } from "metabase/dashboard/hoc/useClickBehaviorData";
 import {
   getVirtualCardType,
   isQuestionCard,
@@ -22,13 +21,10 @@ import type {
   DashCardId,
   Dataset,
   Series,
-  ParameterId,
-  ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
   DashboardCard,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import {
@@ -48,8 +44,6 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  parameterValuesBySlug: Record<string, ParameterValueOrArray>;
   metadata: Metadata;
   mode?: Mode;
   getHref: DashCardGetNewCardUrlHandler | null;
@@ -87,22 +81,13 @@ interface DashCardVisualizationProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-function mapDispatchToProps(dispatch: Dispatch) {
-  return { dispatch };
-}
-
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
-const WrappedVisualization = WithVizSettingsData(
-  connect(null, mapDispatchToProps)(Visualization),
-);
 
 export function DashCardVisualization({
   dashcard,
   dashboard,
   series,
-  parameterValues,
-  parameterValuesBySlug,
   mode,
   getHref,
   metadata,
@@ -217,7 +202,6 @@ export function DashCardVisualization({
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
         token={isEmbed ? String(dashcard.dashboard_id) : undefined}
-        params={parameterValuesBySlug}
       />
     );
   }, [
@@ -230,11 +214,14 @@ export function DashCardVisualization({
     isEditing,
     isXray,
     dashboard.id,
-    parameterValuesBySlug,
   ]);
 
+  const { getExtraDataForClick } = useClickBehaviorData({
+    dashcardId: dashcard.id,
+  });
+
   return (
-    <WrappedVisualization
+    <Visualization
       className={cx(CS.flexFull, CS.overflowHidden, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
@@ -244,8 +231,6 @@ export function DashCardVisualization({
       dashboard={dashboard}
       dashcard={dashcard}
       rawSeries={series}
-      parameterValues={parameterValues}
-      parameterValuesBySlug={parameterValuesBySlug}
       metadata={metadata}
       mode={mode}
       getHref={getHref}
@@ -267,6 +252,7 @@ export function DashCardVisualization({
       isMobile={isMobile}
       actionButtons={renderActionButtons()}
       replacementContent={renderVisualizationOverlay()}
+      getExtraDataForClick={getExtraDataForClick}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}

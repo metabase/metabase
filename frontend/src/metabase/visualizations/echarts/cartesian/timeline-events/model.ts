@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -132,7 +132,7 @@ const getTimelineEventsInsideRange = (
 };
 
 export const getTimelineEventsModel = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
   timelineEvents: TimelineEvent[],
   renderingContext: RenderingContext,

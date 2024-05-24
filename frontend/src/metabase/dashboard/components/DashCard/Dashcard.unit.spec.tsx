@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
+import type { DashCardDataMap } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -11,6 +12,7 @@ import {
   createMockLinkDashboardCard,
   createMockDataset,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
@@ -67,7 +69,7 @@ function setup({
   dashcard = tableDashcard,
   dashcardData = tableDashcardData,
   ...props
-}: Partial<DashCardProps> = {}) {
+}: Partial<DashCardProps> & { dashcardData?: DashCardDataMap } = {}) {
   const onReplaceCard = jest.fn();
 
   renderWithProviders(
@@ -76,9 +78,7 @@ function setup({
       dashcard={dashcard}
       gridItemWidth={4}
       totalNumGridCols={24}
-      dashcardData={dashcardData}
       slowCards={{}}
-      parameterValues={{}}
       metadata={metadata}
       isEditing={false}
       isEditingParameter={false}
@@ -94,6 +94,13 @@ function setup({
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
     />,
+    {
+      storeInitialState: {
+        dashboard: createMockDashboardState({
+          dashcardData,
+        }),
+      },
+    },
   );
 
   return { onReplaceCard };

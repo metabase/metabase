@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -10,6 +11,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
@@ -18,9 +20,13 @@
 
 (def ^:private counter (atom 2000))
 
+(defn- add-aggregation-options
+  [query options]
+  (update-in query [:stages 0 :aggregation 0 1] merge options))
+
 (defn- basic-metric-query []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-      (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))))
+      (lib/aggregate (lib/avg (meta/field-metadata :products :rating)))))
 
 (defn- fresh-card-id
   [metadata-provider]
@@ -41,7 +47,7 @@
    (let [metric (merge {:lib/type :metadata/card
                         :id (fresh-card-id metadata-provider)
                         :database-id (meta/id)
-                        :name "Mock metric"
+                        :name "Mock Metric"
                         :type :metric
                         :dataset-query query}
                        card-details)]
@@ -52,6 +58,11 @@
 
 (def adjust
   (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
+
+(deftest ^:parallel no-metric-should-result-in-exact-same-query
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))]
+    (is (= query
+           (adjust query)))))
 
 (deftest ^:parallel adjust-basic-source-table-test
   (let [[source-metric mp] (mock-metric)
@@ -197,6 +208,24 @@
                                          #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
             (adjust query)))))
 
+
+(deftest ^:parallel maintain-aggregation-refs-test
+  (testing "the aggregation that replaces a :metric ref should keep the :metric's :lib/uuid, so :aggregation refs pointing to it are still valid"
+    (let [[source-metric mp] (mock-metric)
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                    (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0))))]
+      (is (=? {:stages [{:aggregation [[:avg {:lib/uuid (=?/same :uuid)} some?]]
+                         :order-by [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
+              (adjust query))))
+    (let [[source-metric mp] (mock-metric)
+          query (-> (lib/query mp source-metric)
+                    (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0))))]
+      (is (=? {:stages [{}
+                        {:aggregation [[:avg {:lib/uuid (=?/same :uuid)} some?]]
+                         :order-by [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
+              (adjust query))))))
+
 (deftest ^:parallel e2e-source-metric-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -319,3 +348,99 @@
       (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
         (is (=? (mt/rows (qp/process-query source-query))
                 (mt/rows (qp/process-query query))))))))
+
+(deftest ^:parallel default-metric-names-test
+  (let [[source-metric mp] (mock-metric)]
+    (is (=?
+          {:stages [{:aggregation [[:avg {:display-name complement :name "Mock Metric"} some?]]}]}
+          (adjust (-> (lib/query mp (meta/table-metadata :products))
+                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
+
+(deftest ^:parallel include-source-names-test
+  (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
+                                            (add-aggregation-options {:display-name "My cool metric" :name "Named Metric"})))]
+    (is (=?
+          {:stages [{:aggregation [[:avg {:display-name "My cool metric" :name "Named Metric"} some?]]}]}
+          (adjust (-> (lib/query mp (meta/table-metadata :products))
+                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
+
+(deftest ^:parallel override-source-names-test
+  (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
+                                            (add-aggregation-options {:display-name "My cool metric" :name "Named Metric"})))]
+    (is (=?
+          {:stages [{:aggregation [[:avg {:display-name "My cooler metric" :name "Better Named Metric"} some?]]}]}
+          (adjust (-> (lib/query mp (meta/table-metadata :products))
+                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))
+                      (add-aggregation-options {:display-name "My cooler metric" :name "Better Named Metric"})))))))
+
+(deftest ^:parallel metric-with-nested-segments-test
+  (let [mp (lib.tu/mock-metadata-provider
+             meta/metadata-provider
+             {:segments [{:id         1
+                          :name       "Segment 1"
+                          :table-id   (meta/id :venues)
+                          :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}]})
+        [source-metric mp] (mock-metric mp (-> (basic-metric-query)
+                                               (lib/filter (lib.metadata/segment mp 1))))]
+    ;; Segments are handled further in the pipeline when the source is a metric
+    (is (=?
+          {:stages [{:filters [[:segment {} 1]]}
+                    {}]}
+          (adjust (lib/query mp source-metric))))
+    ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
+    (is (=?
+          {:stages [{:filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
+          (adjust
+            (-> (lib/query mp (meta/table-metadata :products))
+                (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
+
+(deftest ^:parallel expand-macros-in-nested-queries-test
+  (testing "expand-macros should expand things in the correct nested level (#12507)"
+    (let [[source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                              (lib/filter (lib/= (meta/field-metadata :venues :name) "abc"))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                                              (add-aggregation-options {:display-name "My Cool Aggregation"})))
+          before {:source-table (meta/id :venues)
+                  :aggregation  [[:metric (:id source-metric)]]}
+          after {:source-table (meta/id :venues)
+                 :aggregation  [[:aggregation-options [:sum [:field (meta/id :venues :price) {}]]
+                                 {:display-name "My Cool Aggregation"}]]
+                 :filter       [:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]}
+          expand-macros (fn [mbql-query]
+                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
+      (comment
+        (testing "nested 1 level"
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query after})
+                  (expand-macros (lib.tu.macros/mbql-query nil
+                                   {:source-query before})))))
+        (testing "nested 2 levels"
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query after}})
+                  (expand-macros
+                    (lib.tu.macros/mbql-query nil
+                      {:source-query {:source-query before}})))))
+        (testing "nested 3 levels"
+          (is (=? (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query {:source-query after}}})
+                  (expand-macros
+                    (lib.tu.macros/mbql-query nil
+                      {:source-query {:source-query {:source-query before}}}))))))
+      (testing "inside :source-query inside :joins"
+        (is (=? (lib.tu.macros/mbql-query checkins
+                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) {}] 2]
+                            :source-query after}]})
+                (expand-macros
+                  (lib.tu.macros/mbql-query checkins
+                    {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
+                              :source-query before}]})))))
+
+      (testing "inside :joins inside :source-query"
+        (is (=? (lib.tu.macros/mbql-query nil
+                  {:source-query {:source-table (meta/id :checkins)
+                                  :joins        [{:condition    [:= [:field 1 nil] 2]
+                                                  :source-query after}]}})
+                (expand-macros (lib.tu.macros/mbql-query nil
+                                 {:source-query {:source-table (meta/id :checkins)
+                                                 :joins        [{:condition    [:= [:field 1 nil] 2]
+                                                                 :source-query before}]}}))))))))

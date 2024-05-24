@@ -469,12 +469,12 @@
   (when-let [cards @delayed-cards]
     (into {}
           (keep (fn [[id card]]
-                  (when (and card (= (:type @card) :metric))
+                  (when (and card (= (:type @card) :metric) (not (:archived @card)))
                     (let [card @card]
                       [id (-> card
-                              (select-keys [:id :table-id :name :description :archived])
-                              (assoc :definition (:dataset-query card)
-                                     :lib/type :metadata/metric)
+                              (select-keys [:id :table-id :name :description :archived
+                                            :dataset-query])
+                              (assoc :lib/type :metadata/metric)
                               delay)]))))
           cards)))
 
@@ -495,7 +495,6 @@
                      :metadata/table         :tables
                      :metadata/column        :fields
                      :metadata/card          :cards
-                     :metadata/legacy-metric :metrics
                      :metadata/segment       :segments)
         metadatas* (some-> metadata k deref)]
     (into []
@@ -516,7 +515,6 @@
   (let [k (case metadata-type
             :metadata/column        :fields
             :metadata/metric        :metrics
-            :metadata/legacy-metric :legacy-metrics
             :metadata/segment       :segments)]
     (into []
           (keep (fn [[_id dlay]]
