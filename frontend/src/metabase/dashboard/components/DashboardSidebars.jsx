@@ -3,7 +3,12 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import {
+  getEditingParameter,
+  getParameters,
+} from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
@@ -15,11 +20,9 @@ import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
-  parameters: PropTypes.array,
   showAddParameterPopover: PropTypes.func.isRequired,
   removeParameter: PropTypes.func.isRequired,
   addCardToDashboard: PropTypes.func.isRequired,
-  editingParameter: PropTypes.object,
   clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -49,11 +52,9 @@ DashboardSidebars.propTypes = {
 
 export function DashboardSidebars({
   dashboard,
-  parameters,
   showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
-  editingParameter,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
@@ -77,6 +78,9 @@ export function DashboardSidebars({
   selectedTabId,
   getEmbeddedParameterVisibility,
 }) {
+  const parameters = useSelector(getParameters);
+  const editingParameter = useSelector(getEditingParameter);
+
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
