@@ -7420,12 +7420,12 @@ databaseChangeLog:
       comment: Remove uploads settings
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
+            dbms: postgresql
             sql: >-
               DELETE FROM setting
               WHERE key IN ('uploads-enabled', 'uploads-database-id', 'uploads-schema-name', 'uploads-table-prefix');
         - sql:
-            dbms: h2
+            dbms: h2,mysql,mariadb
             sql: >-
               DELETE FROM setting
               WHERE `key` IN ('uploads-enabled', 'uploads-database-id', 'uploads-schema-name', 'uploads-table-prefix');
