@@ -3,23 +3,23 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   Cron,
-  weekdays,
   optionNameTranslations,
+  weekdays,
 } from "metabase/components/Schedule/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { PLUGIN_CACHING, defaultMinDurationMs } from "metabase/plugins";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
-  ScheduleSettings,
-  ScheduleType,
-  ScheduleDayType,
-  ScheduleFrameType,
   CacheableModel,
   Config,
+  ScheduleDayType,
+  ScheduleFrameType,
+  ScheduleSettings,
+  ScheduleType,
   Strategy,
   StrategyType,
 } from "metabase-types/api";
 
-import { rootId } from "./constants";
+import { defaultMinDurationMs, rootId } from "./constants";
 import type { StrategyLabel } from "./types";
 
 const { strategies } = PLUGIN_CACHING;
