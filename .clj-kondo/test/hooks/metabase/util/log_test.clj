@@ -11,9 +11,10 @@
   (let [f (if (str/ends-with? (name (first form)) "f")
             hooks.metabase.util.log/infof
             hooks.metabase.util.log/info)]
-    (binding [clj-kondo.impl.utils/*ctx* {:config   {:linters {:metabase/validate-logging {:level :warning}}}
-                                          :ignores  (atom nil)
-                                          :findings (atom [])}]
+    (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/validate-logging {:level :warning}}}
+                                          :ignores    (atom nil)
+                                          :findings   (atom [])
+                                          :namespaces (atom {})}]
       (f {:node (api/parse-string (pr-str form))})
       (mapv :message @(:findings clj-kondo.impl.utils/*ctx*)))))
 
