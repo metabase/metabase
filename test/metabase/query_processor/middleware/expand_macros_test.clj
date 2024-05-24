@@ -49,14 +49,7 @@
                {:id         2
                 :name       "Segment 2"
                 :table-id   (meta/id :venues)
-                :definition {:filter [:is-null [:field 7 nil]]}}]
-    :metrics  [{:id         1
-                :name       "Metric 1"
-                :table-id   (meta/id :venues)
-                :definition {:aggregation [[:aggregation-options
-                                            [:sum [:field 20 nil]]
-                                            {:display-name "My Cool Aggregation"}]]
-                             :filter      [:= [:field 5 nil] "abc"]}}]}))
+                :definition {:filter [:is-null [:field 7 nil]]}}]}))
 
 (deftest ^:parallel segments-test
   (qp.store/with-metadata-provider mock-metadata-provider
