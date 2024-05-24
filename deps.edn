@@ -237,7 +237,7 @@
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:git/url "https://github.com/metabase/hawk"
-                                  :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
+                                  :git/sha "ac3c663b22114d99303b8da88d982248da391780"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}

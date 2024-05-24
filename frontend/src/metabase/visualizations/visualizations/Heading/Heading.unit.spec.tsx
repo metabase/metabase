@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders } from "__support__/ui";
 import { color } from "metabase/lib/colors";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
@@ -16,6 +17,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Heading } from "../Heading";
 
@@ -45,8 +47,14 @@ const defaultProps = {
   parameterValues: {},
 };
 
-const setup = (options: Options) => {
-  render(<Heading {...defaultProps} {...options} />);
+const setup = ({ parameterValues, ...options }: Options) => {
+  renderWithProviders(<Heading {...defaultProps} {...options} />, {
+    storeInitialState: {
+      dashboard: createMockDashboardState({
+        parameterValues,
+      }),
+    },
+  });
 };
 
 describe("Text", () => {

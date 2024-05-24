@@ -508,7 +508,8 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
+   (dissoc card :dataset_query_metrics_v2_migration_backup)))
 
 (t2/define-before-insert :model/Card
   [card]

@@ -302,10 +302,7 @@
 
 (t2/define-after-select :metadata/metric
   [metric]
-  (let [card (instance->metadata metric :metadata/metric)]
-    (-> card
-        (dissoc :dataset-query)
-        (assoc :definition (:dataset-query card)))))
+  (instance->metadata metric :metadata/metric))
 
 ;;;
 ;;; Segment
@@ -386,7 +383,7 @@
 
 
     :metadata/metric
-    (t2/select :metadata/metric :table_id table-id,:type :metric :archived false)
+    (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
 
     :metadata/legacy-metric
     (t2/select :metadata/legacy-metric :table_id table-id, :archived false)

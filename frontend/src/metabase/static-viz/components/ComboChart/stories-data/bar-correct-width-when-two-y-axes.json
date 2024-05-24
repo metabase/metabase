@@ -1,0 +1,493 @@
+[
+  {
+    "card": {
+      "displayIsLocked": true,
+      "cache_invalidated_at": null,
+      "archived": false,
+      "view_count": 1,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 744,
+                "q1": 1681.5,
+                "q3": 6020,
+                "max": 6578,
+                "sd": 2473.8528654711863,
+                "avg": 3752
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "BTC"
+          },
+          "field_ref": ["aggregation", 1],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 56.662458664541255,
+                "q1": 56.80883246662991,
+                "q3": 87.87344168472816,
+                "max": 88.31329491327396,
+                "sd": 17.016541966969204,
+                "avg": 75.39730024997462
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "avg_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 54.43766905499354,
+                "q1": 54.60614932759098,
+                "q3": 84.22781188984489,
+                "max": 84.68656836914737,
+                "sd": 16.222923412873346,
+                "avg": 72.3170922047589
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "last_used_at": null,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-05-23T23:47:11.437273Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            ["count"],
+            [
+              "avg",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ]
+          ]
+        }
+      },
+      "parameter_mappings": [],
+      "display": "combo",
+      "entity_id": "0YDHRDHqrGiAzFtsJEbuy",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_goal": false,
+        "graph.show_trendline": false,
+        "graph.show_values": true,
+        "graph.series_order_dimension": null,
+        "graph.label_value_frequency": "fit",
+        "graph.metrics": ["count", "avg", "avg_2"],
+        "graph.series_order": null,
+        "series_settings": {
+          "Doohickey": {
+            "display": "line"
+          },
+          "count": {
+            "display": "bar"
+          }
+        },
+        "graph.dimensions": ["CREATED_AT"],
+        "stackable.stack_type": null
+      },
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "metabase_version": "v0.1.3-SNAPSHOT (5a3ae84)",
+      "parameters": [],
+      "created_at": "2024-05-23T23:47:11.437273Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "original_card_id": 322
+    },
+    "data": {
+      "rows": [
+        [
+          "2022-01-01T00:00:00-03:00",
+          744,
+          56.662458664541255,
+          54.43766905499354
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          3610,
+          56.85762373399279,
+          54.662309418456786
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          5834,
+          87.42629999618556,
+          83.72402111778601
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          6578,
+          87.72682394187956,
+          84.07489306341073
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          1994,
+          88.31329491327396,
+          84.68656836914737
+        ]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "avg",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "effective_type": "type/Float",
+          "aggregation_index": 1,
+          "display_name": "Average of Total",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "avg_2",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "effective_type": "type/Float",
+          "aggregation_index": 2,
+          "display_name": "Average of Subtotal",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\", AVG(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"avg\", AVG(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"avg_2\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Canada/Eastern",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 744,
+                  "q1": 1681.5,
+                  "q3": 6020,
+                  "max": 6578,
+                  "sd": 2473.8528654711863,
+                  "avg": 3752
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "BTC"
+            },
+            "field_ref": ["aggregation", 1],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 56.662458664541255,
+                  "q1": 56.80883246662991,
+                  "q3": 87.87344168472816,
+                  "max": 88.31329491327396,
+                  "sd": 17.016541966969204,
+                  "avg": 75.39730024997462
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "avg_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 54.43766905499354,
+                  "q1": 54.60614932759098,
+                  "q3": 84.22781188984489,
+                  "max": 84.68656836914737,
+                  "sd": 16.222923412873346,
+                  "avg": 72.3170922047589
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 6578,
+          "unit": "year",
+          "offset": -25762.729004320387,
+          "last-change": -0.6968683490422621,
+          "col": "count",
+          "slope": 1.496422622443016,
+          "last-value": 1994,
+          "best-fit": [
+            "+",
+            -296040.2275868308,
+            ["*", 30315.040225593806, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 87.72682394187956,
+          "unit": "year",
+          "offset": -433.0119131122143,
+          "last-change": 0.006685195531334312,
+          "col": "avg",
+          "slope": 0.025776792604881173,
+          "last-value": 88.31329491327396,
+          "best-fit": [
+            "+",
+            -4964.223593557467,
+            ["*", 509.60730819235795, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 84.07489306341073,
+          "unit": "year",
+          "offset": -413.09096131129013,
+          "last-change": 0.007275362280571722,
+          "col": "avg_2",
+          "slope": 0.024610613646194022,
+          "last-value": 84.68656836914737,
+          "best-fit": [
+            "+",
+            -4739.199068747425,
+            ["*", 486.54131943134985, ["log", "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]

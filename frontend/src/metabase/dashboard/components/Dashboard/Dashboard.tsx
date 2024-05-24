@@ -22,23 +22,13 @@ import type {
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import Dashboards from "metabase/entities/dashboards";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
   DashCardDataMap,
   DashCardId,
-  Database,
-  DatabaseId,
-  Parameter,
   ParameterId,
   ParameterValueOrArray,
   CardId,
@@ -60,6 +50,7 @@ import type {
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
+import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
@@ -69,9 +60,6 @@ import {
   DashboardBody,
   DashboardHeaderContainer,
   ParametersAndCardsContainer,
-  ParametersWidgetContainer,
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
 } from "./Dashboard.styled";
 import {
   DashboardEmptyState,
@@ -93,20 +81,12 @@ type DashboardProps = {
   dashboard: IDashboard;
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, boolean>;
-  databases: Record<DatabaseId, Database>;
-  editingParameter?: Parameter | null;
-  parameters: UiParameter[];
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
-  metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
-  pageFavicon: string | null;
-  documentTitle: string | undefined;
-  isRunning: boolean;
-  isLoadingComplete: boolean;
   isHeaderVisible: boolean;
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
@@ -141,12 +121,8 @@ type DashboardProps = {
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
-  setParameterIndex: (id: ParameterId, index: number) => void;
-  setParameterValue: (id: ParameterId, value: RowValue) => void;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
-  setParameterValueToDefault: (id: ParameterId) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setEditingParameter: (id: ParameterId) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -174,9 +150,6 @@ type DashboardProps = {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
   updateDashboardAndCards: () => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
@@ -192,14 +165,11 @@ function DashboardInner(props: DashboardProps) {
     closeNavbar,
     dashboard,
     dashboardId,
-    draftParameterValues,
     editingOnLoad,
-    editingParameter,
     fetchDashboard,
     fetchDashboardCardData,
     fetchDashboardCardMetadata,
     initialize,
-    isAutoApplyFilters,
     isEditing,
     isFullscreen,
     isNavigatingBackToDashboard,
@@ -209,15 +179,10 @@ function DashboardInner(props: DashboardProps) {
     location,
     onRefreshPeriodChange,
     parameterValues,
-    parameters,
     selectedTabId,
     setDashboardAttributes,
     setEditingDashboard,
-    setEditingParameter,
     setErrorPage,
-    setParameterIndex,
-    setParameterValue,
-    setParameterValueToDefault,
     setSharing,
     toggleSidebar,
   } = props;
@@ -245,33 +210,10 @@ function DashboardInner(props: DashboardProps) {
     );
   }, [dashboard, selectedTabId]);
 
-  const hiddenParameterSlugs = useMemo(() => {
-    if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
-    }
-
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
-    const hiddenParameters = parameters.filter(
-      parameter => !currentTabParameterIds.includes(parameter.id),
-    );
-
-    return hiddenParameters.map(p => p.slug).join(",");
-  }, [parameters, currentTabDashcards, isEditing]);
-
-  const visibleParameters = useMemo(
-    () => getVisibleParameters(parameters, hiddenParameterSlugs),
-    [parameters, hiddenParameterSlugs],
-  );
-
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
-  const hasVisibleParameters = visibleParameters.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -442,13 +384,10 @@ function DashboardInner(props: DashboardProps) {
     return (
       <DashboardGridConnected
         clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
         isFullscreen={props.isFullscreen}
         isEditingParameter={props.isEditingParameter}
         isEditing={props.isEditing}
-        parameterValues={props.parameterValues}
-        dashcardData={props.dashcardData}
         dashboard={props.dashboard}
         slowCards={props.slowCards}
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
@@ -458,68 +397,6 @@ function DashboardInner(props: DashboardProps) {
     );
   };
 
-  const parametersWidget = (
-    <SyncedParametersList
-      parameters={getValuePopulatedParameters({
-        parameters,
-        values: isAutoApplyFilters ? parameterValues : draftParameterValues,
-      })}
-      editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
-      dashboard={dashboard}
-      isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
-      isEditing={isEditing}
-      setParameterValue={setParameterValue}
-      setParameterIndex={setParameterIndex}
-      setEditingParameter={setEditingParameter}
-      setParameterValueToDefault={setParameterValueToDefault}
-      enableParameterRequiredBehavior
-    />
-  );
-
-  const renderParameterList = () => {
-    if (!hasVisibleParameters) {
-      return null;
-    }
-
-    if (isEditing) {
-      return (
-        <ParametersWidgetContainer
-          hasScroll
-          isSticky
-          isFullscreen={isFullscreen}
-          isNightMode={shouldRenderAsNightMode}
-          data-testid="edit-dashboard-parameters-widget-container"
-        >
-          <FixedWidthContainer
-            isFixedWidth={dashboard?.width === "fixed"}
-            data-testid="fixed-width-filters"
-          >
-            {parametersWidget}
-          </FixedWidthContainer>
-        </ParametersWidgetContainer>
-      );
-    }
-
-    return (
-      <ParametersWidgetContainer
-        hasScroll={hasScroll}
-        isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
-        isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
-        data-testid="dashboard-parameters-widget-container"
-      >
-        <ParametersFixedWidthContainer
-          isFixedWidth={dashboard?.width === "fixed"}
-          data-testid="fixed-width-filters"
-        >
-          {parametersWidget}
-          <FilterApplyButton />
-        </ParametersFixedWidthContainer>
-      </ParametersWidgetContainer>
-    );
-  };
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -563,7 +440,6 @@ function DashboardInner(props: DashboardProps) {
               location={location}
               dashboard={dashboard}
               isNightMode={shouldRenderAsNightMode}
-              parametersWidget={parametersWidget}
               isFullscreen={isFullscreen}
               fetchDashboard={fetchDashboard}
               onEditingChange={handleSetEditing}
@@ -586,7 +462,6 @@ function DashboardInner(props: DashboardProps) {
               sidebar={props.sidebar}
               setSidebar={props.setSidebar}
               closeSidebar={props.closeSidebar}
-              databases={props.databases}
               isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
               showAddParameterPopover={props.showAddParameterPopover}
               hideAddParameterPopover={props.hideAddParameterPopover}
@@ -609,7 +484,10 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
-              {renderParameterList()}
+              <DashboardParameterPanel
+                isFullscreen={isFullscreen}
+                hasScroll={hasScroll}
+              />
               <CardsContainer data-element-id="dashboard-cards-container">
                 {renderContent()}
               </CardsContainer>
@@ -617,11 +495,9 @@ function DashboardInner(props: DashboardProps) {
 
             <DashboardSidebars
               dashboard={dashboard}
-              parameters={parameters}
               showAddParameterPopover={props.showAddParameterPopover}
               removeParameter={props.removeParameter}
               addCardToDashboard={props.addCardToDashboard}
-              editingParameter={props.editingParameter}
               clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
               onReplaceAllDashCardVisualizationSettings={
                 props.onReplaceAllDashCardVisualizationSettings
@@ -643,15 +519,11 @@ function DashboardInner(props: DashboardProps) {
                 props.setParameterFilteringParameters
               }
               setParameterRequired={props.setParameterRequired}
-              dashcardData={props.dashcardData}
               isFullscreen={props.isFullscreen}
               params={props.params}
               sidebar={props.sidebar}
               closeSidebar={props.closeSidebar}
               selectedTabId={props.selectedTabId}
-              getEmbeddedParameterVisibility={
-                props.getEmbeddedParameterVisibility
-              }
               setDashboardAttribute={handleSetDashboardAttribute}
               onCancel={() => setSharing(false)}
             />
@@ -660,16 +532,6 @@ function DashboardInner(props: DashboardProps) {
       )}
     </DashboardLoadingAndErrorWrapper>
   );
-}
-
-function isParametersWidgetContainersSticky(parameterCount: number) {
-  if (!isSmallScreen()) {
-    return true;
-  }
-
-  // Sticky header with more than 5 parameters
-  // takes too much space on small screens
-  return parameterCount <= 5;
 }
 
 function isSuccessfulFetchDashboardResult(
