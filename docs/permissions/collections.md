@@ -74,9 +74,7 @@ A group can be given access to a collection located somewhere within one or more
 
 ## Deleting collections
 
-Users with curate permission for a collection can move collections to Trash. Click the edit icon in the top-right of the collection screen and select **Move to Trash**. This will also trash all questions, dashboards, models, and all other sub-collections and their contents. Importantly, this will also remove any questions from all dashboards that use them.
-
-You can _restore_ items from Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md)
+Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
 
 ## Pinning items in collections
 

@@ -1,14 +1,14 @@
 ---
-title: Delete and recover items
+title: Delete and restore
 ---
 
-# Delete and recover items
+# Delete and restore
 
-Sometimes your questions, dashboards, or models outlive their usefulness. You can send outdated items to **Trash**.
+Sometimes your questions, dashboards, models, or collections outlive their usefulness. You can send outdated items to **Trash**.
 
 ![Move to trash](./images/move-to-trash.png)
 
-Items in **Trash** won't show up in search, and you won't be able to use them to create new questions and dashboards.
+Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md/#advanced-search) ), and you won't be able to use them to create new questions and dashboards.
 
 Moving items to Trash is not permanent: you'll be able to restore them to their original parent collection, or move them to another non-deleted collection. But if you'd' like to delete items permanently, [you can do that too](#permanently-deleting-items).
 
@@ -26,37 +26,42 @@ You;'ll be able to see the contents of deleted dashboards, questions, and models
 
 ## Search in Trash
 
-Items in **Trash** will not show up in search results by default. You can use a search filter to find items in trash.
+You can use [advanced search](./exploration.md/#advanced-search) with a "Search items in trash" toggle to find items in Trash
 
-To search in Trash:
+## Deleting and restoring items
 
-1. Open the search bar by clicking on **Search** at the top of the screen or pressing **Ctrl/Cmd+K**;
-2. Enter your search term;
-3. Click on **View and filter all results** under "Search results";
-4. In the filter sidebar on the right, toggle **Search items in the trash**.
-
-![Search in Trash toggle](./images/search-in-trash.png)
-
-## Deleting and restoring questions
-
-To delete a question:
+To move an item (question, dashboard, model, or collection) to Trash:
 
 1. Go to the question you want to delete;
 2. Click on the three dots menu;
 3. Select "Move to trash".
 
-You'll still be able to see the results and the visualization for the the deleted question in Trash, but you won't be able to modify it or use it as a source for other questions.
+> When a collection is deleted, all items in the collection are deleted as well.
 
-To restore a question:
+You'll still be able to see the contents of the items in Trash, but you won't be able to modify them or use them as a source for other questions.
+
+To restore an item:
 
 1. Go to Trash;
-2. Find the question you'd like to delete. You can sort deleted items to make it easier to find the question, or [search for your question in Trash](#search-in-trash);
-3. Click on the checkbox next to the question to select it;
+2. Find the item you'd like to delete. You can sort deleted items to make it easier to find the item, or [search for your question in Trash](#search-in-trash);
+3. Click on the checkbox next to the item to select it;
 4. Select "Restore".
 
-If the question's original collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the question from Trash to a different collection.
+> Restoring a collection will also restore all the items from that collection.
 
-Deleting or restoring a question will affect other items that depend on that question:
+If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the it from Trash to a different collection.
+
+## How deleting an item affects related items
+
+Deleting or restoring an item will affect other items that depend on that item.
+
+### Questions
+
+| Affected item                      | In Trash       | Permanently deleted                | Restored       |
+| ---------------------------------- | -------------- | ---------------------------------- | -------------- |
+| Dashboard                          | Card removed   | Card removed                       | Card restored  |
+| Question based on deleted question | Works normally | Breaks with `Card not found` error | Works normally |
+| Alerts                             | Removed        | Removed                            | Not restored   |
 
 - **Dashboards**: If a deleted question was included in any dashboards, then the card with the question results will be removed from those dashboards. If the question is restored from **Trash**, its card will be restored to the dashboards that used to contain it.
 
@@ -64,47 +69,24 @@ Deleting or restoring a question will affect other items that depend on that que
 
 - **Alerts**: If you delete a question, all alerts on that question will be deleted as well. You will get an email notification that the alert has been deactivated. If you restore the question from Trash, the alerts _will not_ be restored – you'll need to recreate them.
 
-## Deleting and restoring dashboards
+### Dashboards
 
-To delete a dashboard:
-
-1. Go to the model you want to delete;
-2. Click on the three dots menu;
-3. Select "Move to trash".
-
-You'll still be able to see the contents of the dashboard in **Trash**, but you won't be able to modify it.
-
-To restore a dashboard:
-
-1. Go to Trash;
-2. Find the dashboard you'd like to delete. You can sort deleted items to make it easier to find the dashboard, or [search for your dashboard in Trash](#search-in-trash);
-3. Click on the checkbox next to the dashboard to select it;
-4. Select "Restore".
-
-The dashboard will be restored to the parent collection that it was most recently saved in. If the dashboards's original collection has been deleted as well, you won't see an option to **Restore**, but you'll still be able to move the dashboard from Trash to a different collection.
-
-Deleting or restoring a dashboard will affect other items that depend on that dashboard:
+| Affected item   | In Trash                   | Permanently deleted        | Restored |
+| --------------- | -------------------------- | -------------------------- | -------- |
+| Subscriptions   | Deactivated                | Deactivated                | Restored |
+| Custom homepage | Revert to default homepage | Revert to default homepage | Restored |
 
 - **Dashboards subscriptions**: If a dashboard is deleted, any subscriptions to the dashboard will be deactivated. If a dashboard is restored from Trash, the subscriptions will be restored as well.
 
 - [**Custom home page**](../configuring-metabase/appearance.md#landing-page): If a deleted dashboard was set as a custom home page, the home page will revert to the default Metabase home page. If a dashboard is restored, the custom home page will be restored as well.
 
-## Deleting and restoring models
+### Model
 
-To delete a model:
-
-1. Go to the model you want to delete;
-2. Click on the three dots menu;
-3. Select "Move to trash".
-
-You'll still be able to see the model in Trash, but you won't be able to modify it.
-
-To restore a model:
-
-1. Go to Trash;
-2. Find the model you'd like to delete;
-3. Click on the three dot menu;
-4. Select "Restore".
+| Affected item                      | In Trash       | Permanently deleted                | Restored              |
+| ---------------------------------- | -------------- | ---------------------------------- | --------------------- |
+| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated           |
+| Dashboard                          | Card removed   | Card removed                       | Card restored estored |
+| Action                             | Works normally | Deleted                            | Works normally        |
 
 Deleting a model will affect other items that depend on that model:
 
@@ -114,30 +96,15 @@ Deleting a model will affect other items that depend on that model:
 
 - **Dashboards**: If a model is included as a card in any dashboards, then the card will be removed from those dashboards when the model is moved to Trash. If the model is restored from Trash, its card will be restored to the dashboards that used to contain it.
 
-## Deleting and restoring collections
+## Collections
 
-> When a collection is deleted, all items in the collection are deleted as well.
-
-To delete a collection:
-
-1. Go to the collection you want to delete;
-2. Click on the three dots menu;
-3. Select "Move to trash".
-
-You'll still be able to browse the collection in Trash. Individual items from a deleted collection and can be restored or moved from Trash to a different collection.
-
-To restore a collection:
-
-1. Go to Trash;
-2. Find the collection you'd like to delete. You can sort deleted items to make it easier to find the dashboard, or [search for your collection in Trash](#search-in-trash);
-3. Click on the checkbox next to the collection to select it;
-4. Select "Restore".
-
-Restoring a collection will also restore all the items from that collection.
+| Affected item                | In Trash | Permanently deleted | Restored |
+| ---------------------------- | -------- | ------------------- | -------- |
+| Everything in the collection | In Trash | Permanently deleted | Restored |
 
 ## Permanently deleting items
 
-Moving an item to Trash is not permanent: you'll be able to restore them to the original parent collection, or move it to a non-deleted collection.
+Moving an item to Trash is not permanent: you'll be able to restore it to the original parent collection, or move it to a non-deleted collection.
 
 To permanently delete an item:
 
@@ -148,9 +115,15 @@ To permanently delete an item:
 
 ## Deleting and restoring events and timelines
 
-Events and timelines can be archived. See [Archiving Events and timelines](events-and-timelines.md#archiving-timelines).
+Events and timelines can be archived and unarchived. See [Archiving Events and timelines](events-and-timelines.md#archiving-timelines).
 
 You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](events-and-timelines.md#view-archived-events-and-timelines).
+
+## Deleting and restoring SQL snippets
+
+SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
+
+You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the cSnippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
 
 ## Deleting metrics and segments
 
