@@ -376,8 +376,10 @@
     (when (hooks/token-node? node)
       (let [sexpr (hooks/sexpr node)]
         (when (symbol? sexpr)
-          (when-let [resolved (hooks/resolve {:name sexpr})]
-            (symbol (name (:ns resolved)) (name (:name resolved)))))))
+          (if (qualified-symbol? sexpr)
+            sexpr
+            (when-let [resolved (hooks/resolve {:name sexpr})]
+              (symbol (name (:ns resolved)) (name (:name resolved))))))))
     ;; some symbols like `*count/Integer` aren't resolvable.
     (catch Exception _
       nil)))

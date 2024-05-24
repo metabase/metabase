@@ -315,5 +315,5 @@
             (if (>= elapsed-time timeout-ms)
               nil ; timeout reached
               (do
-                (Thread/sleep interval-ms)
+                (Thread/sleep (long interval-ms))
                 (recur)))))))))
