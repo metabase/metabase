@@ -128,7 +128,6 @@ export const computeContinuousScaleBarWidth = (
   xAxisModel: TimeSeriesXAxisModel | NumericXAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   stackedOrSingleSeries: boolean,
 ) => {
   let barWidth =
@@ -139,8 +138,6 @@ export const computeContinuousScaleBarWidth = (
     barWidth /= barSeriesCount;
   }
 
-  barWidth /= yAxisWithBarSeriesCount;
-
   return barWidth;
 };
 
@@ -148,7 +145,6 @@ export const computeBarWidth = (
   xAxisModel: XAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   isStacked: boolean,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
@@ -160,7 +156,6 @@ export const computeBarWidth = (
       xAxisModel,
       boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       stackedOrSingleSeries,
     );
   }
@@ -187,7 +182,6 @@ const buildEChartsBarSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
@@ -215,7 +209,6 @@ const buildEChartsBarSeries = (
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       !!stackName,
     ),
     encode: {
@@ -539,25 +532,6 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, number>,
   );
 
-  const barSeriesCountByYAxisIndex = chartModel.seriesModels.reduce(
-    (acc, seriesModel) => {
-      const isBar =
-        seriesSettingsByDataKey[seriesModel.dataKey].display === "bar";
-
-      if (isBar) {
-        const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
-        acc[yAxisIndex] = (acc[yAxisIndex] ?? 0) + 1;
-      }
-
-      return acc;
-    },
-    {} as Record<number, number>,
-  );
-
-  const yAxisWithBarSeriesCount = Object.keys(
-    barSeriesCountByYAxisIndex,
-  ).length;
-
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
@@ -609,7 +583,6 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             barSeriesCount,
-            yAxisWithBarSeriesCount,
             hasMultipleSeries,
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,

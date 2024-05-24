@@ -675,6 +675,13 @@ TwoBarsTwoAreasOneLineLog.args = {
   renderingContext,
 };
 
+export const BarCorrectWidthWhenTwoYAxes = Template.bind({});
+BarCorrectWidthWhenTwoYAxes.args = {
+  rawSeries: data.barCorrectWidthWhenTwoYAxes as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
