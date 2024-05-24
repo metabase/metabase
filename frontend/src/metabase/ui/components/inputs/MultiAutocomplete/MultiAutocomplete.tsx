@@ -131,7 +131,13 @@ export function MultiAutocomplete({
 
   const info = (
     <Tooltip
-      label={t`Separate values with commas, tabs or newlines. Use double quotes for values containing commas.`}
+      label={
+        <>
+          {t`Separate values with commas, tabs or newlines.`}
+          <br />
+          {t` Use double quotes for values containing commas.`}
+        </>
+      }
     >
       <Icon name="info_filled" className={styles.icon} />
     </Tooltip>
