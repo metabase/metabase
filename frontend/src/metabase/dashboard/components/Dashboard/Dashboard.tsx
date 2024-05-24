@@ -107,7 +107,6 @@ type DashboardProps = {
   editingOnLoad?: string | string[];
 
   initialize: (opts?: { clearCache?: boolean }) => void;
-  fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -182,7 +181,6 @@ function DashboardInner(props: DashboardProps) {
     editingOnLoad,
     fetchDashboard,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     initialize,
     isEditing,
     isFullscreen,
@@ -323,7 +321,6 @@ function DashboardInner(props: DashboardProps) {
     }
     if (previousTabId !== selectedTabId) {
       fetchDashboardCardData();
-      fetchDashboardCardMetadata();
       return;
     }
     const didDashboardLoad = !previousDashboard && dashboard;
@@ -338,7 +335,6 @@ function DashboardInner(props: DashboardProps) {
     dashboard,
     dashboardId,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     handleLoadDashboard,
     parameterValues,
     previousDashboard,
