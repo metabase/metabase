@@ -106,6 +106,22 @@
                        (not (lib.util.match/match-one (:expressions stage) :offset)))))
                (:stages query))))
 
+(defn- add-effective-type
+  [metadata-providerable x]
+  (cond-> x
+    (map? x)
+    (lib.util.match/replace
+     #_#_
+     [:field (_options :guard map?) (id :guard integer?)]
+     (update &match 1
+             merge (select-keys (lib.metadata/field metadata-providerable id)
+                                [:effective-type]))
+
+     [:field (id :guard integer?) (_options :guard (some-fn nil? map?))]
+     (update &match 2
+             merge (select-keys (lib.metadata/field metadata-providerable id)
+                                [:effective-type])))))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
@@ -139,9 +155,14 @@
         (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
+;; adding effective-type here is required because :between is converted to >= < in later stages
+;; args of those should be also comparable!
 (defmethod query-method :query ; legacy MBQL query
   [metadata-providerable legacy-query]
-  (query-from-legacy-query metadata-providerable legacy-query))
+  (query-from-legacy-query metadata-providerable
+                           #_legacy-query
+                           (add-effective-type metadata-providerable
+                                               legacy-query)))
 
 (defmethod query-method :native ; legacy native query
   [metadata-providerable legacy-query]
