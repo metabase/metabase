@@ -35,17 +35,14 @@ import type { State } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getCardData,
+  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDocumentTitle,
-  getDraftParameterValues,
-  getEditingParameter,
   getFavicon,
   getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
-  getIsAutoApplyFilters,
   getIsDirty,
   getIsEditing,
   getIsEditingParameter,
@@ -55,7 +52,6 @@ import {
   getIsRunning,
   getIsSharing,
   getLoadingStartTime,
-  getParameters,
   getParameterValues,
   getSelectedTabId,
   getSidebar,
@@ -82,14 +78,11 @@ const mapStateToProps = (state: State) => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
+    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     // this type is a bandaid until we can fix the type of metadata.databases
     databases: metadata.databases as Record<DatabaseId, Database>,
-    editingParameter: getEditingParameter(state),
-    parameters: getParameters(state),
     parameterValues: getParameterValues(state),
-    draftParameterValues: getDraftParameterValues(state),
 
     metadata,
     loadingStartTime: getLoadingStartTime(state),
@@ -103,7 +96,6 @@ const mapStateToProps = (state: State) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
-    isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
@@ -211,6 +203,7 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
   if (dashboardId) {
     return dashboardId;
   }
+
   return Urls.extractEntityId(params.slug) as DashboardId;
 }
 

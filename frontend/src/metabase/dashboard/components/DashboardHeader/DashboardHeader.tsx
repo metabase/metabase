@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { Location } from "history";
-import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
+import { type MouseEvent, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 
@@ -70,6 +70,7 @@ import type {
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
+import { DashboardParameterList } from "../DashboardParameterList";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -93,7 +94,6 @@ type DashboardHeaderProps = {
   isAdditionalInfoVisible: boolean;
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
-  parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -356,6 +356,10 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
     const buttons = [];
     const extraButtons = [];
+
+    if (isFullscreen) {
+      buttons.push(<DashboardParameterList isFullscreen={isFullscreen} />);
+    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;

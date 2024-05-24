@@ -23,12 +23,6 @@
                         (:fields table-metadata)))
         (:tables metadata-graph)))
 
-(defn- graph-legacy-metric [metadata-graph metric-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) metric-id)
-                        (:metrics table-metadata)))
-        (:tables metadata-graph)))
-
 (defn- graph-segment [metadata-graph segment-id]
   (some (fn [table-metadata]
           (m/find-first #(= (:id %) segment-id)
@@ -43,7 +37,6 @@
   (let [f (case metadata-type
             :metadata/table         graph-table
             :metadata/column        graph-field
-            :metadata/legacy-metric graph-legacy-metric
             :metadata/segment       graph-segment
             :metadata/card          graph-card)]
     (into []
@@ -58,10 +51,13 @@
 (defn- graph-metadatas-for-table [metadata-graph metadata-type table-id]
   (let [k     (case metadata-type
                 :metadata/column        :fields
-                :metadata/legacy-metric :metrics
+                :metadata/metric        :cards
                 :metadata/segment       :segments)
         table (find-table metadata-graph table-id)]
-    (get table k)))
+    (cond->> (get table k)
+      (= metadata-type :metadata/metric)
+      (filterv #(and (= (:type %) :metric)
+                     (not (:archived %)))))))
 
 (defn- graph-setting [metadata-graph setting-name]
   (get-in metadata-graph [:settings (keyword setting-name)]))
