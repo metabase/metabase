@@ -61,7 +61,7 @@ export function QuestionDataSource({
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
       <SourceDatasetBreadcrumbs
-        model={originalQuestion}
+        question={originalQuestion}
         variant={variant}
         {...props}
       />
@@ -85,7 +85,7 @@ export function QuestionDataSource({
             ) {
               return (
                 <SourceDatasetBreadcrumbs
-                  model={sourceQuestion}
+                  question={sourceQuestion}
                   collection={collection}
                   variant={variant}
                   {...props}
@@ -122,11 +122,11 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
-  model: PropTypes.object.isRequired,
+  question: PropTypes.object.isRequired,
   collection: PropTypes.object.isRequired,
 };
 
-function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
+function SourceDatasetBreadcrumbs({ question, collection, ...props }) {
   return (
     <HeadBreadcrumbs
       {...props}
@@ -134,12 +134,12 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon="model"
+          icon={question.type() === "metric" ? "metric" : "model"}
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        model.isArchived() ? (
+        question.isArchived() ? (
           <Tooltip
             key="dataset-name"
             tooltip={t`This model is archived and shouldn't be used.`}
@@ -150,15 +150,15 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
               inactiveColor="text-light"
               icon={{ name: "warning", color: color("danger") }}
             >
-              {model.displayName()}
+              {question.displayName()}
             </HeadBreadcrumbs.Badge>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
-            to={Urls.question(model.card())}
+            to={Urls.question(question.card())}
             inactiveColor="text-light"
           >
-            {model.displayName()}
+            {question.displayName()}
           </HeadBreadcrumbs.Badge>
         ),
       ]}

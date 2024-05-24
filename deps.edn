@@ -87,7 +87,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.171"
+  metabase/saml20-clj                       {:mvn/version "2.2.7.172"
                                              :exclusions [                      ; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -237,7 +237,7 @@
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:git/url "https://github.com/metabase/hawk"
-                                  :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
+                                  :git/sha "ac3c663b22114d99303b8da88d982248da391780"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -629,7 +629,6 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
-
 ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
@@ -699,6 +698,13 @@
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; test search-related stuff.
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/search
+  :test/search
+  {:exec-args {:only [metabase.api.search-test
+                      "test/metabase/search"]}}
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps

@@ -7,8 +7,8 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  CartesianChartModel,
   DataKey,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
@@ -61,7 +61,6 @@ export const getCartesianChartOption = (
       )
     : null;
 
-  // series option
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
     settings,

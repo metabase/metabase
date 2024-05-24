@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [medley.core :as m]
-   [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.db.query :as mdb.query]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -11,7 +11,6 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.recent-views :as recent-views]
    [metabase.models.table :refer [Table]]
-   [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -33,7 +32,8 @@
      "table"     [Table
                   :id :name :db_id :active
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
-                  :visibility_type [:metabase_database.name :database-name]])
+                  [:visibility_type :visibility_type]
+                  [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      (cond-> {:where [:in (self-qualify :id) ids]}
@@ -73,26 +73,26 @@
   Viewing a Dashboard will add entries to the view log for all cards on that dashboard so all card views are instead derived
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
-  [views-limit card-runs-limit all-users?]
-  ;; TODO update to use RecentViews instead of ViewLog
-  (let [dashboard-and-table-views (t2/select [ViewLog
-                                              [[:min :view_log.user_id] :user_id]
+  [views-limit card-runs-limit]
+  (let [dashboard-and-table-views (t2/select [:model/RecentViews
+                                              [[:min :recent_views.user_id] :user_id]
                                               :model
                                               :model_id
-                                              [:%count.* :cnt]
+                                              [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
-                                                          (when-not all-users? [:= (mdb.query/qualify ViewLog :user_id) *current-user-id*])
-                                                          [:in :model #{"dashboard" "table"}]
-                                                          [:= :bm.id nil]]
+                                                          [:in :model #{"dashboard" "table"}]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
                                               :limit     views-limit
-                                              :left-join [[:dashboard_bookmark :bm]
+                                              :left-join [[:report_dashboard :d]
                                                           [:and
                                                            [:= :model "dashboard"]
-                                                           [:= :bm.user_id *current-user-id*]
-                                                           [:= :model_id :bm.dashboard_id]]]})
+                                                           [:= :d.id :model_id]]
+                                                          [:metabase_table :t]
+                                                          [:and
+                                                           [:= :model "table"]
+                                                           [:= :t.id :model_id]]]})
         card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
                                                    [(mdb.query/qualify QueryExecution :card_id) :model_id]
@@ -100,15 +100,9 @@
                                                    [:%max.started_at :max_ts]]
                                                   {:group-by [(mdb.query/qualify QueryExecution :card_id) :context]
                                                    :where    [:and
-                                                              (when-not all-users? [:= :executor_id *current-user-id*])
-                                                              [:= :context (h2x/literal :question)]
-                                                              [:= :bm.id nil]]
+                                                              [:= :context (h2x/literal :question)]]
                                                    :order-by [[:max_ts :desc]]
-                                                   :limit    card-runs-limit
-                                                   :left-join [[:card_bookmark :bm]
-                                                               [:and
-                                                                [:= :bm.user_id *current-user-id*]
-                                                                [:= (mdb.query/qualify QueryExecution :card_id) :bm.card_id]]]})
+                                                   :limit    card-runs-limit})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
@@ -192,22 +186,22 @@
   ;; - total count -> higher = higher score
   ;; - recently viewed -> more recent = higher score
   ;; - official/verified -> yes = higher score
-  (let [views (views-and-runs views-limit card-runs-limit true)
+  (let [views            (views-and-runs views-limit card-runs-limit)
         model->id->items (models-for-views views)
-        filtered-views (for [{:keys [model model_id] :as view-log} views
-                             :let [model-object (-> (get-in model->id->items [model model_id])
-                                                    (dissoc :dataset_query))]
-                             :when (and model-object
-                                        (mi/can-read? model-object)
-                                        ;; hidden tables, archived cards/dashboards
-                                        (not (or (:archived model-object)
-                                                 (= (:visibility_type model-object) :hidden))))
-                             :let [is-dataset? (= (keyword (:type model-object)) :model)
-                                   is-metric? (= (keyword (:type model-object)) :metric)]]
-                         (cond-> (assoc view-log :model_object model-object)
-                           is-dataset? (assoc :model "dataset")
-                           is-metric? (assoc :model "metric")))
-        scored-views (score-items filtered-views)]
+        filtered-views   (for [{:keys [model model_id] :as view-log} views
+                               :let [model-object (-> (get-in model->id->items [model model_id])
+                                                      (dissoc :dataset_query))]
+                               :when (and model-object
+                                          (mi/can-read? model-object)
+                                          ;; hidden tables, archived cards/dashboards
+                                          (not (or (:archived model-object)
+                                                   (= (:visibility_type model-object) :hidden))))
+                               :let [is-dataset? (= (keyword (:type model-object)) :model)
+                                     is-metric? (= (keyword (:type model-object)) :metric)]]
+                           (cond-> (assoc view-log :model_object model-object)
+                             is-dataset? (assoc :model "dataset")
+                             is-metric? (assoc :model "metric")))
+        scored-views     (score-items filtered-views)]
     (->> scored-views
          (sort-by
           ;; sort by model first, and then score when they are the same model
@@ -218,13 +212,9 @@
                    recent-views/fill-recent-view-info)))))
 
 (api/defendpoint GET "/popular_items"
-  "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
-  finds anything archived, deleted, etc it can usually still get 5."
+  "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
+  archived, deleted, etc it can usually still get 5. "
   []
-  ;; we can do a weighted score which incorporates:
-  ;; total count -> higher = higher score
-  ;; recently viewed -> more recent = higher score
-  ;; official/verified -> yes = higher score
   {:popular_items (get-popular-items-model-and-id)})
 
-(define-routes)
+(api/define-routes)

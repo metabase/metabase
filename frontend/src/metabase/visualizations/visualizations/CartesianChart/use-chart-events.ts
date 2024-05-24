@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   GOAL_LINE_SERIES_ID,
   ORIGINAL_INDEX_DATA_KEY,
+  TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -33,7 +34,7 @@ import { getHoveredEChartsSeriesIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {
@@ -84,7 +85,7 @@ export const useChartEvents = (
             return;
           }
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             const eventData = getTimelineEventsHoverData(
               timelineEventsModel,
               event,
@@ -124,7 +125,7 @@ export const useChartEvents = (
         handler: (event: EChartsSeriesMouseEvent) => {
           const clickData = getSeriesClickData(chartModel, settings, event);
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             onOpenTimelines?.();
 
             const clickedTimelineEvents = getTimelineEventsForEvent(
