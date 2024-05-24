@@ -111,13 +111,35 @@ export function offsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const period = getPeriodName(query, stageIndex);
   const { displayName } = displayInfo(query, stageIndex, clause);
+  const ofsettedClause = expressionClause("offset", [clause, offset]);
+  const period = getPeriodName(query, stageIndex);
   const newName = t`${displayName} (previous ${period})`;
-  const newClause = expressionClause("offset", [clause, offset], {
-    name: newName,
-    "display-name": newName,
-  });
+  return withExpressionName(ofsettedClause, newName);
+}
+
+export function diffOffsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+  const newClause = expressionClause("-", [clause, offsettedClause]);
+  return newClause;
+}
+
+export function percentDiffOffsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+  const newClause = expressionClause("-", [
+    expressionClause("/", [clause, offsettedClause]),
+    1,
+  ]);
   return newClause;
 }
 
