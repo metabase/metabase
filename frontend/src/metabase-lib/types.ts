@@ -286,18 +286,13 @@ export type ExpressionParts = {
   options: ExpressionOptions;
 };
 
-export type OffsetExpressionOptions = {
+export type ExpressionOptions = {
+  "case-sensitive"?: boolean;
+  "include-current"?: boolean;
   "lib/uuid"?: string;
-  name: string;
-  "display-name": string;
+  name?: string;
+  "display-name"?: string;
 };
-
-export type ExpressionOptions =
-  | {
-      "case-sensitive"?: boolean;
-      "include-current"?: boolean;
-    }
-  | OffsetExpressionOptions;
 
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
