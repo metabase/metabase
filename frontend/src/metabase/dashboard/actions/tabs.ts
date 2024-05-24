@@ -36,7 +36,9 @@ import {
 
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
-type CreateNewTabPayload = { tabId: DashboardTabId };
+type CreateNewTabPayload = {
+  tabId: DashboardTabId;
+};
 type DuplicateTabPayload = {
   sourceTabId: DashboardTabId | null;
   newTabId: DashboardTabId;
@@ -48,12 +50,17 @@ type DeleteTabPayload = {
 type UndoDeleteTabPayload = {
   tabDeletionId: TabDeletionId;
 };
-type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
+type RenameTabPayload = {
+  tabId: DashboardTabId | null;
+  name: string;
+};
 type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type SelectTabPayload = { tabId: DashboardTabId | null };
+type SelectTabPayload = {
+  tabId: DashboardTabId | null;
+};
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -64,7 +71,9 @@ type UndoMoveDashCardToTabPayload = {
   originalRow: number;
   originalTabId: number;
 };
-type InitTabsPayload = { slug: string | undefined };
+type InitTabsPayload = {
+  slug: string | undefined;
+};
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DUPLICATE_TAB = "metabase/dashboard/DUPLICATE_TAB";
@@ -558,7 +567,12 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<
       string,
-      { type: string; payload?: { clearCache: boolean } }
+      {
+        type: string;
+        payload?: {
+          clearCache: boolean;
+        };
+      }
     >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
       if (clearCache) {
         state.selectedTabId = INITIAL_DASHBOARD_STATE.selectedTabId;
