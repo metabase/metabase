@@ -17,7 +17,7 @@ import {
   validateCacheTTL,
 } from "./utils";
 
-if (false && hasPremiumFeature("cache_granular_controls")) {
+if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.cacheTTLFormField = {
     name: "cache_ttl",
     validate: validateCacheTTL,
@@ -43,5 +43,5 @@ if (false && hasPremiumFeature("cache_granular_controls")) {
     schedule: enterpriseOnlyCachingStrategies.schedule,
     ttl: enterpriseOnlyCachingStrategies.ttl,
     nocache: PLUGIN_CACHING.strategies.nocache,
-  }
+  };
 }
