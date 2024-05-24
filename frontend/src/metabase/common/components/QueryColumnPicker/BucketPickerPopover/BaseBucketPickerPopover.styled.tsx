@@ -22,7 +22,7 @@ export const ChevronDown = styled(Icon)`
 export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  min-width: 35%;
   max-width: 50%;
   gap: 0.5rem;
 
