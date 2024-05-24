@@ -320,6 +320,10 @@ class Visualization extends PureComponent {
 
   onRenderError = error => {
     console.error(error);
+    this.setState({ error });
+  };
+
+  onErrorBoundaryError = error => {
     if (error?.message) {
       return this.setState({ error: error.message });
     }
@@ -471,7 +475,7 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary onError={this.onRenderError}>
+      <ErrorBoundary onError={this.onErrorBoundaryError}>
         <VisualizationRoot
           className={className}
           style={style}
