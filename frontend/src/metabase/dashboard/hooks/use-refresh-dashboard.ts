@@ -1,6 +1,7 @@
 import {
   fetchDashboard,
   fetchDashboardCardData,
+  fetchDashboardCardMetadata,
 } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import type { DashboardId } from "metabase-types/api";
@@ -32,6 +33,7 @@ export const useRefreshDashboard = ({
           clearCache: false,
         }),
       );
+      dispatch(fetchDashboardCardMetadata());
     }
   };
 
