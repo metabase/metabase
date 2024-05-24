@@ -255,6 +255,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -289,9 +292,6 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
-  "lib/uuid"?: string;
-  name?: string;
-  "display-name"?: string;
 };
 
 declare const FilterOperator: unique symbol;
