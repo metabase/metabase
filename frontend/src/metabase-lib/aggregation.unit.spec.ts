@@ -7,38 +7,40 @@ import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 const offset = -1;
 
 describe("aggregation", () => {
-  it("works", () => {
-    const stageIndex = -1;
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-    });
-    const [aggregationClause] = aggregations(query, stageIndex);
+  describe("offsetClause", () => {
+    it("offsets Count aggregation", () => {
+      const stageIndex = -1;
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const [aggregationClause] = aggregations(query, stageIndex);
 
-    const finalQuery = offsetClause(
-      query,
-      stageIndex,
-      aggregationClause,
-      offset,
-    );
+      const finalQuery = offsetClause(
+        query,
+        stageIndex,
+        aggregationClause,
+        offset,
+      );
 
-    expect(toLegacyQuery(finalQuery)).toMatchObject({
-      database: SAMPLE_DATABASE.id,
-      query: {
-        aggregation: [
-          ["count"],
-          [
-            "offset",
-            {
-              name: "Count (previous period)",
-              "display-name": "Count (previous period)",
-            },
+      expect(toLegacyQuery(finalQuery)).toMatchObject({
+        database: SAMPLE_DATABASE.id,
+        query: {
+          aggregation: [
             ["count"],
-            offset,
+            [
+              "offset",
+              {
+                name: "Count (previous period)",
+                "display-name": "Count (previous period)",
+              },
+              ["count"],
+              offset,
+            ],
           ],
-        ],
-        "source-table": ORDERS_ID,
-      },
-      type: "query",
+          "source-table": ORDERS_ID,
+        },
+        type: "query",
+      });
     });
   });
 });
