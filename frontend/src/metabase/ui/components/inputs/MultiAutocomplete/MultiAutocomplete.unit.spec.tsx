@@ -80,6 +80,19 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
+  it("should accept a value when no comma has been entered", async () => {
+    const { input, onChange } = setup({ data: EXAMPLE_DATA });
+    await userEvent.type(input, "foo", {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
+
+    await userEvent.type(input, ",bar", {
+      pointerEventsCheck: 0,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
+  });
+
   it("should accept values when entering a comma", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
     await userEvent.type(input, "foo,", {
@@ -215,9 +228,6 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo123", {
       pointerEventsCheck: 0,
     });
-    await userEvent.type(input, "{left}", {
-      pointerEventsCheck: 0,
-    });
 
     input.focus();
     // @ts-expect-error: input does have setSelectionRange, and testing-library does not provide a wrapper
@@ -226,5 +236,17 @@ describe("MultiAutocomplete", () => {
 
     expect(onChange).toHaveBeenLastCalledWith(["fooquu", "xyz123"]);
     expect(input).toHaveValue("");
+  });
+
+  it("should be possible to paste a partial value", async () => {
+    const { input, onChange } = setup({
+      data: EXAMPLE_DATA,
+    });
+
+    input.focus();
+    await userEvent.paste('"quu');
+
+    expect(onChange).toHaveBeenLastCalledWith(['"quu']);
+    expect(input).toHaveValue('"quu');
   });
 });

@@ -1,82 +1,17 @@
-const separators = [",", "\n", "\t"];
+/* eslint-disable-next-line import/no-unresolved */
+import { parse } from "csv-parse/sync";
 
-export function parseValues(text: string): string[] {
-  let insideDoubleQuotes = false;
-  let escaping = false;
-
-  let value = "";
-  const values: string[] = [];
-
-  const seen = new Set<string>();
-
-  function add() {
-    if (value === "") {
-      return;
-    }
-
-    const trimmed = value.trim();
-
-    if (!seen.has(trimmed)) {
-      seen.add(trimmed);
-      values.push(trimmed);
-    }
-
-    value = "";
+export function parseValues(str: string): string[] {
+  try {
+    return parse(str, {
+      delimiter: [",", "\t", "\n"],
+      skip_empty_lines: true,
+      relax_column_count: true,
+      trim: true,
+      quote: '"',
+      escape: "\\",
+    }).flat();
+  } catch (err) {
+    return [];
   }
-
-  for (const char of text) {
-    if (separators.includes(char)) {
-      if (insideDoubleQuotes) {
-        value += char;
-      } else {
-        add();
-      }
-
-      continue;
-    }
-
-    value += char;
-
-    if (char === `"`) {
-      if (escaping) {
-        escaping = false;
-        continue;
-      }
-      if (insideDoubleQuotes) {
-        insideDoubleQuotes = false;
-        add();
-        continue;
-      } else {
-        insideDoubleQuotes = true;
-        continue;
-      }
-    }
-    if (char === "\\") {
-      if (escaping) {
-        escaping = false;
-        continue;
-      } else {
-        escaping = true;
-        continue;
-      }
-    }
-  }
-
-  values.push(value);
-
-  return values;
-}
-
-export function cleanValue(value: string): string {
-  const trimmed = value.trim();
-
-  if (
-    trimmed.startsWith('"') &&
-    trimmed.endsWith('"') &&
-    trimmed.at(-2) !== "\\"
-  ) {
-    return trimmed.slice(1, -1).replace(/\\"/g, '"');
-  }
-
-  return trimmed;
 }

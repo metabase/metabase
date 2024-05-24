@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
 
-import { parseValues, cleanValue } from "./util";
+import { parseValues } from "./util";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
@@ -40,7 +40,7 @@ export function MultiAutocomplete({
   });
   const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
-  const visibleValues = isFocused ? lastSelectedValues : selectedValues;
+  const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
   const items = useMemo(
     () => getAvailableSelectItems(data, lastSelectedValues),
@@ -58,14 +58,32 @@ export function MultiAutocomplete({
     onFocus?.(event);
   };
 
+  function isValid(value: string) {
+    return value !== "" && shouldCreate?.(value, lastSelectedValues);
+  }
+
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
-    setLastSelectedValues(selectedValues);
+
+    const values = parseValues(searchValue);
+    const validValues = values.filter(isValid);
+
     setSearchValue("");
+
+    if (values.length > 0) {
+      const newValues = [...lastSelectedValues, ...validValues];
+      setSelectedValues(newValues);
+      setLastSelectedValues(newValues);
+    } else {
+      setLastSelectedValues(selectedValues);
+    }
+
     onBlur?.(event);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+
     const input = event.target as HTMLInputElement;
     const value = input.value;
     const before = value.slice(0, input.selectionStart ?? value.length);
@@ -73,41 +91,40 @@ export function MultiAutocomplete({
 
     const pasted = event.clipboardData.getData("text");
     const text = `${before}${pasted}${after}`;
+
     const values = parseValues(text);
-    const validValues = values
-      .map(cleanValue)
-      .filter(value => shouldCreate?.(value, selectedValues));
+    const validValues = values.filter(isValid);
 
-    event.preventDefault();
-
-    if (validValues.length > 0) {
-      const newSelectedValues = [...lastSelectedValues, ...validValues];
-      setSelectedValues(newSelectedValues);
-      setLastSelectedValues(newSelectedValues);
+    if (values.length > 0) {
+      const newValues = [...lastSelectedValues, ...validValues];
+      setSelectedValues(newValues);
+      setLastSelectedValues(newValues);
       setSearchValue("");
+    } else {
+      setSearchValue(text);
+      setSelectedValues([...lastSelectedValues, text]);
     }
   };
 
   const handleSearchChange = (newSearchValue: string) => {
-    const values = parseValues(newSearchValue);
-    const validValues = values
-      .map(cleanValue)
-      .filter(value => shouldCreate?.(value, lastSelectedValues));
+    const last = newSearchValue.at(-1);
 
-    const last = values.at(-1);
+    setSearchValue(newSearchValue);
+    setSelectedValues([...lastSelectedValues, newSearchValue]);
 
-    if (last === "") {
-      setSearchValue("");
-      const newSelectedValues = [...lastSelectedValues, ...validValues];
-      setSelectedValues(newSelectedValues);
-      setLastSelectedValues(newSelectedValues);
-    } else {
-      setSearchValue(last ?? "");
-      setSelectedValues([...lastSelectedValues, ...validValues]);
-      setLastSelectedValues([
-        ...lastSelectedValues,
-        ...validValues.slice(0, -1),
-      ]);
+    if (last === "," || last === "\t" || last === "\n" || last === '"') {
+      const values = parseValues(newSearchValue);
+      const validValues = values.filter(
+        value => value !== "" && shouldCreate?.(value, lastSelectedValues),
+      );
+
+      if (values.length > 0) {
+        const newValues = [...lastSelectedValues, ...validValues];
+        setSelectedValues(newValues);
+        setLastSelectedValues(newValues);
+
+        setSearchValue("");
+      }
     }
   };
 
