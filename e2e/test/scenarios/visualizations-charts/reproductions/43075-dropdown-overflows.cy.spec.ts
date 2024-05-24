@@ -9,7 +9,6 @@ import {
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails: StructuredQuestionDetails = {
-  name: "20548",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
