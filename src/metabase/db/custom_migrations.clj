@@ -1413,7 +1413,7 @@
                  :where  [:= :id db-id]})))
   (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
     (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
-                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt (str "true"))}
+                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
                     {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
                     {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
       (->> settings

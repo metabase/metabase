@@ -321,8 +321,8 @@
           (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
                                                                    :perms/view-data
                                                                    (u/the-id db)))
-             ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
-             ;; (at least) `:query-builder` plus unrestricted view-data
+          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
+          ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
                      (data-perms/full-schema-permission-for-user api/*current-user-id*
                                                                  :perms/create-queries
