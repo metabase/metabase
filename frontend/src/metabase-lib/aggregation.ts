@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import * as ML from "cljs/metabase.lib.js";
 // TODO: fixme
 import { uuid } from "metabase/lib/uuid";
@@ -85,13 +87,14 @@ export function offsetClause(
   query: Query,
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause,
-  name: string,
   offset: number,
 ): Query {
+  const { displayName } = displayInfo(query, stageIndex, clause);
+  const newName = t`${displayName} (previous period)`;
   const newClause = expressionClause("offset", [clause, offset], {
     "lib/uuid": uuid(),
-    name,
-    "display-name": name,
+    name: newName,
+    "display-name": newName,
   });
 
   return aggregate(query, stageIndex, newClause);

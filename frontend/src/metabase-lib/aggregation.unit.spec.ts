@@ -5,7 +5,6 @@ import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
 const offset = -1;
-const name = "asd";
 
 describe("aggregation", () => {
   it("works", () => {
@@ -19,7 +18,6 @@ describe("aggregation", () => {
       query,
       stageIndex,
       aggregationClause,
-      name,
       offset,
     );
 
@@ -28,7 +26,15 @@ describe("aggregation", () => {
       query: {
         aggregation: [
           ["count"],
-          ["offset", { name, "display-name": name }, ["count"], offset],
+          [
+            "offset",
+            {
+              name: "Count (previous period)",
+              "display-name": "Count (previous period)",
+            },
+            ["count"],
+            offset,
+          ],
         ],
         "source-table": ORDERS_ID,
       },
