@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
+  entityPickerModal,
   popover,
   appBar,
   restore,
@@ -20,6 +21,7 @@ import {
   goToTab,
   visitFullAppEmbeddingUrl,
   getDashboardCardMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -163,11 +165,13 @@ describeEE("scenarios > embedding > full app", () => {
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
-        url: "/browse",
+        url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
-      cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
+      cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
+      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
+        "not.exist",
+      );
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });
@@ -236,8 +240,10 @@ describeEE("scenarios > embedding > full app", () => {
 
         cy.button("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Raw Data").click();
-        popover().findByText("Orders").click();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
       });
 
       it("should show the database for a new native question (metabase#21511)", () => {

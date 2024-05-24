@@ -122,8 +122,9 @@ function AggregationPopover({
   return (
     <AggregationPicker
       query={query}
-      clause={clause}
       stageIndex={stageIndex}
+      clause={clause}
+      clauseIndex={clauseIndex}
       operators={operators}
       onSelect={aggregation => {
         if (isUpdate) {

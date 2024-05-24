@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
+import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 import { FeedbackModal } from "./FeedbackModal";
-import type { EmbedHomepageDismissReason } from "./types";
+import { dismissEmbeddingHomepage } from "./actions";
 
 export const EmbedHomepage = () => {
   const [feedbackModalOpened, setFeedbackModalOpened] = useState(false);
@@ -45,7 +47,9 @@ export const EmbedHomepage = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
-  const defaultTab = useMemo(() => {
+  const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embedding-homepage`;
+
+  const initialTab = useMemo(() => {
     // we want to show the interactive tab for EE builds
     // unless it's a starter cloud plan, which is EE build but doesn't have interactive embedding
     if (isEEBuild()) {
@@ -54,11 +58,11 @@ export const EmbedHomepage = () => {
     return "static";
   }, [plan]);
 
-  const onDismiss = (reason: EmbedHomepageDismissReason) => {
+  const onDismiss = (reason: EmbeddingHomepageDismissReason) => {
     if (reason === "dismissed-run-into-issues") {
       setFeedbackModalOpened(true);
     } else {
-      dispatch(updateSetting({ key: "embedding-homepage", value: reason }));
+      dispatch(dismissEmbeddingHomepage(reason));
     }
   };
 
@@ -69,19 +73,19 @@ export const EmbedHomepage = () => {
     comment?: string;
     email?: string;
   }) => {
-    dispatch(
-      updateSetting({
-        key: "embedding-homepage",
-        value: "dismiss-run-into-issues",
-      }),
-    );
+    dispatch(dismissEmbeddingHomepage("dismissed-run-into-issues"));
 
     setFeedbackModalOpened(false);
-    sendProductFeedback({
-      comment,
-      email: email,
-      source: "embedding-homepage-dismiss",
-    });
+    if (comment || email) {
+      sendProductFeedback({
+        comment,
+        email: email,
+        source: "embedding-homepage-dismiss",
+      });
+      dispatch(
+        addUndo({ message: t`Your feedback was submitted, thank you.` }),
+      );
+    }
   };
 
   return (
@@ -91,13 +95,17 @@ export const EmbedHomepage = () => {
         exampleDashboardId={exampleDashboardId}
         embeddingAutoEnabled={embeddingAutoEnabled}
         licenseActiveAtSetup={licenseActiveAtSetup}
-        defaultTab={defaultTab}
-        interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
-        embeddingDocsUrl={embeddingDocsUrl}
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-        analyticsDocsUrl="https://www.metabase.com/learn/customer-facing-analytics/"
-        learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding}
-        learnMoreStaticEmbedUrl={learnMoreStaticEmbedding}
+        initialTab={initialTab}
+        interactiveEmbeddingQuickstartUrl={
+          interactiveEmbeddingQuickStartUrl + utmTags
+        }
+        embeddingDocsUrl={embeddingDocsUrl + utmTags}
+        analyticsDocsUrl={
+          // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+          "https://www.metabase.com/learn/customer-facing-analytics/" + utmTags
+        }
+        learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}
+        learnMoreStaticEmbedUrl={learnMoreStaticEmbedding + utmTags}
       />
       <FeedbackModal
         opened={feedbackModalOpened}

@@ -12,12 +12,13 @@ import {
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { ENTITY_PICKER_Z_INDEX } from "../../EntityPicker";
 import type { CollectionPickerItem } from "../types";
 
 interface NewCollectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  parentCollectionId: CollectionId;
+  parentCollectionId: CollectionId | null;
   onNewCollection: (item: CollectionPickerItem) => void;
 }
 
@@ -32,7 +33,7 @@ export const NewCollectionDialog = ({
   const onCreateNewCollection = async ({ name }: { name: string }) => {
     const newCollection = await createCollection({
       name,
-      parent_id: parentCollectionId === "root" ? "root" : parentCollectionId,
+      parent_id: parentCollectionId === "root" ? null : parentCollectionId,
     }).unwrap();
 
     onNewCollection({ ...newCollection, model: "collection" });
@@ -47,12 +48,7 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
-      styles={{
-        content: {
-          padding: "1rem",
-        },
-      }}
-      zIndex={400} // needs to be above the EntityPickerModal at 400
+      zIndex={ENTITY_PICKER_Z_INDEX}
     >
       <FormProvider
         initialValues={{ name: "" }}

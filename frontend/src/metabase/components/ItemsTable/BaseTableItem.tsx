@@ -90,7 +90,7 @@ export const BaseTableItem = ({
     };
 
     const icon = item.getIcon();
-    if (item.model === "card") {
+    if (item.archived || item.model === "card") {
       icon.color = color("text-light");
     }
 
@@ -157,7 +157,9 @@ export const BaseTableItem = ({
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && <ModelDetailLink model={item} />}
+            {item.model === "dataset" && !item.archived && (
+              <ModelDetailLink model={item} />
+            )}
           </RowActionsContainer>
         </ItemCell>
       </tr>

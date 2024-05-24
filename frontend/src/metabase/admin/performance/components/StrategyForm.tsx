@@ -8,14 +8,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
-  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -31,8 +29,8 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
   Strategy,
@@ -40,26 +38,54 @@ import type {
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
+import { strategyValidationSchema } from "../constants/complex";
+import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
-import { rootId, Strategies, strategyValidationSchema } from "../strategies";
-import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
+import {
+  getLabelString,
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "../utils";
 
-import { LoaderInButton } from "./StrategyForm.styled";
+import {
+  FormBox,
+  FormWrapper,
+  LoaderInButton,
+  StyledForm,
+} from "./StrategyForm.styled";
+
+interface ButtonLabels {
+  save: string;
+  discard: string;
+}
 
 export const StrategyForm = ({
   targetId,
-  targetDatabase,
+  targetModel,
+  targetName,
   setIsDirty,
   saveStrategy,
   savedStrategy,
-  shouldAllowInvalidation,
+  shouldAllowInvalidation = false,
+  shouldShowName = true,
+  formStyle = {},
+  onReset,
+  buttonLabels = {
+    save: t`Save changes`,
+    discard: t`Discard changes`,
+  },
 }: {
   targetId: number | null;
-  targetDatabase: Database | undefined;
+  targetModel: CacheableModel;
+  targetName: string;
   setIsDirty: (isDirty: boolean) => void;
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
-  shouldAllowInvalidation: boolean;
+  shouldAllowInvalidation?: boolean;
+  shouldShowName?: boolean;
+  formStyle?: React.CSSProperties;
+  onReset?: () => void;
+  buttonLabels?: ButtonLabels;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
@@ -71,13 +97,18 @@ export const StrategyForm = ({
       initialValues={savedStrategy ?? defaultStrategy}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
+      onReset={onReset}
       enableReinitialize
     >
       <StrategyFormBody
         targetId={targetId}
-        targetDatabase={targetDatabase}
+        targetModel={targetModel}
+        targetName={targetName}
         setIsDirty={setIsDirty}
         shouldAllowInvalidation={shouldAllowInvalidation}
+        shouldShowName={shouldShowName}
+        formStyle={formStyle}
+        buttonLabels={buttonLabels}
       />
     </FormProvider>
   );
@@ -85,14 +116,22 @@ export const StrategyForm = ({
 
 const StrategyFormBody = ({
   targetId,
-  targetDatabase,
+  targetModel,
+  targetName,
   setIsDirty,
   shouldAllowInvalidation,
+  shouldShowName = true,
+  formStyle = {},
+  buttonLabels,
 }: {
   targetId: number | null;
-  targetDatabase: Database | undefined;
+  targetModel: CacheableModel;
+  targetName: string;
   setIsDirty: (isDirty: boolean) => void;
   shouldAllowInvalidation: boolean;
+  shouldShowName?: boolean;
+  formStyle?: React.CSSProperties;
+  buttonLabels: ButtonLabels;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -119,34 +158,17 @@ const StrategyFormBody = ({
   }, [selectedStrategyType, values, setFieldValue]);
 
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Form
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
-          overflow: "auto",
-        }}
-      >
-        <Box
-          style={{
-            borderBottom: `1px solid ${color("border")}`,
-            overflow: "auto",
-            flexGrow: 1,
-          }}
-        >
-          {targetDatabase && (
-            <Box lh="1rem" px="lg" py="xs" color="text-medium">
-              <Group spacing="sm">
-                <FixedSizeIcon name="database" color="inherit" />
+    <FormWrapper>
+      <StyledForm style={{ ...formStyle }}>
+        <FormBox className="strategy-form-box">
+          {shouldShowName && (
+            <Box lh="1rem" px="lg" py="md" color="text-medium">
+              <Group spacing="lg">
+                {targetModel === "database" && (
+                  <FixedSizeIcon name="database" color="inherit" />
+                )}
                 <Text fw="bold" py="1rem">
-                  {targetDatabase.displayName()}
+                  {targetName}
                 </Text>
               </Group>
             </Box>
@@ -157,7 +179,7 @@ const StrategyFormBody = ({
             pt={targetId === rootId ? undefined : 0}
             spacing="xl"
           >
-            <StrategySelector targetId={targetId} />
+            <StrategySelector targetId={targetId} model={targetModel} />
             {selectedStrategyType === "ttl" && (
               <>
                 <Field
@@ -192,33 +214,47 @@ const StrategyFormBody = ({
               <ScheduleStrategyFormFields />
             )}
           </Stack>
-        </Box>
+        </FormBox>
         <FormButtons
           targetId={targetId}
+          targetModel={targetModel}
+          targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
-          targetName={targetDatabase?.displayName()}
+          buttonLabels={buttonLabels}
         />
-      </Form>
-    </div>
+      </StyledForm>
+    </FormWrapper>
   );
 };
 
-const FormButtonsGroup = ({ children }: { children: ReactNode }) => (
-  <Group p="md" px="lg" spacing="md" bg="white">
-    {children}
-  </Group>
-);
+const FormButtonsGroup = ({ children }: { children: ReactNode }) => {
+  return (
+    <Group
+      p="md"
+      px="lg"
+      spacing="md"
+      bg="white"
+      className="form-buttons-group"
+    >
+      {children}
+    </Group>
+  );
+};
 
 type FormButtonsProps = {
   targetId: number | null;
+  targetModel: CacheableModel;
   shouldAllowInvalidation: boolean;
   targetName?: string;
+  buttonLabels: ButtonLabels;
 };
 
 const FormButtons = ({
   targetId,
+  targetModel,
   shouldAllowInvalidation,
   targetName,
+  buttonLabels,
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
 
@@ -233,7 +269,11 @@ const FormButtons = ({
   if (isSavingPossible) {
     return (
       <FormButtonsGroup>
-        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
+        <SaveAndDiscardButtons
+          dirty={dirty}
+          isFormPending={isFormPending}
+          buttonLabels={buttonLabels}
+        />
       </FormButtonsGroup>
     );
   }
@@ -243,6 +283,7 @@ const FormButtons = ({
       <FormButtonsGroup>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
+          targetModel={targetModel}
           targetName={targetName}
         />
       </FormButtonsGroup>
@@ -291,20 +332,21 @@ const ScheduleStrategyFormFields = () => {
 const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
+  buttonLabels,
 }: {
   dirty: boolean;
   isFormPending: boolean;
+  buttonLabels: ButtonLabels;
 }) => {
   return (
     <>
-      <Button
-        disabled={!dirty || isFormPending}
-        type="reset"
-      >{t`Discard changes`}</Button>
+      <Button disabled={!dirty || isFormPending} type="reset">
+        {buttonLabels.discard}
+      </Button>
       <FormSubmitButton
         miw="10rem"
         h="40px"
-        label={t`Save changes`}
+        label={buttonLabels.save}
         successLabel={
           <Group spacing="xs">
             <Icon name="check" /> {t`Saved`}
@@ -313,40 +355,53 @@ const SaveAndDiscardButtons = ({
         activeLabel={<LoaderInButton size="1rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
+        className="strategy-form-submit-button"
       />
     </>
   );
 };
 
-const StrategySelector = ({ targetId }: { targetId: number | null }) => {
+const StrategySelector = ({
+  targetId,
+  model,
+}: {
+  targetId: number | null;
+  model?: CacheableModel;
+}) => {
+  const { strategies } = PLUGIN_CACHING;
+
   const { values } = useFormikContext<Strategy>();
 
   const availableStrategies = useMemo(() => {
-    return targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
-  }, [targetId]);
+    return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
+  }, [targetId, strategies]);
 
   return (
     <section>
       <FormRadioGroup
         label={
-          <Text
-            lh="1rem"
-            color="text-medium"
-          >{t`When should cached query results be invalidated?`}</Text>
+          <Stack spacing="xs">
+            <Text lh="1rem" color="text-medium">
+              {t`Select the cache invalidation policy`}
+            </Text>
+            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+              {t`This determines how long cached results will be stored.`}
+            </Text>
+          </Stack>
         }
         name="type"
       >
         <Stack mt="md" spacing="md">
           {_.map(availableStrategies, (option, name) => {
-            const optionLabelParts = option.label.split(":");
-            const optionLabelFormatted =
-              optionLabelParts.length === 1 ? (
-                option.label
-              ) : (
-                <>
-                  <strong>{optionLabelParts[0]}</strong>:{optionLabelParts[1]}
-                </>
-              );
+            const optionLabelParts = getLabelString(option.label, model).split(
+              ":",
+            );
+            const optionLabelFormatted = (
+              <>
+                <strong>{optionLabelParts[0]}</strong>
+                {optionLabelParts[1] ? <>: {optionLabelParts[1]}</> : null}
+              </>
+            );
             return (
               <Radio
                 value={name}
@@ -414,7 +469,7 @@ const getDefaultValueForField = (
   fieldName?: string,
 ) => {
   return fieldName
-    ? Strategies[strategyType].validateWith.cast({})[fieldName]
+    ? PLUGIN_CACHING.strategies[strategyType].validateWith.cast({})[fieldName]
     : "";
 };
 

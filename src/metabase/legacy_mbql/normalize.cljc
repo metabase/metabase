@@ -34,6 +34,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -90,10 +91,11 @@
 
 (defn- normalize-ref-opts [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
-   (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
+    (cond-> opts
+      (:base-type opts)      (update :base-type keyword)
+      (:effective-type opts) (update :effective-type keyword)
+      (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))
 
@@ -207,7 +209,8 @@
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
-  [:offset (or opts {}) (normalize-tokens expr :ignore-path) n])
+  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+    [:offset opts (normalize-tokens expr :ignore-path) n]))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
@@ -386,9 +389,11 @@
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
+                     ;; the original query that runs through qp.pivot should be ignored here entirely
+                     :pivot/original-query    (fn [_] nil)
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
-                     :visualization-settings    identity
-                     :context                   maybe-normalize-token}
+                     :visualization-settings  identity
+                     :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)

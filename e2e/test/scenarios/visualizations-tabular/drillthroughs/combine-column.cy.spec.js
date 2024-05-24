@@ -1,71 +1,125 @@
-import { openPeopleTable, popover, restore } from "e2e/support/helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestion,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  popover,
+  resetSnowplow,
+  restore,
+} from "e2e/support/helpers";
 
-describe("scenarios > visualizations > drillthroughs > table_drills > combine columns", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-  it("should be possible to combine columns from the a table header", () => {
-    openPeopleTable({ limit: 3, mode: "notebook" });
-
-    cy.findByLabelText("Pick columns").click();
-    popover().within(() => {
-      cy.findByText("Select none").click();
-      cy.findByLabelText("Email").click();
+describeWithSnowplow(
+  "scenarios > visualizations > drillthroughs > table_drills > combine columns",
+  () => {
+    beforeEach(() => {
+      restore();
+      resetSnowplow();
+      cy.signInAsAdmin();
     });
 
-    cy.findByLabelText("Pick columns").click();
-    cy.button("Visualize").click();
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
 
-    cy.findAllByTestId("header-cell").contains("Email").click();
-    popover().findByText("Combine columns").click();
-
-    popover().within(() => {
-      cy.findByTestId("combine-column-example").should(
-        "contain",
-        "email@example.com12345",
+    it("should be possible to combine columns from the a table header", () => {
+      createQuestion(
+        {
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+              ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+            ],
+            limit: 3,
+          },
+        },
+        { visitQuestion: true },
       );
-      cy.findByText("ID").click();
-    });
 
-    popover()
-      .last()
-      .within(() => {
-        cy.findByText("Name").click();
+      cy.findAllByTestId("header-cell").contains("Email").click();
+      popover().findByText("Combine columns").click();
+
+      popover().within(() => {
+        cy.findByTestId("combine-column-example").should(
+          "contain",
+          "email@example.com12345",
+        );
+        cy.findByText("ID").click();
       });
 
-    popover().within(() => {
-      cy.findByText("Separated by (empty)").click();
-      cy.findByLabelText("Separator").type("__");
-      cy.findByTestId("combine-column-example").should(
-        "have.text",
-        "email@example.com__text",
-      );
+      popover().last().findByText("Name").click();
 
-      cy.findByText("Add column").click();
-      cy.findByTestId("combine-column-example").should(
-        "have.text",
-        "email@example.com__text__12345",
-      );
+      popover().within(() => {
+        cy.findByText("Separated by (empty)").click();
+        cy.findByLabelText("Separator").type("__");
+        cy.findByTestId("combine-column-example").should(
+          "have.text",
+          "email@example.com__text",
+        );
 
-      cy.findAllByRole("textbox").last().clear();
-      cy.findByTestId("combine-column-example").should(
-        "have.text",
-        "email@example.com__text12345",
-      );
+        cy.findByText("Add column").click();
+        cy.findByTestId("combine-column-example").should(
+          "have.text",
+          "email@example.com__text__12345",
+        );
 
-      cy.findAllByRole("textbox").last().clear().type("+");
-      cy.findByTestId("combine-column-example").should(
-        "have.text",
-        "email@example.com__text+12345",
-      );
+        cy.findAllByRole("textbox").last().clear();
+        cy.findByTestId("combine-column-example").should(
+          "have.text",
+          "email@example.com__text12345",
+        );
 
-      cy.findByText("Done").click();
+        cy.findAllByRole("textbox").last().clear().type("+");
+        cy.findByTestId("combine-column-example").should(
+          "have.text",
+          "email@example.com__text+12345",
+        );
+
+        cy.findByText("Done").click();
+      });
+
+      cy.findAllByTestId("header-cell")
+        .last()
+        .should("have.text", "Email Name ID");
+
+      expectGoodSnowplowEvent({
+        event: "column_combine_via_column_header",
+        custom_expressions_used: ["concat"],
+        database_id: SAMPLE_DB_ID,
+      });
     });
 
-    cy.findAllByTestId("header-cell")
-      .last()
-      .should("have.text", "Email Name ID");
-  });
-});
+    it("should handle duplicate column names", () => {
+      createQuestion(
+        {
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID, { "base-type": "type/Number" }],
+              ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
+            ],
+            limit: 3,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      // first combine (email + ID)
+      cy.findAllByTestId("header-cell").contains("Email").click();
+      popover().findByText("Combine columns").click();
+      popover().findByText("Done").click();
+
+      // second combine (email + ID)
+      cy.findAllByTestId("header-cell").contains("Email").click();
+      popover().findByText("Combine columns").click();
+      popover().findByText("Done").click();
+
+      cy.findAllByTestId("header-cell").contains("Email ID").should("exist");
+      cy.findAllByTestId("header-cell").contains("Email ID_2").should("exist");
+    });
+  },
+);

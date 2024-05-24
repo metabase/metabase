@@ -23,7 +23,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { setOptions } from "metabase/redux/embed";
+import { setInitialUrlOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -35,6 +35,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
@@ -51,7 +52,7 @@ import {
   Separator,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import LogoBadge from "./LogoBadge";
+import { LogoBadge } from "./LogoBadge";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
@@ -83,21 +84,13 @@ type Props = OwnProps &
     location: Location;
   };
 
-interface HashOptions {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: "night" | "transparent";
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-}
-
 function mapStateToProps(state: State) {
   return {
     hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
   };
 }
 
-const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
+const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
   if (!theme) {
     return null;
   }
@@ -155,7 +148,7 @@ function EmbedFrame({
 
   const dispatch = useDispatch();
   useEffect(() => {
-    dispatch(setOptions(location));
+    dispatch(setInitialUrlOptions(location));
   }, [dispatch, location]);
 
   const {
@@ -164,7 +157,7 @@ function EmbedFrame({
     theme,
     hide_parameters,
     hide_download_button,
-  } = parseHashOptions(location.hash) as HashOptions;
+  } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)

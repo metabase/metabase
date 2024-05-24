@@ -25,6 +25,10 @@ import {
   queryBuilderMain,
   editDashboard,
   setFilter,
+  entityPickerModal,
+  entityPickerModalTab,
+  showDashboardCardActions,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -63,10 +67,10 @@ describe("scenarios > question > download", () => {
   testCases.forEach(fileType => {
     it(`downloads ${fileType} file`, () => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders, Count").click();
+      });
 
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -254,8 +258,8 @@ describe("scenarios > question > download", () => {
         visitDashboard(dashboard.id);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1").realHover();
+      showDashboardCardActions(0);
+      getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
 
       popover().within(() => {
@@ -263,8 +267,8 @@ describe("scenarios > question > download", () => {
         cy.findByText(".png").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2").realHover();
+      showDashboardCardActions(1);
+      getDashboardCard(1).findByText("User ID").should("be.visible");
       getDashboardCardMenu(1).click();
 
       popover().within(() => {

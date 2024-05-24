@@ -89,6 +89,8 @@ export const QuestionActions = ({
 
   const isQuestion = question.type() === "question";
   const isModel = question.type() === "model";
+  const isMetric = question.type() === "metric";
+  const isModelOrMetric = isModel || isMetric;
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
@@ -144,14 +146,17 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isModel) {
-    extraButtons.push(
-      {
-        title: t`Edit query definition`,
+  if (canWrite) {
+    if (isModelOrMetric) {
+      extraButtons.push({
+        title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
         action: handleEditQuery,
-      },
-      {
+      });
+    }
+
+    if (isModel) {
+      extraButtons.push({
         title: (
           <div>
             {t`Edit metadata`} <StrengthIndicator dataset={question} />
@@ -159,8 +164,8 @@ export const QuestionActions = ({
         ),
         icon: "label",
         action: handleEditMetadata,
-      },
-    );
+      });
+    }
   }
 
   if (canPersistDataset) {
@@ -223,8 +228,8 @@ export const QuestionActions = ({
 
   if (canWrite) {
     extraButtons.push({
-      title: t`Archive`,
-      icon: "archive",
+      title: t`Move to trash`,
+      icon: "trash",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
@@ -244,12 +249,14 @@ export const QuestionActions = ({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && question._card.based_on_upload) {
-      uploadFile({
-        file,
-        tableId: question._card.based_on_upload,
-        reloadQuestionData: true,
-        uploadMode,
-      })(dispatch);
+      dispatch(
+        uploadFile({
+          file,
+          tableId: question._card.based_on_upload,
+          reloadQuestionData: true,
+          uploadMode,
+        }),
+      );
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
       if (fileInputRef.current?.value) {
@@ -261,13 +268,15 @@ export const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
-      <ViewHeaderIconButtonContainer>
-        <BookmarkToggle
-          onCreateBookmark={handleBookmark}
-          onDeleteBookmark={handleBookmark}
-          isBookmarked={isBookmarked}
-        />
-      </ViewHeaderIconButtonContainer>
+      {!question.isArchived() && (
+        <ViewHeaderIconButtonContainer>
+          <BookmarkToggle
+            onCreateBookmark={handleBookmark}
+            onDeleteBookmark={handleBookmark}
+            isBookmarked={isBookmarked}
+          />
+        </ViewHeaderIconButtonContainer>
+      )}
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
@@ -322,12 +331,12 @@ export const QuestionActions = ({
           </Tooltip>
         </>
       )}
-      {extraButtons.length > 0 && (
+      {extraButtons.length > 0 && !question.isArchived() && (
         <EntityMenu
-          triggerAriaLabel={t`Move, archive, and more...`}
+          triggerAriaLabel={t`Move, trash, and more...`}
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, archive, and more...`}
+          tooltip={t`Move, trash, and more...`}
         />
       )}
     </>

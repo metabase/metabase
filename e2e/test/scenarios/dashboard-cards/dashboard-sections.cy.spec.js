@@ -126,6 +126,9 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
+  entityPickerModal()
+    .findByRole("tab", { name: /Questions/ })
+    .click();
   entityPickerModal().findByText(question).click();
   cy.wait("@cardQuery");
   dashboardGrid().findByText(question).should("exist");

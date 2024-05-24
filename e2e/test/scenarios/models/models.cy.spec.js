@@ -30,8 +30,10 @@ import {
   selectFilterOperator,
   focusNativeEditor,
   echartsContainer,
+  entityPickerModal,
+  questionInfoButton,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
-import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,
@@ -243,45 +245,32 @@ describe("scenarios > models", () => {
     it("transforms the data picker", () => {
       startNewQuestion();
 
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Models").click();
+        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders Model").should("exist");
+        cy.findByText("Orders, Count").should("not.exist");
+
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Orders Model").should("not.exist");
+        cy.findByText("Orders, Count").should("exist");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").should(
+          "exist",
+        );
+        cy.findByText("Products").should("exist");
+
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
+        cy.findByText("Orders, Count").should("not.exist");
+
         testDataPickerSearch({
-          inputPlaceholderText: "Search for some data…",
           query: "Ord",
           models: true,
           cards: true,
-          tables: true,
-        });
-
-        cy.findByText("Models").click();
-        cy.findByTestId("select-list").within(() => {
-          cy.findByText("Orders");
-          cy.findByText("Orders, Count").should("not.exist");
-        });
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for a model…",
-          query: "Ord",
-          models: true,
-        });
-        cy.icon("chevronleft").click();
-
-        cy.findByText("Saved Questions").click();
-        cy.findByTestId("select-list").within(() => {
-          cy.findByText("Orders, Count");
-          cy.findByText("Orders").should("not.exist");
-        });
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for a question…",
-          query: "Ord",
-          cards: true,
-        });
-        cy.icon("chevronleft").click();
-
-        cy.findByText("Raw Data").click();
-        cy.findByText("Sample Database").click(); // go back to db list
-        cy.findByText("Saved Questions").should("not.exist");
-        testDataPickerSearch({
-          inputPlaceholderText: "Search for a table…",
-          query: "Ord",
           tables: true,
         });
       });
@@ -289,19 +278,23 @@ describe("scenarios > models", () => {
 
     it("allows to create a question based on a model", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
-      startNewQuestion();
 
-      popover().within(() => {
-        cy.findByText("Models").click();
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Models").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
-      selectFromDropdown("Models");
-      selectFromDropdown("Raw Data");
-      selectFromDropdown("Sample Database");
-      cy.findAllByRole("option").should("have.length", 4);
-      selectFromDropdown("Products");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
+
+        cy.findByText("Products").click();
+      });
 
       getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
@@ -339,9 +332,13 @@ describe("scenarios > models", () => {
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Saved Questions").should("not.exist");
+      entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("not.exist");
+
+        cy.findByText("Orders").should("exist");
+        cy.findByText("People").should("exist");
+        cy.findByText("Products").should("exist");
+        cy.findByText("Reviews").should("exist");
       });
     });
   });
@@ -534,7 +531,7 @@ describe("scenarios > models", () => {
 
     visitCollection("root");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Useful data");
+    cy.findByText("Models");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A model");
   });
@@ -612,16 +609,15 @@ function getCollectionItemCard(itemName) {
 }
 
 function testDataPickerSearch({
-  inputPlaceholderText,
   query,
   models = false,
   cards = false,
   tables = false,
 } = {}) {
-  cy.findByPlaceholderText(inputPlaceholderText).type(query);
+  cy.findByPlaceholderText("Search…").type(query);
   cy.wait("@search");
 
-  const searchResultItems = cy.findAllByTestId("search-result-item");
+  const searchResultItems = cy.findAllByTestId("result-item");
 
   searchResultItems.then($results => {
     const modelTypes = {};
@@ -653,6 +649,4 @@ function testDataPickerSearch({
       expect(Object.keys(modelTypes)).not.to.include("table");
     }
   });
-
-  cy.icon("close").click();
 }

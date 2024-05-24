@@ -1,6 +1,8 @@
+import fetchMock from "fetch-mock";
 import { useKBar } from "kbar";
 import { useEffect } from "react";
 import { Route, withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
@@ -13,18 +15,21 @@ import {
   within,
   waitFor,
   mockScrollTo,
+  mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
+import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentCollectionItem,
+  createMockRecentTableItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
   createMockAdminState,
+  createMockSettingsState,
 } from "metabase-types/store/mocks";
 
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -76,29 +81,39 @@ const dashboard = createMockCollectionItem({
   description: "Such Bar. Much Wow.",
 });
 
-const recents_1 = createMockRecentItem({
+const recents_1 = createMockRecentCollectionItem({
+  ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  model_object: createMockModelObject({
-    ...model_1,
-    collection_id: null,
-  }),
+  moderated_status: "verified",
+  parent_collection: {
+    id: null,
+    name: "Our analytics",
+  },
 });
-
-const recents_2 = createMockRecentItem({
+const recents_2 = createMockRecentCollectionItem({
+  ..._.pick(dashboard, "id", "name"),
   model: "dashboard",
-  model_object: createMockModelObject({
-    ...dashboard,
-    collection_id: dashboard.collection?.id,
-    collection_name: dashboard.collection?.name,
-  }),
+  parent_collection: {
+    id: dashboard.collection?.id as number,
+    name: dashboard.collection?.name as string,
+  },
 });
 
 mockScrollTo();
+mockScrollIntoView();
 
-const setup = ({ query }: { query?: string } = {}) => {
+const setup = ({
+  query,
+  settings = {},
+  recents = [recents_1, recents_2],
+}: {
+  query?: string;
+  settings?: Partial<Settings>;
+  recents?: RecentItem[];
+} = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
-  setupRecentViewsEndpoints([recents_1, recents_2]);
+  setupRecentViewsEndpoints(recents);
 
   renderWithProviders(
     <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
@@ -111,16 +126,13 @@ const setup = ({ query }: { query?: string } = {}) => {
             paths: getAdminPaths(),
           }),
         }),
+        settings: createMockSettingsState(settings),
       },
     },
   );
 };
 
 describe("PaletteResults", () => {
-  afterAll(() => {
-    jest.resetAllMocks();
-  });
-
   it("should show default actions", async () => {
     setup();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
@@ -159,12 +171,37 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show recent items with the same name", async () => {
+    setup({
+      recents: [
+        createMockRecentCollectionItem({
+          model: "dataset",
+          name: "My Awesome Data",
+        }),
+        createMockRecentTableItem({
+          model: "table",
+          display_name: "My Awesome Data",
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+
+    expect(
+      await screen.findAllByRole("option", { name: "My Awesome Data" }),
+    ).toHaveLength(2);
+  });
+
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
     await waitFor(async () => {
       expect(await screen.findByText("Search results")).toBeInTheDocument();
     });
+
+    expect(
+      await screen.findByRole("option", { name: /View and filter/i }),
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
@@ -198,6 +235,9 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Question" }),
     ).toHaveTextContent("lame collection");
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(2);
   });
 
   it("should provide links to settings pages", async () => {
@@ -210,5 +250,15 @@ describe("PaletteResults", () => {
     setup({ query: "permi" });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
+  });
+
+  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+    setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
+    expect(
+      await screen.findByRole("option", { name: /View search results/ }),
+    ).toBeInTheDocument();
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(1);
   });
 });

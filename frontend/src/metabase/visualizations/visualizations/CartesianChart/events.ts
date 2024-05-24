@@ -1,15 +1,24 @@
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatChangeWithSign } from "metabase/lib/formatting";
 import { getObjectKeys } from "metabase/lib/objects";
+import {
+  getDaylightSavingsChangeTolerance,
+  parseTimestamp,
+} from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isBreakoutSeries } from "metabase/visualizations/echarts/cartesian/model/guards";
+import {
+  isBreakoutSeries,
+  isQuarterInterval,
+  isTimeSeriesAxis,
+} from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   ChartDataset,
   DataKey,
   Datum,
@@ -21,6 +30,7 @@ import type {
   EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
 } from "metabase/visualizations/echarts/types";
+import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   hasClickBehavior,
   isRemappedToString,
@@ -46,6 +56,8 @@ import type {
   TimelineEventId,
 } from "metabase-types/api";
 
+import { DATETIME_ABSOLUTE_UNIT_COMPARISON } from "./constants";
+
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
 
@@ -64,7 +76,7 @@ export const parseDataKey = (dataKey: DataKey) => {
 };
 
 const findSeriesModelIndexById = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   seriesId?: string,
 ) => {
   if (seriesId == null) {
@@ -93,7 +105,7 @@ const getSameCardDataKeys = (
 };
 
 export const getEventDimensions = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   datum: Datum,
   dimensionModel: DimensionModel,
   seriesModel: SeriesModel,
@@ -130,8 +142,8 @@ export const getEventDimensions = (
   );
 };
 
-export const getEventColumnsData = (
-  chartModel: BaseCartesianChartModel,
+const getEventColumnsData = (
+  chartModel: CartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
@@ -139,7 +151,8 @@ export const getEventColumnsData = (
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
-  return getSameCardDataKeys(datum, seriesModel)
+
+  const dataPoints: DataPoint[] = getSameCardDataKeys(datum, seriesModel)
     .map(dataKey => {
       const value = datum[dataKey];
       const col = chartModel.columnByDataKey[dataKey];
@@ -174,14 +187,94 @@ export const getEventColumnsData = (
       };
     })
     .filter(isNotNull);
+
+  return dataPoints;
 };
 
-export const getStackedTooltipModel = (
-  chartModel: BaseCartesianChartModel,
+const getTooltipFooterData = (
+  chartModel: CartesianChartModel,
+  display: string,
+  seriesIndex: number,
+  dataIndex: number,
+): DataPoint[] => {
+  if (
+    display === "scatter" ||
+    display === "waterfall" ||
+    !isTimeSeriesAxis(chartModel.xAxisModel)
+  ) {
+    return [];
+  }
+
+  const datum = chartModel.dataset[dataIndex];
+  const seriesModel = chartModel.seriesModels[seriesIndex];
+
+  const currentValue = datum[seriesModel.dataKey];
+  const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
+  const previousValue =
+    chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+
+  if (previousValue == null) {
+    return [];
+  }
+  const previousDate = parseTimestamp(
+    chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
+  );
+
+  const unit = isQuarterInterval(chartModel.xAxisModel.interval)
+    ? "quarter"
+    : chartModel.xAxisModel.interval.unit;
+
+  const dateDifference = currentDate.diff(
+    previousDate,
+    chartModel.xAxisModel.interval.unit,
+    true,
+  );
+
+  let isOneIntervalAgo =
+    Math.abs(dateDifference - chartModel.xAxisModel.interval.count) <=
+    getDaylightSavingsChangeTolerance(chartModel.xAxisModel.interval.unit);
+
+  // Comparing the 2nd and 1st quarter of the year needs to be checked
+  // specially, because there are fewer days in this period due to Feburary
+  // being shorter than a normal month (89 days in a normal year, 90 days in a
+  // leap year).
+  if (!isOneIntervalAgo && unit === "quarter") {
+    const diffInDays = currentDate.diff(previousDate, "day");
+    if (diffInDays === 89 || diffInDays === 90) {
+      isOneIntervalAgo = true;
+    }
+  }
+
+  if (!isOneIntervalAgo) {
+    return [];
+  }
+
+  const change = computeChange(previousValue, currentValue);
+
+  return [
+    {
+      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[unit],
+      col: seriesModel.column,
+      value: formatChangeWithSign(change),
+    },
+  ];
+};
+
+const getStackedTooltipModel = (
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   seriesIndex: number,
   dataIndex: number,
 ) => {
+  const hoveredSeries = chartModel.seriesModels[seriesIndex];
+  const seriesStack = chartModel.stackModels.find(stackModel =>
+    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
+  );
+
+  if (!seriesStack) {
+    return undefined;
+  }
+
   const column =
     chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column;
 
@@ -194,17 +287,23 @@ export const getStackedTooltipModel = (
       }),
     );
 
-  const rows: TooltipRowModel[] = chartModel.seriesModels.map(seriesModel => {
-    return {
-      name: seriesModel.name,
-      color: seriesModel.color,
-      value: chartModel.dataset[dataIndex][seriesModel.dataKey],
-      formatter,
-    };
-  });
+  const rows: (TooltipRowModel & { dataKey: DataKey })[] =
+    chartModel.seriesModels
+      .filter(seriesModel =>
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+      )
+      .map(seriesModel => {
+        return {
+          dataKey: seriesModel.dataKey,
+          name: seriesModel.name,
+          color: seriesModel.color,
+          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+          formatter,
+        };
+      });
   const [headerRows, bodyRows] = _.partition(
     rows,
-    (_row, index) => index === seriesIndex,
+    row => row.dataKey === hoveredSeries.dataKey,
   );
 
   const dimensionValue = chartModel.dataset[dataIndex][X_AXIS_DATA_KEY];
@@ -279,8 +378,9 @@ const isValidDatumElement = (
 };
 
 export const getSeriesHoverData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
+  display: string,
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
@@ -303,6 +403,12 @@ export const getSeriesHoverData = (
   }
 
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const footerData = getTooltipFooterData(
+    chartModel,
+    display,
+    seriesIndex,
+    dataIndex,
+  );
 
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
@@ -316,6 +422,7 @@ export const getSeriesHoverData = (
     event: event.event.event,
     element: target,
     data,
+    footerData,
     stackedTooltipModel,
   };
 };
@@ -352,12 +459,8 @@ export const getTimelineEventsHoverData = (
   );
   const element = event.event.event.target as Element;
 
-  if (element?.nodeName !== "image") {
-    return null;
-  }
-
   return {
-    element,
+    element: element?.nodeName === "image" ? element : undefined,
     timelineEvents: hoveredTimelineEvents,
   };
 };
@@ -385,7 +488,7 @@ export const getGoalLineHoverData = (
 };
 
 export const getSeriesClickData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ): ClickObject | undefined => {
@@ -425,7 +528,7 @@ export const getSeriesClickData = (
 export const getBrushData = (
   rawSeries: RawSeries,
   metadata: Metadata,
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
   const range = event.areas[0].coordRange;

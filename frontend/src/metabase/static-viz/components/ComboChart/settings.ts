@@ -6,16 +6,20 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
+  getAreDimensionsAndMetricsValid,
   getDefaultBubbleSizeCol,
   getDefaultDataLabelsFrequency,
+  getDefaultDimensionFilter,
+  getDefaultDimensions,
   getDefaultGoalLabel,
   getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
   getDefaultLegendIsReversed,
+  getDefaultMetricFilter,
+  getDefaultMetrics,
   getDefaultShowDataLabels,
-  getDefaultStackDisplayValue,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
@@ -36,6 +40,8 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
+  getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
   getSeriesDefaultShowSeriesValues,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
@@ -80,6 +86,18 @@ const getSeriesFunction = (
 
     fillWithDefaultValue(
       singleSeriesSettings,
+      "line.style",
+      getSeriesDefaultLineStyle(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
+      "line.size",
+      getSeriesDefaultLineSize(settings),
+    );
+
+    fillWithDefaultValue(
+      singleSeriesSettings,
       "line.marker_enabled",
       getSeriesDefaultLineMarker(settings),
     );
@@ -110,6 +128,35 @@ export const computeStaticComboChartSettings = (
 ): ComputedVisualizationSettings => {
   const { card: mainCard, data: mainDataset } = rawSeries[0];
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+
+  fillWithDefaultValue(
+    settings,
+    "graph._dimension_filter",
+    getDefaultDimensionFilter(mainCard.display),
+  );
+  fillWithDefaultValue(
+    settings,
+    "graph._metric_filter",
+    getDefaultMetricFilter(mainCard.display),
+  );
+
+  const areDimensionsAndMetricsValid = getAreDimensionsAndMetricsValid(
+    rawSeries,
+    settings,
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.dimensions",
+    getDefaultDimensions(rawSeries, settings),
+    areDimensionsAndMetricsValid,
+  );
+  fillWithDefaultValue(
+    settings,
+    "graph.metrics",
+    getDefaultMetrics(rawSeries),
+    areDimensionsAndMetricsValid,
+  );
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
@@ -144,12 +191,6 @@ export const computeStaticComboChartSettings = (
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
     isStackingValueValid(mainCard.display, settings, seriesDisplays),
-  );
-
-  fillWithDefaultValue(
-    settings,
-    "stackable.stack_display",
-    getDefaultStackDisplayValue(mainCard.display, seriesDisplays),
   );
 
   fillWithDefaultValue(

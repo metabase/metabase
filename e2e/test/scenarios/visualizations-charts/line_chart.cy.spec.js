@@ -14,6 +14,7 @@ import {
   cartesianChartCircleWithColor,
   cartesianChartCircle,
   trendLine,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -62,6 +63,40 @@ describe("scenarios > visualizations > line chart", () => {
           expect(xRight).to.be.greaterThan(xLeft);
         });
       });
+  });
+
+  it("should display line settings only for line/area charts", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    openSeriesSettings("Count");
+
+    popover().within(() => {
+      cy.findByText("Style").click();
+
+      // For line chart
+      cy.findByText("Line shape").should("exist");
+      cy.findByText("Line style").should("exist");
+      cy.findByText("Line size").should("exist");
+      cy.findByText("Show dots on lines").should("exist");
+
+      // For area chart
+      cy.icon("area").click();
+      cy.findByText("Line shape").should("exist");
+      cy.findByText("Line style").should("exist");
+      cy.findByText("Line size").should("exist");
+      cy.findByText("Show dots on lines").should("exist");
+
+      // For bar chart
+      cy.icon("bar").click();
+      cy.findByText("Line shape").should("not.be.visible");
+      cy.findByText("Line style").should("not.be.visible");
+      cy.findByText("Line size").should("not.be.visible");
+      cy.findByText("Show dots on lines").should("not.be.visible");
+    });
   });
 
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
@@ -679,10 +714,6 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
 
 function showTooltipForFirstCircleInSeries(seriesColor) {
   cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");

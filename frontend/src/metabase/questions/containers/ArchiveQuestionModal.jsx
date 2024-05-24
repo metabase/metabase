@@ -1,31 +1,36 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import { msgid, ngettext, t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
-import Questions from "metabase/entities/questions";
-import * as Urls from "metabase/lib/urls";
+import { setArchivedQuestion } from "metabase/query_builder/actions";
 
-const mapDispatchToProps = {
-  archive: card => Questions.actions.setArchived(card, true),
-};
+const mapDispatchToProps = dispatch => ({
+  archive: question => dispatch(setArchivedQuestion(question, true)),
+});
 
 const getLabels = question => {
   const type = question.type();
 
   if (type === "question") {
     return {
-      title: t`Archive this question?`,
-      message: t`This question will be removed from any dashboards or pulses using it.`,
+      title: t`Move this question to trash?`,
+      message: t`This question will be removed from any dashboards or alerts using it.`,
     };
   }
 
   if (type === "model") {
     return {
-      title: t`Archive this model?`,
-      message: t`This model will be removed from any dashboards or pulses using it.`,
+      title: t`Move this model to trash?`,
+      message: t`This model will be removed from any dashboards or alerts using it.`,
+    };
+  }
+
+  if (type === "metric") {
+    return {
+      title: t`Archive this metric?`,
+      message: t`This metric will be removed from any dashboards or pulses using it.`,
     };
   }
 
@@ -34,11 +39,9 @@ const getLabels = question => {
 
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
-    const { question, archive, router } = this.props;
+    const { question, archive } = this.props;
 
-    const card = question.card();
-    archive(card);
-    router.push(Urls.collection(card.collection));
+    archive(question);
   };
 
   render() {
@@ -46,7 +49,6 @@ class ArchiveQuestionModal extends Component {
 
     const { title, message } = getLabels(question);
     const widgetCount = question.getParameterUsageCount();
-
     const additionalWarning =
       widgetCount > 0
         ? " " +
@@ -68,7 +70,4 @@ class ArchiveQuestionModal extends Component {
   }
 }
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(withRouter(ArchiveQuestionModal));
+export default connect(null, mapDispatchToProps)(ArchiveQuestionModal);

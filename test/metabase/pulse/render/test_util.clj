@@ -662,3 +662,26 @@
             hiccup/html
             hik/parse
             hik/as-hickory)))))
+
+(defn render-dashcard-as-hickory
+  "Render the dashcard with `dashcard-id` using the static-viz rendering pipeline as a hickory data structure.
+  Redefines some internal rendering functions to keep svg from being rendered into a png.
+  Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
+  [dashcard-id]
+  (let [dashcard (t2/select-one :model/DashboardCard :id dashcard-id)
+        card     (t2/select-one :model/Card :id (:card_id dashcard))
+        viz      (or (:visualilzation_settings dashcard)
+                     (:visualilzation_settings card))
+        query    (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results  (qp/process-query (assoc query :viz-settings viz))]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (render/render-pulse-card :inline "UTC" card dashcard results)
+                        :content)]
+        (-> content
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))

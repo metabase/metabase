@@ -1,8 +1,13 @@
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const collectionName = "Parent";
 
@@ -22,17 +27,13 @@ describe("issue 24660", () => {
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    cy.findAllByTestId("tree-item-name")
-      .contains(collectionName)
-      .first()
-      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findAllByText(collectionName).first().click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(questions[ORDERS_QUESTION_ID]);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
+      cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
+      cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
+    });
   });
 });
 

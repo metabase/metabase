@@ -56,11 +56,15 @@
 (defn- mock-metadatas-for-table [metadata metadata-type table-id]
   (let [k (case metadata-type
             :metadata/column        :fields
-            :metadata/legacy-metric :metrics
+            :metadata/metric        :cards
             :metadata/segment       :segments)]
     (into []
           (keep (fn [object]
-                  (when (= (:table-id object) table-id)
+                  (when (and (= (:table-id object) table-id)
+                             (if (= metadata-type :metadata/metric)
+                               (and (= (:type object) :metric)
+                                    (not (:archived object)))
+                               true))
                     (assoc object :lib/type metadata-type))))
           (get metadata k))))
 

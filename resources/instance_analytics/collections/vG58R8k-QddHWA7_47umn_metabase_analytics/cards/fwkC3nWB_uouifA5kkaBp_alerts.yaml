@@ -1,0 +1,556 @@
+name: Alerts
+description: null
+entity_id: fwkC3nWB_uouifA5kkaBp
+created_at: '2024-03-06T14:13:07.982838Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_alerts
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - updated_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - creator_id
+      - base-type: type/Integer
+    - - field
+      - card_id
+      - base-type: type/Integer
+    - - field
+      - alert_condition
+      - base-type: type/Text
+    - - field
+      - schedule_type
+      - base-type: type/Text
+    - - field
+      - schedule_day
+      - base-type: type/Text
+    - - field
+      - schedule_hour
+      - base-type: type/Integer
+    - - field
+      - recipient_type
+      - base-type: type/Text
+    - - field
+      - recipients
+      - base-type: type/Text
+    - - field
+      - recipient_external
+      - base-type: type/Text
+    filter:
+    - =
+    - - field
+      - archived
+      - base-type: type/Boolean
+    - false
+    joins:
+    - alias: People - Creator
+      condition:
+      - =
+      - - field
+        - creator_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - full_name
+        - base-type: type/Text
+          join-alias: People - Creator
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    - alias: Content - Card Qualified
+      condition:
+      - =
+      - - field
+        - card_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Card Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - base-type: type/Text
+          join-alias: Content - Card Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+    source-table: skoPT2xiuEcUV8vFkHE6S
+  type: query
+result_metadata:
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - created_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - created_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - updated_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - updated_at
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Creator ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - creator_id
+  - null
+  fk_target_field_id: 739
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - creator_id
+  name: creator_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Card ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - card_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - card_id
+  name: card_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Alert Condition
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - alert_condition
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - alert_condition
+  name: alert_condition
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - schedule_type
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - schedule_type
+  name: schedule_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Day
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - schedule_day
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - schedule_day
+  name: schedule_day
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Schedule Hour
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - schedule_hour
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - schedule_hour
+  name: schedule_hour
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipient Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - recipient_type
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - recipient_type
+  name: recipient_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipients
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - recipients
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - recipients
+  name: recipients
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Recipient External
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts
+    - recipient_external
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts
+  - recipient_external
+  name: recipient_external
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: People - Creator → Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - full_name
+  - base-type: type/Text
+    join-alias: People - Creator
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - full_name
+  name: full_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Card Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+    join-alias: Content - Card Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+    : column_title: Question
+      link_text: ''
+      link_url: /question/{{card_id}}
+      view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+    : column_title: Creator
+  table.cell_column: card_id
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Card Qualified
+    key: '["ref",["field",921,{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+    name: name
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - full_name
+    - base-type: type/Text
+      join-alias: People - Creator
+    key: '["ref",["field",1377,{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+    name: full_name
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - created_at
+    - temporal-unit: default
+    key: '["ref",["field",1370,null]]'
+    name: created_at
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - updated_at
+    - temporal-unit: default
+    key: '["ref",["field",1361,null]]'
+    name: updated_at
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - creator_id
+    - null
+    key: '["ref",["field",1373,null]]'
+    name: creator_id
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - card_id
+    - null
+    key: '["ref",["field",1374,null]]'
+    name: card_id
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - alert_condition
+    - null
+    key: '["ref",["field",1369,null]]'
+    name: alert_condition
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - schedule_type
+    - null
+    key: '["ref",["field",1367,null]]'
+    name: schedule_type
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - schedule_day
+    - null
+    key: '["ref",["field",1363,null]]'
+    name: schedule_day
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - schedule_hour
+    - null
+    key: '["ref",["field",1372,null]]'
+    name: schedule_hour
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - recipient_type
+    - null
+    key: '["ref",["field",1368,null]]'
+    name: recipient_type
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - recipients
+    - null
+    key: '["ref",["field",1362,null]]'
+    name: recipients
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts
+      - recipient_external
+    - null
+    key: '["ref",["field",1365,null]]'
+    name: recipient_external
+  table.pivot_column: schedule_day
+serdes/meta:
+- id: fwkC3nWB_uouifA5kkaBp
+  label: alerts
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-16T21:01:38.038034Z'
+metabase_version: vUNKNOWN (44d194b)
+type: question

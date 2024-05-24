@@ -10,29 +10,42 @@ import {
   isEE,
   setTokenFeatures,
   undoToast,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > admin > settings", () => {
+describeWithSnowplow("scenarios > admin > settings", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
   });
 
   it(
-    "should prompt admin to migrate to the hosted instance",
+    "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
       cy.onlyOn(isOSS);
       cy.visit("/admin/settings/setup");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Have your server maintained for you.");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Migrate to Metabase Cloud.");
-      cy.findAllByRole("link", { name: "Learn more" })
-        .should("have.attr", "href")
-        .and("include", "/migrate/");
+
+      cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
+      expectGoodSnowplowEvent({
+        event: "upsell_viewed",
+        promoted_feature: "hosting",
+      });
+      cy.findByTestId("upsell-card")
+        .findAllByRole("link", { name: "Learn more" })
+        .click();
+      // link opens in new tab
+      expectGoodSnowplowEvent({
+        event: "upsell_clicked",
+        promoted_feature: "hosting",
+      });
+      expectNoBadSnowplowEvents();
     },
   );
 
@@ -274,7 +287,7 @@ describe("scenarios > admin > settings", () => {
     () => {
       isEE && setTokenFeatures("all");
 
-      const lastItem = isOSS ? "Caching" : "Appearance";
+      const lastItem = isOSS ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {

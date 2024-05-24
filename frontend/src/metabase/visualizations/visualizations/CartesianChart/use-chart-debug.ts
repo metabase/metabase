@@ -1,26 +1,30 @@
 /* eslint-disable no-console */
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
-import { isProduction } from "metabase/env";
+import { isChartsDebugLoggingEnabled } from "metabase/env";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({
   isQueryBuilder,
   rawSeries,
   option,
+  chartModel,
 }: {
   isQueryBuilder: boolean;
   rawSeries: RawSeries;
-  option: EChartsOption;
+  option: EChartsCoreOption;
+  chartModel: CartesianChartModel;
 }) {
   useEffect(() => {
-    if (!isQueryBuilder || isProduction) {
+    if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
       return;
     }
     console.log("-------------- ECHARTS DEBUG INFO START --------------");
     console.log("rawSeries", rawSeries);
     console.log("option", option);
+    console.log("model", chartModel);
     console.log("-------------- ECHARTS DEBUG INFO END --------------");
-  }, [rawSeries, option, isQueryBuilder]);
+  }, [rawSeries, option, chartModel, isQueryBuilder]);
 }

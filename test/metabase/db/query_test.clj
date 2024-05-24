@@ -84,16 +84,6 @@
         (verify-same-query q)))))
 
 
-(defn- repeat-concurrently [n f]
-  ;; Use a latch to ensure that the functions start as close to simultaneously as possible.
-  (let [latch   (CountDownLatch. n)
-        futures (atom [])]
-    (dotimes [_ n]
-      (swap! futures conj (future (.countDown latch)
-                                  (.await latch)
-                                  (f))))
-    (into #{} (map deref) @futures)))
-
 (deftest select-or-insert!-test
   ;; We test both a case where the database protects against duplicates, and where it does not.
   ;; Using Setting is perfect because it has only two required fields - (the primary) key & value (with no constraint).
@@ -121,7 +111,7 @@
                                                            (.countDown latch)
                                                            (.await latch)
                                                            {other-col (str (random-uuid))})))
-                  results (repeat-concurrently threads thunk)
+                  results (set (mt/repeat-concurrently threads thunk))
                   n       (count results)
                   latest  (t2/select-one Setting search-col search-value)]
 
@@ -181,7 +171,7 @@
                                                                   (.countDown latch)
                                                                   (.await latch)
                                                                   {other-col <>}))))
-                    values-set (repeat-concurrently threads thunk)
+                    values-set (set (mt/repeat-concurrently threads thunk))
                     latest     (get (t2/select-one Setting search-col search-value) other-col)]
 
                 (testing "each update tried to set a different value"
@@ -199,7 +189,7 @@
                 (testing "After the database is created, it does not create further duplicates"
                   (let [count (t2/count Setting search-col search-value)]
                     (is (pos? count))
-                    (is (empty? (set/intersection values-set (repeat-concurrently threads thunk))))
+                    (is (empty? (set/intersection values-set (set (mt/repeat-concurrently threads thunk)))))
                     (is (= count (t2/count Setting search-col search-value))))))
 
               ;; Since we couldn't use with-temp, we need to clean up manually.

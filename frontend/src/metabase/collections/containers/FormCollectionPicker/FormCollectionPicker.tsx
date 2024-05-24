@@ -1,19 +1,20 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { t } from "ttag";
 
 import {
   isValidCollectionId,
   canonicalCollectionId,
+  isTrashedCollection,
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
@@ -58,7 +59,9 @@ function FormCollectionPicker({
   filterPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
+
   const [{ value }, { error, touched }, { setValue }] = useField(name);
+
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
@@ -68,6 +71,21 @@ function FormCollectionPicker({
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
     }),
+  );
+
+  const selectedCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: value,
+    }),
+  );
+
+  useEffect(
+    function preventUsingArchivedCollection() {
+      if (selectedCollection && isTrashedCollection(selectedCollection)) {
+        setValue("root", false);
+      }
+    },
+    [setValue, selectedCollection],
   );
 
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;

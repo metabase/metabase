@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
@@ -7,8 +7,8 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  CartesianChartModel,
   DataKey,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
@@ -51,7 +51,7 @@ export const getCartesianChartOption = (
   isPlaceholder: boolean,
   hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
-): EChartsOption => {
+): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
@@ -61,7 +61,6 @@ export const getCartesianChartOption = (
       )
     : null;
 
-  // series option
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
     settings,

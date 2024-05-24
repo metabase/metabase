@@ -3,9 +3,10 @@ import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { getEngines } from "metabase/databases/selectors";
+import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import Databases from "metabase/entities/databases";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { getDefaultEngine } from "metabase/lib/engine";
 import {
   combineReducers,
   createThunkAction,
@@ -117,10 +118,11 @@ export const initializeDatabase = function (databaseId) {
         dispatch({ type: INITIALIZE_DATABASE_ERROR, payload: error });
       }
     } else {
+      const engines = getEngines(getState());
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: getDefaultEngine(),
+        engine: getDefaultEngineKey(engines),
         details: {},
         created: false,
       };
@@ -154,7 +156,8 @@ export const createDatabase = function (database) {
   return async function (dispatch, getState) {
     try {
       dispatch({ type: CREATE_DATABASE_STARTED });
-      await dispatch(Databases.actions.create(database));
+      const action = await dispatch(Databases.actions.create(database));
+      const savedDatabase = Databases.HACK_getObjectFromAction(action);
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Create",
@@ -162,6 +165,8 @@ export const createDatabase = function (database) {
       );
 
       dispatch({ type: CREATE_DATABASE });
+
+      return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
@@ -187,6 +192,7 @@ export const updateDatabase = function (database) {
       );
 
       dispatch({ type: UPDATE_DATABASE, payload: { database: savedDatabase } });
+      return savedDatabase;
     } catch (error) {
       MetabaseAnalytics.trackStructEvent(
         "Databases",
@@ -205,9 +211,9 @@ export const saveDatabase = function (database) {
   return async function (dispatch, getState) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      await dispatch(createDatabase(database));
+      return await dispatch(createDatabase(database));
     } else {
-      await dispatch(updateDatabase(database));
+      return await dispatch(updateDatabase(database));
     }
   };
 };

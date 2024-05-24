@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
@@ -16,7 +15,6 @@ import {
   TitleContainer,
   RemoveButton,
   Root,
-  QueryColumnInfoIcon,
 } from "./BreakoutColumnListItem.styled";
 
 const STAGE_INDEX = -1;
@@ -72,29 +70,28 @@ export function BreakoutColumnListItem({
     >
       <Content onClick={handleListItemClick}>
         <TitleContainer>
-          <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
+          <ColumnTypeIcon
+            query={query}
+            stageIndex={STAGE_INDEX}
+            column={item.column}
+            position="left"
+            size={18}
+          />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
-          <BucketPickerPopover
-            query={query}
-            stageIndex={STAGE_INDEX}
-            column={item.column}
-            color="summarize"
-            isEditing={isSelected}
-            hasDot
-            hasChevronDown
-            hasBinning
-            hasTemporalBucketing
-            onSelect={column =>
-              breakout ? onUpdateColumn(column) : onAddColumn(column)
-            }
-          />
-          <QueryColumnInfoIcon
-            query={query}
-            stageIndex={STAGE_INDEX}
-            column={item.column}
-            position="top-end"
-          />
         </TitleContainer>
+        <BucketPickerPopover
+          query={query}
+          stageIndex={STAGE_INDEX}
+          column={item.column}
+          color="summarize"
+          isEditing={isSelected}
+          hasChevronDown
+          hasBinning
+          hasTemporalBucketing
+          onSelect={column =>
+            breakout ? onUpdateColumn(column) : onAddColumn(column)
+          }
+        />
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}

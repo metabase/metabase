@@ -27,128 +27,146 @@ describe("admin > database > add", () => {
   });
 
   describe("external databases", { tags: "@external" }, () => {
-    it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
-      popover().within(() => {
-        if (isEE) {
-          // EE should ship with Oracle and Vertica as options
-          cy.findByText("Oracle");
-          cy.findByText("Vertica");
-        }
+    describe("postgres", () => {
+      beforeEach(() => {
+        popover().within(() => {
+          if (isEE) {
+            // EE should ship with Oracle and Vertica as options
+            cy.findByText("Oracle");
+            cy.findByText("Vertica");
+          }
+        });
+
+        popover().contains("PostgreSQL").click({ force: true });
+
+        cy.findByTestId("database-form").within(() => {
+          cy.findByText("Show advanced options").click();
+          cy.findByLabelText("Rerun queries for simple explorations").should(
+            "have.attr",
+            "aria-checked",
+            "true",
+          );
+          // Reproduces (metabase#14334)
+          cy.findByText("Additional JDBC connection string options");
+          // Reproduces (metabase#17450)
+          cy.findByLabelText("Choose when syncs and scans happen")
+            .click()
+            .should("have.attr", "aria-checked", "true");
+          cy.findByLabelText(
+            "Never, I'll do this manually if I need to",
+          ).should("have.attr", "aria-selected", "true");
+
+          // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
+          typeAndBlurUsingLabel("Display name", "QA Postgres12");
+          typeAndBlurUsingLabel("Host", "localhost");
+          typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+          typeAndBlurUsingLabel("Database name", "sample");
+          typeAndBlurUsingLabel("Username", "metabase");
+          typeAndBlurUsingLabel("Password", "metasample123");
+        });
+
+        const confirmSSLFields = (visible, hidden) => {
+          visible.forEach(field => cy.findByText(field));
+          hidden.forEach(field => cy.findByText(field).should("not.exist"));
+        };
+
+        const ssl = "Use a secure connection (SSL)",
+          sslMode = "SSL Mode",
+          useClientCert = "Authenticate client certificate?",
+          clientPemCert = "SSL Client Certificate (PEM)",
+          clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
+          sslRootCert = "SSL Root Certificate (PEM)";
+
+        // initially, all SSL sub-properties should be hidden
+        confirmSSLFields(
+          [ssl],
+          [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
+        );
+
+        toggleFieldWithDisplayName(ssl);
+        // when ssl is enabled, the mode and "enable client cert" options should be shown
+        confirmSSLFields(
+          [ssl, sslMode, useClientCert],
+          [clientPemCert, clientPkcsCert, sslRootCert],
+        );
+
+        toggleFieldWithDisplayName(useClientCert);
+        // when the "enable client cert" option is enabled, its sub-properties should be shown
+        confirmSSLFields(
+          [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
+          [sslRootCert],
+        );
+
+        selectFieldOption(sslMode, "verify-ca");
+        // when the ssl mode is set to "verify-ca", then the root cert option should be shown
+        confirmSSLFields(
+          [
+            ssl,
+            sslMode,
+            useClientCert,
+            clientPemCert,
+            clientPkcsCert,
+            sslRootCert,
+          ],
+          [],
+        );
+        toggleFieldWithDisplayName(ssl);
+
+        cy.button("Save").should("not.be.disabled").click();
+
+        cy.wait("@createDatabase").then(({ request }) => {
+          expect(request.body.details.host).to.equal("localhost");
+          expect(request.body.details.dbname).to.equal("sample");
+          expect(request.body.details.user).to.equal("metabase");
+        });
+
+        cy.url().should(
+          "match",
+          /\/admin\/databases\?created=true&createdDbId=\d$/,
+        );
+
+        waitForDbSync();
       });
 
-      popover().contains("PostgreSQL").click({ force: true });
+      it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+        cy.findByRole("dialog").within(() => {
+          cy.findByText(
+            "Your database was added! Want to configure permissions?",
+          ).should("exist");
+          cy.button("Maybe later").click();
+        });
 
-      cy.findByTestId("database-form").within(() => {
-        cy.findByText("Show advanced options").click();
-        cy.findByLabelText("Rerun queries for simple explorations").should(
+        cy.findByRole("status").within(() => {
+          cy.findByText("Done!");
+        });
+
+        cy.findByRole("table").within(() => {
+          cy.findByText("QA Postgres12").click();
+        });
+
+        cy.findByLabelText("Choose when syncs and scans happen").should(
           "have.attr",
           "aria-checked",
           "true",
         );
-        // Reproduces (metabase#14334)
-        cy.findByText("Additional JDBC connection string options");
-        // Reproduces (metabase#17450)
-        cy.findByLabelText("Choose when syncs and scans happen")
-          .click()
-          .should("have.attr", "aria-checked", "true");
+
         cy.findByLabelText("Never, I'll do this manually if I need to").should(
           "have.attr",
           "aria-selected",
           "true",
         );
-
-        // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-        typeAndBlurUsingLabel("Display name", "QA Postgres12");
-        typeAndBlurUsingLabel("Host", "localhost");
-        typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-        typeAndBlurUsingLabel("Database name", "sample");
-        typeAndBlurUsingLabel("Username", "metabase");
-        typeAndBlurUsingLabel("Password", "metasample123");
       });
 
-      const confirmSSLFields = (visible, hidden) => {
-        visible.forEach(field => cy.findByText(field));
-        hidden.forEach(field => cy.findByText(field).should("not.exist"));
-      };
+      it("should show a modal allowing you to redirect to the permissions page", () => {
+        cy.findByRole("dialog").within(() => {
+          cy.findByText(
+            "Your database was added! Want to configure permissions?",
+          ).should("exist");
+          cy.findByRole("link", { name: "Configure permissions" }).click();
+        });
 
-      const ssl = "Use a secure connection (SSL)",
-        sslMode = "SSL Mode",
-        useClientCert = "Authenticate client certificate?",
-        clientPemCert = "SSL Client Certificate (PEM)",
-        clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
-        sslRootCert = "SSL Root Certificate (PEM)";
-
-      // initially, all SSL sub-properties should be hidden
-      confirmSSLFields(
-        [ssl],
-        [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
-      );
-
-      toggleFieldWithDisplayName(ssl);
-      // when ssl is enabled, the mode and "enable client cert" options should be shown
-      confirmSSLFields(
-        [ssl, sslMode, useClientCert],
-        [clientPemCert, clientPkcsCert, sslRootCert],
-      );
-
-      toggleFieldWithDisplayName(useClientCert);
-      // when the "enable client cert" option is enabled, its sub-properties should be shown
-      confirmSSLFields(
-        [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
-        [sslRootCert],
-      );
-
-      selectFieldOption(sslMode, "verify-ca");
-      // when the ssl mode is set to "verify-ca", then the root cert option should be shown
-      confirmSSLFields(
-        [
-          ssl,
-          sslMode,
-          useClientCert,
-          clientPemCert,
-          clientPkcsCert,
-          sslRootCert,
-        ],
-        [],
-      );
-      toggleFieldWithDisplayName(ssl);
-
-      cy.button("Save").should("not.be.disabled").click();
-
-      cy.wait("@createDatabase").then(({ request }) => {
-        expect(request.body.details.host).to.equal("localhost");
-        expect(request.body.details.dbname).to.equal("sample");
-        expect(request.body.details.user).to.equal("metabase");
+        cy.findByTestId("permissions-editor").findByText(/QA Postgres12/);
       });
-
-      cy.url().should("match", /\/admin\/databases\?created=true$/);
-
-      waitForDbSync();
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("We're taking a look at your database!");
-        cy.icon("close").click();
-      });
-
-      cy.findByRole("status").within(() => {
-        cy.findByText("Done!");
-      });
-
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA Postgres12").click();
-      });
-
-      cy.findByLabelText("Choose when syncs and scans happen").should(
-        "have.attr",
-        "aria-checked",
-        "true",
-      );
-
-      cy.findByLabelText("Never, I'll do this manually if I need to").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
     });
 
     it(
@@ -175,11 +193,16 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should("match", /\/admin\/databases\?created=true$/);
+        cy.url().should(
+          "match",
+          /\/admin\/databases\?created=true&createdDbId=\d$/,
+        );
 
         cy.findByRole("dialog").within(() => {
-          cy.findByText("We're taking a look at your database!");
-          cy.findByLabelText("close icon").click();
+          cy.findByText(
+            "Your database was added! Want to configure permissions?",
+          ).should("exist");
+          cy.button("Maybe later").click();
         });
 
         cy.findByRole("table").within(() => {
@@ -236,11 +259,16 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should("match", /\/admin\/databases\?created=true$/);
+        cy.url().should(
+          "match",
+          /\/admin\/databases\?created=true&createdDbId=\d$/,
+        );
 
         cy.findByRole("dialog").within(() => {
-          cy.findByText("We're taking a look at your database!");
-          cy.findByLabelText("close icon").click();
+          cy.findByText(
+            "Your database was added! Want to configure permissions?",
+          ).should("exist");
+          cy.button("Maybe later").click();
         });
 
         cy.findByRole("table").within(() => {
@@ -281,11 +309,16 @@ describe("admin > database > add", () => {
 
       cy.wait("@createDatabase");
 
-      cy.url().should("match", /\/admin\/databases\?created=true$/);
+      cy.url().should(
+        "match",
+        /\/admin\/databases\?created=true&createdDbId=\d$/,
+      );
 
       cy.findByRole("dialog").within(() => {
-        cy.findByText("We're taking a look at your database!");
-        cy.findByLabelText("close icon").click();
+        cy.findByText(
+          "Your database was added! Want to configure permissions?",
+        ).should("exist");
+        cy.button("Maybe later").click();
       });
 
       cy.findByRole("table").within(() => {
@@ -309,21 +342,6 @@ describe("admin > database > add", () => {
       typeAndBlurUsingLabel("Display name", "BQ");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
-
-      mockUploadServiceAccountJSON(serviceAccountJSON);
-      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
-          serviceAccountJSON,
-        );
-      });
-    });
-
-    it("should work for Google Analytics", () => {
-      cy.visit("/admin/databases/create");
-
-      chooseDatabase("Google Analytics");
-      typeAndBlurUsingLabel("Display name", "GA");
-      typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
 
       mockUploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {

@@ -54,19 +54,24 @@
                                               (str (api/sexpr f) "f"))
                              :type :metabase/validate-logging))))
 
+(defn- format-node? [node]
+  (when (api/list-node? node)
+    (let [[x] (:children node)]
+      (and (api/token-node? x)
+           (or (= (hooks.common/node->qualified-symbol x) 'clojure.core/format)
+               (= (api/sexpr x) 'format))))))
+
 (defn- warn-against-log+format-instead-of-logf
   "Tell people to use things like infof instead of info + format."
   [{[f] :children, :as node} [x :as args]]
   (when (and (= (count args) 1)
              (api/list-node? x))
-    (let [[y] (:children x)]
-      (when (and (api/token-node? y)
-                 (= (hooks.common/node->qualified-symbol y) 'clojure.core/format))
-        (api/reg-finding! (assoc (meta node)
-                                 :message (format "Use %s instead of %s + format"
-                                                  (str (api/sexpr f) "f")
-                                                  (api/sexpr f))
-                                 :type :metabase/validate-logging))))))
+    (when (format-node? x)
+      (api/reg-finding! (assoc (meta node)
+                               :message (format "Use %s instead of %s + format"
+                                                (str (api/sexpr f) "f")
+                                                (api/sexpr f))
+                               :type :metabase/validate-logging)))))
 
 (defn info
   "Valid log, debug, etc."
@@ -74,7 +79,8 @@
   (common-checks node)
   (let [[_f & args]         (:children node)
         [_e & [x :as args]] (if (and (api/token-node? (first args))
-                                     (api/string-node? (second args)))
+                                     (or (api/string-node? (second args))
+                                         (format-node? (second args))))
                               args
                               (cons nil args))]
     (when (api/string-node? x)

@@ -1,48 +1,42 @@
 import { useEffect, useState } from "react";
 import { useAsync } from "react-use";
+import _ from "underscore";
 
-import { useDatabaseListQuery } from "metabase/common/hooks";
 import { CacheConfigApi } from "metabase/services";
-import type { CacheConfigAPIResponse, Config } from "metabase-types/api";
+import type {
+  CacheConfigAPIResponse,
+  Config,
+  CacheableModel,
+} from "metabase-types/api";
 
-import { rootId, translateConfigFromAPI } from "../strategies";
+import { rootId } from "../constants/simple";
+import { translateConfigFromAPI } from "../utils";
 
 import { useRecentlyTrue } from "./useRecentlyTrue";
 
 export const useCacheConfigs = ({
-  canOverrideRootStrategy,
+  configurableModels,
+  id,
 }: {
-  canOverrideRootStrategy: boolean;
+  configurableModels: CacheableModel[];
+  id?: number;
 }) => {
-  const databasesResult = useDatabaseListQuery();
-  const databases = databasesResult.data ?? [];
-
-  const configsResult = useAsync(async () => {
-    const rootConfigsFromAPI = (
-      (await CacheConfigApi.list({ model: "root" })) as CacheConfigAPIResponse
-    ).data;
-    const dbConfigsFromAPI = canOverrideRootStrategy
-      ? (
-          (await CacheConfigApi.list({
-            model: "database",
-          })) as CacheConfigAPIResponse
-        ).data
-      : [];
-    const configs = [...rootConfigsFromAPI, ...dbConfigsFromAPI].map(config =>
-      translateConfigFromAPI(config),
+  const configsApiResult = useAsync(async () => {
+    const configsForEachModel = await Promise.all(
+      configurableModels.map(model =>
+        CacheConfigApi.list({ model, id }).then(
+          (response: CacheConfigAPIResponse) => response.data,
+        ),
+      ),
     );
-    return configs;
-  }, []);
+    const configs = _.flatten(configsForEachModel);
+    const translatedConfigs = configs.map(translateConfigFromAPI);
+    return translatedConfigs;
+  }, [configurableModels, id]);
 
-  const configsFromAPI = configsResult.value;
+  const configsFromAPI = configsApiResult.value;
 
   const [configs, setConfigs] = useState<Config[]>([]);
-
-  useEffect(() => {
-    if (configsFromAPI) {
-      setConfigs(configsFromAPI);
-    }
-  }, [configsFromAPI]);
 
   const rootStrategyOverriddenOnce = configs.some(
     config => config.model_id !== rootId,
@@ -53,11 +47,22 @@ export const useCacheConfigs = ({
     3000,
   );
 
-  const error = databasesResult.error || configsResult.error;
-  const loading = databasesResult.isLoading || configsResult.loading;
+  const error = configsApiResult.error;
+
+  // The configs are not considered fully loaded until the cache configuration data
+  // has been loaded from the API _and_ has been copied into local state
+  const [areConfigsInitialized, setAreConfigsInitialized] =
+    useState<boolean>(false);
+  const loading = configsApiResult.loading || !areConfigsInitialized;
+
+  useEffect(() => {
+    if (configsFromAPI) {
+      setConfigs(configsFromAPI);
+      setAreConfigsInitialized(true);
+    }
+  }, [configsFromAPI]);
 
   return {
-    databases,
     error,
     loading,
     configs,

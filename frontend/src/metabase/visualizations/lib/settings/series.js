@@ -12,6 +12,8 @@ import {
   getSeriesDefaultDisplay,
   SERIES_SETTING_KEY,
   getSeriesDefaultShowSeriesValues,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineSize,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
@@ -82,7 +84,7 @@ export function seriesSetting({
         ]),
     },
     "line.interpolate": {
-      title: t`Line style`,
+      title: t`Line shape`,
       widget: "segmentedControl",
       props: {
         options: [
@@ -96,6 +98,36 @@ export function seriesSetting({
       getDefault: (single, settings, { settings: vizSettings }) =>
         // use legacy global line.interpolate setting if present
         getSeriesDefaultLinearInterpolate(vizSettings),
+      readDependencies: ["display"],
+    },
+    "line.style": {
+      title: t`Line style`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { icon: "line_style_solid", value: "solid" },
+          { icon: "line_style_dashed", value: "dashed" },
+          { icon: "line_style_dotted", value: "dotted" },
+        ],
+      },
+      getDefault: (series, settings) => getSeriesDefaultLineStyle(settings),
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
+    "line.size": {
+      title: t`Line size`,
+      widget: "segmentedControl",
+      props: {
+        options: [
+          { name: "S", value: "S" },
+          { name: "M", value: "M" },
+          { name: "L", value: "L" },
+        ],
+      },
+      getDefault: (series, settings) => getSeriesDefaultLineSize(settings),
+      getHidden: (single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
       readDependencies: ["display"],
     },
     "line.marker_enabled": {

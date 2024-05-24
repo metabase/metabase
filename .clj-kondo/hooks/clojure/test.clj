@@ -22,6 +22,7 @@
      metabase.actions.test-util/with-actions-test-data
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
+     metabase.analytics.snowplow-test/with-fake-snowplow-collector
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
      metabase.test.data.users/with-group
@@ -31,7 +32,6 @@
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
      metabase.test.util/with-all-users-permission
-     metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
      metabase.test.util/with-locale
@@ -49,7 +49,6 @@
      metabase.test/with-actions-test-data-and-actions-enabled
      metabase.test/with-actions-test-data-tables
      metabase.test/with-all-users-permission
-     metabase.test/with-column-remappings
      metabase.test/with-discarded-collections-perms-changes
      metabase.test/with-env-keys-renamed-by
      metabase.test/with-expected-messages

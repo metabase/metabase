@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -31,10 +31,10 @@ const canSelectItem = (
   return !!item && item.can_write !== false && item.model === "collection";
 };
 
-const searchFilter = (
-  searchResults: CollectionPickerItem[],
-): CollectionPickerItem[] => {
-  return searchResults.filter(result => result.can_write);
+const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
+  return searchResults.filter(
+    result => result.can_write && result.collection.type !== "trash",
+  );
 };
 
 export const CollectionPickerModal = ({
@@ -76,17 +76,19 @@ export const CollectionPickerModal = ({
     }
   };
 
-  const modalActions = [
-    <Button
-      key="collection-on-the-go"
-      miw="21rem"
-      onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
-    >
-      {t`Create a new collection`}
-    </Button>,
-  ];
+  const modalActions = options.allowCreateNew
+    ? [
+        <Button
+          key="collection-on-the-go"
+          miw="21rem"
+          onClick={openCreateDialog}
+          leftIcon={<Icon name="add" />}
+          disabled={selectedItem?.can_write === false}
+        >
+          {t`Create a new collection`}
+        </Button>,
+      ]
+    : [];
 
   const tabs: [EntityTab<SearchModel>] = [
     {

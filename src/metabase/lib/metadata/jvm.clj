@@ -294,14 +294,15 @@
                 :metric/name
                 :metric/description
                 :metric/archived
-                :metric/definition]
-    :from      [[(t2/table-name :model/LegacyMetric) :metric]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :metric/table_id :table/id]]}))
+                :metric/dataset_query]
+    :from      [[(t2/table-name :model/Card) :metric]]
+    :where     [:= :metric/type "metric"]}))
 
-(t2/define-after-select :metadata/legacy-metric
+(derive :metadata/metric :model/Card)
+
+(t2/define-after-select :metadata/metric
   [metric]
-  (instance->metadata metric :metadata/legacy-metric))
+  (instance->metadata metric :metadata/metric))
 
 ;;;
 ;;; Segment
@@ -380,6 +381,10 @@
                :active          true
                :visibility_type [:not-in #{"sensitive" "retired"}])
 
+
+    :metadata/metric
+    (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
+
     :metadata/legacy-metric
     (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
 
@@ -397,16 +402,16 @@
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-type table-id))
   (setting [_this setting-name]
-    (setting/get setting-name))
+           (setting/get setting-name))
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+          (list `->UncachedApplicationDatabaseMetadataProvider database-id))
 
   Object
   (equals [_this another]
-    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
-         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
+          (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+               (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

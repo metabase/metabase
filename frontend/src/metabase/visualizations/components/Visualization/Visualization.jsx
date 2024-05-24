@@ -14,6 +14,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import {
   extractRemappings,
@@ -55,6 +56,7 @@ const defaultProps = {
   isEditing: false,
   isSettings: false,
   isQueryBuilder: false,
+  isEmbeddingSdk: false,
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -65,6 +67,7 @@ const defaultProps = {
 const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
+  isEmbeddingSdk: getIsEmbeddingSdk(state),
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -297,7 +300,7 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, objectId, settingsSyncOptions }) => {
+  handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
     const { rawSeries } = this.props;
 
     const previousCard =
@@ -308,7 +311,6 @@ class Visualization extends PureComponent {
       nextCard,
       previousCard,
       objectId,
-      settingsSyncOptions,
     });
   };
 

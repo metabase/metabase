@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -6,81 +7,71 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import { color } from "metabase/lib/colors";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
-import {
-  breakpointMaxMedium,
-  breakpointMinLarge,
-} from "metabase/styled-components/theme/media-queries";
-import { Icon } from "metabase/ui";
+import { FixedSizeIcon } from "metabase/ui";
 
-const LAST_EDITED_BY_INDEX = 3;
-const LAST_EDITED_AT_INDEX = 4;
+import type { ResponsiveProps } from "./utils";
+import { getContainerQuery } from "./utils";
 
-export const Table = styled.table<{ canSelect: boolean }>`
+export const Table = styled.table<{ isInDragLayer?: boolean }>`
   background-color: ${color("white")};
   table-layout: fixed;
   border-collapse: unset;
-  border-radius: 8px;
+  border-radius: 0.5rem;
+  overflow: hidden;
 
   thead {
     th {
       border-top: 1px solid ${color("border")};
 
       &:first-of-type {
-        border-top-left-radius: 8px;
-        border-left: 1px solid ${color("border")};
+        border-start-start-radius: 8px;
+        border-inline-start: 1px solid ${color("border")};
       }
 
       &:last-child {
-        border-top-right-radius: 8px;
-        border-right: 1px solid ${color("border")};
+        border-start-end-radius: 8px;
+        border-inline-end: 1px solid ${color("border")};
       }
     }
   }
 
-  ${props => {
-    const offset = props.canSelect ? 1 : 0;
-    const offsetEditedByIndex = LAST_EDITED_BY_INDEX + offset;
-    const offsetEditedAtIndex = LAST_EDITED_AT_INDEX + offset;
-
-    return `
-      ${breakpointMaxMedium} {
-        & td:nth-of-type(${offsetEditedByIndex}),
-        th:nth-of-type(${offsetEditedByIndex}),
-        col:nth-of-type(${offsetEditedByIndex}),
-        td:nth-of-type(${offsetEditedAtIndex}),
-        th:nth-of-type(${offsetEditedAtIndex}),
-        col:nth-of-type(${offsetEditedAtIndex}) {
-          display: none;
-        }
-      }
-    `;
-  }}
+  ${props => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
 
 Table.defaultProps = { className: AdminS.ContentTable };
 
-export const ColumnHeader = styled.th`
-  padding: 1em 1em 0.75em !important;
+export const hideResponsively = ({
+  hideAtContainerBreakpoint,
+  containerName,
+}: ResponsiveProps) =>
+  css`
+    ${getContainerQuery({
+      hideAtContainerBreakpoint,
+      containerName,
+    })}
+  `;
+
+export const ColumnHeader = styled.th<ResponsiveProps>`
+  th& {
+    padding: 0.75em 1em 0.75em;
+  }
   font-weight: bold;
   color: ${color("text-medium")};
+  ${hideResponsively}
 `;
 
 export const BulkSelectWrapper = styled(IconButtonWrapper)`
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-inline: 12px;
   width: 3em;
 `;
 
-export const LastEditedByCol = styled.col`
-  width: 140px;
-
-  ${breakpointMinLarge} {
-    width: 240px;
-  }
+export const ItemCell = styled.td<ResponsiveProps>`
+  padding: 0.25em 0 0.25em 1em !important;
+  ${hideResponsively}
 `;
 
-export const ItemCell = styled.td`
-  padding: 0.25em 0 0.25em 1em !important;
+export const TableColumn = styled.col<ResponsiveProps>`
+  ${hideResponsively}
 `;
 
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
@@ -114,11 +105,11 @@ export const ItemNameCell = styled.td`
   }
 `;
 
-export const SortingIcon = styled(Icon)`
-  margin-left: 4px;
+export const SortingIcon = styled(FixedSizeIcon)`
+  margin-inline-start: 4px;
 `;
 
-export const DescriptionIcon = styled(Icon)`
+export const DescriptionIcon = styled(FixedSizeIcon)`
   color: ${color("text-medium")};
 `;
 
@@ -131,12 +122,14 @@ export const ModelDetailLink = styled(BaseModelDetailLink)`
   visibility: hidden;
 `;
 
-export const SortingControlContainer = styled.div<{ isActive: boolean }>`
+export const SortingControlContainer = styled.div<{
+  isActive: boolean;
+  isSortable?: boolean;
+}>`
   display: flex;
   align-items: center;
   color: ${props => (props.isActive ? color("text-dark") : "")};
-  cursor: pointer;
-  user-select: none;
+  ${props => (props.isSortable ? `cursor: pointer; user-select: none;` : "")}
 
   .Icon {
     visibility: ${props => (props.isActive ? "visible" : "hidden")};
@@ -150,10 +143,15 @@ export const SortingControlContainer = styled.div<{ isActive: boolean }>`
     }
   }
 `;
+SortingControlContainer.defaultProps = { isSortable: true };
 
 export const RowActionsContainer = styled.div`
   display: flex;
   gap: 0.5rem;
+  span {
+    display: flex;
+    align-items: center;
+  }
 `;
 
 export const TableItemSecondaryField = styled.span`
@@ -169,11 +167,11 @@ export const TBody = styled.tbody`
     border-top: 1px solid ${color("border")};
 
     &:first-of-type {
-      border-left: 1px solid ${color("border")};
+      border-inline-start: 1px solid ${color("border")};
     }
 
     &:last-child {
-      border-right: 1px solid ${color("border")};
+      border-inline-end: 1px solid ${color("border")};
     }
   }
 
@@ -186,11 +184,11 @@ export const TBody = styled.tbody`
       border-bottom: 1px solid ${color("border")};
 
       &:last-child {
-        border-bottom-right-radius: 8px;
+        border-end-end-radius: 8px;
       }
 
       &:first-of-type {
-        border-bottom-left-radius: 8px;
+        border-end-start-radius: 8px;
       }
     }
   }

@@ -21,6 +21,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -148,7 +149,8 @@
                (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -168,7 +170,8 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+                          (tqpt/timeseries-drivers))
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
@@ -187,32 +190,24 @@
 
 (deftest ^:parallel row->types-test
   (testing "array rows ignored properly in JSON row->types (#21752)"
-    (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
-          obj-row   {:zlob {"blob" 1323}}]
-      (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row)))))
-  (testing "JSON row->types handles bigint OK (#21752)"
-    (let [int-row   {:zlob {"blob" 123N}}
-          float-row {:zlob {"blob" 1234.02M}}]
-      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
-      (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
+    (let [arr-row   {:bob (json/encode [:bob :cob :dob 123 "blob"])}
+          obj-row   {:zlob (json/encode {:blob Long/MAX_VALUE})}]
+      (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
+  (testing "JSON json-map->types handles bigint OK (#22732)"
+    (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
+          float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
+      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/json-map->types int-row)))
+      ;; no idea how to force it to use BigDecimal here
+      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row))))))
 
-(deftest ^:parallel dont-parse-long-json-xform-test
-  (testing "obnoxiously long json should not even get parsed (#22636)"
-    ;; Generating an actually obnoxiously long json took too long,
-    ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
-    ;; so this rebinding is what you get
-    (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
-          json-map              {:somekey obnoxiously-long-json}]
-      (binding [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
-        (is (= {}
-               (transduce
-                 #'sql-jdbc.describe-table/describe-json-xform
-                 #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
-      (is (= {[:somekey "bob"] java.lang.String}
-             (transduce
-               #'sql-jdbc.describe-table/describe-json-xform
-               #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+(deftest ^:parallel key-limit-test
+  (testing "we don't read too many keys even from long jsons"
+    (let [data (into {} (for [i (range (* 2 @#'sql-jdbc.describe-table/max-nested-field-columns))]
+                          [(str "key" i) i]))]
+      ;; inc the limit since we go 1 over the limit, see comment in `json->types`
+      (is (= (inc @#'sql-jdbc.describe-table/max-nested-field-columns)
+             (count (#'sql-jdbc.describe-table/json-map->types {:k (json/encode data)})))))))
 
 (deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
@@ -246,18 +241,13 @@
                  (is (nil? (:visibility-type text-field))))))))))))
 
 (deftest ^:parallel describe-nested-field-columns-test
-  (testing "flattened-row"
-    (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
-          flattened {[:mob :bob :dobbs] 123
-                     [:mob :bob :cobbs] "boop"}]
-      (is (= flattened (#'sql-jdbc.describe-table/flattened-row :mob row)))))
-  (testing "row->types"
-    (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
-          types {[:bob :cobbs] clojure.lang.PersistentVector
-                 [:bob :dobbs :robbs] java.lang.Long}]
-      (is (= types (#'sql-jdbc.describe-table/row->types row)))))
-  (testing "JSON row->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
-    (let [int-row   {:zlob {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")}}]
+  (testing "json-map->types"
+    (let [row   {:bob (json/encode {:dobbs {:robbs 123} :cobbs [1 2 3]})}
+          types {[:bob "cobbs"] clojure.lang.PersistentVector
+                 [:bob "dobbs" "robbs"] java.lang.Long}]
+      (is (= types (#'sql-jdbc.describe-table/json-map->types row)))))
+  (testing "JSON json-map->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
+    (let [int-row   {:zlob (json/encode {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")})}]
       (is (= #{{:name              "zlob → blob",
                 :database-type     "decimal",
                 :base-type         :type/BigInteger,
@@ -266,7 +256,7 @@
                 :visibility-type   :normal,
                 :nfc-path          [:zlob "blob"]}}
              (-> int-row
-                 (#'sql-jdbc.describe-table/row->types)
+                 (#'sql-jdbc.describe-table/json-map->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
 (deftest ^:parallel nested-field-column-test

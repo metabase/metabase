@@ -51,7 +51,8 @@
                               :native-parameters               true
                               :now                             true
                               :set-timezone                    true
-                              :standard-deviation-aggregations true}]
+                              :standard-deviation-aggregations true
+                              :metadata/key-constraints        false}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers

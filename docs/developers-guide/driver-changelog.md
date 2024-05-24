@@ -4,6 +4,29 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.51.0
+
+- If you don't have a custom implementation of `metabase.driver/notify-database-updated` you can skip this section.
+
+  A new method, `metabase.driver/notify-database-will-be-deleted!`, has been added so that you can specify behaviors
+  that happen only when a Database is deleted, such as destroying connection pools. Previously, whenever a Database
+  was updated *or* deleted, `metabase.driver/notify-database-updated` was called; now you may differentiate the two
+  situations by implementing both methods separately. The default implementation of `notify-database-will-be-deleted!`
+  calls `notify-database-updated` for backward compatibility, so by default it will still be called on Database
+  deletes. The default implementation of `notify-database-updated` is a no-op, so unless you have an implementation
+  for it the default implementation of `notify-database-will-be-deleted! is effectively a no-op as well.
+
+  `:sql-jdbc` has an implementation, `notify-database-updated` destroys cached connection pools if connection details
+  change in a meaningful way, and `notify-database-will-be-deleted!` always destroys pools. If your driver is
+  JDBC-based, you probably didn't have a custom implementation of `notify-database-updated`, so you shouldn't need to
+  change anything.
+
+  We previously recommended that `notify-database-updated` always destroy connection pools or cached resources. Now
+  that you can differentiate updates from deletes, we now instead recommend that you implement
+  `notify-database-will-be-deleted!` separately and have it always delete connection pools or cached resources, and
+  update your implementation of `notify-database-updated` to check whether connection details have changed in a
+  meaningful way and only destroy resources if actually needed.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
@@ -58,26 +81,31 @@ title: Driver interface changelog
   clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
   drivers. Other drivers should add an implementation for this clause and enable the feature flag.
 
-- If you don't have a custom implementation of `metabase.driver/notify-database-updated` you can skip this section.
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
 
-  A new method, `metabase.driver/notify-database-will-be-deleted!`, has been added so that you can specify behaviors
-  that happen only when a Database is deleted, such as destroying connection pools. Previously, whenever a Database
-  was updated *or* deleted, `metabase.driver/notify-database-updated` was called; now you may differentiate the two
-  situations by implementing both methods separately. The default implementation of `notify-database-will-be-deleted!`
-  calls `notify-database-updated` for backward compatibility, so by default it will still be called on Database
-  deletes. The default implementation of `notify-database-updated` is a no-op, so unless you have an implementation
-  for it the default implementation of `notify-database-will-be-deleted! is effectively a no-op as well.
+- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+  key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
+  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
+  first-party SparkSQL, Presto and Athena drivers.
 
-  `:sql-jdbc` has an implementation, `notify-database-updated` destroys cached connection pools if connection details
-  change in a meaningful way, and `notify-database-will-be-deleted!` always destroys pools. If your driver is
-  JDBC-based, you probably didn't have a custom implementation of `notify-database-updated`, so you shouldn't need to
-  change anything.
+- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+  corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
+  This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
+  Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
 
-  We previously recommended that `notify-database-updated` always destroy connection pools or cached resources. Now
-  that you can differentiate updates from deletes, we now instead recommend that you implement
-  `notify-database-will-be-deleted!` separately and have it always delete connection pools or cached resources, and
-  update your implementation of `notify-database-updated` to check whether connection details have changed in a
-  meaningful way and only destroy resources if actually needed.
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
 
 ## Metabase 0.49.1
 

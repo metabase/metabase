@@ -5,22 +5,17 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Icon, DelayGroup } from "metabase/ui";
+import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
-import {
-  StyledAccordionList,
-  NameAndBucketing,
-  ItemName,
-} from "./QueryColumnPicker.styled";
+import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -145,45 +140,40 @@ export function QueryColumnPicker({
     ],
   );
 
-  const renderItemName = useCallback(
-    (item: ColumnListItem) => (
-      <NameAndBucketing>
-        <ItemName>{item.displayName}</ItemName>
-        {(hasBinning || hasTemporalBucketing) && (
-          <BucketPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            isEditing={checkIsColumnSelected(item)}
-            hasBinning={hasBinning}
-            hasTemporalBucketing={hasTemporalBucketing}
-            hasDot={withInfoIcons}
-            hasChevronDown={withInfoIcons}
-            color={color}
-            onSelect={handleSelect}
-          />
-        )}
-      </NameAndBucketing>
-    ),
+  const renderItemExtra = useCallback(
+    (item: ColumnListItem) =>
+      (hasBinning || hasTemporalBucketing) && (
+        <BucketPickerPopover
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          isEditing={checkIsColumnSelected(item)}
+          hasBinning={hasBinning}
+          hasTemporalBucketing={hasTemporalBucketing}
+          hasChevronDown={withInfoIcons}
+          color={color}
+          onSelect={handleSelect}
+        />
+      ),
     [
       query,
       stageIndex,
+      checkIsColumnSelected,
       hasBinning,
       hasTemporalBucketing,
-      color,
-      checkIsColumnSelected,
-      handleSelect,
       withInfoIcons,
+      color,
+      handleSelect,
     ],
   );
 
-  const renderItemExtra = useCallback(
+  const renderItemIcon = useCallback(
     (item: ColumnListItem) => (
       <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
         column={item.column}
-        position="right"
+        position="top-start"
       />
     ),
     [query, stageIndex],
@@ -199,10 +189,9 @@ export function QueryColumnPicker({
         itemIsSelected={checkIsColumnSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
+        renderItemExtra={renderItemExtra}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
-        renderItemLabel={renderItemLabel}
         color={color}
         maxHeight={Infinity}
         data-testid={dataTestId}
@@ -220,7 +209,7 @@ export function QueryColumnPicker({
   );
 }
 
-function renderItemLabel(item: ColumnListItem) {
+function renderItemName(item: ColumnListItem) {
   return item.displayName;
 }
 
@@ -230,8 +219,4 @@ function renderItemWrapper(content: ReactNode) {
 
 function omitItemDescription() {
   return null;
-}
-
-function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }

@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import type {
-  SearchResult,
   SearchResponse,
+  SearchResult,
   SearchScore,
 } from "metabase-types/api";
 
@@ -18,12 +18,13 @@ export const createMockSearchResult = (
     name: "Mock search result",
     description: "Mock search result description",
     model: "card",
+    display: null,
     model_index_id: null,
     model_id: null,
     archived: null,
     collection,
     collection_position: null,
-    can_write: null,
+    can_write: true,
     table_id: 1,
     table_name: null,
     bookmark: null,
@@ -79,6 +80,3 @@ export const createMockSearchResults = ({
     ...options,
   };
 };
-
-export const createMockModelResult = (model: Partial<SearchResult>) =>
-  createMockSearchResult({ model: "dataset", ...model });

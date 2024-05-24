@@ -203,6 +203,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
@@ -215,6 +216,15 @@ interface InstanceSettings {
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
 }
+
+export type EmbeddingHomepageDismissReason =
+  | "dismissed-done"
+  | "dismissed-run-into-issues"
+  | "dismissed-not-interested-now";
+export type EmbeddingHomepageStatus =
+  | EmbeddingHomepageDismissReason
+  | "visible"
+  | "hidden";
 
 interface AdminSettings {
   "active-users-count"?: number;
@@ -234,12 +244,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "embedding-homepage":
-    | "visible"
-    | "hidden"
-    | "dismissed-done"
-    | "dismissed-run-into-issues"
-    | "dismissed-not-interested-now";
+  "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
 }
@@ -277,7 +282,6 @@ interface PublicSettings {
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
-  "ga-enabled": boolean;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -311,13 +315,16 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
 }
 
-export interface UserSettings {
+export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
-}
+  "expand-browse-in-nav"?: boolean;
+  "expand-bookmarks-in-nav"?: boolean;
+  "browse-filter-only-verified-models"?: boolean;
+};
 
 export type Settings = InstanceSettings &
   PublicSettings &

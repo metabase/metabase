@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { Text, Box, Stack, Button } from "metabase/ui";
+import { Text, Box, Stack, Button, Title, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
@@ -13,17 +13,26 @@ import { getExample, getName } from "./util";
 type Props = {
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: (clause: Lib.ExpressionClause, name: string) => void;
-  onCancel: () => void;
+  onSubmit: (
+    clause: Lib.ExpressionClause,
+    name: string,
+    extraction: Lib.ColumnExtraction,
+  ) => void;
+  onCancel?: () => void;
 };
 
 export function ExtractColumn({
-  query,
-  stageIndex,
+  query: originalQuery,
+  stageIndex: originalStageIndex,
   onCancel,
   onSubmit,
 }: Props) {
   const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
+
+  const { query, stageIndex } = Lib.asReturned(
+    originalQuery,
+    originalStageIndex,
+  );
 
   function handleSelect(column: Lib.ColumnMetadata) {
     setColumn(column);
@@ -51,7 +60,7 @@ export function ExtractColumn({
     const name = getName(query, stageIndex, info);
     const lastExpression = expressions.at(-1);
     if (lastExpression) {
-      onSubmit(lastExpression, name);
+      onSubmit(lastExpression, name, extraction);
     }
   }
 
@@ -77,7 +86,7 @@ function ColumnPicker({
   stageIndex: number;
   column: Lib.ColumnMetadata | null;
   onSelect: (column: Lib.ColumnMetadata) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }) {
   const extractableColumns = useMemo(
     () =>
@@ -90,11 +99,18 @@ function ColumnPicker({
 
   return (
     <>
-      <ExpressionWidgetHeader
-        title={t`Select column to extract from`}
-        onBack={onCancel}
-      />
+      {onCancel && (
+        <ExpressionWidgetHeader
+          title={t`Select column to extract from`}
+          onBack={onCancel}
+        />
+      )}
       <Box py="sm">
+        {!onCancel && (
+          <Title p="md" pt="sm" pb={0} order={6}>
+            {t`Select column to extract from`}
+          </Title>
+        )}
         <QueryColumnPicker
           query={query}
           stageIndex={stageIndex}
@@ -176,15 +192,18 @@ function ExtractColumnButton({
       className={styles.button}
       classNames={{
         inner: styles.inner,
+        label: styles.label,
       }}
       onClick={onClick}
     >
-      <Text color="text-dark" className={styles.content} weight="bold" p={0}>
-        {title}
-      </Text>
-      <Text color="text-light" size="sm" className={styles.example}>
-        {example}
-      </Text>
+      <Flex align="center" justify="space-between" gap="1rem">
+        <Text color="text-dark" className={styles.content} weight="bold" p={0}>
+          {title}
+        </Text>
+        <Text color="text-light" size="sm" className={styles.example}>
+          {example}
+        </Text>
+      </Flex>
     </Button>
   );
 }

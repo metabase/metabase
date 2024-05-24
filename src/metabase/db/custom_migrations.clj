@@ -22,9 +22,10 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.interface :as mi]
+   [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -104,6 +105,39 @@
   ^String [s]
   (when s
     (.toLowerCase (str s) Locale/US)))
+
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
+  (if (string? obj)
+    obj
+    (json/generate-string obj)))
+
+(defn- json-out [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable e
+        (log/error e "Error parsing JSON")
+        s))
+    s))
+
+(def ^:private encrypted-json-in
+  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
+  (comp encryption/maybe-encrypt json-in))
+
+(defn- encrypted-json-out
+  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -716,9 +750,9 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (mi/encrypted-json-out settings)
-                            options      (mi/json-out-with-keywordization options)
-                            new-settings (mi/encrypted-json-in (merge settings options))]
+                      (let [settings     (encrypted-json-out settings)
+                            options      (json-out options true)
+                            new-settings (encrypted-json-in (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -729,12 +763,12 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (mi/encrypted-json-out settings)
-                              options  (mi/json-out-with-keywordization options)]
+                        (let [settings (encrypted-json-out settings)
+                              options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
-                                                :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -1080,9 +1114,9 @@
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
   (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+             dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
                                     (false? (:is_full_sync %)))
-                              (t2/select :model/Database)))]
+                              (t2/select :metabase_database)))]
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]
@@ -1240,13 +1274,13 @@
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
                      [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
-    (pretty-spit "resources/sample-content.edn" data))
+    (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
-  )
+
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
@@ -1258,14 +1292,107 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
 
-(define-migration BackfillQueryField
-  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
-        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                              :select    [:c.id]
-                                                              :where     [:and
-                                                                          [:not :c.archived]
-                                                                          [:= :c.query_type "native"]
-                                                                          [:= :f.id nil]]}])]
-    (doseq [card cards]
-      (update-query-fields! card))))
+(define-migration DeleteSendPulsesTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
+    (qs/shutdown scheduler)))
+
+;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
+;; jobclass not found. And when they migrate up to 50 again, these triggers will not be triggered because it's in
+;; an error state. See https://www.quartz-scheduler.org/api/1.8.6/org/quartz/Trigger.html#STATE_ERROR
+;; So we need to delete this on migrate down, so when they migrate up, the triggers will be recreated.
+(define-reversible-migration DeleteSendPulseTaskOnDowngrade
+  (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+     (qs/shutdown scheduler))))
+
+;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
+;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
+;; on the second migrate up.
+(define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
+  (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
+  (do
+   (classloader/the-classloader)
+   (set-jdbc-backend-properties!)
+   (let [scheduler (qs/initialize)]
+     (qs/start scheduler)
+     ;; delete the job will also delete all of its triggers
+     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+     (qs/shutdown scheduler))))
+
+;; when card display is area or bar,
+;; 1. set the display key to :stackable.stack_display value OR leave it the same
+;; 2. when series settings exist, remove the diplay key from each map in the series_settings list
+
+(defn- area-bar-stacked-viz-migration
+  [{display :display viz :visualization_settings :as card}]
+  (if (and (#{:area :bar "area" "bar"} display)
+             (:stackable.stack_type viz))
+    (let [actual-display (or (:stackable.stack_display viz) display)
+          new-viz        (m/update-existing viz :series_settings update-vals (fn [m] (dissoc m :display)))]
+      (assoc card
+             :display actual-display
+             :visualization_settings new-viz))
+    card))
+
+(defn- combo-stacked-viz-migration
+  [{display :display viz :visualization_settings :as card}]
+  (if (#{:combo "combo"} display)
+    (let [{series-settings :series_settings} viz
+          series-displays                    (map :display (vals series-settings))
+          new-display                        (if (and (every? some? series-displays)
+                                                      (= 1 (count (distinct series-displays)))
+                                                      (#{:area :bar "area" "bar"} (first (distinct series-displays))))
+                                               (first series-displays)
+                                               :combo)]
+      (if (not (#{:combo "combo"} new-display))
+        ;; we've effectively converted a :combo chart into :area or :bar since every series is shown the same way
+        (area-bar-stacked-viz-migration (assoc card :display new-display))
+        ;; Not all series are the same, so we keep it combo and remove the :stackable.stack_type
+        (let [new-viz (dissoc viz :stackable.stack_type)]
+          (assoc card :visualization_settings new-viz))))
+    card))
+
+(defn- stack-viz-settings-cleanup-migration
+  [card]
+  (update card :visualization_settings #(dissoc % :stackable.stack_display)))
+
+(defn- update-stacked-viz-cards
+  [partial-card]
+  (-> partial-card
+      area-bar-stacked-viz-migration
+      combo-stacked-viz-migration
+      stack-viz-settings-cleanup-migration))
+
+(define-migration MigrateStackedAreaBarComboDisplaySettings
+  (let [update! (fn [{:keys [id display visualization_settings] :as card}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings
+                                          :display                display}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id display visualization_settings]}]
+                                    (let [parsed-viz           (json/parse-string visualization_settings keyword)
+                                          partial-card         {:display display :visualization_settings parsed-viz}
+                                          updated-partial-card (update-stacked-viz-cards partial-card)]
+                                      (when (not= partial-card updated-partial-card)
+                                        (let [{updated-display :display
+                                               updated-viz     :visualization_settings} updated-partial-card]
+                                          {:id                     id
+                                           :display                (name updated-display)
+                                           :visualization_settings (json/generate-string updated-viz)})))))
+                            (t2/reducible-query {:select [:id :display :visualization_settings]
+                                                 :from   [:report_card]
+                                                 :where  [:like :visualization_settings "%stackable%"]})))))
+
+(define-reversible-migration MigrateMetricsToV2
+  (metrics-v2/migrate-up!)
+  (metrics-v2/migrate-down!))

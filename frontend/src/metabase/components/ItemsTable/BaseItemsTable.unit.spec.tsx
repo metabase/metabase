@@ -14,6 +14,7 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
+import { SortDirection } from "./Columns";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -43,14 +44,16 @@ function getCollectionItem({
     model,
     description,
     name,
+    collection: createMockCollection({ can_write: true }),
     getIcon: () => ({
       name: icon,
     }),
     getUrl: () => url,
+    archived: false,
   };
 }
 
-describe("Collections BaseItemsTable", () => {
+describe("BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
   function setup({
@@ -63,7 +66,10 @@ describe("Collections BaseItemsTable", () => {
         component={() => (
           <BaseItemsTable
             items={items}
-            sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+            sortingOptions={{
+              sort_column: "name",
+              sort_direction: SortDirection.Asc,
+            }}
             onSortingOptionsChange={jest.fn()}
             {...props}
           />
@@ -75,7 +81,7 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays item data", () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
 
     expect(screen.getByText(ITEM.name)).toBeInTheDocument();
     expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -84,7 +90,7 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays last edit time on hover", async () => {
     setup();
-    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM D, YYYY");
 
     await userEvent.hover(screen.getByText(lastEditedAt));
 

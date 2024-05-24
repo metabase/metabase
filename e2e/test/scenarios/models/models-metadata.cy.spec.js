@@ -334,11 +334,12 @@ describe("scenarios > models metadata", () => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
           cy.icon("close").click();
-          cy.wait("@dataset");
         });
 
         cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
+
+        cy.findByText("Native Model"); // we are back on the original model
 
         // Drill to Reviews table
         // FK column has a FK semantic type, no mapping to real DB columns
@@ -385,7 +386,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it("should allow drills on FK columns from dashboards", () => {
+    it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;

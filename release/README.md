@@ -66,7 +66,7 @@ yarn release-offline v0.77.0 1234567890abcdef1234567890abcdef12345678  --changel
 When we cut a new release branch, we want to clone the current set of required checks from master. Over time, we add and remove test suites for master, but we want to keep each release branch consistent with the state of master at the time it was cut. To do this, we can run the following command after cutting a new release branch:
 
 ```sh
-yarn copy-required-checks release-x.{version}.x
+GITHUB_OWNER=metabase GITHUB_REPO=metabase GITHUB_TOKEN=your_github_token yarn copy-required-checks release-x.{version}.x
 ```
 
 > [!important]

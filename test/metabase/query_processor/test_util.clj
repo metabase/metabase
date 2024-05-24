@@ -38,9 +38,9 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def ^:private abnormal-drivers
+(def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :googleanalytics})
+  #{:druid :druid-jdbc :googleanalytics})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -369,6 +369,12 @@
   [results]
   {:rows (rows results), :cols (cols results)})
 
+(defn formatted-rows+column-names
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing. Format
+   the rows using `fns`."
+  [fns results]
+  {:rows (formatted-rows fns results), :columns (map :name (cols results))})
+
 (defn rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
   [results]
@@ -431,12 +437,12 @@
   when [[metabase.config/is-test?]] is true."
   false)
 
-(defn mock-fks-metadata-provider
+(defn mock-fks-application-database-metadata-provider
   "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
   database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
   formal FK constraints."
   ([]
-   (mock-fks-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -454,8 +460,8 @@
   (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true
             *enable-fk-support-for-disabled-drivers-in-tests*       true]
     (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                       (mock-fks-metadata-provider (qp.store/metadata-provider))
-                                       (mock-fks-metadata-provider))
+                                       (mock-fks-application-database-metadata-provider (qp.store/metadata-provider))
+                                       (mock-fks-application-database-metadata-provider))
       (thunk))))
 
 (defmacro with-mock-fks-for-drivers-without-fk-constraints
