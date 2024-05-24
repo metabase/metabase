@@ -1868,20 +1868,19 @@
                        (-> card
                            (dissoc :name))))))))))))
 
-(deftest migrate-uploads-settings-test
-  (testing "MigrateUploadsSettings"
+(def ^:private migrate-uploads-default-db
+  {:name       "DB"
+   :engine     "h2"
+   :created_at :%now
+   :updated_at :%now
+   :details    "{}"})
+
+(deftest migrate-uploads-settings-test-1
+  (testing "MigrateUploadsSettings with valid settings state works as expected."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
-        (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB 1"
-                                                                             :engine     "h2"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :details    "{}"})
-              not-uploads-db-id (t2/insert-returning-pk! :metabase_database {:name       "DB 2"
-                                                                             :engine     "h2"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :details    "{}"})]
+        (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 1"))
+              not-uploads-db-id (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 2"))]
           (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
                           {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
                           {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
@@ -1908,3 +1907,38 @@
                             (map :value settings-after)))
                 (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
                        (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+
+(deftest migrate-uploads-settings-test-2
+  (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+        (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
+              settings      [;; no uploads-database-id and uploads-schema-name
+                             {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                             {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
+              _             (t2/insert! :setting settings)
+              get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
+          (migrate!)
+          (testing "make sure the settings are removed after the migrations"
+            (is (empty? (get-settings))))
+          (is (=? {uploads-db-id {:uploads_enabled      false
+                                  :uploads_schema_name  nil
+                                  :uploads_table_prefix nil}}
+                  (m/index-by :id (t2/select :metabase_database)))))))))
+
+(deftest migrate-uploads-settings-test-3
+  (testing "MigrateUploadsSettings with invalid settings state (missing uploads-enabled) doesn't set uploads_enabled on the database."
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+        (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
+              settings      [;; no uploads-enabled
+                             {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
+              _             (t2/insert! :setting settings)
+              get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
+          (migrate!)
+          (testing "make sure the settings are removed after the migrations"
+            (is (empty? (get-settings))))
+          (is (=? {uploads-db-id {:uploads_enabled      false
+                                  :uploads_schema_name  nil
+                                  :uploads_table_prefix nil}}
+                  (m/index-by :id (t2/select :metabase_database)))))))))

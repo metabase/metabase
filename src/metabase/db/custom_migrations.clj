@@ -1403,14 +1403,15 @@
           encryption/maybe-decrypt))
 
 (define-reversible-migration MigrateUploadsSettings
-  (when-let [db-id (some-> (raw-setting-value "uploads-database-id") Integer/parseInt)]
-    (let [uploads-table-prefix (raw-setting-value "uploads-table-prefix")
-          uploads-schema-name  (raw-setting-value "uploads-schema-name")]
-      (t2/query {:update :metabase_database
-                 :set    {:uploads_enabled      true
-                          :uploads_table_prefix uploads-table-prefix
-                          :uploads_schema_name  uploads-schema-name}
-                 :where  [:= :id db-id]})))
+  (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
+    (when-let [db-id (some-> (raw-setting-value "uploads-database-id") parse-long)]
+      (let [uploads-table-prefix (raw-setting-value "uploads-table-prefix")
+            uploads-schema-name  (raw-setting-value "uploads-schema-name")]
+        (t2/query {:update :metabase_database
+                   :set    {:uploads_enabled      true
+                            :uploads_table_prefix uploads-table-prefix
+                            :uploads_schema_name  uploads-schema-name}
+                   :where  [:= :id db-id]}))))
   (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
     (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
                     {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
