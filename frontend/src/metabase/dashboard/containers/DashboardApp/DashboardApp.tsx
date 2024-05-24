@@ -220,6 +220,14 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    children,
+    ...dashboardProps
+  } = props;
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
@@ -228,7 +236,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
-        {...props}
+        {...dashboardProps}
       />
       {/* For rendering modal urls */}
       {props.children}

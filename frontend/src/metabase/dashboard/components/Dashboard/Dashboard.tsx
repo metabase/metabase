@@ -92,9 +92,6 @@ type DashboardProps = {
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
-  pageFavicon: string | null;
-  documentTitle: string | undefined;
-  isRunning: boolean;
   isLoadingComplete: boolean;
   isHeaderVisible: boolean;
   isAdditionalInfoVisible: boolean;
