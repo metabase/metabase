@@ -38,14 +38,13 @@ import type {
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
+import { rootId, strategyValidationSchema } from "../constants";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
   getLabelString,
-  rootId,
-  Strategies,
-  strategyValidationSchema,
-} from "../strategies";
-import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "../utils";
 
 import {
   FormBox,
@@ -53,6 +52,8 @@ import {
   LoaderInButton,
   StyledForm,
 } from "./StrategyForm.styled";
+
+const { strategies } = PLUGIN_CACHING;
 
 interface ButtonLabels {
   save: string;
@@ -371,7 +372,7 @@ const StrategySelector = ({
   const { values } = useFormikContext<Strategy>();
 
   const availableStrategies = useMemo(() => {
-    return targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
+    return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
   }, [targetId]);
 
   return (
@@ -467,7 +468,7 @@ const getDefaultValueForField = (
   fieldName?: string,
 ) => {
   return fieldName
-    ? Strategies[strategyType].validateWith.cast({})[fieldName]
+    ? strategies[strategyType].validateWith.cast({})[fieldName]
     : "";
 };
 

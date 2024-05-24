@@ -1,4 +1,5 @@
 import { memoize } from "underscore";
+import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   Cron,
@@ -6,12 +7,22 @@ import {
   optionNameTranslations,
 } from "metabase/components/Schedule/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
+import { PLUGIN_CACHING, defaultMinDurationMs } from "metabase/plugins";
 import type {
   ScheduleSettings,
   ScheduleType,
   ScheduleDayType,
   ScheduleFrameType,
+  CacheableModel,
+  Config,
+  Strategy,
+  StrategyType,
 } from "metabase-types/api";
+
+import { rootId } from "./constants";
+import type { StrategyLabel } from "./strategies";
+
+const { strategies } = PLUGIN_CACHING;
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const index = weekdays.findIndex(o => o.value === day);
@@ -175,3 +186,70 @@ export const getFrequencyFromCron = (cron: string) => {
     ? ""
     : optionNameTranslations[scheduleType];
 };
+
+const validStrategyNames = new Set(Object.keys(strategies));
+export const isValidStrategyName = (
+  strategy: string,
+): strategy is StrategyType => validStrategyNames.has(strategy);
+
+export const getLabelString = (label: StrategyLabel, model?: CacheableModel) =>
+  typeof label === "string" ? label : label(model);
+
+export const getShortStrategyLabel = (
+  strategy?: Strategy,
+  model?: CacheableModel,
+) => {
+  if (!strategy) {
+    return null;
+  }
+  const type = strategies[strategy.type];
+  const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
+  if (strategy.type === "schedule") {
+    const frequency = getFrequencyFromCron(strategy.schedule);
+    return `${mainLabel}: ${frequency}`;
+  } else {
+    return mainLabel;
+  }
+};
+
+export const getFieldsForStrategyType = (strategyType: StrategyType) => {
+  const strategy = strategies[strategyType];
+  const validationSchemaDescription =
+    strategy.validateWith.describe() as SchemaObjectDescription;
+  const fieldRecord = validationSchemaDescription.fields;
+  const fields = Object.keys(fieldRecord);
+  return fields;
+};
+
+export const translateConfig = (
+  config: Config,
+  direction: "fromAPI" | "toAPI",
+): Config => {
+  const translated: Config = { ...config };
+
+  // If strategy type is unsupported, use a fallback
+  if (!isValidStrategyName(translated.strategy.type)) {
+    translated.strategy.type =
+      translated.model_id === rootId ? "nocache" : "inherit";
+  }
+
+  if (translated.strategy.type === "ttl") {
+    if (direction === "fromAPI") {
+      translated.strategy.min_duration_seconds = Math.ceil(
+        translated.strategy.min_duration_ms / 1000,
+      );
+    } else {
+      translated.strategy.min_duration_ms =
+        translated.strategy.min_duration_seconds === undefined
+          ? defaultMinDurationMs
+          : translated.strategy.min_duration_seconds * 1000;
+      delete translated.strategy.min_duration_seconds;
+    }
+  }
+  return translated;
+};
+
+export const translateConfigFromAPI = (config: Config): Config =>
+  translateConfig(config, "fromAPI");
+export const translateConfigToAPI = (config: Config): Config =>
+  translateConfig(config, "toAPI");

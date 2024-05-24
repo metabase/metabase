@@ -8,8 +8,10 @@ import type {
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
+import * as Yup from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
+import type { StrategyData } from "metabase/admin/performance/types";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   DataPermissionValue,
@@ -30,23 +32,24 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Bookmark,
-  CacheableDashboard,
-  CacheableModel,
-  Collection,
-  CollectionAuthorityLevelConfig,
-  CollectionEssentials,
-  CollectionInstanceAnaltyicsConfig,
-  Dashboard,
-  Dataset,
-  Group,
-  GroupPermissions,
-  GroupsPermissions,
-  Revision,
-  SearchResult,
-  User,
-  UserListResult,
+import {
+  DurationUnit,
+  type Bookmark,
+  type CacheableDashboard,
+  type CacheableModel,
+  type Collection,
+  type CollectionAuthorityLevelConfig,
+  type CollectionEssentials,
+  type CollectionInstanceAnaltyicsConfig,
+  type Dashboard,
+  type Dataset,
+  type Group,
+  type GroupPermissions,
+  type GroupsPermissions,
+  type Revision,
+  type SearchResult,
+  type User,
+  type UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -346,6 +349,40 @@ export type SidebarCacheFormProps = {
   setPage: (page: "default" | "caching") => void;
 } & GroupProps;
 
+const durationUnits = new Set(Object.values(DurationUnit).map(String));
+
+const positiveInteger = Yup.number()
+  .positive(t`Enter a positive number.`)
+  .integer(t`Enter an integer.`);
+
+export const inheritStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["inherit"]),
+});
+
+export const doNotCacheStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["nocache"]),
+});
+
+export const defaultMinDurationMs = 1000;
+export const adaptiveStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["ttl"]),
+  min_duration_ms: positiveInteger.default(defaultMinDurationMs),
+  min_duration_seconds: positiveInteger.default(
+    Math.ceil(defaultMinDurationMs / 1000),
+  ),
+  multiplier: positiveInteger.default(10),
+});
+
+export const durationStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["duration"]),
+  duration: positiveInteger.default(24),
+  unit: Yup.string().test(
+    "is-duration-unit",
+    "${path} is not a valid duration",
+    value => !!value && durationUnits.has(value),
+  ),
+});
+
 export const PLUGIN_CACHING = {
   cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
@@ -362,6 +399,38 @@ export const PLUGIN_CACHING = {
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
+  strategies: {
+    inherit: {
+      label: (model?: CacheableModel) => {
+        switch (model) {
+          case "dashboard":
+            return t`Use default: each question will use its own policy or the database policy`;
+          case "question":
+            return t`Use default: use the database or dashboard policy`;
+          default:
+            return t`Use default`;
+        }
+      },
+      shortLabel: t`Use default`,
+      validateWith: inheritStrategyValidationSchema,
+    },
+    duration: {
+      label: t`Duration: keep the cache for a number of hours`,
+      validateWith: durationStrategyValidationSchema,
+      shortLabel: t`Duration`,
+    },
+    // NOTE: The strategy is called 'ttl' in the BE, but we've renamed it 'Adaptive' in the FE
+    ttl: {
+      label: t`Adaptive: use a query’s average execution time to determine how long to cache its results`,
+      shortLabel: t`Adaptive`,
+      validateWith: adaptiveStrategyValidationSchema,
+    },
+    nocache: {
+      label: t`Don’t cache results`,
+      validateWith: doNotCacheStrategyValidationSchema,
+      shortLabel: t`No caching`,
+    },
+  } as Record<string, StrategyData>,
 };
 
 export const PLUGIN_REDUCERS: {

@@ -2,15 +2,13 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import type { Config, CacheableModel, Strategy } from "metabase-types/api";
 
-import {
-  getFieldsForStrategyType,
-  rootId,
-  Strategies,
-  translateConfigToAPI,
-} from "../strategies";
+import { rootId } from "../constants";
+import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
+const { strategies } = PLUGIN_CACHING;
 
 export const useSaveStrategy = (
   targetId: number | null,
@@ -48,7 +46,7 @@ export const useSaveStrategy = (
         const newStrategy = _.pick(values, validFields) as Strategy;
 
         const validatedStrategy =
-          Strategies[values.type].validateWith.validateSync(newStrategy);
+          strategies[values.type].validateWith.validateSync(newStrategy);
 
         const newConfig = {
           ...baseConfig,
