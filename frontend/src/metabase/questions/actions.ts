@@ -26,7 +26,7 @@ export const loadMetadataForCards =
         .map(card => new Question(card, metadata))
         .flatMap(question => {
           const dependencies = [...Lib.dependentMetadata(question.query())];
-          if (question.type() !== "question") {
+          if (question.isSaved() && question.type() !== "question") {
             const tableId = getQuestionVirtualTableId(question.id());
             dependencies.push({ id: tableId, type: "table" });
 
