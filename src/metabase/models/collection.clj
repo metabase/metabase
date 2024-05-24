@@ -307,24 +307,23 @@
 (def ^:private VisibleCollections
   "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
   represent the root collection."
-  [:or
-   [:= :all]
-   [:set
-    [:or [:= "root"] ms/PositiveInt]]])
+  [:set
+   [:or [:= "root"] ms/PositiveInt]])
 
 (defn- permission-id->archived&trash-operation-id []
   (into {} (t2/select-fn-vec (juxt :id identity)
                              :model/Collection)))
 
-(defn permissions-set->collection-id->collection
+(defn- permissions-set->collection-id->collection
   [permissions-set & [read-or-write]]
   (let [permission-id->archived&trash-operation-id (permission-id->archived&trash-operation-id)
         ids-with-perm (set
                        (for [path  permissions-set
                              :let  [[_ id-str] (case read-or-write
-                                                 (nil :read)
+                                                 :read
                                                  (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)
 
+                                                 :write
                                                  (re-matches #"/collection/((?:\d+)|root)/" path))]
                              :when id-str]
                          (cond-> id-str
@@ -340,39 +339,57 @@
          (filter has-permission?)
          (merge root-map))))
 
-(defn permissions-set->visible-collection-ids-with-perm
-  [permissions-set read-or-write]
-  (->> (permissions-set->collection-id->collection permissions-set read-or-write)
-       (map key)
-       (into #{})))
+(def ^:private IncludeArchived
+  [:enum :only :exclude :all])
+(def ^:private IncludeTrash
+  [:boolean])
+(def ^:private TrashOperationId
+  [:maybe :string])
+(def ^:private PermissionLevel
+  [:enum :read :write])
+(def ^:private CollectionVisibilityConfig
+  [:map
+   [:include-trash? {:optional true} IncludeTrash]
+   [:include-archived {:optional true} IncludeArchived]
+   [:trash-operation-id {:optional true} TrashOperationId]
+   [:permission-level {:optional true} PermissionLevel]])
 
-(mu/defn permissions-set->visible-collection-ids
-  "Even better"
-  ([permissions-set]
-   (->> (permissions-set->collection-id->collection permissions-set)
-        (map key)
-        (into #{})))
-  ([collection permissions-set]
-   (let [collection-id->collection (permissions-set->collection-id->collection permissions-set
-                                                                               (if (or (:archived collection)
-                                                                                       (is-trash? collection))
-                                                                                 :write
-                                                                                 :read))
-         has-matching-archived? (fn [[_ other-collection]]
-                                  (or (is-trash? other-collection)
-                                      (= (or (:archived other-collection)
-                                             (is-trash? other-collection))
-                                         (or (:archived collection)
-                                             (is-trash? collection)))))
-         has-matching-trash-operation-id? (fn [[_ {:keys [trash_operation_id]}]]
-                                            (or (= (:trash_operation_id collection)
-                                                   trash_operation_id)
-                                                (is-trash? collection)))]
-     (->> collection-id->collection
-          (filter has-matching-archived?)
-          (filter has-matching-trash-operation-id?)
-          (map key)
-          (into #{})))))
+(defn- archived-decision [include-archived collection]
+  (case include-archived
+    :all false
+    :exclude (:archived collection)
+    :only (not (or (:archived collection)
+                   (is-trash? collection)))))
+
+(defn- trash-decision [include-trash? collection]
+  (if include-trash?
+    false
+    (is-trash? collection)))
+
+(defn- trash-operation-id-decision [trash-operation-id collection]
+  (and (some? trash-operation-id)
+       (not= trash-operation-id (:trash_operation_id collection))))
+
+(mu/defn permissions-set->visible-collection-ids :- VisibleCollections
+  "There are three factors we need to take into account when turning the permissions set into visible collection IDs.
+  - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
+    view collections with `write` permissions.
+  - archived: are archived collections currently visible, or not?
+  - trash_operation_id: when looking at a trashed collection, we want to restrict visible collections to those that share
+  that operation ID."
+  [permissions-set :- [:set :string]
+   visibility-config :- CollectionVisibilityConfig]
+  (let [visibility-config (merge {:include-archived :exclude
+                                  :include-trash? false
+                                  :trash-operation-id nil
+                                  :permission-level :read}
+                                 visibility-config)]
+    (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
+         (remove #(archived-decision (:include-archived visibility-config) (val %)))
+         (remove #(trash-operation-id-decision (:trash-operation-id visibility-config) (val %)))
+         (remove #(trash-decision (:include-trash? visibility-config) (val %)))
+         (map key)
+         (into #{}))))
 
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
@@ -443,7 +460,14 @@
      (effective-location-path* (if (:trashed_directly collection)
                                  (trash-path)
                                  (:location collection))
-                               (permissions-set->visible-collection-ids collection @*current-user-permissions-set*))))
+                               (permissions-set->visible-collection-ids
+                                @*current-user-permissions-set*
+                                {:include-archived (if (:archived collection)
+                                                     :only
+                                                     :exclude)
+                                 :include-trash? true
+                                 :trash-operation-id (:trash_operation_id collection)
+                                 :permission-level :read}))))
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
@@ -637,7 +661,17 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids collection @*current-user-permissions-set*)]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*
+                                                                        {:include-archived   (if (or (:archived collection)
+                                                                                                     (is-trash? collection))
+                                                                                               :only
+                                                                                               :exclude)
+                                                                         :include-trash?     true
+                                                                         :trash-operation-id (:trash_operation_id collection)
+                                                                         :permission-level   (if (or (:archived collection)
+                                                                                                     (is-trash? collection))
+                                                                                               :write
+                                                                                               :read)})]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and

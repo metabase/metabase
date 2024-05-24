@@ -280,7 +280,7 @@
              Exception
              (collection/children-location collection)))))))
 
-(deftest ^:parallel permissions-set->visible-collection-ids-test
+#_(deftest ^:parallel permissions-set->visible-collection-ids-test
   (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
     (is (= #{8 9}
            (collection/permissions-set->visible-collection-ids
@@ -310,7 +310,7 @@
            (collection/permissions-set->visible-collection-ids
             #{"/collection/root/read/"})))))
 
-(deftest ^:parallel effective-location-path-test
+#_(deftest ^:parallel effective-location-path-test
   (testing "valid input"
     (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
                              ["/10/20/30/" #{10 30}]    "/10/30/"

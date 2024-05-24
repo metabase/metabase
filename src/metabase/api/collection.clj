@@ -102,8 +102,13 @@
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
                         (collection/permissions-set->visible-collection-ids
-                         (when archived (collection/trash-collection))
-                         permissions-set))]
+                         permissions-set
+                         {:include-archived (if archived
+                                              :only
+                                              :exclude)
+                          :include-trash? true
+                          :permission-level :read
+                          :trash-operation-id nil}))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -427,10 +432,12 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids-with-perm @api/*current-user-permissions-set*
-                                                                                  (if archived?
-                                                                                    :write
-                                                                                    :read)))
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        {:include-archived :all
+                                                                         :permission-level (if archived?
+                                                                                             :write
+                                                                                             :read)
+                                                                         :trash-operation-id nil}))
                    (if (collection/is-trash? collection)
                      [:= :c.trashed_directly true]
                      [:and
@@ -552,10 +559,12 @@
        :where     [:and
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
-                    (collection/permissions-set->visible-collection-ids-with-perm @api/*current-user-permissions-set*
-                                                                                  (if archived?
-                                                                                    :write
-                                                                                    :read)))
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                        {:include-archived :all
+                                                                         :trash-operation-id nil
+                                                                         :permission-level (if archived?
+                                                                                             :write
+                                                                                             :read)}))
                    (if (collection/is-trash? collection)
                      [:= :d.trashed_directly true]
                      [:and
@@ -624,7 +633,10 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids parent-coll @api/*current-user-permissions-set*)
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
+                                                                                   {:include-archived :all
+                                                                                    :trash-operation-id nil
+                                                                                    :permission-level :read})
 
         descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
                                                                          :id

@@ -111,8 +111,14 @@
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [current-user-perms
-           filter-items-in-personal-collection]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
+           filter-items-in-personal-collection
+           archived]} :- SearchContext]
+  (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms
+                                                                                     {:include-archived :all
+                                                                                      :include-trash? true
+                                                                                      :permission-level (if archived
+                                                                                                          :write
+                                                                                                          :read)})
         collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
