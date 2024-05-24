@@ -131,6 +131,10 @@ function getShowLabelFn(
   }
 
   const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
+  if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
+    return () => true;
+  }
+
   const maxNumberOfLabels = (1.7 * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
