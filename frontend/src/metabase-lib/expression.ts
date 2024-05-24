@@ -122,6 +122,7 @@ export function offsetClause(
 }
 
 // TODO: should this come from inside MLv2?
+// TODO: add `offset: number` argument, see https://metaboat.slack.com/archives/C0645JP1W81/p1716556485318749?thread_ts=1716475674.712849&cid=C0645JP1W81
 export function getPeriodName(query: Query, stageIndex: number): string {
   const firstTimeBreakout = breakouts(query, stageIndex).find(breakout => {
     const info = displayInfo(query, stageIndex, breakout);
