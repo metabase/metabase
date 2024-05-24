@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import * as ML from "cljs/metabase.lib.js";
-// TODO: fixme
-import { uuid } from "metabase/lib/uuid";
 
 import { expressionClause } from "./expression";
 import { displayInfo } from "./metadata";
@@ -92,7 +90,6 @@ export function offsetClause(
   const { displayName } = displayInfo(query, stageIndex, clause);
   const newName = t`${displayName} (previous period)`;
   const newClause = expressionClause("offset", [clause, offset], {
-    "lib/uuid": uuid(),
     name: newName,
     "display-name": newName,
   });

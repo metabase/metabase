@@ -287,7 +287,7 @@ export type ExpressionParts = {
 };
 
 export type OffsetExpressionOptions = {
-  "lib/uuid": string;
+  "lib/uuid"?: string;
   name: string;
   "display-name": string;
 };
