@@ -17,13 +17,14 @@ import {
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
+import { getIsMetadataLoaded } from "metabase/dashboard/selectors";
 import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -197,6 +198,7 @@ function DashboardInner(props: DashboardProps) {
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
 
   const currentTabDashcards = useMemo(() => {
     if (!Array.isArray(dashboard?.dashcards)) {
@@ -319,6 +321,9 @@ function DashboardInner(props: DashboardProps) {
     if (didDashboardLoad || didParameterValuesChange) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
+    if (didDashboardLoad) {
+      fetchDashboardCardMetadata();
+    }
   }, [
     dashboard,
     dashboardId,
@@ -402,7 +407,7 @@ function DashboardInner(props: DashboardProps) {
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
-      loading={!dashboard}
+      loading={!dashboard || !isMetadataLoaded}
       error={error}
     >
       {() => (
