@@ -476,7 +476,8 @@ const loadingMetadata = handleActions(
     [fetchDashboardMetadata.pending]: {
       next: state => ({
         ...state,
-        loadingStatus: "running",
+        loadingStatus:
+          state.loadingStatus === "idle" ? "running" : state.loadingStatus,
       }),
     },
     [fetchDashboardMetadata.fulfilled]: {
