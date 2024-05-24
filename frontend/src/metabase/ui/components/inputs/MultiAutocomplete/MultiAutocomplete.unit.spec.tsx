@@ -249,4 +249,18 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(['"quu']);
     expect(input).toHaveValue('"quu');
   });
+
+  it("should not be possible to enter duplicate values", async () => {
+    const { input, onChange } = setup({
+      data: EXAMPLE_DATA,
+    });
+
+    input.focus();
+    await userEvent.type(input, "a,a,b,b,a,a,", {
+      pointerEventsCheck: 0,
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith(["a", "b"]);
+    expect(input).toHaveValue("");
+  });
 });

@@ -21,4 +21,8 @@ describe("parseValues", () => {
     expect(parseValues(`"bar,\\"baz\\""`)).toEqual(['bar,"baz"']);
     expect(parseValues(`"\\"baz\\",quu"`)).toEqual(['"baz",quu']);
   });
+
+  it("should only return unique values", () => {
+    expect(parseValues(`a,a,a,a,b,b,b,a,a,a`)).toEqual(["a", "b"]);
+  });
 });
