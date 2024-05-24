@@ -112,10 +112,10 @@ export function offsetClause(
   offset: number,
 ): ExpressionClause {
   const { displayName } = displayInfo(query, stageIndex, clause);
-  const ofsettedClause = expressionClause("offset", [clause, offset]);
   const period = getPeriodName(query, stageIndex);
   const newName = t`${displayName} (previous ${period})`;
-  return withExpressionName(ofsettedClause, newName);
+  const newClause = expressionClause("offset", [clause, offset]);
+  return withExpressionName(newClause, newName);
 }
 
 export function diffOffsetClause(
@@ -126,6 +126,7 @@ export function diffOffsetClause(
 ): ExpressionClause {
   const offsettedClause = offsetClause(query, stageIndex, clause, offset);
   const newClause = expressionClause("-", [clause, offsettedClause]);
+  // TODO: call  withExpressionName
   return newClause;
 }
 
@@ -140,6 +141,7 @@ export function percentDiffOffsetClause(
     expressionClause("/", [clause, offsettedClause]),
     1,
   ]);
+  // TODO: call  withExpressionName
   return newClause;
 }
 
