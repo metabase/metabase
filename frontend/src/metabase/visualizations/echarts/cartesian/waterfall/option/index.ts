@@ -87,7 +87,6 @@ const computeWaterfallBarWidth = (
     chartModel.xAxisModel,
     boundaryWidth,
     1,
-    1,
     true,
   );
 };
