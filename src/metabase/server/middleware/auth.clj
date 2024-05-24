@@ -33,7 +33,10 @@
 
 (defsetting api-key
   "When set, this API key is required for all API requests."
-  :visibility :internal)
+  :visibility :internal
+  :doc "Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
+        If the header is available, then it’s validated against MB_API_KEY.
+        When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.")
 
 (defn static-api-key
   "We don't want to change the name of the setting from `MB_API_KEY`, but we want to differentiate this static key from
